@@ -7,7 +7,25 @@ from sqlalchemy.orm import Session
 from app.core.errors import APIError
 from app.models.discovery import AnalyticsEvent
 
-ALLOWED_PREFIXES = ("discover.", "pro.", "booking.", "payment.", "review.", "referral.", "reward.", "reminder.")
+ALLOWED_PREFIXES = (
+    "discover.",
+    "pro.",
+    "booking.",
+    "payment.",
+    "review.",
+    "referral.",
+    "reward.",
+    "reminder.",
+    "chat.",
+    "followup.",
+    "call.",
+    "consent.",
+    "notification.",
+    "instructor.",
+    "course.",
+    "certificate.",
+    "learning.",
+)
 
 
 def validate_event_name(event_name: str) -> None:

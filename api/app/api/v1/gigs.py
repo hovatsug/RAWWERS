@@ -29,6 +29,7 @@ from app.schemas.media import CurrentUser
 from app.services.authz import require_kyc_approved_for_pro
 from app.services.analytics import log_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.followups import schedule_followups
 from app.services.rewards import reserve_points_for_discount
 from app.services.stripe_service import is_within_hours
 
@@ -54,6 +55,7 @@ def create_gig(
     gig = Gig(
         client_user_id=user.user_id,
         pro_user_id=body.pro_user_id,
+        niche_id=body.niche_id,
         status=GigStatus.payment_pending,
         currency=body.currency.upper(),
         amount_total=amount_total,
@@ -74,6 +76,13 @@ def create_gig(
             to_status=GigStatus.payment_pending,
             reason="Gig created and moved to payment pending",
         )
+    )
+    schedule_followups(
+        db,
+        trigger="payment_pending.client",
+        user_id=gig.client_user_id,
+        target_type="gig",
+        target_id=gig.id,
     )
     db.commit()
     db.refresh(gig)
@@ -274,6 +283,7 @@ def _gig_response(gig: Gig) -> GigResponse:
         id=gig.id,
         client_user_id=gig.client_user_id,
         pro_user_id=gig.pro_user_id,
+        niche_id=gig.niche_id,
         status=gig.status,
         currency=gig.currency,
         amount_total=gig.amount_total,

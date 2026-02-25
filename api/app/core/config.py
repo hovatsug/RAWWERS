@@ -38,6 +38,16 @@ class Settings(BaseSettings):
     allow_unverified_pro: bool = Field(default=False, alias="ALLOW_UNVERIFIED_PRO")
     reward_points_per_eur: int = Field(default=100, alias="REWARD_POINTS_PER_EUR")
     reward_max_discount_percent: int = Field(default=20, alias="REWARD_MAX_DISCOUNT_PERCENT")
+    llm_provider: str = Field(default="mock", alias="LLM_PROVIDER")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="", alias="OPENAI_MODEL")
+    llm_max_tokens_per_thread: int = Field(default=4000, alias="LLM_MAX_TOKENS_PER_THREAD")
+    llm_max_messages_per_thread: int = Field(default=50, alias="LLM_MAX_MESSAGES_PER_THREAD")
+    telephony_provider: str = Field(default="mock", alias="TELEPHONY_PROVIDER")
+    telephony_from_e164: str = Field(default="", alias="TELEPHONY_FROM_E164")
+    telephony_webhook_secret: str = Field(default="", alias="TELEPHONY_WEBHOOK_SECRET")
+    call_rate_limit_per_user_per_day: int = Field(default=2, alias="CALL_RATE_LIMIT_PER_USER_PER_DAY")
+    call_rate_limit_per_pro_per_day: int = Field(default=20, alias="CALL_RATE_LIMIT_PER_PRO_PER_DAY")
 
     def admin_user_id_set(self) -> set[UUID]:
         values = [item.strip() for item in self.admin_user_ids.split(",") if item.strip()]

@@ -60,6 +60,7 @@ class Gig(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
+    niche_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), index=True, nullable=True)
     status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False), index=True, nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     amount_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

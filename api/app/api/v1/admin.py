@@ -25,7 +25,14 @@ from app.models.admin import (
     UserRoleType,
 )
 from app.models.gig import Gig, GigStatus, GigTransition, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
+from app.models.learning import (
+    Course,
+    CourseLevel,
+    InstructorProfile,
+    InstructorStatus,
+)
 from app.models.media import MediaAsset
+from app.models.niche import Niche, ProNicheSkill
 from app.schemas.admin import (
     AdminGigStatusUpdateRequest,
     AdminRefundCreateRequest,
@@ -40,10 +47,23 @@ from app.schemas.admin import (
     UserListItem,
     UserListResponse,
 )
+from app.schemas.niche import AdminNicheSkillOverrideRequest
+from app.schemas.learning import (
+    AdminCourseListResponse,
+    AdminNicheRequirementsUpsertRequest,
+    AdminNicheRequirementsUpsertResponse,
+    AdminSetInstructorStatusRequest,
+    CourseListItem,
+    InstructorProfileView,
+)
 from app.schemas.media import CurrentUser
 from app.services.audit import add_admin_audit_log
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.analytics import log_event
+from app.services.niche_catalog import ensure_initial_niches
+from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.learning import replace_niche_program_requirements
+from app.tasks.niche_tasks import recompute_all_pro_niche_skills_task, recompute_pro_niche_skills_task
 from app.services.rewards import maybe_issue_pro_signup_referral_reward
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -229,6 +249,7 @@ def update_pro_kyc(
                 user_id=reward_entry.user_id,
                 properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount, "referred_user_id": str(user_id)},
             )
+        recompute_pro_niche_skills(db, user_id)
     db.commit()
     recompute_pro_public_index(db, user_id)
     db.commit()
@@ -331,6 +352,8 @@ def update_dispute_status(
     )
     gig = db.get(Gig, dispute.gig_id)
     if gig:
+        if gig.niche_id:
+            recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         recompute_pro_public_index(db, gig.pro_user_id)
     db.commit()
     db.refresh(dispute)
@@ -392,6 +415,8 @@ def update_gig_status(
         metadata={"from_status": previous.value, "to_status": body.status.value},
     )
     recompute_pro_public_index(db, gig.pro_user_id)
+    if gig.niche_id:
+        recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
     db.commit()
     return {"gig_id": str(gig.id), "status": gig.status.value}
 
@@ -474,6 +499,8 @@ def create_admin_refund(
         metadata={"amount": str(amount), "refund_id": refund.id, "dispute_id": str(body.dispute_id) if body.dispute_id else None},
     )
     recompute_pro_public_index(db, gig.pro_user_id)
+    if gig.niche_id:
+        recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
     db.commit()
     db.refresh(refund_case)
     return _refund_case_view(refund_case)
@@ -494,6 +521,279 @@ def list_refunds(
 
     cases = db.execute(stmt.order_by(RefundCase.created_at.desc())).scalars().all()
     return [_refund_case_view(item) for item in cases]
+
+
+@router.post("/instructors/{user_id}/approve", response_model=InstructorProfileView)
+def approve_instructor(
+    user_id: uuid.UUID,
+    body: AdminSetInstructorStatusRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> InstructorProfileView:
+    profile = db.get(InstructorProfile, user_id)
+    if not profile:
+        profile = InstructorProfile(user_id=user_id, status=InstructorStatus.pending, expertise=[])
+        db.add(profile)
+    profile.status = InstructorStatus.approved
+    profile.bio = body.bio if body.bio is not None else profile.bio
+    profile.expertise = body.expertise or profile.expertise or []
+    profile.approved_by = actor.user_id
+    profile.approved_at = datetime.now(timezone.utc)
+    profile.rejected_reason = None
+    profile.updated_at = datetime.now(timezone.utc)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="instructor_profile",
+        target_id=str(user_id),
+        action="instructor_approved",
+        reason=body.reason,
+        metadata={"expertise": profile.expertise},
+    )
+    db.commit()
+    db.refresh(profile)
+    return InstructorProfileView.model_validate(profile, from_attributes=True)
+
+
+@router.post("/instructors/{user_id}/reject", response_model=InstructorProfileView)
+def reject_instructor(
+    user_id: uuid.UUID,
+    body: AdminSetInstructorStatusRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> InstructorProfileView:
+    profile = db.get(InstructorProfile, user_id)
+    if not profile:
+        profile = InstructorProfile(user_id=user_id, status=InstructorStatus.pending, expertise=[])
+        db.add(profile)
+    profile.status = InstructorStatus.rejected
+    profile.rejected_reason = body.reason or "Rejected by admin"
+    profile.approved_by = None
+    profile.approved_at = None
+    if body.bio is not None:
+        profile.bio = body.bio
+    if body.expertise:
+        profile.expertise = body.expertise
+    profile.updated_at = datetime.now(timezone.utc)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="instructor_profile",
+        target_id=str(user_id),
+        action="instructor_rejected",
+        reason=body.reason,
+        metadata={"expertise": profile.expertise},
+    )
+    db.commit()
+    db.refresh(profile)
+    return InstructorProfileView.model_validate(profile, from_attributes=True)
+
+
+@router.get("/courses", response_model=AdminCourseListResponse)
+def admin_list_courses(
+    instructor_user_id: uuid.UUID | None = None,
+    niche_slug: str | None = None,
+    published: bool | None = None,
+    level: CourseLevel | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminCourseListResponse:
+    ensure_initial_niches(db)
+    stmt = select(Course)
+    if instructor_user_id:
+        stmt = stmt.where(Course.instructor_user_id == instructor_user_id)
+    if published is not None:
+        stmt = stmt.where(Course.is_published.is_(published))
+    if level is not None:
+        stmt = stmt.where(Course.level == level)
+    if niche_slug:
+        niche = db.execute(select(Niche).where(Niche.slug == niche_slug)).scalar_one_or_none()
+        if not niche:
+            raise APIError(code="validation_error", message="Unknown niche", status_code=422)
+        stmt = stmt.where(Course.niche_id == niche.id)
+
+    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
+    rows = db.execute(stmt.order_by(Course.updated_at.desc()).offset(offset).limit(limit)).scalars().all()
+    niche_map = {row.id: row.slug for row in db.execute(select(Niche).where(Niche.id.in_([c.niche_id for c in rows]))).scalars().all()} if rows else {}
+    return AdminCourseListResponse(
+        total=total,
+        items=[_course_list_item(row, niche_map.get(row.niche_id, "")) for row in rows],
+    )
+
+
+@router.post("/courses/{course_id}/unpublish", response_model=CourseListItem)
+def admin_unpublish_course(
+    course_id: uuid.UUID,
+    reason: str | None = None,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> CourseListItem:
+    course = db.get(Course, course_id)
+    if not course:
+        raise APIError(code="not_found", message="Course not found", status_code=404)
+    course.is_published = False
+    course.updated_at = datetime.now(timezone.utc)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="course",
+        target_id=str(course.id),
+        action="course_unpublished",
+        reason=reason,
+    )
+    db.commit()
+    db.refresh(course)
+    niche = db.get(Niche, course.niche_id)
+    return _course_list_item(course, niche.slug if niche else "")
+
+
+@router.post("/niches/{niche_slug}/requirements", response_model=AdminNicheRequirementsUpsertResponse)
+def admin_set_niche_requirements(
+    niche_slug: str,
+    body: AdminNicheRequirementsUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminNicheRequirementsUpsertResponse:
+    ensure_initial_niches(db)
+    niche = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+    count = replace_niche_program_requirements(db, niche.id, body.tier_target, body.course_ids, body.is_mandatory)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="niche_program_requirement",
+        target_id=f"{niche_slug}:{body.tier_target.value}",
+        action="niche_requirements_upserted",
+        metadata={"course_ids": [str(item) for item in body.course_ids], "is_mandatory": body.is_mandatory},
+    )
+    db.commit()
+    return AdminNicheRequirementsUpsertResponse(niche_slug=niche_slug, tier_target=body.tier_target, count=count)
+
+
+@router.post("/pros/{pro_user_id}/niches/{niche_slug}/recompute")
+def admin_recompute_pro_niche_skill(
+    pro_user_id: uuid.UUID,
+    niche_slug: str,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    ensure_initial_niches(db)
+    niche = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+    recompute_pro_niche_skills(db, pro_user_id, niche.id)
+    recompute_pro_public_index(db, pro_user_id)
+    db.commit()
+    return {"ok": True, "pro_user_id": str(pro_user_id), "niche_slug": niche_slug}
+
+
+@router.post("/jobs/recompute-niche-skills")
+def recompute_niche_skills_job(
+    pro_user_id: uuid.UUID | None = None,
+    niche_slug: str | None = None,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    if niche_slug and not pro_user_id:
+        raise APIError(code="validation_error", message="pro_user_id is required when niche_slug is provided", status_code=422)
+    ensure_initial_niches(db)
+    if pro_user_id:
+        niche_id = None
+        if niche_slug:
+            niche = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
+            if not niche:
+                raise APIError(code="not_found", message="Niche not found", status_code=404)
+            niche_id = niche.id
+        queued = recompute_pro_niche_skills_task.delay(str(pro_user_id), str(niche_id) if niche_id else None)
+        return {"queued": True, "task_id": queued.id}
+    queued = recompute_all_pro_niche_skills_task.delay()
+    return {"queued": True, "task_id": queued.id}
+
+
+@router.post("/pros/{pro_user_id}/skills/{niche_slug}/override")
+def override_pro_niche_skill(
+    pro_user_id: uuid.UUID,
+    niche_slug: str,
+    body: AdminNicheSkillOverrideRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    ensure_initial_niches(db)
+    niche = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+    if body.tier is None and body.capability_score is None and body.certification_score is None:
+        raise APIError(code="validation_error", message="At least one override field is required", status_code=422)
+
+    recompute_pro_niche_skills(db, pro_user_id, niche.id)
+    skill = db.execute(
+        select(ProNicheSkill).where(ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche.id)
+    ).scalar_one_or_none()
+    if not skill:
+        skill = ProNicheSkill(pro_user_id=pro_user_id, niche_id=niche.id)
+        db.add(skill)
+        db.flush()
+
+    breakdown = dict(skill.breakdown or {})
+    override_payload = {
+        "tier": body.tier.value if body.tier else None,
+        "capability_score": body.capability_score,
+        "certification_score": body.certification_score,
+        "reason": body.reason,
+        "actor_user_id": str(actor.user_id),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": body.expires_at.isoformat() if body.expires_at else None,
+    }
+    breakdown["override"] = override_payload
+    breakdown["override_active"] = True
+    skill.breakdown = breakdown
+    if body.tier is not None:
+        skill.tier = body.tier
+    if body.capability_score is not None:
+        skill.capability_score = body.capability_score
+    if body.certification_score is not None:
+        skill.certification_score = body.certification_score
+    skill.updated_at = datetime.now(timezone.utc)
+
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="pro_niche_skill",
+        target_id=f"{pro_user_id}:{niche_slug}",
+        action="pro_niche_skill_override",
+        reason=body.reason,
+        metadata=override_payload,
+    )
+    recompute_pro_public_index(db, pro_user_id)
+    db.commit()
+    return {
+        "pro_user_id": str(pro_user_id),
+        "niche_slug": niche_slug,
+        "tier": skill.tier.value,
+        "capability_score": skill.capability_score,
+        "certification_score": skill.certification_score,
+    }
+
+
+def _course_list_item(course: Course, niche_slug: str) -> CourseListItem:
+    return CourseListItem(
+        id=course.id,
+        instructor_user_id=course.instructor_user_id,
+        title=course.title,
+        summary=course.summary,
+        niche_slug=niche_slug,
+        level=course.level,
+        is_mandatory=course.is_mandatory,
+        is_published=course.is_published,
+        price=course.price,
+        currency=course.currency,
+        estimated_minutes=course.estimated_minutes,
+        thumbnail_media_asset_id=course.thumbnail_media_asset_id,
+        intro_video_media_asset_id=course.intro_video_media_asset_id,
+    )
 
 
 def _refund_case_view(item: RefundCase) -> RefundCaseView:

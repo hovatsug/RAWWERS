@@ -9,6 +9,7 @@ from app.models.gig import GigStatus, PaymentStatus
 
 class CreateGigRequest(BaseModel):
     pro_user_id: uuid.UUID
+    niche_id: uuid.UUID | None = None
     amount_total: Decimal
     currency: str = "EUR"
     location_text: str | None = None
@@ -20,6 +21,7 @@ class GigResponse(BaseModel):
     id: uuid.UUID
     client_user_id: uuid.UUID
     pro_user_id: uuid.UUID
+    niche_id: uuid.UUID | None = None
     status: GigStatus
     currency: str
     amount_total: Decimal

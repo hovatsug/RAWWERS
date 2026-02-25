@@ -6,6 +6,7 @@ from app.core.config import get_settings
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, ProPackage
 from app.models.gig import Gig, StripePayment
+from app.models.niche import Niche
 
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
 
@@ -53,6 +54,7 @@ def _create_package(client, pro_id: str):
         headers={"X-User-Id": pro_id},
         json={
             "title": "Mini Session",
+            "niche_slug": "portraits",
             "duration_minutes": 60,
             "price": "120.00",
             "currency": "EUR",
@@ -218,6 +220,7 @@ def test_expiration_marks_pending_to_expired(client, db_session):
 
     pkg = ProPackage(
         pro_user_id=uuid.UUID(pro_id),
+        niche_id=db_session.query(Niche).filter_by(slug="portraits").first().id,
         title="Pkg",
         duration_minutes=60,
         price=Decimal("100.00"),

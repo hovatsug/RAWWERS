@@ -23,6 +23,7 @@ class Review(Base):
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, unique=True, index=True)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)

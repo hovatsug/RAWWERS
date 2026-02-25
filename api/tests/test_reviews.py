@@ -4,15 +4,18 @@ from decimal import Decimal
 from app.models.discovery import ProPublicIndex
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
+from app.models.niche import Niche
 from app.models.review import ProReputation, Review, ReviewStatus
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.reputation import recompute_pro_reputation
 
 
 def _create_gig(db_session, client_id: str, pro_id: str, status: GigStatus = GigStatus.completed) -> Gig:
+    niche_id = db_session.query(Niche).filter_by(slug="portraits").first().id
     gig = Gig(
         client_user_id=uuid.UUID(client_id),
         pro_user_id=uuid.UUID(pro_id),
+        niche_id=niche_id,
         status=status,
         currency="EUR",
         amount_total=Decimal("100.00"),
@@ -151,6 +154,7 @@ def test_pro_public_index_updated_with_review_signals(db_session):
             gig_id=gig.id,
             pro_user_id=uuid.UUID(pro_id),
             client_user_id=uuid.UUID(client_id),
+            niche_id=gig.niche_id,
             rating=5,
             tags=["creative"],
             would_book_again=True,

@@ -20,6 +20,7 @@ from app.schemas.admin import (
 from app.schemas.media import CurrentUser
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.niche_skills import recompute_pro_niche_skills
 
 router = APIRouter(prefix="/disputes", tags=["disputes"])
 
@@ -62,6 +63,8 @@ def create_dispute(
         db.add(transition)
 
     recompute_pro_public_index(db, gig.pro_user_id)
+    if gig.niche_id:
+        recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
     db.commit()
     db.refresh(dispute)
     return _dispute_to_view(dispute)

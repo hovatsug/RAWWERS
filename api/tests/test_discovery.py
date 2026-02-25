@@ -5,6 +5,7 @@ from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserR
 from app.models.booking import ProPackage
 from app.models.discovery import AnalyticsEvent
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
+from app.models.niche import Niche
 from app.services.discovery_index import _compute_ranking_score, recompute_pro_public_index
 
 
@@ -32,10 +33,12 @@ def _seed_pro(db_session, *, approved: bool = True, accepting: bool = True, comp
 def test_discover_filters_only_approved_active(client, db_session):
     allowed_pro = _seed_pro(db_session, approved=True, accepting=True, completeness=90)
     blocked_pro = _seed_pro(db_session, approved=False, accepting=True, completeness=90)
+    niche_id = db_session.query(Niche).filter_by(slug="portraits").first().id
 
     db_session.add(
         ProPackage(
             pro_user_id=uuid.UUID(allowed_pro),
+            niche_id=niche_id,
             title="Pkg",
             duration_minutes=60,
             price=Decimal("100.00"),
@@ -51,6 +54,7 @@ def test_discover_filters_only_approved_active(client, db_session):
     db_session.add(
         ProPackage(
             pro_user_id=uuid.UUID(blocked_pro),
+            niche_id=niche_id,
             title="Pkg",
             duration_minutes=60,
             price=Decimal("100.00"),
@@ -92,11 +96,13 @@ def test_ranking_score_deterministic():
 def test_reindex_updates_price_and_portfolio_counts(db_session):
     pro_id = _seed_pro(db_session, approved=True, accepting=True, completeness=95)
     pro_uuid = uuid.UUID(pro_id)
+    niche_id = db_session.query(Niche).filter_by(slug="portraits").first().id
 
     db_session.add_all(
         [
             ProPackage(
                 pro_user_id=pro_uuid,
+                niche_id=niche_id,
                 title="A",
                 duration_minutes=30,
                 price=Decimal("80.00"),
@@ -110,6 +116,7 @@ def test_reindex_updates_price_and_portfolio_counts(db_session):
             ),
             ProPackage(
                 pro_user_id=pro_uuid,
+                niche_id=niche_id,
                 title="B",
                 duration_minutes=60,
                 price=Decimal("150.00"),

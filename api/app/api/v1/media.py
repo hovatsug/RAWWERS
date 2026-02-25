@@ -227,6 +227,7 @@ def get_media_asset(
         variants=variants,
         playback_id=playback_id,
         is_public=asset.visibility == MediaVisibility.public,
+        niche_tags=asset.niche_tags or [],
     )
 
 

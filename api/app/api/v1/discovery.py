@@ -4,6 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, func, select
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, get_optional_current_user, require_admin
@@ -12,6 +13,7 @@ from app.models.admin import KYCStatus, ProProfile
 from app.models.booking import ProPackage
 from app.models.discovery import ProPublicIndex
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaPurpose, MediaStatus, MediaVariant, ObjectStatus
+from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.schemas.discovery import (
     AnalyticsCreateRequest,
     DiscoverProsResponse,
@@ -27,6 +29,7 @@ from app.schemas.discovery import (
 from app.schemas.media import CurrentUser
 from app.services.analytics import log_event
 from app.services.authz import enforce_not_banned
+from app.services.niche_catalog import ensure_initial_niches
 from app.services.rate_limit import enforce_rate_limit
 from app.services.storage import create_presigned_get
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
@@ -42,6 +45,7 @@ def discover_pros(
     min_price: float | None = None,
     max_price: float | None = None,
     sort: str = "rank",
+    niche: str | None = None,
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     user: CurrentUser | None = Depends(get_optional_current_user),
@@ -50,36 +54,93 @@ def discover_pros(
     limiter_key = f"discover:{user.user_id if user else 'anon'}"
     enforce_rate_limit(limiter_key, max_requests=60, window_seconds=60)
 
-    stmt = select(ProPublicIndex).where(
+    ensure_initial_niches(db)
+    conditions = [
         ProPublicIndex.kyc_status == KYCStatus.approved,
         ProPublicIndex.is_accepting_bookings.is_(True),
         ProPublicIndex.completeness_score >= 60,
         ProPublicIndex.min_package_price.is_not(None),
-    )
+    ]
 
     if city:
-        stmt = stmt.where(ProPublicIndex.city == city)
+        conditions.append(ProPublicIndex.city == city)
     if country:
-        stmt = stmt.where(ProPublicIndex.country == country)
+        conditions.append(ProPublicIndex.country == country)
     if min_price is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price >= min_price)
+        conditions.append(ProPublicIndex.min_package_price >= min_price)
     if max_price is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price <= max_price)
+        conditions.append(ProPublicIndex.min_package_price <= max_price)
     if styles:
         style_tokens = [s.strip() for s in styles.split(",") if s.strip()]
         if style_tokens:
-            stmt = stmt.where(and_(*[ProPublicIndex.styles.contains([token]) for token in style_tokens]))
+            conditions.append(and_(*[ProPublicIndex.styles.contains([token]) for token in style_tokens]))
 
-    if sort == "price_asc":
+    stmt = select(ProPublicIndex).where(and_(*conditions))
+    rows: list[ProPublicIndex]
+    total: int
+
+    if niche:
+        niche_row = db.execute(select(Niche).where(Niche.slug == niche, Niche.is_active.is_(True))).scalar_one_or_none()
+        if not niche_row:
+            raise APIError(code="validation_error", message="Unknown niche", status_code=422)
+        tier_rank = case(
+            (ProNicheSkill.tier == SkillTier.master, 5),
+            (ProNicheSkill.tier == SkillTier.elite, 4),
+            (ProNicheSkill.tier == SkillTier.pro, 3),
+            (ProNicheSkill.tier == SkillTier.skilled, 2),
+            else_=1,
+        )
+        stmt = stmt.join(
+            ProNicheSkill,
+            and_(
+                ProNicheSkill.pro_user_id == ProPublicIndex.pro_user_id,
+                ProNicheSkill.niche_id == niche_row.id,
+            ),
+        )
+        skilled_stmt = stmt.where(ProNicheSkill.tier.in_([SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]))
+        skilled_stmt = skilled_stmt.order_by(
+            tier_rank.desc(),
+            ProNicheSkill.capability_score.desc(),
+            ProNicheSkill.confidence.desc(),
+            ProPublicIndex.ranking_score.desc(),
+            ProPublicIndex.updated_at.desc(),
+        )
+        rows = db.execute(skilled_stmt.offset(offset).limit(limit)).scalars().all()
+        total = db.execute(select(func.count()).select_from(skilled_stmt.subquery())).scalar_one()
+
+        if offset == 0 and len(rows) < limit:
+            existing_ids = {item.pro_user_id for item in rows}
+            rookie_stmt = stmt.where(ProNicheSkill.tier == SkillTier.rookie).order_by(
+                tier_rank.desc(),
+                ProNicheSkill.capability_score.desc(),
+                ProNicheSkill.confidence.desc(),
+                ProPublicIndex.ranking_score.desc(),
+                ProPublicIndex.updated_at.desc(),
+            )
+            rookie_rows = db.execute(rookie_stmt.limit(limit)).scalars().all()
+            for candidate in rookie_rows:
+                if candidate.pro_user_id in existing_ids:
+                    continue
+                rows.append(candidate)
+                if len(rows) >= limit:
+                    break
+            total += db.execute(select(func.count()).select_from(rookie_stmt.subquery())).scalar_one()
+    elif sort == "price_asc":
         stmt = stmt.order_by(ProPublicIndex.min_package_price.asc(), ProPublicIndex.ranking_score.desc())
+        rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
+        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     elif sort == "price_desc":
         stmt = stmt.order_by(ProPublicIndex.min_package_price.desc(), ProPublicIndex.ranking_score.desc())
+        rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
+        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     elif sort == "newest":
         stmt = stmt.order_by(ProPublicIndex.updated_at.desc())
+        rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
+        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     else:
         stmt = stmt.order_by(ProPublicIndex.ranking_score.desc(), ProPublicIndex.updated_at.desc())
-
-    rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
+        rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
+        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
 
     items = []
     for row in rows:
@@ -97,15 +158,16 @@ def discover_pros(
                 avg_rating=row.avg_rating,
                 review_count=row.review_count,
                 ranking_score=row.ranking_score,
+                primary_niche_id=row.primary_niche_id,
+                top_niches=row.top_niches or [],
             )
         )
 
-    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     log_event(
         db,
         event_name="discover.search",
         user_id=user.user_id if user else None,
-        properties={"city": city, "country": country, "styles": styles, "sort": sort, "limit": limit, "offset": offset},
+        properties={"city": city, "country": country, "styles": styles, "sort": sort, "niche": niche, "limit": limit, "offset": offset},
     )
     db.commit()
     return DiscoverProsResponse(total=total, items=items)

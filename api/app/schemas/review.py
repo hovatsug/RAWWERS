@@ -30,6 +30,7 @@ class ReviewView(BaseModel):
     gig_id: uuid.UUID
     pro_user_id: uuid.UUID
     client_user_id: uuid.UUID
+    niche_id: uuid.UUID
     rating: int
     tags: list[str]
     text: str | None = None

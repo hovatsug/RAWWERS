@@ -29,6 +29,7 @@ from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.gig_state import transition_gig
+from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.rewards import (
     apply_redemption_for_context,
     maybe_issue_first_booking_referral_reward,
@@ -327,6 +328,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount, "gig_id": str(gig.id)},
             )
         recompute_pro_public_index(db, gig.pro_user_id)
+        if gig.niche_id:
+            recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
 
     elif event_type == "payment_intent.payment_failed":
         payment_intent_id = obj.get("id")
@@ -452,6 +455,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 )
             )
         recompute_pro_public_index(db, gig.pro_user_id)
+        if gig.niche_id:
+            recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
 
         if refund_id:
             refund_cases = db.execute(
@@ -514,6 +519,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 )
             )
         recompute_pro_public_index(db, gig.pro_user_id)
+        if gig.niche_id:
+            recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
 
 
 def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, reference_id: str) -> bool:

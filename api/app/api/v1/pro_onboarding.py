@@ -21,7 +21,18 @@ from app.models.booking import (
     ProPackage,
 )
 from app.models.gig import Gig, GigStatus
+from app.models.media import MediaAsset, MediaKind, MediaPurpose
+from app.models.niche import Niche, ProNiche, ProNicheSkill
 from app.schemas.media import CurrentUser
+from app.schemas.niche import (
+    PortfolioNicheTagsRequest,
+    PortfolioNicheTagsResponse,
+    ProNicheSkillListResponse,
+    ProNicheSkillView,
+    ProNicheView,
+    UpdateMyNichesRequest,
+    UpdateMyNichesResponse,
+)
 from app.schemas.onboarding import (
     AcceptBookingResponse,
     BlackoutCreateRequest,
@@ -42,6 +53,9 @@ from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.followups import schedule_followups
+from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
+from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.payment_intents import create_or_get_gig_payment_intent
 
 settings = get_settings()
@@ -118,8 +132,10 @@ def create_package(
     db: Session = Depends(get_db_session),
 ) -> ProPackageView:
     _require_role(db, user.user_id, UserRoleType.pro)
+    niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
     package = ProPackage(
         pro_user_id=user.user_id,
+        niche_id=niche.id,
         title=body.title,
         description=body.description,
         duration_minutes=body.duration_minutes,
@@ -133,6 +149,7 @@ def create_package(
         is_active=True,
     )
     db.add(package)
+    recompute_pro_niche_skills(db, user.user_id, niche.id)
     recompute_pro_public_index(db, user.user_id)
     db.commit()
     db.refresh(package)
@@ -161,6 +178,11 @@ def update_package(
     if not package or package.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Package not found", status_code=404)
 
+    if body.niche_id is None and body.niche_slug is None:
+        raise APIError(code="validation_error", message="niche_id or niche_slug is required", status_code=400)
+    niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
+    package.niche_id = niche.id
+
     for field in [
         "title",
         "description",
@@ -183,6 +205,7 @@ def update_package(
             setattr(package, field, value)
 
     recompute_pro_public_index(db, user.user_id)
+    recompute_pro_niche_skills(db, user.user_id, niche.id)
     db.commit()
     db.refresh(package)
     return _package_view(package)
@@ -199,6 +222,7 @@ def disable_package(
     if not package or package.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Package not found", status_code=404)
     package.is_active = False
+    recompute_pro_niche_skills(db, user.user_id, package.niche_id)
     recompute_pro_public_index(db, user.user_id)
     db.commit()
     db.refresh(package)
@@ -273,6 +297,195 @@ def get_public_availability(pro_user_id: uuid.UUID, db: Session = Depends(get_db
     )
 
 
+@router.get("/niches", response_model=list[dict[str, str]])
+def list_niches(db: Session = Depends(get_db_session)) -> list[dict[str, str]]:
+    ensure_initial_niches(db)
+    rows = db.execute(select(Niche).where(Niche.is_active.is_(True)).order_by(Niche.name.asc())).scalars().all()
+    db.commit()
+    return [{"slug": row.slug, "name": row.name} for row in rows]
+
+
+@router.put("/pro/me/niches", response_model=UpdateMyNichesResponse)
+def update_my_niches(
+    body: UpdateMyNichesRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> UpdateMyNichesResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    ensure_initial_niches(db)
+
+    requested_slugs = [item.slug for item in body.niches]
+    if body.primary_niche_slug:
+        requested_slugs.append(body.primary_niche_slug)
+    niche_map = get_niche_map_by_slugs(db, requested_slugs)
+    missing = sorted(set(requested_slugs) - set(niche_map.keys()))
+    if missing:
+        raise APIError(code="validation_error", message=f"Unknown niche slug(s): {', '.join(missing)}", status_code=422)
+
+    incoming_by_niche_id = {niche_map[item.slug].id: item for item in body.niches}
+    existing = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
+    existing_by_niche_id = {row.niche_id: row for row in existing}
+
+    for niche_id, payload in incoming_by_niche_id.items():
+        row = existing_by_niche_id.get(niche_id)
+        if not row:
+            row = ProNiche(pro_user_id=user.user_id, niche_id=niche_id, created_at=datetime.now(timezone.utc))
+            db.add(row)
+        row.declared_level = payload.declared_level
+        row.is_primary = payload.is_primary
+
+    for row in existing:
+        if row.niche_id not in incoming_by_niche_id:
+            db.delete(row)
+
+    explicit_primary_slug = body.primary_niche_slug
+    if explicit_primary_slug:
+        primary_niche_id = niche_map[explicit_primary_slug].id
+        primary_row = db.execute(
+            select(ProNiche).where(ProNiche.pro_user_id == user.user_id, ProNiche.niche_id == primary_niche_id)
+        ).scalar_one_or_none()
+        if not primary_row:
+            primary_row = ProNiche(
+                pro_user_id=user.user_id,
+                niche_id=primary_niche_id,
+                declared_level=None,
+                is_primary=True,
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(primary_row)
+        current = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
+        for row in current:
+            row.is_primary = row.niche_id == primary_niche_id
+
+    niche_ids_for_compute = list(incoming_by_niche_id.keys())
+    if explicit_primary_slug:
+        niche_ids_for_compute.append(niche_map[explicit_primary_slug].id)
+    for niche_id in set(niche_ids_for_compute):
+        recompute_pro_niche_skills(db, user.user_id, niche_id)
+    recompute_pro_public_index(db, user.user_id)
+    db.commit()
+
+    rows = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
+    view_niche_map = get_niche_map_by_ids(db, [row.niche_id for row in rows])
+    primary_slug = None
+    items: list[ProNicheView] = []
+    for row in rows:
+        niche = view_niche_map.get(row.niche_id)
+        if not niche:
+            continue
+        if row.is_primary:
+            primary_slug = niche.slug
+        items.append(
+            ProNicheView(
+                slug=niche.slug,
+                name=niche.name,
+                declared_level=row.declared_level,
+                is_primary=row.is_primary,
+            )
+        )
+    return UpdateMyNichesResponse(primary_niche_slug=primary_slug, niches=items)
+
+
+@router.post("/pro/me/portfolio/{media_asset_id}/niches", response_model=PortfolioNicheTagsResponse)
+def tag_portfolio_media_niches(
+    media_asset_id: uuid.UUID,
+    body: PortfolioNicheTagsRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> PortfolioNicheTagsResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    ensure_initial_niches(db)
+    asset = db.get(MediaAsset, media_asset_id)
+    if not asset:
+        raise APIError(code="not_found", message="Media asset not found", status_code=404)
+    if asset.owner_user_id != user.user_id:
+        raise APIError(code="forbidden", message="Not owner of media asset", status_code=403)
+    if asset.purpose != MediaPurpose.portfolio_reel or asset.kind not in {MediaKind.photo, MediaKind.video}:
+        raise APIError(code="validation_error", message="Only portfolio photo/video assets can be tagged", status_code=422)
+
+    niche_map = get_niche_map_by_slugs(db, body.niche_slugs)
+    missing = sorted(set(body.niche_slugs) - set(niche_map.keys()))
+    if missing:
+        raise APIError(code="validation_error", message=f"Unknown niche slug(s): {', '.join(missing)}", status_code=422)
+
+    previous_tags = set(asset.niche_tags or [])
+    normalized = sorted(set(body.niche_slugs))
+    asset.niche_tags = normalized
+    changed_tags = previous_tags.union(set(normalized))
+
+    for slug in changed_tags:
+        niche = niche_map.get(slug) or db.execute(select(Niche).where(Niche.slug == slug)).scalar_one_or_none()
+        if niche:
+            recompute_pro_niche_skills(db, user.user_id, niche.id)
+    recompute_pro_public_index(db, user.user_id)
+    db.commit()
+    return PortfolioNicheTagsResponse(media_asset_id=asset.id, niche_slugs=normalized)
+
+
+@router.get("/pros/{pro_user_id}/skills", response_model=ProNicheSkillListResponse)
+def get_pro_niche_skills(
+    pro_user_id: uuid.UUID,
+    db: Session = Depends(get_db_session),
+) -> ProNicheSkillListResponse:
+    ensure_initial_niches(db)
+    rows = db.execute(
+        select(ProNicheSkill, Niche)
+        .join(Niche, Niche.id == ProNicheSkill.niche_id)
+        .where(ProNicheSkill.pro_user_id == pro_user_id, Niche.is_active.is_(True))
+        .order_by(ProNicheSkill.capability_score.desc(), ProNicheSkill.confidence.desc())
+    ).all()
+    items = [
+        ProNicheSkillView(
+            niche_slug=niche.slug,
+            niche_name=niche.name,
+            tier=skill.tier,
+            capability_score=skill.capability_score,
+            certification_score=skill.certification_score,
+            confidence=float(skill.confidence),
+            evidence_gigs=skill.evidence_gigs,
+            evidence_reviews=skill.evidence_reviews,
+            evidence_portfolio=skill.evidence_portfolio,
+            breakdown=_sanitize_public_breakdown(skill.breakdown),
+            updated_at=skill.updated_at,
+        )
+        for skill, niche in rows
+    ]
+    return ProNicheSkillListResponse(pro_user_id=pro_user_id, items=items)
+
+
+@router.get("/pro/me/skills", response_model=ProNicheSkillListResponse)
+def get_my_niche_skills(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProNicheSkillListResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    recompute_pro_niche_skills(db, user.user_id)
+    rows = db.execute(
+        select(ProNicheSkill, Niche)
+        .join(Niche, Niche.id == ProNicheSkill.niche_id)
+        .where(ProNicheSkill.pro_user_id == user.user_id, Niche.is_active.is_(True))
+        .order_by(ProNicheSkill.capability_score.desc(), ProNicheSkill.confidence.desc())
+    ).all()
+    db.commit()
+    items = [
+        ProNicheSkillView(
+            niche_slug=niche.slug,
+            niche_name=niche.name,
+            tier=skill.tier,
+            capability_score=skill.capability_score,
+            certification_score=skill.certification_score,
+            confidence=float(skill.confidence),
+            evidence_gigs=skill.evidence_gigs,
+            evidence_reviews=skill.evidence_reviews,
+            evidence_portfolio=skill.evidence_portfolio,
+            breakdown=skill.breakdown or {},
+            updated_at=skill.updated_at,
+        )
+        for skill, niche in rows
+    ]
+    return ProNicheSkillListResponse(pro_user_id=user.user_id, items=items)
+
+
 @router.post("/pros/{pro_user_id}/booking-requests", response_model=BookingRequestView)
 def create_booking_request(
     pro_user_id: uuid.UUID,
@@ -322,6 +535,20 @@ def create_booking_request(
         event_name="booking.request_created",
         user_id=user.user_id,
         properties={"booking_request_id": str(request.id), "pro_user_id": str(pro_user_id), "package_id": str(package.id)},
+    )
+    schedule_followups(
+        db,
+        trigger="booking_request.pending.client",
+        user_id=request.client_user_id,
+        target_type="booking_request",
+        target_id=request.id,
+    )
+    schedule_followups(
+        db,
+        trigger="booking_request.pending.pro",
+        user_id=request.pro_user_id,
+        target_type="booking_request",
+        target_id=request.id,
     )
     db.commit()
     db.refresh(request)
@@ -400,6 +627,8 @@ def accept_booking_request(
 
     snapshot = {
         "package_id": str(package.id),
+        "niche_slug": None,
+        "niche_name": None,
         "package_title": package.title,
         "duration_minutes": package.duration_minutes,
         "included_photos": package.included_photos,
@@ -409,11 +638,16 @@ def accept_booking_request(
         "addons": package.addons,
         "booking_request_id": str(request.id),
     }
+    niche = db.get(Niche, package.niche_id)
+    if niche:
+        snapshot["niche_slug"] = niche.slug
+        snapshot["niche_name"] = niche.name
 
     gig = existing_gig or Gig(
         client_user_id=request.client_user_id,
         pro_user_id=request.pro_user_id,
         status=GigStatus.payment_pending,
+        niche_id=package.niche_id,
         currency=package.currency,
         amount_total=amount_total,
         amount_platform_fee=fee,
@@ -421,8 +655,23 @@ def accept_booking_request(
         scheduled_start=request.requested_start,
         scheduled_end=request.requested_end,
         location_text=request.location_text,
-        meta={"pricing_snapshot": snapshot, "booking_request_id": str(request.id)},
+        meta={
+            "pricing_snapshot": snapshot,
+            "booking_request_id": str(request.id),
+            "niche_slug": snapshot["niche_slug"],
+            "niche_name": snapshot["niche_name"],
+        },
     )
+    if existing_gig:
+        gig.niche_id = package.niche_id
+        existing_meta = gig.meta or {}
+        pricing_snapshot = existing_meta.get("pricing_snapshot", {})
+        pricing_snapshot["niche_slug"] = snapshot["niche_slug"]
+        pricing_snapshot["niche_name"] = snapshot["niche_name"]
+        existing_meta["pricing_snapshot"] = pricing_snapshot
+        existing_meta["niche_slug"] = snapshot["niche_slug"]
+        existing_meta["niche_name"] = snapshot["niche_name"]
+        gig.meta = existing_meta
 
     if not existing_gig:
         db.add(gig)
@@ -445,7 +694,22 @@ def accept_booking_request(
         user_id=user.user_id,
         properties={"booking_request_id": str(request.id), "gig_id": str(gig.id), "payment_intent_id": pi.id},
     )
+    schedule_followups(
+        db,
+        trigger="booking_request.accepted.client",
+        user_id=request.client_user_id,
+        target_type="booking_request",
+        target_id=request.id,
+    )
+    schedule_followups(
+        db,
+        trigger="payment_pending.client",
+        user_id=request.client_user_id,
+        target_type="gig",
+        target_id=gig.id,
+    )
     recompute_pro_public_index(db, request.pro_user_id)
+    recompute_pro_niche_skills(db, request.pro_user_id, package.niche_id)
 
     db.commit()
     return AcceptBookingResponse(
@@ -640,6 +904,7 @@ def _package_view(package: ProPackage) -> ProPackageView:
     return ProPackageView(
         id=package.id,
         pro_user_id=package.pro_user_id,
+        niche_id=package.niche_id,
         title=package.title,
         description=package.description,
         duration_minutes=package.duration_minutes,
@@ -677,3 +942,30 @@ def _find_gig_by_booking_request(db: Session, booking_request_id: uuid.UUID) -> 
         if (gig.meta or {}).get("booking_request_id") == str(booking_request_id):
             return gig
     return None
+
+
+def _resolve_package_niche(db: Session, niche_id: uuid.UUID | None, niche_slug: str | None) -> Niche:
+    ensure_initial_niches(db)
+    if niche_id and niche_slug:
+        by_slug = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
+        if not by_slug or by_slug.id != niche_id:
+            raise APIError(code="validation_error", message="niche_id and niche_slug do not match", status_code=422)
+        return by_slug
+    if niche_id:
+        niche = db.execute(select(Niche).where(Niche.id == niche_id, Niche.is_active.is_(True))).scalar_one_or_none()
+        if not niche:
+            raise APIError(code="validation_error", message="Unknown niche_id", status_code=422)
+        return niche
+    if niche_slug:
+        niche = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
+        if not niche:
+            raise APIError(code="validation_error", message="Unknown niche_slug", status_code=422)
+        return niche
+    raise APIError(code="validation_error", message="niche_id or niche_slug is required", status_code=400)
+
+
+def _sanitize_public_breakdown(breakdown: dict | None) -> dict:
+    data = dict(breakdown or {})
+    if "override" in data:
+        data["override"] = {"active": True}
+    return data

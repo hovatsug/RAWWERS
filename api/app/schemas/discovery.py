@@ -16,6 +16,8 @@ class ProCard(BaseModel):
     avg_rating: Decimal
     review_count: int
     ranking_score: Decimal
+    primary_niche_id: uuid.UUID | None = None
+    top_niches: list[dict] = Field(default_factory=list)
 
 
 class DiscoverProsResponse(BaseModel):

@@ -91,3 +91,4 @@ class MediaAssetView(BaseModel):
     variants: list[MediaObjectView] = Field(default_factory=list)
     playback_id: str | None = None
     is_public: bool = False
+    niche_tags: list[str] = Field(default_factory=list)

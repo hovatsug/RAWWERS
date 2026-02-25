@@ -30,10 +30,21 @@ os.environ.setdefault("APP_PUBLIC_URL", "http://localhost:3000")
 os.environ.setdefault("ADMIN_USER_IDS", "00000000-0000-0000-0000-0000000000aa")
 os.environ.setdefault("BAN_ENFORCEMENT_MODE", "strict")
 os.environ.setdefault("ALLOW_UNVERIFIED_PRO", "true")
+os.environ.setdefault("LLM_PROVIDER", "mock")
+os.environ.setdefault("OPENAI_MODEL", "")
+os.environ.setdefault("OPENAI_API_KEY", "")
+os.environ.setdefault("LLM_MAX_TOKENS_PER_THREAD", "4000")
+os.environ.setdefault("LLM_MAX_MESSAGES_PER_THREAD", "50")
+os.environ.setdefault("TELEPHONY_PROVIDER", "mock")
+os.environ.setdefault("TELEPHONY_FROM_E164", "+351300000000")
+os.environ.setdefault("TELEPHONY_WEBHOOK_SECRET", "telephony-secret")
+os.environ.setdefault("CALL_RATE_LIMIT_PER_USER_PER_DAY", "2")
+os.environ.setdefault("CALL_RATE_LIMIT_PER_PRO_PER_DAY", "20")
 
 from app.api.deps import get_db_session
 from app.db.base import Base
 from app.main import app
+from app.services.niche_catalog import ensure_initial_niches
 
 engine = create_engine("sqlite+pysqlite:///./test.db", connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
@@ -43,6 +54,12 @@ TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=Fals
 def setup_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    seed_session = TestingSessionLocal()
+    try:
+        ensure_initial_niches(seed_session)
+        seed_session.commit()
+    finally:
+        seed_session.close()
     yield
 
 

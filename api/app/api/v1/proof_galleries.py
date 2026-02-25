@@ -45,6 +45,7 @@ from app.services.audit import add_admin_audit_log
 from app.services.authz import get_user_roles
 from app.services.analytics import log_event
 from app.services.reminders import cancel_proof_selection_reminders, schedule_proof_selection_reminders
+from app.services.followups import schedule_followups
 from app.services.rewards import reserve_points_for_discount
 from app.services.storage import create_presigned_get
 
@@ -171,6 +172,13 @@ def publish_gallery(
     )
 
     schedule_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
+    schedule_followups(
+        db,
+        trigger="proof_gallery.published.client",
+        user_id=gallery.client_user_id,
+        target_type="gallery",
+        target_id=gallery.id,
+    )
 
     db.commit()
     return PublishGalleryResponse(ok=True, status=gallery.status)

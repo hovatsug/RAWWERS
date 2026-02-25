@@ -41,6 +41,8 @@ class ProActivateResponse(BaseModel):
 
 class ProPackageCreateRequest(BaseModel):
     title: str
+    niche_id: uuid.UUID | None = None
+    niche_slug: str | None = None
     description: str | None = None
     duration_minutes: int
     price: Decimal
@@ -54,6 +56,8 @@ class ProPackageCreateRequest(BaseModel):
 
 class ProPackageUpdateRequest(BaseModel):
     title: str | None = None
+    niche_id: uuid.UUID | None = None
+    niche_slug: str | None = None
     description: str | None = None
     duration_minutes: int | None = None
     price: Decimal | None = None
@@ -69,6 +73,7 @@ class ProPackageUpdateRequest(BaseModel):
 class ProPackageView(BaseModel):
     id: uuid.UUID
     pro_user_id: uuid.UUID
+    niche_id: uuid.UUID
     title: str
     description: str | None = None
     duration_minutes: int

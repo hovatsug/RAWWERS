@@ -24,6 +24,7 @@ from app.schemas.review import (
 )
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
+from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.reputation import recompute_pro_reputation
 from app.tasks.discovery_tasks import rebuild_pro_index
 
@@ -45,6 +46,8 @@ def create_review_for_gig(
         raise APIError(code="forbidden", message="Only the gig client can review this gig", status_code=403)
     if not _is_reviewable_gig(gig):
         raise APIError(code="invalid_state", message="Gig is not reviewable yet", status_code=409)
+    if not gig.niche_id:
+        raise APIError(code="validation_error", message="Gig has no niche and cannot be reviewed", status_code=409)
 
     existing = db.execute(select(Review).where(Review.gig_id == gig.id)).scalar_one_or_none()
     if existing:
@@ -57,6 +60,7 @@ def create_review_for_gig(
         gig_id=gig.id,
         pro_user_id=gig.pro_user_id,
         client_user_id=gig.client_user_id,
+        niche_id=gig.niche_id,
         rating=body.rating,
         tags=_normalize_tags(body.tags),
         text=body.text,
@@ -68,6 +72,8 @@ def create_review_for_gig(
     db.flush()
 
     recompute_pro_reputation(db, gig.pro_user_id)
+    if gig.niche_id:
+        recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
     log_event(
         db,
         event_name="review.created",
@@ -166,6 +172,7 @@ def moderate_review(
         metadata={"pro_user_id": str(review.pro_user_id), "client_user_id": str(review.client_user_id)},
     )
     recompute_pro_reputation(db, review.pro_user_id)
+    recompute_pro_niche_skills(db, review.pro_user_id, review.niche_id)
     if body.action in {ReviewStatus.hidden, ReviewStatus.removed}:
         log_event(
             db,
@@ -233,6 +240,7 @@ def _to_review_view(db: Session, review: Review, reply: ReviewReply | None) -> R
         gig_id=review.gig_id,
         pro_user_id=review.pro_user_id,
         client_user_id=review.client_user_id,
+        niche_id=review.niche_id,
         rating=review.rating,
         tags=review.tags or [],
         text=review.text,

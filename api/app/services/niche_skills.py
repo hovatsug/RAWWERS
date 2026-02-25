@@ -203,6 +203,7 @@ def recompute_pro_niche_skill(db: Session, pro_user_id: uuid.UUID, niche_id: uui
     if override_applied:
         breakdown["override_applied"] = True
 
+    previous_tier = skill.tier if skill else None
     if not skill:
         skill = ProNicheSkill(pro_user_id=pro_user_id, niche_id=niche_id)
         db.add(skill)
@@ -219,6 +220,12 @@ def recompute_pro_niche_skill(db: Session, pro_user_id: uuid.UUID, niche_id: uui
     skill.breakdown = breakdown
     skill.updated_at = now
     db.flush()
+
+    from app.services.gamification import queue_evaluate_user_milestones, queue_recompute_credentials
+
+    queue_recompute_credentials(pro_user_id, niche_id)
+    if previous_tier != tier:
+        queue_evaluate_user_milestones(pro_user_id, niche_id)
     return skill
 
 

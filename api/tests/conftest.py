@@ -41,7 +41,7 @@ os.environ.setdefault("TELEPHONY_WEBHOOK_SECRET", "telephony-secret")
 os.environ.setdefault("CALL_RATE_LIMIT_PER_USER_PER_DAY", "2")
 os.environ.setdefault("CALL_RATE_LIMIT_PER_PRO_PER_DAY", "20")
 
-from app.api.deps import get_db_session
+from app.api.deps import get_db_read_session, get_db_session, get_db_write_session
 from app.db.base import Base
 from app.main import app
 from app.services.niche_catalog import ensure_initial_niches
@@ -78,6 +78,8 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
         yield db_session
 
     app.dependency_overrides[get_db_session] = override_get_db
+    app.dependency_overrides[get_db_write_session] = override_get_db
+    app.dependency_overrides[get_db_read_session] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

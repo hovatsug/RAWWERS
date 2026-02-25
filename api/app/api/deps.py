@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
 from app.models.admin import UserRoleType
-from app.db.session import get_db
+from app.db.session import get_db_read, get_db_write
 from app.schemas.media import CurrentUser
 from app.services.authz import enforce_not_banned, ensure_user_account, get_user_roles, require_kyc_approved_for_pro
 
@@ -29,13 +29,22 @@ def get_optional_current_user(x_user_id: str | None = Header(default=None, alias
         return None
 
 
-def get_db_session(db: Session = Depends(get_db)) -> Session:
+def get_db_write_session(db: Session = Depends(get_db_write)) -> Session:
+    return db
+
+
+def get_db_read_session(db: Session = Depends(get_db_read)) -> Session:
+    return db
+
+
+def get_db_session(db: Session = Depends(get_db_write_session)) -> Session:
+    # Backward compatible alias.
     return db
 
 
 def require_admin(
     user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_write_session),
 ) -> CurrentUser:
     ensure_user_account(db, user.user_id)
     roles = get_user_roles(db, user.user_id)
@@ -47,7 +56,7 @@ def require_admin(
 
 def require_not_banned(
     user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_write_session),
 ) -> CurrentUser:
     enforce_not_banned(db, user.user_id)
     db.commit()
@@ -56,7 +65,7 @@ def require_not_banned(
 
 def require_pro_kyc_approved(
     pro_user_id: uuid.UUID,
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_write_session),
 ) -> uuid.UUID:
     require_kyc_approved_for_pro(db, pro_user_id)
     return pro_user_id

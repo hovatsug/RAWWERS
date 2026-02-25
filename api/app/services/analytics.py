@@ -25,6 +25,13 @@ ALLOWED_PREFIXES = (
     "course.",
     "certificate.",
     "learning.",
+    "milestone.",
+    "credential.",
+    "cycle.",
+    "gamification.",
+    "store.",
+    "repair.",
+    "loaner.",
 )
 
 

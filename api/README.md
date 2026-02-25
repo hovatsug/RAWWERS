@@ -1,4 +1,4 @@
-# RAWWERS API - Foundations v1-v12
+# RAWWERS API - Foundations v1-v16
 
 Backend foundations implemented:
 - v1: Media subsystem (R2 photos + Mux videos)
@@ -13,6 +13,10 @@ Backend foundations implemented:
 - v10: Follow-ups + notifications + AI calling agent v0 (compliance-first)
 - v11: Niches taxonomy + per-niche hybrid skill levels (courses + performance)
 - v12: E-learning v0 (verified instructors, courses, enrollments, certificates, niche gates)
+- v13: Gamification v0 (credentials, milestones, performance cycles, benefits)
+- v14: Pro-only commerce v0 (partner inventory, access gating, checkout, rewards discounts)
+- v15: Gear Continuity v0 (repair partners + loaner workflow, loyalty-gated)
+- v16: Multi-region + reliability (EU-primary writes, replica-safe reads, outbox webhooks, public cache)
 
 ## Setup
 ```bash
@@ -25,6 +29,9 @@ make test
 
 ## Key Environment Variables
 - `DATABASE_URL`, `REDIS_URL`
+- `PRIMARY_DATABASE_URL`, `REPLICA_DATABASE_URL`, `MAX_REPLICA_LAG_SECONDS`
+- `PUBLIC_CACHE_ENABLED`, `DISCOVER_CACHE_TTL_SECONDS`, `PRO_PUBLIC_CACHE_TTL_SECONDS`
+- `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_ATTEMPTS`
 - `R2_*`, `MUX_*`, `STRIPE_*`
 - `ADMIN_USER_IDS`, `BAN_ENFORCEMENT_MODE`
 - `ALLOW_UNVERIFIED_PRO`
@@ -36,6 +43,13 @@ make test
 - `TELEPHONY_WEBHOOK_SECRET`
 - `CALL_RATE_LIMIT_PER_USER_PER_DAY` (default `2`)
 - `CALL_RATE_LIMIT_PER_PRO_PER_DAY` (default `20`)
+
+## Foundation #16 Multi-Region + Reliability
+- Write path remains authoritative in EU primary DB.
+- Public read endpoints can route to replica with lag guard fallback to primary.
+- Webhooks (Stripe/Mux) are durable ingests using `outbox_event` and async dispatch.
+- Public discovery/profile endpoints use short-lived Redis cache keyed by index version.
+- Runbook and architecture details: [`docs/multi_region.md`](docs/multi_region.md)
 
 ## Discovery Ranking (v0)
 `ranking_score` is deterministic:
@@ -318,6 +332,146 @@ curl -X POST http://localhost:8000/v1/admin/niches/weddings/requirements \
   -H "X-User-Id: <admin_user_id>" \
   -d '{"tier_target":"pro","course_ids":["<course_uuid>"],"is_mandatory":true}'
 ```
+
+## Foundation #13 Gamification v0
+- Credentials are derived from `pro_niche_skill` and persisted as snapshots in `pro_credential`:
+  - mode `current`: latest tier for each niche
+  - mode `highest_ever`: max tier ever reached for each niche
+- Milestones are admin-defined deterministic rules (`milestone`) with derived progress (`milestone_progress`) and completion records (`milestone_completion`).
+- Performance cycles (`performance_cycle`) aggregate points in `cycle_points` and append immutable events in `cycle_event`.
+- Milestone completion can issue benefits through rewards rules (`reward_rule_code`) via reward ledger with rule caps enforced.
+
+### Criteria schema (`milestone.criteria`)
+- `{"type":"gig_count_completed","count":10}`
+- `{"type":"delivery_sla_streak","streak":5}`
+- `{"type":"dispute_free_streak","streak":8}`
+- `{"type":"response_time_avg","max_minutes":60}`
+- `{"type":"course_completion","course_ids":["<course_uuid>","<course_uuid>"]}`
+- `{"type":"course_completion","min_count":3}`
+- `{"type":"tier_reached","tier":"elite"}`
+- Optional cycle points override for any milestone: add `"cycle_points": <int>`; otherwise defaults by difficulty (`standard=50`, `advanced=100`, `elite=200`).
+
+### Gamification endpoints
+- Pro:
+  - `GET /v1/me/gamification/credentials`
+  - `GET /v1/me/gamification/milestones`
+  - `GET /v1/me/gamification/cycle/current`
+- Admin:
+  - `POST|PUT /v1/admin/gamification/milestones`
+  - `POST|PUT /v1/admin/gamification/cycles`
+  - `POST /v1/admin/gamification/recompute`
+
+## Foundation #14 Pro Store (E-commerce v0)
+- Store access is pro-only and policy-gated:
+  - pro role required
+  - KYC approved (policy-controlled)
+  - not banned/suspended (policy-controlled)
+  - highest niche tier must meet policy minimum (default `skilled`)
+  - optional admin override in `store_access_override`
+- Partner inventory model:
+  - `manual`: admin CRUD products
+  - `feed_url`: sync from JSON/CSV feed URL in `commerce_partner.api_config.feed_url`
+  - `api`: provider stub for future direct integrations
+- Pricing:
+  - base from `product.partner_price`
+  - optional `price_rule` discount (tier-gated, deterministic)
+  - optional rewards discount at checkout via `discount_redemption` with `context_type=commerce_order`
+  - no subsidization in v0
+- Orders:
+  - one partner per order in v0
+  - payment tracked in `order_payment`
+  - payment success triggers partner submission task
+  - fulfillment status tracked on order (`submitted_to_partner`, `shipped`, `delivered`, etc.)
+
+### Pro store endpoints
+- `GET /v1/store/access`
+- `GET /v1/store/products`
+- `GET /v1/store/products/{product_id}`
+- `POST /v1/store/cart/items`
+- `GET /v1/store/cart`
+- `DELETE /v1/store/cart/items/{item_id}`
+- `POST /v1/store/checkout`
+- `GET /v1/store/orders`
+- `GET /v1/store/orders/{order_id}`
+
+### Admin store endpoints
+- `GET|POST /v1/admin/store/partners`
+- `PUT /v1/admin/store/partners/{partner_id}`
+- `POST /v1/admin/store/partners/{partner_id}/sync`
+- `GET|POST /v1/admin/store/products`
+- `PUT /v1/admin/store/products/{product_id}`
+- `GET|POST /v1/admin/store/price-rules`
+- `PUT /v1/admin/store/price-rules/{rule_id}`
+- `GET|PUT /v1/admin/store/policy`
+- `POST /v1/admin/store/overrides/{pro_user_id}`
+- `POST /v1/admin/store/orders/{order_id}/update-status`
+
+### Operational notes (manual fulfillment)
+- Partner stock is external: RAWWERS does not hold inventory.
+- For `manual`/`feed_url` partners, order submission sets a placeholder `partner_order_id`; fulfillment progression is admin-driven in v0.
+- Store partner config should contain secret references only (never raw secrets).
+
+## Foundation #15 Gear Continuity v0
+- RAWWERS is not a repair provider and does not own/subsidize gear in v0.
+- Loaners are partner-provided and "if available" unless explicit partner terms state guarantees.
+- Eligibility gate (`can_access_gear_benefits`):
+  - pro role required
+  - KYC approved (policy-controlled)
+  - not banned/suspended (policy-controlled)
+  - highest niche tier >= policy minimum (`skilled` by default)
+  - admin override may allow/deny
+- Behavior:
+  - repair ticket creation is available to pros
+  - loaner request requires benefit eligibility
+
+### Repair flow
+- Pro registers gear item
+- Pro opens repair ticket with evidence media they own
+- Admin/operator assigns partner and manages transitions:
+  - `submitted -> partner_assigned -> awaiting_quote -> quote_sent -> quote_approved -> in_repair -> ready_for_return -> shipped_back -> closed`
+- Quote approval/decline endpoints for pro.
+
+### Loaner flow
+- Pro requests loaner against a ticket
+- Admin/operator lifecycle:
+  - `requested -> approved/declined/cancelled -> ready_for_pickup|shipped_to_pro -> in_use -> return_due -> returned -> closed`
+- On approval, partner terms are snapshotted into the request.
+
+### Repair endpoints
+- Pro:
+  - `GET /v1/pro/me/gear-benefits/access`
+  - `POST|GET|PUT /v1/pro/me/gear-items[...]`
+  - `POST /v1/repairs/tickets`
+  - `GET /v1/repairs/tickets/{ticket_id}`
+  - `POST /v1/repairs/tickets/{ticket_id}/request-loaner`
+  - `POST /v1/repairs/tickets/{ticket_id}/approve-quote`
+  - `POST /v1/repairs/tickets/{ticket_id}/decline-quote`
+  - `POST /v1/repairs/tickets/{ticket_id}/close`
+  - `GET /v1/repairs/partners`
+- Admin:
+  - `POST|PUT|GET /v1/admin/repairs/partners[...]`
+  - `POST /v1/admin/repairs/partners/{partner_id}/set-active`
+  - `GET /v1/admin/repairs/tickets`
+  - `POST /v1/admin/repairs/tickets/{ticket_id}/assign-partner`
+  - `POST /v1/admin/repairs/tickets/{ticket_id}/set-status`
+  - `POST /v1/admin/repairs/tickets/{ticket_id}/set-quote`
+  - `GET /v1/admin/repairs/loaners`
+  - `POST /v1/admin/repairs/loaners/{loaner_request_id}/set-status`
+  - `GET|PUT /v1/admin/repairs/policy`
+  - `POST /v1/admin/repairs/overrides/{pro_user_id}`
+  - `POST /v1/admin/repairs/partners/{partner_id}/recompute-score`
+
+### Partner onboarding checklist (v0)
+- Define categories/brands supported
+- Set SLAs (`sla_quote_hours`, `sla_turnaround_days`)
+- Set shipping/pickup capabilities
+- Configure `partner_terms`:
+  - loaner availability/disclaimers
+  - deposit rules (external reference only; no RAWWERS charge handling in v0)
+
+### Disclaimers
+- Loaner support is capability-based and not guaranteed by default.
+- RAWWERS does not buy inventory and does not fund repair subsidies in this slice.
 
 ## Webhooks
 - Stripe: `POST /v1/webhooks/stripe`

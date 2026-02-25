@@ -12,7 +12,15 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
     database_url: str = Field(alias="DATABASE_URL")
+    primary_database_url: str | None = Field(default=None, alias="PRIMARY_DATABASE_URL")
+    replica_database_url: str | None = Field(default=None, alias="REPLICA_DATABASE_URL")
+    max_replica_lag_seconds: int = Field(default=15, alias="MAX_REPLICA_LAG_SECONDS")
     redis_url: str = Field(alias="REDIS_URL")
+    public_cache_enabled: bool = Field(default=True, alias="PUBLIC_CACHE_ENABLED")
+    discover_cache_ttl_seconds: int = Field(default=60, alias="DISCOVER_CACHE_TTL_SECONDS")
+    pro_public_cache_ttl_seconds: int = Field(default=60, alias="PRO_PUBLIC_CACHE_TTL_SECONDS")
+    outbox_batch_size: int = Field(default=100, alias="OUTBOX_BATCH_SIZE")
+    outbox_max_attempts: int = Field(default=10, alias="OUTBOX_MAX_ATTEMPTS")
 
     r2_endpoint_url: str = Field(alias="R2_ENDPOINT_URL")
     r2_access_key_id: str = Field(alias="R2_ACCESS_KEY_ID")

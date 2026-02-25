@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_optional_current_user, require_admin, require_not_banned
+from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_admin, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.gig import Gig, GigStatus
@@ -94,7 +94,7 @@ def list_pro_reviews(
     offset: int = Query(default=0, ge=0),
     rating: int | None = Query(default=None, ge=1, le=5),
     _: CurrentUser | None = Depends(get_optional_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_read_session),
 ) -> ProReviewsResponse:
     stmt = select(Review).where(Review.pro_user_id == pro_user_id, Review.status == ReviewStatus.published)
     if rating is not None:

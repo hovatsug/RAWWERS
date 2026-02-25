@@ -16,6 +16,8 @@ from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.niche import Niche
 from app.models.review import ProReputation
 from app.services.niche_catalog import ensure_initial_niches
+from app.services.gamification import queue_evaluate_user_milestones
+from app.services.cache import bump_public_index_version
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import recompute_pro_niche_skills
 
@@ -140,6 +142,8 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     index.updated_at = datetime.now(timezone.utc)
 
     db.flush()
+    bump_public_index_version()
+    queue_evaluate_user_milestones(pro_user_id)
     return index
 
 

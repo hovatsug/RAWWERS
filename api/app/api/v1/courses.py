@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_optional_current_user, require_not_banned
+from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_not_banned
 from app.core.errors import APIError
 from app.models.learning import (
     Certificate,
@@ -68,7 +68,7 @@ def list_courses(
     free_only: bool = False,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_read_session),
 ) -> CourseListResponse:
     ensure_initial_niches(db)
     stmt = select(Course).where(Course.is_published.is_(True))
@@ -94,7 +94,7 @@ def list_courses(
 def get_course(
     course_id: uuid.UUID,
     user: CurrentUser | None = Depends(get_optional_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_read_session),
 ) -> CourseDetailResponse:
     if user:
         enforce_not_banned(db, user.user_id)

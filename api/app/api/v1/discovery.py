@@ -7,7 +7,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy import case
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_optional_current_user, require_admin
+from app.api.deps import get_db_read_session, get_db_write_session, get_optional_current_user, require_admin
+from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import KYCStatus, ProProfile
 from app.models.booking import ProPackage
@@ -29,12 +30,14 @@ from app.schemas.discovery import (
 from app.schemas.media import CurrentUser
 from app.services.analytics import log_event
 from app.services.authz import enforce_not_banned
+from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.rate_limit import enforce_rate_limit
 from app.services.storage import create_presigned_get
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
 
 router = APIRouter(tags=["discovery"])
+settings = get_settings()
 
 
 @router.get("/discover/pros", response_model=DiscoverProsResponse)
@@ -49,10 +52,34 @@ def discover_pros(
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     user: CurrentUser | None = Depends(get_optional_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_read_session),
+    db_write: Session = Depends(get_db_write_session),
 ) -> DiscoverProsResponse:
     limiter_key = f"discover:{user.user_id if user else 'anon'}"
     enforce_rate_limit(limiter_key, max_requests=60, window_seconds=60)
+
+    cache_key = _discover_cache_key(
+        city=city,
+        country=country,
+        styles=styles,
+        min_price=min_price,
+        max_price=max_price,
+        sort=sort,
+        niche=niche,
+        limit=limit,
+        offset=offset,
+    )
+    cached = cache_get_json(cache_key)
+    if cached:
+        if user:
+            log_event(
+                db_write,
+                event_name="discover.search",
+                user_id=user.user_id,
+                properties={"cache_hit": True, "city": city, "country": country, "styles": styles, "sort": sort, "niche": niche, "limit": limit, "offset": offset},
+            )
+            db_write.commit()
+        return DiscoverProsResponse.model_validate(cached)
 
     ensure_initial_niches(db)
     conditions = [
@@ -163,24 +190,36 @@ def discover_pros(
             )
         )
 
+    response = DiscoverProsResponse(total=total, items=items)
+    cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=settings.discover_cache_ttl_seconds)
+
     log_event(
-        db,
+        db_write,
         event_name="discover.search",
         user_id=user.user_id if user else None,
         properties={"city": city, "country": country, "styles": styles, "sort": sort, "niche": niche, "limit": limit, "offset": offset},
     )
-    db.commit()
-    return DiscoverProsResponse(total=total, items=items)
+    db_write.commit()
+    return response
 
 
 @router.get("/pros/{pro_user_id}/public", response_model=ProPublicProfileResponse)
 def get_public_pro_profile(
     pro_user_id: uuid.UUID,
     user: CurrentUser | None = Depends(get_optional_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_read_session),
+    db_write: Session = Depends(get_db_write_session),
 ) -> ProPublicProfileResponse:
     limiter_key = f"pro-public:{user.user_id if user else 'anon'}"
     enforce_rate_limit(limiter_key, max_requests=120, window_seconds=60)
+
+    cache_key = _pro_public_cache_key(pro_user_id)
+    cached = cache_get_json(cache_key)
+    if cached:
+        if user:
+            log_event(db_write, event_name="discover.profile_view", user_id=user.user_id, properties={"pro_user_id": str(pro_user_id), "cache_hit": True})
+            db_write.commit()
+        return ProPublicProfileResponse.model_validate(cached)
 
     index = db.get(ProPublicIndex, pro_user_id)
     profile = db.get(ProProfile, pro_user_id)
@@ -246,10 +285,7 @@ def get_public_pro_profile(
         for asset in video_assets
     ]
 
-    log_event(db, event_name="discover.profile_view", user_id=user.user_id if user else None, properties={"pro_user_id": str(pro_user_id)})
-    db.commit()
-
-    return ProPublicProfileResponse(
+    payload = ProPublicProfileResponse(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
@@ -283,13 +319,18 @@ def get_public_pro_profile(
         review_count=index.review_count,
         ranking_score=index.ranking_score,
     )
+    cache_set_json(cache_key, payload.model_dump(mode="json"), ttl_seconds=settings.pro_public_cache_ttl_seconds)
+    log_event(db_write, event_name="discover.profile_view", user_id=user.user_id if user else None, properties={"pro_user_id": str(pro_user_id)})
+    db_write.commit()
+    return payload
 
 
 @router.post("/discover/match", response_model=MatchResponse)
 def discover_match(
     body: MatchRequest,
     user: CurrentUser | None = Depends(get_optional_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_read_session),
+    db_write: Session = Depends(get_db_write_session),
 ) -> MatchResponse:
     stmt = select(ProPublicIndex).where(
         ProPublicIndex.kyc_status == KYCStatus.approved,
@@ -321,8 +362,8 @@ def discover_match(
 
         results.append(MatchCandidate(pro_user_id=candidate.pro_user_id, ranking_score=candidate.ranking_score, reasons=reasons))
 
-    log_event(db, event_name="discover.search", user_id=user.user_id if user else None, properties={"mode": "match", "count": len(results)})
-    db.commit()
+    log_event(db_write, event_name="discover.search", user_id=user.user_id if user else None, properties={"mode": "match", "count": len(results)})
+    db_write.commit()
     return MatchResponse(items=results)
 
 
@@ -330,7 +371,7 @@ def discover_match(
 def create_analytics_event(
     body: AnalyticsCreateRequest,
     user: CurrentUser | None = Depends(get_optional_current_user),
-    db: Session = Depends(get_db_session),
+    db: Session = Depends(get_db_write_session),
 ) -> dict:
     if user:
         enforce_not_banned(db, user.user_id)
@@ -343,6 +384,32 @@ def create_analytics_event(
     )
     db.commit()
     return {"id": str(event.id), "event_name": event.event_name}
+
+
+def _discover_cache_key(
+    *,
+    city: str | None,
+    country: str | None,
+    styles: str | None,
+    min_price: float | None,
+    max_price: float | None,
+    sort: str,
+    niche: str | None,
+    limit: int,
+    offset: int,
+) -> str:
+    version = get_public_index_version()
+    return (
+        "discover:pros:"
+        f"v{version}:city={city or ''}:country={country or ''}:styles={styles or ''}:"
+        f"min={min_price if min_price is not None else ''}:max={max_price if max_price is not None else ''}:"
+        f"sort={sort}:niche={niche or ''}:limit={limit}:offset={offset}"
+    )
+
+
+def _pro_public_cache_key(pro_user_id: uuid.UUID) -> str:
+    version = get_public_index_version()
+    return f"discover:pro_public:v{version}:{pro_user_id}"
 
 
 @router.post("/admin/index/pro/{pro_user_id}/rebuild")

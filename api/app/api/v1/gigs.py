@@ -13,6 +13,7 @@ from app.api.deps import get_db_session, require_not_banned
 from app.core.config import Settings, get_settings
 from app.core.errors import APIError
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
+from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gig import (
     CreateGigRequest,
     CreatePaymentIntentRequest,
@@ -26,7 +27,10 @@ from app.schemas.gig import (
 )
 from app.schemas.media import CurrentUser
 from app.services.authz import require_kyc_approved_for_pro
-from app.services.stripe_service import is_within_hours, map_intent_status, to_cents
+from app.services.analytics import log_event
+from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.rewards import reserve_points_for_discount
+from app.services.stripe_service import is_within_hours
 
 settings = get_settings()
 router = APIRouter(prefix="/gigs", tags=["gigs"])
@@ -119,7 +123,7 @@ def get_gig(
 def create_payment_intent(
     gig_id: uuid.UUID,
     body: CreatePaymentIntentRequest,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> CreatePaymentIntentResponse:
     gig = db.get(Gig, gig_id)
@@ -133,53 +137,54 @@ def create_payment_intent(
 
     _enforce_pro_kyc_for_payment(db, gig, settings)
 
-    existing = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
-    if existing:
-        pi = stripe.PaymentIntent.retrieve(existing.stripe_payment_intent_id)
-        return CreatePaymentIntentResponse(
-            payment_intent_client_secret=pi.client_secret,
-            payment_intent_id=pi.id,
-            status=pi.status,
+    existing_payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
+    existing_redemption = db.execute(
+        select(DiscountRedemption).where(
+            DiscountRedemption.user_id == user.user_id,
+            DiscountRedemption.context_type == RedemptionContextType.gig_payment,
+            DiscountRedemption.context_id == gig.id,
+            DiscountRedemption.status.in_([DiscountRedemptionStatus.reserved, DiscountRedemptionStatus.applied]),
         )
+    ).scalar_one_or_none()
 
-    return_url = body.return_url or f"{settings.app_public_url.rstrip('/')}/pay/return"
-    pi = stripe.PaymentIntent.create(
-        amount=to_cents(gig.amount_total),
-        currency=gig.currency.lower(),
-        payment_method_types=body.payment_method_types or ["card"],
-        metadata={
-            "gig_id": str(gig.id),
-            "client_user_id": str(gig.client_user_id),
-            "pro_user_id": str(gig.pro_user_id),
-            "return_url": return_url,
-        },
-        automatic_payment_methods={"enabled": True},
-        idempotency_key=f"gig:{gig.id}:pi",
-    )
-
-    mapped_status = PaymentStatus(map_intent_status(pi.status))
-    payment = StripePayment(
-        gig_id=gig.id,
-        client_user_id=gig.client_user_id,
-        status=mapped_status,
-        stripe_payment_intent_id=pi.id,
-        stripe_customer_id=getattr(pi, "customer", None),
-        amount=gig.amount_total,
-        currency=gig.currency,
-        last_error=None,
-        meta={"created_from": "create_intent", "created_at": datetime.now(timezone.utc).isoformat()},
-    )
-    db.add(payment)
-    db.add(
-        LedgerEntry(
-            gig_id=gig.id,
-            entry_type=LedgerEntryType.payment_authorized,
-            amount=Decimal("0.00"),
+    points_redemption = None
+    if body.points_to_spend:
+        if existing_payment and not existing_redemption:
+            raise APIError(code="invalid_state", message="Cannot apply points after payment intent was created", status_code=409)
+        points_redemption = reserve_points_for_discount(
+            db,
+            user_id=user.user_id,
+            context_type=RedemptionContextType.gig_payment,
+            context_id=gig.id,
+            points=body.points_to_spend,
+            payment_amount=gig.amount_total,
             currency=gig.currency,
-            description="Stripe PaymentIntent created",
-            reference_type="stripe_payment_intent",
-            reference_id=pi.id,
+            metadata={"source": "gig_create_intent"},
         )
+        log_event(
+            db,
+            event_name="reward.spent",
+            user_id=user.user_id,
+            properties={
+                "context_type": "gig_payment",
+                "context_id": str(gig.id),
+                "points_spent": points_redemption.points_spent,
+                "discount_amount": str(points_redemption.discount_amount),
+            },
+        )
+    elif existing_redemption:
+        points_redemption = existing_redemption
+
+    payable_amount = gig.amount_total
+    if points_redemption and points_redemption.status == DiscountRedemptionStatus.reserved:
+        payable_amount = max(Decimal("0.01"), gig.amount_total - points_redemption.discount_amount)
+
+    _, pi = create_or_get_gig_payment_intent(
+        db,
+        gig,
+        payment_method_types=body.payment_method_types or ["card"],
+        return_url=body.return_url,
+        amount_override=payable_amount,
     )
     db.commit()
 
@@ -187,6 +192,8 @@ def create_payment_intent(
         payment_intent_client_secret=pi.client_secret,
         payment_intent_id=pi.id,
         status=pi.status,
+        discount_amount=points_redemption.discount_amount if points_redemption else None,
+        points_spent=points_redemption.points_spent if points_redemption else None,
     )
 
 
@@ -194,7 +201,7 @@ def create_payment_intent(
 def create_refund(
     gig_id: uuid.UUID,
     body: CreateRefundRequest,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> CreateRefundResponse:
     gig = db.get(Gig, gig_id)

@@ -75,6 +75,12 @@ class UpsellCreateIntentResponse(BaseModel):
     payment_intent_id: str
     payment_intent_client_secret: str
     status: UpsellPurchaseStatus
+    discount_amount: Decimal | None = None
+    points_spent: int | None = None
+
+
+class UpsellCreateIntentRequest(BaseModel):
+    points_to_spend: int | None = Field(default=None, ge=1)
 
 
 class DownloadsResponse(BaseModel):

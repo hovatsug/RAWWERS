@@ -56,12 +56,15 @@ class GigDetailResponse(BaseModel):
 class CreatePaymentIntentRequest(BaseModel):
     payment_method_types: list[str] = Field(default_factory=lambda: ["card"])
     return_url: str | None = None
+    points_to_spend: int | None = Field(default=None, ge=1)
 
 
 class CreatePaymentIntentResponse(BaseModel):
     payment_intent_client_secret: str
     payment_intent_id: str
     status: str
+    discount_amount: Decimal | None = None
+    points_spent: int | None = None
 
 
 class CreateRefundRequest(BaseModel):

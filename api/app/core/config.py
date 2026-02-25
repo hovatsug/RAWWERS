@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     app_public_url: str = Field(default="http://localhost:3000", alias="APP_PUBLIC_URL")
     admin_user_ids: str = Field(default="", alias="ADMIN_USER_IDS")
     ban_enforcement_mode: str = Field(default="strict", alias="BAN_ENFORCEMENT_MODE")
+    allow_unverified_pro: bool = Field(default=False, alias="ALLOW_UNVERIFIED_PRO")
+    reward_points_per_eur: int = Field(default=100, alias="REWARD_POINTS_PER_EUR")
+    reward_max_discount_percent: int = Field(default=20, alias="REWARD_MAX_DISCOUNT_PERCENT")
 
     def admin_user_id_set(self) -> set[UUID]:
         values = [item.strip() for item in self.admin_user_ids.split(",") if item.strip()]

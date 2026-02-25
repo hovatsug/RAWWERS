@@ -87,6 +87,16 @@ class ProProfile(Base):
     __tablename__ = "pro_profile"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.user_id"), primary_key=True)
+    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    headline: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country: Mapped[str | None] = mapped_column(Text, nullable=True)
+    languages: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    styles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    gear: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False)
+    completeness_score: Mapped[int] = mapped_column(nullable=False, default=0)
     kyc_status: Mapped[KYCStatus] = mapped_column(Enum(KYCStatus, name="kyc_status", native_enum=False), nullable=False, default=KYCStatus.unsubmitted)
     kyc_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     kyc_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

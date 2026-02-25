@@ -34,6 +34,7 @@ from app.schemas.media import (
     PlaybackTokenResponse,
     UploadPayload,
 )
+from app.services.discovery_index import recompute_pro_public_index
 from app.services.mux import MuxClient
 from app.services.security import create_mux_playback_token
 from app.services.storage import create_presigned_get, create_presigned_put, generate_photo_storage_key
@@ -72,6 +73,8 @@ def create_photo_upload(
         status=ObjectStatus.created,
     )
     db.add(original)
+    if body.purpose == MediaPurpose.portfolio_reel:
+        recompute_pro_public_index(db, user.user_id)
     db.commit()
 
     upload_url = create_presigned_put(storage_key=storage_key, content_type=body.content_type)
@@ -140,6 +143,8 @@ def create_mux_upload(
         meta={"mux_upload": upload_data},
     )
     db.add(asset)
+    if body.purpose == MediaPurpose.portfolio_reel:
+        recompute_pro_public_index(db, user.user_id)
     db.commit()
 
     return MuxUploadCreateResponse(

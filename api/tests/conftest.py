@@ -29,6 +29,7 @@ os.environ.setdefault("PLATFORM_FEE_BPS", "2000")
 os.environ.setdefault("APP_PUBLIC_URL", "http://localhost:3000")
 os.environ.setdefault("ADMIN_USER_IDS", "00000000-0000-0000-0000-0000000000aa")
 os.environ.setdefault("BAN_ENFORCEMENT_MODE", "strict")
+os.environ.setdefault("ALLOW_UNVERIFIED_PRO", "true")
 
 from app.api.deps import get_db_session
 from app.db.base import Base

@@ -42,6 +42,9 @@ from app.schemas.admin import (
 )
 from app.schemas.media import CurrentUser
 from app.services.audit import add_admin_audit_log
+from app.services.discovery_index import recompute_pro_public_index
+from app.services.analytics import log_event
+from app.services.rewards import maybe_issue_pro_signup_referral_reward
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -204,6 +207,7 @@ def update_pro_kyc(
         profile = ProProfile(user_id=user_id)
         db.add(profile)
 
+    previous_status = profile.kyc_status
     profile.kyc_status = body.kyc_status
     profile.kyc_note = body.note
     profile.kyc_updated_at = datetime.now(timezone.utc)
@@ -216,6 +220,17 @@ def update_pro_kyc(
         action=f"kyc_{body.kyc_status.value}",
         reason=body.note,
     )
+    if previous_status != KYCStatus.approved and body.kyc_status == KYCStatus.approved:
+        reward_entry = maybe_issue_pro_signup_referral_reward(db, user_id)
+        if reward_entry:
+            log_event(
+                db,
+                event_name="reward.earned",
+                user_id=reward_entry.user_id,
+                properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount, "referred_user_id": str(user_id)},
+            )
+    db.commit()
+    recompute_pro_public_index(db, user_id)
     db.commit()
     return {"user_id": str(user_id), "kyc_status": body.kyc_status.value}
 
@@ -314,6 +329,9 @@ def update_dispute_status(
         reason=body.reason,
         metadata={"status": body.status.value, "resolution_note": body.resolution_note},
     )
+    gig = db.get(Gig, dispute.gig_id)
+    if gig:
+        recompute_pro_public_index(db, gig.pro_user_id)
     db.commit()
     db.refresh(dispute)
 
@@ -373,6 +391,7 @@ def update_gig_status(
         reason=body.reason,
         metadata={"from_status": previous.value, "to_status": body.status.value},
     )
+    recompute_pro_public_index(db, gig.pro_user_id)
     db.commit()
     return {"gig_id": str(gig.id), "status": gig.status.value}
 
@@ -454,6 +473,7 @@ def create_admin_refund(
         reason=body.reason,
         metadata={"amount": str(amount), "refund_id": refund.id, "dispute_id": str(body.dispute_id) if body.dispute_id else None},
     )
+    recompute_pro_public_index(db, gig.pro_user_id)
     db.commit()
     db.refresh(refund_case)
     return _refund_case_view(refund_case)

@@ -20,6 +20,15 @@ def get_current_user(x_user_id: str | None = Header(default=None, alias="X-User-
     return CurrentUser(user_id=user_id)
 
 
+def get_optional_current_user(x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> CurrentUser | None:
+    if not x_user_id:
+        return None
+    try:
+        return CurrentUser(user_id=uuid.UUID(x_user_id))
+    except ValueError:
+        return None
+
+
 def get_db_session(db: Session = Depends(get_db)) -> Session:
     return db
 

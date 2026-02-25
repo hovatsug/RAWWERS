@@ -61,6 +61,7 @@ from app.services.audit import add_admin_audit_log
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.analytics import log_event
 from app.services.niche_catalog import ensure_initial_niches
+from app.services.gamification import queue_evaluate_user_milestones, queue_recompute_credentials
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.learning import replace_niche_program_requirements
 from app.tasks.niche_tasks import recompute_all_pro_niche_skills_task, recompute_pro_niche_skills_task
@@ -250,6 +251,8 @@ def update_pro_kyc(
                 properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount, "referred_user_id": str(user_id)},
             )
         recompute_pro_niche_skills(db, user_id)
+        queue_recompute_credentials(user_id)
+        queue_evaluate_user_milestones(user_id)
     db.commit()
     recompute_pro_public_index(db, user_id)
     db.commit()
@@ -355,6 +358,7 @@ def update_dispute_status(
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         recompute_pro_public_index(db, gig.pro_user_id)
+        queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
     db.commit()
     db.refresh(dispute)
 
@@ -417,6 +421,7 @@ def update_gig_status(
     recompute_pro_public_index(db, gig.pro_user_id)
     if gig.niche_id:
         recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+    queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
     db.commit()
     return {"gig_id": str(gig.id), "status": gig.status.value}
 

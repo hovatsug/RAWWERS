@@ -28,6 +28,7 @@ class RewardEntryType(str, enum.Enum):
 class RedemptionContextType(str, enum.Enum):
     gig_payment = "gig_payment"
     upsell_purchase = "upsell_purchase"
+    commerce_order = "commerce_order"
 
 
 class DiscountRedemptionStatus(str, enum.Enum):

@@ -5,7 +5,6 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session
@@ -19,25 +18,29 @@ from app.models.gig import (
     LedgerEntryType,
     PaymentStatus,
     StripePayment,
-    StripeWebhookEvent,
 )
 from app.models.admin import RefundCase, RefundCaseStatus
 from app.models.gallery import ProofGallery, ProofGalleryStatus, UpsellPurchase, UpsellPurchaseStatus
-from app.models.media import MediaAsset, MediaProvider, MediaStatus, WebhookEvent, WebhookProvider
+from app.models.media import MediaAsset, MediaProvider, MediaStatus
 from app.schemas.webhooks import WebhookAckResponse
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.gamification import queue_evaluate_user_milestones
 from app.services.gig_state import transition_gig
 from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.outbox import enqueue_outbox_event
 from app.services.rewards import (
     apply_redemption_for_context,
     maybe_issue_first_booking_referral_reward,
     release_redemption_for_context,
 )
+from app.services.store import finalize_order_payment_success, handle_order_payment_failure
 from app.services.security import verify_mux_webhook_signature
 from app.services.stripe_service import construct_stripe_event
 from app.models.reward import RedemptionContextType
+from app.tasks.store_tasks import submit_order_to_partner_task
+from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 settings = get_settings()
@@ -52,28 +55,21 @@ async def mux_webhook(request: Request, db: Session = Depends(get_db_session)) -
 
     payload = await request.json()
     event_id = payload.get("id")
-    event_type = payload.get("type", "unknown")
-    data = payload.get("data", {})
-
     if not event_id:
         raise APIError(code="invalid_payload", message="Missing webhook event id", status_code=422)
-
-    event = WebhookEvent(
-        provider=WebhookProvider.mux,
-        external_event_id=event_id,
-        event_type=event_type,
-        received_at=datetime.now(timezone.utc),
+    row = enqueue_outbox_event(
+        db,
+        topic="mux.event",
         payload=payload,
+        idempotency_key=f"mux:{event_id}",
+        idempotency_scope="mux_ingest",
     )
-    db.add(event)
-    try:
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        return WebhookAckResponse(ok=True)
-
-    _apply_mux_event(db, event_type, data)
     db.commit()
+    if row:
+        try:
+            dispatch_outbox_events_task.delay()
+        except Exception:
+            pass
     return WebhookAckResponse(ok=True)
 
 
@@ -84,27 +80,21 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db_session)
     event = construct_stripe_event(raw_body, signature)
 
     event_id = event.get("id")
-    event_type = event.get("type", "unknown")
-    payload = event.get("data", {}).get("object", {})
-
     if not event_id:
         raise APIError(code="invalid_payload", message="Missing Stripe event id", status_code=400)
-
-    webhook_event = StripeWebhookEvent(
-        external_event_id=event_id,
-        event_type=event_type,
+    row = enqueue_outbox_event(
+        db,
+        topic="stripe.event",
         payload=event,
-        received_at=datetime.now(timezone.utc),
+        idempotency_key=f"stripe:{event_id}",
+        idempotency_scope="stripe_ingest",
     )
-    db.add(webhook_event)
-    try:
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        return WebhookAckResponse(ok=True)
-
-    _apply_stripe_event(db, event_type, payload)
     db.commit()
+    if row:
+        try:
+            dispatch_outbox_events_task.delay()
+        except Exception:
+            pass
     return WebhookAckResponse(ok=True)
 
 
@@ -166,6 +156,15 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
     if event_type == "payment_intent.succeeded":
         payment_intent_id = obj.get("id")
         if not payment_intent_id:
+            return
+        order = finalize_order_payment_success(db, payment_intent_id)
+        if order:
+            try:
+                submit_order_to_partner_task.delay(str(order.id))
+            except Exception:
+                from app.services.store import submit_order_to_partner
+
+                submit_order_to_partner(db, order.id)
             return
 
         upsell = db.execute(
@@ -330,10 +329,14 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+        queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
 
     elif event_type == "payment_intent.payment_failed":
         payment_intent_id = obj.get("id")
         if not payment_intent_id:
+            return
+        order = handle_order_payment_failure(db, payment_intent_id, cancelled=False)
+        if order:
             return
 
         upsell = db.execute(
@@ -384,6 +387,9 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
     elif event_type == "payment_intent.canceled":
         payment_intent_id = obj.get("id")
         if not payment_intent_id:
+            return
+        order = handle_order_payment_failure(db, payment_intent_id, cancelled=True)
+        if order:
             return
         upsell = db.execute(
             select(UpsellPurchase).where(UpsellPurchase.stripe_payment_intent_id == payment_intent_id)
@@ -457,6 +463,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+        queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
 
         if refund_id:
             refund_cases = db.execute(
@@ -521,6 +528,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+        queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
 
 
 def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, reference_id: str) -> bool:

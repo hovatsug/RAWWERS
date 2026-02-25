@@ -28,6 +28,7 @@ from app.models.media import MediaAsset, MediaKind
 from app.models.niche import CertificationRecord, Niche, SkillTier
 from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.gamification import queue_evaluate_user_milestones
 from app.services.niche_skills import recompute_pro_niche_skills
 
 SHORT_VIDEO_MAX_DURATION_SECONDS = 900
@@ -260,6 +261,7 @@ def issue_certificate_for_enrollment(db: Session, enrollment_id: uuid.UUID) -> C
         user_id=enrollment.user_id,
         properties={"course_id": str(course.id), "certificate_code": certificate.certificate_code},
     )
+    queue_evaluate_user_milestones(enrollment.user_id, course.niche_id)
     db.flush()
     return certificate
 

@@ -19,6 +19,7 @@ from app.schemas.admin import (
 )
 from app.schemas.media import CurrentUser
 from app.services.authz import ensure_user_account, get_user_roles
+from app.services.discovery_index import recompute_pro_public_index
 
 router = APIRouter(prefix="/disputes", tags=["disputes"])
 
@@ -60,6 +61,7 @@ def create_dispute(
         gig.status = GigStatus.disputed
         db.add(transition)
 
+    recompute_pro_public_index(db, gig.pro_user_id)
     db.commit()
     db.refresh(dispute)
     return _dispute_to_view(dispute)

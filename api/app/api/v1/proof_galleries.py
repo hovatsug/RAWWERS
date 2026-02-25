@@ -25,6 +25,7 @@ from app.models.gallery import (
 )
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaVariant, ObjectStatus
+from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gallery import (
     AddGalleryItemsRequest,
     CreateProofGalleryRequest,
@@ -36,11 +37,15 @@ from app.schemas.gallery import (
     SaveSelectionRequest,
     SelectionResponse,
     SubmitSelectionResponse,
+    UpsellCreateIntentRequest,
     UpsellCreateIntentResponse,
 )
 from app.schemas.media import CurrentUser
 from app.services.audit import add_admin_audit_log
 from app.services.authz import get_user_roles
+from app.services.analytics import log_event
+from app.services.reminders import cancel_proof_selection_reminders, schedule_proof_selection_reminders
+from app.services.rewards import reserve_points_for_discount
 from app.services.storage import create_presigned_get
 
 settings = get_settings()
@@ -164,6 +169,8 @@ def publish_gallery(
         action="gallery_published",
         reason=None,
     )
+
+    schedule_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
 
     db.commit()
     return PublishGalleryResponse(ok=True, status=gallery.status)
@@ -298,7 +305,8 @@ def submit_selection(
     )
 
     if extras_count > 0:
-        purchase, client_secret = _ensure_upsell_intent(db, gallery, selection, extras_count)
+        cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
+        purchase, client_secret, _ = _ensure_upsell_intent(db, gallery, selection, extras_count, points_to_spend=None)
         db.commit()
         return SubmitSelectionResponse(
             selection_id=selection.id,
@@ -312,6 +320,7 @@ def submit_selection(
         )
 
     gallery.status = ProofGalleryStatus.selection_submitted
+    cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
     db.commit()
     return SubmitSelectionResponse(
         selection_id=selection.id,
@@ -326,6 +335,7 @@ def submit_selection(
 @router.post("/proof-galleries/{gallery_id}/upsell/create-intent", response_model=UpsellCreateIntentResponse)
 def create_upsell_intent(
     gallery_id: uuid.UUID,
+    body: UpsellCreateIntentRequest | None = None,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> UpsellCreateIntentResponse:
@@ -346,13 +356,22 @@ def create_upsell_intent(
     if extras_count <= 0:
         raise APIError(code="invalid_state", message="No extras to purchase", status_code=409)
 
-    purchase, client_secret = _ensure_upsell_intent(db, gallery, selection, extras_count)
+    points_to_spend = body.points_to_spend if body else None
+    purchase, client_secret, redemption = _ensure_upsell_intent(
+        db,
+        gallery,
+        selection,
+        extras_count,
+        points_to_spend=points_to_spend,
+    )
     db.commit()
     return UpsellCreateIntentResponse(
         purchase_id=purchase.id,
         payment_intent_id=purchase.stripe_payment_intent_id or "",
         payment_intent_client_secret=client_secret,
         status=purchase.status,
+        discount_amount=redemption.discount_amount if redemption else None,
+        points_spent=redemption.points_spent if redemption else None,
     )
 
 
@@ -434,7 +453,13 @@ def get_download_links(
     return DownloadsResponse(gallery_id=gallery.id, urls=urls)
 
 
-def _ensure_upsell_intent(db: Session, gallery: ProofGallery, selection: ClientSelection, extras_count: int) -> tuple[UpsellPurchase, str]:
+def _ensure_upsell_intent(
+    db: Session,
+    gallery: ProofGallery,
+    selection: ClientSelection,
+    extras_count: int,
+    points_to_spend: int | None,
+) -> tuple[UpsellPurchase, str, DiscountRedemption | None]:
     amount = (gallery.extra_photo_price * Decimal(extras_count)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     existing = db.execute(
@@ -445,20 +470,15 @@ def _ensure_upsell_intent(db: Session, gallery: ProofGallery, selection: ClientS
 
     if existing and existing.stripe_payment_intent_id:
         pi = stripe.PaymentIntent.retrieve(existing.stripe_payment_intent_id)
-        return existing, pi.client_secret
-
-    pi = stripe.PaymentIntent.create(
-        amount=int((amount * Decimal("100")).quantize(Decimal("1"))),
-        currency=gallery.currency.lower(),
-        payment_method_types=["card"],
-        metadata={
-            "proof_gallery_id": str(gallery.id),
-            "selection_id": str(selection.id),
-            "type": "upsell",
-        },
-        automatic_payment_methods={"enabled": True},
-        idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
-    )
+        redemption_existing = db.execute(
+            select(DiscountRedemption).where(
+                DiscountRedemption.user_id == gallery.client_user_id,
+                DiscountRedemption.context_type == RedemptionContextType.upsell_purchase,
+                DiscountRedemption.context_id == existing.id,
+                DiscountRedemption.status.in_([DiscountRedemptionStatus.reserved, DiscountRedemptionStatus.applied]),
+            )
+        ).scalar_one_or_none()
+        return existing, pi.client_secret, redemption_existing
 
     if existing:
         existing.extra_count = extras_count
@@ -480,6 +500,46 @@ def _ensure_upsell_intent(db: Session, gallery: ProofGallery, selection: ClientS
             meta={"selection_version": selection.version},
         )
         db.add(purchase)
+        db.flush()
+
+    redemption = None
+    payable_amount = amount
+    if points_to_spend:
+        redemption = reserve_points_for_discount(
+            db,
+            user_id=gallery.client_user_id,
+            context_type=RedemptionContextType.upsell_purchase,
+            context_id=purchase.id,
+            points=points_to_spend,
+            payment_amount=amount,
+            currency=gallery.currency,
+            metadata={"source": "upsell_create_intent"},
+        )
+        payable_amount = max(Decimal("0.01"), amount - redemption.discount_amount)
+        log_event(
+            db,
+            event_name="reward.spent",
+            user_id=gallery.client_user_id,
+            properties={
+                "context_type": "upsell_purchase",
+                "context_id": str(purchase.id),
+                "points_spent": redemption.points_spent,
+                "discount_amount": str(redemption.discount_amount),
+            },
+        )
+
+    pi = stripe.PaymentIntent.create(
+        amount=int((payable_amount * Decimal("100")).quantize(Decimal("1"))),
+        currency=gallery.currency.lower(),
+        payment_method_types=["card"],
+        metadata={
+            "proof_gallery_id": str(gallery.id),
+            "selection_id": str(selection.id),
+            "type": "upsell",
+        },
+        automatic_payment_methods={"enabled": True},
+        idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
+    )
 
     add_admin_audit_log(
         db,
@@ -491,7 +551,7 @@ def _ensure_upsell_intent(db: Session, gallery: ProofGallery, selection: ClientS
         metadata={"selection_id": str(selection.id), "extras_count": extras_count, "amount": str(amount)},
     )
 
-    return purchase, pi.client_secret
+    return purchase, pi.client_secret, redemption
 
 
 def _latest_selection(db: Session, gallery_id: uuid.UUID) -> ClientSelection | None:

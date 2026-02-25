@@ -1,200 +1,181 @@
-# RAWWERS API - Foundations v1/v2/v3/v4
+# RAWWERS API - Foundations v1-v8
 
-Backend foundation for:
-- Media subsystem (R2 photos + Mux short-video upload/webhooks/playback token)
-- Gig lifecycle + Stripe full-payment flow + internal ledger
-- Admin operations v0 (roles, KYC hooks, bans, disputes, refund ops, audit logs)
-- Proof galleries + client selection + paid extras + original delivery
+Backend foundations implemented:
+- v1: Media subsystem (R2 photos + Mux videos)
+- v2: Gigs + Stripe full-payment + ledger
+- v3: Admin ops + KYC + bans + disputes/refunds
+- v4: Proof gallery + selections + upsell + delivery
+- v5: Pro onboarding + packages + availability + booking requests
+- v6: Discovery + matching + ranking + analytics + reindexing
+- v7: Reviews + reputation + moderation + trust signals
+- v8: Referrals + rewards ledger + discount redemption + retention reminders
 
-## Stack
-- FastAPI + SQLAlchemy + Alembic
-- PostgreSQL (EU region recommended in production)
-- Celery + Redis
-- Cloudflare R2 (S3-compatible)
-- Mux + Stripe
-
-## Environment Variables
-Copy `.env.example` to `.env` and set values:
-- `DATABASE_URL`
-- `REDIS_URL`
-- `R2_ENDPOINT_URL`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET`
-- `R2_REGION`
-- `MUX_TOKEN_ID`
-- `MUX_TOKEN_SECRET`
-- `MUX_WEBHOOK_SECRET`
-- `MUX_SIGNING_KEY_ID`
-- `MUX_SIGNING_KEY_PRIVATE`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_API_VERSION`
-- `STRIPE_WEBHOOK_ALLOW_UNVERIFIED` (default false; dev/test only)
-- `PLATFORM_FEE_BPS` (default 2000 => 20%)
-- `APP_PUBLIC_URL`
-- `ADMIN_USER_IDS` (comma-separated UUIDs that auto-seed admin role)
-- `BAN_ENFORCEMENT_MODE` (`strict` default, `warn` logs-only)
-- `APP_ENV`
-- `LOG_LEVEL`
-
-## Local Run
+## Setup
 ```bash
 cd api
 cp .env.example .env
 make up
-```
-
-## Migrations
-```bash
-cd api
 make migrate
-```
-
-## Tests
-```bash
-cd api
 make test
 ```
 
-## API Base Path
-`/v1`
+## Key Environment Variables
+- `DATABASE_URL`, `REDIS_URL`
+- `R2_*`, `MUX_*`, `STRIPE_*`
+- `ADMIN_USER_IDS`, `BAN_ENFORCEMENT_MODE`
+- `ALLOW_UNVERIFIED_PRO`
 
-## Dev Auth
-Set header `X-User-Id: <uuid>`.
+## Discovery Ranking (v0)
+`ranking_score` is deterministic:
+- base `100`
+- `+ completeness_score * 0.5`
+- `+ log1p(portfolio_photo_count + portfolio_video_count) * 10`
+- `+ gigs_completed * 1.0`
+- `- gigs_cancelled * 2.0`
+- `- disputes_count * 5.0`
+- responsiveness bonus:
+- `< 60 min => +10`
+- `< 180 min => +5`
+- otherwise `+0`
+- review reputation bonus:
+- `+ (avg_rating - 4.0) * 20 * log1p(review_count) * confidence`
+- `confidence = min(review_count, 5) / 5`
+- clamped to `[0, 1000]`
 
-## Admin Seeding
-Set `ADMIN_USER_IDS` in `.env`:
-```env
-ADMIN_USER_IDS=00000000-0000-0000-0000-0000000000aa
-```
-When that user hits any admin endpoint, role `admin` is persisted in DB automatically if missing.
-
-## Safety Rails
-- Banned/suspended users are blocked from create flows (gig creation, media upload, payment intent creation, dispute/evidence creation, proof selection changes).
-- In `BAN_ENFORCEMENT_MODE=strict`, banned users get `403`.
-- Payment intent creation requires pro KYC approved in non-dev environments unless `gig.metadata.allow_unverified_pro=true` and app is dev.
-
-## Foundation #4 Flow (Proof Gallery)
-1. Pro creates gallery for a gig.
-2. Pro attaches proof photos (must be pro-owned photo media with `watermark_preview` ready).
-3. Pro publishes gallery.
-4. Client saves and submits selection.
-5. If selection exceeds included photos, upsell PaymentIntent is created.
-6. Stripe webhook marks upsell succeeded.
-7. Client downloads unlocked originals (signed short-lived links).
-
-## Proof Gallery cURL
-Create gallery (pro):
+## Discovery Endpoints
+Discover pros:
 ```bash
-curl -X POST http://localhost:8000/v1/gigs/<gig_id>/proof-gallery \
+curl -X GET "http://localhost:8000/v1/discover/pros?city=Lisbon&styles=editorial,street&sort=rank&limit=20&offset=0"
+```
+
+Public pro profile:
+```bash
+curl -X GET http://localhost:8000/v1/pros/<pro_user_id>/public
+```
+Includes `avg_rating` and `review_count` from `pro_public_index`.
+
+Deterministic match suggestions:
+```bash
+curl -X POST http://localhost:8000/v1/discover/match \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: <pro_user_id>" \
-  -d '{"included_photos":20,"extra_photo_price":"10.00"}'
+  -d '{"city":"Lisbon","styles":["editorial"],"budget":"150.00","limit":10}'
 ```
 
-Add gallery items (pro):
+Analytics ingest:
 ```bash
-curl -X POST http://localhost:8000/v1/proof-galleries/<gallery_id>/items \
+curl -X POST http://localhost:8000/v1/analytics \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: <pro_user_id>" \
-  -d '{"media_asset_ids":["<media_asset_uuid_1>","<media_asset_uuid_2>"]}'
+  -d '{"event_name":"discover.search","properties":{"city":"Lisbon"},"session_id":"sess_1"}'
 ```
 
-Publish gallery (pro):
+## Reindex Endpoints (Admin)
+Single pro reindex:
 ```bash
-curl -X POST http://localhost:8000/v1/proof-galleries/<gallery_id>/publish \
-  -H "X-User-Id: <pro_user_id>"
+curl -X POST http://localhost:8000/v1/admin/index/pro/<pro_user_id>/rebuild \
+  -H "X-User-Id: <admin_user_id>"
 ```
 
-View gallery (client/pro/admin):
+Rebuild all:
 ```bash
-curl -X GET http://localhost:8000/v1/proof-galleries/<gallery_id> \
-  -H "X-User-Id: <client_or_pro_or_admin_id>"
+curl -X POST http://localhost:8000/v1/admin/index/pro/rebuild-all \
+  -H "X-User-Id: <admin_user_id>"
 ```
 
-Save selection draft (client):
+## Foundation #5 Booking Flow
+- Pro updates profile + creates package + sets availability + activates
+- Client creates booking request
+- Pro accepts -> API creates gig (`payment_pending`) + Stripe PaymentIntent
+
+## Foundation #7 Review Flow
+Create review (client, only after completed/final_delivered gig):
 ```bash
-curl -X POST http://localhost:8000/v1/proof-galleries/<gallery_id>/selections \
+curl -X POST http://localhost:8000/v1/gigs/<gig_id>/review \
   -H "Content-Type: application/json" \
   -H "X-User-Id: <client_user_id>" \
-  -d '{"media_asset_ids":["<media_asset_uuid_1>","<media_asset_uuid_2>"]}'
+  -d '{"rating":5,"tags":["punctual","creative"],"text":"Excellent delivery","would_book_again":true}'
 ```
 
-Submit selection (client):
+List published reviews for a pro:
 ```bash
-curl -X POST http://localhost:8000/v1/proof-galleries/<gallery_id>/selections/submit \
-  -H "X-User-Id: <client_user_id>"
+curl -X GET "http://localhost:8000/v1/pros/<pro_user_id>/reviews?limit=20&offset=0"
 ```
 
-Create/retrieve upsell intent (client):
+Create single pro reply:
 ```bash
-curl -X POST http://localhost:8000/v1/proof-galleries/<gallery_id>/upsell/create-intent \
-  -H "X-User-Id: <client_user_id>"
-```
-
-Get download links for unlocked originals (client/admin):
-```bash
-curl -X GET http://localhost:8000/v1/proof-galleries/<gallery_id>/downloads \
-  -H "X-User-Id: <client_or_admin_user_id>"
-```
-
-## Admin cURL
-List users:
-```bash
-curl -X GET "http://localhost:8000/v1/admin/users?limit=20&offset=0" \
-  -H "X-User-Id: 00000000-0000-0000-0000-0000000000aa"
-```
-
-Ban user:
-```bash
-curl -X POST http://localhost:8000/v1/admin/users/<user_id>/ban \
+curl -X POST http://localhost:8000/v1/reviews/<review_id>/reply \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 00000000-0000-0000-0000-0000000000aa" \
-  -d '{"action":"banned","reason":"Fraud risk"}'
+  -H "X-User-Id: <pro_user_id>" \
+  -d '{"text":"Thank you for the feedback."}'
 ```
 
-KYC approve pro:
+Admin moderation:
 ```bash
-curl -X POST http://localhost:8000/v1/admin/pros/<pro_user_id>/kyc \
+curl -X POST http://localhost:8000/v1/admin/reviews/<review_id>/moderate \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 00000000-0000-0000-0000-0000000000aa" \
-  -d '{"kyc_status":"approved","note":"Documents verified"}'
+  -H "X-User-Id: <admin_user_id>" \
+  -d '{"action":"hidden","reason":"policy violation"}'
 ```
 
-Open dispute (participant):
+## Foundation #8 Referrals + Rewards
+Get/create my referral code:
 ```bash
-curl -X POST http://localhost:8000/v1/disputes \
-  -H "Content-Type: application/json" \
-  -H "X-User-Id: <client_or_pro_user_id>" \
-  -d '{"gig_id":"<gig_id>","category":"quality","summary":"Final edit quality mismatch"}'
+curl -X GET http://localhost:8000/v1/referrals/me \
+  -H "X-User-Id: <user_id>"
 ```
 
-Admin refund:
+Claim referral code:
 ```bash
-curl -X POST http://localhost:8000/v1/admin/gigs/<gig_id>/refunds \
+curl -X POST http://localhost:8000/v1/referrals/claim \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 00000000-0000-0000-0000-0000000000aa" \
-  -d '{"reason":"Dispute resolution"}'
+  -H "X-User-Id: <referred_user_id>" \
+  -d '{"code":"AB12CD34"}'
 ```
 
-## Webhooks Local
-Stripe webhook target:
-- `http://localhost:8000/v1/webhooks/stripe`
+Check rewards:
+```bash
+curl -X GET http://localhost:8000/v1/rewards/balance -H "X-User-Id: <user_id>"
+curl -X GET "http://localhost:8000/v1/rewards/ledger?limit=20&offset=0" -H "X-User-Id: <user_id>"
+```
 
-Mux webhook target:
-- `http://localhost:8000/v1/webhooks/mux`
+Reserve points for a context:
+```bash
+curl -X POST http://localhost:8000/v1/rewards/spend \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: <user_id>" \
+  -d '{"context_type":"gig_payment","context_id":"<gig_uuid>","points":500,"payment_amount":"120.00","currency":"EUR"}'
+```
 
-If you need unsigned Stripe payloads in development only:
-- set `STRIPE_WEBHOOK_ALLOW_UNVERIFIED=true`
-- keep `APP_ENV=development`
+Admin reward controls:
+```bash
+curl -X GET http://localhost:8000/v1/admin/rewards/rules -H "X-User-Id: <admin_user_id>"
 
-## Ledger Convention
-- Positive `ledger_entry.amount`: money received by platform.
-- Negative `ledger_entry.amount`: money leaving platform.
-- Hold entries use `amount=0.00` with hold amount in description.
+curl -X POST http://localhost:8000/v1/admin/rewards/rules/client_first_booking_paid \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: <admin_user_id>" \
+  -d '{"is_enabled":true,"amount":500,"daily_cap_per_user":5000,"lifetime_cap_per_user":50000}'
+
+curl -X POST http://localhost:8000/v1/admin/rewards/adjust \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: <admin_user_id>" \
+  -d '{"user_id":"<user_uuid>","amount":250,"reason":"support adjustment"}'
+```
+
+### Rewards conversion configuration
+- `REWARD_POINTS_PER_EUR` (default `100`): points needed for `€1` discount.
+- `REWARD_MAX_DISCOUNT_PERCENT` (default `20`): max discount against payment amount.
+- Optional override via `reward_rule` with code `discount_conversion` and metadata:
+  - `{"points_per_eur":100,"max_discount_percent":20}`
+
+### Reminder hooks
+- On proof gallery publish, reminder jobs are scheduled at +24h and +72h for pending client selection.
+- Placeholder sending is implemented as status transitions + analytics events (`reminder.sent`).
+- Messaging transport (email/push) remains a dev placeholder in this slice.
+
+## Webhooks
+- Stripe: `POST /v1/webhooks/stripe`
+- Mux: `POST /v1/webhooks/mux`
 
 ## Notes
-- Webhooks are idempotent.
-- Stripe verification uses `stripe.Webhook.construct_event` and fails closed unless dev override is explicitly enabled.
-- User uploads are never stored on local disk.
+- `X-User-Id` auth still used for dev.
+- Discovery read endpoints support optional auth dependency (structured for future public mode).
+- Banned/suspended users are blocked from write actions.

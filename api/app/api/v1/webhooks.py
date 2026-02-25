@@ -26,9 +26,17 @@ from app.models.gallery import ProofGallery, ProofGalleryStatus, UpsellPurchase,
 from app.models.media import MediaAsset, MediaProvider, MediaStatus, WebhookEvent, WebhookProvider
 from app.schemas.webhooks import WebhookAckResponse
 from app.services.audit import add_admin_audit_log
+from app.services.analytics import log_event
+from app.services.discovery_index import recompute_pro_public_index
 from app.services.gig_state import transition_gig
+from app.services.rewards import (
+    apply_redemption_for_context,
+    maybe_issue_first_booking_referral_reward,
+    release_redemption_for_context,
+)
 from app.services.security import verify_mux_webhook_signature
 from app.services.stripe_service import construct_stripe_event
+from app.models.reward import RedemptionContextType
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 settings = get_settings()
@@ -172,6 +180,20 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
 
             upsell.status = UpsellPurchaseStatus.succeeded
             gallery.status = ProofGalleryStatus.selection_submitted
+            redemption = apply_redemption_for_context(db, RedemptionContextType.upsell_purchase, upsell.id)
+            if redemption:
+                log_event(
+                    db,
+                    event_name="reward.spent",
+                    user_id=redemption.user_id,
+                    properties={
+                        "context_type": "upsell_purchase",
+                        "context_id": str(upsell.id),
+                        "status": "applied",
+                        "points_spent": redemption.points_spent,
+                        "discount_amount": str(redemption.discount_amount),
+                    },
+                )
 
             if not _ledger_reference_exists(db, gig.id, LedgerEntryType.upsell_captured, payment_intent_id):
                 platform_fee = (upsell.amount * Decimal(settings.platform_fee_bps) / Decimal("10000")).quantize(Decimal("0.01"))
@@ -240,11 +262,13 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             db.add(transition)
 
         if not _ledger_reference_exists(db, gig.id, LedgerEntryType.payment_captured, payment_intent_id):
+            platform_fee = min(gig.amount_platform_fee, payment.amount)
+            payout_hold = max(Decimal("0.00"), payment.amount - platform_fee)
             db.add(
                 LedgerEntry(
                     gig_id=gig.id,
                     entry_type=LedgerEntryType.payment_captured,
-                    amount=gig.amount_total,
+                    amount=payment.amount,
                     currency=gig.currency,
                     description="Stripe payment captured",
                     reference_type="stripe_payment_intent",
@@ -255,7 +279,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 LedgerEntry(
                     gig_id=gig.id,
                     entry_type=LedgerEntryType.platform_fee,
-                    amount=gig.amount_platform_fee,
+                    amount=platform_fee,
                     currency=gig.currency,
                     description="Platform fee recognized",
                     reference_type="stripe_payment_intent",
@@ -268,11 +292,41 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     entry_type=LedgerEntryType.payout_hold_created,
                     amount=Decimal("0.00"),
                     currency=gig.currency,
-                    description=f"Payout hold created: {gig.amount_pro_gross}",
+                    description=f"Payout hold created: {payout_hold}",
                     reference_type="stripe_payment_intent",
                     reference_id=payment_intent_id,
                 )
             )
+
+        log_event(
+            db,
+            event_name="payment.succeeded",
+            user_id=gig.client_user_id,
+            properties={"gig_id": str(gig.id), "payment_intent_id": payment_intent_id},
+        )
+        redemption = apply_redemption_for_context(db, RedemptionContextType.gig_payment, gig.id)
+        if redemption:
+            log_event(
+                db,
+                event_name="reward.spent",
+                user_id=redemption.user_id,
+                properties={
+                    "context_type": "gig_payment",
+                    "context_id": str(gig.id),
+                    "status": "applied",
+                    "points_spent": redemption.points_spent,
+                    "discount_amount": str(redemption.discount_amount),
+                },
+            )
+        reward_entry = maybe_issue_first_booking_referral_reward(db, gig.client_user_id, gig.id)
+        if reward_entry:
+            log_event(
+                db,
+                event_name="reward.earned",
+                user_id=reward_entry.user_id,
+                properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount, "gig_id": str(gig.id)},
+            )
+        recompute_pro_public_index(db, gig.pro_user_id)
 
     elif event_type == "payment_intent.payment_failed":
         payment_intent_id = obj.get("id")
@@ -284,6 +338,19 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         ).scalar_one_or_none()
         if upsell:
             upsell.status = UpsellPurchaseStatus.failed
+            redemption = release_redemption_for_context(
+                db,
+                RedemptionContextType.upsell_purchase,
+                upsell.id,
+                reason="payment_intent_failed",
+            )
+            if redemption:
+                log_event(
+                    db,
+                    event_name="reward.spent",
+                    user_id=redemption.user_id,
+                    properties={"context_type": "upsell_purchase", "context_id": str(upsell.id), "status": "released"},
+                )
             return
 
         payment = db.execute(
@@ -295,6 +362,53 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         payment.status = PaymentStatus.failed
         last_payment_error = obj.get("last_payment_error") or {}
         payment.last_error = last_payment_error.get("message", "Payment failed")
+        gig = db.get(Gig, payment.gig_id)
+        if gig:
+            redemption = release_redemption_for_context(
+                db,
+                RedemptionContextType.gig_payment,
+                gig.id,
+                reason="payment_intent_failed",
+            )
+            if redemption:
+                log_event(
+                    db,
+                    event_name="reward.spent",
+                    user_id=redemption.user_id,
+                    properties={"context_type": "gig_payment", "context_id": str(gig.id), "status": "released"},
+                )
+
+    elif event_type == "payment_intent.canceled":
+        payment_intent_id = obj.get("id")
+        if not payment_intent_id:
+            return
+        upsell = db.execute(
+            select(UpsellPurchase).where(UpsellPurchase.stripe_payment_intent_id == payment_intent_id)
+        ).scalar_one_or_none()
+        if upsell:
+            upsell.status = UpsellPurchaseStatus.failed
+            release_redemption_for_context(
+                db,
+                RedemptionContextType.upsell_purchase,
+                upsell.id,
+                reason="payment_intent_cancelled",
+            )
+            return
+
+        payment = db.execute(
+            select(StripePayment).where(StripePayment.stripe_payment_intent_id == payment_intent_id)
+        ).scalar_one_or_none()
+        if not payment:
+            return
+        payment.status = PaymentStatus.cancelled
+        gig = db.get(Gig, payment.gig_id)
+        if gig:
+            release_redemption_for_context(
+                db,
+                RedemptionContextType.gig_payment,
+                gig.id,
+                reason="payment_intent_cancelled",
+            )
 
     elif event_type in {"charge.refunded", "refund.succeeded"}:
         payment_intent_id = obj.get("payment_intent")
@@ -330,13 +444,14 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 LedgerEntry(
                     gig_id=gig.id,
                     entry_type=LedgerEntryType.refund_succeeded,
-                    amount=-gig.amount_total,
+                    amount=-payment.amount,
                     currency=gig.currency,
                     description="Stripe refund succeeded",
                     reference_type="stripe_refund",
                     reference_id=ref_id,
                 )
             )
+        recompute_pro_public_index(db, gig.pro_user_id)
 
         if refund_id:
             refund_cases = db.execute(
@@ -391,13 +506,14 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 LedgerEntry(
                     gig_id=gig.id,
                     entry_type=LedgerEntryType.chargeback_opened,
-                    amount=-gig.amount_total,
+                    amount=-payment.amount,
                     currency=gig.currency,
                     description="Chargeback/dispute opened",
                     reference_type="stripe_dispute",
                     reference_id=ref_id,
                 )
             )
+        recompute_pro_public_index(db, gig.pro_user_id)
 
 
 def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, reference_id: str) -> bool:

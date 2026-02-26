@@ -85,6 +85,7 @@ def claim_referral(
 
 
 @router.get("/rewards/balance", response_model=RewardBalanceResponse)
+@router.get("/me/rewards/balance", response_model=RewardBalanceResponse)
 def rewards_balance(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),

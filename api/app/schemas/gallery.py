@@ -81,6 +81,7 @@ class UpsellCreateIntentResponse(BaseModel):
 
 class UpsellCreateIntentRequest(BaseModel):
     points_to_spend: int | None = Field(default=None, ge=1)
+    share_link_id: uuid.UUID | None = None
 
 
 class DownloadsResponse(BaseModel):

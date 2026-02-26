@@ -34,6 +34,8 @@ from app.services.feature_flags import is_feature_enabled
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.rewards import reserve_points_for_discount
 from app.services.stripe_service import is_within_hours
+from app.services.media_rights import ensure_gig_consent_snapshot
+from app.services.disputes import capture_gig_contract_snapshot
 
 settings = get_settings()
 router = APIRouter(prefix="/gigs", tags=["gigs"])
@@ -86,6 +88,8 @@ def create_gig(
         target_type="gig",
         target_id=gig.id,
     )
+    ensure_gig_consent_snapshot(db, gig, actor_user_id=user.user_id)
+    capture_gig_contract_snapshot(db, gig)
     db.commit()
     db.refresh(gig)
     return _gig_response(gig)

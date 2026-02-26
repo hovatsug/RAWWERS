@@ -1,9 +1,17 @@
 from app.models.admin import (
     AdminAuditLog,
     BanAction,
+    DeliverySlaSnapshot,
     Dispute,
     DisputeEvidence,
+    DisputeEvent,
+    DisputeMessage,
+    EntitlementHold,
+    GigContractSnapshot,
+    ProQualityPenalty,
     ProProfile,
+    RefundEvent,
+    RefundPolicy,
     RefundCase,
     UserAccount,
     UserRole,
@@ -50,6 +58,15 @@ from app.models.learning import (
     QuizAttempt,
     QuizQuestion,
 )
+from app.models.launch_ops import (
+    InviteCode,
+    InviteWave,
+    OnboardingRequirement,
+    ProOnboarding,
+    ProOnboardingEvent,
+    RolloutCity,
+    RolloutFlagOverride,
+)
 from app.models.niche import CertificationRecord, Niche, ProNiche, ProNicheSkill
 from app.models.outbox import IdempotencyKey, OutboxEvent
 from app.models.ops import AbuseSignal, FeatureFlag, WebhookSecurityLog
@@ -62,6 +79,17 @@ from app.models.booking import (
     ProPackage,
 )
 from app.models.chat import ChatHandoff, ChatMessage, ChatThread, PlatformPolicy
+from app.models.client_rewards_pricing import (
+    ConsentRewardPolicy,
+    ExtraImagePricingPolicy,
+    ExtraImagePurchase,
+    ProExtraImagePrice,
+    ShareFraudSetting,
+    ShareLinkEngagement,
+    ShareLinkView,
+    ShareRewardGrant,
+    ShareRewardThreshold,
+)
 from app.models.communication import (
     CallEvent,
     CallSession,
@@ -78,6 +106,14 @@ from app.models.communication import (
 )
 from app.models.gig import Gig, GigTransition, LedgerEntry, StripePayment, StripeWebhookEvent
 from app.models.media import Base, MediaAsset, MediaObject, WebhookEvent
+from app.models.media_rights import (
+    GigMediaEntitlement,
+    GigUsageConsent,
+    GigUsageConsentEvent,
+    MediaAccessLog,
+    MediaDerivative,
+    ShareLink,
+)
 from app.models.review import ProReputation, Review, ReviewReply
 from app.models.repair import (
     GearBenefitOverride,

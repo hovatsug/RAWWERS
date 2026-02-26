@@ -27,6 +27,12 @@ class MilestoneDifficulty(str, enum.Enum):
     elite = "elite"
 
 
+class MilestoneAudience(str, enum.Enum):
+    pro = "pro"
+    client = "client"
+    both = "both"
+
+
 class MilestoneProgressStatus(str, enum.Enum):
     active = "active"
     completed = "completed"
@@ -68,6 +74,11 @@ class Milestone(Base):
     difficulty: Mapped[MilestoneDifficulty] = mapped_column(
         Enum(MilestoneDifficulty, name="milestone_difficulty", native_enum=False),
         nullable=False,
+    )
+    audience: Mapped[MilestoneAudience] = mapped_column(
+        Enum(MilestoneAudience, name="milestone_audience", native_enum=False),
+        nullable=False,
+        default=MilestoneAudience.both,
     )
     is_repeatable: Mapped[bool] = mapped_column(nullable=False, default=False)
     cooldown_days: Mapped[int | None] = mapped_column(nullable=True)

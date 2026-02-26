@@ -16,6 +16,10 @@ DEFAULT_FLAG_KEYS = {
     "video_uploads_enabled",
     "search_enabled",
     "search_force_db_fallback",
+    "public_share_enabled",
+    "downloads_enabled",
+    "client_browsing_enabled",
+    "pro_onboarding_enabled",
 }
 
 DEFAULT_FLAG_STATE: dict[str, bool] = {

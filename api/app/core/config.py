@@ -93,6 +93,17 @@ class Settings(BaseSettings):
     rate_limit_notifications_email_per_day: int = Field(default=20, alias="RATE_LIMIT_NOTIFICATIONS_EMAIL_PER_DAY")
     rate_limit_notifications_inapp_per_day: int = Field(default=60, alias="RATE_LIMIT_NOTIFICATIONS_INAPP_PER_DAY")
     rate_limit_notifications_burst_per_min: int = Field(default=30, alias="RATE_LIMIT_NOTIFICATIONS_BURST_PER_MIN")
+    default_gig_consent_level: str = Field(default="none", alias="DEFAULT_GIG_CONSENT_LEVEL")
+    media_signed_url_ttl_seconds: int = Field(default=120, alias="MEDIA_SIGNED_URL_TTL_SECONDS")
+    media_share_token_pepper: str = Field(default="dev-media-share-pepper", alias="MEDIA_SHARE_TOKEN_PEPPER")
+    media_access_ip_hash_pepper: str = Field(default="dev-media-ip-pepper", alias="MEDIA_ACCESS_IP_HASH_PEPPER")
+    media_watermark_text_template: str = Field(default="RAWWERS", alias="MEDIA_WATERMARK_TEXT_TEMPLATE")
+    media_watermark_include_pro_name: bool = Field(default=False, alias="MEDIA_WATERMARK_INCLUDE_PRO_NAME")
+    share_view_fingerprint_pepper: str = Field(default="dev-share-fingerprint-pepper", alias="SHARE_VIEW_FINGERPRINT_PEPPER")
+    reward_balance_floor: int = Field(default=-5000, alias="REWARD_BALANCE_FLOOR")
+    dispute_window_days: int = Field(default=30, alias="DISPUTE_WINDOW_DAYS")
+    dispute_open_limit_30d: int = Field(default=3, alias="DISPUTE_OPEN_LIMIT_30D")
+    dispute_messages_per_day: int = Field(default=10, alias="DISPUTE_MESSAGES_PER_DAY")
 
     def admin_user_id_set(self) -> set[UUID]:
         values = [item.strip() for item in self.admin_user_ids.split(",") if item.strip()]

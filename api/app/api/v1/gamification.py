@@ -47,6 +47,7 @@ def my_credentials(
 
 
 @router.get("/me/gamification/milestones", response_model=MyMilestonesResponse)
+@router.get("/me/game/quests", response_model=MyMilestonesResponse)
 def my_milestones(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
@@ -87,6 +88,7 @@ def my_milestones(
 
 
 @router.get("/me/gamification/cycle/current", response_model=CurrentCycleResponse)
+@router.get("/me/game/seasons/current", response_model=CurrentCycleResponse)
 def my_current_cycle(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),

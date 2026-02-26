@@ -349,6 +349,55 @@ def create_manual_adjustment(
     return entry
 
 
+def add_reward_entry(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    amount: int,
+    entry_type: RewardEntryType,
+    reference_type: str,
+    reference_id: str,
+    metadata: dict | None = None,
+    rule_code: str | None = None,
+    min_balance_floor: int | None = None,
+) -> RewardLedgerEntry | None:
+    if amount == 0:
+        return None
+
+    existing = db.execute(
+        select(RewardLedgerEntry).where(
+            RewardLedgerEntry.user_id == user_id,
+            RewardLedgerEntry.entry_type == entry_type,
+            RewardLedgerEntry.reference_type == reference_type,
+            RewardLedgerEntry.reference_id == reference_id,
+        )
+    ).scalar_one_or_none()
+    if existing:
+        return existing
+
+    balance = _get_or_create_reward_balance_locked(db, user_id)
+    new_balance = balance.balance + int(amount)
+    floor = min_balance_floor if min_balance_floor is not None else 0
+    if new_balance < floor:
+        return None
+
+    balance.balance = new_balance
+    balance.updated_at = datetime.now(timezone.utc)
+    entry = RewardLedgerEntry(
+        user_id=user_id,
+        entry_type=entry_type,
+        rule_code=rule_code,
+        amount=int(amount),
+        balance_after=new_balance,
+        reference_type=reference_type,
+        reference_id=reference_id,
+        meta=metadata or {},
+    )
+    db.add(entry)
+    db.flush()
+    return entry
+
+
 def _is_within_caps(db: Session, user_id: uuid.UUID, rule: RewardRule) -> bool:
     now = datetime.now(timezone.utc)
     day_start = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)

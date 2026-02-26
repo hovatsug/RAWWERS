@@ -15,6 +15,8 @@ from app.models.admin import (
 )
 from app.models.gig import GigStatus
 from app.models.ops import AbuseSeverity, AbuseSignalStatus, FeatureFlagScope
+from app.models.niche import SkillTier
+from app.models.client_rewards_pricing import ConsentRewardLevel, ShareRewardMetric
 
 
 class UserListItem(BaseModel):
@@ -78,7 +80,7 @@ class DisputeCreateRequest(BaseModel):
 
 class DisputeView(BaseModel):
     id: uuid.UUID
-    gig_id: uuid.UUID
+    gig_id: uuid.UUID | None = None
     opened_by_user_id: uuid.UUID
     status: DisputeStatus
     category: DisputeCategory
@@ -173,3 +175,114 @@ class FeatureFlagUpsertRequest(BaseModel):
     is_enabled: bool
     scope: FeatureFlagScope = FeatureFlagScope.global_scope
     rules: dict = Field(default_factory=dict)
+
+
+class ExtraImagePricingPolicyUpsertItem(BaseModel):
+    niche_slug: str
+    tier: SkillTier
+    unit_price_min: Decimal
+    unit_price_max: Decimal | None = None
+    max_extra_images: int | None = None
+    bulk_curve: dict = Field(default_factory=dict)
+    currency: str = "EUR"
+    is_active: bool = True
+
+
+class ExtraImagePricingPolicyUpsertRequest(BaseModel):
+    items: list[ExtraImagePricingPolicyUpsertItem] = Field(default_factory=list)
+
+
+class ExtraImagePricingPolicyView(BaseModel):
+    niche_id: uuid.UUID
+    niche_slug: str
+    tier: SkillTier
+    unit_price_min: Decimal
+    unit_price_max: Decimal | None = None
+    max_extra_images: int | None = None
+    bulk_curve: dict = Field(default_factory=dict)
+    currency: str
+    is_active: bool
+    updated_at: datetime
+
+
+class ProExtraImagePriceUpsertItem(BaseModel):
+    niche_slug: str
+    configured_unit_price: Decimal
+    currency: str = "EUR"
+
+
+class ProExtraImagePriceUpsertRequest(BaseModel):
+    items: list[ProExtraImagePriceUpsertItem] = Field(default_factory=list)
+
+
+class ProExtraImagePriceView(BaseModel):
+    pro_user_id: uuid.UUID
+    niche_id: uuid.UUID
+    niche_slug: str
+    configured_unit_price: Decimal
+    currency: str
+    updated_at: datetime
+
+
+class ConsentRewardPolicyUpsertItem(BaseModel):
+    consent_level: ConsentRewardLevel
+    points_award: int = 0
+    cooldown_hours: int = 48
+    allow_clawback: bool = True
+    max_awards_per_user_per_month: int = 10
+
+
+class ConsentRewardPolicyUpsertRequest(BaseModel):
+    items: list[ConsentRewardPolicyUpsertItem] = Field(default_factory=list)
+
+
+class ConsentRewardPolicyView(BaseModel):
+    consent_level: ConsentRewardLevel
+    points_award: int
+    cooldown_hours: int
+    allow_clawback: bool
+    max_awards_per_user_per_month: int
+    updated_at: datetime
+
+
+class ShareRewardThresholdUpsertItem(BaseModel):
+    metric: ShareRewardMetric
+    threshold_value: int
+    points_award: int
+    max_awards_per_share_link: int = 1
+    is_active: bool = True
+
+
+class ShareRewardThresholdUpsertRequest(BaseModel):
+    items: list[ShareRewardThresholdUpsertItem] = Field(default_factory=list)
+
+
+class ShareRewardThresholdView(BaseModel):
+    metric: ShareRewardMetric
+    threshold_value: int
+    points_award: int
+    max_awards_per_share_link: int
+    is_active: bool
+    updated_at: datetime
+
+
+class ShareRewardGrantView(BaseModel):
+    id: uuid.UUID
+    share_link_id: uuid.UUID
+    metric: str
+    threshold_value: int
+    user_id: uuid.UUID
+    reward_ledger_entry_id: uuid.UUID | None = None
+    granted_at: datetime
+
+
+class ShareFraudSettingsUpsertRequest(BaseModel):
+    min_seconds_viewed: int | None = None
+    max_views_per_ip_per_day: int | None = None
+    max_rewards_per_user_per_month: int | None = None
+
+
+class ShareFraudSettingsView(BaseModel):
+    min_seconds_viewed: int
+    max_views_per_ip_per_day: int
+    max_rewards_per_user_per_month: int

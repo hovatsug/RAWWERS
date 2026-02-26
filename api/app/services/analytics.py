@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
 from app.models.discovery import AnalyticsEvent
+from app.services.metrics import observe_business_event_from_analytics
 
 ALLOWED_PREFIXES = (
     "discover.",
@@ -54,5 +55,6 @@ def log_event(
         event_name=event_name,
         properties=properties or {},
     )
+    observe_business_event_from_analytics(event_name)
     db.add(event)
     return event

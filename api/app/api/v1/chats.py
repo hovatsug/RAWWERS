@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ from app.schemas.chat import (
 )
 from app.schemas.media import CurrentUser
 from app.schemas.onboarding import BookingRequestCreateRequest
+from app.services.abuse import detect_chat_spam, strip_html
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.chat_concierge import (
@@ -34,8 +35,9 @@ from app.services.chat_concierge import (
     generate_ai_reply,
     snapshot_pro_context,
 )
+from app.services.feature_flags import is_feature_enabled
 from app.services.followups import schedule_followups
-from app.services.rate_limit import enforce_rate_limit
+from app.services.rate_limit import enforce_named_rate_limit
 
 settings = get_settings()
 router = APIRouter(tags=["chats"])
@@ -99,8 +101,10 @@ def append_chat_message(
     body: ChatMessageCreateRequest,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
+    request: Request | None = None,
 ) -> ChatMessagesAppendResponse:
-    enforce_rate_limit(f"chat-msg:{user.user_id}", max_requests=30, window_seconds=60)
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
+    enforce_named_rate_limit("chat_messages", principal=str(user.user_id))
 
     thread = db.get(ChatThread, thread_id)
     if not thread:
@@ -109,11 +113,27 @@ def append_chat_message(
     if thread.status == ChatThreadStatus.closed:
         raise APIError(code="invalid_state", message="Thread is closed", status_code=409)
 
+    cleaned_content = strip_html(body.content).strip()
+    if not cleaned_content:
+        raise APIError(code="validation_error", message="Message cannot be empty", status_code=422)
+    if len(cleaned_content) > settings.max_chat_message_length:
+        raise APIError(code="validation_error", message="Message too long", status_code=422)
+
+    spam_signal = detect_chat_spam(
+        db,
+        thread=thread,
+        user_id=user.user_id,
+        content=cleaned_content,
+        ip=_request_ip(request),
+    )
+    if spam_signal:
+        raise APIError(code="rate_limited", message="Message blocked by anti-spam controls", status_code=429)
+
     message = ChatMessage(
         thread_id=thread.id,
         sender_type=sender_type,
         sender_user_id=user.user_id,
-        content=body.content.strip(),
+        content=cleaned_content,
         meta={},
     )
     db.add(message)
@@ -231,6 +251,9 @@ def create_booking_request_from_chat(
 
 
 def _maybe_generate_ai_reply(db: Session, thread: ChatThread) -> ChatMessage | None:
+    if not is_feature_enabled(db, "ai_calls_enabled", user_id=thread.client_user_id):
+        return _handoff_due_to_limit(db, thread, reason="ai_calls_disabled")
+
     total_messages = db.execute(
         select(func.count()).select_from(ChatMessage).where(ChatMessage.thread_id == thread.id)
     ).scalar_one()
@@ -410,3 +433,12 @@ def _message_view(item: ChatMessage) -> ChatMessageView:
         metadata=item.meta or {},
         created_at=item.created_at,
     )
+
+
+def _request_ip(request: Request | None) -> str | None:
+    if not request:
+        return None
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None

@@ -1,6 +1,13 @@
+from __future__ import annotations
+
+import time
+
 from celery import Celery
+from celery.signals import before_task_publish, task_failure, task_postrun, task_prerun
 
 from app.core.config import get_settings
+from app.core.request_context import clear_request_context, get_request_id, set_request_context
+from app.services.metrics import increment_task_failures, observe_task_duration
 
 settings = get_settings()
 
@@ -24,6 +31,41 @@ celery_app.conf.task_routes = {
     "app.tasks.repair_tasks.recompute_partner_score": {"queue": "media"},
     "app.tasks.outbox_tasks.dispatch_outbox_events": {"queue": "media"},
 }
+
+_TASK_START_TIMES: dict[str, float] = {}
+
+
+@before_task_publish.connect
+def add_request_id_header(headers=None, **_kwargs):  # pragma: no cover
+    if headers is None:
+        return
+    current_request_id = get_request_id()
+    if current_request_id and "x-request-id" not in headers:
+        headers["x-request-id"] = current_request_id
+
+
+@task_prerun.connect
+def on_task_prerun(task_id=None, task=None, **_kwargs):  # pragma: no cover
+    if task_id:
+        _TASK_START_TIMES[task_id] = time.monotonic()
+    headers = getattr(getattr(task, "request", None), "headers", None) or {}
+    request_id = headers.get("x-request-id")
+    set_request_context(request_id=request_id)
+
+
+@task_postrun.connect
+def on_task_postrun(task_id=None, task=None, **_kwargs):  # pragma: no cover
+    if task_id and task:
+        started = _TASK_START_TIMES.pop(task_id, None)
+        if started is not None:
+            observe_task_duration(task.name, max(0.0, time.monotonic() - started))
+    clear_request_context()
+
+
+@task_failure.connect
+def on_task_failure(task_id=None, exception=None, sender=None, **_kwargs):  # pragma: no cover
+    if sender:
+        increment_task_failures(sender.name)
 
 # Ensure task registration when worker boots.
 from app.tasks import call_tasks, discovery_tasks, followup_tasks, gamification_tasks, learning_tasks, media_tasks, outbox_tasks, reminder_tasks, repair_tasks, store_tasks  # noqa: E402,F401

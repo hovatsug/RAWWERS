@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import and_, func, select
 from sqlalchemy import case
 from sqlalchemy.orm import Session
@@ -29,10 +29,11 @@ from app.schemas.discovery import (
 )
 from app.schemas.media import CurrentUser
 from app.services.analytics import log_event
+from app.services.abuse import detect_scraping_activity
 from app.services.authz import enforce_not_banned
-from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
+from app.services.cache import cache_get_json, cache_set_json, get_public_index_version, get_redis_client
 from app.services.niche_catalog import ensure_initial_niches
-from app.services.rate_limit import enforce_rate_limit
+from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services.storage import create_presigned_get
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
 
@@ -54,9 +55,12 @@ def discover_pros(
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_read_session),
     db_write: Session = Depends(get_db_write_session),
+    request: Request | None = None,
 ) -> DiscoverProsResponse:
-    limiter_key = f"discover:{user.user_id if user else 'anon'}"
-    enforce_rate_limit(limiter_key, max_requests=60, window_seconds=60)
+    requester_ip = _request_ip(request)
+    principal = str(user.user_id) if user else f"ip:{requester_ip or 'unknown'}"
+    enforce_named_rate_limit("public_read", principal=principal)
+    _observe_scraping(db_write, requester_ip)
 
     cache_key = _discover_cache_key(
         city=city,
@@ -209,9 +213,12 @@ def get_public_pro_profile(
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_read_session),
     db_write: Session = Depends(get_db_write_session),
+    request: Request | None = None,
 ) -> ProPublicProfileResponse:
-    limiter_key = f"pro-public:{user.user_id if user else 'anon'}"
-    enforce_rate_limit(limiter_key, max_requests=120, window_seconds=60)
+    requester_ip = _request_ip(request)
+    principal = str(user.user_id) if user else f"ip:{requester_ip or 'unknown'}"
+    enforce_named_rate_limit("public_read", principal=principal)
+    _observe_scraping(db_write, requester_ip)
 
     cache_key = _pro_public_cache_key(pro_user_id)
     cached = cache_get_json(cache_key)
@@ -429,3 +436,28 @@ def rebuild_all_index(
     enforce_rate_limit(f"admin-reindex-all:{user.user_id}", max_requests=3, window_seconds=60)
     rebuild_all_pro_indexes.delay()
     return {"queued": True}
+
+
+def _request_ip(request: Request | None) -> str | None:
+    if not request:
+        return None
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+def _observe_scraping(db: Session, ip: str | None) -> None:
+    if not ip:
+        return
+    try:
+        redis_client = get_redis_client()
+        key = f"discover:ip:{ip}:hour"
+        count = int(redis_client.incr(key))
+        if count == 1:
+            redis_client.expire(key, 3600)
+    except Exception:
+        return
+    signal = detect_scraping_activity(db, ip=ip, hits_last_hour=count)
+    if signal:
+        db.commit()

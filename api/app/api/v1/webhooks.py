@@ -39,6 +39,9 @@ from app.services.store import finalize_order_payment_success, handle_order_paym
 from app.services.security import verify_mux_webhook_signature
 from app.services.stripe_service import construct_stripe_event
 from app.models.reward import RedemptionContextType
+from app.models.ops import WebhookSecurityLog
+from app.services.abuse import detect_payment_failures_anomaly
+from app.services.metrics import observe_business_event, observe_webhook
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
@@ -50,11 +53,24 @@ settings = get_settings()
 async def mux_webhook(request: Request, db: Session = Depends(get_db_session)) -> WebhookAckResponse:
     raw_body = await request.body()
     sig_header = request.headers.get("mux-signature")
-    if not verify_mux_webhook_signature(raw_body, sig_header):
-        raise APIError(code="invalid_signature", message="Invalid Mux webhook signature", status_code=401)
-
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
     event_id = payload.get("id")
+    signature_ok = verify_mux_webhook_signature(raw_body, sig_header)
+    observe_webhook("mux", payload.get("type", "unknown"), signature_ok)
+    _log_webhook_security_event(
+        db,
+        provider="mux",
+        event_id=event_id,
+        signature_valid=signature_ok,
+        ip=_request_ip(request),
+        metadata={"header_present": bool(sig_header)},
+    )
+    if not signature_ok:
+        db.commit()
+        raise APIError(code="invalid_signature", message="Invalid Mux webhook signature", status_code=401)
     if not event_id:
         raise APIError(code="invalid_payload", message="Missing webhook event id", status_code=422)
     row = enqueue_outbox_event(
@@ -77,9 +93,32 @@ async def mux_webhook(request: Request, db: Session = Depends(get_db_session)) -
 async def stripe_webhook(request: Request, db: Session = Depends(get_db_session)) -> WebhookAckResponse:
     raw_body = await request.body()
     signature = request.headers.get("stripe-signature")
-    event = construct_stripe_event(raw_body, signature)
+    try:
+        event = construct_stripe_event(raw_body, signature)
+        signature_ok = True
+    except APIError as exc:
+        _log_webhook_security_event(
+            db,
+            provider="stripe",
+            event_id=None,
+            signature_valid=False,
+            ip=_request_ip(request),
+            metadata={"error": exc.code, "header_present": bool(signature)},
+        )
+        observe_webhook("stripe", "unknown", False)
+        db.commit()
+        raise
 
     event_id = event.get("id")
+    _log_webhook_security_event(
+        db,
+        provider="stripe",
+        event_id=event_id,
+        signature_valid=signature_ok,
+        ip=_request_ip(request),
+        metadata={"event_type": event.get("type", "unknown")},
+    )
+    observe_webhook("stripe", event.get("type", "unknown"), signature_ok)
     if not event_id:
         raise APIError(code="invalid_payload", message="Missing Stripe event id", status_code=400)
     row = enqueue_outbox_event(
@@ -180,6 +219,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
 
             upsell.status = UpsellPurchaseStatus.succeeded
             gallery.status = ProofGalleryStatus.selection_submitted
+            observe_business_event("upsell_purchase_succeeded")
             redemption = apply_redemption_for_context(db, RedemptionContextType.upsell_purchase, upsell.id)
             if redemption:
                 log_event(
@@ -304,6 +344,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             user_id=gig.client_user_id,
             properties={"gig_id": str(gig.id), "payment_intent_id": payment_intent_id},
         )
+        observe_business_event("payment_succeeded")
         redemption = apply_redemption_for_context(db, RedemptionContextType.gig_payment, gig.id)
         if redemption:
             log_event(
@@ -368,6 +409,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         payment.status = PaymentStatus.failed
         last_payment_error = obj.get("last_payment_error") or {}
         payment.last_error = last_payment_error.get("message", "Payment failed")
+        detect_payment_failures_anomaly(db, client_user_id=payment.client_user_id, payment_intent_id=payment_intent_id)
         gig = db.get(Gig, payment.gig_id)
         if gig:
             redemption = release_redemption_for_context(
@@ -540,3 +582,30 @@ def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, r
         )
     ).scalar_one_or_none()
     return existing is not None
+
+
+def _request_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+def _log_webhook_security_event(
+    db: Session,
+    *,
+    provider: str,
+    event_id: str | None,
+    signature_valid: bool,
+    ip: str | None,
+    metadata: dict | None,
+) -> None:
+    db.add(
+        WebhookSecurityLog(
+            provider=provider,
+            event_id=event_id,
+            signature_valid=signature_valid,
+            ip=ip,
+            meta=metadata or {},
+        )
+    )

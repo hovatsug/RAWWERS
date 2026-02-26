@@ -20,6 +20,7 @@ from app.services.gamification import queue_evaluate_user_milestones
 from app.services.cache import bump_public_index_version
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.search_indexing import enqueue_pro_index_upsert
 
 
 def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublicIndex:
@@ -143,6 +144,7 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
 
     db.flush()
     bump_public_index_version()
+    enqueue_pro_index_upsert(db, pro_user_id, idempotency_suffix=index.updated_at.isoformat() if index.updated_at else "now")
     queue_evaluate_user_milestones(pro_user_id)
     return index
 

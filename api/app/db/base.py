@@ -52,6 +52,8 @@ from app.models.learning import (
 )
 from app.models.niche import CertificationRecord, Niche, ProNiche, ProNicheSkill
 from app.models.outbox import IdempotencyKey, OutboxEvent
+from app.models.ops import AbuseSignal, FeatureFlag, WebhookSecurityLog
+from app.models.auth import AuthEventLog, EmailVerification, ImpersonationSession, PasswordReset, SessionRefreshToken
 from app.models.booking import (
     BookingRequest,
     BookingRequestTransition,
@@ -64,9 +66,14 @@ from app.models.communication import (
     CallEvent,
     CallSession,
     ContactConsent,
+    EmailMessage,
     FollowupJob,
     FollowupRule,
     Notification,
+    NotificationEvent,
+    NotificationPreference,
+    NotificationTopicPreference,
+    ScheduledNotification,
     UserContact,
 )
 from app.models.gig import Gig, GigTransition, LedgerEntry, StripePayment, StripeWebhookEvent

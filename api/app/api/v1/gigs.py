@@ -30,6 +30,8 @@ from app.services.authz import require_kyc_approved_for_pro
 from app.services.analytics import log_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.followups import schedule_followups
+from app.services.feature_flags import is_feature_enabled
+from app.services.rate_limit import enforce_named_rate_limit
 from app.services.rewards import reserve_points_for_discount
 from app.services.stripe_service import is_within_hours
 
@@ -135,6 +137,8 @@ def create_payment_intent(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> CreatePaymentIntentResponse:
+    enforce_named_rate_limit("payments", principal=str(user.user_id))
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
     gig = db.get(Gig, gig_id)
     if not gig:
         raise APIError(code="not_found", message="Gig not found", status_code=404)
@@ -158,6 +162,8 @@ def create_payment_intent(
 
     points_redemption = None
     if body.points_to_spend:
+        if not is_feature_enabled(db, "rewards_spend_enabled", user_id=user.user_id):
+            raise APIError(code="feature_disabled", message="Rewards spend is temporarily disabled", status_code=503)
         if existing_payment and not existing_redemption:
             raise APIError(code="invalid_state", message="Cannot apply points after payment intent was created", status_code=409)
         points_redemption = reserve_points_for_discount(

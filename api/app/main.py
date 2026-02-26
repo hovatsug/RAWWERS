@@ -1,17 +1,22 @@
 from fastapi import FastAPI
+from fastapi.responses import Response
 from sqlalchemy import text
 
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.middleware import JsonBodyLimitMiddleware, RequestContextMiddleware
 from app.db.session import ReplicaSessionLocal, SessionLocal, get_replica_lag_seconds
 from app.services.cache import get_redis_client
+from app.services.metrics import render_metrics
 
 settings = get_settings()
 configure_logging(settings.log_level)
 
 app = FastAPI(title="RAWWERS API", version="0.1.0")
+app.add_middleware(JsonBodyLimitMiddleware)
+app.add_middleware(RequestContextMiddleware)
 register_error_handlers(app)
 app.include_router(api_router)
 
@@ -60,3 +65,9 @@ def health_replica() -> dict:
         }
     finally:
         db.close()
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    payload, content_type = render_metrics()
+    return Response(content=payload, media_type=content_type)

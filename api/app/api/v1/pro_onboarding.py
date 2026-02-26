@@ -56,6 +56,7 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.rate_limit import enforce_named_rate_limit
 from app.services.payment_intents import create_or_get_gig_payment_intent
 
 settings = get_settings()
@@ -493,6 +494,7 @@ def create_booking_request(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> BookingRequestView:
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
     _require_role(db, user.user_id, UserRoleType.client)
     if body.requested_end <= body.requested_start:
         raise APIError(code="validation_error", message="requested_end must be after requested_start", status_code=422)
@@ -578,6 +580,8 @@ def accept_booking_request(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> AcceptBookingResponse:
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
+    enforce_named_rate_limit("payments", principal=str(user.user_id))
     request = db.get(BookingRequest, request_id)
     if not request:
         raise APIError(code="not_found", message="Booking request not found", status_code=404)

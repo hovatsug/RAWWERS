@@ -7,6 +7,8 @@ from app.services.outbox import (
     mark_outbox_delivered,
     mark_outbox_failed,
 )
+from app.services.search_indexing import process_index_event
+from app.services.notifications import process_due_scheduled_notifications, process_outbox_notification
 from app.tasks.celery_app import celery_app
 
 settings = get_settings()
@@ -26,6 +28,7 @@ def dispatch_outbox_events_task(limit: int | None = None) -> int:
             except Exception:
                 mark_outbox_failed(db, row, max_attempts=settings.outbox_max_attempts)
             processed += 1
+        process_due_scheduled_notifications(db, limit=batch_limit)
         db.commit()
         return processed
     finally:
@@ -34,6 +37,7 @@ def dispatch_outbox_events_task(limit: int | None = None) -> int:
 
 def _dispatch_event(db, topic: str, payload: dict) -> None:
     from app.api.v1.webhooks import _apply_mux_event, _apply_stripe_event
+    from app.services.mail import get_mail_provider
 
     if topic == "stripe.event":
         event_type = payload.get("type", "unknown")
@@ -56,4 +60,16 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         import uuid
 
         recompute_pro_niche_skills(db, uuid.UUID(payload["pro_user_id"]), uuid.UUID(payload["niche_id"]) if payload.get("niche_id") else None)
+        return
+    if topic.startswith("index."):
+        process_index_event(db, topic, payload)
+        return
+    if topic == "email.verify.send":
+        get_mail_provider().send_verification_email(email=payload["email"], code=payload["code"])
+        return
+    if topic == "email.reset.send":
+        get_mail_provider().send_password_reset_email(email=payload["email"], code=payload["code"])
+        return
+    if topic.startswith("notify."):
+        process_outbox_notification(topic, payload, db)
         return

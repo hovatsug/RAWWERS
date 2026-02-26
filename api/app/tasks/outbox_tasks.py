@@ -83,6 +83,15 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
             unsubscribe_url=None,
         )
         return
+    if topic == "client.waitlist.confirmation_email":
+        get_mail_provider().send_template_email(
+            email=payload["email"],
+            template_key="client_waitlist_confirmation",
+            subject="You are on the RAWWERS client waitlist",
+            text_body=f"Thanks. We will notify you when {payload.get('city')}, {payload.get('country')} is enabled.",
+            unsubscribe_url=None,
+        )
+        return
     if topic.startswith("notify."):
         process_outbox_notification(topic, payload, db)
         return
@@ -139,4 +148,22 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         from app.services.disputes import escalate_due_disputes
 
         escalate_due_disputes(db, limit=int(payload.get("limit", 200)))
+        return
+    if topic == "ai.reply.generate":
+        import uuid
+        from app.models.chat import ChatThread
+        from app.services.ai_concierge import generate_ai_reply_for_thread
+        from app.services.analytics import log_event
+
+        thread = db.get(ChatThread, uuid.UUID(payload["thread_id"]))
+        if not thread:
+            return
+        ai_message, _ = generate_ai_reply_for_thread(db, thread=thread, draft_only=False)
+        if ai_message:
+            log_event(
+                db,
+                event_name="ai.reply_generated",
+                user_id=thread.client_user_id,
+                properties={"thread_id": str(thread.id), "message_id": str(ai_message.id)},
+            )
         return

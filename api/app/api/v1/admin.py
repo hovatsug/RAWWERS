@@ -89,6 +89,7 @@ from app.schemas.admin import (
     UserListItem,
     UserListResponse,
 )
+from app.schemas.client_launch import ClientFunnelCityMetrics, ClientFunnelReportResponse
 from app.schemas.disputes import (
     AdminDisputeResolveRequest,
     AdminDisputeSetStatusRequest,
@@ -160,6 +161,92 @@ from app.services.launch_ops import (
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/funnel/clients", response_model=ClientFunnelReportResponse)
+def admin_client_funnel(
+    start_at: datetime | None = None,
+    end_at: datetime | None = None,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ClientFunnelReportResponse:
+    now = datetime.now(timezone.utc)
+    window_end = end_at or now
+    window_start = start_at or (window_end - timedelta(days=30))
+
+    events = db.execute(
+        select(AnalyticsEvent).where(
+            AnalyticsEvent.created_at >= window_start,
+            AnalyticsEvent.created_at <= window_end,
+            or_(AnalyticsEvent.event_name.like("client.%"), AnalyticsEvent.event_name == "payment.succeeded"),
+        )
+    ).scalars().all()
+
+    grouped: dict[tuple[str, str], dict[str, int]] = {}
+    cohorts: dict[tuple[str, str], dict[str, int]] = {}
+    for event in events:
+        props = event.properties or {}
+        country = str(props.get("country") or "").upper()
+        city = str(props.get("city") or "")
+        if not country or not city:
+            continue
+        key = (country, city)
+        metrics = grouped.setdefault(
+            key,
+            {
+                "discover_views": 0,
+                "pro_profile_views": 0,
+                "booking_requests": 0,
+                "payments_succeeded": 0,
+                "proofs_published": 0,
+                "extras_purchased": 0,
+                "disputes_opened": 0,
+            },
+        )
+        if event.event_name == "client.discover_view":
+            metrics["discover_views"] += 1
+        elif event.event_name == "client.pro_profile_view":
+            metrics["pro_profile_views"] += 1
+        elif event.event_name == "client.booking_request_created":
+            metrics["booking_requests"] += 1
+        elif event.event_name in {"client.payment_succeeded", "payment.succeeded"}:
+            metrics["payments_succeeded"] += 1
+        elif event.event_name == "client.proofs_viewed":
+            metrics["proofs_published"] += 1
+        elif event.event_name == "client.extras_purchased":
+            metrics["extras_purchased"] += 1
+        elif event.event_name == "client.dispute_opened":
+            metrics["disputes_opened"] += 1
+
+        cohort_bucket = event.created_at.strftime("%Y-%m-%d")
+        cohort_counts = cohorts.setdefault(key, {})
+        cohort_counts[cohort_bucket] = cohort_counts.get(cohort_bucket, 0) + 1
+
+    items: list[ClientFunnelCityMetrics] = []
+    for (country, city), metrics in sorted(grouped.items()):
+        discover = metrics["discover_views"]
+        profile = metrics["pro_profile_views"]
+        booking = metrics["booking_requests"]
+        paid = metrics["payments_succeeded"]
+        items.append(
+            ClientFunnelCityMetrics(
+                country=country,
+                city=city,
+                discover_views=discover,
+                pro_profile_views=profile,
+                booking_requests=booking,
+                payments_succeeded=paid,
+                proofs_published=metrics["proofs_published"],
+                extras_purchased=metrics["extras_purchased"],
+                disputes_opened=metrics["disputes_opened"],
+                discover_to_profile_rate=round(profile / discover, 4) if discover else 0.0,
+                profile_to_booking_rate=round(booking / profile, 4) if profile else 0.0,
+                booking_to_payment_rate=round(paid / booking, 4) if booking else 0.0,
+                cohorts=[{"day": day, "events": count} for day, count in sorted((cohorts.get((country, city)) or {}).items())],
+            )
+        )
+
+    return ClientFunnelReportResponse(start_at=window_start, end_at=window_end, items=items)
 
 
 @router.get("/users", response_model=UserListResponse)

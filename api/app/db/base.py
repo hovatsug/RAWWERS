@@ -90,6 +90,12 @@ from app.models.client_rewards_pricing import (
     ShareRewardGrant,
     ShareRewardThreshold,
 )
+from app.models.client_launch import (
+    ClientPreference,
+    ClientWaitlist,
+    MatchRequest,
+    MatchResult,
+)
 from app.models.communication import (
     CallEvent,
     CallSession,
@@ -134,6 +140,19 @@ from app.models.reward import (
     RewardBalance,
     RewardLedgerEntry,
     RewardRule,
+)
+from app.models.studioverse import (
+    ContentLicense,
+    ContentPack,
+    ContentPackEntitlement,
+    ContentPackOrder,
+    ContentPackReview,
+    ContentPackTakedown,
+    ContentPackVersion,
+    PackDownloadLog,
+    PackSourceReference,
+    RoyaltyLedgerEntry,
+    RoyaltyRule,
 )
 
 __all__ = ["Base"]

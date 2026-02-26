@@ -16,6 +16,7 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     "public_read": (settings.rate_limit_public_read_per_min, 60),
     "auth_mutation": (settings.rate_limit_auth_mutation_per_min, 60),
     "chat_messages": (settings.rate_limit_chat_messages_per_min, 60),
+    "thread_creations": (settings.rate_limit_thread_creations_per_day, 86400),
     "reviews": (settings.rate_limit_reviews_per_day, 86400),
     "referral_claims": (settings.rate_limit_referral_claims_per_day, 86400),
     "payments": (settings.rate_limit_payments_per_hour, 3600),

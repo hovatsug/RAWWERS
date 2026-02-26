@@ -383,7 +383,7 @@ def is_pro_publicly_discoverable(db: Session, *, pro_user_id: uuid.UUID) -> bool
     onboarding = db.get(ProOnboarding, pro_user_id)
     if not onboarding or onboarding.status != ProOnboardingStatus.approved_public:
         return False
-    if is_feature_enabled(db, "client_browsing_enabled", user_id=None):
+    if is_feature_enabled(db, "client_browsing_enabled_global", user_id=None) or is_feature_enabled(db, "client_browsing_enabled", user_id=None):
         return True
     city_info = onboarding.current_city or {}
     city = city_info.get("city")

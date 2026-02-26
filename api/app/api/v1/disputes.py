@@ -16,6 +16,7 @@ from app.models.admin import (
     DisputeMessage,
     DisputeStatus,
     EvidenceKind,
+    ProProfile,
     UserRoleType,
 )
 from app.models.client_rewards_pricing import ExtraImagePurchase
@@ -32,6 +33,7 @@ from app.schemas.disputes import (
 from app.schemas.media import CurrentUser
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.analytics import log_event
 from app.services.disputes import create_dispute, post_dispute_message
 from app.services.gamification import queue_evaluate_user_milestones
 from app.services.niche_skills import recompute_pro_niche_skills
@@ -83,6 +85,15 @@ def create_dispute_endpoint(
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
+
+    if gig and user.user_id == gig.client_user_id:
+        pro_profile = db.get(ProProfile, gig.pro_user_id)
+        log_event(
+            db,
+            event_name="client.dispute_opened",
+            user_id=user.user_id,
+            properties={"dispute_id": str(dispute.id), "gig_id": str(gig.id), "country": pro_profile.country if pro_profile else None, "city": pro_profile.city if pro_profile else None},
+        )
 
     db.commit()
     db.refresh(dispute)

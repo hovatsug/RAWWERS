@@ -33,6 +33,11 @@ ALLOWED_PREFIXES = (
     "store.",
     "repair.",
     "loaner.",
+    "client.",
+    "scheduling.",
+    "ai.",
+    "lead.",
+    "studioverse.",
 )
 
 

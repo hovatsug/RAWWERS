@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     rate_limit_public_read_per_min: int = Field(default=120, alias="RATE_LIMIT_PUBLIC_READ_PER_MIN")
     rate_limit_auth_mutation_per_min: int = Field(default=30, alias="RATE_LIMIT_AUTH_MUTATION_PER_MIN")
     rate_limit_chat_messages_per_min: int = Field(default=10, alias="RATE_LIMIT_CHAT_MESSAGES_PER_MIN")
+    rate_limit_thread_creations_per_day: int = Field(default=5, alias="RATE_LIMIT_THREAD_CREATIONS_PER_DAY")
     rate_limit_reviews_per_day: int = Field(default=5, alias="RATE_LIMIT_REVIEWS_PER_DAY")
     rate_limit_referral_claims_per_day: int = Field(default=3, alias="RATE_LIMIT_REFERRAL_CLAIMS_PER_DAY")
     rate_limit_payments_per_hour: int = Field(default=10, alias="RATE_LIMIT_PAYMENTS_PER_HOUR")

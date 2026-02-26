@@ -23,6 +23,7 @@ from app.models.gallery import ProofGallery, ProofGalleryStatus, UpsellPurchase,
 from app.models.media import MediaAsset, MediaProvider, MediaStatus
 from app.models.media_rights import GigEntitlementType
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
+from app.models.admin import ProProfile
 from app.schemas.webhooks import WebhookAckResponse
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
@@ -364,6 +365,18 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             event_name="payment.succeeded",
             user_id=gig.client_user_id,
             properties={"gig_id": str(gig.id), "payment_intent_id": payment_intent_id},
+        )
+        pro_profile = db.get(ProProfile, gig.pro_user_id)
+        log_event(
+            db,
+            event_name="client.payment_succeeded",
+            user_id=gig.client_user_id,
+            properties={
+                "gig_id": str(gig.id),
+                "payment_intent_id": payment_intent_id,
+                "country": pro_profile.country if pro_profile else None,
+                "city": pro_profile.city if pro_profile else None,
+            },
         )
         observe_business_event("payment_succeeded")
         redemption = apply_redemption_for_context(db, RedemptionContextType.gig_payment, gig.id)

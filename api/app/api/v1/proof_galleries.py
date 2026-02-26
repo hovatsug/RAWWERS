@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_session, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
-from app.models.admin import UserRoleType
+from app.models.admin import ProProfile, UserRoleType
 from app.models.gallery import (
     ClientSelection,
     ClientSelectionItem,
@@ -283,6 +283,17 @@ def get_gallery(
                 watermark_preview_url=create_presigned_get(wm.storage_key, expires_in=300) if wm else None,
             )
         )
+
+    if user.user_id == gallery.client_user_id:
+        gig = db.get(Gig, gallery.gig_id)
+        pro_profile = db.get(ProProfile, gig.pro_user_id) if gig else None
+        log_event(
+            db,
+            event_name="client.proofs_viewed",
+            user_id=user.user_id,
+            properties={"gallery_id": str(gallery.id), "gig_id": str(gallery.gig_id), "country": pro_profile.country if pro_profile else None, "city": pro_profile.city if pro_profile else None},
+        )
+        db.commit()
 
     return GalleryDetailResponse(gallery=_gallery_to_response(gallery), items=views)
 
@@ -755,6 +766,19 @@ def _ensure_upsell_intent(
             "extra_images": extras_count,
             "subtotal": str(subtotal),
             "total": str(payable_amount),
+        },
+    )
+    pro_profile = db.get(ProProfile, gig.pro_user_id)
+    log_event(
+        db,
+        event_name="client.extras_purchased",
+        user_id=gallery.client_user_id,
+        properties={
+            "gig_id": str(gig.id),
+            "selection_id": str(selection.id),
+            "extra_images": extras_count,
+            "country": pro_profile.country if pro_profile else None,
+            "city": pro_profile.city if pro_profile else None,
         },
     )
     if share_link_id:

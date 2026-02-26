@@ -15,6 +15,7 @@ from app.models.learning import Course, InstructorProfile, InstructorStatus
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.outbox import OutboxEvent
 from app.models.repair import RepairPartner, RepairPartnerScore
+from app.models.studioverse import ContentPack, ContentPackStatus
 from app.services.metrics import increment_index_event, increment_index_event_failure
 from app.services.outbox import enqueue_outbox_event
 from app.services.search_provider import get_index_name, get_search_provider, search_provider_enabled
@@ -40,6 +41,8 @@ INDEX_TOPIC_FIELD = {
     "index.product.delete": "product_id",
     "index.repair_partner.upsert": "partner_id",
     "index.repair_partner.delete": "partner_id",
+    "index.content_pack.upsert": "content_pack_id",
+    "index.content_pack.delete": "content_pack_id",
 }
 
 
@@ -71,6 +74,10 @@ def enqueue_product_index_upsert(db: Session, product_id: uuid.UUID, *, idempote
 
 def enqueue_repair_partner_index_upsert(db: Session, partner_id: uuid.UUID, *, idempotency_suffix: str | None = None) -> OutboxEvent | None:
     return enqueue_index_event(db, topic="index.repair_partner.upsert", entity_id=partner_id, idempotency_suffix=idempotency_suffix)
+
+
+def enqueue_content_pack_index_upsert(db: Session, content_pack_id: uuid.UUID, *, idempotency_suffix: str | None = None) -> OutboxEvent | None:
+    return enqueue_index_event(db, topic="index.content_pack.upsert", entity_id=content_pack_id, idempotency_suffix=idempotency_suffix)
 
 
 def process_index_event(db: Session, topic: str, payload: dict) -> None:
@@ -125,6 +132,17 @@ def process_index_event(db: Session, topic: str, payload: dict) -> None:
             return
         if topic == "index.repair_partner.delete":
             provider.delete_documents(get_index_name("repair_partners"), [payload["partner_id"]])
+            return
+        if topic == "index.content_pack.upsert":
+            content_pack_id = uuid.UUID(payload["content_pack_id"])
+            doc = build_content_pack_document(db, content_pack_id)
+            if doc is None:
+                provider.delete_documents(get_index_name("content_packs"), [str(content_pack_id)])
+            else:
+                provider.upsert_documents(get_index_name("content_packs"), [doc])
+            return
+        if topic == "index.content_pack.delete":
+            provider.delete_documents(get_index_name("content_packs"), [payload["content_pack_id"]])
             return
     except Exception:
         increment_index_event_failure(topic)
@@ -240,6 +258,27 @@ def build_repair_partner_document(db: Session, partner_id: uuid.UUID) -> dict | 
         "avg_turnaround_days": float(score.avg_turnaround_days) if score and score.avg_turnaround_days is not None else None,
         "loaner_fulfillment_rate": float(score.loaner_fulfillment_rate) if score and score.loaner_fulfillment_rate is not None else None,
     }
+
+
+def build_content_pack_document(db: Session, content_pack_id: uuid.UUID) -> dict | None:
+    row = db.get(ContentPack, content_pack_id)
+    if not row or row.status != ContentPackStatus.approved:
+        return None
+    creator = db.get(ProProfile, row.creator_user_id)
+    return {
+        "id": str(row.id),
+        "title": row.title,
+        "description": row.description,
+        "category": row.category.value,
+        "status": row.status.value,
+        "niche_slugs": row.niche_slugs or [],
+        "tags": row.tags or [],
+        "price_eur": float(row.price_eur) if row.price_eur is not None else None,
+        "price_raww": int(row.price_raww) if row.price_raww is not None else None,
+        "creator_name": creator.display_name if creator else None,
+        "rating": None,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
     return {
         "id": str(row.id),
         "name": row.name,
@@ -265,7 +304,7 @@ def provider_status() -> dict:
         "search_index_prefix": settings.search_index_prefix,
         "indexes": [],
     }
-    for key in ["pros", "courses", "products", "repair_partners"]:
+    for key in ["pros", "courses", "products", "repair_partners", "content_packs"]:
         index_name = get_index_name(key)
         try:
             stats = provider.index_stats(index_name)

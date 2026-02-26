@@ -101,6 +101,11 @@ class MeiliSearchProvider(SearchProvider):
                 "filterableAttributes": ["country", "city", "categories_supported", "brands_supported", "loaner_supported", "is_active"],
                 "sortableAttributes": ["updated_at", "sla_quote_hours", "sla_turnaround_days"],
             }
+        elif suffix == "content_packs" or index_name.endswith("_content_packs") or suffix == "packs":
+            settings_payload = {
+                "filterableAttributes": ["status", "category", "niche_slugs", "tags", "price_eur", "price_raww"],
+                "sortableAttributes": ["updated_at", "price_eur", "price_raww"],
+            }
         if not settings_payload:
             return
         resp = self.session.patch(

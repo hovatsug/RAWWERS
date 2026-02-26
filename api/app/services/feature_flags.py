@@ -19,11 +19,20 @@ DEFAULT_FLAG_KEYS = {
     "public_share_enabled",
     "downloads_enabled",
     "client_browsing_enabled",
+    "client_browsing_enabled_global",
+    "client_booking_enabled",
+    "guest_discovery_enabled",
     "pro_onboarding_enabled",
+    "ai_chat_enabled_global",
+    "ai_chat_enabled_city",
+    "ai_chat_enabled_pro",
+    "ai_chat_kill_switch",
 }
 
 DEFAULT_FLAG_STATE: dict[str, bool] = {
     "search_force_db_fallback": False,
+    "guest_discovery_enabled": False,
+    "ai_chat_kill_switch": False,
 }
 
 

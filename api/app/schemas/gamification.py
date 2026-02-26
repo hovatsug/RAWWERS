@@ -33,6 +33,8 @@ class MilestoneView(BaseModel):
     code: str
     name: str
     description: str
+    name_key: str | None = None
+    description_key: str | None = None
     scope: MilestoneScope
     niche_id: uuid.UUID | None = None
     difficulty: MilestoneDifficulty
@@ -92,6 +94,7 @@ class CurrentCycleResponse(BaseModel):
     cycle_id: uuid.UUID | None = None
     code: str | None = None
     name: str | None = None
+    name_key: str | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None
     my_points: int = 0
@@ -103,6 +106,8 @@ class AdminMilestoneUpsertRequest(BaseModel):
     code: str
     name: str
     description: str
+    name_key: str | None = None
+    description_key: str | None = None
     scope: MilestoneScope
     niche_id: uuid.UUID | None = None
     difficulty: MilestoneDifficulty
@@ -119,6 +124,7 @@ class AdminMilestoneUpsertRequest(BaseModel):
 class AdminCycleUpsertRequest(BaseModel):
     code: str
     name: str
+    name_key: str | None = None
     start_at: datetime
     end_at: datetime
     is_active: bool = True

@@ -54,6 +54,8 @@ DIFFICULTY_POINTS: dict[MilestoneDifficulty, int] = {
 DEFAULT_CLIENT_MILESTONES: list[dict[str, Any]] = [
     {
         "code": "client_first_consent",
+        "name_key": "gamification.milestones.client_first_consent.name",
+        "description_key": "gamification.milestones.client_first_consent.description",
         "name": "Set Your Consent",
         "description": "Set a media usage consent level for a gig.",
         "scope": MilestoneScope.global_scope,
@@ -63,6 +65,8 @@ DEFAULT_CLIENT_MILESTONES: list[dict[str, Any]] = [
     },
     {
         "code": "client_first_share",
+        "name_key": "gamification.milestones.client_first_share.name",
+        "description_key": "gamification.milestones.client_first_share.description",
         "name": "First Gallery Share",
         "description": "Reach your first engaged share viewers.",
         "scope": MilestoneScope.global_scope,
@@ -72,6 +76,8 @@ DEFAULT_CLIENT_MILESTONES: list[dict[str, Any]] = [
     },
     {
         "code": "client_reviews_started",
+        "name_key": "gamification.milestones.client_reviews_started.name",
+        "description_key": "gamification.milestones.client_reviews_started.description",
         "name": "Feedback Giver",
         "description": "Leave your first review.",
         "scope": MilestoneScope.global_scope,
@@ -193,12 +199,23 @@ def upsert_milestone(db: Session, body: dict[str, Any], actor_user_id: uuid.UUID
 
     milestone = db.execute(select(Milestone).where(Milestone.code == code)).scalar_one_or_none()
     if not milestone:
-        milestone = Milestone(code=code, name=code, description="", scope=MilestoneScope.global_scope, difficulty=MilestoneDifficulty.standard, criteria={})
+        milestone = Milestone(
+            code=code,
+            name=code,
+            description="",
+            name_key=f"gamification.milestones.{code}.name",
+            description_key=f"gamification.milestones.{code}.description",
+            scope=MilestoneScope.global_scope,
+            difficulty=MilestoneDifficulty.standard,
+            criteria={},
+        )
         db.add(milestone)
         db.flush()
 
     milestone.name = body["name"]
     milestone.description = body["description"]
+    milestone.name_key = body.get("name_key") or f"gamification.milestones.{code}.name"
+    milestone.description_key = body.get("description_key") or f"gamification.milestones.{code}.description"
     milestone.scope = scope
     milestone.niche_id = body.get("niche_id")
     milestone.difficulty = difficulty
@@ -234,11 +251,19 @@ def upsert_performance_cycle(db: Session, body: dict[str, Any], actor_user_id: u
 
     cycle = db.execute(select(PerformanceCycle).where(PerformanceCycle.code == code)).scalar_one_or_none()
     if not cycle:
-        cycle = PerformanceCycle(code=code, name=code, start_at=body["start_at"], end_at=body["end_at"], meta={})
+        cycle = PerformanceCycle(
+            code=code,
+            name=code,
+            name_key=f"gamification.seasons.{code}.name",
+            start_at=body["start_at"],
+            end_at=body["end_at"],
+            meta={},
+        )
         db.add(cycle)
         db.flush()
 
     cycle.name = body["name"]
+    cycle.name_key = body.get("name_key") or f"gamification.seasons.{code}.name"
     cycle.start_at = body["start_at"]
     cycle.end_at = body["end_at"]
     cycle.is_active = bool(body.get("is_active", True))
@@ -375,6 +400,8 @@ def ensure_default_client_milestones(db: Session) -> None:
                 code=payload["code"],
                 name=payload["name"],
                 description=payload["description"],
+                name_key=payload.get("name_key"),
+                description_key=payload.get("description_key"),
                 scope=payload["scope"],
                 niche_id=None,
                 difficulty=payload["difficulty"],
@@ -477,6 +504,7 @@ def get_current_cycle_payload(db: Session, user_id: uuid.UUID) -> dict[str, Any]
             "cycle_id": None,
             "code": None,
             "name": None,
+            "name_key": None,
             "start_at": None,
             "end_at": None,
             "my_points": 0,
@@ -500,6 +528,7 @@ def get_current_cycle_payload(db: Session, user_id: uuid.UUID) -> dict[str, Any]
         "cycle_id": cycle.id,
         "code": cycle.code,
         "name": cycle.name,
+        "name_key": cycle.name_key,
         "start_at": cycle.start_at,
         "end_at": cycle.end_at,
         "my_points": my_points,

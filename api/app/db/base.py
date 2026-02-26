@@ -154,5 +154,29 @@ from app.models.studioverse import (
     RoyaltyLedgerEntry,
     RoyaltyRule,
 )
+from app.models.proof_of_gigs import (
+    RawwClawback,
+    RawwIssuanceCap,
+    RawwIssuanceRule,
+    RawwMintEvent,
+    RawwMultiplierPolicy,
+)
+from app.models.payouts import (
+    EarningsBalanceSnapshot,
+    EarningsHold,
+    EarningsLedgerEntry,
+    PayoutAccount,
+    PayoutAllocation,
+    PayoutEvent,
+    PayoutRequest,
+    PlatformFeePolicy,
+    TaxProfile,
+)
+from app.models.i18n import (
+    I18nBundle,
+    I18nKeyAudit,
+    LocalizedText,
+    UserLocalePreference,
+)
 
 __all__ = ["Base"]

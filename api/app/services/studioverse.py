@@ -16,6 +16,7 @@ from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media_rights import GigConsentLevel, GigUsageConsent
 from app.models.ops import AbuseSeverity
 from app.models.reward import RewardEntryType
+from app.models.payouts import EarningsSourceType
 from app.models.studioverse import (
     ContentLicense,
     ContentPack,
@@ -39,6 +40,8 @@ from app.services.authz import ensure_user_account, get_user_roles
 from app.services.rewards import add_reward_entry
 from app.services.storage import create_presigned_get
 from app.services.stripe_service import map_intent_status, to_cents
+from app.services.proof_of_gigs import reverse_raww_mints_for_reference
+from app.services.payouts import reverse_earnings_entries_for_source
 
 settings = get_settings()
 
@@ -285,6 +288,18 @@ def reverse_paid_order(db: Session, *, order: ContentPackOrder, reason: str) -> 
                 reference_id=f"buyer:{order.id}",
                 metadata={"reason": reason},
             )
+    reverse_raww_mints_for_reference(
+        db,
+        reference_type="content_pack_order",
+        reference_id=order.id,
+        reason=f"studioverse_refund:{reason}",
+    )
+    reverse_earnings_entries_for_source(
+        db,
+        source_type=EarningsSourceType.studioverse_sale,
+        source_id=order.id,
+        reason=f"studioverse_refund:{reason}",
+    )
 
 
 def process_raww_credit_split(db: Session, *, order: ContentPackOrder, pack: ContentPack) -> None:

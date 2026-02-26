@@ -167,3 +167,34 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
                 properties={"thread_id": str(thread.id), "message_id": str(ai_message.id)},
             )
         return
+    if topic == "raww.mint":
+        from app.services.proof_of_gigs import process_raww_mint_event
+
+        process_raww_mint_event(db, payload=payload or {})
+        return
+    if topic == "raww.reverse_refund":
+        import uuid
+        from app.services.proof_of_gigs import reverse_raww_mints_for_refund
+
+        gig_id = payload.get("gig_id")
+        if gig_id:
+            reverse_raww_mints_for_refund(db, gig_id=uuid.UUID(gig_id), reason="refund_or_dispute")
+        return
+    if topic == "raww.milestone.scan":
+        from app.services.proof_of_gigs import enqueue_milestone_events
+
+        enqueue_milestone_events(db)
+        return
+    if topic == "earnings.settlement.scan":
+        from app.services.payouts import settle_due_earnings_entries
+
+        settle_due_earnings_entries(db, limit=int(payload.get("limit", 500)))
+        return
+    if topic == "payout.execute":
+        import uuid
+        from app.services.payouts import execute_payout_request
+
+        payout_request_id = payload.get("payout_request_id")
+        if payout_request_id:
+            execute_payout_request(db, payout_request_id=uuid.UUID(payout_request_id))
+        return

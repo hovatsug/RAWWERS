@@ -33,6 +33,9 @@ celery_app.conf.task_routes = {
     "app.tasks.dispute_tasks.escalate_disputes": {"queue": "media"},
     "app.tasks.dispute_tasks.initiate_refund": {"queue": "media"},
     "app.tasks.launch_ops_tasks.onboarding_ready_check": {"queue": "media"},
+    "app.tasks.proof_of_gigs_tasks.scan_studioverse_milestones": {"queue": "media"},
+    "app.tasks.payouts_tasks.enqueue_settlement_scan": {"queue": "media"},
+    "app.tasks.payouts_tasks.run_settlement_scan": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}
@@ -71,4 +74,4 @@ def on_task_failure(task_id=None, exception=None, sender=None, **_kwargs):  # pr
         increment_task_failures(sender.name)
 
 # Ensure task registration when worker boots.
-from app.tasks import call_tasks, discovery_tasks, dispute_tasks, followup_tasks, gamification_tasks, launch_ops_tasks, learning_tasks, media_tasks, outbox_tasks, reminder_tasks, repair_tasks, store_tasks  # noqa: E402,F401
+from app.tasks import call_tasks, discovery_tasks, dispute_tasks, followup_tasks, gamification_tasks, launch_ops_tasks, learning_tasks, media_tasks, outbox_tasks, payouts_tasks, proof_of_gigs_tasks, reminder_tasks, repair_tasks, store_tasks  # noqa: E402,F401

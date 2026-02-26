@@ -56,6 +56,7 @@ class MeResponse(BaseModel):
     email_verified_at: datetime | None = None
     status: str
     roles: list[UserRoleType] = Field(default_factory=list)
+    locale: str = "en-GB"
     is_impersonating: bool = False
     impersonation_admin_user_id: uuid.UUID | None = None
 
@@ -80,3 +81,12 @@ class RoleMutationRequest(BaseModel):
     add: list[UserRoleType] = Field(default_factory=list)
     remove: list[UserRoleType] = Field(default_factory=list)
     reason: str | None = None
+
+
+class LocalePreferenceView(BaseModel):
+    user_id: uuid.UUID
+    locale: str
+
+
+class LocalePreferenceUpdateRequest(BaseModel):
+    locale: str

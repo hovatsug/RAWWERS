@@ -38,6 +38,11 @@ ALLOWED_PREFIXES = (
     "ai.",
     "lead.",
     "studioverse.",
+    "raww.",
+    "earnings.",
+    "payout.",
+    "finance.",
+    "i18n.",
 )
 
 

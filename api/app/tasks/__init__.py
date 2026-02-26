@@ -6,3 +6,5 @@ from app.tasks import repair_tasks  # noqa: F401
 from app.tasks import outbox_tasks  # noqa: F401
 from app.tasks import dispute_tasks  # noqa: F401
 from app.tasks import launch_ops_tasks  # noqa: F401
+from app.tasks import proof_of_gigs_tasks  # noqa: F401
+from app.tasks import payouts_tasks  # noqa: F401

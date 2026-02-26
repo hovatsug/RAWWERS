@@ -13,6 +13,7 @@ from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose
 from app.models.review import Review, ReviewReply, ReviewStatus
 from app.models.admin import UserRole, UserRoleType
+from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.media import CurrentUser
 from app.schemas.review import (
     CreateReviewReplyRequest,
@@ -29,6 +30,7 @@ from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.reputation import recompute_pro_reputation
 from app.services.search_indexing import enqueue_pro_index_upsert
+from app.services.proof_of_gigs import enqueue_raww_mint
 from app.tasks.discovery_tasks import rebuild_pro_index
 
 settings = get_settings()
@@ -39,9 +41,9 @@ router = APIRouter(tags=["reviews"])
 def create_review_for_gig(
     gig_id: uuid.UUID,
     body: CreateReviewRequest,
+    request: Request,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
-    request: Request | None = None,
 ) -> ReviewView:
     enforce_named_rate_limit("reviews", principal=str(user.user_id))
     enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
@@ -96,6 +98,12 @@ def create_review_for_gig(
         event_name="review.created",
         user_id=user.user_id,
         properties={"review_id": str(review.id), "gig_id": str(gig.id), "pro_user_id": str(gig.pro_user_id)},
+    )
+    enqueue_raww_mint(
+        db,
+        event_type=RawwIssuanceEventType.review_posted,
+        payload={"review_id": str(review.id)},
+        idempotency_key=f"raww:review:{review.id}",
     )
     db.commit()
     db.refresh(review)

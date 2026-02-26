@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy import text
 
@@ -15,6 +16,13 @@ settings = get_settings()
 configure_logging(settings.log_level)
 
 app = FastAPI(title="RAWWERS API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allow_origin_list(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(JsonBodyLimitMiddleware)
 app.add_middleware(RequestContextMiddleware)
 register_error_handlers(app)

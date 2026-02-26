@@ -80,6 +80,28 @@ if _METRICS_ENABLED:
         "Notification deliveries by channel and outcome",
         ["channel", "outcome"],
     )
+    RAWW_MINT_EVENTS_TOTAL = Counter(
+        "raww_mint_events_total",
+        "Proof of gigs mint outcomes by event type and reason",
+        ["event_type", "status", "reason"],
+    )
+    RAWW_MINTED_AMOUNT_TOTAL = Counter(
+        "raww_minted_amount_total",
+        "Total RAWW minted by event type",
+        ["event_type"],
+    )
+    TOTAL_AVAILABLE_EUR = Gauge(
+        "total_available_eur",
+        "Total available earnings in EUR",
+    )
+    PAYOUT_VOLUME_DAILY = Counter(
+        "payout_volume_daily_eur",
+        "Total paid out volume in EUR",
+    )
+    DISPUTE_HOLD_AMOUNT = Gauge(
+        "dispute_hold_amount_eur",
+        "Total active dispute hold amount in EUR",
+    )
 else:  # pragma: no cover
     HTTP_REQUESTS_TOTAL = None
     HTTP_REQUEST_DURATION_SECONDS = None
@@ -94,6 +116,11 @@ else:  # pragma: no cover
     INDEX_EVENTS_TOTAL = None
     INDEX_EVENT_FAILURES_TOTAL = None
     NOTIFICATION_EVENTS_TOTAL = None
+    RAWW_MINT_EVENTS_TOTAL = None
+    RAWW_MINTED_AMOUNT_TOTAL = None
+    TOTAL_AVAILABLE_EUR = None
+    PAYOUT_VOLUME_DAILY = None
+    DISPUTE_HOLD_AMOUNT = None
 
 BUSINESS_EVENT_MAP = {
     "booking.request_created": "booking_request_created",
@@ -182,6 +209,32 @@ def increment_notification_event(channel: str, outcome: str) -> None:
     if not _METRICS_ENABLED:
         return
     NOTIFICATION_EVENTS_TOTAL.labels(channel=channel, outcome=outcome).inc()
+
+
+def observe_raww_mint(event_type: str, *, status: str, amount: int = 0, reason: str = "none") -> None:
+    if not _METRICS_ENABLED:
+        return
+    RAWW_MINT_EVENTS_TOTAL.labels(event_type=event_type, status=status, reason=reason).inc()
+    if status == "minted" and amount > 0:
+        RAWW_MINTED_AMOUNT_TOTAL.labels(event_type=event_type).inc(amount)
+
+
+def set_total_available_eur(amount: float) -> None:
+    if not _METRICS_ENABLED or TOTAL_AVAILABLE_EUR is None:
+        return
+    TOTAL_AVAILABLE_EUR.set(amount)
+
+
+def observe_payout_volume(amount: float) -> None:
+    if not _METRICS_ENABLED or PAYOUT_VOLUME_DAILY is None:
+        return
+    PAYOUT_VOLUME_DAILY.inc(max(0.0, amount))
+
+
+def set_dispute_hold_amount(amount: float) -> None:
+    if not _METRICS_ENABLED or DISPUTE_HOLD_AMOUNT is None:
+        return
+    DISPUTE_HOLD_AMOUNT.set(amount)
 
 
 def update_queue_depth(get_queues: Callable[[], list[str]] | None = None) -> None:

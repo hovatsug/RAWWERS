@@ -24,7 +24,17 @@ pro_ai_tone_enum = sa.Enum("premium", "friendly", "direct", name="pro_ai_tone", 
 def upgrade() -> None:
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
-        op.execute("ALTER TYPE chat_thread_status ADD VALUE IF NOT EXISTS 'pro_active'")
+        op.execute(
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'chat_thread_status') THEN
+                    ALTER TYPE chat_thread_status ADD VALUE IF NOT EXISTS 'pro_active';
+                END IF;
+            END
+            $$;
+            """
+        )
 
     op.alter_column("chat_thread", "client_user_id", existing_type=postgresql.UUID(as_uuid=True), nullable=True)
     op.add_column("chat_thread", sa.Column("session_id", sa.Text(), nullable=True))

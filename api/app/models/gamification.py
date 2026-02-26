@@ -66,6 +66,8 @@ class Milestone(Base):
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    name_key: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    description_key: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     scope: Mapped[MilestoneScope] = mapped_column(
         Enum(MilestoneScope, name="milestone_scope", native_enum=False),
         nullable=False,
@@ -133,6 +135,7 @@ class PerformanceCycle(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    name_key: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)

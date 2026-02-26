@@ -1,0 +1,8 @@
+{
+  "/login/page": "app/login/page.js",
+  "/discover/page": "app/discover/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/pro/inbox/page": "app/pro/inbox/page.js",
+  "/client/bookings/page": "app/client/bookings/page.js",
+  "/client/notifications/page": "app/client/notifications/page.js"
+}

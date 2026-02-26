@@ -11,6 +11,8 @@ from app.schemas.auth import (
     ImpersonationStartRequest,
     ImpersonationStartResponse,
     LoginRequest,
+    LocalePreferenceUpdateRequest,
+    LocalePreferenceView,
     LogoutRequest,
     MeResponse,
     PasswordResetConfirmRequest,
@@ -40,6 +42,7 @@ from app.services.auth_service import (
     resend_email_verification,
     start_impersonation,
 )
+from app.services.i18n import get_user_locale_preference, upsert_user_locale_preference
 from app.services.rate_limit import enforce_named_rate_limit
 
 router = APIRouter(tags=["auth"])
@@ -162,9 +165,31 @@ def me(
         email_verified_at=account.email_verified_at,
         status=account.status.value,
         roles=roles,
+        locale=get_user_locale_preference(db, user_id=user.user_id),
         is_impersonating=user.is_impersonating,
         impersonation_admin_user_id=user.impersonation_admin_user_id,
     )
+
+
+@router.get("/me/locale", response_model=LocalePreferenceView)
+def me_locale(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> LocalePreferenceView:
+    locale = get_user_locale_preference(db, user_id=user.user_id)
+    db.commit()
+    return LocalePreferenceView(user_id=user.user_id, locale=locale)
+
+
+@router.put("/me/locale", response_model=LocalePreferenceView)
+def update_me_locale(
+    body: LocalePreferenceUpdateRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> LocalePreferenceView:
+    row = upsert_user_locale_preference(db, user_id=user.user_id, locale=body.locale)
+    db.commit()
+    return LocalePreferenceView(user_id=row.user_id, locale=row.locale)
 
 
 @router.post("/me/upgrade-to-pro", response_model=UpgradeToProResponse)

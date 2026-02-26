@@ -42,6 +42,9 @@ from app.models.media import MediaAsset
 from app.models.niche import Niche, ProNicheSkill
 from app.models.discovery import AnalyticsEvent
 from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
+from app.models.payouts import EarningsSourceType
+from app.models.proof_of_gigs import RawwIssuanceEventType
+from app.models.proof_of_gigs import RawwIssuanceCap, RawwIssuanceRule, RawwMintEvent, RawwMultiplierPolicy
 from app.models.client_rewards_pricing import (
     ConsentRewardPolicy,
     ExtraImagePricingPolicy,
@@ -85,6 +88,15 @@ from app.schemas.admin import (
     ShareRewardGrantView,
     ShareRewardThresholdUpsertRequest,
     ShareRewardThresholdView,
+    RawwCapView,
+    RawwCapsUpdateRequest,
+    RawwClawbackRequest,
+    RawwClawbackResponse,
+    RawwIssuanceRulesUpdateRequest,
+    RawwIssuanceRuleView,
+    RawwMintEventView,
+    RawwMultiplierPolicyUpdateRequest,
+    RawwMultiplierPolicyView,
     UserDetailResponse,
     UserListItem,
     UserListResponse,
@@ -152,6 +164,7 @@ from app.services.disputes import (
     release_entitlement_hold,
 )
 from app.services.outbox import enqueue_outbox_event
+from app.services.payouts import create_earnings_entry, release_earnings_holds_for_source
 from app.services.launch_ops import (
     create_invite_wave,
     generate_invite_codes,
@@ -159,6 +172,7 @@ from app.services.launch_ops import (
     maybe_advance_to_ready_for_review,
     set_pro_onboarding_status,
 )
+from app.services.proof_of_gigs import enqueue_raww_mint, create_raww_clawback, ensure_default_raww_config, list_raww_mints
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -1031,6 +1045,20 @@ def admin_resolve_dispute(
             )
         ).scalars():
             release_entitlement_hold(db, hold)
+        if dispute.against_user_id and dispute.gig_id:
+            release_earnings_holds_for_source(
+                db,
+                pro_user_id=dispute.against_user_id,
+                source_type=EarningsSourceType.gig_base.value,
+                source_id=dispute.gig_id,
+            )
+        if dispute.against_user_id and dispute.extra_purchase_id:
+            release_earnings_holds_for_source(
+                db,
+                pro_user_id=dispute.against_user_id,
+                source_type=EarningsSourceType.extra_images.value,
+                source_id=dispute.extra_purchase_id,
+            )
     else:
         if refund_case:
             enqueue_outbox_event(
@@ -1124,6 +1152,23 @@ def update_gig_status(
     if gig.niche_id:
         recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
     queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
+    if body.status == GigStatus.completed:
+        enqueue_raww_mint(
+            db,
+            event_type=RawwIssuanceEventType.gig_completed,
+            payload={"gig_id": str(gig.id)},
+            idempotency_key=f"raww:gig_completed:{gig.id}",
+        )
+        payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
+        if payment and payment.status == PaymentStatus.succeeded:
+            create_earnings_entry(
+                db,
+                pro_user_id=gig.pro_user_id,
+                source_type=EarningsSourceType.gig_base,
+                source_id=gig.id,
+                gross_eur=Decimal(str(payment.amount)),
+                metadata={"gig_id": str(gig.id), "payment_intent_id": payment.stripe_payment_intent_id},
+            )
     db.commit()
     return {"gig_id": str(gig.id), "status": gig.status.value}
 
@@ -1922,6 +1967,165 @@ def put_share_fraud_settings_admin(
     )
     db.commit()
     return ShareFraudSettingsView(**values)
+
+
+@router.get("/raww/issuance-rules", response_model=list[RawwIssuanceRuleView])
+def list_raww_issuance_rules(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[RawwIssuanceRuleView]:
+    ensure_default_raww_config(db)
+    rows = db.execute(select(RawwIssuanceRule).order_by(RawwIssuanceRule.event_type.asc())).scalars().all()
+    return [RawwIssuanceRuleView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.put("/raww/issuance-rules", response_model=list[RawwIssuanceRuleView])
+def put_raww_issuance_rules(
+    body: RawwIssuanceRulesUpdateRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[RawwIssuanceRuleView]:
+    ensure_default_raww_config(db)
+    for item in body.items:
+        row = db.execute(select(RawwIssuanceRule).where(RawwIssuanceRule.event_type == item.event_type)).scalar_one_or_none()
+        if not row:
+            row = RawwIssuanceRule(event_type=item.event_type, base_raww=item.base_raww, min_eur_value=item.min_eur_value)
+            db.add(row)
+        row.base_raww = int(item.base_raww)
+        row.min_eur_value = item.min_eur_value
+        row.max_raww_per_event = item.max_raww_per_event
+        row.is_active = item.is_active
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="raww_issuance_rule",
+            target_id=item.event_type.value,
+            action="raww_issuance_rule_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+    db.commit()
+    return list_raww_issuance_rules(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/raww/multiplier-policy", response_model=RawwMultiplierPolicyView)
+def get_raww_multiplier_policy(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RawwMultiplierPolicyView:
+    ensure_default_raww_config(db)
+    row = db.execute(select(RawwMultiplierPolicy).where(RawwMultiplierPolicy.name == "default")).scalar_one()
+    return RawwMultiplierPolicyView.model_validate(row, from_attributes=True)
+
+
+@router.put("/raww/multiplier-policy", response_model=RawwMultiplierPolicyView)
+def put_raww_multiplier_policy(
+    body: RawwMultiplierPolicyUpdateRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RawwMultiplierPolicyView:
+    ensure_default_raww_config(db)
+    row = db.execute(select(RawwMultiplierPolicy).where(RawwMultiplierPolicy.name == "default")).scalar_one()
+    row.tier_multipliers = body.tier_multipliers or {}
+    row.rating_curve = body.rating_curve or {}
+    row.dispute_penalty = body.dispute_penalty or {}
+    row.refund_penalty_multiplier = body.refund_penalty_multiplier
+    row.abuse_block_threshold = body.abuse_block_threshold or {}
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="raww_multiplier_policy",
+        target_id=row.name,
+        action="raww_multiplier_policy_upsert",
+        metadata=body.model_dump(mode="json"),
+    )
+    db.commit()
+    db.refresh(row)
+    return RawwMultiplierPolicyView.model_validate(row, from_attributes=True)
+
+
+@router.get("/raww/caps", response_model=list[RawwCapView])
+def list_raww_caps(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[RawwCapView]:
+    ensure_default_raww_config(db)
+    rows = db.execute(select(RawwIssuanceCap).order_by(RawwIssuanceCap.scope.asc())).scalars().all()
+    return [RawwCapView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.put("/raww/caps", response_model=list[RawwCapView])
+def put_raww_caps(
+    body: RawwCapsUpdateRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[RawwCapView]:
+    ensure_default_raww_config(db)
+    for item in body.items:
+        row = db.execute(select(RawwIssuanceCap).where(RawwIssuanceCap.scope == item.scope)).scalar_one_or_none()
+        if not row:
+            row = RawwIssuanceCap(scope=item.scope, cap_raww=item.cap_raww)
+            db.add(row)
+        row.cap_raww = int(item.cap_raww)
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="raww_cap",
+            target_id=item.scope.value,
+            action="raww_cap_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+    db.commit()
+    return list_raww_caps(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/raww/mints", response_model=list[RawwMintEventView])
+def get_raww_mints(
+    pro_user_id: uuid.UUID | None = None,
+    event_type: str | None = None,
+    from_at: datetime | None = Query(default=None, alias="from"),
+    to_at: datetime | None = Query(default=None, alias="to"),
+    limit: int = Query(default=100, ge=1, le=500),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[RawwMintEventView]:
+    rows = list_raww_mints(
+        db,
+        pro_user_id=pro_user_id,
+        event_type=event_type,
+        from_at=from_at,
+        to_at=to_at,
+        limit=limit,
+    )
+    return [RawwMintEventView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.post("/raww/clawback", response_model=RawwClawbackResponse)
+def post_raww_clawback(
+    body: RawwClawbackRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RawwClawbackResponse:
+    row = create_raww_clawback(
+        db,
+        pro_user_id=body.pro_user_id,
+        reference_type=body.reference_type,
+        reference_id=body.reference_id,
+        amount_raww=body.amount_raww,
+        reason=body.reason,
+        created_by_admin_id=actor.user_id,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="raww_clawback",
+        target_id=str(row.id),
+        action="raww_clawback_created",
+        reason=body.reason,
+        metadata=body.model_dump(mode="json"),
+    )
+    db.commit()
+    db.refresh(row)
+    return RawwClawbackResponse.model_validate(row, from_attributes=True)
 
 
 def _course_list_item(course: Course, niche_slug: str) -> CourseListItem:

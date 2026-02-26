@@ -53,9 +53,9 @@ def my_referral_code(
 @router.post("/referrals/claim")
 def claim_referral(
     body: ReferralClaimRequest,
+    request: Request,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
-    request: Request | None = None,
 ) -> dict:
     enforce_named_rate_limit("referral_claims", principal=str(user.user_id))
     enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))

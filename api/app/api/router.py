@@ -24,6 +24,8 @@ from app.api.v1.studioverse import router as studioverse_router
 from app.api.v1.search import router as search_router
 from app.api.v1.scheduling import router as scheduling_router
 from app.api.v1.webhooks import router as webhooks_router
+from app.api.v1.payouts import router as payouts_router
+from app.api.v1.i18n import router as i18n_router
 
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(auth_router)
@@ -50,3 +52,5 @@ api_router.include_router(studioverse_router)
 api_router.include_router(search_router)
 api_router.include_router(scheduling_router)
 api_router.include_router(webhooks_router)
+api_router.include_router(payouts_router)
+api_router.include_router(i18n_router)

@@ -46,6 +46,7 @@ from app.services.authz import get_user_roles
 from app.services.analytics import log_event
 from app.services.reminders import cancel_proof_selection_reminders, schedule_proof_selection_reminders
 from app.services.followups import schedule_followups
+from app.services.metrics import observe_business_event
 from app.services.rewards import reserve_points_for_discount
 from app.services.storage import create_presigned_get
 
@@ -181,6 +182,7 @@ def publish_gallery(
     )
 
     db.commit()
+    observe_business_event("proof_gallery_published")
     return PublishGalleryResponse(ok=True, status=gallery.status)
 
 
@@ -330,6 +332,7 @@ def submit_selection(
     gallery.status = ProofGalleryStatus.selection_submitted
     cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
     db.commit()
+    observe_business_event("proof_selection_submitted")
     return SubmitSelectionResponse(
         selection_id=selection.id,
         selected_count=selected_count,

@@ -40,6 +40,17 @@ os.environ.setdefault("TELEPHONY_FROM_E164", "+351300000000")
 os.environ.setdefault("TELEPHONY_WEBHOOK_SECRET", "telephony-secret")
 os.environ.setdefault("CALL_RATE_LIMIT_PER_USER_PER_DAY", "2")
 os.environ.setdefault("CALL_RATE_LIMIT_PER_PRO_PER_DAY", "20")
+os.environ.setdefault("SEARCH_PROVIDER", "none")
+os.environ.setdefault("SEARCH_ENABLED", "true")
+os.environ.setdefault("SEARCH_INDEX_PREFIX", "rawwers_test")
+os.environ.setdefault("MEILI_URL", "http://localhost:7700")
+os.environ.setdefault("MEILI_API_KEY", "")
+os.environ.setdefault("AUTH_JWT_SECRET", "test-auth-secret")
+os.environ.setdefault("AUTH_ACCESS_TOKEN_TTL_MINUTES", "15")
+os.environ.setdefault("AUTH_REFRESH_TOKEN_TTL_DAYS", "30")
+os.environ.setdefault("AUTH_EMAIL_VERIFICATION_TTL_MINUTES", "30")
+os.environ.setdefault("AUTH_PASSWORD_RESET_TTL_MINUTES", "30")
+os.environ.setdefault("AUTH_DEV_BYPASS", "true")
 
 from app.api.deps import get_db_read_session, get_db_session, get_db_write_session
 from app.db.base import Base

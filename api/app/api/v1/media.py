@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db_session, require_not_banned
+from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.media import (
     MediaAsset,
@@ -35,12 +36,15 @@ from app.schemas.media import (
     UploadPayload,
 )
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.feature_flags import is_feature_enabled
 from app.services.mux import MuxClient
+from app.services.rate_limit import enforce_named_rate_limit
 from app.services.security import create_mux_playback_token
 from app.services.storage import create_presigned_get, create_presigned_put, generate_photo_storage_key
 from app.tasks.media_tasks import process_photo_variants
 
 router = APIRouter(prefix="/media", tags=["media"])
+settings = get_settings()
 
 
 @router.post("/photos/uploads", response_model=PhotoUploadCreateResponse)
@@ -49,8 +53,12 @@ def create_photo_upload(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> PhotoUploadCreateResponse:
+    enforce_named_rate_limit("uploads", principal=str(user.user_id))
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
     if body.purpose not in {MediaPurpose.proof, MediaPurpose.other, MediaPurpose.portfolio_reel, MediaPurpose.video_review}:
         raise APIError(code="validation_error", message="Unsupported purpose", status_code=422)
+    if body.content_type.lower() not in settings.allowed_upload_mime_type_set():
+        raise APIError(code="validation_error", message="Unsupported content_type", status_code=422)
 
     storage_key = generate_photo_storage_key(str(user.user_id), body.file_name)
     asset = MediaAsset(
@@ -104,6 +112,8 @@ def complete_photo_upload(
 
     if asset.status not in {MediaStatus.uploading, MediaStatus.created}:
         raise APIError(code="invalid_state", message="Photo upload cannot be completed from current state", status_code=409)
+    if body.byte_size and body.byte_size > settings.max_upload_bytes:
+        raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
 
     asset.status = MediaStatus.processing
     if body.byte_size is not None:
@@ -121,6 +131,10 @@ def create_mux_upload(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> MuxUploadCreateResponse:
+    enforce_named_rate_limit("uploads", principal=str(user.user_id))
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
+    if not is_feature_enabled(db, "video_uploads_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="Video uploads are temporarily disabled", status_code=503)
     if body.purpose not in {MediaPurpose.portfolio_reel, MediaPurpose.video_review}:
         raise APIError(code="validation_error", message="Video purpose must be portfolio_reel or video_review", status_code=422)
 

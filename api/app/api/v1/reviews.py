@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,10 +22,13 @@ from app.schemas.review import (
     ReviewReplyView,
     ReviewView,
 )
+from app.services.abuse import detect_review_fraud, strip_html
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
 from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.rate_limit import enforce_named_rate_limit
 from app.services.reputation import recompute_pro_reputation
+from app.services.search_indexing import enqueue_pro_index_upsert
 from app.tasks.discovery_tasks import rebuild_pro_index
 
 settings = get_settings()
@@ -38,7 +41,11 @@ def create_review_for_gig(
     body: CreateReviewRequest,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
+    request: Request | None = None,
 ) -> ReviewView:
+    enforce_named_rate_limit("reviews", principal=str(user.user_id))
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
+
     gig = db.get(Gig, gig_id)
     if not gig:
         raise APIError(code="not_found", message="Gig not found", status_code=404)
@@ -63,17 +70,27 @@ def create_review_for_gig(
         niche_id=gig.niche_id,
         rating=body.rating,
         tags=_normalize_tags(body.tags),
-        text=body.text,
+        text=strip_html(body.text).strip() if body.text else None,
         would_book_again=body.would_book_again,
         video_media_asset_id=body.video_media_asset_id,
         status=ReviewStatus.published,
     )
     db.add(review)
     db.flush()
+    if review.text and len(review.text) > settings.max_review_text_length:
+        raise APIError(code="validation_error", message="Review text too long", status_code=422)
+    detect_review_fraud(
+        db,
+        gig=gig,
+        reviewer_user_id=user.user_id,
+        created_at=review.created_at,
+        ip=_request_ip(request),
+    )
 
     recompute_pro_reputation(db, gig.pro_user_id)
     if gig.niche_id:
         recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+    enqueue_pro_index_upsert(db, gig.pro_user_id, idempotency_suffix="review_create")
     log_event(
         db,
         event_name="review.created",
@@ -131,7 +148,7 @@ def create_review_reply(
     if existing:
         raise APIError(code="already_exists", message="Review reply already exists", status_code=409)
 
-    reply_text = body.text.strip()
+    reply_text = strip_html(body.text).strip()
     if not reply_text:
         raise APIError(code="validation_error", message="Reply text cannot be empty", status_code=422)
 
@@ -173,6 +190,7 @@ def moderate_review(
     )
     recompute_pro_reputation(db, review.pro_user_id)
     recompute_pro_niche_skills(db, review.pro_user_id, review.niche_id)
+    enqueue_pro_index_upsert(db, review.pro_user_id, idempotency_suffix=f"review_moderate:{body.action.value}")
     if body.action in {ReviewStatus.hidden, ReviewStatus.removed}:
         log_event(
             db,
@@ -252,3 +270,12 @@ def _to_review_view(db: Session, review: Review, reply: ReviewReply | None) -> R
         updated_at=review.updated_at,
         reply=ReviewReplyView.model_validate(reply, from_attributes=True) if reply else None,
     )
+
+
+def _request_ip(request: Request | None) -> str | None:
+    if not request:
+        return None
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None

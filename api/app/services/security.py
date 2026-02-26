@@ -16,7 +16,7 @@ def verify_mux_webhook_signature(raw_body: bytes, signature_header: str | None) 
     secret = settings.mux_webhook_secret
 
     if not secret:
-        return settings.app_env != "production"
+        return False
 
     if not signature_header:
         return False

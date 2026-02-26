@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import datetime, time, timezone
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, JSON, Text, Time, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Text, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -71,6 +71,29 @@ class CallOutcome(str, enum.Enum):
 class NotificationStatus(str, enum.Enum):
     unread = "unread"
     read = "read"
+
+
+class NotificationSeverity(str, enum.Enum):
+    info = "info"
+    important = "important"
+    critical = "critical"
+
+
+class NotificationDigestMode(str, enum.Enum):
+    instant = "instant"
+    daily = "daily"
+    weekly = "weekly"
+
+
+class EmailMessageStatus(str, enum.Enum):
+    queued = "queued"
+    sent = "sent"
+    failed = "failed"
+
+
+class NotificationEventChannel(str, enum.Enum):
+    inapp = "inapp"
+    email = "email"
 
 
 class UserContact(Base):
@@ -227,16 +250,133 @@ class Notification(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    topic: Mapped[str] = mapped_column(Text, nullable=False, default="general", index=True)
+    type: Mapped[str] = mapped_column(Text, nullable=False, default="generic", index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    deep_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deep_link: Mapped[str | None] = mapped_column(Text, nullable=True)  # Legacy field.
+    action: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    severity: Mapped[NotificationSeverity] = mapped_column(
+        Enum(NotificationSeverity, name="notification_severity", native_enum=False),
+        nullable=False,
+        default=NotificationSeverity.info,
+    )
     status: Mapped[NotificationStatus] = mapped_column(
         Enum(NotificationStatus, name="notification_status", native_enum=False),
         nullable=False,
         default=NotificationStatus.unread,
     )
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preference"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    timezone_name: Mapped[str] = mapped_column("timezone", Text, nullable=False, default="Europe/Lisbon")
+    quiet_hours_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    quiet_start_local: Mapped[time | None] = mapped_column(Time(timezone=False), nullable=True)
+    quiet_end_local: Mapped[time | None] = mapped_column(Time(timezone=False), nullable=True)
+    channel_email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    channel_inapp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    digest_mode: Mapped[NotificationDigestMode] = mapped_column(
+        Enum(NotificationDigestMode, name="notification_digest_mode", native_enum=False),
+        nullable=False,
+        default=NotificationDigestMode.instant,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class NotificationTopicPreference(Base):
+    __tablename__ = "notification_topic_preference"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    topic: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    inapp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (UniqueConstraint("user_id", "topic", name="uq_notification_topic_preference_user_topic"),)
+
+
+class EmailMessage(Base):
+    __tablename__ = "email_message"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    to_email: Mapped[str] = mapped_column(Text, nullable=False)
+    template_key: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[EmailMessageStatus] = mapped_column(
+        Enum(EmailMessageStatus, name="email_message_status", native_enum=False),
+        nullable=False,
+        default=EmailMessageStatus.queued,
+    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dedupe_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class NotificationEvent(Base):
+    __tablename__ = "notification_event"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    topic: Mapped[str] = mapped_column(Text, nullable=False)
+    type: Mapped[str] = mapped_column(Text, nullable=False)
+    channel: Mapped[NotificationEventChannel] = mapped_column(
+        Enum(NotificationEventChannel, name="notification_event_channel", native_enum=False),
+        nullable=False,
+    )
+    reference_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reference_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dedupe_key: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (UniqueConstraint("channel", "dedupe_key", name="uq_notification_event_channel_dedupe"),)
+
+
+class ScheduledNotification(Base):
+    __tablename__ = "scheduled_notification"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    channel: Mapped[NotificationEventChannel] = mapped_column(
+        Enum(NotificationEventChannel, name="scheduled_notification_channel", native_enum=False),
+        nullable=False,
+        default=NotificationEventChannel.email,
+    )
+    send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    dedupe_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 Index("ix_followup_job_user_scheduled", FollowupJob.user_id, FollowupJob.scheduled_for)
 Index("ix_call_session_recipient_created", CallSession.recipient_user_id, CallSession.created_at.desc())
+Index("ix_notification_user_created", Notification.user_id, Notification.created_at.desc())
+Index("ix_notification_user_read", Notification.user_id, Notification.read_at)
+Index("ix_notification_event_user_created", NotificationEvent.user_id, NotificationEvent.created_at.desc())

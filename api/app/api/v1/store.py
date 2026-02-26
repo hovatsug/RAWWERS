@@ -46,6 +46,8 @@ from app.schemas.store import (
 )
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
+from app.services.feature_flags import is_feature_enabled
+from app.services.rate_limit import enforce_named_rate_limit
 from app.services.store import (
     can_access_pro_store,
     create_order_from_cart,
@@ -54,6 +56,7 @@ from app.services.store import (
     list_store_products,
     order_view_payload,
 )
+from app.services.search_indexing import enqueue_product_index_upsert
 from app.tasks.store_tasks import sync_partner_products_task
 
 router = APIRouter(tags=["store"])
@@ -64,6 +67,8 @@ def store_access(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> StoreAccessResponse:
+    if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="Store is temporarily disabled", status_code=503)
     result = can_access_pro_store(db, user.user_id)
     log_event(
         db,
@@ -87,6 +92,9 @@ def store_products(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> StoreProductListResponse:
+    if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="Store is temporarily disabled", status_code=503)
+    enforce_named_rate_limit("public_read", principal=str(user.user_id))
     access = can_access_pro_store(db, user.user_id)
     if not access["allowed"]:
         raise APIError(code="forbidden", message=f"Store access denied: {access['reason']}", status_code=403)
@@ -196,6 +204,9 @@ def store_checkout(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> StoreCheckoutResponse:
+    if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="Store is temporarily disabled", status_code=503)
+    enforce_named_rate_limit("payments", principal=str(user.user_id))
     order, payment, payment_intent_client_secret = create_order_from_cart(
         db,
         user_id=user.user_id,
@@ -346,6 +357,8 @@ def admin_store_product_create(
         shipping_estimate_days=body.shipping_estimate_days,
     )
     db.add(row)
+    db.flush()
+    enqueue_product_index_upsert(db, row.id, idempotency_suffix=row.updated_at.isoformat() if row.updated_at else "create")
     db.commit()
     db.refresh(row)
     return StoreProductView.model_validate(row, from_attributes=True)
@@ -376,6 +389,7 @@ def admin_store_product_update(
     row.stock_status = body.stock_status
     row.shipping_estimate_days = body.shipping_estimate_days
     row.updated_at = datetime.now(timezone.utc)
+    enqueue_product_index_upsert(db, row.id, idempotency_suffix=row.updated_at.isoformat())
     db.commit()
     db.refresh(row)
     return StoreProductView.model_validate(row, from_attributes=True)

@@ -5,10 +5,16 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.media import MediaPurpose, MediaVisibility
+from app.models.admin import UserRoleType
 
 
 class CurrentUser(BaseModel):
     user_id: uuid.UUID
+    roles: list[UserRoleType] = Field(default_factory=list)
+    is_impersonating: bool = False
+    impersonation_admin_user_id: uuid.UUID | None = None
+    impersonation_session_id: uuid.UUID | None = None
+    refresh_family_id: uuid.UUID | None = None
 
 
 class PhotoUploadCreateRequest(BaseModel):

@@ -45,6 +45,7 @@ from app.schemas.repair import (
 )
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
+from app.services.feature_flags import is_feature_enabled
 from app.services.repair import (
     can_access_gear_benefits,
     create_repair_event,
@@ -55,6 +56,7 @@ from app.services.repair import (
     transition_repair_ticket,
     validate_evidence_ownership,
 )
+from app.services.search_indexing import enqueue_repair_partner_index_upsert
 from app.tasks.repair_tasks import recompute_partner_score_task
 
 router = APIRouter(tags=["repairs"])
@@ -195,6 +197,8 @@ def request_loaner(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> LoanerRequestView:
+    if not is_feature_enabled(db, "loaners_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="Loaner requests are temporarily disabled", status_code=503)
     ticket = db.get(RepairTicket, ticket_id)
     if not ticket or ticket.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Ticket not found", status_code=404)
@@ -357,6 +361,7 @@ def admin_create_repair_partner(
     )
     db.add(row)
     db.flush()
+    enqueue_repair_partner_index_upsert(db, row.id, idempotency_suffix="create")
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="repair_partner", target_id=str(row.id), action="repair_partner_create", metadata={})
     db.commit()
     db.refresh(row)
@@ -390,6 +395,7 @@ def admin_update_repair_partner(
     row.contact = body.contact
     row.partner_terms = body.partner_terms
     row.updated_at = datetime.now(timezone.utc)
+    enqueue_repair_partner_index_upsert(db, row.id, idempotency_suffix=row.updated_at.isoformat())
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="repair_partner", target_id=str(row.id), action="repair_partner_update", metadata={})
     db.commit()
     db.refresh(row)
@@ -408,6 +414,7 @@ def admin_set_partner_active(
         raise APIError(code="not_found", message="Partner not found", status_code=404)
     row.is_active = is_active
     row.updated_at = datetime.now(timezone.utc)
+    enqueue_repair_partner_index_upsert(db, row.id, idempotency_suffix=row.updated_at.isoformat())
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="repair_partner", target_id=str(row.id), action="repair_partner_set_active", metadata={"is_active": is_active})
     db.commit()
     db.refresh(row)

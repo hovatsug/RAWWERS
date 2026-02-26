@@ -23,6 +23,8 @@ pyjwt = "^2.10.1"
 pillow = "^11.3.0"
 python-json-logger = "^3.3.0"
 stripe = "^12.5.0"
+prometheus-client = "^0.23.1"
+argon2-cffi = "^23.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"

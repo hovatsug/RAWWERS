@@ -38,6 +38,7 @@ from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, Rede
 from app.services.analytics import log_event
 from app.services.authz import enforce_not_banned, get_user_roles
 from app.services.rewards import apply_redemption_for_context, release_redemption_for_context, reserve_points_for_discount
+from app.services.search_indexing import enqueue_product_index_upsert
 from app.services.stripe_service import to_cents
 
 settings = get_settings()
@@ -367,6 +368,7 @@ def sync_partner_products(db: Session, partner_id: uuid.UUID) -> int:
         entries = [dict(row) for row in reader]
 
     seen_skus: set[str] = set()
+    touched_product_ids: set[uuid.UUID] = set()
     upserted = 0
     for row in entries:
         sku = str(row.get("partner_sku") or "").strip()
@@ -400,6 +402,7 @@ def sync_partner_products(db: Session, partner_id: uuid.UUID) -> int:
         product.attributes = attrs if isinstance(attrs, dict) else {}
         product.is_available = bool(row.get("is_available", True))
         product.updated_at = datetime.now(timezone.utc)
+        touched_product_ids.add(product.id)
         upserted += 1
 
     if bool((partner.api_config or {}).get("disable_missing", False)):
@@ -408,8 +411,11 @@ def sync_partner_products(db: Session, partner_id: uuid.UUID) -> int:
             if product.partner_sku not in seen_skus:
                 product.is_available = False
                 product.updated_at = datetime.now(timezone.utc)
+                touched_product_ids.add(product.id)
 
     db.flush()
+    for product_id in touched_product_ids:
+        enqueue_product_index_upsert(db, product_id, idempotency_suffix="sync")
     return upserted
 
 

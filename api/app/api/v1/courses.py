@@ -56,6 +56,7 @@ from app.services.learning import (
     validate_lesson_payload,
 )
 from app.services.niche_catalog import ensure_initial_niches, get_niche_by_slug
+from app.services.search_indexing import enqueue_course_index_upsert
 
 router = APIRouter(tags=["courses"])
 
@@ -371,6 +372,8 @@ def instructor_create_course(
         estimated_minutes=body.estimated_minutes,
     )
     db.add(course)
+    db.flush()
+    enqueue_course_index_upsert(db, course.id, idempotency_suffix="draft")
     db.commit()
     db.refresh(course)
     return _course_item(course, niche.slug)
@@ -409,6 +412,7 @@ def instructor_update_course(
         course.intro_video_media_asset_id = body.intro_video_media_asset_id
 
     course.updated_at = datetime.now(timezone.utc)
+    enqueue_course_index_upsert(db, course.id, idempotency_suffix=course.updated_at.isoformat())
     db.commit()
     db.refresh(course)
     niche = db.get(Niche, course.niche_id)
@@ -510,6 +514,7 @@ def instructor_publish_course(
     assert_course_publishable(db, course, user.user_id)
     course.is_published = True
     course.updated_at = datetime.now(timezone.utc)
+    enqueue_course_index_upsert(db, course.id, idempotency_suffix=course.updated_at.isoformat())
     db.commit()
     db.refresh(course)
     niche = db.get(Niche, course.niche_id)

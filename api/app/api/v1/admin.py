@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import stripe
@@ -33,14 +33,21 @@ from app.models.learning import (
 )
 from app.models.media import MediaAsset
 from app.models.niche import Niche, ProNicheSkill
+from app.models.discovery import AnalyticsEvent
+from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
 from app.schemas.admin import (
+    AbuseSignalView,
     AdminGigStatusUpdateRequest,
     AdminRefundCreateRequest,
     BanActionView,
     BanUpdateRequest,
     DisputeStatusUpdateRequest,
     DisputeView,
+    FeatureFlagUpsertRequest,
+    FeatureFlagView,
     KYCUpdateRequest,
+    OpsMetricsSummaryResponse,
+    ResolveAbuseSignalRequest,
     RefundCaseView,
     RoleUpdateRequest,
     UserDetailResponse,
@@ -66,6 +73,9 @@ from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.learning import replace_niche_program_requirements
 from app.tasks.niche_tasks import recompute_all_pro_niche_skills_task, recompute_pro_niche_skills_task
 from app.services.rewards import maybe_issue_pro_signup_referral_reward
+from app.services.cache import get_redis_client
+from app.services.feature_flags import upsert_feature_flag
+from app.services.auth_events import add_auth_event
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -203,6 +213,14 @@ def update_user_roles(
         action="update_roles",
         reason=body.reason,
         metadata={"add": [x.value for x in body.add], "remove": [x.value for x in body.remove]},
+    )
+    add_auth_event(
+        db,
+        event_type="role_changed",
+        user_id=user_id,
+        ip=None,
+        user_agent=None,
+        metadata={"actor_user_id": str(actor.user_id), "add": [x.value for x in body.add], "remove": [x.value for x in body.remove]},
     )
     db.commit()
 
@@ -781,6 +799,123 @@ def override_pro_niche_skill(
         "capability_score": skill.capability_score,
         "certification_score": skill.certification_score,
     }
+
+
+@router.get("/ops/metrics-summary", response_model=OpsMetricsSummaryResponse)
+def ops_metrics_summary(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> OpsMetricsSummaryResponse:
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    open_signals = db.execute(
+        select(func.count()).select_from(AbuseSignal).where(AbuseSignal.status == AbuseSignalStatus.open)
+    ).scalar_one()
+    webhook_failures = db.execute(
+        select(func.count()).select_from(WebhookSecurityLog).where(
+            WebhookSecurityLog.signature_valid.is_(False),
+            WebhookSecurityLog.received_at >= since,
+        )
+    ).scalar_one()
+    payment_failures = db.execute(
+        select(func.count()).select_from(StripePayment).where(
+            StripePayment.status == PaymentStatus.failed,
+            StripePayment.updated_at >= since,
+        )
+    ).scalar_one()
+    discover_events = db.execute(
+        select(func.count()).select_from(AnalyticsEvent).where(
+            AnalyticsEvent.event_name.like("discover.%"),
+            AnalyticsEvent.created_at >= since,
+        )
+    ).scalar_one()
+    queue_depth_media = 0
+    try:
+        queue_depth_media = int(get_redis_client().llen("media"))
+    except Exception:
+        queue_depth_media = 0
+    return OpsMetricsSummaryResponse(
+        open_abuse_signals=open_signals,
+        webhook_signature_failures_24h=webhook_failures,
+        payment_failures_24h=payment_failures,
+        discover_events_24h=discover_events,
+        queue_depth_media=queue_depth_media,
+    )
+
+
+@router.get("/abuse/signals", response_model=list[AbuseSignalView])
+def list_abuse_signals(
+    signal_type: str | None = None,
+    severity: AbuseSeverity | None = None,
+    status: AbuseSignalStatus | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[AbuseSignalView]:
+    stmt = select(AbuseSignal)
+    if signal_type:
+        stmt = stmt.where(AbuseSignal.signal_type == signal_type)
+    if severity:
+        stmt = stmt.where(AbuseSignal.severity == severity)
+    if status:
+        stmt = stmt.where(AbuseSignal.status == status)
+    rows = db.execute(stmt.order_by(AbuseSignal.created_at.desc()).limit(limit)).scalars().all()
+    return [AbuseSignalView.model_validate(item, from_attributes=True) for item in rows]
+
+
+@router.post("/abuse/signals/{signal_id}/resolve", response_model=AbuseSignalView)
+def resolve_abuse_signal(
+    signal_id: uuid.UUID,
+    body: ResolveAbuseSignalRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AbuseSignalView:
+    row = db.get(AbuseSignal, signal_id)
+    if not row:
+        raise APIError(code="not_found", message="Abuse signal not found", status_code=404)
+    row.status = body.status
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="abuse_signal",
+        target_id=str(row.id),
+        action="abuse_signal_status_update",
+        reason=body.reason,
+        metadata={"status": body.status.value},
+    )
+    db.commit()
+    db.refresh(row)
+    return AbuseSignalView.model_validate(row, from_attributes=True)
+
+
+@router.get("/feature-flags", response_model=list[FeatureFlagView])
+def list_feature_flags(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[FeatureFlagView]:
+    rows = db.execute(select(FeatureFlag).order_by(FeatureFlag.key.asc())).scalars().all()
+    return [FeatureFlagView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.put("/feature-flags/{key}", response_model=FeatureFlagView)
+def put_feature_flag(
+    key: str,
+    body: FeatureFlagUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> FeatureFlagView:
+    row = upsert_feature_flag(db, key=key, is_enabled=body.is_enabled, scope=body.scope, rules=body.rules)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="feature_flag",
+        target_id=key,
+        action="feature_flag_upsert",
+        reason=None,
+        metadata={"is_enabled": body.is_enabled, "scope": body.scope.value, "rules": body.rules},
+    )
+    db.commit()
+    db.refresh(row)
+    return FeatureFlagView.model_validate(row, from_attributes=True)
 
 
 def _course_list_item(course: Course, niche_slug: str) -> CourseListItem:

@@ -14,6 +14,7 @@ from app.models.admin import (
     UserRoleType,
 )
 from app.models.gig import GigStatus
+from app.models.ops import AbuseSeverity, AbuseSignalStatus, FeatureFlagScope
 
 
 class UserListItem(BaseModel):
@@ -133,3 +134,42 @@ class RefundCaseView(BaseModel):
     metadata: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+
+
+class OpsMetricsSummaryResponse(BaseModel):
+    open_abuse_signals: int
+    webhook_signature_failures_24h: int
+    payment_failures_24h: int
+    discover_events_24h: int
+    queue_depth_media: int
+
+
+class AbuseSignalView(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    ip_hash: str | None = None
+    signal_type: str
+    severity: AbuseSeverity
+    evidence: dict = Field(default_factory=dict)
+    status: AbuseSignalStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResolveAbuseSignalRequest(BaseModel):
+    status: AbuseSignalStatus = AbuseSignalStatus.resolved
+    reason: str | None = None
+
+
+class FeatureFlagView(BaseModel):
+    key: str
+    is_enabled: bool
+    scope: FeatureFlagScope
+    rules: dict = Field(default_factory=dict)
+    updated_at: datetime
+
+
+class FeatureFlagUpsertRequest(BaseModel):
+    is_enabled: bool
+    scope: FeatureFlagScope = FeatureFlagScope.global_scope
+    rules: dict = Field(default_factory=dict)

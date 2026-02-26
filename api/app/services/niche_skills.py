@@ -222,10 +222,12 @@ def recompute_pro_niche_skill(db: Session, pro_user_id: uuid.UUID, niche_id: uui
     db.flush()
 
     from app.services.gamification import queue_evaluate_user_milestones, queue_recompute_credentials
+    from app.services.search_indexing import enqueue_pro_index_upsert
 
     queue_recompute_credentials(pro_user_id, niche_id)
     if previous_tier != tier:
         queue_evaluate_user_milestones(pro_user_id, niche_id)
+    enqueue_pro_index_upsert(db, pro_user_id, idempotency_suffix=skill.updated_at.isoformat() if skill.updated_at else "now")
     return skill
 
 

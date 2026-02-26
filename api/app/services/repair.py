@@ -348,4 +348,7 @@ def recompute_partner_score(db: Session, partner_id: uuid.UUID) -> RepairPartner
     score.loaner_fulfillment_rate = _to_decimal((loaner_approved * 100.0 / loaner_requested), "0.01") if loaner_requested else None
     score.updated_at = datetime.now(timezone.utc)
     db.flush()
+    from app.services.search_indexing import enqueue_repair_partner_index_upsert
+
+    enqueue_repair_partner_index_upsert(db, partner_id, idempotency_suffix=score.updated_at.isoformat() if score.updated_at else "score")
     return score

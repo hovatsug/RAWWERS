@@ -1,4 +1,4 @@
-# RAWWERS API - Foundations v1-v16
+# RAWWERS API - Foundations v1-v20
 
 Backend foundations implemented:
 - v1: Media subsystem (R2 photos + Mux videos)
@@ -17,6 +17,10 @@ Backend foundations implemented:
 - v14: Pro-only commerce v0 (partner inventory, access gating, checkout, rewards discounts)
 - v15: Gear Continuity v0 (repair partners + loaner workflow, loyalty-gated)
 - v16: Multi-region + reliability (EU-primary writes, replica-safe reads, outbox webhooks, public cache)
+- v17: Observability + security hardening + abuse/fraud baseline
+- v18: Search + indexing v0 (pros, courses, products, repair partners)
+- v19: Auth + identity + RBAC v1 (JWT sessions, verification/reset, impersonation)
+- v20: Notifications + messaging v1 (in-app + email, preferences, templates, reliable delivery)
 
 ## Setup
 ```bash
@@ -43,6 +47,110 @@ make test
 - `TELEPHONY_WEBHOOK_SECRET`
 - `CALL_RATE_LIMIT_PER_USER_PER_DAY` (default `2`)
 - `CALL_RATE_LIMIT_PER_PRO_PER_DAY` (default `20`)
+- `MAX_JSON_BODY_BYTES` (default `1048576`)
+- `MAX_CHAT_MESSAGE_LENGTH` (default `2000`)
+- `MAX_REVIEW_TEXT_LENGTH` (default `2000`)
+- `MAX_UPLOAD_BYTES` (default `25000000`)
+- `ALLOWED_UPLOAD_MIME_TYPES` (CSV)
+- `RATE_LIMIT_PUBLIC_READ_PER_MIN`, `RATE_LIMIT_AUTH_MUTATION_PER_MIN`
+- `RATE_LIMIT_CHAT_MESSAGES_PER_MIN`, `RATE_LIMIT_REVIEWS_PER_DAY`
+- `RATE_LIMIT_REFERRAL_CLAIMS_PER_DAY`, `RATE_LIMIT_PAYMENTS_PER_HOUR`
+- `RATE_LIMIT_UPLOADS_PER_HOUR`, `RATE_LIMIT_ADMIN_PER_MIN`
+- `ADMIN_IP_ALLOWLIST` (optional CSV)
+- `ADMIN_API_KEYS` (optional CSV)
+- `SEARCH_PROVIDER`, `SEARCH_ENABLED`, `SEARCH_INDEX_PREFIX`
+- `MEILI_URL`, `MEILI_API_KEY`
+- `SEARCH_FALLBACK_CACHE_TTL_SECONDS`
+- `AUTH_JWT_SECRET`
+- `AUTH_ACCESS_TOKEN_TTL_MINUTES`, `AUTH_REFRESH_TOKEN_TTL_DAYS`
+- `AUTH_EMAIL_VERIFICATION_TTL_MINUTES`, `AUTH_PASSWORD_RESET_TTL_MINUTES`
+- `AUTH_DEV_BYPASS` (must be false in production)
+- `NOTIFICATION_DEFAULT_TIMEZONE` (default `Europe/Lisbon`)
+- `NOTIFICATION_CRITICAL_BYPASS_QUIET_HOURS` (default `true`)
+- `RATE_LIMIT_NOTIFICATIONS_EMAIL_PER_DAY` (default `20`)
+- `RATE_LIMIT_NOTIFICATIONS_INAPP_PER_DAY` (default `60`)
+- `RATE_LIMIT_NOTIFICATIONS_BURST_PER_MIN` (default `30`)
+
+## Foundation #17 Observability + Security + Abuse Baseline
+- Structured request logs with correlation (`request_id`) and response summary fields.
+- Prometheus metrics endpoint: `GET /metrics` with:
+  - HTTP totals and latency histograms
+  - Celery task duration/failure metrics
+  - Webhook verification counters
+  - Business event counters
+- Safe error responses with `request_id` in response payload.
+- Redis-backed rate limiting buckets:
+  - `public_read`, `auth_mutation`, `chat_messages`, `reviews`, `referral_claims`, `payments`, `uploads`, `admin`
+- Strict webhook signature auditing:
+  - `webhook_security_log` table for Stripe/Mux verification outcomes
+- Abuse signal baseline:
+  - `abuse_signal` table + admin triage endpoints
+- Kill switches / feature flags:
+  - `feature_flag` table
+  - `GET /v1/admin/feature-flags`
+  - `PUT /v1/admin/feature-flags/{key}`
+- Ops/admin APIs:
+  - `GET /v1/admin/ops/metrics-summary`
+  - `GET /v1/admin/abuse/signals`
+  - `POST /v1/admin/abuse/signals/{id}/resolve`
+
+### Webhook security notes
+- Stripe and Mux webhooks now persist verification outcomes (success/failure) with source IP and metadata.
+- Signature failures return safe error payloads and are counted in metrics for alerting.
+
+### Abuse handling notes
+- Deterministic baseline rules detect:
+  - repeated chat spam patterns
+  - suspicious referral concentration from same IP
+  - high-frequency discovery scraping signals
+  - repeated payment-failure anomalies
+- Signals are triaged through admin abuse endpoints and tracked in immutable admin audit logs on resolution actions.
+
+## Foundation #18 Search + Indexing v0
+- Public search endpoints:
+  - `GET /v1/search/pros`
+  - `GET /v1/search/courses`
+  - `GET /v1/search/products`
+  - `GET /v1/search/repair-partners`
+- Admin search ops:
+  - `GET /v1/admin/search/status`
+  - `POST /v1/admin/search/rebuild`
+  - `POST /v1/admin/search/purge` (requires `X-Confirm: YES`)
+- Incremental indexing runs through outbox topics (`index.*`) and dispatcher worker.
+- Safe degradation: automatic DB fallback when provider is down or fallback flag is forced.
+- Full docs: [`docs/search.md`](docs/search.md)
+
+## Foundation #19 Auth + Identity + RBAC v1
+- Bearer access token auth is supported across protected endpoints.
+- Refresh token rotation + reuse detection are enforced.
+- Email verification and password reset flows are outbox-backed:
+  - `email.verify.send`
+  - `email.reset.send`
+- Admin impersonation access tokens are short-lived and non-refreshable.
+- Local-only bypass via `X-User-Id` is available only when:
+  - `AUTH_DEV_BYPASS=true`
+  - `APP_ENV` is not `prod` / `production`
+- Full docs: [`docs/auth.md`](docs/auth.md)
+
+## Foundation #20 Notifications + Messaging v1
+- In-app notifications with read/unread state:
+  - `GET /v1/me/notifications`
+  - `POST /v1/me/notifications/{id}/read`
+  - `POST /v1/me/notifications/read-all`
+- Preferences by channel/topic:
+  - `GET/PUT /v1/me/notification-preferences`
+  - `GET/PUT /v1/me/notification-topic-preferences`
+- Outbox-backed delivery topics:
+  - `notify.create_inapp`
+  - `notify.send_email`
+- Delivery safeguards:
+  - dedupe keys
+  - per-user/channel rate limits
+  - quiet-hours scheduling (`scheduled_notification`)
+- Admin visibility + resend:
+  - `GET /v1/admin/notifications/logs`
+  - `POST /v1/admin/notifications/resend`
+- Full docs: [`docs/notifications.md`](docs/notifications.md)
 
 ## Foundation #16 Multi-Region + Reliability
 - Write path remains authoritative in EU primary DB.

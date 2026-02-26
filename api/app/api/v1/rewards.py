@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,8 +21,11 @@ from app.schemas.reward import (
     RewardLedgerResponse,
     RewardSpendRequest,
 )
+from app.services.abuse import detect_referral_abuse
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
+from app.services.feature_flags import is_feature_enabled
+from app.services.rate_limit import enforce_named_rate_limit
 from app.services.rewards import (
     claim_referral_code,
     create_manual_adjustment,
@@ -52,8 +55,17 @@ def claim_referral(
     body: ReferralClaimRequest,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
+    request: Request | None = None,
 ) -> dict:
+    enforce_named_rate_limit("referral_claims", principal=str(user.user_id))
+    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
     attribution = claim_referral_code(db, user.user_id, body.code)
+    detect_referral_abuse(
+        db,
+        referred_user_id=user.user_id,
+        referrer_user_id=attribution.referrer_user_id,
+        ip=_request_ip(request),
+    )
     reward_entry = maybe_issue_client_signup_referral_reward(db, user.user_id)
     log_event(
         db,
@@ -103,6 +115,9 @@ def reserve_reward_spend(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> DiscountRedemptionView:
+    enforce_named_rate_limit("payments", principal=str(user.user_id))
+    if not is_feature_enabled(db, "rewards_spend_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="Rewards spend is temporarily disabled", status_code=503)
     redemption = reserve_points_for_discount(
         db,
         user_id=user.user_id,
@@ -126,6 +141,15 @@ def reserve_reward_spend(
     )
     db.commit()
     return DiscountRedemptionView.model_validate(redemption, from_attributes=True)
+
+
+def _request_ip(request: Request | None) -> str | None:
+    if not request:
+        return None
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
 
 
 @router.get("/admin/rewards/rules", response_model=list[AdminRewardRuleView])

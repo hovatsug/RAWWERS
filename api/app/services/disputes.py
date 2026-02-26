@@ -35,12 +35,15 @@ from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurc
 from app.models.gig import Gig, GigStatus, StripePayment
 from app.models.media_rights import GigEntitlementType, GigMediaEntitlement
 from app.models.ops import AbuseSeverity
+from app.models.payouts import EarningsHoldReason, EarningsSourceType
 from app.models.reward import RewardEntryType, RewardLedgerEntry
 from app.services.abuse import create_abuse_signal
 from app.services.analytics import log_event
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.notifications import enqueue_notification
+from app.services.payouts import create_earnings_hold, release_earnings_holds_for_source, reverse_earnings_entries_for_source
 from app.services.rewards import add_reward_entry
+from app.services.proof_of_gigs import enqueue_raww_refund_reversal
 
 settings = get_settings()
 
@@ -257,6 +260,26 @@ def create_dispute(
 
     if gig and category in {DisputeCategory.fraud, DisputeCategory.billing, DisputeCategory.payment}:
         apply_entitlement_hold(db, gig_id=gig.id, user_id=gig.client_user_id, hold_type=EntitlementHoldType.downloads_frozen, reason="dispute_open")
+    if gig and against_user == gig.pro_user_id:
+        create_earnings_hold(
+            db,
+            pro_user_id=gig.pro_user_id,
+            reason=EarningsHoldReason.dispute_open,
+            amount_eur=None,
+            source_type=EarningsSourceType.gig_base.value,
+            source_id=gig.id,
+            created_by_admin_id=None,
+        )
+    elif extra_purchase and against_user == extra_purchase.pro_user_id:
+        create_earnings_hold(
+            db,
+            pro_user_id=extra_purchase.pro_user_id,
+            reason=EarningsHoldReason.dispute_open,
+            amount_eur=None,
+            source_type=EarningsSourceType.extra_images.value,
+            source_id=extra_purchase.id,
+            created_by_admin_id=None,
+        )
 
     log_event(
         db,
@@ -587,12 +610,37 @@ def finalize_refund_case_success(db: Session, *, stripe_refund_id: str) -> Refun
                 if hold:
                     release_entitlement_hold(db, hold)
                 apply_pro_quality_penalty(db, dispute=dispute, severity=ProQualityPenaltySeverity.medium)
+                release_earnings_holds_for_source(
+                    db,
+                    pro_user_id=dispute.against_user_id,
+                    source_type=EarningsSourceType.gig_base.value,
+                    source_id=dispute.gig_id,
+                )
+                reverse_earnings_entries_for_source(
+                    db,
+                    source_type=EarningsSourceType.gig_base,
+                    source_id=dispute.gig_id,
+                    reason=f"dispute_refund:{row.id}",
+                )
 
             # extra purchase entitlement revocation policy
             if dispute.extra_purchase_id and dispute.gig_id:
                 purchase = db.get(ExtraImagePurchase, dispute.extra_purchase_id)
                 if purchase:
                     purchase.status = ExtraImagePurchaseStatus.refunded
+                    if dispute.against_user_id:
+                        release_earnings_holds_for_source(
+                            db,
+                            pro_user_id=dispute.against_user_id,
+                            source_type=EarningsSourceType.extra_images.value,
+                            source_id=dispute.extra_purchase_id,
+                        )
+                    reverse_earnings_entries_for_source(
+                        db,
+                        source_type=EarningsSourceType.extra_images,
+                        source_id=dispute.extra_purchase_id,
+                        reason=f"dispute_refund:{row.id}",
+                    )
                     increment_entitlement_quantity(
                         db,
                         gig_id=dispute.gig_id,
@@ -602,6 +650,8 @@ def finalize_refund_case_success(db: Session, *, stripe_refund_id: str) -> Refun
                     )
 
     log_event(db, event_name="refund.succeeded", user_id=row.requested_by_user_id, properties={"refund_case_id": str(row.id)})
+    if row.gig_id:
+        enqueue_raww_refund_reversal(db, gig_id=row.gig_id, refund_case_id=row.id)
     db.flush()
     return row
 

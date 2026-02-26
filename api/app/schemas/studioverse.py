@@ -67,6 +67,7 @@ class StudioverseCreatorPackView(BaseModel):
     id: uuid.UUID
     title: str
     description: str
+    localized_fields: dict = Field(default_factory=dict)
     category: ContentPackCategory
     niche_slugs: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
@@ -93,6 +94,7 @@ class StudioverseMarketplacePackView(BaseModel):
     creator_name: str | None = None
     title: str
     description: str
+    localized_fields: dict = Field(default_factory=dict)
     category: ContentPackCategory
     niche_slugs: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)

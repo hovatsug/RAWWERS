@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_read_session, get_db_write_session, require_admin, require_not_banned
+from app.api.deps import get_db_read_session, get_db_write_session, get_locale, require_admin, require_not_banned
 from app.core.errors import APIError
 from app.models.admin import ProProfile, UserRoleType
 from app.models.studioverse import (
@@ -20,6 +20,7 @@ from app.models.studioverse import (
     ContentPackStatus,
     ContentPackTakedown,
 )
+from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.media import CurrentUser
 from app.schemas.studioverse import (
     StudioverseAdminPackListResponse,
@@ -65,6 +66,10 @@ from app.services.studioverse import (
     validate_review_transition,
     validate_submission_sources,
 )
+from app.services.proof_of_gigs import enqueue_raww_mint
+from app.services.payouts import create_earnings_entry
+from app.models.payouts import EarningsSourceType
+from app.services.i18n import get_localized_fields
 
 router = APIRouter(tags=["studioverse"])
 
@@ -101,7 +106,7 @@ def create_content_pack_draft(
     update_pack_sources(db, content_pack_id=row.id, sources=[item.model_dump() for item in body.sources])
     db.commit()
     db.refresh(row)
-    return _creator_pack_view(row)
+    return _creator_pack_view(db, row, locale="en-GB")
 
 
 @router.put("/studioverse/packs/{pack_id}", response_model=StudioverseCreatorPackView)
@@ -151,7 +156,7 @@ def update_content_pack_draft(
     pack.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(pack)
-    return _creator_pack_view(pack)
+    return _creator_pack_view(db, pack, locale="en-GB")
 
 
 @router.post("/studioverse/packs/{pack_id}/submit", response_model=StudioversePackSubmitResponse)
@@ -189,11 +194,12 @@ def submit_content_pack(
 @router.get("/studioverse/packs/mine", response_model=StudioversePackListResponse)
 def list_my_content_packs(
     user: CurrentUser = Depends(require_not_banned),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_read_session),
 ) -> StudioversePackListResponse:
     ensure_user_account(db, user.user_id)
     rows = query_creator_packs(db, creator_user_id=user.user_id)
-    return StudioversePackListResponse(total=len(rows), items=[_creator_pack_view(row) for row in rows])
+    return StudioversePackListResponse(total=len(rows), items=[_creator_pack_view(db, row, locale=locale) for row in rows])
 
 
 @router.get("/studioverse/packs", response_model=StudioverseMarketplaceListResponse)
@@ -204,6 +210,7 @@ def list_marketplace_packs(
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     user: CurrentUser = Depends(require_not_banned),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_read_session),
 ) -> StudioverseMarketplaceListResponse:
     if not is_feature_enabled(db, "client_browsing_enabled_global", user_id=user.user_id):
@@ -232,7 +239,7 @@ def list_marketplace_packs(
             pack = db.get(ContentPack, uuid.UUID(hit["id"]))
             if not pack or pack.status != ContentPackStatus.approved:
                 continue
-            items.append(_marketplace_pack_view(db, pack))
+            items.append(_marketplace_pack_view(db, pack, locale=locale))
     else:
         total, rows = list_marketplace_packs_db(
             db,
@@ -242,7 +249,7 @@ def list_marketplace_packs(
             limit=limit,
             offset=offset,
         )
-        items = [_marketplace_pack_view(db, row) for row in rows]
+        items = [_marketplace_pack_view(db, row, locale=locale) for row in rows]
 
     return StudioverseMarketplaceListResponse(total=total, items=items)
 
@@ -251,13 +258,14 @@ def list_marketplace_packs(
 def marketplace_pack_detail(
     pack_id: uuid.UUID,
     user: CurrentUser = Depends(require_not_banned),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_read_session),
 ) -> StudioverseMarketplacePackView:
     enforce_named_rate_limit("public_read", principal=str(user.user_id))
     row = db.get(ContentPack, pack_id)
     if not row or row.status != ContentPackStatus.approved:
         raise APIError(code="not_found", message="Pack not found", status_code=404)
-    return _marketplace_pack_view(db, row)
+    return _marketplace_pack_view(db, row, locale=locale)
 
 
 @router.post("/studioverse/packs/{pack_id}/checkout", response_model=StudioverseCheckoutResponse)
@@ -322,6 +330,20 @@ def checkout_content_pack(
     ):
         order.status = ContentPackOrderStatus.paid
         settle_paid_order(db, order=order)
+        create_earnings_entry(
+            db,
+            pro_user_id=pack.creator_user_id,
+            source_type=EarningsSourceType.studioverse_sale,
+            source_id=order.id,
+            gross_eur=order.price_eur_paid,
+            metadata={"content_pack_id": str(pack.id), "payment_method": body.payment_method.value},
+        )
+        enqueue_raww_mint(
+            db,
+            event_type=RawwIssuanceEventType.studioverse_pack_sold,
+            payload={"content_pack_order_id": str(order.id)},
+            idempotency_key=f"raww:pack_sold:{order.id}",
+        )
         log_event(
             db,
             event_name="studioverse.purchase_succeeded",
@@ -388,10 +410,11 @@ def download_content_pack(
 def admin_list_studioverse_packs(
     status: ContentPackStatus | None = Query(default=None),
     _: CurrentUser = Depends(require_admin),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_read_session),
 ) -> StudioverseAdminPackListResponse:
     rows = query_admin_packs(db, status=status)
-    return StudioverseAdminPackListResponse(total=len(rows), items=[_creator_pack_view(row) for row in rows])
+    return StudioverseAdminPackListResponse(total=len(rows), items=[_creator_pack_view(db, row, locale=locale) for row in rows])
 
 
 @router.post("/admin/studioverse/packs/{pack_id}/review", response_model=StudioverseCreatorPackView)
@@ -453,7 +476,7 @@ def admin_review_studioverse_pack(
     )
     db.commit()
     db.refresh(pack)
-    return _creator_pack_view(pack)
+    return _creator_pack_view(db, pack, locale="en-GB")
 
 
 @router.post("/admin/studioverse/packs/{pack_id}/takedown", response_model=StudioverseCreatorPackView)
@@ -488,14 +511,22 @@ def admin_takedown_studioverse_pack(
     )
     db.commit()
     db.refresh(pack)
-    return _creator_pack_view(pack)
+    return _creator_pack_view(db, pack, locale="en-GB")
 
 
-def _creator_pack_view(row: ContentPack) -> StudioverseCreatorPackView:
+def _creator_pack_view(db: Session, row: ContentPack, *, locale: str) -> StudioverseCreatorPackView:
+    localized = get_localized_fields(
+        db,
+        entity_type="content_pack",
+        entity_id=row.id,
+        locale=locale,
+        base_fields={"title": row.title, "description": row.description},
+    )
     return StudioverseCreatorPackView(
         id=row.id,
-        title=row.title,
-        description=row.description,
+        title=str(localized.get("title") or row.title),
+        description=str(localized.get("description") or row.description),
+        localized_fields={"title": localized.get("title"), "description": localized.get("description")},
         category=row.category,
         niche_slugs=row.niche_slugs or [],
         tags=row.tags or [],
@@ -512,14 +543,22 @@ def _creator_pack_view(row: ContentPack) -> StudioverseCreatorPackView:
     )
 
 
-def _marketplace_pack_view(db: Session, row: ContentPack) -> StudioverseMarketplacePackView:
+def _marketplace_pack_view(db: Session, row: ContentPack, *, locale: str) -> StudioverseMarketplacePackView:
     pro = db.get(ProProfile, row.creator_user_id)
+    localized = get_localized_fields(
+        db,
+        entity_type="content_pack",
+        entity_id=row.id,
+        locale=locale,
+        base_fields={"title": row.title, "description": row.description},
+    )
     return StudioverseMarketplacePackView(
         id=row.id,
         creator_user_id=row.creator_user_id,
         creator_name=pro.display_name if pro else None,
-        title=row.title,
-        description=row.description,
+        title=str(localized.get("title") or row.title),
+        description=str(localized.get("description") or row.description),
+        localized_fields={"title": localized.get("title"), "description": localized.get("description")},
         category=row.category,
         niche_slugs=row.niche_slugs or [],
         tags=row.tags or [],

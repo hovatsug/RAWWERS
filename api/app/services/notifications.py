@@ -29,6 +29,7 @@ from app.models.communication import (
 from app.services.metrics import increment_notification_event
 from app.services.outbox import enqueue_outbox_event
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.i18n import DEFAULT_LOCALE, get_user_locale_preference, t
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -62,6 +63,9 @@ class RenderedTemplate:
 
 _TEMPLATE_REGISTRY: dict[str, dict[str, str]] = {
     "booking.request_received": {
+        "subject_key": "notifications.booking.request_received.subject",
+        "title_key": "notifications.booking.request_received.title",
+        "body_key": "notifications.booking.request_received.body",
         "subject": "New booking request",
         "title": "New booking request",
         "body": "You received a booking request.",
@@ -167,9 +171,20 @@ _TEMPLATE_REGISTRY: dict[str, dict[str, str]] = {
         "body": "A client updated media usage consent for a gig.",
     },
     "consent.reminder": {
+        "subject_key": "notifications.consent.reminder.subject",
+        "title_key": "notifications.consent.reminder.title",
+        "body_key": "notifications.consent.reminder.body",
         "subject": "Set media consent",
         "title": "Media consent reminder",
         "body": "Please review your media usage consent preferences.",
+    },
+    "payout.requested": {
+        "subject_key": "notifications.payout.requested.subject",
+        "title_key": "notifications.payout.requested.title",
+        "body_key": "notifications.payout.requested.body",
+        "subject": "Payout request",
+        "title": "Payout request",
+        "body": "A pro submitted a payout request.",
     },
 }
 
@@ -179,19 +194,45 @@ def topic_for_type(notification_type: str) -> str:
     return TOPICS.get(prefix, "general")
 
 
-def render_template(notification_type: str, payload: dict | None = None) -> RenderedTemplate:
+def render_template(
+    db: Session | None,
+    notification_type: str,
+    payload: dict | None = None,
+    *,
+    locale: str = DEFAULT_LOCALE,
+) -> RenderedTemplate:
     payload = payload or {}
     raw = _TEMPLATE_REGISTRY.get(notification_type, {
         "subject": "Update from RAWWERS",
         "title": "New update",
         "body": "You have a new notification.",
     })
+    subject_key = str(raw.get("subject_key") or f"notifications.{notification_type}.subject")
+    title_key = str(raw.get("title_key") or f"notifications.{notification_type}.title")
+    body_key = str(raw.get("body_key") or f"notifications.{notification_type}.body")
+    subject = str(raw.get("subject", "Update from RAWWERS"))
+    title = str(raw.get("title", "Update"))
+    body = str(raw.get("body", ""))
+    if db is not None:
+        try:
+            subject_candidate = t(db, subject_key, locale=locale, namespace="notifications", **payload)
+            title_candidate = t(db, title_key, locale=locale, namespace="notifications", **payload)
+            body_candidate = t(db, body_key, locale=locale, namespace="notifications", **payload)
+            if subject_candidate != subject_key:
+                subject = subject_candidate
+            if title_candidate != title_key:
+                title = title_candidate
+            if body_candidate != body_key:
+                body = body_candidate
+        except APIError:
+            # Translation format mismatch should not block notification delivery.
+            pass
     action = _sanitize_action(payload.get("action") or {})
     return RenderedTemplate(
         template_key=notification_type,
-        subject=str(raw.get("subject", "Update from RAWWERS"))[:255],
-        title=str(payload.get("title") or raw.get("title") or "Update")[:255],
-        body=str(payload.get("body") or raw.get("body") or "")[:5000],
+        subject=str(payload.get("subject") or subject)[:255],
+        title=str(payload.get("title") or title)[:255],
+        body=str(payload.get("body") or body)[:5000],
         action=action,
     )
 
@@ -416,7 +457,8 @@ def _create_inapp_from_payload(db: Session, payload: dict) -> str:
         increment_notification_event("inapp", "rate_limited")
         return "rate_limited"
 
-    rendered = render_template(notification_type, payload.get("payload") or {})
+    locale = str(payload.get("locale") or get_user_locale_preference(db, user_id=user_id))
+    rendered = render_template(db, notification_type, payload.get("payload") or {}, locale=locale)
     severity = _parse_severity(payload.get("severity"))
     row = Notification(
         user_id=user_id,
@@ -508,7 +550,8 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
         increment_notification_event("email", "rate_limited")
         return "rate_limited"
 
-    rendered = render_template(notification_type, payload.get("payload") or {})
+    locale = str(payload.get("locale") or (get_user_locale_preference(db, user_id=user_id) if user_id else DEFAULT_LOCALE))
+    rendered = render_template(db, notification_type, payload.get("payload") or {}, locale=locale)
     provider = get_mail_provider()
     if existing_email is None:
         row = EmailMessage(

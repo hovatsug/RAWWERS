@@ -13,6 +13,7 @@ from app.models.admin import UserRoleType
 from app.schemas.media import CurrentUser
 from app.services.auth_events import add_auth_event
 from app.services.auth_service import decode_access
+from app.services.i18n import get_user_locale_preference
 from app.services.authz import enforce_not_banned, ensure_user_account, get_user_roles, require_kyc_approved_for_pro
 from app.services.rate_limit import enforce_named_rate_limit
 
@@ -40,6 +41,9 @@ def get_current_user(
                 roles.append(UserRoleType(value))
             except Exception:
                 continue
+        preferred_locale = get_user_locale_preference(db, user_id=user_id, fallback_to_default=False)
+        if preferred_locale:
+            request.state.locale = preferred_locale
         return CurrentUser(
             user_id=user_id,
             roles=roles,
@@ -65,6 +69,9 @@ def get_current_user(
             metadata={"path": request.url.path},
         )
         db.commit()
+        preferred_locale = get_user_locale_preference(db, user_id=user_id, fallback_to_default=False)
+        if preferred_locale:
+            request.state.locale = preferred_locale
         return CurrentUser(user_id=user_id, roles=list(get_user_roles(db, user_id)))
 
     raise APIError(code="unauthorized", message="Missing bearer token", status_code=401)
@@ -152,3 +159,7 @@ def _request_ip(request: Request) -> str | None:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else None
+
+
+def get_locale(request: Request) -> str:
+    return str(getattr(request.state, "locale", "en-GB"))

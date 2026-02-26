@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, require_admin, require_not_banned
+from app.api.deps import get_db_session, get_locale, require_admin, require_not_banned
 from app.models.gamification import Milestone, MilestoneCompletion, MilestoneProgress, ProCredential
 from app.schemas.gamification import (
     AdminCycleUpsertRequest,
@@ -28,6 +28,7 @@ from app.services.gamification import (
     upsert_milestone,
     upsert_performance_cycle,
 )
+from app.services.i18n import t
 
 router = APIRouter(tags=["gamification"])
 
@@ -50,6 +51,7 @@ def my_credentials(
 @router.get("/me/game/quests", response_model=MyMilestonesResponse)
 def my_milestones(
     user: CurrentUser = Depends(require_not_banned),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_session),
 ) -> MyMilestonesResponse:
     evaluate_user_milestones(db, user.user_id)
@@ -69,7 +71,7 @@ def my_milestones(
         ).one()
         items.append(
             MyMilestoneItem(
-                milestone=MilestoneView.model_validate(milestone, from_attributes=True),
+                milestone=_localized_milestone_view(db, milestone, locale=locale),
                 progress=MilestoneProgressView(
                     milestone_id=progress.milestone_id,
                     status=progress.status,
@@ -91,6 +93,7 @@ def my_milestones(
 @router.get("/me/game/seasons/current", response_model=CurrentCycleResponse)
 def my_current_cycle(
     user: CurrentUser = Depends(require_not_banned),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_session),
 ) -> CurrentCycleResponse:
     payload = get_current_cycle_payload(db, user.user_id)
@@ -98,7 +101,8 @@ def my_current_cycle(
     return CurrentCycleResponse(
         cycle_id=payload["cycle_id"],
         code=payload["code"],
-        name=payload["name"],
+        name=_localized_cycle_name(db, payload["name"], payload.get("name_key"), locale=locale),
+        name_key=payload.get("name_key"),
         start_at=payload["start_at"],
         end_at=payload["end_at"],
         my_points=payload["my_points"],
@@ -133,12 +137,56 @@ def admin_upsert_cycle(
         cycle_id=cycle.id,
         code=cycle.code,
         name=cycle.name,
+        name_key=cycle.name_key,
         start_at=cycle.start_at,
         end_at=cycle.end_at,
         my_points=0,
         leaderboard=[],
         recent_events=[],
     )
+
+
+def _localized_milestone_view(db: Session, milestone: Milestone, *, locale: str) -> MilestoneView:
+    name = milestone.name
+    description = milestone.description
+    if milestone.name_key:
+        translated = t(db, milestone.name_key, locale=locale, namespace="gamification")
+        if translated != milestone.name_key:
+            name = translated
+    if milestone.description_key:
+        translated = t(db, milestone.description_key, locale=locale, namespace="gamification")
+        if translated != milestone.description_key:
+            description = translated
+    return MilestoneView(
+        id=milestone.id,
+        code=milestone.code,
+        name=name,
+        description=description,
+        name_key=milestone.name_key,
+        description_key=milestone.description_key,
+        scope=milestone.scope,
+        niche_id=milestone.niche_id,
+        difficulty=milestone.difficulty,
+        audience=milestone.audience,
+        is_repeatable=milestone.is_repeatable,
+        cooldown_days=milestone.cooldown_days,
+        start_at=milestone.start_at,
+        end_at=milestone.end_at,
+        criteria=milestone.criteria or {},
+        reward_rule_code=milestone.reward_rule_code,
+        is_active=milestone.is_active,
+        created_at=milestone.created_at,
+        updated_at=milestone.updated_at,
+    )
+
+
+def _localized_cycle_name(db: Session, base_name: str | None, name_key: str | None, *, locale: str) -> str | None:
+    if not name_key:
+        return base_name
+    translated = t(db, name_key, locale=locale, namespace="gamification")
+    if translated == name_key:
+        return base_name
+    return translated
 
 
 @router.post("/admin/gamification/recompute")

@@ -11,6 +11,7 @@ from starlette.responses import Response
 
 from app.core.config import get_settings
 from app.core.request_context import clear_request_context, set_request_context
+from app.services.i18n import resolve_locale_from_accept_language
 from app.services.metrics import monotonic_seconds, observe_http
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         user_id = request.headers.get("x-user-id")
         tenant_id = request.headers.get("x-tenant-id")
+        request.state.locale = resolve_locale_from_accept_language(request.headers.get("accept-language"))
 
         request.state.request_id = request_id
         set_request_context(request_id=request_id, user_id=user_id, tenant_id=tenant_id)

@@ -24,6 +24,7 @@ from app.models.media import MediaAsset, MediaProvider, MediaStatus
 from app.models.media_rights import GigEntitlementType
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
 from app.models.admin import ProProfile
+from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.webhooks import WebhookAckResponse
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
@@ -48,6 +49,9 @@ from app.services.media_rights import increment_entitlement_quantity
 from app.services.client_rewards_pricing import increment_share_link_conversion
 from app.services.disputes import finalize_refund_case_failed, finalize_refund_case_success
 from app.services.disputes import upsert_delivery_sla_snapshot
+from app.services.proof_of_gigs import enqueue_raww_mint, enqueue_raww_refund_reversal
+from app.services.payouts import create_earnings_entry, reverse_earnings_entries_for_source
+from app.models.payouts import EarningsSourceType
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
@@ -232,6 +236,20 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 snapshot.status = ExtraImagePurchaseStatus.paid
                 if snapshot.share_link_id:
                     increment_share_link_conversion(db, share_link_id=snapshot.share_link_id, count=1)
+                create_earnings_entry(
+                    db,
+                    pro_user_id=snapshot.pro_user_id,
+                    source_type=EarningsSourceType.extra_images,
+                    source_id=snapshot.id,
+                    gross_eur=Decimal(str(snapshot.total or 0)),
+                    metadata={"gig_id": str(snapshot.gig_id)},
+                )
+                enqueue_raww_mint(
+                    db,
+                    event_type=RawwIssuanceEventType.gig_extras_purchased,
+                    payload={"extra_purchase_id": str(snapshot.id)},
+                    idempotency_key=f"raww:gig_extras:{snapshot.id}",
+                )
             increment_entitlement_quantity(
                 db,
                 gig_id=gallery.gig_id,
@@ -240,6 +258,12 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 delta=upsell.extra_count,
             )
             upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
+            enqueue_raww_mint(
+                db,
+                event_type=RawwIssuanceEventType.gig_delivery_confirmed,
+                payload={"gig_id": str(gig.id)},
+                idempotency_key=f"raww:gig_delivery_confirmed:{gig.id}",
+            )
             observe_business_event("upsell_purchase_succeeded")
             redemption = apply_redemption_for_context(db, RedemptionContextType.upsell_purchase, upsell.id)
             if redemption:
@@ -521,6 +545,12 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             ).scalar_one_or_none()
             if snapshot:
                 snapshot.status = ExtraImagePurchaseStatus.refunded
+                reverse_earnings_entries_for_source(
+                    db,
+                    source_type=EarningsSourceType.extra_images,
+                    source_id=snapshot.id,
+                    reason="stripe_refund",
+                )
             return
 
         payment = db.execute(
@@ -537,6 +567,13 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         if gig.status != GigStatus.refunded:
             transition = transition_gig(gig, GigStatus.refunded, SYSTEM_USER_ID, reason="Stripe refund succeeded")
             db.add(transition)
+        enqueue_raww_refund_reversal(db, gig_id=gig.id)
+        reverse_earnings_entries_for_source(
+            db,
+            source_type=EarningsSourceType.gig_base,
+            source_id=gig.id,
+            reason="stripe_refund",
+        )
 
         ref_id = refund_id or f"refund:{payment_intent_id}"
         if not _ledger_reference_exists(db, gig.id, LedgerEntryType.refund_succeeded, ref_id):

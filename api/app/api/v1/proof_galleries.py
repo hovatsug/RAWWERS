@@ -27,6 +27,7 @@ from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaVariant, ObjectStatus
 from app.models.media_rights import GigEntitlementType, MediaDerivativeKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
+from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.gallery import (
     AddGalleryItemsRequest,
     CreateProofGalleryRequest,
@@ -59,6 +60,7 @@ from app.services.client_rewards_pricing import (
 from app.services.media_rights import upsert_gig_entitlement
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
+from app.services.proof_of_gigs import enqueue_raww_mint
 
 settings = get_settings()
 router = APIRouter(tags=["proof_galleries"])
@@ -403,6 +405,12 @@ def submit_selection(
     gig = db.get(Gig, gallery.gig_id)
     if gig:
         upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
+        enqueue_raww_mint(
+            db,
+            event_type=RawwIssuanceEventType.gig_delivery_confirmed,
+            payload={"gig_id": str(gig.id)},
+            idempotency_key=f"raww:gig_delivery_confirmed:{gig.id}",
+        )
     cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
     db.commit()
     observe_business_event("proof_selection_submitted")

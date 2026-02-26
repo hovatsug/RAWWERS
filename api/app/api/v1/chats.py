@@ -99,9 +99,9 @@ def get_chat_thread(
 def append_chat_message(
     thread_id: uuid.UUID,
     body: ChatMessageCreateRequest,
+    request: Request,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
-    request: Request | None = None,
 ) -> ChatMessagesAppendResponse:
     enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
     enforce_named_rate_limit("chat_messages", principal=str(user.user_id))

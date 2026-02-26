@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_not_banned
+from app.api.deps import get_db_read_session, get_db_session, get_locale, get_optional_current_user, require_not_banned
 from app.core.errors import APIError
 from app.models.learning import (
     Certificate,
@@ -57,6 +57,7 @@ from app.services.learning import (
 )
 from app.services.niche_catalog import ensure_initial_niches, get_niche_by_slug
 from app.services.search_indexing import enqueue_course_index_upsert
+from app.services.i18n import get_localized_fields
 
 router = APIRouter(tags=["courses"])
 
@@ -69,6 +70,7 @@ def list_courses(
     free_only: bool = False,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_read_session),
 ) -> CourseListResponse:
     ensure_initial_niches(db)
@@ -88,13 +90,14 @@ def list_courses(
     total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     rows = db.execute(stmt.order_by(Course.updated_at.desc()).offset(offset).limit(limit)).scalars().all()
     niche_map = _niche_slug_map(db, [item.niche_id for item in rows])
-    return CourseListResponse(total=total, items=[_course_item(item, niche_map.get(item.niche_id, "")) for item in rows])
+    return CourseListResponse(total=total, items=[_course_item(db, item, niche_map.get(item.niche_id, ""), locale=locale) for item in rows])
 
 
 @router.get("/courses/{course_id}", response_model=CourseDetailResponse)
 def get_course(
     course_id: uuid.UUID,
     user: CurrentUser | None = Depends(get_optional_current_user),
+    locale: str = Depends(get_locale),
     db: Session = Depends(get_db_read_session),
 ) -> CourseDetailResponse:
     if user:
@@ -156,7 +159,7 @@ def get_course(
         for module in modules
     ]
     return CourseDetailResponse(
-        course=_course_item(course, niche.slug if niche else ""),
+        course=_course_item(db, course, niche.slug if niche else "", locale=locale),
         modules=module_views,
         is_enrolled=enrolled,
     )
@@ -376,7 +379,7 @@ def instructor_create_course(
     enqueue_course_index_upsert(db, course.id, idempotency_suffix="draft")
     db.commit()
     db.refresh(course)
-    return _course_item(course, niche.slug)
+    return _course_item(db, course, niche.slug, locale="en-GB")
 
 
 @router.put("/instructor/courses/{course_id}", response_model=CourseListItem)
@@ -416,7 +419,7 @@ def instructor_update_course(
     db.commit()
     db.refresh(course)
     niche = db.get(Niche, course.niche_id)
-    return _course_item(course, niche.slug if niche else "")
+    return _course_item(db, course, niche.slug if niche else "", locale="en-GB")
 
 
 @router.post("/instructor/courses/{course_id}/modules", response_model=CourseModuleView)
@@ -518,15 +521,23 @@ def instructor_publish_course(
     db.commit()
     db.refresh(course)
     niche = db.get(Niche, course.niche_id)
-    return _course_item(course, niche.slug if niche else "")
+    return _course_item(db, course, niche.slug if niche else "", locale="en-GB")
 
 
-def _course_item(course: Course, niche_slug: str) -> CourseListItem:
+def _course_item(db: Session, course: Course, niche_slug: str, *, locale: str) -> CourseListItem:
+    localized = get_localized_fields(
+        db,
+        entity_type="course",
+        entity_id=course.id,
+        locale=locale,
+        base_fields={"title": course.title, "summary": course.summary},
+    )
     return CourseListItem(
         id=course.id,
         instructor_user_id=course.instructor_user_id,
-        title=course.title,
-        summary=course.summary,
+        title=str(localized.get("title") or course.title),
+        summary=(str(localized.get("summary")) if localized.get("summary") is not None else course.summary),
+        localized_fields={"title": localized.get("title"), "summary": localized.get("summary")},
         niche_slug=niche_slug,
         level=course.level,
         is_mandatory=course.is_mandatory,

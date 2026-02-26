@@ -22,6 +22,7 @@ class CourseListItem(BaseModel):
     instructor_user_id: uuid.UUID
     title: str
     summary: str | None = None
+    localized_fields: dict[str, str | None] = Field(default_factory=dict)
     niche_slug: str
     level: CourseLevel
     is_mandatory: bool

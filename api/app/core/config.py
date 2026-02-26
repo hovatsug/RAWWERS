@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     platform_fee_bps: int = Field(default=2000, alias="PLATFORM_FEE_BPS")
     app_public_url: str = Field(default="http://localhost:3000", alias="APP_PUBLIC_URL")
+    cors_allow_origins: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
     admin_user_ids: str = Field(default="", alias="ADMIN_USER_IDS")
     ban_enforcement_mode: str = Field(default="strict", alias="BAN_ENFORCEMENT_MODE")
     allow_unverified_pro: bool = Field(default=False, alias="ALLOW_UNVERIFIED_PRO")
@@ -121,6 +122,12 @@ class Settings(BaseSettings):
 
     def allowed_upload_mime_type_set(self) -> set[str]:
         return {item.strip().lower() for item in self.allowed_upload_mime_types.split(",") if item.strip()}
+
+    def cors_allow_origin_list(self) -> list[str]:
+        configured = [item.strip() for item in self.cors_allow_origins.split(",") if item.strip()]
+        if configured:
+            return configured
+        return [self.app_public_url, "http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 @lru_cache

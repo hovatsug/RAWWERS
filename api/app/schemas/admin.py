@@ -17,6 +17,7 @@ from app.models.gig import GigStatus
 from app.models.ops import AbuseSeverity, AbuseSignalStatus, FeatureFlagScope
 from app.models.niche import SkillTier
 from app.models.client_rewards_pricing import ConsentRewardLevel, ShareRewardMetric
+from app.models.proof_of_gigs import RawwIssuanceCapScope, RawwIssuanceEventType, RawwMintEventStatus
 
 
 class UserListItem(BaseModel):
@@ -286,3 +287,88 @@ class ShareFraudSettingsView(BaseModel):
     min_seconds_viewed: int
     max_views_per_ip_per_day: int
     max_rewards_per_user_per_month: int
+
+
+class RawwIssuanceRuleView(BaseModel):
+    event_type: RawwIssuanceEventType
+    base_raww: int
+    min_eur_value: Decimal
+    max_raww_per_event: int | None = None
+    is_active: bool
+    updated_at: datetime
+
+
+class RawwIssuanceRuleUpdateItem(BaseModel):
+    event_type: RawwIssuanceEventType
+    base_raww: int
+    min_eur_value: Decimal = Decimal("0.00")
+    max_raww_per_event: int | None = None
+    is_active: bool = True
+
+
+class RawwIssuanceRulesUpdateRequest(BaseModel):
+    items: list[RawwIssuanceRuleUpdateItem] = Field(default_factory=list)
+
+
+class RawwMultiplierPolicyView(BaseModel):
+    name: str
+    tier_multipliers: dict = Field(default_factory=dict)
+    rating_curve: dict = Field(default_factory=dict)
+    dispute_penalty: dict = Field(default_factory=dict)
+    refund_penalty_multiplier: Decimal
+    abuse_block_threshold: dict = Field(default_factory=dict)
+    updated_at: datetime
+
+
+class RawwMultiplierPolicyUpdateRequest(BaseModel):
+    tier_multipliers: dict = Field(default_factory=dict)
+    rating_curve: dict = Field(default_factory=dict)
+    dispute_penalty: dict = Field(default_factory=dict)
+    refund_penalty_multiplier: Decimal = Decimal("0.500")
+    abuse_block_threshold: dict = Field(default_factory=dict)
+
+
+class RawwCapView(BaseModel):
+    scope: RawwIssuanceCapScope
+    cap_raww: int
+    updated_at: datetime
+
+
+class RawwCapUpdateItem(BaseModel):
+    scope: RawwIssuanceCapScope
+    cap_raww: int
+
+
+class RawwCapsUpdateRequest(BaseModel):
+    items: list[RawwCapUpdateItem] = Field(default_factory=list)
+
+
+class RawwMintEventView(BaseModel):
+    id: uuid.UUID
+    event_type: str
+    pro_user_id: uuid.UUID
+    reference_type: str
+    reference_id: uuid.UUID
+    raww_awarded: int
+    multiplier_snapshot: dict = Field(default_factory=dict)
+    status: RawwMintEventStatus
+    created_at: datetime
+
+
+class RawwClawbackRequest(BaseModel):
+    pro_user_id: uuid.UUID
+    reference_type: str
+    reference_id: uuid.UUID
+    amount_raww: int
+    reason: str
+
+
+class RawwClawbackResponse(BaseModel):
+    id: uuid.UUID
+    pro_user_id: uuid.UUID
+    reference_type: str
+    reference_id: uuid.UUID
+    amount_raww: int
+    reason: str
+    created_by_admin_id: uuid.UUID | None = None
+    created_at: datetime

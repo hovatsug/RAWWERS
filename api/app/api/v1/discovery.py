@@ -45,6 +45,7 @@ settings = get_settings()
 
 @router.get("/discover/pros", response_model=DiscoverProsResponse)
 def discover_pros(
+    request: Request,
     city: str | None = None,
     country: str | None = None,
     styles: str | None = None,
@@ -57,7 +58,6 @@ def discover_pros(
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_read_session),
     db_write: Session = Depends(get_db_write_session),
-    request: Request | None = None,
 ) -> DiscoverProsResponse:
     requester_ip = _request_ip(request)
     principal = str(user.user_id) if user else f"ip:{requester_ip or 'unknown'}"
@@ -220,10 +220,10 @@ def discover_pros(
 @router.get("/pros/{pro_user_id}/public", response_model=ProPublicProfileResponse)
 def get_public_pro_profile(
     pro_user_id: uuid.UUID,
+    request: Request,
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_read_session),
     db_write: Session = Depends(get_db_write_session),
-    request: Request | None = None,
 ) -> ProPublicProfileResponse:
     requester_ip = _request_ip(request)
     principal = str(user.user_id) if user else f"ip:{requester_ip or 'unknown'}"

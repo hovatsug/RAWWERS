@@ -27,6 +27,9 @@ DEFAULT_FLAG_KEYS = {
     "ai_chat_enabled_city",
     "ai_chat_enabled_pro",
     "ai_chat_kill_switch",
+    "raww_minting_enabled",
+    "raww_minting_event_gig_completed_enabled",
+    "raww_minting_event_pack_sold_enabled",
 }
 
 DEFAULT_FLAG_STATE: dict[str, bool] = {

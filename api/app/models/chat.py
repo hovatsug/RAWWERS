@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, Text
@@ -100,7 +100,7 @@ class LeadProfile(Base):
 
     thread_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chat_thread.id"), primary_key=True)
     niche_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
-    desired_date: Mapped[datetime.date | None] = mapped_column(Date(), nullable=True)
+    desired_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     date_flex_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     location: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     budget_min: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)

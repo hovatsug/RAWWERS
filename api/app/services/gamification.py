@@ -16,6 +16,7 @@ from app.models.gamification import (
     CycleEvent,
     CyclePoints,
     Milestone,
+    MilestoneAudience,
     MilestoneCompletion,
     MilestoneDifficulty,
     MilestoneProgress,
@@ -25,6 +26,10 @@ from app.models.gamification import (
     ProCredential,
 )
 from app.models.gig import Gig, GigStatus
+from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus, ShareLinkEngagement
+from app.models.media_rights import GigConsentLevel, GigUsageConsent, ShareLink
+from app.models.review import Review
+from app.models.admin import UserRole, UserRoleType
 from app.models.learning import Certificate
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.services.analytics import log_event
@@ -44,6 +49,37 @@ DIFFICULTY_POINTS: dict[MilestoneDifficulty, int] = {
     MilestoneDifficulty.advanced: 100,
     MilestoneDifficulty.elite: 200,
 }
+
+
+DEFAULT_CLIENT_MILESTONES: list[dict[str, Any]] = [
+    {
+        "code": "client_first_consent",
+        "name": "Set Your Consent",
+        "description": "Set a media usage consent level for a gig.",
+        "scope": MilestoneScope.global_scope,
+        "difficulty": MilestoneDifficulty.standard,
+        "audience": MilestoneAudience.client,
+        "criteria": {"type": "consent_level_set", "level": "pro_marketing_only"},
+    },
+    {
+        "code": "client_first_share",
+        "name": "First Gallery Share",
+        "description": "Reach your first engaged share viewers.",
+        "scope": MilestoneScope.global_scope,
+        "difficulty": MilestoneDifficulty.standard,
+        "audience": MilestoneAudience.client,
+        "criteria": {"type": "share_unique_views_reached", "threshold": 1},
+    },
+    {
+        "code": "client_reviews_started",
+        "name": "Feedback Giver",
+        "description": "Leave your first review.",
+        "scope": MilestoneScope.global_scope,
+        "difficulty": MilestoneDifficulty.standard,
+        "audience": MilestoneAudience.client,
+        "criteria": {"type": "review_left", "count": 1},
+    },
+]
 
 
 def queue_evaluate_user_milestones(user_id: uuid.UUID, niche_id: uuid.UUID | None = None) -> None:
@@ -166,6 +202,7 @@ def upsert_milestone(db: Session, body: dict[str, Any], actor_user_id: uuid.UUID
     milestone.scope = scope
     milestone.niche_id = body.get("niche_id")
     milestone.difficulty = difficulty
+    milestone.audience = MilestoneAudience(body.get("audience", MilestoneAudience.both.value))
     milestone.is_repeatable = bool(body.get("is_repeatable", False))
     milestone.cooldown_days = body.get("cooldown_days")
     milestone.start_at = body.get("start_at")
@@ -226,6 +263,7 @@ def evaluate_user_milestones(
     user_id: uuid.UUID,
     niche_id: uuid.UUID | None = None,
 ) -> int:
+    ensure_default_client_milestones(db)
     now = datetime.now(timezone.utc)
     all_active = db.execute(
         select(Milestone).where(
@@ -234,11 +272,18 @@ def evaluate_user_milestones(
             or_(Milestone.end_at.is_(None), Milestone.end_at >= now),
         )
     ).scalars().all()
-    milestones = [
-        row
-        for row in all_active
-        if row.scope == MilestoneScope.global_scope or (row.scope == MilestoneScope.niche and (not niche_id or row.niche_id == niche_id))
-    ]
+    roles = set(db.execute(select(UserRole.role).where(UserRole.user_id == user_id)).scalars().all())
+    is_client = UserRoleType.client in roles
+    is_pro = UserRoleType.pro in roles
+    milestones: list[Milestone] = []
+    for row in all_active:
+        if row.scope != MilestoneScope.global_scope and not (row.scope == MilestoneScope.niche and (not niche_id or row.niche_id == niche_id)):
+            continue
+        if row.audience == MilestoneAudience.client and not is_client:
+            continue
+        if row.audience == MilestoneAudience.pro and not is_pro:
+            continue
+        milestones.append(row)
 
     completed_count = 0
     for milestone in milestones:
@@ -317,6 +362,35 @@ def evaluate_user_milestones(
                 progress.completed_at = None
     db.flush()
     return completed_count
+
+
+def ensure_default_client_milestones(db: Session) -> None:
+    now = datetime.now(timezone.utc)
+    for payload in DEFAULT_CLIENT_MILESTONES:
+        existing = db.execute(select(Milestone).where(Milestone.code == payload["code"])).scalar_one_or_none()
+        if existing:
+            continue
+        db.add(
+            Milestone(
+                code=payload["code"],
+                name=payload["name"],
+                description=payload["description"],
+                scope=payload["scope"],
+                niche_id=None,
+                difficulty=payload["difficulty"],
+                audience=payload["audience"],
+                is_repeatable=False,
+                cooldown_days=None,
+                start_at=None,
+                end_at=None,
+                criteria=payload["criteria"],
+                reward_rule_code=None,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    db.flush()
 
 
 def add_cycle_points(
@@ -445,6 +519,10 @@ def _validate_criteria(criteria: dict | None) -> None:
         "response_time_avg",
         "course_completion",
         "tier_reached",
+        "share_unique_views_reached",
+        "consent_level_set",
+        "extra_images_purchased",
+        "review_left",
     }
     if criteria_type not in allowed:
         raise APIError(code="validation_error", message="Unsupported criteria type", status_code=422)
@@ -481,6 +559,14 @@ def _evaluate_milestone_criteria(db: Session, user_id: uuid.UUID, milestone: Mil
         return _eval_course_completion(db, user_id, milestone, criteria)
     if criteria_type == "tier_reached":
         return _eval_tier_reached(db, user_id, milestone, criteria)
+    if criteria_type == "share_unique_views_reached":
+        return _eval_share_unique_views_reached(db, user_id, criteria)
+    if criteria_type == "consent_level_set":
+        return _eval_consent_level_set(db, user_id, criteria)
+    if criteria_type == "extra_images_purchased":
+        return _eval_extra_images_purchased(db, user_id, milestone, criteria)
+    if criteria_type == "review_left":
+        return _eval_review_left(db, user_id, criteria)
     return {"achieved": False, "progress_value": Decimal("0"), "progress_meta": {"error": "unsupported"}}
 
 
@@ -602,4 +688,67 @@ def _eval_tier_reached(db: Session, user_id: uuid.UUID, milestone: Milestone, cr
         "achieved": achieved,
         "progress_value": Decimal(str(max(best_rank, 0))),
         "progress_meta": {"target_tier": target_tier.value, "current_rank": best_rank},
+    }
+
+
+def _eval_share_unique_views_reached(db: Session, user_id: uuid.UUID, criteria: dict[str, Any]) -> dict[str, Any]:
+    threshold = int(criteria.get("threshold", 1))
+    share_link_id = criteria.get("share_link_id")
+    query = select(ShareLinkEngagement).join(
+        ShareLink,
+        ShareLink.id == ShareLinkEngagement.share_link_id,
+    ).where(ShareLink.created_by_user_id == user_id)
+    if share_link_id:
+        query = query.where(ShareLinkEngagement.share_link_id == uuid.UUID(str(share_link_id)))
+    rows = db.execute(query).scalars().all()
+    current = max((int(row.unique_views_30d) for row in rows), default=0)
+    return {
+        "achieved": current >= threshold,
+        "progress_value": Decimal(str(current)),
+        "progress_meta": {"target": threshold, "current": current},
+    }
+
+
+def _eval_consent_level_set(db: Session, user_id: uuid.UUID, criteria: dict[str, Any]) -> dict[str, Any]:
+    target_level = str(criteria.get("level", "both_pro_and_rawwers"))
+    try:
+        target_enum = GigConsentLevel(target_level)
+    except ValueError as exc:
+        raise APIError(code="validation_error", message="Invalid consent level in criteria", status_code=422) from exc
+    count = db.execute(
+        select(func.count()).select_from(GigUsageConsent).where(
+            GigUsageConsent.client_user_id == user_id,
+            GigUsageConsent.consent_level == target_enum,
+        )
+    ).scalar_one()
+    return {
+        "achieved": int(count) > 0,
+        "progress_value": Decimal(str(count)),
+        "progress_meta": {"level": target_level, "current": int(count)},
+    }
+
+
+def _eval_extra_images_purchased(db: Session, user_id: uuid.UUID, milestone: Milestone, criteria: dict[str, Any]) -> dict[str, Any]:
+    target = int(criteria.get("count", 1))
+    query = select(func.coalesce(func.sum(ExtraImagePurchase.extra_images), 0)).where(
+        ExtraImagePurchase.client_user_id == user_id,
+        ExtraImagePurchase.status == ExtraImagePurchaseStatus.paid,
+    )
+    if milestone.scope == MilestoneScope.niche and milestone.niche_id:
+        query = query.where(ExtraImagePurchase.niche_id == milestone.niche_id)
+    total = int(db.execute(query).scalar_one() or 0)
+    return {
+        "achieved": total >= target,
+        "progress_value": Decimal(str(total)),
+        "progress_meta": {"target": target, "current": total},
+    }
+
+
+def _eval_review_left(db: Session, user_id: uuid.UUID, criteria: dict[str, Any]) -> dict[str, Any]:
+    target = int(criteria.get("count", 1))
+    current = int(db.execute(select(func.count()).select_from(Review).where(Review.client_user_id == user_id)).scalar_one())
+    return {
+        "achieved": current >= target,
+        "progress_value": Decimal(str(current)),
+        "progress_meta": {"target": target, "current": current},
     }

@@ -13,6 +13,7 @@ from app.core.errors import APIError
 from app.models.admin import KYCStatus, ProProfile
 from app.models.booking import ProPackage
 from app.models.discovery import ProPublicIndex
+from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaPurpose, MediaStatus, MediaVariant, ObjectStatus
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.schemas.discovery import (
@@ -35,6 +36,7 @@ from app.services.cache import cache_get_json, cache_set_json, get_public_index_
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services.storage import create_presigned_get
+from app.services.launch_ops import is_pro_publicly_discoverable
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
 
 router = APIRouter(tags=["discovery"])
@@ -106,7 +108,13 @@ def discover_pros(
         if style_tokens:
             conditions.append(and_(*[ProPublicIndex.styles.contains([token]) for token in style_tokens]))
 
-    stmt = select(ProPublicIndex).where(and_(*conditions))
+    stmt = select(ProPublicIndex).join(
+        ProOnboarding,
+        and_(
+            ProOnboarding.pro_user_id == ProPublicIndex.pro_user_id,
+            ProOnboarding.status == ProOnboardingStatus.approved_public,
+        ),
+    ).where(and_(*conditions))
     rows: list[ProPublicIndex]
     total: int
 
@@ -175,6 +183,8 @@ def discover_pros(
 
     items = []
     for row in rows:
+        if not is_pro_publicly_discoverable(db, pro_user_id=row.pro_user_id):
+            continue
         profile = db.get(ProProfile, row.pro_user_id)
         items.append(
             ProCard(
@@ -230,7 +240,10 @@ def get_public_pro_profile(
 
     index = db.get(ProPublicIndex, pro_user_id)
     profile = db.get(ProProfile, pro_user_id)
-    if not index or not profile:
+    onboarding = db.get(ProOnboarding, pro_user_id)
+    if not index or not profile or not onboarding or onboarding.status != ProOnboardingStatus.approved_public:
+        raise APIError(code="not_found", message="Pro not found", status_code=404)
+    if not is_pro_publicly_discoverable(db, pro_user_id=pro_user_id):
         raise APIError(code="not_found", message="Pro not found", status_code=404)
 
     packages = db.execute(

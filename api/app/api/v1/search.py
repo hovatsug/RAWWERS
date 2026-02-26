@@ -13,6 +13,7 @@ from app.core.errors import APIError
 from app.models.admin import KYCStatus, ProProfile
 from app.models.commerce import CommercePartner, Product, ProductStockStatus
 from app.models.discovery import ProPublicIndex
+from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.learning import Course, CourseLevel
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.repair import GearCategory, RepairPartner, RepairPartnerScore
@@ -26,6 +27,7 @@ from app.schemas.search import (
 )
 from app.services.cache import cache_get_json, cache_set_json
 from app.services.feature_flags import is_feature_enabled
+from app.services.launch_ops import is_pro_publicly_discoverable
 from app.services.metrics import monotonic_seconds, observe_search_request
 from app.services.search_indexing import (
     enqueue_course_index_upsert,
@@ -400,7 +402,17 @@ def _pros_fallback(
     limit: int,
     offset: int,
 ) -> tuple[int, list[dict]]:
-    stmt = select(ProPublicIndex, ProProfile).join(ProProfile, ProProfile.user_id == ProPublicIndex.pro_user_id)
+    stmt = (
+        select(ProPublicIndex, ProProfile)
+        .join(ProProfile, ProProfile.user_id == ProPublicIndex.pro_user_id)
+        .join(
+            ProOnboarding,
+            and_(
+                ProOnboarding.pro_user_id == ProPublicIndex.pro_user_id,
+                ProOnboarding.status == ProOnboardingStatus.approved_public,
+            ),
+        )
+    )
     stmt = stmt.where(
         ProPublicIndex.kyc_status == KYCStatus.approved,
         ProPublicIndex.is_accepting_bookings.is_(True),
@@ -434,23 +446,27 @@ def _pros_fallback(
 
     total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     rows = db.execute(stmt.offset(offset).limit(limit)).all()
-    items = [
-        {
-            "id": str(idx.pro_user_id),
-            "display_name": profile.display_name,
-            "city": idx.city,
-            "country": idx.country,
-            "niche_slugs": [item.get("slug") for item in (idx.top_niches or []) if item.get("slug")],
-            "top_niche": (idx.top_niches or [{}])[0].get("slug") if idx.top_niches else None,
-            "price_min": float(idx.min_package_price) if idx.min_package_price is not None else None,
-            "price_max": float(idx.max_package_price) if idx.max_package_price is not None else None,
-            "avg_rating": float(idx.avg_rating),
-            "review_count": idx.review_count,
-            "completed_gigs_total": idx.gigs_completed,
-            "last_active_at": idx.updated_at.isoformat() if idx.updated_at else None,
-        }
-        for idx, profile in rows
-    ]
+    items = []
+    for idx, profile in rows:
+        if not is_pro_publicly_discoverable(db, pro_user_id=idx.pro_user_id):
+            continue
+        items.append(
+            {
+                "id": str(idx.pro_user_id),
+                "display_name": profile.display_name,
+                "city": idx.city,
+                "country": idx.country,
+                "niche_slugs": [item.get("slug") for item in (idx.top_niches or []) if item.get("slug")],
+                "top_niche": (idx.top_niches or [{}])[0].get("slug") if idx.top_niches else None,
+                "price_min": float(idx.min_package_price) if idx.min_package_price is not None else None,
+                "price_max": float(idx.max_package_price) if idx.max_package_price is not None else None,
+                "avg_rating": float(idx.avg_rating),
+                "review_count": idx.review_count,
+                "completed_gigs_total": idx.gigs_completed,
+                "last_active_at": idx.updated_at.isoformat() if idx.updated_at else None,
+            }
+        )
+    total = len(items)
     return total, items
 
 

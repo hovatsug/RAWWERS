@@ -10,6 +10,7 @@ from app.api.v1.disputes import router as disputes_router
 from app.api.v1.gamification import router as gamification_router
 from app.api.v1.gigs import router as gigs_router
 from app.api.v1.media import router as media_router
+from app.api.v1.media_rights import router as media_rights_router
 from app.api.v1.pro_onboarding import router as pro_onboarding_router
 from app.api.v1.proof_galleries import router as proof_gallery_router
 from app.api.v1.notifications import router as notifications_router
@@ -31,6 +32,7 @@ api_router.include_router(disputes_router)
 api_router.include_router(gamification_router)
 api_router.include_router(gigs_router)
 api_router.include_router(media_router)
+api_router.include_router(media_rights_router)
 api_router.include_router(notifications_router)
 api_router.include_router(pro_onboarding_router)
 api_router.include_router(proof_gallery_router)

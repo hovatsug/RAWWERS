@@ -15,10 +15,17 @@ from app.models.admin import (
     BanAction,
     BanActionType,
     DisputeCategory,
+    DisputeEvent,
+    DisputeActorType,
     Dispute,
     DisputeStatus,
+    EntitlementHold,
+    EntitlementHoldType,
     ProProfile,
+    ProQualityPenaltySeverity,
+    ProQualityPenalty,
     RefundCase,
+    RefundEvent,
     RefundCaseStatus,
     UserAccount,
     UserRole,
@@ -35,6 +42,23 @@ from app.models.media import MediaAsset
 from app.models.niche import Niche, ProNicheSkill
 from app.models.discovery import AnalyticsEvent
 from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
+from app.models.client_rewards_pricing import (
+    ConsentRewardPolicy,
+    ExtraImagePricingPolicy,
+    ProExtraImagePrice,
+    ShareRewardGrant,
+    ShareRewardThreshold,
+)
+from app.models.launch_ops import (
+    InviteCode,
+    InviteCodeStatus,
+    InviteWave,
+    ProOnboarding,
+    ProOnboardingActorType,
+    ProOnboardingStatus,
+    RolloutCity,
+    RolloutFlagOverride,
+)
 from app.schemas.admin import (
     AbuseSignalView,
     AdminGigStatusUpdateRequest,
@@ -48,11 +72,32 @@ from app.schemas.admin import (
     KYCUpdateRequest,
     OpsMetricsSummaryResponse,
     ResolveAbuseSignalRequest,
+    ConsentRewardPolicyUpsertRequest,
+    ConsentRewardPolicyView,
+    ExtraImagePricingPolicyUpsertRequest,
+    ExtraImagePricingPolicyView,
     RefundCaseView,
     RoleUpdateRequest,
+    ProExtraImagePriceUpsertRequest,
+    ProExtraImagePriceView,
+    ShareFraudSettingsUpsertRequest,
+    ShareFraudSettingsView,
+    ShareRewardGrantView,
+    ShareRewardThresholdUpsertRequest,
+    ShareRewardThresholdView,
     UserDetailResponse,
     UserListItem,
     UserListResponse,
+)
+from app.schemas.disputes import (
+    AdminDisputeResolveRequest,
+    AdminDisputeSetStatusRequest,
+    DisputeDetailView,
+    DisputeEventView,
+    DisputeMessageView,
+    EntitlementHoldView,
+    ProQualityPenaltyView,
+    RefundCaseDetailView,
 )
 from app.schemas.niche import AdminNicheSkillOverrideRequest
 from app.schemas.learning import (
@@ -64,6 +109,21 @@ from app.schemas.learning import (
     InstructorProfileView,
 )
 from app.schemas.media import CurrentUser
+from app.schemas.launch_ops import (
+    AdminProOnboardingListResponse,
+    AdminSetProOnboardingStatusRequest,
+    InviteCodeListResponse,
+    InviteCodeView,
+    InviteWaveCreateRequest,
+    InviteWaveGenerateRequest,
+    InviteWaveResponse,
+    ProOnboardingStatusResponse,
+    RolloutCityBulkEnableRequest,
+    RolloutCityListResponse,
+    RolloutCityUpsertItem,
+    RolloutOverrideResponse,
+    RolloutOverrideUpsertRequest,
+)
 from app.services.audit import add_admin_audit_log
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.analytics import log_event
@@ -76,6 +136,28 @@ from app.services.rewards import maybe_issue_pro_signup_referral_reward
 from app.services.cache import get_redis_client
 from app.services.feature_flags import upsert_feature_flag
 from app.services.auth_events import add_auth_event
+from app.services.client_rewards_pricing import (
+    ensure_default_consent_reward_policies,
+    ensure_default_share_thresholds,
+    get_share_fraud_settings,
+    upsert_share_fraud_settings,
+)
+from app.services.disputes import (
+    apply_pro_quality_penalty,
+    create_or_get_refund_case_for_dispute,
+    finalize_refund_case_failed,
+    finalize_refund_case_success,
+    initiate_refund_case,
+    release_entitlement_hold,
+)
+from app.services.outbox import enqueue_outbox_event
+from app.services.launch_ops import (
+    create_invite_wave,
+    generate_invite_codes,
+    get_or_create_pro_onboarding,
+    maybe_advance_to_ready_for_review,
+    set_pro_onboarding_status,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -271,6 +353,17 @@ def update_pro_kyc(
         recompute_pro_niche_skills(db, user_id)
         queue_recompute_credentials(user_id)
         queue_evaluate_user_milestones(user_id)
+        onboarding = get_or_create_pro_onboarding(db, pro_user_id=user_id)
+        if onboarding.status == ProOnboardingStatus.kyc_submitted:
+            set_pro_onboarding_status(
+                db,
+                pro_user_id=user_id,
+                to_status=ProOnboardingStatus.kyc_approved,
+                actor_type=ProOnboardingActorType.admin,
+                actor_user_id=actor.user_id,
+                note="kyc_approved",
+            )
+            maybe_advance_to_ready_for_review(db, pro_user_id=user_id)
     db.commit()
     recompute_pro_public_index(db, user_id)
     db.commit()
@@ -309,10 +402,353 @@ def update_user_ban(
     return {"user_id": str(user_id), "action": body.action.value}
 
 
+@router.get("/onboarding/pros", response_model=AdminProOnboardingListResponse)
+def list_pro_onboarding(
+    status: ProOnboardingStatus | None = None,
+    city: str | None = None,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminProOnboardingListResponse:
+    stmt = select(ProOnboarding).order_by(ProOnboarding.updated_at.desc())
+    if status:
+        stmt = stmt.where(ProOnboarding.status == status)
+    rows = db.execute(stmt.limit(500)).scalars().all()
+    items = []
+    for row in rows:
+        if city and (row.current_city or {}).get("city", "").strip().lower() != city.strip().lower():
+            continue
+        items.append(ProOnboardingStatusResponse.model_validate(row, from_attributes=True))
+    return AdminProOnboardingListResponse(items=items)
+
+
+@router.post("/onboarding/pros/{pro_user_id}/approve", response_model=ProOnboardingStatusResponse)
+def approve_pro_onboarding(
+    pro_user_id: uuid.UUID,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=pro_user_id,
+        to_status=ProOnboardingStatus.approved_public,
+        actor_type=ProOnboardingActorType.admin,
+        actor_user_id=actor.user_id,
+        note="approved_by_admin",
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="pro_onboarding",
+        target_id=str(pro_user_id),
+        action="onboarding_approved_public",
+        metadata={},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/onboarding/pros/{pro_user_id}/reject", response_model=ProOnboardingStatusResponse)
+def reject_pro_onboarding(
+    pro_user_id: uuid.UUID,
+    body: AdminSetProOnboardingStatusRequest | None = None,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=pro_user_id,
+        to_status=ProOnboardingStatus.rejected,
+        actor_type=ProOnboardingActorType.admin,
+        actor_user_id=actor.user_id,
+        note=body.note if body else None,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="pro_onboarding",
+        target_id=str(pro_user_id),
+        action="onboarding_rejected",
+        reason=body.note if body else None,
+        metadata={},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/onboarding/pros/{pro_user_id}/set-status", response_model=ProOnboardingStatusResponse)
+def set_pro_onboarding_status_admin(
+    pro_user_id: uuid.UUID,
+    body: AdminSetProOnboardingStatusRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=pro_user_id,
+        to_status=body.status,
+        actor_type=ProOnboardingActorType.admin,
+        actor_user_id=actor.user_id,
+        note=body.note,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="pro_onboarding",
+        target_id=str(pro_user_id),
+        action="onboarding_set_status",
+        reason=body.note,
+        metadata={"status": body.status.value},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.get("/rollout/cities", response_model=RolloutCityListResponse)
+def list_rollout_cities(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RolloutCityListResponse:
+    rows = db.execute(select(RolloutCity).order_by(RolloutCity.country.asc(), RolloutCity.city.asc())).scalars().all()
+    return RolloutCityListResponse(
+        items=[
+            {
+                "id": item.id,
+                "country": item.country,
+                "city": item.city,
+                "is_pro_onboarding_enabled": item.is_pro_onboarding_enabled,
+                "is_client_browsing_enabled": item.is_client_browsing_enabled,
+                "metadata": item.meta or {},
+                "updated_at": item.updated_at,
+            }
+            for item in rows
+        ]
+    )
+
+
+@router.put("/rollout/cities", response_model=RolloutCityListResponse)
+def upsert_rollout_cities(
+    body: list[RolloutCityUpsertItem],
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RolloutCityListResponse:
+    for item in body:
+        row = db.execute(
+            select(RolloutCity).where(
+                func.upper(RolloutCity.country) == item.country.strip().upper(),
+                func.lower(RolloutCity.city) == item.city.strip().lower(),
+            )
+        ).scalar_one_or_none()
+        if not row:
+            row = RolloutCity(country=item.country.strip().upper(), city=item.city.strip(), meta={})
+            db.add(row)
+        row.is_pro_onboarding_enabled = item.is_pro_onboarding_enabled
+        row.is_client_browsing_enabled = item.is_client_browsing_enabled
+        row.meta = item.metadata or {}
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="rollout_city",
+            target_id=f"{row.country}:{row.city}",
+            action="rollout_city_upsert",
+            metadata={
+                "is_pro_onboarding_enabled": row.is_pro_onboarding_enabled,
+                "is_client_browsing_enabled": row.is_client_browsing_enabled,
+            },
+        )
+    db.commit()
+    return list_rollout_cities(actor, db)  # type: ignore[arg-type]
+
+
+@router.post("/rollout/cities/bulk-enable", response_model=RolloutCityListResponse)
+def bulk_enable_rollout_cities(
+    body: RolloutCityBulkEnableRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RolloutCityListResponse:
+    for item in body.cities:
+        country = str((item or {}).get("country", "")).strip().upper()
+        city = str((item or {}).get("city", "")).strip()
+        if not country or not city:
+            continue
+        row = db.execute(
+            select(RolloutCity).where(func.upper(RolloutCity.country) == country, func.lower(RolloutCity.city) == city.lower())
+        ).scalar_one_or_none()
+        if not row:
+            row = RolloutCity(country=country, city=city, meta={})
+            db.add(row)
+        row.is_pro_onboarding_enabled = body.enable_pro_onboarding
+        row.is_client_browsing_enabled = body.enable_client_browsing
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="rollout_city",
+            target_id=f"{country}:{city}",
+            action="rollout_city_bulk_enable",
+            metadata={
+                "is_pro_onboarding_enabled": row.is_pro_onboarding_enabled,
+                "is_client_browsing_enabled": row.is_client_browsing_enabled,
+            },
+        )
+    db.commit()
+    return list_rollout_cities(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/rollout/overrides/{user_id}", response_model=RolloutOverrideResponse)
+def get_rollout_override(
+    user_id: uuid.UUID,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RolloutOverrideResponse:
+    row = db.execute(select(RolloutFlagOverride).where(RolloutFlagOverride.user_id == user_id)).scalar_one_or_none()
+    if not row:
+        row = RolloutFlagOverride(user_id=user_id, can_access_pro_onboarding=False, can_access_client_app=False)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return RolloutOverrideResponse.model_validate(row, from_attributes=True)
+
+
+@router.put("/rollout/overrides/{user_id}", response_model=RolloutOverrideResponse)
+def put_rollout_override(
+    user_id: uuid.UUID,
+    body: RolloutOverrideUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RolloutOverrideResponse:
+    row = db.execute(select(RolloutFlagOverride).where(RolloutFlagOverride.user_id == user_id)).scalar_one_or_none()
+    if not row:
+        row = RolloutFlagOverride(user_id=user_id)
+        db.add(row)
+    row.can_access_pro_onboarding = body.can_access_pro_onboarding
+    row.can_access_client_app = body.can_access_client_app
+    row.reason = body.reason
+    row.expires_at = body.expires_at
+    row.granted_by = actor.user_id
+    row.granted_at = datetime.now(timezone.utc)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="rollout_override",
+        target_id=str(user_id),
+        action="rollout_override_upsert",
+        reason=body.reason,
+        metadata=body.model_dump(mode="json"),
+    )
+    db.commit()
+    db.refresh(row)
+    return RolloutOverrideResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/invites/waves", response_model=InviteWaveResponse)
+def create_wave(
+    body: InviteWaveCreateRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> InviteWaveResponse:
+    row = create_invite_wave(
+        db,
+        code_prefix=body.code_prefix,
+        name=body.name,
+        max_invites=body.max_invites,
+        allowed_role=body.allowed_role,
+        allowed_cities=body.allowed_cities,
+        expires_at=body.expires_at,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="invite_wave",
+        target_id=str(row.id),
+        action="invite_wave_created",
+        metadata=body.model_dump(mode="json"),
+    )
+    db.commit()
+    db.refresh(row)
+    return InviteWaveResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/invites/waves/{wave_id}/generate", response_model=InviteCodeListResponse)
+def generate_wave_codes(
+    wave_id: uuid.UUID,
+    body: InviteWaveGenerateRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> InviteCodeListResponse:
+    rows = generate_invite_codes(
+        db,
+        wave_id=wave_id,
+        count=body.count,
+        issued_by_admin_id=actor.user_id,
+        issued_to_emails=body.issued_to_emails or None,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="invite_wave",
+        target_id=str(wave_id),
+        action="invite_codes_generated",
+        metadata={"count": len(rows)},
+    )
+    db.commit()
+    return InviteCodeListResponse(items=[InviteCodeView.model_validate(item, from_attributes=True) for item in rows])
+
+
+@router.post("/invites/codes/{code}/revoke")
+def revoke_invite_code(
+    code: str,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    row = db.execute(select(InviteCode).where(InviteCode.code == code.strip())).scalar_one_or_none()
+    if not row:
+        raise APIError(code="not_found", message="Invite code not found", status_code=404)
+    row.status = InviteCodeStatus.revoked
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="invite_code",
+        target_id=str(row.id),
+        action="invite_code_revoked",
+        metadata={"code": row.code},
+    )
+    db.commit()
+    return {"ok": True, "id": str(row.id), "status": row.status.value}
+
+
+@router.get("/invites/waves", response_model=list[InviteWaveResponse])
+def list_invite_waves(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[InviteWaveResponse]:
+    rows = db.execute(select(InviteWave).order_by(InviteWave.created_at.desc())).scalars().all()
+    return [InviteWaveResponse.model_validate(item, from_attributes=True) for item in rows]
+
+
+@router.get("/invites/codes", response_model=InviteCodeListResponse)
+def list_invite_codes(
+    wave_id: uuid.UUID | None = None,
+    status: InviteCodeStatus | None = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> InviteCodeListResponse:
+    stmt = select(InviteCode).order_by(InviteCode.created_at.desc())
+    if wave_id:
+        stmt = stmt.where(InviteCode.wave_id == wave_id)
+    if status:
+        stmt = stmt.where(InviteCode.status == status)
+    rows = db.execute(stmt.limit(limit)).scalars().all()
+    return InviteCodeListResponse(items=[InviteCodeView.model_validate(item, from_attributes=True) for item in rows])
+
+
 @router.get("/disputes", response_model=list[DisputeView])
 def list_disputes(
     status: DisputeStatus | None = None,
     category: DisputeCategory | None = None,
+    pro_user_id: uuid.UUID | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     _: CurrentUser = Depends(require_admin),
@@ -324,14 +760,16 @@ def list_disputes(
         conditions.append(Dispute.status == status)
     if category:
         conditions.append(Dispute.category == category)
+    if pro_user_id:
+        conditions.append(Dispute.against_user_id == pro_user_id)
     if date_from:
-        conditions.append(Dispute.created_at >= date_from)
+        conditions.append(Dispute.opened_at >= date_from)
     if date_to:
-        conditions.append(Dispute.created_at <= date_to)
+        conditions.append(Dispute.opened_at <= date_to)
     if conditions:
         stmt = stmt.where(and_(*conditions))
 
-    disputes = db.execute(stmt.order_by(Dispute.created_at.desc())).scalars().all()
+    disputes = db.execute(stmt.order_by(Dispute.opened_at.desc(), Dispute.created_at.desc())).scalars().all()
     return [
         DisputeView(
             id=d.id,
@@ -339,7 +777,7 @@ def list_disputes(
             opened_by_user_id=d.opened_by_user_id,
             status=d.status,
             category=d.category,
-            summary=d.summary,
+            summary=d.summary or d.reason or "",
             resolution_note=d.resolution_note,
             created_at=d.created_at,
             updated_at=d.updated_at,
@@ -391,6 +829,165 @@ def update_dispute_status(
         created_at=dispute.created_at,
         updated_at=dispute.updated_at,
     )
+
+
+@router.get("/disputes/{dispute_id}", response_model=DisputeDetailView)
+def get_dispute_detail_admin(
+    dispute_id: uuid.UUID,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> DisputeDetailView:
+    dispute = db.get(Dispute, dispute_id)
+    if not dispute:
+        raise APIError(code="not_found", message="Dispute not found", status_code=404)
+    return _dispute_detail_view(db, dispute)
+
+
+@router.post("/disputes/{dispute_id}/set-status", response_model=DisputeDetailView)
+def admin_set_dispute_status(
+    dispute_id: uuid.UUID,
+    body: AdminDisputeSetStatusRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> DisputeDetailView:
+    dispute = db.get(Dispute, dispute_id)
+    if not dispute:
+        raise APIError(code="not_found", message="Dispute not found", status_code=404)
+    previous = dispute.status
+    dispute.status = body.status
+    if body.status in {
+        DisputeStatus.resolved_no_refund,
+        DisputeStatus.resolved_partial_refund,
+        DisputeStatus.resolved_refund,
+        DisputeStatus.cancelled,
+        DisputeStatus.closed,
+    }:
+        dispute.resolved_at = datetime.now(timezone.utc)
+    db.add(
+        DisputeEvent(
+            dispute_id=dispute.id,
+            from_status=previous.value,
+            to_status=body.status.value,
+            actor_type=DisputeActorType.admin,
+            actor_user_id=actor.user_id,
+            note=body.note,
+            payload={},
+        )
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="dispute",
+        target_id=str(dispute.id),
+        action="dispute_set_status",
+        reason=body.note,
+        metadata={"from_status": previous.value, "to_status": body.status.value},
+    )
+    db.commit()
+    db.refresh(dispute)
+    return _dispute_detail_view(db, dispute)
+
+
+@router.post("/disputes/{dispute_id}/resolve", response_model=DisputeDetailView)
+def admin_resolve_dispute(
+    dispute_id: uuid.UUID,
+    body: AdminDisputeResolveRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> DisputeDetailView:
+    dispute = db.get(Dispute, dispute_id)
+    if not dispute:
+        raise APIError(code="not_found", message="Dispute not found", status_code=404)
+    decision = body.decision.strip().lower()
+    if decision not in {"full_refund", "partial_refund", "no_refund"}:
+        raise APIError(code="validation_error", message="decision must be full_refund|partial_refund|no_refund", status_code=422)
+
+    refund_case = create_or_get_refund_case_for_dispute(
+        db,
+        dispute=dispute,
+        decision=decision,
+        amount=body.amount,
+    )
+    previous = dispute.status
+    if decision == "full_refund":
+        dispute.status = DisputeStatus.resolved_refund
+    elif decision == "partial_refund":
+        dispute.status = DisputeStatus.resolved_partial_refund
+    else:
+        dispute.status = DisputeStatus.resolved_no_refund
+    dispute.resolution = {
+        "decision": decision,
+        "rationale": body.rationale,
+        "amount": str(body.amount) if body.amount is not None else None,
+        "actions": body.actions or {},
+        "refund_case_id": str(refund_case.id) if refund_case else None,
+    }
+    dispute.resolution_note = body.rationale
+    dispute.resolved_at = datetime.now(timezone.utc)
+    db.add(
+        DisputeEvent(
+            dispute_id=dispute.id,
+            from_status=previous.value,
+            to_status=dispute.status.value,
+            actor_type=DisputeActorType.admin,
+            actor_user_id=actor.user_id,
+            note="resolved",
+            payload=dispute.resolution or {},
+        )
+    )
+    if decision == "no_refund":
+        for hold in db.execute(
+            select(EntitlementHold).where(
+                EntitlementHold.gig_id == dispute.gig_id,
+                EntitlementHold.user_id == dispute.opened_by_user_id,
+                EntitlementHold.released_at.is_(None),
+            )
+        ).scalars():
+            release_entitlement_hold(db, hold)
+    else:
+        if refund_case:
+            enqueue_outbox_event(
+                db,
+                topic="refund.initiate",
+                payload={"refund_case_id": str(refund_case.id)},
+                idempotency_key=f"refund-initiate:{refund_case.id}",
+                idempotency_scope="refund_initiate",
+            )
+    if decision in {"full_refund", "partial_refund"}:
+        severity_value = (body.actions or {}).get("penalty_severity", "medium")
+        severity = AbuseSeverity.medium
+        if severity_value == "low":
+            severity = AbuseSeverity.low
+        elif severity_value == "high":
+            severity = AbuseSeverity.high
+
+        apply_pro_quality_penalty(
+            db,
+            dispute=dispute,
+            severity=ProQualityPenaltySeverity(severity.value),
+        )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="dispute",
+        target_id=str(dispute.id),
+        action="dispute_resolved",
+        reason=body.rationale,
+        metadata={
+            "decision": decision,
+            "amount": str(body.amount) if body.amount is not None else None,
+            "refund_case_id": str(refund_case.id) if refund_case else None,
+        },
+    )
+    log_event(
+        db,
+        event_name="dispute.resolved",
+        user_id=actor.user_id,
+        properties={"dispute_id": str(dispute.id), "decision": decision, "refund_case_id": str(refund_case.id) if refund_case else None},
+    )
+    db.commit()
+    db.refresh(dispute)
+    return _dispute_detail_view(db, dispute)
 
 
 @router.post("/gigs/{gig_id}/status")
@@ -544,6 +1141,72 @@ def list_refunds(
 
     cases = db.execute(stmt.order_by(RefundCase.created_at.desc())).scalars().all()
     return [_refund_case_view(item) for item in cases]
+
+
+@router.post("/refunds/{refund_case_id}/retry", response_model=RefundCaseDetailView)
+def retry_refund_case(
+    refund_case_id: uuid.UUID,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> RefundCaseDetailView:
+    case = db.get(RefundCase, refund_case_id)
+    if not case:
+        raise APIError(code="not_found", message="Refund case not found", status_code=404)
+    if case.status not in {RefundCaseStatus.failed, RefundCaseStatus.pending, RefundCaseStatus.refund_initiated}:
+        raise APIError(code="invalid_state", message="Refund case cannot be retried in current status", status_code=409)
+
+    enqueue_outbox_event(
+        db,
+        topic="refund.initiate",
+        payload={"refund_case_id": str(case.id)},
+        idempotency_key=f"refund-retry:{case.id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}",
+        idempotency_scope="refund_retry",
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="refund_case",
+        target_id=str(case.id),
+        action="refund_retry_enqueued",
+        reason=None,
+        metadata={"status": case.status.value},
+    )
+    db.commit()
+    db.refresh(case)
+    return _refund_case_detail_view(case)
+
+
+@router.post("/entitlement-holds/{hold_id}/release", response_model=EntitlementHoldView)
+def release_entitlement_hold_admin(
+    hold_id: uuid.UUID,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> EntitlementHoldView:
+    hold = db.get(EntitlementHold, hold_id)
+    if not hold:
+        raise APIError(code="not_found", message="Entitlement hold not found", status_code=404)
+
+    release_entitlement_hold(db, hold)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="entitlement_hold",
+        target_id=str(hold.id),
+        action="entitlement_hold_released",
+        reason=None,
+        metadata={"gig_id": str(hold.gig_id), "user_id": str(hold.user_id), "hold_type": hold.hold_type.value},
+    )
+    db.commit()
+    db.refresh(hold)
+    return EntitlementHoldView(
+        id=hold.id,
+        gig_id=hold.gig_id,
+        user_id=hold.user_id,
+        hold_type=hold.hold_type,
+        reason=hold.reason,
+        created_at=hold.created_at,
+        released_at=hold.released_at,
+    )
 
 
 @router.post("/instructors/{user_id}/approve", response_model=InstructorProfileView)
@@ -918,6 +1581,262 @@ def put_feature_flag(
     return FeatureFlagView.model_validate(row, from_attributes=True)
 
 
+@router.get("/pricing/extra-image-policies", response_model=list[ExtraImagePricingPolicyView])
+def list_extra_image_pricing_policies(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ExtraImagePricingPolicyView]:
+    rows = db.execute(select(ExtraImagePricingPolicy).order_by(ExtraImagePricingPolicy.updated_at.desc())).scalars().all()
+    niche_ids = {row.niche_id for row in rows}
+    niche_rows = db.execute(select(Niche).where(Niche.id.in_(niche_ids))).scalars().all() if niche_ids else []
+    slug_by_id = {row.id: row.slug for row in niche_rows}
+    return [
+        ExtraImagePricingPolicyView(
+            niche_id=row.niche_id,
+            niche_slug=slug_by_id.get(row.niche_id, ""),
+            tier=row.tier,
+            unit_price_min=row.unit_price_min,
+            unit_price_max=row.unit_price_max,
+            max_extra_images=row.max_extra_images,
+            bulk_curve=row.bulk_curve or {},
+            currency=row.currency,
+            is_active=row.is_active,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
+@router.put("/pricing/extra-image-policies", response_model=list[ExtraImagePricingPolicyView])
+def upsert_extra_image_pricing_policies(
+    body: ExtraImagePricingPolicyUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ExtraImagePricingPolicyView]:
+    ensure_initial_niches(db)
+    slugs = [item.niche_slug for item in body.items]
+    niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
+    by_slug = {row.slug: row for row in niches}
+
+    for item in body.items:
+        niche = by_slug.get(item.niche_slug)
+        if not niche:
+            raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        row = db.execute(
+            select(ExtraImagePricingPolicy).where(
+                ExtraImagePricingPolicy.niche_id == niche.id,
+                ExtraImagePricingPolicy.tier == item.tier,
+            )
+        ).scalar_one_or_none()
+        if not row:
+            row = ExtraImagePricingPolicy(niche_id=niche.id, tier=item.tier)
+            db.add(row)
+        row.unit_price_min = item.unit_price_min
+        row.unit_price_max = item.unit_price_max
+        row.max_extra_images = item.max_extra_images
+        row.bulk_curve = item.bulk_curve
+        row.currency = item.currency.upper()
+        row.is_active = item.is_active
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="extra_image_pricing_policy",
+            target_id=f"{niche.id}:{item.tier.value}",
+            action="extra_image_pricing_policy_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+
+    db.commit()
+    return list_extra_image_pricing_policies(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/pricing/pro-extra-image-price/{pro_user_id}", response_model=list[ProExtraImagePriceView])
+def list_pro_extra_image_prices(
+    pro_user_id: uuid.UUID,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ProExtraImagePriceView]:
+    rows = db.execute(select(ProExtraImagePrice).where(ProExtraImagePrice.pro_user_id == pro_user_id)).scalars().all()
+    niche_ids = {row.niche_id for row in rows}
+    niches = db.execute(select(Niche).where(Niche.id.in_(niche_ids))).scalars().all() if niche_ids else []
+    slug_by_id = {row.id: row.slug for row in niches}
+    return [
+        ProExtraImagePriceView(
+            pro_user_id=row.pro_user_id,
+            niche_id=row.niche_id,
+            niche_slug=slug_by_id.get(row.niche_id, ""),
+            configured_unit_price=row.configured_unit_price,
+            currency=row.currency,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
+@router.put("/pricing/pro-extra-image-price/{pro_user_id}", response_model=list[ProExtraImagePriceView])
+def upsert_pro_extra_image_prices(
+    pro_user_id: uuid.UUID,
+    body: ProExtraImagePriceUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ProExtraImagePriceView]:
+    ensure_initial_niches(db)
+    slugs = [item.niche_slug for item in body.items]
+    niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
+    by_slug = {row.slug: row for row in niches}
+    for item in body.items:
+        niche = by_slug.get(item.niche_slug)
+        if not niche:
+            raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        row = db.execute(
+            select(ProExtraImagePrice).where(
+                ProExtraImagePrice.pro_user_id == pro_user_id,
+                ProExtraImagePrice.niche_id == niche.id,
+            )
+        ).scalar_one_or_none()
+        if not row:
+            row = ProExtraImagePrice(pro_user_id=pro_user_id, niche_id=niche.id, configured_unit_price=item.configured_unit_price)
+            db.add(row)
+        row.configured_unit_price = item.configured_unit_price
+        row.currency = item.currency.upper()
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="pro_extra_image_price",
+            target_id=f"{pro_user_id}:{niche.id}",
+            action="pro_extra_image_price_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+    db.commit()
+    return list_pro_extra_image_prices(pro_user_id, actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/rewards/consent-policies", response_model=list[ConsentRewardPolicyView])
+def list_consent_reward_policies(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ConsentRewardPolicyView]:
+    ensure_default_consent_reward_policies(db)
+    rows = db.execute(select(ConsentRewardPolicy).order_by(ConsentRewardPolicy.updated_at.desc())).scalars().all()
+    return [ConsentRewardPolicyView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.put("/rewards/consent-policies", response_model=list[ConsentRewardPolicyView])
+def upsert_consent_reward_policies(
+    body: ConsentRewardPolicyUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ConsentRewardPolicyView]:
+    ensure_default_consent_reward_policies(db)
+    for item in body.items:
+        row = db.execute(select(ConsentRewardPolicy).where(ConsentRewardPolicy.consent_level == item.consent_level)).scalar_one_or_none()
+        if not row:
+            row = ConsentRewardPolicy(consent_level=item.consent_level)
+            db.add(row)
+        row.points_award = item.points_award
+        row.cooldown_hours = item.cooldown_hours
+        row.allow_clawback = item.allow_clawback
+        row.max_awards_per_user_per_month = item.max_awards_per_user_per_month
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="consent_reward_policy",
+            target_id=item.consent_level.value,
+            action="consent_reward_policy_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+    db.commit()
+    return list_consent_reward_policies(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/rewards/share-thresholds", response_model=list[ShareRewardThresholdView])
+def list_share_thresholds(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ShareRewardThresholdView]:
+    ensure_default_share_thresholds(db)
+    rows = db.execute(select(ShareRewardThreshold).order_by(ShareRewardThreshold.threshold_value.asc())).scalars().all()
+    return [ShareRewardThresholdView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.put("/rewards/share-thresholds", response_model=list[ShareRewardThresholdView])
+def upsert_share_thresholds(
+    body: ShareRewardThresholdUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ShareRewardThresholdView]:
+    ensure_default_share_thresholds(db)
+    for item in body.items:
+        row = db.execute(
+            select(ShareRewardThreshold).where(
+                ShareRewardThreshold.metric == item.metric,
+                ShareRewardThreshold.threshold_value == item.threshold_value,
+            )
+        ).scalar_one_or_none()
+        if not row:
+            row = ShareRewardThreshold(metric=item.metric, threshold_value=item.threshold_value, points_award=item.points_award)
+            db.add(row)
+        row.points_award = item.points_award
+        row.max_awards_per_share_link = item.max_awards_per_share_link
+        row.is_active = item.is_active
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="share_reward_threshold",
+            target_id=f"{item.metric.value}:{item.threshold_value}",
+            action="share_reward_threshold_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+    db.commit()
+    return list_share_thresholds(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/rewards/share-grants", response_model=list[ShareRewardGrantView])
+def list_share_reward_grants(
+    user_id: uuid.UUID | None = None,
+    share_link_id: uuid.UUID | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[ShareRewardGrantView]:
+    stmt = select(ShareRewardGrant).order_by(ShareRewardGrant.granted_at.desc())
+    if user_id:
+        stmt = stmt.where(ShareRewardGrant.user_id == user_id)
+    if share_link_id:
+        stmt = stmt.where(ShareRewardGrant.share_link_id == share_link_id)
+    rows = db.execute(stmt.limit(limit)).scalars().all()
+    return [ShareRewardGrantView.model_validate(row, from_attributes=True) for row in rows]
+
+
+@router.get("/rewards/share-fraud-settings", response_model=ShareFraudSettingsView)
+def get_share_fraud_settings_admin(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ShareFraudSettingsView:
+    values = get_share_fraud_settings(db)
+    return ShareFraudSettingsView(**values)
+
+
+@router.put("/rewards/share-fraud-settings", response_model=ShareFraudSettingsView)
+def put_share_fraud_settings_admin(
+    body: ShareFraudSettingsUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ShareFraudSettingsView:
+    incoming = {k: v for k, v in body.model_dump().items() if v is not None}
+    values = upsert_share_fraud_settings(db, incoming)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="share_fraud_settings",
+        target_id="global",
+        action="share_fraud_settings_upsert",
+        metadata=incoming,
+    )
+    db.commit()
+    return ShareFraudSettingsView(**values)
+
+
 def _course_list_item(course: Course, niche_slug: str) -> CourseListItem:
     return CourseListItem(
         id=course.id,
@@ -933,6 +1852,81 @@ def _course_list_item(course: Course, niche_slug: str) -> CourseListItem:
         estimated_minutes=course.estimated_minutes,
         thumbnail_media_asset_id=course.thumbnail_media_asset_id,
         intro_video_media_asset_id=course.intro_video_media_asset_id,
+    )
+
+
+def _dispute_detail_view(db: Session, dispute: Dispute) -> DisputeDetailView:
+    from app.models.admin import DisputeMessage
+
+    messages = db.execute(
+        select(DisputeMessage).where(DisputeMessage.dispute_id == dispute.id).order_by(DisputeMessage.created_at.asc())
+    ).scalars().all()
+    events = db.execute(
+        select(DisputeEvent).where(DisputeEvent.dispute_id == dispute.id).order_by(DisputeEvent.created_at.asc())
+    ).scalars().all()
+
+    return DisputeDetailView(
+        id=dispute.id,
+        gig_id=dispute.gig_id,
+        extra_purchase_id=dispute.extra_purchase_id,
+        opened_by_user_id=dispute.opened_by_user_id,
+        against_user_id=dispute.against_user_id,
+        category=dispute.category,
+        status=dispute.status,
+        reason=dispute.reason or dispute.summary,
+        summary=dispute.summary or "",
+        requested_refund_amount=dispute.requested_refund_amount,
+        currency=dispute.currency,
+        opened_at=dispute.opened_at,
+        due_response_at=dispute.due_response_at,
+        resolved_at=dispute.resolved_at,
+        resolution=dispute.resolution or {},
+        metadata=dispute.meta or {},
+        created_at=dispute.created_at,
+        updated_at=dispute.updated_at,
+        messages=[
+            DisputeMessageView(
+                id=item.id,
+                dispute_id=item.dispute_id,
+                sender_user_id=item.sender_user_id,
+                message=item.message,
+                evidence_media_asset_ids=item.evidence_media_asset_ids or [],
+                created_at=item.created_at,
+            )
+            for item in messages
+        ],
+        events=[
+            DisputeEventView(
+                id=item.id,
+                dispute_id=item.dispute_id,
+                from_status=item.from_status,
+                to_status=item.to_status,
+                actor_type=item.actor_type.value,
+                actor_user_id=item.actor_user_id,
+                note=item.note,
+                payload=item.payload or {},
+                created_at=item.created_at,
+            )
+            for item in events
+        ],
+    )
+
+
+def _refund_case_detail_view(item: RefundCase) -> RefundCaseDetailView:
+    return RefundCaseDetailView(
+        id=item.id,
+        dispute_id=item.dispute_id,
+        payment_scope=item.payment_scope.value if item.payment_scope else None,
+        reference_id=item.reference_id,
+        stripe_payment_intent_id=item.stripe_payment_intent_id,
+        amount_authorized=item.amount_authorized,
+        amount_refunded=item.amount_refunded,
+        amount=item.amount,
+        currency=item.currency,
+        status=item.status,
+        metadata=item.meta or {},
+        created_at=item.created_at,
+        updated_at=item.updated_at,
     )
 
 

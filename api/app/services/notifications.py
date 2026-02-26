@@ -161,6 +161,16 @@ _TEMPLATE_REGISTRY: dict[str, dict[str, str]] = {
         "title": "Password updated",
         "body": "Your password was changed successfully.",
     },
+    "consent.updated": {
+        "subject": "Usage consent updated",
+        "title": "Media usage consent updated",
+        "body": "A client updated media usage consent for a gig.",
+    },
+    "consent.reminder": {
+        "subject": "Set media consent",
+        "title": "Media consent reminder",
+        "body": "Please review your media usage consent preferences.",
+    },
 }
 
 

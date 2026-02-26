@@ -49,6 +49,11 @@ from app.schemas.onboarding import (
     PublicAvailabilityResponse,
     ReplaceAvailabilityRulesRequest,
 )
+from app.schemas.launch_ops import (
+    ProOnboardingChecksResponse,
+    ProOnboardingStartRequest,
+    ProOnboardingStatusResponse,
+)
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
@@ -58,9 +63,193 @@ from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_i
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.media_rights import ensure_gig_consent_snapshot
+from app.services.disputes import capture_gig_contract_snapshot
+from app.services.launch_ops import (
+    get_or_create_pro_onboarding,
+    maybe_advance_to_ready_for_review,
+    onboarding_checks,
+    set_pro_onboarding_status,
+    start_pro_onboarding,
+)
+from app.models.launch_ops import ProOnboardingActorType, ProOnboardingStatus
 
 settings = get_settings()
 router = APIRouter(tags=["pro_onboarding"])
+
+
+@router.get("/pro/onboarding", response_model=ProOnboardingStatusResponse)
+def get_my_onboarding(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    row = get_or_create_pro_onboarding(db, pro_user_id=user.user_id)
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/onboarding/start", response_model=ProOnboardingStatusResponse)
+def start_my_onboarding(
+    body: ProOnboardingStartRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    row = start_pro_onboarding(
+        db,
+        pro_user_id=user.user_id,
+        city=body.city,
+        country=body.country,
+        invite_code=body.invite_code,
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/onboarding/complete-profile", response_model=ProOnboardingStatusResponse)
+def complete_profile_onboarding_stage(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    checks = onboarding_checks(db, pro_user_id=user.user_id)
+    if not checks.get("profile_completed"):
+        raise APIError(code="validation_error", message="Profile requirements not satisfied", status_code=422)
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=user.user_id,
+        to_status=ProOnboardingStatus.profile_completed,
+        actor_type=ProOnboardingActorType.pro,
+        actor_user_id=user.user_id,
+        note="profile_completed",
+        payload={"checks": checks},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/onboarding/upload-portfolio", response_model=ProOnboardingStatusResponse)
+def complete_portfolio_onboarding_stage(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    checks = onboarding_checks(db, pro_user_id=user.user_id)
+    if not checks.get("portfolio_uploaded"):
+        raise APIError(code="validation_error", message="Portfolio minimum not satisfied", status_code=422)
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=user.user_id,
+        to_status=ProOnboardingStatus.portfolio_uploaded,
+        actor_type=ProOnboardingActorType.pro,
+        actor_user_id=user.user_id,
+        note="portfolio_uploaded",
+        payload={"checks": checks},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/onboarding/configure-packages", response_model=ProOnboardingStatusResponse)
+def complete_packages_onboarding_stage(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    checks = onboarding_checks(db, pro_user_id=user.user_id)
+    if not checks.get("packages_configured"):
+        raise APIError(code="validation_error", message="Package requirements not satisfied", status_code=422)
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=user.user_id,
+        to_status=ProOnboardingStatus.packages_configured,
+        actor_type=ProOnboardingActorType.pro,
+        actor_user_id=user.user_id,
+        note="packages_configured",
+        payload={"checks": checks},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/onboarding/select-niches", response_model=ProOnboardingStatusResponse)
+def complete_niches_onboarding_stage(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    checks = onboarding_checks(db, pro_user_id=user.user_id)
+    if not checks.get("niches_selected"):
+        raise APIError(code="validation_error", message="Niche minimum not satisfied", status_code=422)
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=user.user_id,
+        to_status=ProOnboardingStatus.niches_selected,
+        actor_type=ProOnboardingActorType.pro,
+        actor_user_id=user.user_id,
+        note="niches_selected",
+        payload={"checks": checks},
+    )
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/onboarding/submit-kyc", response_model=ProOnboardingStatusResponse)
+def submit_kyc_onboarding_stage(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingStatusResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    profile = _ensure_pro_profile(db, user.user_id)
+    if profile.kyc_status == KYCStatus.unsubmitted:
+        profile.kyc_status = KYCStatus.pending
+        profile.kyc_updated_at = datetime.now(timezone.utc)
+    checks = onboarding_checks(db, pro_user_id=user.user_id)
+    if not checks.get("kyc_submitted"):
+        raise APIError(code="validation_error", message="KYC must be submitted", status_code=422)
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=user.user_id,
+        to_status=ProOnboardingStatus.kyc_submitted,
+        actor_type=ProOnboardingActorType.pro,
+        actor_user_id=user.user_id,
+        note="kyc_submitted",
+        payload={"checks": checks},
+    )
+    if profile.kyc_status == KYCStatus.approved:
+        row = set_pro_onboarding_status(
+            db,
+            pro_user_id=user.user_id,
+            to_status=ProOnboardingStatus.kyc_approved,
+            actor_type=ProOnboardingActorType.system,
+            actor_user_id=None,
+            note="kyc_already_approved",
+            payload={},
+        )
+        row = maybe_advance_to_ready_for_review(db, pro_user_id=user.user_id)
+    db.commit()
+    db.refresh(row)
+    return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.get("/pro/onboarding/checks", response_model=ProOnboardingChecksResponse)
+def get_onboarding_checks(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProOnboardingChecksResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    row = get_or_create_pro_onboarding(db, pro_user_id=user.user_id)
+    checks = onboarding_checks(db, pro_user_id=user.user_id)
+    missing = [k for k in ["profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected", "kyc_submitted", "kyc_approved"] if not checks.get(k)]
+    db.commit()
+    return ProOnboardingChecksResponse(status=row.status, checks=checks, missing=missing)
 
 
 @router.get("/pro/me/profile", response_model=ProProfileView)
@@ -597,6 +786,8 @@ def accept_booking_request(
 
     if request.status == BookingRequestStatus.accepted and existing_gig:
         _, pi = create_or_get_gig_payment_intent(db, existing_gig)
+        ensure_gig_consent_snapshot(db, existing_gig, actor_user_id=user.user_id)
+        capture_gig_contract_snapshot(db, existing_gig)
         db.commit()
         return AcceptBookingResponse(
             booking_request=_booking_request_view(request),
@@ -712,6 +903,8 @@ def accept_booking_request(
         target_type="gig",
         target_id=gig.id,
     )
+    ensure_gig_consent_snapshot(db, gig, actor_user_id=user.user_id)
+    capture_gig_contract_snapshot(db, gig)
     recompute_pro_public_index(db, request.pro_user_id)
     recompute_pro_niche_skills(db, request.pro_user_id, package.niche_id)
 

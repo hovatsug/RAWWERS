@@ -25,6 +25,7 @@ from app.models.gallery import (
 )
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaVariant, ObjectStatus
+from app.models.media_rights import GigEntitlementType, MediaDerivativeKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gallery import (
     AddGalleryItemsRequest,
@@ -47,8 +48,17 @@ from app.services.analytics import log_event
 from app.services.reminders import cancel_proof_selection_reminders, schedule_proof_selection_reminders
 from app.services.followups import schedule_followups
 from app.services.metrics import observe_business_event
+from app.services.outbox import enqueue_outbox_event
 from app.services.rewards import reserve_points_for_discount
+from app.services.client_rewards_pricing import (
+    compute_extra_image_unit_price,
+    enforce_max_extra_images,
+    increment_share_link_conversion,
+    upsert_extra_image_purchase_snapshot,
+)
+from app.services.media_rights import upsert_gig_entitlement
 from app.services.storage import create_presigned_get
+from app.services.disputes import upsert_delivery_sla_snapshot
 
 settings = get_settings()
 router = APIRouter(tags=["proof_galleries"])
@@ -162,6 +172,46 @@ def publish_gallery(
 
     gallery.status = ProofGalleryStatus.published
     gallery.published_at = datetime.now(timezone.utc)
+    gig = db.get(Gig, gallery.gig_id)
+    if gig:
+        upsert_delivery_sla_snapshot(db, gig=gig, proofs_published_at=gallery.published_at)
+
+    upsert_gig_entitlement(
+        db,
+        gig_id=gallery.gig_id,
+        user_id=gallery.client_user_id,
+        entitlement_type=GigEntitlementType.view_proofs,
+        metadata={"source": "proof_gallery_publish", "gallery_id": str(gallery.id)},
+    )
+    upsert_gig_entitlement(
+        db,
+        gig_id=gallery.gig_id,
+        user_id=gallery.client_user_id,
+        entitlement_type=GigEntitlementType.share_link_manage,
+        metadata={"source": "proof_gallery_publish", "gallery_id": str(gallery.id)},
+    )
+    upsert_gig_entitlement(
+        db,
+        gig_id=gallery.gig_id,
+        user_id=gallery.pro_user_id,
+        entitlement_type=GigEntitlementType.share_link_manage,
+        metadata={"source": "proof_gallery_publish", "gallery_id": str(gallery.id)},
+    )
+
+    media_asset_ids = db.execute(select(ProofGalleryItem.media_asset_id).where(ProofGalleryItem.gallery_id == gallery.id)).scalars().all()
+    for media_asset_id in media_asset_ids:
+        for derivative_kind in (
+            MediaDerivativeKind.preview_watermarked.value,
+            MediaDerivativeKind.web_res.value,
+            MediaDerivativeKind.thumbnail.value,
+        ):
+            enqueue_outbox_event(
+                db,
+                topic="media.derivative.generate",
+                payload={"media_asset_id": str(media_asset_id), "kind": derivative_kind},
+                idempotency_key=f"media-derivative:{media_asset_id}:{derivative_kind}",
+                idempotency_scope="media_derivative",
+            )
 
     add_admin_audit_log(
         db,
@@ -303,6 +353,15 @@ def submit_selection(
     extras_count = max(0, selected_count - gallery.included_photos)
 
     selection.status = SelectionStatus.submitted
+    included_unlock_count = min(gallery.included_photos, selected_count)
+    upsert_gig_entitlement(
+        db,
+        gig_id=gallery.gig_id,
+        user_id=gallery.client_user_id,
+        entitlement_type=GigEntitlementType.download_finals,
+        quantity_limit=included_unlock_count,
+        metadata={"source": "selection_submit", "selection_id": str(selection.id)},
+    )
 
     add_admin_audit_log(
         db,
@@ -330,6 +389,9 @@ def submit_selection(
         )
 
     gallery.status = ProofGalleryStatus.selection_submitted
+    gig = db.get(Gig, gallery.gig_id)
+    if gig:
+        upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
     cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
     db.commit()
     observe_business_event("proof_selection_submitted")
@@ -374,6 +436,7 @@ def create_upsell_intent(
         selection,
         extras_count,
         points_to_spend=points_to_spend,
+        share_link_id=(body.share_link_id if body else None),
     )
     db.commit()
     return UpsellCreateIntentResponse(
@@ -470,8 +533,33 @@ def _ensure_upsell_intent(
     selection: ClientSelection,
     extras_count: int,
     points_to_spend: int | None,
+    share_link_id: uuid.UUID | None = None,
 ) -> tuple[UpsellPurchase, str, DiscountRedemption | None]:
-    amount = (gallery.extra_photo_price * Decimal(extras_count)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    gig = db.get(Gig, gallery.gig_id)
+    if not gig:
+        raise APIError(code="not_found", message="Gig not found", status_code=404)
+
+    configured_unit_price, applied_unit_price, policy_min, policy_max, tier = compute_extra_image_unit_price(
+        db,
+        gig=gig,
+        gallery=gallery,
+    )
+    enforce_max_extra_images(db, gig=gig, tier=tier, extra_images=extras_count)
+    if applied_unit_price != configured_unit_price:
+        log_event(
+            db,
+            event_name="extra_images.price_clamped",
+            user_id=gig.pro_user_id,
+            properties={
+                "gig_id": str(gig.id),
+                "niche_id": str(gig.niche_id) if gig.niche_id else None,
+                "tier": tier.value,
+                "configured_unit_price": str(configured_unit_price),
+                "applied_unit_price": str(applied_unit_price),
+            },
+        )
+
+    subtotal = (applied_unit_price * Decimal(extras_count)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     existing = db.execute(
         select(UpsellPurchase)
@@ -489,32 +577,112 @@ def _ensure_upsell_intent(
                 DiscountRedemption.status.in_([DiscountRedemptionStatus.reserved, DiscountRedemptionStatus.applied]),
             )
         ).scalar_one_or_none()
+        if redemption_existing:
+            payable_existing = max(Decimal("0.01"), subtotal - redemption_existing.discount_amount)
+            existing.amount = payable_existing
+        else:
+            existing.amount = subtotal
+        existing.extra_count = extras_count
+        existing.meta = {
+            **existing.meta,
+            "selection_version": selection.version,
+            "unit_price_applied": str(applied_unit_price),
+            "unit_price_configured": str(configured_unit_price),
+            "policy_unit_price_min": str(policy_min),
+            "policy_unit_price_max": str(policy_max) if policy_max is not None else None,
+            "subtotal": str(subtotal),
+            "share_link_id": str(share_link_id) if share_link_id else None,
+        }
+        upsert_extra_image_purchase_snapshot(
+            db,
+            gig=gig,
+            gallery=gallery,
+            selected_images=gallery.included_photos + extras_count,
+            extra_images=extras_count,
+            unit_price_configured=configured_unit_price,
+            unit_price_applied=applied_unit_price,
+            policy_min=policy_min,
+            policy_max=policy_max,
+            subtotal=subtotal,
+            discounts_total=redemption_existing.discount_amount if redemption_existing else Decimal("0.00"),
+            total=existing.amount,
+            points_spent=redemption_existing.points_spent if redemption_existing else 0,
+            stripe_payment_intent_id=existing.stripe_payment_intent_id,
+            share_link_id=share_link_id,
+        )
         return existing, pi.client_secret, redemption_existing
 
+    selected_count = db.execute(
+        select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
+    ).scalar_one()
+
     if existing:
+        pi = stripe.PaymentIntent.create(
+            amount=int((subtotal * Decimal("100")).quantize(Decimal("1"))),
+            currency=gallery.currency.lower(),
+            payment_method_types=["card"],
+            metadata={
+                "proof_gallery_id": str(gallery.id),
+                "selection_id": str(selection.id),
+                "type": "upsell",
+                "share_link_id": str(share_link_id) if share_link_id else "",
+            },
+            automatic_payment_methods={"enabled": True},
+            idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
+        )
         existing.extra_count = extras_count
-        existing.amount = amount
+        existing.amount = subtotal
         existing.currency = gallery.currency
         existing.status = UpsellPurchaseStatus.pending
         existing.stripe_payment_intent_id = pi.id
-        existing.meta = {**existing.meta, "selection_version": selection.version}
+        existing.meta = {
+            **existing.meta,
+            "selection_version": selection.version,
+            "unit_price_applied": str(applied_unit_price),
+            "unit_price_configured": str(configured_unit_price),
+            "policy_unit_price_min": str(policy_min),
+            "policy_unit_price_max": str(policy_max) if policy_max is not None else None,
+            "subtotal": str(subtotal),
+            "share_link_id": str(share_link_id) if share_link_id else None,
+        }
         purchase = existing
     else:
+        pi = stripe.PaymentIntent.create(
+            amount=int((subtotal * Decimal("100")).quantize(Decimal("1"))),
+            currency=gallery.currency.lower(),
+            payment_method_types=["card"],
+            metadata={
+                "proof_gallery_id": str(gallery.id),
+                "selection_id": str(selection.id),
+                "type": "upsell",
+                "share_link_id": str(share_link_id) if share_link_id else "",
+            },
+            automatic_payment_methods={"enabled": True},
+            idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
+        )
         purchase = UpsellPurchase(
             gallery_id=gallery.id,
             selection_id=selection.id,
             extra_count=extras_count,
-            amount=amount,
+            amount=subtotal,
             currency=gallery.currency,
             status=UpsellPurchaseStatus.pending,
             stripe_payment_intent_id=pi.id,
-            meta={"selection_version": selection.version},
+            meta={
+                "selection_version": selection.version,
+                "unit_price_applied": str(applied_unit_price),
+                "unit_price_configured": str(configured_unit_price),
+                "policy_unit_price_min": str(policy_min),
+                "policy_unit_price_max": str(policy_max) if policy_max is not None else None,
+                "subtotal": str(subtotal),
+                "share_link_id": str(share_link_id) if share_link_id else None,
+            },
         )
         db.add(purchase)
         db.flush()
 
     redemption = None
-    payable_amount = amount
+    payable_amount = subtotal
     if points_to_spend:
         redemption = reserve_points_for_discount(
             db,
@@ -522,11 +690,12 @@ def _ensure_upsell_intent(
             context_type=RedemptionContextType.upsell_purchase,
             context_id=purchase.id,
             points=points_to_spend,
-            payment_amount=amount,
+            payment_amount=subtotal,
             currency=gallery.currency,
             metadata={"source": "upsell_create_intent"},
         )
-        payable_amount = max(Decimal("0.01"), amount - redemption.discount_amount)
+        payable_amount = max(Decimal("0.01"), subtotal - redemption.discount_amount)
+        purchase.amount = payable_amount
         log_event(
             db,
             event_name="reward.spent",
@@ -538,18 +707,25 @@ def _ensure_upsell_intent(
                 "discount_amount": str(redemption.discount_amount),
             },
         )
+    else:
+        purchase.amount = payable_amount
 
-    pi = stripe.PaymentIntent.create(
-        amount=int((payable_amount * Decimal("100")).quantize(Decimal("1"))),
-        currency=gallery.currency.lower(),
-        payment_method_types=["card"],
-        metadata={
-            "proof_gallery_id": str(gallery.id),
-            "selection_id": str(selection.id),
-            "type": "upsell",
-        },
-        automatic_payment_methods={"enabled": True},
-        idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
+    upsert_extra_image_purchase_snapshot(
+        db,
+        gig=gig,
+        gallery=gallery,
+        selected_images=int(selected_count),
+        extra_images=extras_count,
+        unit_price_configured=configured_unit_price,
+        unit_price_applied=applied_unit_price,
+        policy_min=policy_min,
+        policy_max=policy_max,
+        subtotal=subtotal,
+        discounts_total=redemption.discount_amount if redemption else Decimal("0.00"),
+        total=payable_amount,
+        points_spent=redemption.points_spent if redemption else 0,
+        stripe_payment_intent_id=pi.id,
+        share_link_id=share_link_id,
     )
 
     add_admin_audit_log(
@@ -559,8 +735,30 @@ def _ensure_upsell_intent(
         target_id=str(gallery.id),
         action="upsell_intent_created",
         reason=None,
-        metadata={"selection_id": str(selection.id), "extras_count": extras_count, "amount": str(amount)},
+        metadata={
+            "selection_id": str(selection.id),
+            "extras_count": extras_count,
+            "configured_unit_price": str(configured_unit_price),
+            "applied_unit_price": str(applied_unit_price),
+            "subtotal": str(subtotal),
+            "total": str(payable_amount),
+            "tier": tier.value,
+        },
     )
+    log_event(
+        db,
+        event_name="extra_images.purchased",
+        user_id=gallery.client_user_id,
+        properties={
+            "gig_id": str(gig.id),
+            "selection_id": str(selection.id),
+            "extra_images": extras_count,
+            "subtotal": str(subtotal),
+            "total": str(payable_amount),
+        },
+    )
+    if share_link_id:
+        increment_share_link_conversion(db, share_link_id=share_link_id, count=1)
 
     return purchase, pi.client_secret, redemption
 

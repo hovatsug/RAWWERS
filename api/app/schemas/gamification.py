@@ -7,6 +7,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.models.gamification import (
+    MilestoneAudience,
     CredentialMode,
     MilestoneDifficulty,
     MilestoneProgressStatus,
@@ -35,6 +36,7 @@ class MilestoneView(BaseModel):
     scope: MilestoneScope
     niche_id: uuid.UUID | None = None
     difficulty: MilestoneDifficulty
+    audience: MilestoneAudience
     is_repeatable: bool
     cooldown_days: int | None = None
     start_at: datetime | None = None
@@ -104,6 +106,7 @@ class AdminMilestoneUpsertRequest(BaseModel):
     scope: MilestoneScope
     niche_id: uuid.UUID | None = None
     difficulty: MilestoneDifficulty
+    audience: MilestoneAudience = MilestoneAudience.both
     is_repeatable: bool = False
     cooldown_days: int | None = Field(default=None, ge=0)
     start_at: datetime | None = None

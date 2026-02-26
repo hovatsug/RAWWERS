@@ -19,9 +19,10 @@ from app.models.gig import (
     PaymentStatus,
     StripePayment,
 )
-from app.models.admin import RefundCase, RefundCaseStatus
 from app.models.gallery import ProofGallery, ProofGalleryStatus, UpsellPurchase, UpsellPurchaseStatus
 from app.models.media import MediaAsset, MediaProvider, MediaStatus
+from app.models.media_rights import GigEntitlementType
+from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
 from app.schemas.webhooks import WebhookAckResponse
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
@@ -42,6 +43,10 @@ from app.models.reward import RedemptionContextType
 from app.models.ops import WebhookSecurityLog
 from app.services.abuse import detect_payment_failures_anomaly
 from app.services.metrics import observe_business_event, observe_webhook
+from app.services.media_rights import increment_entitlement_quantity
+from app.services.client_rewards_pricing import increment_share_link_conversion
+from app.services.disputes import finalize_refund_case_failed, finalize_refund_case_success
+from app.services.disputes import upsert_delivery_sla_snapshot
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
@@ -219,6 +224,21 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
 
             upsell.status = UpsellPurchaseStatus.succeeded
             gallery.status = ProofGalleryStatus.selection_submitted
+            snapshot = db.execute(
+                select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
+            ).scalar_one_or_none()
+            if snapshot:
+                snapshot.status = ExtraImagePurchaseStatus.paid
+                if snapshot.share_link_id:
+                    increment_share_link_conversion(db, share_link_id=snapshot.share_link_id, count=1)
+            increment_entitlement_quantity(
+                db,
+                gig_id=gallery.gig_id,
+                user_id=gallery.client_user_id,
+                entitlement_type=GigEntitlementType.download_extras,
+                delta=upsell.extra_count,
+            )
+            upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
             observe_business_event("upsell_purchase_succeeded")
             redemption = apply_redemption_for_context(db, RedemptionContextType.upsell_purchase, upsell.id)
             if redemption:
@@ -281,6 +301,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 reason=None,
                 metadata={"upsell_purchase_id": str(upsell.id), "payment_intent_id": payment_intent_id},
             )
+            queue_evaluate_user_milestones(gallery.client_user_id, gig.niche_id)
             return
 
         payment = db.execute(
@@ -385,6 +406,11 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         ).scalar_one_or_none()
         if upsell:
             upsell.status = UpsellPurchaseStatus.failed
+            snapshot = db.execute(
+                select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
+            ).scalar_one_or_none()
+            if snapshot:
+                snapshot.status = ExtraImagePurchaseStatus.failed
             redemption = release_redemption_for_context(
                 db,
                 RedemptionContextType.upsell_purchase,
@@ -438,6 +464,11 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         ).scalar_one_or_none()
         if upsell:
             upsell.status = UpsellPurchaseStatus.failed
+            snapshot = db.execute(
+                select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
+            ).scalar_one_or_none()
+            if snapshot:
+                snapshot.status = ExtraImagePurchaseStatus.failed
             release_redemption_for_context(
                 db,
                 RedemptionContextType.upsell_purchase,
@@ -472,6 +503,11 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         ).scalar_one_or_none()
         if upsell:
             upsell.status = UpsellPurchaseStatus.refunded
+            snapshot = db.execute(
+                select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
+            ).scalar_one_or_none()
+            if snapshot:
+                snapshot.status = ExtraImagePurchaseStatus.refunded
             return
 
         payment = db.execute(
@@ -508,30 +544,17 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
 
         if refund_id:
-            refund_cases = db.execute(
-                select(RefundCase).where(
-                    RefundCase.gig_id == gig.id,
-                    RefundCase.status.in_([RefundCaseStatus.processing, RefundCaseStatus.approved]),
-                )
-            ).scalars().all()
-            refund_case = next((item for item in refund_cases if item.meta.get("stripe_refund_id") == refund_id), None)
-            if refund_case:
-                refund_case.status = RefundCaseStatus.succeeded
-                refund_case.meta = {**refund_case.meta, "finalized_by_event": event_type}
+            finalized = finalize_refund_case_success(db, stripe_refund_id=refund_id)
+            if finalized:
+                finalized.meta = {**(finalized.meta or {}), "finalized_by_event": event_type}
 
     elif event_type == "refund.failed":
         refund_id = obj.get("id")
         if not refund_id:
             return
-        refund_cases = db.execute(
-            select(RefundCase).where(
-                RefundCase.status.in_([RefundCaseStatus.processing, RefundCaseStatus.approved]),
-            )
-        ).scalars().all()
-        refund_case = next((item for item in refund_cases if item.meta.get("stripe_refund_id") == refund_id), None)
-        if refund_case:
-            refund_case.status = RefundCaseStatus.failed
-            refund_case.meta = {**refund_case.meta, "finalized_by_event": event_type}
+        finalized = finalize_refund_case_failed(db, stripe_refund_id=refund_id, reason=(obj.get("failure_reason") or "stripe_refund_failed"))
+        if finalized:
+            finalized.meta = {**(finalized.meta or {}), "finalized_by_event": event_type}
 
     elif event_type == "charge.dispute.created":
         payment_intent_id = obj.get("payment_intent")

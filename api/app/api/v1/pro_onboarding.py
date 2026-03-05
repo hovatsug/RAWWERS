@@ -60,7 +60,7 @@ from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
-from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.media_rights import ensure_gig_consent_snapshot
@@ -272,7 +272,7 @@ def update_my_pro_profile(
     _require_role(db, user.user_id, UserRoleType.pro)
     profile = _ensure_pro_profile(db, user.user_id)
 
-    for field in ["display_name", "headline", "bio", "city", "country", "languages", "styles", "gear"]:
+    for field in ["display_name", "headline", "cover_media_asset_id", "bio", "city", "country", "languages", "styles", "gear"]:
         value = getattr(body, field)
         if value is not None:
             setattr(profile, field, value)
@@ -495,6 +495,43 @@ def list_niches(db: Session = Depends(get_db_session)) -> list[dict[str, str]]:
     return [{"slug": row.slug, "name": row.name} for row in rows]
 
 
+@router.get("/pro/niches/mine", response_model=UpdateMyNichesResponse)
+def get_my_selected_niches(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> UpdateMyNichesResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    rows = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
+    view_niche_map = get_niche_map_by_ids(db, [row.niche_id for row in rows])
+    primary_slug = None
+    items: list[ProNicheView] = []
+    for row in rows:
+        niche = view_niche_map.get(row.niche_id)
+        if not niche:
+            continue
+        if row.is_primary:
+            primary_slug = niche.slug
+        items.append(
+            ProNicheView(
+                slug=niche.slug,
+                name=niche.name,
+                declared_level=row.declared_level,
+                is_primary=row.is_primary,
+            )
+        )
+    db.commit()
+    return UpdateMyNichesResponse(primary_niche_slug=primary_slug, niches=items)
+
+
+@router.put("/pro/niches/mine", response_model=UpdateMyNichesResponse)
+def put_my_selected_niches(
+    body: UpdateMyNichesRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> UpdateMyNichesResponse:
+    return update_my_niches(body=body, user=user, db=db)
+
+
 @router.put("/pro/me/niches", response_model=UpdateMyNichesResponse)
 def update_my_niches(
     body: UpdateMyNichesRequest,
@@ -624,11 +661,17 @@ def get_pro_niche_skills(
         .where(ProNicheSkill.pro_user_id == pro_user_id, Niche.is_active.is_(True))
         .order_by(ProNicheSkill.capability_score.desc(), ProNicheSkill.confidence.desc())
     ).all()
+    badge_codes = set(list_user_badge_codes(db, pro_user_id))
     items = [
         ProNicheSkillView(
             niche_slug=niche.slug,
             niche_name=niche.name,
             tier=skill.tier,
+            score=skill.score,
+            verified=skill.verified,
+            gigs_completed=skill.gigs_completed,
+            avg_rating=float(skill.avg_rating or 0),
+            review_count=skill.review_count,
             capability_score=skill.capability_score,
             certification_score=skill.certification_score,
             confidence=float(skill.confidence),
@@ -636,6 +679,9 @@ def get_pro_niche_skills(
             evidence_reviews=skill.evidence_reviews,
             evidence_portfolio=skill.evidence_portfolio,
             breakdown=_sanitize_public_breakdown(skill.breakdown),
+            badges=sorted([code for code in badge_codes if code.startswith(f"tier_{niche.slug}_") or code == f"verified_{niche.slug}"]),
+            last_promotion_at=skill.last_promotion_at,
+            last_demotion_at=skill.last_demotion_at,
             updated_at=skill.updated_at,
         )
         for skill, niche in rows
@@ -657,11 +703,17 @@ def get_my_niche_skills(
         .order_by(ProNicheSkill.capability_score.desc(), ProNicheSkill.confidence.desc())
     ).all()
     db.commit()
+    badge_codes = set(list_user_badge_codes(db, user.user_id))
     items = [
         ProNicheSkillView(
             niche_slug=niche.slug,
             niche_name=niche.name,
             tier=skill.tier,
+            score=skill.score,
+            verified=skill.verified,
+            gigs_completed=skill.gigs_completed,
+            avg_rating=float(skill.avg_rating or 0),
+            review_count=skill.review_count,
             capability_score=skill.capability_score,
             certification_score=skill.certification_score,
             confidence=float(skill.confidence),
@@ -669,6 +721,9 @@ def get_my_niche_skills(
             evidence_reviews=skill.evidence_reviews,
             evidence_portfolio=skill.evidence_portfolio,
             breakdown=skill.breakdown or {},
+            badges=sorted([code for code in badge_codes if code.startswith(f"tier_{niche.slug}_") or code == f"verified_{niche.slug}"]),
+            last_promotion_at=skill.last_promotion_at,
+            last_demotion_at=skill.last_demotion_at,
             updated_at=skill.updated_at,
         )
         for skill, niche in rows
@@ -1121,6 +1176,7 @@ def _profile_view(profile: ProProfile) -> ProProfileView:
         user_id=profile.user_id,
         display_name=profile.display_name,
         headline=profile.headline,
+        cover_media_asset_id=profile.cover_media_asset_id,
         bio=profile.bio,
         city=profile.city,
         country=profile.country,

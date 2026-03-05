@@ -48,6 +48,8 @@ class ClientPreferenceUpdateRequest(BaseModel):
 class ClientDiscoverCard(BaseModel):
     pro_user_id: uuid.UUID
     display_name: str | None = None
+    headline: str | None = None
+    cover_media_asset_id: uuid.UUID | None = None
     city: str | None = None
     country: str | None = None
     min_price: Decimal | None = None
@@ -105,6 +107,7 @@ class ClientProProfileResponse(BaseModel):
     pro_user_id: uuid.UUID
     display_name: str | None = None
     headline: str | None = None
+    cover_media_asset_id: uuid.UUID | None = None
     bio: str | None = None
     city: str | None = None
     country: str | None = None

@@ -26,7 +26,7 @@ from app.schemas.review import (
 from app.services.abuse import detect_review_fraud, strip_html
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
-from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.niche_skills import enqueue_niche_skill_recalc, recompute_pro_niche_skills
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.reputation import recompute_pro_reputation
 from app.services.search_indexing import enqueue_pro_index_upsert
@@ -92,6 +92,7 @@ def create_review_for_gig(
     recompute_pro_reputation(db, gig.pro_user_id)
     if gig.niche_id:
         recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+        enqueue_niche_skill_recalc(db, pro_user_id=gig.pro_user_id, niche_id=gig.niche_id, reason="review_posted")
     enqueue_pro_index_upsert(db, gig.pro_user_id, idempotency_suffix="review_create")
     log_event(
         db,
@@ -198,6 +199,7 @@ def moderate_review(
     )
     recompute_pro_reputation(db, review.pro_user_id)
     recompute_pro_niche_skills(db, review.pro_user_id, review.niche_id)
+    enqueue_niche_skill_recalc(db, pro_user_id=review.pro_user_id, niche_id=review.niche_id, reason="review_moderated")
     enqueue_pro_index_upsert(db, review.pro_user_id, idempotency_suffix=f"review_moderate:{body.action.value}")
     if body.action in {ReviewStatus.hidden, ReviewStatus.removed}:
         log_event(

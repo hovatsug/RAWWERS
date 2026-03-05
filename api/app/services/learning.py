@@ -10,9 +10,21 @@ from sqlalchemy.orm import Session
 from app.core.errors import APIError
 from app.models.learning import (
     Certificate,
+    CertificateType,
     Course,
     CourseLevel,
+    CourseModuleType,
+    CoursePricingMode,
+    CourseQuiz,
+    CourseReview,
+    CourseReviewDecision,
+    CourseSale,
+    CourseSaleStatus,
+    CourseStatus,
     CourseModule,
+    CurriculumPath,
+    CurriculumRequirement,
+    CurriculumRequirementType,
     Enrollment,
     EnrollmentStatus,
     InstructorProfile,
@@ -23,6 +35,10 @@ from app.models.learning import (
     ProgressStatus,
     QuizAttempt,
     QuizQuestion,
+    LearningFeePolicy,
+    LearningPartner,
+    LearningPartnerStatus,
+    ModuleProgress,
 )
 from app.models.media import MediaAsset, MediaKind
 from app.models.niche import CertificationRecord, Niche, SkillTier
@@ -30,6 +46,8 @@ from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.gamification import queue_evaluate_user_milestones
 from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.niche_skills import enqueue_niche_skill_recalc
+from app.services.notifications import enqueue_notification
 
 SHORT_VIDEO_MAX_DURATION_SECONDS = 900
 
@@ -248,6 +266,7 @@ def issue_certificate_for_enrollment(db: Session, enrollment_id: uuid.UUID) -> C
         cert_record.expires_at = expires_at
 
     recompute_pro_niche_skills(db, enrollment.user_id, course.niche_id)
+    enqueue_niche_skill_recalc(db, pro_user_id=enrollment.user_id, niche_id=course.niche_id, reason="certificate_issued")
     recompute_pro_public_index(db, enrollment.user_id)
     log_event(
         db,
@@ -339,3 +358,453 @@ def _compute_certification_score(db: Session, enrollment_id: uuid.UUID, level: C
 
 def _build_certificate_code(user_id: uuid.UUID, course_id: uuid.UUID) -> str:
     return f"RWR-{str(course_id).split('-')[0].upper()}-{str(user_id).split('-')[0].upper()}"
+
+
+def get_or_create_fee_policy(db: Session) -> LearningFeePolicy:
+    row = db.execute(select(LearningFeePolicy).order_by(LearningFeePolicy.updated_at.desc())).scalar_one_or_none()
+    if row:
+        return row
+    row = LearningFeePolicy(platform_fee_percent=30, mux_cost_reserve_percent=10, metadata={})
+    db.add(row)
+    db.flush()
+    return row
+
+
+def upsert_learning_partner(
+    db: Session,
+    *,
+    partner_id: uuid.UUID | None,
+    name: str,
+    brand: dict,
+    contact_email: str | None,
+    status: LearningPartnerStatus,
+    payout_account_ref: str | None,
+) -> LearningPartner:
+    row = db.get(LearningPartner, partner_id) if partner_id else None
+    if not row:
+        row = LearningPartner(name=name, brand=brand or {}, contact_email=contact_email, status=status, payout_account_ref=payout_account_ref)
+        db.add(row)
+    else:
+        row.name = name
+        row.brand = brand or {}
+        row.contact_email = contact_email
+        row.status = status
+        row.payout_account_ref = payout_account_ref
+        row.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return row
+
+
+def list_learning_partners(db: Session) -> list[LearningPartner]:
+    return db.execute(select(LearningPartner).order_by(LearningPartner.created_at.desc())).scalars().all()
+
+
+def create_partner_course(
+    db: Session,
+    *,
+    creator_user_id: uuid.UUID,
+    instructor_user_id: uuid.UUID,
+    partner_id: uuid.UUID | None,
+    title_custom: str,
+    description_custom: str | None,
+    language: str,
+    niche_slugs: list[str],
+    level: CourseLevel,
+    pricing_mode: CoursePricingMode,
+    price_eur: Decimal | None,
+    currency: str,
+) -> Course:
+    if pricing_mode == CoursePricingMode.paid and (price_eur is None or price_eur <= 0):
+        raise APIError(code="validation_error", message="Paid courses require price_eur > 0", status_code=422)
+    niche_row = None
+    if niche_slugs:
+        niche_row = db.execute(select(Niche).where(Niche.slug == niche_slugs[0])).scalar_one_or_none()
+    if niche_row is None:
+        niche_row = db.execute(select(Niche).order_by(Niche.slug.asc())).scalar_one_or_none()
+    if niche_row is None:
+        raise APIError(code="validation_error", message="No niche configured", status_code=422)
+
+    course = Course(
+        instructor_user_id=instructor_user_id,
+        creator_user_id=creator_user_id,
+        partner_id=partner_id,
+        title=title_custom,
+        title_custom=title_custom,
+        summary=description_custom,
+        description_custom=description_custom,
+        language=language,
+        niche_slugs=niche_slugs,
+        niche_id=niche_row.id,
+        level=level,
+        pricing_mode=pricing_mode,
+        status=CourseStatus.draft,
+        is_published=False,
+        price=price_eur,
+        price_eur=price_eur,
+        currency=currency.upper(),
+    )
+    db.add(course)
+    db.flush()
+    return course
+
+
+def submit_course_for_review(db: Session, *, course: Course, actor_user_id: uuid.UUID) -> Course:
+    if course.creator_user_id != actor_user_id and course.instructor_user_id != actor_user_id:
+        raise APIError(code="forbidden", message="Not allowed", status_code=403)
+    if course.status not in {CourseStatus.draft, CourseStatus.rejected}:
+        raise APIError(code="invalid_state", message="Course cannot be submitted in current state", status_code=409)
+    course.status = CourseStatus.submitted
+    course.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return course
+
+
+def review_course_submission(
+    db: Session,
+    *,
+    course: Course,
+    reviewer_admin_id: uuid.UUID,
+    decision: CourseReviewDecision,
+    notes: str | None,
+) -> Course:
+    review = CourseReview(
+        course_id=course.id,
+        reviewer_admin_id=reviewer_admin_id,
+        decision=decision,
+        notes=notes,
+    )
+    db.add(review)
+    if decision == CourseReviewDecision.approved:
+        course.status = CourseStatus.approved
+        course.is_published = True
+        course.approved_at = datetime.now(timezone.utc)
+        course.updated_at = datetime.now(timezone.utc)
+        log_event(db, event_name="learning.course_approved", user_id=course.creator_user_id, properties={"course_id": str(course.id)})
+    else:
+        course.status = CourseStatus.rejected
+        course.is_published = False
+        course.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return course
+
+
+def list_learning_courses(
+    db: Session,
+    *,
+    search: str | None,
+    niche: str | None,
+    pricing: CoursePricingMode | None,
+) -> list[Course]:
+    stmt = select(Course).where(Course.status == CourseStatus.approved, Course.is_published.is_(True))
+    if pricing:
+        stmt = stmt.where(Course.pricing_mode == pricing)
+    rows = db.execute(stmt.order_by(Course.updated_at.desc())).scalars().all()
+    if niche:
+        rows = [row for row in rows if niche in (row.niche_slugs or [])]
+    if search:
+        needle = search.lower()
+        rows = [row for row in rows if needle in (row.title_custom or row.title or "").lower() or needle in (row.description_custom or row.summary or "").lower()]
+    return rows
+
+
+def list_curricula(db: Session, *, niche: str | None) -> list[CurriculumPath]:
+    stmt = select(CurriculumPath).where(CurriculumPath.is_active.is_(True))
+    if niche:
+        stmt = stmt.where(CurriculumPath.niche_slug == niche)
+    return db.execute(stmt.order_by(CurriculumPath.name.asc())).scalars().all()
+
+
+def get_course_modules(db: Session, *, course_id: uuid.UUID) -> list[CourseModule]:
+    return db.execute(select(CourseModule).where(CourseModule.course_id == course_id).order_by(CourseModule.sort_order.asc())).scalars().all()
+
+
+def enroll_user_in_course(db: Session, *, user_id: uuid.UUID, course: Course) -> Enrollment:
+    row = db.execute(select(Enrollment).where(Enrollment.user_id == user_id, Enrollment.course_id == course.id)).scalar_one_or_none()
+    if row:
+        return row
+    paid = course.pricing_mode != CoursePricingMode.paid or (course.price_eur is None or course.price_eur <= 0)
+    stripe_payment_intent_id = None if paid else f"pi_learn_{uuid.uuid4().hex[:24]}"
+    row = Enrollment(
+        user_id=user_id,
+        course_id=course.id,
+        status=EnrollmentStatus.enrolled,
+        paid=paid,
+        stripe_payment_intent_id=stripe_payment_intent_id,
+        enrolled_at=datetime.now(timezone.utc),
+        started_at=datetime.now(timezone.utc),
+    )
+    db.add(row)
+    db.flush()
+    log_event(db, event_name="learn.enrolled", user_id=user_id, properties={"course_id": str(course.id), "paid": paid})
+    return row
+
+
+def settle_paid_enrollment(
+    db: Session,
+    *,
+    enrollment: Enrollment,
+    stripe_payment_intent_id: str,
+) -> Enrollment:
+    if enrollment.paid:
+        return enrollment
+    course = db.get(Course, enrollment.course_id)
+    if not course:
+        raise APIError(code="not_found", message="Course not found", status_code=404)
+    policy = get_or_create_fee_policy(db)
+    gross = Decimal(str(course.price_eur or course.price or 0)).quantize(Decimal("0.01"))
+    platform_fee = (gross * Decimal(policy.platform_fee_percent) / Decimal(100)).quantize(Decimal("0.01"))
+    partner_net = (gross - platform_fee).quantize(Decimal("0.01"))
+    mux_reserve = (gross * Decimal(policy.mux_cost_reserve_percent) / Decimal(100)).quantize(Decimal("0.01"))
+    sale = CourseSale(
+        course_id=course.id,
+        user_id=enrollment.user_id,
+        gross_eur=gross,
+        platform_fee_eur=platform_fee,
+        partner_net_eur=partner_net,
+        stripe_payment_intent_id=stripe_payment_intent_id,
+        status=CourseSaleStatus.paid,
+        mux_minutes_consumed=0,
+        mux_cost_reserve_eur=mux_reserve,
+    )
+    db.add(sale)
+    enrollment.paid = True
+    enrollment.stripe_payment_intent_id = stripe_payment_intent_id
+    enrollment.updated_at = datetime.now(timezone.utc)
+    log_event(db, event_name="learn.paid_course_purchased", user_id=enrollment.user_id, properties={"course_id": str(course.id)})
+    db.flush()
+    return enrollment
+
+
+def upsert_module_progress(
+    db: Session,
+    *,
+    enrollment: Enrollment,
+    module: CourseModule,
+    watch_seconds_delta: int,
+    position_seconds: int,
+) -> ModuleProgress:
+    row = db.execute(
+        select(ModuleProgress).where(ModuleProgress.enrollment_id == enrollment.id, ModuleProgress.module_id == module.id)
+    ).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if not row:
+        row = ModuleProgress(
+            enrollment_id=enrollment.id,
+            module_id=module.id,
+            status=ProgressStatus.not_started,
+            watch_seconds=0,
+            last_position_seconds=0,
+        )
+        db.add(row)
+        db.flush()
+
+    elapsed = max(1, int((now - (row.updated_at or now)).total_seconds()))
+    max_allowed_delta = max(30, elapsed + 10)
+    bounded_delta = min(watch_seconds_delta, max_allowed_delta)
+    row.watch_seconds = max(0, row.watch_seconds + bounded_delta)
+    row.last_position_seconds = position_seconds
+    row.updated_at = now
+    row.status = ProgressStatus.in_progress if row.watch_seconds > 0 else ProgressStatus.not_started
+
+    if module.duration_seconds and module.duration_seconds > 0:
+        completion_threshold = int(module.duration_seconds * 0.9)
+        quiz = db.execute(select(CourseQuiz).where(CourseQuiz.module_id == module.id)).scalar_one_or_none()
+        quiz_ok = True if not quiz else (row.quiz_score_percent is not None and row.quiz_score_percent >= quiz.pass_score_percent)
+        became_completed = row.status != ProgressStatus.completed
+        if row.watch_seconds >= completion_threshold and quiz_ok:
+            row.status = ProgressStatus.completed
+            if became_completed:
+                log_event(
+                    db,
+                    event_name="learn.module_completed",
+                    user_id=enrollment.user_id,
+                    properties={"enrollment_id": str(enrollment.id), "module_id": str(module.id)},
+                )
+    db.flush()
+    return row
+
+
+def score_module_quiz(
+    db: Session,
+    *,
+    enrollment: Enrollment,
+    module: CourseModule,
+    answers: list[int],
+) -> tuple[ModuleProgress, int, bool]:
+    quiz = db.execute(select(CourseQuiz).where(CourseQuiz.module_id == module.id)).scalar_one_or_none()
+    if not quiz:
+        raise APIError(code="not_found", message="Quiz not found for module", status_code=404)
+    questions = quiz.questions or []
+    if not isinstance(questions, list) or not questions:
+        raise APIError(code="validation_error", message="Quiz has no questions", status_code=422)
+    if len(answers) != len(questions):
+        raise APIError(code="validation_error", message="answers length mismatch", status_code=422)
+    correct = 0
+    for idx, item in enumerate(questions):
+        expected = int((item or {}).get("correct_index", -1))
+        if answers[idx] == expected:
+            correct += 1
+    score = int(round((correct * 100) / len(questions)))
+    passed = score >= int(quiz.pass_score_percent or 70)
+
+    progress = db.execute(
+        select(ModuleProgress).where(ModuleProgress.enrollment_id == enrollment.id, ModuleProgress.module_id == module.id)
+    ).scalar_one_or_none()
+    if not progress:
+        progress = ModuleProgress(
+            enrollment_id=enrollment.id,
+            module_id=module.id,
+            status=ProgressStatus.not_started,
+            watch_seconds=0,
+            last_position_seconds=0,
+        )
+        db.add(progress)
+        db.flush()
+    progress.quiz_score_percent = score
+    if passed and module.duration_seconds and progress.watch_seconds >= int(module.duration_seconds * 0.9):
+        progress.status = ProgressStatus.completed
+    progress.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return progress, score, passed
+
+
+def try_complete_enrollment(db: Session, *, enrollment: Enrollment) -> bool:
+    modules = get_course_modules(db, course_id=enrollment.course_id)
+    if not modules:
+        return False
+    module_ids = [m.id for m in modules]
+    completed = db.execute(
+        select(func.count())
+        .select_from(ModuleProgress)
+        .where(
+            ModuleProgress.enrollment_id == enrollment.id,
+            ModuleProgress.module_id.in_(module_ids),
+            ModuleProgress.status == ProgressStatus.completed,
+        )
+    ).scalar_one()
+    if completed < len(module_ids):
+        return False
+    enrollment.status = EnrollmentStatus.completed
+    enrollment.completed_at = datetime.now(timezone.utc)
+    enrollment.updated_at = datetime.now(timezone.utc)
+    log_event(
+        db,
+        event_name="learn.course_completed",
+        user_id=enrollment.user_id,
+        properties={"course_id": str(enrollment.course_id), "enrollment_id": str(enrollment.id)},
+    )
+    enqueue_notification(
+        db,
+        user_id=enrollment.user_id,
+        notification_type="course.completed",
+        reference_type="enrollment",
+        reference_id=str(enrollment.id),
+        payload={"course_id": str(enrollment.course_id)},
+    )
+    db.flush()
+    return True
+
+
+def issue_learning_certificate_for_course(db: Session, *, enrollment: Enrollment) -> Certificate:
+    course = db.get(Course, enrollment.course_id)
+    if not course:
+        raise APIError(code="not_found", message="Course not found", status_code=404)
+    existing = db.execute(
+        select(Certificate).where(
+            Certificate.user_id == enrollment.user_id,
+            Certificate.course_id == enrollment.course_id,
+            Certificate.certificate_type == CertificateType.course,
+        )
+    ).scalar_one_or_none()
+    if existing:
+        return existing
+    code = _build_certificate_code(enrollment.user_id, enrollment.course_id)
+    verify = f"VC-{uuid.uuid4().hex[:16].upper()}"
+    cert = Certificate(
+        user_id=enrollment.user_id,
+        certificate_type=CertificateType.course,
+        course_id=enrollment.course_id,
+        curriculum_path_id=None,
+        niche_id=course.niche_id,
+        niche_slug=(course.niche_slugs[0] if course.niche_slugs else None),
+        certificate_code=code,
+        verification_code=verify,
+        issued_at=datetime.now(timezone.utc),
+        meta={"level": course.level.value},
+    )
+    db.add(cert)
+    enqueue_notification(
+        db,
+        user_id=enrollment.user_id,
+        notification_type="certificate.issued",
+        reference_type="certificate",
+        reference_id=str(cert.id),
+        payload={"course_id": str(course.id)},
+    )
+    log_event(db, event_name="learn.certificate_issued", user_id=enrollment.user_id, properties={"course_id": str(course.id)})
+    db.flush()
+    return cert
+
+
+def maybe_issue_curriculum_certificate(db: Session, *, user_id: uuid.UUID, course: Course) -> list[Certificate]:
+    results: list[Certificate] = []
+    for niche_slug in (course.niche_slugs or []):
+        paths = db.execute(
+            select(CurriculumPath).where(CurriculumPath.niche_slug == niche_slug, CurriculumPath.is_active.is_(True))
+        ).scalars().all()
+        for path in paths:
+            reqs = db.execute(
+                select(CurriculumRequirement).where(
+                    CurriculumRequirement.curriculum_path_id == path.id,
+                    CurriculumRequirement.requirement_type == CurriculumRequirementType.mandatory,
+                )
+            ).scalars().all()
+            if not reqs:
+                continue
+            mandatory_course_ids = [item.course_id for item in reqs]
+            completed_count = db.execute(
+                select(func.count())
+                .select_from(Enrollment)
+                .where(
+                    Enrollment.user_id == user_id,
+                    Enrollment.course_id.in_(mandatory_course_ids),
+                    Enrollment.status == EnrollmentStatus.completed,
+                )
+            ).scalar_one()
+            if completed_count < len(mandatory_course_ids):
+                continue
+            existing = db.execute(
+                select(Certificate).where(
+                    Certificate.user_id == user_id,
+                    Certificate.curriculum_path_id == path.id,
+                    Certificate.certificate_type == CertificateType.curriculum,
+                )
+            ).scalar_one_or_none()
+            if existing:
+                continue
+            cert = Certificate(
+                user_id=user_id,
+                certificate_type=CertificateType.curriculum,
+                course_id=None,
+                curriculum_path_id=path.id,
+                niche_id=None,
+                niche_slug=path.niche_slug,
+                certificate_code=f"RWR-CUR-{str(path.id).split('-')[0].upper()}-{str(user_id).split('-')[0].upper()}",
+                verification_code=f"VC-{uuid.uuid4().hex[:16].upper()}",
+                issued_at=datetime.now(timezone.utc),
+                meta={"curriculum_name": path.name},
+            )
+            db.add(cert)
+            results.append(cert)
+            niche_row = db.execute(select(Niche).where(Niche.slug == path.niche_slug)).scalar_one_or_none()
+            if niche_row:
+                enqueue_niche_skill_recalc(
+                    db,
+                    pro_user_id=user_id,
+                    niche_id=niche_row.id,
+                    reason="curriculum_certificate_issued",
+                )
+            log_event(db, event_name="learn.curriculum_completed", user_id=user_id, properties={"curriculum_path_id": str(path.id)})
+    if results:
+        db.flush()
+    return results

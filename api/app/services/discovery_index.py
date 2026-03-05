@@ -19,6 +19,7 @@ from app.services.niche_catalog import ensure_initial_niches
 from app.services.gamification import queue_evaluate_user_milestones
 from app.services.cache import bump_public_index_version
 from app.services.niche_skills import get_top_niches_for_index
+from app.services.niche_skills import get_niche_tier_map_for_index, get_verified_niches_for_index
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.search_indexing import enqueue_pro_index_upsert
 
@@ -133,9 +134,15 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     index.avg_response_minutes = avg_response_minutes
     index.avg_rating = avg_rating
     index.review_count = review_count
-    index.ranking_score = ranking_score
     top_niches = get_top_niches_for_index(db, pro_user_id, limit=3)
+    if top_niches:
+        top_tier = str(top_niches[0].get("tier") or "rookie")
+        tier_rank_value = {"rookie": 0, "skilled": 1, "pro": 2, "elite": 3, "master": 4}.get(top_tier, 0)
+        ranking_score = (ranking_score + Decimal(str(tier_rank_value * 8))).quantize(Decimal("0.0001"))
+    index.ranking_score = ranking_score
     index.top_niches = top_niches
+    index.niche_tiers = get_niche_tier_map_for_index(db, pro_user_id)
+    index.verified_niches = get_verified_niches_for_index(db, pro_user_id)
     index.primary_niche_id = None
     if top_niches:
         primary = db.execute(select(Niche.id).where(Niche.slug == top_niches[0]["slug"])).scalar_one_or_none()

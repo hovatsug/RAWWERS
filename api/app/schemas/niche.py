@@ -10,8 +10,11 @@ from app.models.niche import DeclaredLevel, SkillTier
 
 
 class NicheView(BaseModel):
+    id: uuid.UUID | None = None
     slug: str
     name: str
+    name_key: str | None = None
+    is_active: bool = True
 
 
 class ProNicheInput(BaseModel):
@@ -50,6 +53,11 @@ class ProNicheSkillView(BaseModel):
     niche_slug: str
     niche_name: str
     tier: SkillTier
+    score: int = 0
+    verified: bool = False
+    gigs_completed: int = 0
+    avg_rating: float = 0.0
+    review_count: int = 0
     capability_score: int
     certification_score: int
     confidence: float
@@ -57,6 +65,9 @@ class ProNicheSkillView(BaseModel):
     evidence_reviews: int
     evidence_portfolio: int
     breakdown: dict[str, Any] = Field(default_factory=dict)
+    badges: list[str] = Field(default_factory=list)
+    last_promotion_at: datetime | None = None
+    last_demotion_at: datetime | None = None
     updated_at: datetime
 
 
@@ -67,7 +78,38 @@ class ProNicheSkillListResponse(BaseModel):
 
 class AdminNicheSkillOverrideRequest(BaseModel):
     tier: SkillTier | None = None
+    score: int | None = Field(default=None, ge=0, le=100)
+    verified: bool | None = None
     capability_score: int | None = Field(default=None, ge=0, le=100)
     certification_score: int | None = Field(default=None, ge=0, le=100)
     reason: str
     expires_at: datetime | None = None
+
+
+class NicheTierThresholdRule(BaseModel):
+    min_score: int = 0
+    min_gigs: int = 0
+    min_rating: float = 0.0
+    requires_verified: bool = False
+
+
+class NicheTierPolicyView(BaseModel):
+    niche_id: uuid.UUID
+    thresholds: dict[str, NicheTierThresholdRule] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
+class NicheTierPolicyUpsertRequest(BaseModel):
+    thresholds: dict[str, NicheTierThresholdRule] = Field(default_factory=dict)
+
+
+class AdminNicheSkillOverrideV2Request(BaseModel):
+    tier: SkillTier | None = None
+    score: int | None = Field(default=None, ge=0, le=100)
+    verified: bool | None = None
+    note: str
+
+
+class AdminNicheSkillRecalcRequest(BaseModel):
+    pro_user_id: uuid.UUID | None = None
+    niche_id: uuid.UUID | None = None

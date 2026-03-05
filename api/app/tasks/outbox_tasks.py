@@ -63,6 +63,12 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
 
         recompute_pro_niche_skills(db, uuid.UUID(payload["pro_user_id"]), uuid.UUID(payload["niche_id"]) if payload.get("niche_id") else None)
         return
+    if topic == "niche_skill.recalc":
+        from app.services.niche_skills import recompute_pro_niche_skills
+        import uuid
+
+        recompute_pro_niche_skills(db, uuid.UUID(payload["pro_user_id"]), uuid.UUID(payload["niche_id"]) if payload.get("niche_id") else None)
+        return
     if topic.startswith("index."):
         process_index_event(db, topic, payload)
         return
@@ -233,4 +239,12 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         payout_request_id = payload.get("payout_request_id")
         if payout_request_id:
             execute_payout_request(db, payout_request_id=uuid.UUID(payout_request_id))
+        return
+    if topic == "print.export.run":
+        import uuid
+        from app.services.prints_fulfillment import run_print_export_job
+
+        job_id = payload.get("print_export_job_id")
+        if job_id:
+            run_print_export_job(db, print_export_job_id=uuid.UUID(job_id))
         return

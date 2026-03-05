@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.models.admin import KYCStatus, ProProfile, UserAccount
 from app.models.commerce import CommercePartner, Product, ProductStockStatus
 from app.models.discovery import ProPublicIndex
-from app.models.learning import Course, InstructorProfile, InstructorStatus
+from app.models.learning import Course, CourseStatus, InstructorProfile, InstructorStatus
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.outbox import OutboxEvent
 from app.models.repair import RepairPartner, RepairPartnerScore
@@ -182,6 +182,8 @@ def build_pro_document(db: Session, pro_user_id: uuid.UUID) -> dict | None:
     return {
         "id": str(pro_user_id),
         "display_name": profile.display_name,
+        "headline": profile.headline,
+        "cover_media_asset_id": str(profile.cover_media_asset_id) if profile.cover_media_asset_id else None,
         "city": idx.city,
         "country": idx.country,
         "niche_slugs": niche_slugs,
@@ -189,6 +191,7 @@ def build_pro_document(db: Session, pro_user_id: uuid.UUID) -> dict | None:
         "niche_tiers": niche_tiers,
         "niche_tier_rank": niche_tier_rank,
         "niche_capability": niche_capability,
+        "verified_niches": list(idx.verified_niches or []),
         "confidence": confidence,
         "price_min": float(idx.min_package_price) if idx.min_package_price is not None else None,
         "price_max": float(idx.max_package_price) if idx.max_package_price is not None else None,
@@ -204,7 +207,7 @@ def build_pro_document(db: Session, pro_user_id: uuid.UUID) -> dict | None:
 
 def build_course_document(db: Session, course_id: uuid.UUID) -> dict | None:
     course = db.get(Course, course_id)
-    if not course or not course.is_published:
+    if not course or not course.is_published or course.status != CourseStatus.approved:
         return None
     instructor = db.get(InstructorProfile, course.instructor_user_id)
     if not instructor or instructor.status != InstructorStatus.approved:
@@ -213,14 +216,17 @@ def build_course_document(db: Session, course_id: uuid.UUID) -> dict | None:
     user = db.get(UserAccount, course.instructor_user_id)
     return {
         "id": str(course.id),
-        "title": course.title,
-        "summary": course.summary,
-        "niche_slug": niche.slug if niche else None,
+        "title": course.title_custom or course.title,
+        "summary": course.description_custom or course.summary,
+        "niche_slug": niche.slug if niche else (course.niche_slugs[0] if course.niche_slugs else None),
+        "niche_slugs": course.niche_slugs or [],
         "level": course.level.value,
         "is_mandatory": bool(course.is_mandatory),
-        "price": float(course.price) if course.price is not None else None,
+        "price": float(course.price_eur) if course.price_eur is not None else (float(course.price) if course.price is not None else None),
         "currency": course.currency,
         "instructor_name": user.display_name if user else None,
+        "partner_id": str(course.partner_id) if course.partner_id else None,
+        "language": course.language,
         "is_published": True,
         "updated_at": course.updated_at.isoformat() if course.updated_at else None,
     }

@@ -9,6 +9,7 @@ import '../features/auth/verify_email_screen.dart';
 import '../features/discover/discover_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/pro_onboarding/pro_onboarding_screen.dart';
+import '../features/pros/listing_card_screen.dart';
 import '../features/pros/pro_profile_screen.dart';
 import 'app_shell.dart';
 
@@ -26,7 +27,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final requiresAuth = state.matchedLocation.startsWith('/discover') ||
           state.matchedLocation.startsWith('/notifications') ||
           state.matchedLocation.startsWith('/pros/') ||
-          state.matchedLocation.startsWith('/pro/onboarding');
+          state.matchedLocation.startsWith('/pro/onboarding') ||
+          state.matchedLocation.startsWith('/profile/listing-card');
 
       if (session.loading) {
         return null;
@@ -41,6 +43,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (state.matchedLocation.startsWith('/pro/onboarding') && !session.isPro) {
+        return '/discover';
+      }
+      if (state.matchedLocation.startsWith('/profile/listing-card') && !session.isPro) {
         return '/discover';
       }
 
@@ -59,6 +64,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/discover', builder: (_, __) => const DiscoverScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/pro/onboarding', builder: (_, __) => const ProOnboardingScreen()),
+          GoRoute(path: '/profile/listing-card', builder: (_, __) => const ListingCardScreen()),
           GoRoute(
             path: '/pros/:id',
             builder: (_, state) {

@@ -16,6 +16,8 @@ class ProPublicIndex(Base):
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     primary_niche_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     top_niches: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    niche_tiers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    verified_niches: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     city: Mapped[str | None] = mapped_column(Text, nullable=True)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)
     styles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

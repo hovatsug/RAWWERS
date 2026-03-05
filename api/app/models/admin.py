@@ -153,6 +153,7 @@ class ProProfile(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.user_id"), primary_key=True)
     display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     headline: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cover_media_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(Text, nullable=True)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)

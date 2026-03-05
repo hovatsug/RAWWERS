@@ -28,6 +28,7 @@ ALLOWED_PREFIXES = (
     "course.",
     "certificate.",
     "learning.",
+    "learn.",
     "milestone.",
     "credential.",
     "cycle.",
@@ -45,6 +46,8 @@ ALLOWED_PREFIXES = (
     "payout.",
     "finance.",
     "i18n.",
+    "legacy.",
+    "prints.",
 )
 
 

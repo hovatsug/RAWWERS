@@ -137,6 +137,18 @@ BUSINESS_EVENT_MAP = {
     "referral.converted": "referral_converted",
     "viral.share_view": "viral_share_view",
     "viral.cta_clicked": "viral_cta_clicked",
+    "legacy.checkout_started": "legacy_checkout_started",
+    "legacy.paid": "legacy_paid",
+    "legacy.brief_submitted": "legacy_brief_submitted",
+    "legacy.pro_assigned": "legacy_pro_assigned",
+    "legacy.review_requested": "legacy_review_requested",
+    "legacy.delivered": "legacy_delivered",
+    "prints.catalog_viewed": "prints_catalog_viewed",
+    "prints.order_created": "prints_order_created",
+    "prints.paid": "prints_paid",
+    "prints.export_done": "prints_export_done",
+    "prints.shipped": "prints_shipped",
+    "prints.delivered": "prints_delivered",
 }
 
 

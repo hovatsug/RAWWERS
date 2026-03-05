@@ -309,6 +309,7 @@ def get_public_pro_profile(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
+        cover_media_asset_id=profile.cover_media_asset_id,
         bio=profile.bio,
         city=profile.city,
         country=profile.country,

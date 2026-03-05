@@ -283,6 +283,7 @@ def client_pro_profile(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
+        cover_media_asset_id=profile.cover_media_asset_id,
         bio=profile.bio,
         city=profile.city,
         country=profile.country,
@@ -635,6 +636,8 @@ def _card_from_index(db: Session, idx: ProPublicIndex) -> ClientDiscoverCard:
     return ClientDiscoverCard(
         pro_user_id=idx.pro_user_id,
         display_name=profile.display_name if profile else None,
+        headline=profile.headline if profile else None,
+        cover_media_asset_id=profile.cover_media_asset_id if profile else None,
         city=idx.city,
         country=idx.country,
         min_price=idx.min_package_price,

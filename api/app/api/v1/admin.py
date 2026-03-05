@@ -39,7 +39,7 @@ from app.models.learning import (
     InstructorStatus,
 )
 from app.models.media import MediaAsset
-from app.models.niche import Niche, ProNicheSkill
+from app.models.niche import Niche, NicheTierPolicy, ProNicheSkill, ProNicheSkillEvent, SkillTier
 from app.models.discovery import AnalyticsEvent
 from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
 from app.models.payouts import EarningsSourceType
@@ -112,7 +112,16 @@ from app.schemas.disputes import (
     ProQualityPenaltyView,
     RefundCaseDetailView,
 )
-from app.schemas.niche import AdminNicheSkillOverrideRequest
+from app.schemas.niche import (
+    AdminNicheSkillOverrideRequest,
+    AdminNicheSkillOverrideV2Request,
+    AdminNicheSkillRecalcRequest,
+    NicheTierPolicyUpsertRequest,
+    NicheTierPolicyView,
+    NicheView,
+    ProNicheSkillListResponse,
+    ProNicheSkillView,
+)
 from app.schemas.learning import (
     AdminCourseListResponse,
     AdminNicheRequirementsUpsertRequest,
@@ -142,7 +151,14 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.analytics import log_event
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.gamification import queue_evaluate_user_milestones, queue_recompute_credentials
-from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.niche_skills import (
+    admin_override_niche_skill,
+    default_tier_thresholds,
+    enqueue_niche_skill_recalc,
+    get_or_create_niche_tier_policy,
+    list_user_badge_codes,
+    recompute_pro_niche_skills,
+)
 from app.services.learning import replace_niche_program_requirements
 from app.tasks.niche_tasks import recompute_all_pro_niche_skills_task, recompute_pro_niche_skills_task
 from app.services.rewards import maybe_issue_pro_signup_referral_reward
@@ -1467,6 +1483,200 @@ def admin_unpublish_course(
     return _course_list_item(course, niche.slug if niche else "")
 
 
+@router.get("/niches", response_model=list[NicheView])
+def admin_list_niches(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[NicheView]:
+    ensure_initial_niches(db)
+    rows = db.execute(select(Niche).order_by(Niche.slug.asc())).scalars().all()
+    db.commit()
+    return [NicheView(id=row.id, slug=row.slug, name=row.name, name_key=row.name_key, is_active=row.is_active) for row in rows]
+
+
+@router.put("/niches", response_model=NicheView)
+def admin_upsert_niche(
+    body: NicheView,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> NicheView:
+    row = db.get(Niche, body.id) if body.id else None
+    if row is None:
+        by_slug = db.execute(select(Niche).where(Niche.slug == body.slug)).scalar_one_or_none()
+        row = by_slug if by_slug else Niche(slug=body.slug, name=body.name, name_key=body.name_key, is_active=body.is_active)
+        if by_slug is None:
+            db.add(row)
+    row.slug = body.slug
+    row.name = body.name
+    row.name_key = body.name_key
+    row.is_active = body.is_active
+    row.updated_at = datetime.now(timezone.utc)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="niche",
+        target_id=str(row.id),
+        action="niche_upsert",
+        metadata={"slug": row.slug, "is_active": row.is_active},
+    )
+    db.commit()
+    return NicheView(id=row.id, slug=row.slug, name=row.name, name_key=row.name_key, is_active=row.is_active)
+
+
+@router.get("/niches/{niche_id}/tier-policy", response_model=NicheTierPolicyView)
+def admin_get_niche_tier_policy(
+    niche_id: uuid.UUID,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> NicheTierPolicyView:
+    niche = db.get(Niche, niche_id)
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+    row = get_or_create_niche_tier_policy(db, niche_id)
+    db.commit()
+    return NicheTierPolicyView(niche_id=row.niche_id, thresholds=row.thresholds or default_tier_thresholds(), updated_at=row.updated_at)
+
+
+@router.put("/niches/{niche_id}/tier-policy", response_model=NicheTierPolicyView)
+def admin_put_niche_tier_policy(
+    niche_id: uuid.UUID,
+    body: NicheTierPolicyUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> NicheTierPolicyView:
+    niche = db.get(Niche, niche_id)
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+    row = get_or_create_niche_tier_policy(db, niche_id)
+    row.thresholds = {k: v.model_dump() for k, v in (body.thresholds or {}).items()} if body.thresholds else default_tier_thresholds()
+    row.updated_at = datetime.now(timezone.utc)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="niche_tier_policy",
+        target_id=str(niche_id),
+        action="niche_tier_policy_upsert",
+        metadata={"thresholds": row.thresholds},
+    )
+    db.commit()
+    return NicheTierPolicyView(niche_id=row.niche_id, thresholds=row.thresholds or default_tier_thresholds(), updated_at=row.updated_at)
+
+
+@router.get("/pros/{pro_user_id}/niche-skill", response_model=ProNicheSkillListResponse)
+def admin_get_pro_niche_skill(
+    pro_user_id: uuid.UUID,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> ProNicheSkillListResponse:
+    rows = db.execute(
+        select(ProNicheSkill, Niche)
+        .join(Niche, Niche.id == ProNicheSkill.niche_id)
+        .where(ProNicheSkill.pro_user_id == pro_user_id)
+        .order_by(ProNicheSkill.score.desc(), ProNicheSkill.updated_at.desc())
+    ).all()
+    badge_codes = set(list_user_badge_codes(db, pro_user_id))
+    items = []
+    for skill, niche in rows:
+        recent_events = db.execute(
+            select(ProNicheSkillEvent)
+            .where(ProNicheSkillEvent.pro_user_id == pro_user_id, ProNicheSkillEvent.niche_id == niche.id)
+            .order_by(ProNicheSkillEvent.created_at.desc())
+            .limit(10)
+        ).scalars().all()
+        items.append(
+            ProNicheSkillView(
+                niche_slug=niche.slug,
+                niche_name=niche.name,
+                tier=skill.tier,
+                score=skill.score,
+                verified=skill.verified,
+                gigs_completed=skill.gigs_completed,
+                avg_rating=float(skill.avg_rating or 0),
+                review_count=skill.review_count,
+                capability_score=skill.capability_score,
+                certification_score=skill.certification_score,
+                confidence=float(skill.confidence or 0),
+                evidence_gigs=skill.evidence_gigs,
+                evidence_reviews=skill.evidence_reviews,
+                evidence_portfolio=skill.evidence_portfolio,
+                breakdown={
+                    **(skill.breakdown or {}),
+                    "recent_events": [
+                        {
+                            "event_type": e.event_type.value,
+                            "from_tier": e.from_tier,
+                            "to_tier": e.to_tier,
+                            "score_before": e.score_before,
+                            "score_after": e.score_after,
+                            "created_at": e.created_at.isoformat(),
+                        }
+                        for e in recent_events
+                    ],
+                },
+                badges=sorted([code for code in badge_codes if code.startswith(f"tier_{niche.slug}_") or code == f"verified_{niche.slug}"]),
+                last_promotion_at=skill.last_promotion_at,
+                last_demotion_at=skill.last_demotion_at,
+                updated_at=skill.updated_at,
+            )
+        )
+    db.commit()
+    return ProNicheSkillListResponse(pro_user_id=pro_user_id, items=items)
+
+
+@router.post("/pros/{pro_user_id}/niche-skill/{niche_id}/override")
+def admin_override_niche_skill_v2(
+    pro_user_id: uuid.UUID,
+    niche_id: uuid.UUID,
+    body: AdminNicheSkillOverrideV2Request,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    niche = db.get(Niche, niche_id)
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+    if body.tier is None and body.score is None and body.verified is None:
+        raise APIError(code="validation_error", message="At least one override field is required", status_code=422)
+    row = admin_override_niche_skill(
+        db,
+        pro_user_id=pro_user_id,
+        niche_id=niche_id,
+        tier=body.tier,
+        score=body.score,
+        verified=body.verified,
+        note=body.note,
+        actor_user_id=actor.user_id,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="pro_niche_skill",
+        target_id=f"{pro_user_id}:{niche_id}",
+        action="pro_niche_skill_override_v2",
+        reason=body.note,
+        metadata={"tier": row.tier.value, "score": row.score, "verified": row.verified},
+    )
+    recompute_pro_public_index(db, pro_user_id)
+    db.commit()
+    return {"pro_user_id": str(pro_user_id), "niche_id": str(niche_id), "tier": row.tier.value, "score": row.score, "verified": row.verified}
+
+
+@router.post("/niche-skill/recalc")
+def admin_niche_skill_recalc(
+    body: AdminNicheSkillRecalcRequest,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    if body.pro_user_id:
+        enqueue_niche_skill_recalc(db, pro_user_id=body.pro_user_id, niche_id=body.niche_id, reason="admin_recalc")
+        db.commit()
+        return {"queued": True, "scope": "targeted", "pro_user_id": str(body.pro_user_id), "niche_id": str(body.niche_id) if body.niche_id else None}
+    pro_ids = db.execute(select(ProNicheSkill.pro_user_id).distinct()).scalars().all()
+    for pro_id in pro_ids:
+        enqueue_niche_skill_recalc(db, pro_user_id=pro_id, niche_id=body.niche_id, reason="admin_recalc_bulk")
+    db.commit()
+    return {"queued": True, "scope": "bulk", "count": len(pro_ids), "niche_id": str(body.niche_id) if body.niche_id else None}
+
+
 @router.post("/niches/{niche_slug}/requirements", response_model=AdminNicheRequirementsUpsertResponse)
 def admin_set_niche_requirements(
     niche_slug: str,
@@ -1543,38 +1753,26 @@ def override_pro_niche_skill(
     niche = db.execute(select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))).scalar_one_or_none()
     if not niche:
         raise APIError(code="not_found", message="Niche not found", status_code=404)
-    if body.tier is None and body.capability_score is None and body.certification_score is None:
+    if body.tier is None and body.capability_score is None and body.certification_score is None and body.score is None and body.verified is None:
         raise APIError(code="validation_error", message="At least one override field is required", status_code=422)
 
-    recompute_pro_niche_skills(db, pro_user_id, niche.id)
-    skill = db.execute(
-        select(ProNicheSkill).where(ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche.id)
-    ).scalar_one_or_none()
-    if not skill:
-        skill = ProNicheSkill(pro_user_id=pro_user_id, niche_id=niche.id)
-        db.add(skill)
-        db.flush()
-
-    breakdown = dict(skill.breakdown or {})
-    override_payload = {
-        "tier": body.tier.value if body.tier else None,
-        "capability_score": body.capability_score,
-        "certification_score": body.certification_score,
-        "reason": body.reason,
-        "actor_user_id": str(actor.user_id),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "expires_at": body.expires_at.isoformat() if body.expires_at else None,
-    }
-    breakdown["override"] = override_payload
-    breakdown["override_active"] = True
-    skill.breakdown = breakdown
-    if body.tier is not None:
-        skill.tier = body.tier
-    if body.capability_score is not None:
-        skill.capability_score = body.capability_score
-    if body.certification_score is not None:
-        skill.certification_score = body.certification_score
-    skill.updated_at = datetime.now(timezone.utc)
+    score = body.score
+    if score is None and body.capability_score is not None:
+        score = body.capability_score
+    verified = body.verified
+    if verified is None and body.certification_score is not None:
+        verified = body.certification_score >= 70
+    skill = admin_override_niche_skill(
+        db,
+        pro_user_id=pro_user_id,
+        niche_id=niche.id,
+        tier=body.tier,
+        score=score,
+        verified=verified,
+        note=body.reason,
+        actor_user_id=actor.user_id,
+    )
+    override_payload = {"tier": body.tier.value if body.tier else None, "score": score, "verified": verified, "reason": body.reason}
 
     add_admin_audit_log(
         db,
@@ -1591,8 +1789,8 @@ def override_pro_niche_skill(
         "pro_user_id": str(pro_user_id),
         "niche_slug": niche_slug,
         "tier": skill.tier.value,
-        "capability_score": skill.capability_score,
-        "certification_score": skill.certification_score,
+        "score": skill.score,
+        "verified": skill.verified,
     }
 
 

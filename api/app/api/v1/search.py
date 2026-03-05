@@ -454,6 +454,8 @@ def _pros_fallback(
             {
                 "id": str(idx.pro_user_id),
                 "display_name": profile.display_name,
+                "headline": profile.headline,
+                "cover_media_asset_id": str(profile.cover_media_asset_id) if profile.cover_media_asset_id else None,
                 "city": idx.city,
                 "country": idx.country,
                 "niche_slugs": [item.get("slug") for item in (idx.top_niches or []) if item.get("slug")],

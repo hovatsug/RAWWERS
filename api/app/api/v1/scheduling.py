@@ -28,6 +28,7 @@ from app.models.booking import (
     ProPackage,
 )
 from app.models.gig import Gig, GigStatus
+from app.models.legacy_shoot import LegacyBooking, LegacyBookingStatus
 from app.models.niche import Niche
 from app.schemas.media import CurrentUser
 from app.schemas.scheduling import (
@@ -347,6 +348,25 @@ def confirm_booking_slot(
         db.add(snapshot)
 
     create_slot_reminders(db, slot=slot)
+    legacy = db.execute(select(LegacyBooking).where(LegacyBooking.gig_id == gig.id)).scalar_one_or_none()
+    if legacy and legacy.status in {
+        LegacyBookingStatus.pro_assigned,
+        LegacyBookingStatus.brief_submitted,
+        LegacyBookingStatus.brief_pending,
+    }:
+        legacy.status = LegacyBookingStatus.scheduled
+        legacy.updated_at = datetime.now(timezone.utc)
+        enqueue_notification(
+            db,
+            user_id=legacy.client_user_id,
+            notification_type="legacy.schedule.confirmed",
+            payload={
+                "title": "Legacy Shoot scheduled",
+                "body": "Your legacy session slot has been confirmed.",
+            },
+            reference_type="legacy_booking",
+            reference_id=str(legacy.id),
+        )
     enqueue_notification(
         db,
         user_id=gig.client_user_id,

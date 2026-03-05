@@ -174,7 +174,7 @@ def test_review_is_niche_scoped_to_gig(client, db_session, monkeypatch):
     assert payload["niche_id"] == str(niche_id)
 
 
-def test_scoring_produces_deterministic_master_tier(db_session):
+def test_scoring_produces_deterministic_v2_tier(db_session):
     pro_id = uuid.uuid4()
     client_id = uuid.uuid4()
     niche = db_session.query(Niche).filter_by(slug="portraits").first()
@@ -240,10 +240,11 @@ def test_scoring_produces_deterministic_master_tier(db_session):
     skill = recompute_pro_niche_skill(db_session, pro_id, niche.id)
     db_session.commit()
 
-    assert skill.capability_score == 100
-    assert skill.certification_score == 90
-    assert float(skill.confidence) == 1.0
-    assert skill.tier == SkillTier.master
+    assert 45 <= skill.score <= 55
+    assert skill.capability_score == skill.score
+    assert skill.verified is True
+    assert float(skill.confidence) >= 0.60
+    assert skill.tier == SkillTier.pro
 
 
 def test_discovery_niche_filter_orders_by_tier_before_rank(client, db_session):

@@ -15,6 +15,9 @@ export default function ProOnboardingPage() {
       <Card>
         <h1 className="text-xl font-semibold">Pro onboarding</h1>
         <p className="mt-2 text-sm text-neutral-600">Pipeline stages and verification checks.</p>
+        <a className="mt-2 inline-block text-sm text-brand-700 underline" href="/pro/profile/listing-card">
+          Edit Listing Card
+        </a>
         <pre className="mt-3 overflow-auto rounded bg-neutral-100 p-2 text-xs">{JSON.stringify(data || { status: "pending" }, null, 2)}</pre>
       </Card>
     </Flag>

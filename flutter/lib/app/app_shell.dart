@@ -17,6 +17,7 @@ class AppShell extends StatelessWidget {
       (path: '/discover', label: 'Discover', icon: Icons.explore_outlined),
       (path: '/notifications', label: 'Alerts', icon: Icons.notifications_none),
       if (session.isPro) (path: '/pro/onboarding', label: 'Onboarding', icon: Icons.checklist_rtl),
+      if (session.isPro) (path: '/profile/listing-card', label: 'Card', icon: Icons.view_carousel_outlined),
     ];
 
     final selected = items.indexWhere((item) => location.startsWith(item.path));

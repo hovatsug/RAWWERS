@@ -52,6 +52,7 @@ from app.services.disputes import finalize_refund_case_failed, finalize_refund_c
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.proof_of_gigs import enqueue_raww_mint, enqueue_raww_refund_reversal
 from app.services.payouts import create_earnings_entry, reverse_earnings_entries_for_source
+from app.services.prints_fulfillment import on_print_payment_failed, on_print_payment_succeeded, on_print_refund_event
 from app.models.payouts import EarningsSourceType
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
@@ -216,6 +217,9 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 from app.services.store import submit_order_to_partner
 
                 submit_order_to_partner(db, order.id)
+            return
+        print_order = on_print_payment_succeeded(db, payment_intent_id=payment_intent_id)
+        if print_order:
             return
 
         upsell = db.execute(
@@ -472,6 +476,13 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         order = handle_order_payment_failure(db, payment_intent_id, cancelled=False)
         if order:
             return
+        print_order = on_print_payment_failed(
+            db,
+            payment_intent_id=payment_intent_id,
+            reason=((obj.get("last_payment_error") or {}).get("message") if isinstance(obj.get("last_payment_error"), dict) else None),
+        )
+        if print_order:
+            return
 
         upsell = db.execute(
             select(UpsellPurchase).where(UpsellPurchase.stripe_payment_intent_id == payment_intent_id)
@@ -532,6 +543,9 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         order = handle_order_payment_failure(db, payment_intent_id, cancelled=True)
         if order:
             return
+        print_order = on_print_payment_failed(db, payment_intent_id=payment_intent_id, reason="payment_intent_cancelled")
+        if print_order:
+            return
         upsell = db.execute(
             select(UpsellPurchase).where(UpsellPurchase.stripe_payment_intent_id == payment_intent_id)
         ).scalar_one_or_none()
@@ -569,6 +583,9 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         payment_intent_id = obj.get("payment_intent")
         refund_id = obj.get("id")
         if not payment_intent_id:
+            return
+        print_order = on_print_refund_event(db, payment_intent_id=payment_intent_id, refund_ref=refund_id)
+        if print_order:
             return
 
         upsell = db.execute(

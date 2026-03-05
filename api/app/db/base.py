@@ -49,11 +49,19 @@ from app.models.gamification import (
 from app.models.learning import (
     Certificate,
     Course,
+    CourseQuiz,
+    CourseReview,
+    CourseSale,
     CourseModule,
+    CurriculumPath,
+    CurriculumRequirement,
     Enrollment,
     InstructorProfile,
+    LearningFeePolicy,
+    LearningPartner,
     Lesson,
     LessonProgress,
+    ModuleProgress,
     NicheProgramRequirement,
     QuizAttempt,
     QuizQuestion,
@@ -67,10 +75,37 @@ from app.models.launch_ops import (
     RolloutCity,
     RolloutFlagOverride,
 )
-from app.models.niche import CertificationRecord, Niche, ProNiche, ProNicheSkill
+from app.models.niche import (
+    Badge,
+    CertificationRecord,
+    Niche,
+    NicheTierPolicy,
+    ProNiche,
+    ProNicheSkill,
+    ProNicheSkillEvent,
+    UserBadge,
+)
 from app.models.outbox import IdempotencyKey, OutboxEvent
 from app.models.ops import AbuseSignal, FeatureFlag, WebhookSecurityLog
 from app.models.risk import DeviceFingerprint, IpSignal, RiskAction, RiskEvent, RiskProfile, RiskRule, SessionSignal
+from app.models.prints import (
+    PrintPartner,
+    PrintProduct,
+    ShippingAddress,
+    PrintOrder,
+    PrintOrderItem,
+    PrintExportJob,
+    PrintEvent,
+)
+from app.models.legacy_shoot import (
+    PremiumProduct,
+    LegacyBooking,
+    LegacyBrief,
+    VaultItem,
+    VaultAccessLog,
+    LegacyReview,
+    LegacyMarketingConsent,
+)
 from app.models.auth import AuthEventLog, EmailVerification, ImpersonationSession, PasswordReset, SessionRefreshToken
 from app.models.booking import (
     BookingRequest,

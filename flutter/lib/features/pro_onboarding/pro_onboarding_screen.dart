@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../design/tokens.dart';
 import '../../design/widgets/r_badge.dart';
+import '../../design/widgets/r_button.dart';
 import '../../design/widgets/r_card.dart';
 import '../../design/widgets/r_skeleton.dart';
 import '../flags/providers.dart';
@@ -33,6 +35,12 @@ class ProOnboardingScreen extends ConsumerWidget {
                   Text('Pro Onboarding', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: RTokens.spacingX2),
                   RBadge(label: 'Status: ${data.status}'),
+                  const SizedBox(height: RTokens.spacingX2),
+                  RButton(
+                    label: 'Edit Listing Card',
+                    variant: RButtonVariant.secondary,
+                    onPressed: () => context.go('/profile/listing-card'),
+                  ),
                 ],
               ),
             ),

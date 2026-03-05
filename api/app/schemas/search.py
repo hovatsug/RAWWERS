@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 class SearchProsItem(BaseModel):
     id: str
     display_name: str | None = None
+    headline: str | None = None
+    cover_media_asset_id: str | None = None
     city: str | None = None
     country: str | None = None
     niche_slugs: list[str] = Field(default_factory=list)

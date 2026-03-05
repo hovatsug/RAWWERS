@@ -36,7 +36,7 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.analytics import log_event
 from app.services.disputes import create_dispute, post_dispute_message
 from app.services.gamification import queue_evaluate_user_milestones
-from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.niche_skills import enqueue_niche_skill_recalc, recompute_pro_niche_skills
 
 router = APIRouter(prefix="/disputes", tags=["disputes"])
 
@@ -84,6 +84,7 @@ def create_dispute_endpoint(
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
+            enqueue_niche_skill_recalc(db, pro_user_id=gig.pro_user_id, niche_id=gig.niche_id, reason="dispute_opened")
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
 
     if gig and user.user_id == gig.client_user_id:

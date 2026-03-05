@@ -26,6 +26,7 @@ from app.schemas.auth import (
 )
 from app.schemas.media import CurrentUser
 from app.services.audit import add_admin_audit_log
+from app.services.analytics import log_event
 from app.services.auth_events import add_auth_event
 from app.services.auth_service import (
     confirm_email_verification,
@@ -42,8 +43,14 @@ from app.services.auth_service import (
     resend_email_verification,
     start_impersonation,
 )
+from app.services.growth_engine import (
+    bind_session_attribution_to_user,
+    ensure_referral_profile,
+    link_referee_to_referrer,
+)
 from app.services.i18n import get_user_locale_preference, upsert_user_locale_preference
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.trust_safety import capture_request_signals, evaluate_login_failure_rule
 
 router = APIRouter(tags=["auth"])
 
@@ -56,6 +63,30 @@ def register(
 ) -> dict:
     enforce_named_rate_limit("auth_mutation", principal=f"register:{_request_ip(request) or 'unknown'}")
     user = register_user(db, email=body.email, password=body.password, ip=_request_ip(request), user_agent=request.headers.get("user-agent"))
+    capture_request_signals(db, request=request, user_id=user.user_id)
+    ensure_referral_profile(db, user.user_id)
+    session_id = request.cookies.get("rw_sid")
+    if session_id and request.cookies.get("rw_tracking_consent") == "yes":
+        bind_session_attribution_to_user(db, session_id=session_id, user_id=user.user_id)
+    referral_code = request.cookies.get("rw_ref")
+    if referral_code:
+        try:
+            link = link_referee_to_referrer(
+                db,
+                referee_user_id=user.user_id,
+                referral_code=referral_code,
+                referee_email=user.email,
+                request_ip=_request_ip(request),
+            )
+            log_event(
+                db,
+                event_name="referral.registered",
+                user_id=user.user_id,
+                session_id=session_id,
+                properties={"referral_code": referral_code, "referrer_user_id": str(link.referrer_user_id)},
+            )
+        except APIError:
+            pass
     db.commit()
     return {"ok": True, "user_id": str(user.user_id)}
 
@@ -68,7 +99,18 @@ def login(
 ) -> TokenResponse:
     principal = body.email.lower().strip() if body.email else (_request_ip(request) or "unknown")
     enforce_named_rate_limit("auth_mutation", principal=f"login:{principal}")
-    access, refresh, expires_in = login_user(db, email=body.email, password=body.password, ip=_request_ip(request), user_agent=request.headers.get("user-agent"))
+    try:
+        access, refresh, expires_in = login_user(db, email=body.email, password=body.password, ip=_request_ip(request), user_agent=request.headers.get("user-agent"))
+    except APIError as exc:
+        if exc.code == "unauthorized":
+            user = db.execute(select(UserAccount).where(UserAccount.email == body.email.lower().strip())).scalar_one_or_none()
+            capture_request_signals(db, request=request, user_id=user.user_id if user else None)
+            if user:
+                evaluate_login_failure_rule(db, user_id=user.user_id)
+            db.commit()
+        raise
+    user = db.execute(select(UserAccount).where(UserAccount.email == body.email.lower().strip())).scalar_one_or_none()
+    capture_request_signals(db, request=request, user_id=user.user_id if user else None)
     db.commit()
     return TokenResponse(access_token=access, refresh_token=refresh, expires_in=expires_in)
 

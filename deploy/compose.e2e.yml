@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rawwers
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rawwers"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    environment:
+      MEILI_MASTER_KEY: masterKey
+      MEILI_ENV: development
+
+  api:
+    build:
+      context: ./api
+    environment:
+      APP_ENV: test
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/rawwers
+      REDIS_URL: redis://redis:6379/0
+      R2_ENDPOINT_URL: https://example.r2.cloudflarestorage.com
+      R2_ACCESS_KEY_ID: test
+      R2_SECRET_ACCESS_KEY: test
+      R2_BUCKET: rawwers-test
+      R2_REGION: auto
+      MUX_TOKEN_ID: test
+      MUX_TOKEN_SECRET: test
+      MUX_WEBHOOK_SECRET: test
+      AUTH_JWT_SECRET: e2e-insecure-secret
+      APP_PUBLIC_URL: http://localhost:3000
+      SEARCH_PROVIDER: meili
+      SEARCH_ENABLED: true
+      MEILI_URL: http://meilisearch:7700
+      MEILI_API_KEY: masterKey
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      ALLOW_UNVERIFIED_PRO: true
+    command: >-
+      sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: ./api
+    environment:
+      APP_ENV: test
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/rawwers
+      REDIS_URL: redis://redis:6379/0
+      R2_ENDPOINT_URL: https://example.r2.cloudflarestorage.com
+      R2_ACCESS_KEY_ID: test
+      R2_SECRET_ACCESS_KEY: test
+      R2_BUCKET: rawwers-test
+      R2_REGION: auto
+      MUX_TOKEN_ID: test
+      MUX_TOKEN_SECRET: test
+      AUTH_JWT_SECRET: e2e-insecure-secret
+      APP_PUBLIC_URL: http://localhost:3000
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+    command: celery -A app.tasks.celery_app.celery_app worker -l info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_TELEGRAM_BOT_URL: https://t.me/rawwers_bot
+      NEXT_PUBLIC_WEBAPP_URL: https://app.rawwers.com/link
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"

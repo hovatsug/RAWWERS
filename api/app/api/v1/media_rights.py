@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -70,6 +70,16 @@ from app.services.rate_limit import enforce_named_rate_limit
 from app.services.security import create_mux_playback_token
 from app.services.storage import create_presigned_get
 from app.services.disputes import active_entitlement_hold
+from app.services.growth_engine import (
+    get_share_link_owner_referral_code,
+    record_attribution_touch,
+)
+from app.models.risk import RiskActionType
+from app.services.trust_safety import (
+    enforce_risk_action_not_active,
+    evaluate_share_view_farm_rule,
+    risk_hash_ip,
+)
 
 settings = get_settings()
 router = APIRouter(tags=["media_rights"])
@@ -205,6 +215,12 @@ def create_share_link(
         hold_type=EntitlementHoldType.share_disabled,
     ):
         raise APIError(code="forbidden", message="Share links are disabled while this dispute is under review", status_code=403)
+    enforce_risk_action_not_active(
+        db,
+        user_id=gig.pro_user_id,
+        action_type=RiskActionType.disable_share_links,
+        message="Share links are temporarily disabled for this account",
+    )
 
     raw_token = __import__("secrets").token_urlsafe(32)
     token_hash = hash_share_token(raw_token)
@@ -248,6 +264,7 @@ def create_share_link(
 def view_share_link(
     token: str,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db_session),
 ) -> ShareLinkViewResponse:
     if not is_feature_enabled(db, "public_share_enabled"):
@@ -255,6 +272,8 @@ def view_share_link(
 
     ip = _request_ip(request)
     enforce_named_rate_limit("public_read", principal=ip or "unknown")
+    session_id = request.cookies.get("rw_sid") or uuid.uuid4().hex
+    response.set_cookie("rw_sid", session_id, max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
 
     link = get_share_link_for_token(db, token=token)
     if not link or not is_share_link_active(link):
@@ -266,9 +285,17 @@ def view_share_link(
         hold_type=EntitlementHoldType.share_disabled,
     ):
         raise APIError(code="not_found", message="Share link unavailable", status_code=404)
+    if link.created_by_user_id:
+        enforce_risk_action_not_active(
+            db,
+            user_id=link.created_by_user_id,
+            action_type=RiskActionType.disable_share_links,
+            message="Share link unavailable",
+        )
 
     link.view_count += 1
     record_share_link_view(db, link=link, ip=ip, user_agent=request.headers.get("user-agent"))
+    evaluate_share_view_farm_rule(db, owner_user_id=link.created_by_user_id, share_link_id=link.id, ip_hash=risk_hash_ip(ip))
     refresh_share_link_engagement(db, share_link_id=link.id)
     enqueue_outbox_event(
         db,
@@ -276,6 +303,32 @@ def view_share_link(
         payload={"share_link_id": str(link.id)},
         idempotency_key=f"share-reward-eval:{link.id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}",
         idempotency_scope="share_reward_eval",
+    )
+    if request.cookies.get("rw_tracking_consent") == "yes":
+        record_attribution_touch(
+            db,
+            user_id=None,
+            session_id=session_id,
+            source="share_link",
+            medium="organic",
+            campaign=None,
+            content=str(link.id),
+            term=None,
+            referrer_url=request.headers.get("referer"),
+        )
+        log_event(
+            db,
+            event_name="attribution.touch_recorded",
+            user_id=None,
+            session_id=session_id,
+            properties={"source": "share_link", "share_link_id": str(link.id)},
+        )
+    log_event(
+        db,
+        event_name="viral.share_view",
+        user_id=None,
+        session_id=session_id,
+        properties={"share_link_id": str(link.id), "scope": link.scope.value},
     )
 
     items: list[SharedMediaItemView] = []
@@ -298,6 +351,10 @@ def view_share_link(
             user_agent=request.headers.get("user-agent"),
         )
 
+    owner_ref_code = get_share_link_owner_referral_code(db, share_link_id=link.id)
+    cta_url = f"{settings.app_public_url}/register"
+    if owner_ref_code:
+        cta_url = f"{cta_url}?ref={owner_ref_code}"
     db.commit()
     return ShareLinkViewResponse(
         gig_id=link.gig_id,
@@ -306,6 +363,9 @@ def view_share_link(
         max_views=link.max_views,
         view_count=link.view_count,
         items=items,
+        powered_by_text="Powered by RAWWERS",
+        create_gallery_cta_text="Create your own RAWWERS gallery",
+        create_gallery_cta_url=cta_url,
     )
 
 
@@ -330,6 +390,7 @@ def ping_share_link(
         user_agent=request.headers.get("user-agent"),
         seconds_increment=body.seconds_viewed,
     )
+    evaluate_share_view_farm_rule(db, owner_user_id=link.created_by_user_id, share_link_id=link.id, ip_hash=risk_hash_ip(ip))
     refresh_share_link_engagement(db, share_link_id=link.id)
     enqueue_outbox_event(
         db,
@@ -340,6 +401,26 @@ def ping_share_link(
     )
     db.commit()
     return SharePingResponse(ok=True, accumulated_seconds=row.seconds_viewed)
+
+
+@router.post("/share/{token}/cta-click", response_model=SharePingResponse)
+def track_share_cta_click(
+    token: str,
+    request: Request,
+    db: Session = Depends(get_db_session),
+) -> SharePingResponse:
+    link = get_share_link_for_token(db, token=token)
+    if not link or not is_share_link_active(link):
+        raise APIError(code="not_found", message="Share link not found or expired", status_code=404)
+    log_event(
+        db,
+        event_name="viral.cta_clicked",
+        user_id=None,
+        session_id=request.cookies.get("rw_sid"),
+        properties={"share_link_id": str(link.id), "scope": link.scope.value},
+    )
+    db.commit()
+    return SharePingResponse(ok=True, accumulated_seconds=0)
 
 
 @router.get("/gigs/{gig_id}/consent", response_model=GigConsentView)

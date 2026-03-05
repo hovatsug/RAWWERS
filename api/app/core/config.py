@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     dispute_window_days: int = Field(default=30, alias="DISPUTE_WINDOW_DAYS")
     dispute_open_limit_30d: int = Field(default=3, alias="DISPUTE_OPEN_LIMIT_30D")
     dispute_messages_per_day: int = Field(default=10, alias="DISPUTE_MESSAGES_PER_DAY")
+    risk_ip_hash_pepper: str = Field(default="dev-risk-ip-pepper", alias="RISK_IP_HASH_PEPPER")
+    risk_device_hash_pepper: str = Field(default="dev-risk-device-pepper", alias="RISK_DEVICE_HASH_PEPPER")
+    risk_session_hash_pepper: str = Field(default="dev-risk-session-pepper", alias="RISK_SESSION_HASH_PEPPER")
+    risk_signal_retention_days: int = Field(default=90, alias="RISK_SIGNAL_RETENTION_DAYS")
 
     def admin_user_id_set(self) -> set[UUID]:
         values = [item.strip() for item in self.admin_user_ids.split(",") if item.strip()]

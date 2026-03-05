@@ -132,6 +132,11 @@ BUSINESS_EVENT_MAP = {
     "referral.claimed": "referral_claimed",
     "reward.spent": "reward_spent",
     "chat.started": "chat_started",
+    "referral.clicked": "referral_clicked",
+    "referral.registered": "referral_registered",
+    "referral.converted": "referral_converted",
+    "viral.share_view": "viral_share_view",
+    "viral.cta_clicked": "viral_cta_clicked",
 }
 
 

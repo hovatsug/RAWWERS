@@ -16,6 +16,8 @@ from app.services.auth_service import decode_access
 from app.services.i18n import get_user_locale_preference
 from app.services.authz import enforce_not_banned, ensure_user_account, get_user_roles, require_kyc_approved_for_pro
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.trust_safety import enforce_require_verification_if_flagged
+from app.services.trust_safety import capture_request_signals
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ def get_current_user(
         preferred_locale = get_user_locale_preference(db, user_id=user_id, fallback_to_default=False)
         if preferred_locale:
             request.state.locale = preferred_locale
+        capture_request_signals(db, request=request, user_id=user_id)
         return CurrentUser(
             user_id=user_id,
             roles=roles,
@@ -72,6 +75,7 @@ def get_current_user(
         preferred_locale = get_user_locale_preference(db, user_id=user_id, fallback_to_default=False)
         if preferred_locale:
             request.state.locale = preferred_locale
+        capture_request_signals(db, request=request, user_id=user_id)
         return CurrentUser(user_id=user_id, roles=list(get_user_roles(db, user_id)))
 
     raise APIError(code="unauthorized", message="Missing bearer token", status_code=401)
@@ -129,6 +133,7 @@ def require_not_banned(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db_write_session),
 ) -> CurrentUser:
+    enforce_require_verification_if_flagged(db, user_id=user.user_id)
     enforce_not_banned(db, user.user_id)
     db.commit()
     return user

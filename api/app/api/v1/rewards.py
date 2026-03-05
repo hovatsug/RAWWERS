@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import uuid
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,13 +12,20 @@ from app.core.errors import APIError
 from app.models.reward import RewardRule
 from app.schemas.media import CurrentUser
 from app.schemas.reward import (
+    AdminReferralBlacklistResponse,
+    AdminReferralPolicyItem,
+    AdminReferralPolicyUpsertRequest,
+    AdminReferralReportResponse,
     AdminRewardAdjustRequest,
     AdminRewardAdjustResponse,
     AdminRewardRuleUpdateRequest,
     AdminRewardRuleView,
     DiscountRedemptionView,
+    MeReferralCodeResponse,
+    RefLandingResponse,
     ReferralClaimRequest,
     ReferralMeResponse,
+    ReferralStatsResponse,
     RewardBalanceResponse,
     RewardLedgerItemView,
     RewardLedgerResponse,
@@ -26,6 +36,21 @@ from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
 from app.services.feature_flags import is_feature_enabled
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.growth_engine import (
+    bind_session_attribution_to_user,
+    blacklist_referrer,
+    create_referral_click,
+    link_referee_to_referrer,
+    ensure_referral_profile,
+    get_referral_profile_by_code,
+    get_referral_stats,
+    list_referral_policies,
+    record_attribution_touch,
+    referral_report,
+    regenerate_referral_code,
+    remove_referrer_blacklist,
+    upsert_referral_policy,
+)
 from app.services.rewards import (
     claim_referral_code,
     create_manual_adjustment,
@@ -40,14 +65,109 @@ from app.services.rewards import (
 router = APIRouter(tags=["referrals_rewards"])
 
 
+@router.get("/ref/{code}", response_model=RefLandingResponse)
+def referral_landing(
+    code: str,
+    request: Request,
+    source: str | None = Query(default="referral"),
+    medium: str | None = Query(default=None),
+    campaign: str | None = Query(default=None),
+    content: str | None = Query(default=None),
+    term: str | None = Query(default=None),
+    consent: bool = Query(default=False),
+    db: Session = Depends(get_db_session),
+) -> RefLandingResponse:
+    profile = get_referral_profile_by_code(db, code)
+    session_id = request.cookies.get("rw_sid") or uuid.uuid4().hex
+
+    if profile:
+        create_referral_click(db, referral_code=code, request_ip=_request_ip(request))
+        if consent:
+            record_attribution_touch(
+                db,
+                user_id=None,
+                session_id=session_id,
+                source=source or "referral",
+                medium=medium,
+                campaign=campaign,
+                content=content or profile.referral_code,
+                term=term,
+                referrer_url=request.headers.get("referer"),
+            )
+            log_event(
+                db,
+                event_name="attribution.touch_recorded",
+                user_id=None,
+                session_id=session_id,
+                properties={"source": source or "referral", "campaign": campaign, "referral_code": profile.referral_code},
+            )
+        log_event(
+            db,
+            event_name="referral.clicked",
+            user_id=profile.user_id,
+            session_id=session_id,
+            properties={"referral_code": profile.referral_code},
+        )
+
+    db.commit()
+    response = RefLandingResponse(
+        code=code.strip().upper(),
+        valid=bool(profile),
+        referrer_user_id=profile.user_id if profile else None,
+        session_id=session_id,
+    )
+    # Server-side attribution session + referral hints.
+    from fastapi.responses import JSONResponse
+
+    wrapped = JSONResponse(content=response.model_dump(mode="json"))
+    wrapped.set_cookie("rw_sid", session_id, max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
+    if profile:
+        wrapped.set_cookie("rw_ref", profile.referral_code, max_age=60 * 60 * 24 * 30, httponly=False, samesite="lax")
+    if consent:
+        wrapped.set_cookie("rw_tracking_consent", "yes", max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
+    return wrapped  # type: ignore[return-value]
+
+
+@router.get("/me/referral-code", response_model=MeReferralCodeResponse)
+def my_referral_code_v2(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> MeReferralCodeResponse:
+    profile = ensure_referral_profile(db, user.user_id)
+    db.commit()
+    return MeReferralCodeResponse(code=profile.referral_code, share_url=f"/ref/{profile.referral_code}")
+
+
+@router.post("/me/referral-code/regenerate", response_model=MeReferralCodeResponse)
+def regenerate_my_referral_code(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> MeReferralCodeResponse:
+    enforce_named_rate_limit("auth_mutation", principal=f"ref-regenerate:{user.user_id}")
+    profile = regenerate_referral_code(db, user.user_id)
+    db.commit()
+    return MeReferralCodeResponse(code=profile.referral_code, share_url=f"/ref/{profile.referral_code}")
+
+
+@router.get("/me/referrals/stats", response_model=ReferralStatsResponse)
+def my_referral_stats(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ReferralStatsResponse:
+    stats = get_referral_stats(db, user_id=user.user_id)
+    db.commit()
+    return ReferralStatsResponse(**stats)
+
+
 @router.get("/referrals/me", response_model=ReferralMeResponse)
 def my_referral_code(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> ReferralMeResponse:
-    referral = get_or_create_referral_code(db, user.user_id)
+    get_or_create_referral_code(db, user.user_id)
+    profile = ensure_referral_profile(db, user.user_id)
     db.commit()
-    return ReferralMeResponse(code=referral.code, link_stub=f"/r/{referral.code}")
+    return ReferralMeResponse(code=profile.referral_code, link_stub=f"/r/{profile.referral_code}")
 
 
 @router.post("/referrals/claim")
@@ -60,6 +180,16 @@ def claim_referral(
     enforce_named_rate_limit("referral_claims", principal=str(user.user_id))
     enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
     attribution = claim_referral_code(db, user.user_id, body.code)
+    link_referee_to_referrer(
+        db,
+        referee_user_id=user.user_id,
+        referral_code=body.code,
+        referee_email=None,
+        request_ip=_request_ip(request),
+    )
+    session_id = request.cookies.get("rw_sid")
+    if session_id and request.cookies.get("rw_tracking_consent") == "yes":
+        bind_session_attribution_to_user(db, session_id=session_id, user_id=user.user_id)
     detect_referral_abuse(
         db,
         referred_user_id=user.user_id,
@@ -80,6 +210,13 @@ def claim_referral(
             user_id=reward_entry.user_id,
             properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount},
         )
+    log_event(
+        db,
+        event_name="referral.registered",
+        user_id=user.user_id,
+        session_id=session_id,
+        properties={"referral_code": attribution.referral_code},
+    )
     db.commit()
     return {"ok": True, "referrer_user_id": str(attribution.referrer_user_id)}
 
@@ -231,3 +368,120 @@ def admin_adjust_rewards(
     )
     db.commit()
     return AdminRewardAdjustResponse(user_id=body.user_id, amount=body.amount, balance_after=entry.balance_after)
+
+
+@router.get("/admin/referrals/report", response_model=AdminReferralReportResponse)
+def admin_referrals_report(
+    from_dt: datetime | None = Query(default=None, alias="from"),
+    to_dt: datetime | None = Query(default=None, alias="to"),
+    city: str | None = Query(default=None),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminReferralReportResponse:
+    report = referral_report(db, from_dt=from_dt, to_dt=to_dt)
+    if city:
+        # City filtering is deferred to a richer reporting index; surface accepted parameter for API stability.
+        report["city_filter"] = city
+    db.commit()
+    return AdminReferralReportResponse(**{k: v for k, v in report.items() if k in AdminReferralReportResponse.model_fields})
+
+
+@router.get("/admin/referrals/policy", response_model=list[AdminReferralPolicyItem])
+def admin_get_referral_policy(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[AdminReferralPolicyItem]:
+    rows = list_referral_policies(db)
+    db.commit()
+    return [
+        AdminReferralPolicyItem(
+            conversion_type=row.conversion_type,
+            referrer_points=row.referrer_points,
+            referee_points=row.referee_points,
+            max_rewards_per_referrer_per_month=row.max_rewards_per_referrer_per_month,
+            min_conversion_value_eur=row.min_conversion_value_eur,
+            cooldown_days=row.cooldown_days,
+        )
+        for row in rows
+    ]
+
+
+@router.put("/admin/referrals/policy", response_model=list[AdminReferralPolicyItem])
+def admin_put_referral_policy(
+    body: AdminReferralPolicyUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[AdminReferralPolicyItem]:
+    for item in body.items:
+        upsert_referral_policy(
+            db,
+            conversion_type=item.conversion_type,
+            referrer_points=item.referrer_points,
+            referee_points=item.referee_points,
+            max_rewards_per_referrer_per_month=item.max_rewards_per_referrer_per_month,
+            min_conversion_value_eur=item.min_conversion_value_eur,
+            cooldown_days=item.cooldown_days,
+        )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="referral_reward_policy",
+        target_id="bulk",
+        action="referral_policy_upsert",
+        reason=None,
+        metadata={"items": [item.model_dump(mode="json") for item in body.items]},
+    )
+    rows = list_referral_policies(db)
+    db.commit()
+    return [
+        AdminReferralPolicyItem(
+            conversion_type=row.conversion_type,
+            referrer_points=row.referrer_points,
+            referee_points=row.referee_points,
+            max_rewards_per_referrer_per_month=row.max_rewards_per_referrer_per_month,
+            min_conversion_value_eur=row.min_conversion_value_eur,
+            cooldown_days=row.cooldown_days,
+        )
+        for row in rows
+    ]
+
+
+@router.post("/admin/referrals/blacklist/{user_id}", response_model=AdminReferralBlacklistResponse)
+def admin_blacklist_referrer(
+    user_id: uuid.UUID,
+    reason: str = Query(default="abuse"),
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminReferralBlacklistResponse:
+    row = blacklist_referrer(db, user_id=user_id, reason=reason)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="referral_blacklist",
+        target_id=str(user_id),
+        action="referral_blacklist_add",
+        reason=reason,
+        metadata={},
+    )
+    db.commit()
+    return AdminReferralBlacklistResponse(user_id=row.user_id, reason=row.reason, active=True)
+
+
+@router.delete("/admin/referrals/blacklist/{user_id}", response_model=AdminReferralBlacklistResponse)
+def admin_unblacklist_referrer(
+    user_id: uuid.UUID,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminReferralBlacklistResponse:
+    removed = remove_referrer_blacklist(db, user_id=user_id)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="referral_blacklist",
+        target_id=str(user_id),
+        action="referral_blacklist_remove",
+        reason=None,
+        metadata={"removed": removed},
+    )
+    db.commit()
+    return AdminReferralBlacklistResponse(user_id=user_id, reason="", active=False)

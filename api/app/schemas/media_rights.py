@@ -56,6 +56,9 @@ class ShareLinkViewResponse(BaseModel):
     max_views: int | None = None
     view_count: int
     items: list[SharedMediaItemView] = Field(default_factory=list)
+    powered_by_text: str | None = None
+    create_gallery_cta_text: str | None = None
+    create_gallery_cta_url: str | None = None
 
 
 class SharePingRequest(BaseModel):

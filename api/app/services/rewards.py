@@ -125,6 +125,11 @@ def issue_reward(
     reference_id: str | None = None,
     metadata: dict | None = None,
 ) -> RewardLedgerEntry | None:
+    from app.models.risk import RiskActionType
+    from app.services.trust_safety import has_active_risk_action
+
+    if has_active_risk_action(db, user_id=user_id, action_type=RiskActionType.freeze_rewards):
+        return None
     ensure_default_reward_rules(db)
     rule = db.execute(select(RewardRule).where(RewardRule.code == rule_code)).scalar_one_or_none()
     if not rule or not rule.is_enabled or rule.amount <= 0:
@@ -361,7 +366,12 @@ def add_reward_entry(
     rule_code: str | None = None,
     min_balance_floor: int | None = None,
 ) -> RewardLedgerEntry | None:
+    from app.models.risk import RiskActionType
+    from app.services.trust_safety import has_active_risk_action
+
     if amount == 0:
+        return None
+    if has_active_risk_action(db, user_id=user_id, action_type=RiskActionType.freeze_rewards):
         return None
 
     existing = db.execute(

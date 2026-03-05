@@ -17,3 +17,32 @@ a {
 .container-mobile {
   @apply mx-auto w-full max-w-2xl px-4;
 }
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 17px;
+    line-height: 1.55;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: reveal-in 420ms ease-out both;
+  }
+
+  @keyframes reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

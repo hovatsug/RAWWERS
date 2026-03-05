@@ -52,11 +52,18 @@ def process_photo_variants(media_asset_id: str) -> None:
         upload_object_bytes(thumb_key, thumb_bytes.getvalue(), content_type="image/jpeg")
 
         wm = image.copy()
-        _draw_watermark(db, asset, wm)
+        _draw_watermark(db, asset, wm, include_powered_by=False)
         wm_key = generate_variant_key(original_obj.storage_key, "watermark_preview")
         wm_bytes = io.BytesIO()
         wm.save(wm_bytes, format="JPEG", quality=85)
         upload_object_bytes(wm_key, wm_bytes.getvalue(), content_type="image/jpeg")
+
+        wm_share = image.copy()
+        _draw_watermark(db, asset, wm_share, include_powered_by=True)
+        wm_share_key = generate_variant_key(original_obj.storage_key, "preview_watermarked")
+        wm_share_bytes = io.BytesIO()
+        wm_share.save(wm_share_bytes, format="JPEG", quality=85)
+        upload_object_bytes(wm_share_key, wm_share_bytes.getvalue(), content_type="image/jpeg")
 
         web = image.copy()
         if web.width > 2048:
@@ -83,11 +90,11 @@ def process_photo_variants(media_asset_id: str) -> None:
             db,
             media_asset_id=asset.id,
             kind=MediaDerivativeKind.preview_watermarked,
-            storage_key=wm_key,
+            storage_key=wm_share_key,
             content_type="image/jpeg",
-            width=wm.width,
-            height=wm.height,
-            bytes_size=len(wm_bytes.getvalue()),
+            width=wm_share.width,
+            height=wm_share.height,
+            bytes_size=len(wm_share_bytes.getvalue()),
         )
         _upsert_derivative(
             db,
@@ -155,7 +162,7 @@ def generate_watermarked_preview(media_asset_id: str) -> None:
         if not asset or not original_obj or image is None:
             return
         wm = image.copy()
-        _draw_watermark(db, asset, wm)
+        _draw_watermark(db, asset, wm, include_powered_by=True)
 
         wm_key = generate_variant_key(original_obj.storage_key, "preview_watermarked")
         wm_bytes = io.BytesIO()
@@ -298,7 +305,7 @@ def _load_source_image(db, media_asset_id: str):
     return asset, original_obj, image
 
 
-def _draw_watermark(db, asset: MediaAsset, image: Image.Image) -> None:
+def _draw_watermark(db, asset: MediaAsset, image: Image.Image, *, include_powered_by: bool) -> None:
     draw = ImageDraw.Draw(image)
     text = settings.media_watermark_text_template or "RAWWERS"
     if settings.media_watermark_include_pro_name:
@@ -319,6 +326,18 @@ def _draw_watermark(db, asset: MediaAsset, image: Image.Image) -> None:
     x = max(12, image.width - tw - pad_x)
     y = max(12, image.height - th - pad_y)
     draw.text((x, y), text, fill=(255, 255, 255), font=font)
+
+    if include_powered_by:
+        footer_text = "Powered by RAWWERS"
+        try:
+            footer_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", max(14, image.width // 56))
+        except OSError:
+            footer_font = ImageFont.load_default()
+        footer_bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
+        fw, fh = footer_bbox[2] - footer_bbox[0], footer_bbox[3] - footer_bbox[1]
+        fx = max(12, image.width - fw - pad_x)
+        fy = max(12, image.height - fh - pad_y // 3)
+        draw.text((fx, fy), footer_text, fill=(245, 245, 245), font=footer_font)
 
 
 def _upsert_variant(

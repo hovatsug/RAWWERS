@@ -35,13 +35,14 @@ from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.outbox import enqueue_outbox_event
 from app.services.rewards import (
     apply_redemption_for_context,
-    maybe_issue_first_booking_referral_reward,
     release_redemption_for_context,
 )
+from app.services.growth_engine import maybe_issue_referral_conversion_reward
 from app.services.store import finalize_order_payment_success, handle_order_payment_failure
 from app.services.security import verify_mux_webhook_signature
 from app.services.stripe_service import construct_stripe_event
 from app.models.reward import RedemptionContextType
+from app.models.reward import ReferralConversionType
 from app.models.ops import WebhookSecurityLog
 from app.services.abuse import detect_payment_failures_anomaly
 from app.services.metrics import observe_business_event, observe_webhook
@@ -54,6 +55,7 @@ from app.services.payouts import create_earnings_entry, reverse_earnings_entries
 from app.models.payouts import EarningsSourceType
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
+from app.services.trust_safety import evaluate_payment_failure_rule
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 settings = get_settings()
@@ -250,6 +252,21 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     payload={"extra_purchase_id": str(snapshot.id)},
                     idempotency_key=f"raww:gig_extras:{snapshot.id}",
                 )
+                referral_result = maybe_issue_referral_conversion_reward(
+                    db,
+                    referee_user_id=snapshot.client_user_id,
+                    conversion_type=ReferralConversionType.extras_paid,
+                    conversion_id=snapshot.id,
+                    conversion_value_eur=Decimal(str(snapshot.total or 0)),
+                    share_link_id=snapshot.share_link_id,
+                )
+                if referral_result.grant:
+                    log_event(
+                        db,
+                        event_name="referral.converted",
+                        user_id=snapshot.client_user_id,
+                        properties={"conversion_type": "extras_paid", "conversion_id": str(snapshot.id)},
+                    )
             increment_entitlement_quantity(
                 db,
                 gig_id=gallery.gig_id,
@@ -417,13 +434,31 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     "discount_amount": str(redemption.discount_amount),
                 },
             )
-        reward_entry = maybe_issue_first_booking_referral_reward(db, gig.client_user_id, gig.id)
-        if reward_entry:
+        referral_result = maybe_issue_referral_conversion_reward(
+            db,
+            referee_user_id=gig.client_user_id,
+            conversion_type=ReferralConversionType.booking_paid,
+            conversion_id=gig.id,
+            conversion_value_eur=Decimal(gig.amount_total),
+            share_link_id=None,
+        )
+        if referral_result.grant:
             log_event(
                 db,
                 event_name="reward.earned",
-                user_id=reward_entry.user_id,
-                properties={"rule_code": reward_entry.rule_code, "amount": reward_entry.amount, "gig_id": str(gig.id)},
+                user_id=gig.client_user_id,
+                properties={
+                    "conversion_type": "booking_paid",
+                    "conversion_id": str(gig.id),
+                    "grant_id": str(referral_result.grant.id),
+                    "reward_entry_ids": [str(item) for item in referral_result.reward_entry_ids],
+                },
+            )
+            log_event(
+                db,
+                event_name="referral.converted",
+                user_id=gig.client_user_id,
+                properties={"conversion_type": "booking_paid", "conversion_id": str(gig.id)},
             )
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
@@ -473,6 +508,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         last_payment_error = obj.get("last_payment_error") or {}
         payment.last_error = last_payment_error.get("message", "Payment failed")
         detect_payment_failures_anomaly(db, client_user_id=payment.client_user_id, payment_intent_id=payment_intent_id)
+        evaluate_payment_failure_rule(db, user_id=payment.client_user_id)
         gig = db.get(Gig, payment.gig_id)
         if gig:
             redemption = release_redemption_for_context(

@@ -48,6 +48,12 @@ from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
+from app.models.risk import RiskActionType
+from app.services.trust_safety import (
+    enforce_require_verification_if_flagged,
+    enforce_risk_action_not_active,
+    evaluate_booking_spam_rule,
+)
 from app.services.search_provider import get_index_name, get_search_provider, search_provider_enabled
 
 settings = get_settings()
@@ -319,6 +325,14 @@ def client_booking_request(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_write_session),
 ) -> ClientBookingRequestCreateResponse:
+    enforce_require_verification_if_flagged(db, user_id=user.user_id)
+    enforce_risk_action_not_active(
+        db,
+        user_id=user.user_id,
+        action_type=RiskActionType.throttle_bookings,
+        message="Booking requests are temporarily throttled for this account",
+        code="rate_limited",
+    )
     pro_profile = db.get(ProProfile, body.pro_user_id)
     if not pro_profile or not pro_profile.country or not pro_profile.city:
         raise APIError(code="validation_error", message="Pro location not available", status_code=422)
@@ -388,6 +402,7 @@ def client_booking_request(
             "city": pro_profile.city,
         },
     )
+    evaluate_booking_spam_rule(db, user_id=user.user_id)
     db.commit()
     return ClientBookingRequestCreateResponse(booking_id=booking.id, status=booking.status.value)
 

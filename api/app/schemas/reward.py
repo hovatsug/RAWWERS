@@ -18,6 +18,53 @@ class ReferralClaimRequest(BaseModel):
     code: str
 
 
+class RefLandingResponse(BaseModel):
+    code: str
+    valid: bool
+    referrer_user_id: uuid.UUID | None = None
+    session_id: str
+
+
+class MeReferralCodeResponse(BaseModel):
+    code: str
+    share_url: str
+
+
+class ReferralStatsResponse(BaseModel):
+    code: str
+    clicks: int
+    registered: int
+    converted: int
+    total_points_earned: int
+
+
+class AdminReferralPolicyItem(BaseModel):
+    conversion_type: str
+    referrer_points: int
+    referee_points: int
+    max_rewards_per_referrer_per_month: int
+    min_conversion_value_eur: Decimal
+    cooldown_days: int
+
+
+class AdminReferralPolicyUpsertRequest(BaseModel):
+    items: list[AdminReferralPolicyItem]
+
+
+class AdminReferralReportResponse(BaseModel):
+    total_conversions: int
+    total_referrers: int
+    total_referees: int
+    total_points_awarded: int
+    conversions_by_type: dict[str, int] = Field(default_factory=dict)
+
+
+class AdminReferralBlacklistResponse(BaseModel):
+    user_id: uuid.UUID
+    reason: str
+    active: bool
+
+
 class RewardBalanceResponse(BaseModel):
     balance: int
 

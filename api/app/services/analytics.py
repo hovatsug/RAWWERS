@@ -15,6 +15,8 @@ ALLOWED_PREFIXES = (
     "payment.",
     "review.",
     "referral.",
+    "attribution.",
+    "viral.",
     "reward.",
     "reminder.",
     "chat.",

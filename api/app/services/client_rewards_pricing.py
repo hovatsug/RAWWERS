@@ -597,28 +597,39 @@ def evaluate_share_reward_thresholds(db: Session, *, share_link_id: uuid.UUID) -
             metadata={"metric": threshold.metric.value, "threshold": threshold.threshold_value},
             min_balance_floor=settings.reward_balance_floor,
         )
-        grant = ShareRewardGrant(
-            share_link_id=share_link_id,
-            metric=threshold.metric.value,
-            threshold_value=threshold.threshold_value,
-            user_id=link.created_by_user_id,
-            reward_ledger_entry_id=reward_entry.id if reward_entry else None,
-        )
-        db.add(grant)
-        granted_rows.append(grant)
-
-        if reward_entry:
+        if reward_entry is None:
             log_event(
                 db,
-                event_name="client.share.reward_awarded",
+                event_name="client.share.reward_blocked",
                 user_id=link.created_by_user_id,
                 properties={
                     "share_link_id": str(share_link_id),
                     "metric": threshold.metric.value,
                     "threshold": threshold.threshold_value,
-                    "points": threshold.points_award,
+                    "reason": "frozen_or_duplicate_or_floor",
                 },
             )
+            continue
+        grant = ShareRewardGrant(
+            share_link_id=share_link_id,
+            metric=threshold.metric.value,
+            threshold_value=threshold.threshold_value,
+            user_id=link.created_by_user_id,
+            reward_ledger_entry_id=reward_entry.id,
+        )
+        db.add(grant)
+        granted_rows.append(grant)
+        log_event(
+            db,
+            event_name="client.share.reward_awarded",
+            user_id=link.created_by_user_id,
+            properties={
+                "share_link_id": str(share_link_id),
+                "metric": threshold.metric.value,
+                "threshold": threshold.threshold_value,
+                "points": threshold.points_award,
+            },
+        )
 
     db.flush()
     return granted_rows

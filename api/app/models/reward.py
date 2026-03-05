@@ -15,6 +15,19 @@ class ReferralOwnerRole(str, enum.Enum):
     pro = "pro"
 
 
+class ReferralLinkStatus(str, enum.Enum):
+    clicked = "clicked"
+    registered = "registered"
+    converted = "converted"
+    blocked = "blocked"
+
+
+class ReferralConversionType(str, enum.Enum):
+    booking_paid = "booking_paid"
+    extras_paid = "extras_paid"
+    studioverse_paid = "studioverse_paid"
+
+
 class AttributionType(str, enum.Enum):
     signup = "signup"
 
@@ -60,6 +73,42 @@ class ReferralCode(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
+class ReferralProfile(Base):
+    __tablename__ = "referral_profile"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    referral_code: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class ReferralLink(Base):
+    __tablename__ = "referral_link"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    referrer_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    referee_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    referee_email_hash: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    status: Mapped[ReferralLinkStatus] = mapped_column(
+        Enum(ReferralLinkStatus, name="referral_link_status", native_enum=False),
+        nullable=False,
+        default=ReferralLinkStatus.clicked,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class ReferralAttribution(Base):
     __tablename__ = "referral_attribution"
 
@@ -72,6 +121,75 @@ class ReferralAttribution(Base):
         nullable=False,
         default=AttributionType.signup,
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class AttributionTouch(Base):
+    __tablename__ = "attribution_touch"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    medium: Mapped[str | None] = mapped_column(Text, nullable=True)
+    campaign: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    term: Mapped[str | None] = mapped_column(Text, nullable=True)
+    referrer_url_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+
+
+class ConversionAttribution(Base):
+    __tablename__ = "conversion_attribution"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    conversion_type: Mapped[ReferralConversionType] = mapped_column(
+        Enum(ReferralConversionType, name="referral_conversion_type", native_enum=False),
+        nullable=False,
+        index=True,
+    )
+    conversion_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    attributed_to: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+
+
+class ReferralRewardPolicy(Base):
+    __tablename__ = "referral_reward_policy"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversion_type: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    referrer_points: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    referee_points: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    max_rewards_per_referrer_per_month: Mapped[int] = mapped_column(BigInteger, nullable=False, default=20)
+    min_conversion_value_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    cooldown_days: Mapped[int] = mapped_column(BigInteger, nullable=False, default=30)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class ReferralRewardGrant(Base):
+    __tablename__ = "referral_reward_grant"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    referrer_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    referee_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    conversion_type: Mapped[str] = mapped_column(Text, nullable=False)
+    conversion_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    reward_ledger_entry_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class ReferralBlacklist(Base):
+    __tablename__ = "referral_blacklist"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True, index=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -181,3 +299,5 @@ class ReminderJob(Base):
 
 
 Index("ix_reward_ledger_user_created", RewardLedgerEntry.user_id, RewardLedgerEntry.created_at.desc())
+Index("ix_referral_link_referrer_referee", ReferralLink.referrer_user_id, ReferralLink.referee_user_id, unique=True)
+Index("ix_referral_reward_grant_conversion", ReferralRewardGrant.conversion_type, ReferralRewardGrant.conversion_id, unique=True)

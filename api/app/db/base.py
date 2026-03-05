@@ -70,6 +70,7 @@ from app.models.launch_ops import (
 from app.models.niche import CertificationRecord, Niche, ProNiche, ProNicheSkill
 from app.models.outbox import IdempotencyKey, OutboxEvent
 from app.models.ops import AbuseSignal, FeatureFlag, WebhookSecurityLog
+from app.models.risk import DeviceFingerprint, IpSignal, RiskAction, RiskEvent, RiskProfile, RiskRule, SessionSignal
 from app.models.auth import AuthEventLog, EmailVerification, ImpersonationSession, PasswordReset, SessionRefreshToken
 from app.models.booking import (
     BookingRequest,
@@ -133,9 +134,16 @@ from app.models.repair import (
     RepairTicket,
 )
 from app.models.reward import (
+    AttributionTouch,
+    ConversionAttribution,
     DiscountRedemption,
+    ReferralBlacklist,
     ReferralAttribution,
     ReferralCode,
+    ReferralLink,
+    ReferralProfile,
+    ReferralRewardGrant,
+    ReferralRewardPolicy,
     ReminderJob,
     RewardBalance,
     RewardLedgerEntry,

@@ -332,6 +332,17 @@ def payout_balance_view(db: Session, *, pro_user_id: uuid.UUID) -> dict:
 
 
 def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount_eur: Decimal) -> PayoutRequest:
+    from app.models.risk import RiskActionType
+    from app.services.trust_safety import enforce_risk_action_not_active, evaluate_payout_anomaly_rule
+
+    evaluate_payout_anomaly_rule(db, pro_user_id=pro_user_id)
+    enforce_risk_action_not_active(
+        db,
+        user_id=pro_user_id,
+        action_type=RiskActionType.freeze_payouts,
+        message="Payouts are temporarily frozen for this account",
+    )
+
     amount = _q2(amount_eur)
     if amount < MIN_PAYOUT_EUR:
         raise APIError(code="validation_error", message=f"Minimum payout is {MIN_PAYOUT_EUR}", status_code=422)

@@ -44,6 +44,7 @@ from app.services.notifications import enqueue_notification
 from app.services.payouts import create_earnings_hold, release_earnings_holds_for_source, reverse_earnings_entries_for_source
 from app.services.rewards import add_reward_entry
 from app.services.proof_of_gigs import enqueue_raww_refund_reversal
+from app.services.trust_safety import evaluate_dispute_rate_rule
 
 settings = get_settings()
 
@@ -331,6 +332,7 @@ def create_dispute(
         reference_type="dispute",
         reference_id=str(dispute.id),
     )
+    evaluate_dispute_rate_rule(db, user_id=opened_by_user_id)
     return dispute
 
 

@@ -138,6 +138,42 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         if link:
             queue_evaluate_user_milestones(link.created_by_user_id)
         return
+    if topic == "referral.reward.granted":
+        import uuid
+        from app.models.communication import NotificationSeverity
+        from app.services.notifications import enqueue_notification
+
+        referrer_user_id = uuid.UUID(payload["referrer_user_id"])
+        referee_user_id = uuid.UUID(payload["referee_user_id"])
+        conversion_type = payload.get("conversion_type", "conversion")
+        conversion_id = payload.get("conversion_id", "")
+        enqueue_notification(
+            db,
+            user_id=referrer_user_id,
+            notification_type="referral.reward.granted",
+            payload={
+                "title": "Referral reward granted",
+                "body": f"Your referral converted via {conversion_type}.",
+                "conversion_id": conversion_id,
+            },
+            reference_type="referral_reward_grant",
+            reference_id=payload.get("grant_id"),
+            severity=NotificationSeverity.important,
+        )
+        enqueue_notification(
+            db,
+            user_id=referee_user_id,
+            notification_type="referral.reward.granted",
+            payload={
+                "title": "Welcome reward granted",
+                "body": f"You unlocked a referral reward from {conversion_type}.",
+                "conversion_id": conversion_id,
+            },
+            reference_type="referral_reward_grant",
+            reference_id=payload.get("grant_id"),
+            severity=NotificationSeverity.info,
+        )
+        return
     if topic == "refund.initiate":
         import uuid
         from app.services.disputes import initiate_refund_case

@@ -17,6 +17,7 @@ from app.api.v1.pro_onboarding import router as pro_onboarding_router
 from app.api.v1.proof_galleries import router as proof_gallery_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.rewards import router as rewards_router
+from app.api.v1.risk import router as risk_router
 from app.api.v1.repairs import router as repairs_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.store import router as store_router
@@ -45,6 +46,7 @@ api_router.include_router(notifications_router)
 api_router.include_router(pro_onboarding_router)
 api_router.include_router(proof_gallery_router)
 api_router.include_router(rewards_router)
+api_router.include_router(risk_router)
 api_router.include_router(repairs_router)
 api_router.include_router(reviews_router)
 api_router.include_router(store_router)

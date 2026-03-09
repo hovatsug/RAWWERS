@@ -74,6 +74,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onPressed: () => context.push('/verify-email'),
                       ),
                     ),
+                    const SizedBox(height: RTokens.spacingX2),
+                    SizedBox(
+                      width: double.infinity,
+                      child: RButton(
+                        label: 'Register as Pro',
+                        variant: RButtonVariant.ghost,
+                        onPressed: () => context.push('/pro/register'),
+                      ),
+                    ),
                   ],
                 ),
               ),

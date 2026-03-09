@@ -54,4 +54,12 @@ class AuthRepository {
     );
     return MeResponse.fromJson(response.data ?? {});
   }
+
+  Future<void> upgradeToPro({required String accessToken}) async {
+    await _dio.post(
+      '/me/upgrade-to-pro',
+      data: const <String, dynamic>{},
+      options: Options(headers: <String, dynamic>{'Authorization': 'Bearer $accessToken'}),
+    );
+  }
 }

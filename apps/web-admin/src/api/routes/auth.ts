@@ -1,20 +1,45 @@
 import { request } from "@/api/httpClient";
+import { clearAuthTokens, getRefreshToken, setAuthTokens } from "@/core/auth/tokenStore";
 
 export interface LoginPayload {
   email: string;
   password: string;
 }
 
-export function login(payload: LoginPayload) {
-  return request("/v1/auth/login", { method: "POST", body: payload });
+interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
 }
 
-export function logout() {
-  return request("/v1/auth/logout", { method: "POST" });
+export async function login(payload: LoginPayload) {
+  const tokens = await request<TokenResponse>("/v1/auth/login", { method: "POST", body: payload, authRetry: false });
+  setAuthTokens(tokens);
+  return tokens;
 }
 
-export function refresh() {
-  return request("/v1/auth/refresh", { method: "POST", authRetry: false });
+export async function logout() {
+  const refreshToken = getRefreshToken();
+  try {
+    return await request("/v1/auth/logout", {
+      method: "POST",
+      body: refreshToken ? { refresh_token: refreshToken } : {}
+    });
+  } finally {
+    clearAuthTokens();
+  }
+}
+
+export async function refresh() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error("Missing refresh token");
+  const tokens = await request<TokenResponse>("/v1/auth/refresh", {
+    method: "POST",
+    authRetry: false,
+    body: { refresh_token: refreshToken }
+  });
+  setAuthTokens(tokens);
+  return tokens;
 }
 
 export function requestPasswordReset(email: string) {

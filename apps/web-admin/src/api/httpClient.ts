@@ -1,5 +1,6 @@
 import { ApiError, toApiError } from "@/api/errors";
 import { refreshSession } from "@/core/auth/session";
+import { clearAuthTokens, getAccessToken } from "@/core/auth/tokenStore";
 
 type ParseMode = "json" | "text";
 
@@ -32,12 +33,14 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   const url = `${BASE_URL}${path}`;
 
   const doFetch = async () => {
+    const accessToken = getAccessToken();
     const response = await fetch(url, {
       ...rest,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "X-Request-Id": reqId(),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(headers || {})
       },
       body: body === undefined ? undefined : JSON.stringify(body)
@@ -58,6 +61,7 @@ export async function request<T = unknown>(path: string, options: RequestOptions
     if (apiError.code === "UNAUTHORIZED" && authRetry) {
       const refreshed = await refreshSession();
       if (refreshed) return doFetch();
+      clearAuthTokens();
     }
     throw error;
   }

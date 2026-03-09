@@ -69,6 +69,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           onPressed: () => context.push('/register'),
                         ),
                         RButton(
+                          label: 'Pro login',
+                          variant: RButtonVariant.ghost,
+                          onPressed: () => context.push('/pro/login'),
+                        ),
+                        RButton(
                           label: 'Reset password',
                           variant: RButtonVariant.ghost,
                           onPressed: () => context.push('/reset-password'),

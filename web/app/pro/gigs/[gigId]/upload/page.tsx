@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Button, Card, Input } from "@/design-system/primitives";
 import { useState } from "react";
 
@@ -16,7 +15,7 @@ export default function ProGigUploadPage() {
       <Card className="space-y-2">
         <Input type="file" multiple onChange={(e) => setUploaded(e.target.files?.length || 0)} />
         <p className="text-sm">Files selected: {uploaded}</p>
-        <Link href="../publish"><Button>Continue to publish</Button></Link>
+        <a href="../publish"><Button>Continue to publish</Button></a>
       </Card>
     </div>
   );

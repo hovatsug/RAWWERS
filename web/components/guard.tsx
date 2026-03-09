@@ -12,10 +12,18 @@ export function Guard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const needsAuth = pathname.startsWith("/client") || pathname.startsWith("/pro") || pathname.startsWith("/chat") || pathname.startsWith("/admin");
-    if (needsAuth && !accessToken) router.replace("/login");
+    const isProAuthPath = pathname === "/pro/login" || pathname === "/pro/register";
+    const needsAuth = pathname.startsWith("/client") || (pathname.startsWith("/pro") && !isProAuthPath) || pathname.startsWith("/chat") || pathname.startsWith("/admin");
+    if (needsAuth && !accessToken) {
+      if (pathname.startsWith("/pro")) {
+        router.replace("/pro/login" as any);
+        return;
+      }
+      router.replace("/login");
+      return;
+    }
     if (pathname.startsWith("/client") && accessToken && !roles.includes("client")) router.replace("/");
-    if (pathname.startsWith("/pro") && accessToken && !roles.includes("pro")) router.replace("/");
+    if (pathname.startsWith("/pro") && !isProAuthPath && accessToken && !roles.includes("pro")) router.replace("/");
     if (pathname.startsWith("/admin") && accessToken && !roles.includes("admin")) router.replace("/");
   }, [accessToken, hydrated, roles, pathname, router]);
 

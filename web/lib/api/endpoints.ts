@@ -79,6 +79,8 @@ export const endpoints = {
     method: "POST",
     body: JSON.stringify({ email, password })
   }),
+  upgradeToPro: (accessToken?: string | null) =>
+    apiRequest<Record<string, unknown>>("/me/upgrade-to-pro", { method: "POST", accessToken, body: JSON.stringify({}) }),
   logout: (refreshToken: string | null, accessToken?: string | null) =>
     apiRequest<void>("/auth/logout", { method: "POST", accessToken, body: JSON.stringify({ refresh_token: refreshToken, revoke_family: true }) }),
   discover: (accessToken?: string | null) => apiRequest<{ items: Array<{ pro_user_id: string; score: number; city?: string; country?: string }> }>("/client/discover", { accessToken }),

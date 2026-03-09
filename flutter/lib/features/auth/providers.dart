@@ -71,6 +71,66 @@ class AuthController extends StateNotifier<SessionState> {
     }
   }
 
+  Future<void> _promoteToPro({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    final authRepo = _ref.read(authRepositoryProvider);
+    final tokenStore = _ref.read(tokenStoreProvider);
+
+    var me = await authRepo.me(accessToken: accessToken);
+    if (!me.roles.contains('pro')) {
+      await authRepo.upgradeToPro(accessToken: accessToken);
+      me = await authRepo.me(accessToken: accessToken);
+    }
+    if (!me.roles.contains('pro')) {
+      throw Exception('Could not enable Pro role for this account');
+    }
+
+    await tokenStore.setAccessToken(accessToken);
+    await tokenStore.setRefreshToken(refreshToken);
+    state = state.copyWith(
+      loading: false,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      me: me,
+      clearError: true,
+    );
+  }
+
+  Future<void> loginAsPro({required String email, required String password}) async {
+    state = state.copyWith(loading: true, clearError: true);
+    try {
+      final token = await _ref.read(authRepositoryProvider).login(email: email, password: password);
+      await _promoteToPro(accessToken: token.accessToken, refreshToken: token.refreshToken);
+    } on DioException catch (e) {
+      state = state.copyWith(loading: false, error: e.error?.toString() ?? e.message ?? 'Pro login failed');
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
+  Future<void> registerAsPro({required String email, required String password}) async {
+    state = state.copyWith(loading: true, clearError: true);
+    try {
+      await _ref.read(authRepositoryProvider).register(email: email, password: password);
+      final token = await _ref.read(authRepositoryProvider).login(email: email, password: password);
+      await _promoteToPro(accessToken: token.accessToken, refreshToken: token.refreshToken);
+    } on DioException {
+      // Existing email path: attempt login + role upgrade.
+      try {
+        final token = await _ref.read(authRepositoryProvider).login(email: email, password: password);
+        await _promoteToPro(accessToken: token.accessToken, refreshToken: token.refreshToken);
+      } on DioException catch (e) {
+        state = state.copyWith(loading: false, error: e.error?.toString() ?? e.message ?? 'Pro registration failed');
+      } catch (e) {
+        state = state.copyWith(loading: false, error: e.toString());
+      }
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
   Future<void> register({required String email, required String password}) async {
     state = state.copyWith(loading: true, clearError: true);
     try {

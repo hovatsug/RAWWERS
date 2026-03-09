@@ -1,7 +1,5 @@
-import { LongformLanding } from "@/components/landing/LongformLanding";
-import { LANDING_CONTENT } from "@/components/landing/lp-content";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <LongformLanding content={LANDING_CONTENT.adhd} />;
+  redirect("/search");
 }
-

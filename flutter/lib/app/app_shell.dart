@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,33 +34,70 @@ class AppShell extends StatelessWidget {
     final selected = items.indexWhere((item) => location.startsWith(item.path));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppConfig.isProApp ? 'RAWWERS Pro' : 'RAWWERS'),
-        actions: [
-          if (session.isPro)
-            IconButton(
-              icon: const Icon(Icons.person_outline),
-              onPressed: () => context.go('/pro/profile'),
-              tooltip: 'Profile',
+      backgroundColor: RTokens.glassBg,
+      extendBody: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(56),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: AppBar(
+              backgroundColor: RTokens.glassCardBg,
+              surfaceTintColor: Colors.transparent,
+              title: Text(
+                AppConfig.isProApp ? 'RAWWERS Pro' : 'RAWWERS',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: RTokens.textLg,
+                  color: RTokens.textOnDark,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1),
+                child: Container(height: 1, color: RTokens.glassCardBorder),
+              ),
+              actions: [
+                if (session.isPro)
+                  IconButton(
+                    icon: const Icon(Icons.person_outline, color: RTokens.textMutedDark),
+                    onPressed: () => context.go('/pro/profile'),
+                    tooltip: 'Profile',
+                  ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
       body: SafeArea(
+        bottom: false,
         child: Padding(
-          padding: const EdgeInsets.all(RTokens.spacingX4),
+          padding: const EdgeInsets.fromLTRB(RTokens.spacingX4, RTokens.spacingX4, RTokens.spacingX4, 0),
           child: child,
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selected < 0 ? 0 : selected,
-        onDestinationSelected: (index) => context.go(items[index].path),
-        destinations: [
-          for (final item in items)
-            NavigationDestination(
-              icon: Icon(item.icon),
-              label: item.label,
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xCC08080F),
+              border: Border(top: BorderSide(color: RTokens.glassCardBorder, width: 1)),
             ),
-        ],
+            child: NavigationBar(
+              backgroundColor: Colors.transparent,
+              selectedIndex: selected < 0 ? 0 : selected,
+              onDestinationSelected: (index) => context.go(items[index].path),
+              destinations: [
+                for (final item in items)
+                  NavigationDestination(
+                    icon: Icon(item.icon),
+                    label: item.label,
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

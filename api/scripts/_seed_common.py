@@ -309,6 +309,7 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
             meta={"seeded": True},
         )
         db.add(gig)
+    db.flush()
 
     gallery_id = uuid.UUID("00000000-0000-0000-0000-000000000311")
     gallery = db.get(ProofGallery, gallery_id)
@@ -325,6 +326,7 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
             published_at=_now() - timedelta(days=1),
         )
         db.add(gallery)
+    db.flush()
 
     for idx in range(5):
         proof_asset_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-proof:{gig_id}:{idx}")
@@ -345,6 +347,7 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
                     meta={"seeded": True, "index": idx},
                 )
             )
+            db.flush()
 
         item_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-proof-item:{gallery_id}:{idx}")
         if db.get(ProofGalleryItem, item_id) is None:
@@ -385,15 +388,20 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
 
     _upsert_user(db, ADMIN_USER)
     _upsert_user(db, CLIENT_USER)
+    for pro in PRO_USERS:
+        _upsert_user(db, pro)
+    db.flush()
 
     portraits = _ensure_niche(db, "portraits")
     events = _ensure_niche(db, "events_nightlife")
 
     package_main = _ensure_pro_profile(db, PRO_USERS[0], portraits, city=city, country=country, price=Decimal("120.00"))
     _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("160.00"))
+    db.flush()
 
     _ensure_client_preference(db, CLIENT_USER.user_id)
     _ensure_sample_gig_and_proofs(db, pro_user_id=PRO_USERS[0].user_id, client_user_id=CLIENT_USER.user_id)
+    db.flush()
 
     if include_sample_booking:
         _ensure_sample_booking_request(

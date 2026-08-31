@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Card } from "@/design-system/primitives";
+import { Badge, GlassCard } from "@/design-system/primitives";
 
 export type ProListingCardData = {
   proUserId: string;
@@ -17,30 +17,55 @@ export type ProListingCardData = {
 };
 
 export function ProListingCard({ item, mode = "list" }: { item: ProListingCardData; mode?: "list" | "grid" }) {
-  const fromPrice = item.fromPrice != null ? `${item.currency ?? "EUR"} ${Math.round(item.fromPrice)}` : "Price unavailable";
+  const fromPrice = item.fromPrice != null ? `${item.currency ?? "EUR"} ${Math.round(item.fromPrice)}` : null;
   const tags = (item.tags ?? []).slice(0, 5);
 
   return (
-    <Card className={mode === "grid" ? "h-full" : undefined}>
+    <GlassCard className={`p-4 ${mode === "grid" ? "h-full" : ""}`}>
+      {/* Inner accent orb */}
+      <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-violet-600/15 blur-2xl" />
+
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-base font-semibold">{item.displayName || `Pro ${item.proUserId.slice(0, 8)}`}</p>
-          <Badge>{`From ${fromPrice}`}</Badge>
+          <div className="flex items-center gap-3">
+            {/* Avatar placeholder */}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-blue-500 text-sm font-bold text-white shadow-glow-sm shrink-0">
+              {(item.displayName ?? "P")[0].toUpperCase()}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">
+                {item.displayName || `Pro ${item.proUserId.slice(0, 8)}`}
+              </p>
+              <p className="text-xs text-slate-500">
+                {item.city || "Unknown city"}, {item.country || "Unknown"}
+              </p>
+            </div>
+          </div>
+          {fromPrice ? (
+            <Badge variant="violet">From {fromPrice}</Badge>
+          ) : null}
         </div>
-        <p className="text-sm text-neutral-600">{item.headline || "No headline yet"}</p>
-        <p className="text-xs text-neutral-500">{item.city || "Unknown city"}, {item.country || "Unknown"}</p>
-        {item.coverMediaAssetId ? <p className="text-xs text-neutral-500">Cover media: {item.coverMediaAssetId.slice(0, 8)}...</p> : null}
+
+        {item.headline ? (
+          <p className="text-sm text-slate-400 leading-relaxed">{item.headline}</p>
+        ) : null}
+
         {tags.length ? (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => (
-              <Badge key={tag} className="bg-neutral-100 text-neutral-700">{tag}</Badge>
+              <Badge key={tag}>{tag}</Badge>
             ))}
           </div>
         ) : null}
-        <p className="text-xs text-neutral-500">
-          {item.avgRating != null ? item.avgRating.toFixed(1) : "-"} rating • {item.reviewCount ?? 0} reviews
-        </p>
+
+        {item.avgRating != null ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-400 text-xs">★</span>
+            <span className="text-xs font-medium text-white">{item.avgRating.toFixed(1)}</span>
+            <span className="text-xs text-slate-500">· {item.reviewCount ?? 0} reviews</span>
+          </div>
+        ) : null}
       </div>
-    </Card>
+    </GlassCard>
   );
 }

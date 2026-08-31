@@ -14,8 +14,9 @@ class RawwersApp extends ConsumerWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: AppConfig.appDisplayName,
-      theme: buildLightTheme(),
+      theme: buildDarkTheme(),
       darkTheme: buildDarkTheme(),
+      themeMode: ThemeMode.dark,
       routerConfig: router,
     );
   }

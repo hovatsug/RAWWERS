@@ -20,23 +20,28 @@ export function AppShell({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className={cn("min-h-screen", isLanding ? "pb-0" : "pb-16")}>
+    <div className={cn("min-h-screen", isLanding ? "pb-0" : "pb-20")}>
       <main className={cn(isLanding ? "" : "container-mobile py-4")}>{children}</main>
       {isLanding ? null : (
-        <nav className="fixed bottom-0 left-0 right-0 border-t border-neutral-200 bg-white">
-          <div className="container-mobile flex items-center justify-between py-2">
+        <nav className="fixed bottom-0 left-0 right-0 border-t border-white/[0.08] bg-[#08080F]/80 backdrop-blur-2xl">
+          <div className="container-mobile flex items-center justify-between py-3">
             {links.filter((link) => link.show).map((link) => (
               <Link
                 key={link.href}
                 href={link.href as any}
-                className={cn("text-xs", pathname.startsWith(link.href) ? "text-brand-700" : "text-neutral-600")}
+                className={cn(
+                  "text-xs font-medium transition-colors duration-200",
+                  pathname.startsWith(link.href)
+                    ? "text-violet-400"
+                    : "text-slate-500 hover:text-slate-300"
+                )}
               >
                 {link.label}
               </Link>
             ))}
             {accessToken ? (
               <button
-                className="text-xs text-neutral-600"
+                className="text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors duration-200"
                 onClick={async () => {
                   await endpoints.logout(refreshToken, accessToken).catch(() => undefined);
                   clearSession();

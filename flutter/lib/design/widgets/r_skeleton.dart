@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../tokens.dart';
 
 class RSkeleton extends StatefulWidget {
-  const RSkeleton({super.key, this.height = 16, this.width = double.infinity, this.borderRadius = 8});
+  const RSkeleton({super.key, this.height = 16, this.width = double.infinity, this.borderRadius = RTokens.radiusXl});
 
   final double height;
   final double width;
@@ -17,7 +18,7 @@ class _RSkeletonState extends State<RSkeleton> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
   }
 
   @override
@@ -31,15 +32,16 @@ class _RSkeletonState extends State<RSkeleton> with SingleTickerProviderStateMix
     return AnimatedBuilder(
       animation: _controller,
       builder: (_, __) {
-        final opacity = 0.45 + (_controller.value * 0.25);
+        final opacity = 0.30 + (_controller.value * 0.20);
         return Opacity(
           opacity: opacity,
           child: Container(
             height: widget.height,
             width: widget.width,
             decoration: BoxDecoration(
-              color: const Color(0xFFE2E8F0),
+              color: RTokens.glassCardBgHover,
               borderRadius: BorderRadius.circular(widget.borderRadius),
+              border: Border.all(color: RTokens.glassCardBorder, width: 1),
             ),
           ),
         );

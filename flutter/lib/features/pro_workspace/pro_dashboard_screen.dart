@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/pro_api_provider.dart';
 import '../../design/tokens.dart';
-import '../../design/widgets/r_card.dart';
+import '../../design/widgets/r_glass_card.dart';
+import '../../design/widgets/r_glow_orbs.dart';
 import '../../design/widgets/r_skeleton.dart';
 import 'widgets.dart';
 
@@ -62,9 +63,21 @@ class _ProDashboardScreenState extends ConsumerState<ProDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        const RGlowOrbs(variant: RGlowOrbsVariant.dashboard),
+        _buildBody(context),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     if (_loading) {
       return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          RSkeleton(height: 32, width: 180),
+          SizedBox(height: RTokens.spacingX4),
           RSkeleton(height: 90),
           SizedBox(height: RTokens.spacingX3),
           RSkeleton(height: 90),
@@ -73,50 +86,109 @@ class _ProDashboardScreenState extends ConsumerState<ProDashboardScreen> {
         ],
       );
     }
+
     if (_error != null) {
       return ProErrorState(message: _error!, onRetry: _load);
     }
 
     final pending = _checks.values.where((value) => value == false).length;
+    final availableBalance = '${_balance['available_balance'] ?? _balance['available'] ?? '—'}';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Dashboard', style: TextStyle(fontSize: RTokens.textXl, fontWeight: FontWeight.w700)),
-        const SizedBox(height: RTokens.spacingX3),
-        RCard(
-          child: Column(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Text('Dashboard', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 4),
+          Text('Welcome back. Here\'s what\'s happening.', style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: RTokens.spacingX6),
+
+          // Stat cards
+          _StatCard(
+            label: 'Pending checks',
+            value: '$pending',
+            accentColor: RTokens.amber,
+            glowColor: RTokens.glowAmber,
+          ),
+          const SizedBox(height: RTokens.spacingX3),
+          _StatCard(
+            label: 'Earnings balance',
+            value: availableBalance,
+            accentColor: RTokens.emerald,
+            glowColor: RTokens.glowEmerald,
+          ),
+          const SizedBox(height: RTokens.spacingX3),
+          _StatCard(
+            label: 'Recent threads',
+            value: '$_threadsCount',
+            accentColor: RTokens.violetLight,
+            glowColor: RTokens.glowVioletSm,
+          ),
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.accentColor,
+    required this.glowColor,
+  });
+
+  final String label;
+  final String value;
+  final Color accentColor;
+  final Color glowColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return RGlassCard(
+      child: Stack(
+        children: [
+          // Inner accent orb
+          Positioned(
+            right: -8,
+            top: -8,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accentColor.withValues(alpha: 0.15),
+              ),
+            ),
+          ),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Pending checks', style: TextStyle(color: RTokens.neutralMuted)),
-              const SizedBox(height: RTokens.spacingX1),
-              Text('$pending', style: const TextStyle(fontSize: RTokens.textX2l, fontWeight: FontWeight.w700)),
+              Text(
+                label.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: RTokens.textXs,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: RTokens.textSubtleDark,
+                ),
+              ),
+              const SizedBox(height: RTokens.spacingX2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: RTokens.textX3l,
+                  fontWeight: FontWeight.w800,
+                  color: accentColor,
+                  shadows: [Shadow(color: glowColor, blurRadius: 20)],
+                ),
+              ),
             ],
           ),
-        ),
-        const SizedBox(height: RTokens.spacingX3),
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Earnings balance', style: TextStyle(color: RTokens.neutralMuted)),
-              const SizedBox(height: RTokens.spacingX1),
-              Text('${_balance['available_balance'] ?? _balance['available'] ?? '-'}', style: const TextStyle(fontSize: RTokens.textX2l, fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-        const SizedBox(height: RTokens.spacingX3),
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Recent threads', style: TextStyle(color: RTokens.neutralMuted)),
-              const SizedBox(height: RTokens.spacingX1),
-              Text('$_threadsCount', style: const TextStyle(fontSize: RTokens.textX2l, fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

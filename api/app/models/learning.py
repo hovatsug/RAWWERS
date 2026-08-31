@@ -100,7 +100,7 @@ class LearningFeePolicy(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     platform_fee_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     mux_cost_reserve_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
-    metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

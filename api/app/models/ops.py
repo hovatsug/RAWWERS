@@ -75,7 +75,12 @@ class FeatureFlag(Base):
     key: Mapped[str] = mapped_column(Text, primary_key=True)
     is_enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
     scope: Mapped[FeatureFlagScope] = mapped_column(
-        Enum(FeatureFlagScope, name="feature_flag_scope", native_enum=False),
+        Enum(
+            FeatureFlagScope,
+            name="feature_flag_scope",
+            native_enum=False,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         default=FeatureFlagScope.global_scope,
     )

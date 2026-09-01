@@ -521,5 +521,4 @@ class CourseReview(Base):
 
 Index("ix_course_niche_published", Course.niche_id, Course.is_published)
 Index("ix_course_instructor_published", Course.instructor_user_id, Course.is_published)
-Index("ix_course_status", Course.status)
 Index("ix_course_partner_status", Course.partner_id, Course.status)

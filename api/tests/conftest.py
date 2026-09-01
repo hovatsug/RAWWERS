@@ -9,7 +9,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("LOG_LEVEL", "DEBUG")
-os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///./test.db")
+# Deliberately not SQLite: production runs Postgres, and several models use
+# Postgres-only types (e.g. JSONB) that SQLite can't compile at all. This
+# default is a distinct database from the "rawwers" name used by local dev
+# (api/docker-compose.yml) and CI, specifically so a stray local test run
+# can't drop_all() a developer's real dev data - create it once with
+# `createdb rawwers_test` (or point DATABASE_URL elsewhere) before running
+# tests locally outside CI.
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers_test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("R2_ENDPOINT_URL", "https://example.r2.cloudflarestorage.com")
 os.environ.setdefault("R2_ACCESS_KEY_ID", "test")
@@ -57,7 +64,9 @@ from app.db.base import Base
 from app.main import app
 from app.services.niche_catalog import ensure_initial_niches
 
-engine = create_engine("sqlite+pysqlite:///./test.db", connect_args={"check_same_thread": False})
+_database_url = os.environ["DATABASE_URL"]
+_connect_args = {"check_same_thread": False} if _database_url.startswith("sqlite") else {}
+engine = create_engine(_database_url, connect_args=_connect_args)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
 
 

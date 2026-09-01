@@ -378,5 +378,4 @@ class RefundPolicy(Base):
 
 Index("ix_ban_action_user_created", BanAction.user_id, BanAction.created_at.desc())
 Index("ix_dispute_status", Dispute.status)
-Index("ix_dispute_against_user_id", Dispute.against_user_id)
 Index("ix_dispute_opened_at", Dispute.opened_at)

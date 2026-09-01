@@ -56,6 +56,16 @@ services:
       - postgres
       - redis
 
+  beat:
+    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app.celery_app beat -l info
+    env_file:
+      - ./deploy/.env.staging
+    depends_on:
+      - postgres
+      - redis
+
   web:
     image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/web:${IMAGE_TAG:-latest}
     restart: unless-stopped

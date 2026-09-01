@@ -17,12 +17,11 @@ def ensure_idempotency_key(
     metadata: dict | None = None,
 ) -> bool:
     row = IdempotencyKey(key=key, scope=scope, meta=metadata or {})
-    db.add(row)
     try:
-        db.flush()
+        with db.begin_nested():
+            db.add(row)
         return True
     except IntegrityError:
-        db.rollback()
         return False
 
 

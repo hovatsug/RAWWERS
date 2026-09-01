@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -34,6 +35,7 @@ from app.services.notifications import NotificationSeverity, enqueue_notificatio
 from app.services.outbox import enqueue_outbox_event
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 MIN_PAYOUT_EUR = Decimal("50.00")
 PAYOUT_REQUEST_LIMIT_7D = 2
 
@@ -149,33 +151,40 @@ def settle_due_earnings_entries(db: Session, *, limit: int = 500) -> int:
         .limit(limit)
     ).scalars().all()
     changed = 0
+    failed = 0
     touched: set[uuid.UUID] = set()
     for row in rows:
-        should_hold = _entry_should_be_held(
-            db,
-            pro_user_id=row.pro_user_id,
-            source_type=row.source_type.value,
-            source_id=row.source_id,
-        )
-        target_status = EarningsEntryStatus.held if should_hold else EarningsEntryStatus.available
-        if row.status == target_status:
-            continue
-        row.status = target_status
-        row.updated_at = now
-        changed += 1
-        touched.add(row.pro_user_id)
-        if target_status == EarningsEntryStatus.available:
-            observe_business_event("earnings_entry_available")
-            log_event(
-                db,
-                event_name="earnings.entry_available",
-                user_id=row.pro_user_id,
-                properties={"entry_id": str(row.id), "source_type": row.source_type.value, "source_id": str(row.source_id)},
-            )
+        try:
+            with db.begin_nested():
+                should_hold = _entry_should_be_held(
+                    db,
+                    pro_user_id=row.pro_user_id,
+                    source_type=row.source_type.value,
+                    source_id=row.source_id,
+                )
+                target_status = EarningsEntryStatus.held if should_hold else EarningsEntryStatus.available
+                if row.status == target_status:
+                    continue
+                row.status = target_status
+                row.updated_at = now
+                if target_status == EarningsEntryStatus.available:
+                    observe_business_event("earnings_entry_available")
+                    log_event(
+                        db,
+                        event_name="earnings.entry_available",
+                        user_id=row.pro_user_id,
+                        properties={"entry_id": str(row.id), "source_type": row.source_type.value, "source_id": str(row.source_id)},
+                    )
+                changed += 1
+                touched.add(row.pro_user_id)
+        except Exception:
+            failed += 1
+            logger.exception("settle_earnings_entry_failed", extra={"entry_id": str(row.id)})
     for pro_user_id in touched:
         refresh_earnings_balance_snapshot(db, pro_user_id=pro_user_id)
     if changed:
         _refresh_finance_metrics(db)
+    logger.info("settle_due_earnings_entries_sweep", extra={"scanned": len(rows), "settled": changed, "failed": failed})
     return changed
 
 

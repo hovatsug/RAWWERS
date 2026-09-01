@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 from app.core.errors import APIError
 from app.models.booking import (
     BookingRequest,
+    BookingRequestStatus,
+    BookingRequestTransition,
     BookingTimeRequest,
     ConfirmedSlot,
     ProAvailabilityException,
@@ -17,6 +20,8 @@ from app.models.booking import (
     ProSchedulingPolicy,
 )
 from app.models.communication import FollowupChannel, FollowupJob, FollowupJobStatus, FollowupRule
+
+logger = logging.getLogger(__name__)
 
 
 def get_or_create_scheduling_policy(db: Session, *, pro_user_id: uuid.UUID) -> ProSchedulingPolicy:
@@ -248,6 +253,54 @@ def latest_booking_time_request(db: Session, *, booking_request_id: uuid.UUID) -
         .where(BookingTimeRequest.booking_request_id == booking_request_id)
         .order_by(BookingTimeRequest.created_at.desc())
     ).scalars().first()
+
+
+def expire_pending_booking_requests(db: Session, *, now: datetime | None = None, limit: int | None = 100) -> int:
+    """Auto-decline booking requests past their pro-response deadline.
+
+    Same transition the manual admin job has always performed
+    (BookingRequest.pending -> expired); this just makes it schedulable
+    and resilient to a single bad row. The WHERE clause already makes
+    re-running safe: an already-expired row won't match again.
+
+    limit=None preserves the admin endpoint's original unbounded
+    behaviour; the scheduled sweep passes an explicit batch size.
+    """
+    current = now or datetime.now(timezone.utc)
+    query = (
+        select(BookingRequest)
+        .where(BookingRequest.status == BookingRequestStatus.pending, BookingRequest.expires_at < current)
+        .order_by(BookingRequest.expires_at.asc())
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    rows = db.execute(query).scalars().all()
+
+    expired_count = 0
+    failed_count = 0
+    for request in rows:
+        try:
+            with db.begin_nested():
+                request.status = BookingRequestStatus.expired
+                db.add(
+                    BookingRequestTransition(
+                        booking_request_id=request.id,
+                        from_status=BookingRequestStatus.pending,
+                        to_status=BookingRequestStatus.expired,
+                        actor_user_id=request.pro_user_id,
+                        reason="Expired by scheduled sweep",
+                    )
+                )
+            expired_count += 1
+        except Exception:
+            failed_count += 1
+            logger.exception("expire_booking_request_failed", extra={"booking_request_id": str(request.id)})
+
+    logger.info(
+        "expire_booking_requests_sweep",
+        extra={"scanned": len(rows), "expired": expired_count, "failed": failed_count},
+    )
+    return expired_count
 
 
 def _ensure_slot_followup_rule(db: Session, *, code: str, delay_minutes: int, title: str, body: str) -> None:

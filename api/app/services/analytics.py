@@ -14,6 +14,7 @@ ALLOWED_PREFIXES = (
     "booking.",
     "payment.",
     "review.",
+    "dispute.",
     "referral.",
     "attribution.",
     "viral.",

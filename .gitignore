@@ -9,6 +9,10 @@ apps/web-admin/node_modules
 .next/
 web/.next/
 
+# next-pwa generated service worker
+web/public/sw.js
+web/public/workbox-*.js
+
 # Common JS build outputs
 coverage/
 dist/

@@ -17,6 +17,7 @@ from app.models.studioverse import (
     ContentPackPaymentMethod,
     ContentPackOrderStatus,
     ContentPackReview,
+    ContentPackReviewDecision,
     ContentPackStatus,
     ContentPackTakedown,
 )

@@ -49,6 +49,10 @@ ALLOWED_PREFIXES = (
     "i18n.",
     "legacy.",
     "prints.",
+    "extra_images.",
+    "onboarding.",
+    "refund.",
+    "risk.",
 )
 
 

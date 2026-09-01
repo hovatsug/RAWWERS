@@ -20,7 +20,7 @@ from app.models.communication import FollowupJob
 def _seed_user(db_session, user_id: str, role: UserRoleType):
     uid = uuid.UUID(user_id)
     if not db_session.get(UserAccount, uid):
-        db_session.add(UserAccount(user_id=uid, email=f"{user_id[:8]}@example.com"))
+        db_session.add(UserAccount(user_id=uid, email=f"{user_id}@example.com"))
     if not db_session.query(UserRole).filter_by(user_id=uid, role=role).first():
         db_session.add(UserRole(user_id=uid, role=role))
     db_session.commit()

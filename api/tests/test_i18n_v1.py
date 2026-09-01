@@ -22,7 +22,7 @@ from app.services.notifications import render_template
 def _seed_user(db_session, user_id: str, roles: list[UserRoleType]) -> uuid.UUID:
     uid = uuid.UUID(user_id)
     if not db_session.get(UserAccount, uid):
-        db_session.add(UserAccount(user_id=uid, email=f"{user_id[:8]}@example.com"))
+        db_session.add(UserAccount(user_id=uid, email=f"{user_id}@example.com"))
     for role in roles:
         exists = db_session.query(UserRole).filter_by(user_id=uid, role=role).one_or_none()
         if not exists:

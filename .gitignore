@@ -1,5 +1,6 @@
 # Node.js dependencies
 node_modules/
+apps/web-admin/node_modules
 
 # Package manager caches
 .pnpm-store/
@@ -12,3 +13,31 @@ web/.next/
 coverage/
 dist/
 build/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+**/.DS_Store
+
+# Flutter / Dart
+.dart_tool/
+flutter/build/
+flutter/.idea/
+flutter/ios/Pods/
+flutter/ios/.symlinks/
+
+# Claude Code local settings
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Android
+local.properties

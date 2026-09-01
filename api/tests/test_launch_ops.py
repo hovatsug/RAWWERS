@@ -16,7 +16,7 @@ ADMIN_USER_ID = "00000000-0000-0000-0000-0000000000aa"
 def _seed_pro(db_session, pro_id: str) -> uuid.UUID:
     uid = uuid.UUID(pro_id)
     if not db_session.get(UserAccount, uid):
-        db_session.add(UserAccount(user_id=uid, email=f"{pro_id[:8]}@example.com"))
+        db_session.add(UserAccount(user_id=uid, email=f"{pro_id}@example.com"))
     if not db_session.query(UserRole).filter_by(user_id=uid, role=UserRoleType.pro).one_or_none():
         db_session.add(UserRole(user_id=uid, role=UserRoleType.pro))
     profile = db_session.get(ProProfile, uid)

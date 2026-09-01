@@ -576,6 +576,7 @@ def _sync_niche_badges(db: Session, *, user_id: uuid.UUID, niche_slug: str, tier
     ).all()
     for user_badge, _badge in existing:
         db.delete(user_badge)
+    db.flush()
 
     tier_code = f"tier_{niche_slug}_{tier.value}"
     tier_badge = _ensure_badge(

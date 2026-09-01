@@ -63,6 +63,7 @@ def get_current_user(
         except ValueError as exc:
             raise APIError(code="unauthorized", message="Invalid X-User-Id header", status_code=401) from exc
         logger.warning("auth_dev_bypass_used", extra={"user_id": str(user_id)})
+        ensure_user_account(db, user_id)
         add_auth_event(
             db,
             event_type="auth_dev_bypass",

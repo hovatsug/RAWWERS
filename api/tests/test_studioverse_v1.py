@@ -25,7 +25,7 @@ ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
 def _seed_user(db_session, user_id: str, roles: list[UserRoleType]):
     uid = uuid.UUID(user_id)
     if not db_session.get(UserAccount, uid):
-        db_session.add(UserAccount(user_id=uid, email=f"{user_id[:8]}@example.com"))
+        db_session.add(UserAccount(user_id=uid, email=f"{user_id}@example.com"))
     for role in roles:
         if not db_session.query(UserRole).filter_by(user_id=uid, role=role).first():
             db_session.add(UserRole(user_id=uid, role=role))

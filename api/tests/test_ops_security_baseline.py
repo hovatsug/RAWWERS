@@ -12,7 +12,7 @@ from app.services import rate_limit as rate_limit_service
 def _ensure_user_role(db, user_id: str, role: UserRoleType) -> None:
     uid = uuid.UUID(user_id)
     if not db.get(UserAccount, uid):
-        db.add(UserAccount(user_id=uid, email=f"{user_id[:8]}@example.com"))
+        db.add(UserAccount(user_id=uid, email=f"{user_id}@example.com"))
         db.flush()
     existing = db.query(UserRole).filter_by(user_id=uid, role=role).one_or_none()
     if not existing:

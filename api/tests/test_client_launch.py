@@ -25,7 +25,7 @@ def _seed_user(db_session, user_id: str, roles: list[UserRoleType] | None = None
 
 def _seed_pro(db_session, pro_id: str, *, city: str = "Lisbon", country: str = "PT", tier: SkillTier = SkillTier.pro) -> uuid.UUID:
     pro_uuid = uuid.UUID(pro_id)
-    _seed_user(db_session, pro_id, [UserRoleType.pro], email=f"{pro_id[:8]}@example.com")
+    _seed_user(db_session, pro_id, [UserRoleType.pro], email=f"{pro_id}@example.com")
     profile = db_session.get(ProProfile, pro_uuid)
     if not profile:
         profile = ProProfile(user_id=pro_uuid)

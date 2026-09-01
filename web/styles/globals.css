@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-hover: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+  color-scheme: dark;
+
+  /* Editorial design system — flat, rationed accent (see design-system/tokens) */
+  --canvas: #09090b;
+  --surface: #141417;
+  --surface-2: #1b1b20;
+  --surface-3: #232329;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
+  --text: #f4f3f1;
+  --muted: #8b8b93;
+  --faint: #57575f;
+  --accent: #7b61ff;
+  --accent-soft: rgba(123, 97, 255, 0.14);
+  --ok: #3fcf8e;
+  --warn: #e0a458;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .editorial-fade-up {
+    animation: editorial-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes editorial-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+body {
+  @apply bg-[#08080F] text-white antialiased;
+}
+
+a {
+  @apply text-violet-400;
+}
+
+.container-mobile {
+  @apply mx-auto w-full max-w-2xl px-4;
+}
+
+/* Reusable glass surface */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  box-shadow: 0 12px 48px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #A78BFA 0%, #60A5FA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 17px;
+    line-height: 1.55;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: reveal-in 420ms ease-out both;
+  }
+
+  @keyframes reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

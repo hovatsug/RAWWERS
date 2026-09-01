@@ -1,0 +1,14 @@
+# Node.js dependencies
+node_modules/
+
+# Package manager caches
+.pnpm-store/
+
+# Next.js build/cache output
+.next/
+web/.next/
+
+# Common JS build outputs
+coverage/
+dist/
+build/

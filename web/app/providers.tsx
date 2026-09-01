@@ -22,7 +22,11 @@ function FlagsBridge({ children }: { children: ReactNode }) {
           proof_gallery_enabled: true,
           pro_onboarding_enabled: true,
           notifications_enabled: true,
-          ai_concierge_enabled: false
+          ai_concierge_enabled: false,
+          rewards_enabled: false,
+          share_gallery_enabled: false,
+          pro_leads_enabled: false,
+          checkout_extras_enabled: false
         } as Record<string, boolean>;
       }
     },

@@ -9,7 +9,7 @@ import { endpoints } from "@/lib/api/endpoints";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isLanding = ["/", "/adhd", "/founder", "/fitness"].includes(pathname);
+  const isLanding = pathname === "/";
   const { roles, accessToken, refreshToken, clearSession } = useAuth();
   const links = [
     { href: "/discover", label: "Discover", show: true },

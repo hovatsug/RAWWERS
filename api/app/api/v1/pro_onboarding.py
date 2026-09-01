@@ -62,6 +62,7 @@ from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.scheduling import expire_pending_booking_requests
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.media_rights import ensure_gig_consent_snapshot
 from app.services.disputes import capture_gig_contract_snapshot
@@ -763,7 +764,7 @@ def create_booking_request(
         location_text=body.location_text,
         notes=body.notes,
         status=BookingRequestStatus.pending,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.booking_response_deadline_hours),
     )
     db.add(request)
     db.flush()
@@ -1052,25 +1053,9 @@ def expire_booking_requests_job(
     _: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db_session),
 ) -> dict:
-    now = datetime.now(timezone.utc)
-    pending = db.execute(
-        select(BookingRequest).where(BookingRequest.status == BookingRequestStatus.pending, BookingRequest.expires_at < now)
-    ).scalars().all()
-
-    for request in pending:
-        request.status = BookingRequestStatus.expired
-        db.add(
-            BookingRequestTransition(
-                booking_request_id=request.id,
-                from_status=BookingRequestStatus.pending,
-                to_status=BookingRequestStatus.expired,
-                actor_user_id=request.pro_user_id,
-                reason="Expired by job",
-            )
-        )
-
+    expired_count = expire_pending_booking_requests(db, limit=None)
     db.commit()
-    return {"expired_count": len(pending)}
+    return {"expired_count": expired_count}
 
 
 def _require_role(db: Session, user_id: uuid.UUID, role: UserRoleType) -> None:

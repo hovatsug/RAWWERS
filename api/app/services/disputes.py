@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -47,6 +48,7 @@ from app.services.proof_of_gigs import enqueue_raww_refund_reversal
 from app.services.trust_safety import evaluate_dispute_rate_rule
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 def ensure_default_refund_policies(db: Session) -> None:
@@ -681,39 +683,46 @@ def escalate_due_disputes(db: Session, *, now: datetime | None = None, limit: in
         ).order_by(Dispute.due_response_at.asc()).limit(limit)
     ).scalars().all()
     count = 0
+    failed = 0
     for dispute in rows:
-        previous = dispute.status
-        dispute.status = DisputeStatus.awaiting_admin
-        db.add(
-            DisputeEvent(
-                dispute_id=dispute.id,
-                from_status=previous.value,
-                to_status=dispute.status.value,
-                actor_type=DisputeActorType.system,
-                actor_user_id=None,
-                note="auto_escalated_due_response_timeout",
-                payload={"due_response_at": dispute.due_response_at.isoformat() if dispute.due_response_at else None},
-            )
-        )
-        if dispute.against_user_id:
-            enqueue_notification(
-                db,
-                user_id=dispute.against_user_id,
-                notification_type="dispute.escalated",
-                payload={
-                    "title": "Dispute escalated",
-                    "body": "A dispute was escalated to admin review due to response timeout.",
-                    "action": {"label": "View dispute", "url": f"/disputes/{dispute.id}"},
-                },
-                reference_type="dispute",
-                reference_id=str(dispute.id),
-            )
-        log_event(
-            db,
-            event_name="dispute.escalated",
-            user_id=dispute.opened_by_user_id,
-            properties={"dispute_id": str(dispute.id)},
-        )
-        count += 1
+        try:
+            with db.begin_nested():
+                previous = dispute.status
+                dispute.status = DisputeStatus.awaiting_admin
+                db.add(
+                    DisputeEvent(
+                        dispute_id=dispute.id,
+                        from_status=previous.value,
+                        to_status=dispute.status.value,
+                        actor_type=DisputeActorType.system,
+                        actor_user_id=None,
+                        note="auto_escalated_due_response_timeout",
+                        payload={"due_response_at": dispute.due_response_at.isoformat() if dispute.due_response_at else None},
+                    )
+                )
+                if dispute.against_user_id:
+                    enqueue_notification(
+                        db,
+                        user_id=dispute.against_user_id,
+                        notification_type="dispute.escalated",
+                        payload={
+                            "title": "Dispute escalated",
+                            "body": "A dispute was escalated to admin review due to response timeout.",
+                            "action": {"label": "View dispute", "url": f"/disputes/{dispute.id}"},
+                        },
+                        reference_type="dispute",
+                        reference_id=str(dispute.id),
+                    )
+                log_event(
+                    db,
+                    event_name="dispute.escalated",
+                    user_id=dispute.opened_by_user_id,
+                    properties={"dispute_id": str(dispute.id)},
+                )
+            count += 1
+        except Exception:
+            failed += 1
+            logger.exception("escalate_dispute_failed", extra={"dispute_id": str(dispute.id)})
     db.flush()
+    logger.info("escalate_due_disputes_sweep", extra={"scanned": len(rows), "escalated": count, "failed": failed})
     return count

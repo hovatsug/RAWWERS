@@ -111,6 +111,14 @@ class Settings(BaseSettings):
     risk_session_hash_pepper: str = Field(default="dev-risk-session-pepper", alias="RISK_SESSION_HASH_PEPPER")
     risk_signal_retention_days: int = Field(default=90, alias="RISK_SIGNAL_RETENTION_DAYS")
 
+    booking_response_deadline_hours: int = Field(default=24, alias="BOOKING_RESPONSE_DEADLINE_HOURS")
+    booking_request_expiry_sweep_interval_seconds: int = Field(default=900, alias="BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS")
+    payout_hold_release_sweep_interval_seconds: int = Field(default=3600, alias="PAYOUT_HOLD_RELEASE_SWEEP_INTERVAL_SECONDS")
+    dispute_escalation_sweep_interval_seconds: int = Field(default=3600, alias="DISPUTE_ESCALATION_SWEEP_INTERVAL_SECONDS")
+    stuck_booking_sweep_interval_seconds: int = Field(default=3600, alias="STUCK_BOOKING_SWEEP_INTERVAL_SECONDS")
+    stuck_booking_max_age_hours: int = Field(default=720, alias="STUCK_BOOKING_MAX_AGE_HOURS")
+    scheduled_sweep_batch_size: int = Field(default=100, alias="SCHEDULED_SWEEP_BATCH_SIZE")
+
     def admin_user_id_set(self) -> set[UUID]:
         values = [item.strip() for item in self.admin_user_ids.split(",") if item.strip()]
         result: set[UUID] = set()

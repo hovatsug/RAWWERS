@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import timedelta
 
 from celery import Celery
 from celery.signals import before_task_publish, task_failure, task_postrun, task_prerun
@@ -13,6 +14,24 @@ settings = get_settings()
 
 celery_app = Celery("rawwers_media", broker=settings.redis_url, backend=settings.redis_url)
 celery_app.conf.task_default_queue = "media"
+celery_app.conf.beat_schedule = {
+    "expire-booking-requests": {
+        "task": "app.tasks.scheduled.expire_booking_requests",
+        "schedule": timedelta(seconds=settings.booking_request_expiry_sweep_interval_seconds),
+    },
+    "release-payout-holds": {
+        "task": "app.tasks.payouts_tasks.run_settlement_scan",
+        "schedule": timedelta(seconds=settings.payout_hold_release_sweep_interval_seconds),
+    },
+    "escalate-stale-disputes": {
+        "task": "app.tasks.dispute_tasks.escalate_disputes",
+        "schedule": timedelta(seconds=settings.dispute_escalation_sweep_interval_seconds),
+    },
+    "sweep-stuck-bookings": {
+        "task": "app.tasks.scheduled.sweep_stuck_bookings",
+        "schedule": timedelta(seconds=settings.stuck_booking_sweep_interval_seconds),
+    },
+}
 celery_app.conf.task_routes = {
     "app.tasks.media_tasks.process_photo_variants": {"queue": "media"},
     "app.tasks.discovery_tasks.rebuild_pro_index": {"queue": "media"},
@@ -38,6 +57,8 @@ celery_app.conf.task_routes = {
     "app.tasks.payouts_tasks.run_settlement_scan": {"queue": "media"},
     "app.tasks.trust_safety_tasks.reconcile_risk_profiles": {"queue": "media"},
     "app.tasks.trust_safety_tasks.purge_risk_signals": {"queue": "media"},
+    "app.tasks.scheduled.expire_booking_requests": {"queue": "media"},
+    "app.tasks.scheduled.sweep_stuck_bookings": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}
@@ -76,4 +97,4 @@ def on_task_failure(task_id=None, exception=None, sender=None, **_kwargs):  # pr
         increment_task_failures(sender.name)
 
 # Ensure task registration when worker boots.
-from app.tasks import call_tasks, discovery_tasks, dispute_tasks, followup_tasks, gamification_tasks, launch_ops_tasks, learning_tasks, media_tasks, outbox_tasks, payouts_tasks, proof_of_gigs_tasks, reminder_tasks, repair_tasks, store_tasks, trust_safety_tasks  # noqa: E402,F401
+from app.tasks import call_tasks, discovery_tasks, dispute_tasks, followup_tasks, gamification_tasks, launch_ops_tasks, learning_tasks, media_tasks, outbox_tasks, payouts_tasks, proof_of_gigs_tasks, reminder_tasks, repair_tasks, scheduled, store_tasks, trust_safety_tasks  # noqa: E402,F401

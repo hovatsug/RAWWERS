@@ -76,3 +76,4 @@ class CreateRefundRequest(BaseModel):
 class CreateRefundResponse(BaseModel):
     refund_id: str
     status: str
+    refund_ids: list[str] = []

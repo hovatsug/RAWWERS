@@ -43,7 +43,7 @@ def _create_paid_gig(db_session, client_id: str, pro_id: str) -> Gig:
         pro_user_id=uuid.UUID(pro_id),
         status=GigStatus.paid,
         currency="EUR",
-        amount_total=Decimal("120.00"),
+        amount_minimum=Decimal("120.00"),
         amount_platform_fee=Decimal("24.00"),
         amount_pro_gross=Decimal("96.00"),
         meta={},
@@ -56,7 +56,7 @@ def _create_paid_gig(db_session, client_id: str, pro_id: str) -> Gig:
             client_user_id=uuid.UUID(client_id),
             status=PaymentStatus.succeeded,
             stripe_payment_intent_id=f"pi_{gig.id.hex[:12]}",
-            amount=gig.amount_total,
+            amount=gig.amount_minimum,
             currency=gig.currency,
             meta={"paid_at": datetime.now(timezone.utc).isoformat()},
         )

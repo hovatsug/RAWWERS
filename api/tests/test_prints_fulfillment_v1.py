@@ -42,7 +42,7 @@ def _build_gig_with_ready_media(db_session, *, client_user_id: uuid.UUID) -> tup
         niche_id=None,
         status=GigStatus.final_delivered,
         currency="EUR",
-        amount_total=Decimal("100.00"),
+        amount_minimum=Decimal("100.00"),
         amount_platform_fee=Decimal("20.00"),
         amount_pro_gross=Decimal("80.00"),
         meta={},

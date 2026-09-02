@@ -95,7 +95,7 @@ def test_consent_enforcement_blocks_gig_source_without_consent(client, db_sessio
         pro_user_id=uuid.UUID(pro_id),
         status=GigStatus.paid,
         currency="EUR",
-        amount_total=Decimal("100.00"),
+        amount_minimum=Decimal("100.00"),
         amount_platform_fee=Decimal("20.00"),
         amount_pro_gross=Decimal("80.00"),
         location_text="Lisbon",

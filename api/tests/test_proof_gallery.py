@@ -29,7 +29,7 @@ def _create_gig(db_session, client_id: str, pro_id: str) -> Gig:
         pro_user_id=uuid.UUID(pro_id),
         status=GigStatus.paid,
         currency="EUR",
-        amount_total=Decimal("100.00"),
+        amount_minimum=Decimal("100.00"),
         amount_platform_fee=Decimal("20.00"),
         amount_pro_gross=Decimal("80.00"),
         meta={},
@@ -144,8 +144,9 @@ def test_client_submit_selection_creates_upsell(client, db_session, monkeypatch)
     pro_id = str(uuid.uuid4())
     client_id = str(uuid.uuid4())
     gig = _create_gig(db_session, client_id, pro_id)
-    a1 = _create_photo_asset(db_session, pro_id, with_wm=True)
-    a2 = _create_photo_asset(db_session, pro_id, with_wm=True)
+    # 10 photos selected (the platform-wide minimum), included_photos=9 so
+    # the 10th photo is still an extra and triggers the upsell path.
+    assets = [_create_photo_asset(db_session, pro_id, with_wm=True) for _ in range(10)]
 
     monkeypatch.setattr(
         "app.api.v1.proof_galleries.stripe.PaymentIntent.create",
@@ -155,21 +156,21 @@ def test_client_submit_selection_creates_upsell(client, db_session, monkeypatch)
     create_gallery = client.post(
         f"/v1/gigs/{gig.id}/proof-gallery",
         headers={"X-User-Id": pro_id},
-        json={"included_photos": 1, "extra_photo_price": "10.00"},
+        json={"included_photos": 9, "extra_photo_price": "10.00"},
     )
     gallery_id = create_gallery.json()["id"]
 
     client.post(
         f"/v1/proof-galleries/{gallery_id}/items",
         headers={"X-User-Id": pro_id},
-        json={"media_asset_ids": [str(a1.id), str(a2.id)]},
+        json={"media_asset_ids": [str(a.id) for a in assets]},
     )
     client.post(f"/v1/proof-galleries/{gallery_id}/publish", headers={"X-User-Id": pro_id})
 
     save_selection = client.post(
         f"/v1/proof-galleries/{gallery_id}/selections",
         headers={"X-User-Id": client_id},
-        json={"media_asset_ids": [str(a1.id), str(a2.id)]},
+        json={"media_asset_ids": [str(a.id) for a in assets]},
     )
     assert save_selection.status_code == 200
 
@@ -239,32 +240,35 @@ def test_download_endpoint_only_returns_unlocked_originals(client, db_session, m
     pro_id = str(uuid.uuid4())
     client_id = str(uuid.uuid4())
     gig = _create_gig(db_session, client_id, pro_id)
-    a1 = _create_photo_asset(db_session, pro_id, with_wm=True)
-    a2 = _create_photo_asset(db_session, pro_id, with_wm=True)
+    # 11 gallery photos; client selects exactly the platform-wide minimum
+    # of 10, leaving one unselected to prove it's excluded from downloads.
+    assets = [_create_photo_asset(db_session, pro_id, with_wm=True) for _ in range(11)]
+    selected, unselected = assets[:10], assets[10]
 
     monkeypatch.setattr("app.api.v1.proof_galleries.create_presigned_get", lambda key, expires_in=60: f"https://signed/{key}")
 
     gallery_id = client.post(
         f"/v1/gigs/{gig.id}/proof-gallery",
         headers={"X-User-Id": pro_id},
-        json={"included_photos": 1, "extra_photo_price": "10.00"},
+        json={"included_photos": 10, "extra_photo_price": "10.00"},
     ).json()["id"]
 
     client.post(
         f"/v1/proof-galleries/{gallery_id}/items",
         headers={"X-User-Id": pro_id},
-        json={"media_asset_ids": [str(a1.id), str(a2.id)]},
+        json={"media_asset_ids": [str(a.id) for a in assets]},
     )
     client.post(f"/v1/proof-galleries/{gallery_id}/publish", headers={"X-User-Id": pro_id})
     client.post(
         f"/v1/proof-galleries/{gallery_id}/selections",
         headers={"X-User-Id": client_id},
-        json={"media_asset_ids": [str(a1.id)]},
+        json={"media_asset_ids": [str(a.id) for a in selected]},
     )
     client.post(f"/v1/proof-galleries/{gallery_id}/selections/submit", headers={"X-User-Id": client_id})
 
     downloads = client.get(f"/v1/proof-galleries/{gallery_id}/downloads", headers={"X-User-Id": client_id})
     assert downloads.status_code == 200
     urls = downloads.json()["urls"]
-    assert str(a1.id) in urls
-    assert str(a2.id) not in urls
+    for asset in selected:
+        assert str(asset.id) in urls
+    assert str(unselected.id) not in urls

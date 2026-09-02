@@ -94,3 +94,17 @@ class AnalyticsCreateRequest(BaseModel):
     event_name: str
     properties: dict = Field(default_factory=dict)
     session_id: str | None = None
+
+
+class PackagePricingPreview(BaseModel):
+    package_id: uuid.UUID
+    title: str
+    entry_price: Decimal
+    currency: str
+    price_at_photo_count: dict[str, Decimal]
+
+
+class NichePricingPreviewResponse(BaseModel):
+    pro_user_id: uuid.UUID
+    niche_id: uuid.UUID
+    packages: list[PackagePricingPreview]

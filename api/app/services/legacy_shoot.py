@@ -102,7 +102,7 @@ def checkout_legacy_shoot(db: Session, *, client_user_id: uuid.UUID, payment_mod
         niche_id=niche_id,
         status=GigStatus.payment_pending,
         currency="EUR",
-        amount_total=amount_due,
+        amount_minimum=amount_due,
         amount_platform_fee=platform_fee,
         amount_pro_gross=pro_gross,
         meta={

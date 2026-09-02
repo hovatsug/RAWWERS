@@ -62,7 +62,7 @@ def create_or_get_gig_payment_intent(
         pi = stripe.PaymentIntent.retrieve(existing.stripe_payment_intent_id)
         return existing, pi
 
-    payable_amount = amount_override if amount_override is not None else gig.amount_total
+    payable_amount = amount_override if amount_override is not None else gig.amount_minimum
     return_url_value = return_url or f"{settings.app_public_url.rstrip('/')}/pay/return"
     metadata = {
         "gig_id": str(gig.id),

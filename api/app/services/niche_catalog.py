@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.niche import Niche
+from app.services.package_pricing import ensure_default_package_decay_curves
 
 INITIAL_NICHES: list[dict[str, str]] = [
     {"slug": "weddings", "name": "Weddings"},
@@ -44,6 +45,7 @@ def ensure_initial_niches(db: Session) -> None:
             )
         )
     db.flush()
+    ensure_default_package_decay_curves(db)
 
 
 def get_active_niche_by_slug(db: Session, slug: str) -> Niche | None:

@@ -448,7 +448,7 @@ def _resolve_context(db: Session, *, event_type: RawwIssuanceEventType, payload:
             pro_user_id=gig.pro_user_id,
             reference_type="gig",
             reference_id=gig.id,
-            eur_value=Decimal(str(gig.amount_total or 0)),
+            eur_value=Decimal(str(gig.amount_minimum or 0)),
             gig_id=gig.id,
             client_user_id=gig.client_user_id,
             niche_id=gig.niche_id,
@@ -467,7 +467,7 @@ def _resolve_context(db: Session, *, event_type: RawwIssuanceEventType, payload:
             pro_user_id=review.pro_user_id,
             reference_type="review",
             reference_id=review.id,
-            eur_value=Decimal(str(gig.amount_total or 0)),
+            eur_value=Decimal(str(gig.amount_minimum or 0)),
             gig_id=gig.id,
             client_user_id=review.client_user_id,
             niche_id=review.niche_id,
@@ -666,7 +666,7 @@ def _pair_multiplier(db: Session, *, ctx: _MintContext, policy: RawwMultiplierPo
 
     since = datetime.now(timezone.utc) - timedelta(days=window_days)
     count, total = db.execute(
-        select(func.count(), func.coalesce(func.sum(Gig.amount_total), 0))
+        select(func.count(), func.coalesce(func.sum(Gig.amount_minimum), 0))
         .select_from(Gig)
         .where(
             Gig.client_user_id == ctx.client_user_id,

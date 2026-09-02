@@ -40,7 +40,7 @@ def _create_gig(db_session, client_id: str, pro_id: str, status: GigStatus = Gig
         pro_user_id=uuid.UUID(pro_id),
         status=status,
         currency="EUR",
-        amount_total=Decimal("100.00"),
+        amount_minimum=Decimal("100.00"),
         amount_platform_fee=Decimal("20.00"),
         amount_pro_gross=Decimal("80.00"),
         meta={},
@@ -153,7 +153,7 @@ def test_admin_refund_creates_case_audit_ledger_and_is_idempotent(client, db_ses
             client_user_id=uuid.UUID(client_id),
             status=PaymentStatus.succeeded,
             stripe_payment_intent_id="pi_admin_refund",
-            amount=gig.amount_total,
+            amount=gig.amount_minimum,
             currency=gig.currency,
             meta={"paid_at": datetime.now(timezone.utc).isoformat()},
         )

@@ -24,7 +24,8 @@ class GigResponse(BaseModel):
     niche_id: uuid.UUID | None = None
     status: GigStatus
     currency: str
-    amount_total: Decimal
+    amount_minimum: Decimal
+    amount_final: Decimal | None = None
     amount_platform_fee: Decimal
     amount_pro_gross: Decimal
     location_text: str | None

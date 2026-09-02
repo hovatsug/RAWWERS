@@ -115,6 +115,7 @@ from app.models.booking import (
     ProPackage,
 )
 from app.models.chat import ChatHandoff, ChatMessage, ChatThread, PlatformPolicy
+from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
 from app.models.client_rewards_pricing import (
     ConsentRewardPolicy,
     ExtraImagePricingPolicy,

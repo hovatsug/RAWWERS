@@ -443,7 +443,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             referee_user_id=gig.client_user_id,
             conversion_type=ReferralConversionType.booking_paid,
             conversion_id=gig.id,
-            conversion_value_eur=Decimal(gig.amount_total),
+            conversion_value_eur=Decimal(gig.amount_minimum),
             share_link_id=None,
         )
         if referral_result.grant:

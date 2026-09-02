@@ -42,6 +42,7 @@ from app.models.media import MediaAsset
 from app.models.niche import Niche, NicheTierPolicy, ProNicheSkill, ProNicheSkillEvent, SkillTier
 from app.models.discovery import AnalyticsEvent
 from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
+from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
 from app.models.payouts import EarningsSourceType
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.models.proof_of_gigs import RawwIssuanceCap, RawwIssuanceRule, RawwMintEvent, RawwMultiplierPolicy
@@ -79,6 +80,10 @@ from app.schemas.admin import (
     ConsentRewardPolicyView,
     ExtraImagePricingPolicyUpsertRequest,
     ExtraImagePricingPolicyView,
+    NichePackagePriceCapUpsertRequest,
+    NichePackagePriceCapView,
+    PackageDecayCurveUpsertRequest,
+    PackageDecayCurveView,
     RefundCaseView,
     RoleUpdateRequest,
     ProExtraImagePriceUpsertRequest,
@@ -1995,6 +2000,126 @@ def upsert_extra_image_pricing_policies(
 
     db.commit()
     return list_extra_image_pricing_policies(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/pricing/package-decay-curves", response_model=list[PackageDecayCurveView])
+def list_package_decay_curves(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[PackageDecayCurveView]:
+    ensure_initial_niches(db)
+    rows = db.execute(select(PackageDecayCurve).order_by(PackageDecayCurve.updated_at.desc())).scalars().all()
+    niche_ids = {row.niche_id for row in rows}
+    niche_rows = db.execute(select(Niche).where(Niche.id.in_(niche_ids))).scalars().all() if niche_ids else []
+    slug_by_id = {row.id: row.slug for row in niche_rows}
+    return [
+        PackageDecayCurveView(
+            niche_id=row.niche_id,
+            niche_slug=slug_by_id.get(row.niche_id, ""),
+            tiers=row.tiers or [],
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
+@router.put("/pricing/package-decay-curves", response_model=list[PackageDecayCurveView])
+def upsert_package_decay_curves(
+    body: PackageDecayCurveUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[PackageDecayCurveView]:
+    ensure_initial_niches(db)
+    slugs = [item.niche_slug for item in body.items]
+    niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
+    by_slug = {row.slug: row for row in niches}
+
+    for item in body.items:
+        niche = by_slug.get(item.niche_slug)
+        if not niche:
+            raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        row = db.execute(
+            select(PackageDecayCurve).where(PackageDecayCurve.niche_id == niche.id)
+        ).scalar_one_or_none()
+        if not row:
+            row = PackageDecayCurve(niche_id=niche.id)
+            db.add(row)
+        row.tiers = item.tiers
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="package_decay_curve",
+            target_id=str(niche.id),
+            action="package_decay_curve_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+
+    db.commit()
+    return list_package_decay_curves(actor, db)  # type: ignore[arg-type]
+
+
+@router.get("/pricing/niche-package-price-caps", response_model=list[NichePackagePriceCapView])
+def list_niche_package_price_caps(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[NichePackagePriceCapView]:
+    ensure_initial_niches(db)
+    rows = db.execute(select(NichePackagePriceCap).order_by(NichePackagePriceCap.updated_at.desc())).scalars().all()
+    niche_ids = {row.niche_id for row in rows}
+    niche_rows = db.execute(select(Niche).where(Niche.id.in_(niche_ids))).scalars().all() if niche_ids else []
+    slug_by_id = {row.id: row.slug for row in niche_rows}
+    return [
+        NichePackagePriceCapView(
+            niche_id=row.niche_id,
+            niche_slug=slug_by_id.get(row.niche_id, ""),
+            tier=row.tier,
+            entry_price_min=row.entry_price_min,
+            entry_price_max=row.entry_price_max,
+            currency=row.currency,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
+@router.put("/pricing/niche-package-price-caps", response_model=list[NichePackagePriceCapView])
+def upsert_niche_package_price_caps(
+    body: NichePackagePriceCapUpsertRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> list[NichePackagePriceCapView]:
+    ensure_initial_niches(db)
+    slugs = [item.niche_slug for item in body.items]
+    niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
+    by_slug = {row.slug: row for row in niches}
+
+    for item in body.items:
+        niche = by_slug.get(item.niche_slug)
+        if not niche:
+            raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        row = db.execute(
+            select(NichePackagePriceCap).where(
+                NichePackagePriceCap.niche_id == niche.id,
+                NichePackagePriceCap.tier == item.tier,
+            )
+        ).scalar_one_or_none()
+        if not row:
+            row = NichePackagePriceCap(niche_id=niche.id, tier=item.tier)
+            db.add(row)
+        row.entry_price_min = item.entry_price_min
+        row.entry_price_max = item.entry_price_max
+        row.currency = item.currency.upper()
+        add_admin_audit_log(
+            db,
+            actor_user_id=actor.user_id,
+            target_type="niche_package_price_cap",
+            target_id=f"{niche.id}:{item.tier.value}",
+            action="niche_package_price_cap_upsert",
+            metadata=item.model_dump(mode="json"),
+        )
+
+    db.commit()
+    return list_niche_package_price_caps(actor, db)  # type: ignore[arg-type]
 
 
 @router.get("/pricing/pro-extra-image-price/{pro_user_id}", response_model=list[ProExtraImagePriceView])

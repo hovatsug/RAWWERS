@@ -60,6 +60,7 @@ from app.services.client_rewards_pricing import (
 from app.services.media_rights import upsert_gig_entitlement
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
+from app.services.package_pricing import enforce_minimum_selection_count
 from app.services.proof_of_gigs import enqueue_raww_mint
 
 settings = get_settings()
@@ -363,6 +364,7 @@ def submit_selection(
     selected_count = db.execute(
         select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
     ).scalar_one()
+    enforce_minimum_selection_count(selected_count)
     extras_count = max(0, selected_count - gallery.included_photos)
 
     selection.status = SelectionStatus.submitted

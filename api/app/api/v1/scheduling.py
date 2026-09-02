@@ -54,6 +54,7 @@ from app.schemas.scheduling import (
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.notifications import enqueue_notification
+from app.services.package_pricing import compute_minimum_amount
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.scheduling import (
     create_booking_time_request,
@@ -541,16 +542,17 @@ def _find_or_create_gig_from_booking(db: Session, booking: BookingRequest) -> Gi
     package = db.get(ProPackage, booking.package_id)
     if not package:
         raise APIError(code="validation_error", message="Package not found", status_code=409)
-    amount_total = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    fee = (amount_total * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    pro_gross = (amount_total - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate)
+    fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     gig = Gig(
         client_user_id=booking.client_user_id,
         pro_user_id=booking.pro_user_id,
         niche_id=package.niche_id,
         status=GigStatus.payment_pending,
         currency=package.currency,
-        amount_total=amount_total,
+        amount_minimum=amount_minimum,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
         scheduled_start=booking.requested_start,

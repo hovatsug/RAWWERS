@@ -51,14 +51,14 @@ def create_gig(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> GigResponse:
-    amount_total = body.amount_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    if amount_total <= 0:
+    amount_minimum = body.amount_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if amount_minimum <= 0:
         raise APIError(code="validation_error", message="amount_total must be > 0", status_code=422)
 
-    fee = (amount_total * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(
+    fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
-    pro_gross = (amount_total - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     gig = Gig(
         client_user_id=user.user_id,
@@ -66,7 +66,7 @@ def create_gig(
         niche_id=body.niche_id,
         status=GigStatus.payment_pending,
         currency=body.currency.upper(),
-        amount_total=amount_total,
+        amount_minimum=amount_minimum,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
         location_text=body.location_text,
@@ -184,7 +184,7 @@ def create_payment_intent(
             context_type=RedemptionContextType.gig_payment,
             context_id=gig.id,
             points=body.points_to_spend,
-            payment_amount=gig.amount_total,
+            payment_amount=gig.amount_minimum,
             currency=gig.currency,
             metadata={"source": "gig_create_intent"},
         )
@@ -202,9 +202,9 @@ def create_payment_intent(
     elif existing_redemption:
         points_redemption = existing_redemption
 
-    payable_amount = gig.amount_total
+    payable_amount = gig.amount_minimum
     if points_redemption and points_redemption.status == DiscountRedemptionStatus.reserved:
-        payable_amount = max(Decimal("0.01"), gig.amount_total - points_redemption.discount_amount)
+        payable_amount = max(Decimal("0.01"), gig.amount_minimum - points_redemption.discount_amount)
 
     _, pi = create_or_get_gig_payment_intent(
         db,
@@ -311,7 +311,8 @@ def _gig_response(gig: Gig) -> GigResponse:
         niche_id=gig.niche_id,
         status=gig.status,
         currency=gig.currency,
-        amount_total=gig.amount_total,
+        amount_minimum=gig.amount_minimum,
+        amount_final=gig.amount_final,
         amount_platform_fee=gig.amount_platform_fee,
         amount_pro_gross=gig.amount_pro_gross,
         location_text=gig.location_text,

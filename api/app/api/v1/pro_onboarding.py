@@ -22,7 +22,7 @@ from app.models.booking import (
 )
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose
-from app.models.niche import Niche, ProNiche, ProNicheSkill
+from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
 from app.schemas.media import CurrentUser
 from app.schemas.niche import (
     PortfolioNicheTagsRequest,
@@ -61,6 +61,7 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
+from app.services.package_pricing import compute_minimum_amount, enforce_entry_price_cap
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.scheduling import expire_pending_booking_requests
 from app.services.payment_intents import create_or_get_gig_payment_intent
@@ -324,13 +325,16 @@ def create_package(
 ) -> ProPackageView:
     _require_role(db, user.user_id, UserRoleType.pro)
     niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
+    entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    tier = _resolve_pro_tier_for_niche(db, user.user_id, niche.id)
+    enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price)
     package = ProPackage(
         pro_user_id=user.user_id,
         niche_id=niche.id,
         title=body.title,
         description=body.description,
         duration_minutes=body.duration_minutes,
-        price=body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        price=entry_price,
         currency=body.currency.upper(),
         included_photos=body.included_photos,
         extra_photo_price=body.extra_photo_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
@@ -373,6 +377,11 @@ def update_package(
         raise APIError(code="validation_error", message="niche_id or niche_slug is required", status_code=400)
     niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
     package.niche_id = niche.id
+
+    if body.price is not None:
+        entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        tier = _resolve_pro_tier_for_niche(db, user.user_id, niche.id)
+        enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price)
 
     for field in [
         "title",
@@ -872,9 +881,10 @@ def accept_booking_request(
         )
     )
 
-    amount_total = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    fee = (amount_total * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    pro_gross = (amount_total - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate)
+    fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     snapshot = {
         "package_id": str(package.id),
@@ -900,7 +910,7 @@ def accept_booking_request(
         status=GigStatus.payment_pending,
         niche_id=package.niche_id,
         currency=package.currency,
-        amount_total=amount_total,
+        amount_minimum=amount_minimum,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
         scheduled_start=request.requested_start,
@@ -1200,6 +1210,15 @@ def _resolve_package_niche(db: Session, niche_id: uuid.UUID | None, niche_slug: 
             raise APIError(code="validation_error", message="Unknown niche_slug", status_code=422)
         return niche
     raise APIError(code="validation_error", message="niche_id or niche_slug is required", status_code=400)
+
+
+def _resolve_pro_tier_for_niche(db: Session, pro_user_id: uuid.UUID, niche_id: uuid.UUID) -> SkillTier:
+    skill = db.execute(
+        select(ProNicheSkill).where(
+            ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche_id
+        )
+    ).scalar_one_or_none()
+    return skill.tier if skill else SkillTier.rookie
 
 
 def _sanitize_public_breakdown(breakdown: dict | None) -> dict:

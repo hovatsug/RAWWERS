@@ -206,6 +206,44 @@ class ExtraImagePricingPolicyView(BaseModel):
     updated_at: datetime
 
 
+class PackageDecayCurveUpsertItem(BaseModel):
+    niche_slug: str
+    tiers: list[dict] = Field(default_factory=list)
+
+
+class PackageDecayCurveUpsertRequest(BaseModel):
+    items: list[PackageDecayCurveUpsertItem] = Field(default_factory=list)
+
+
+class PackageDecayCurveView(BaseModel):
+    niche_id: uuid.UUID
+    niche_slug: str
+    tiers: list[dict]
+    updated_at: datetime
+
+
+class NichePackagePriceCapUpsertItem(BaseModel):
+    niche_slug: str
+    tier: SkillTier
+    entry_price_min: Decimal = Decimal("0.00")
+    entry_price_max: Decimal | None = None
+    currency: str = "EUR"
+
+
+class NichePackagePriceCapUpsertRequest(BaseModel):
+    items: list[NichePackagePriceCapUpsertItem] = Field(default_factory=list)
+
+
+class NichePackagePriceCapView(BaseModel):
+    niche_id: uuid.UUID
+    niche_slug: str
+    tier: SkillTier
+    entry_price_min: Decimal
+    entry_price_max: Decimal | None = None
+    currency: str
+    updated_at: datetime
+
+
 class ProExtraImagePriceUpsertItem(BaseModel):
     niche_slug: str
     configured_unit_price: Decimal

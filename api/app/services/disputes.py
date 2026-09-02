@@ -86,7 +86,8 @@ def capture_gig_contract_snapshot(db: Session, gig: Gig) -> GigContractSnapshot:
     snapshot = {
         "gig_id": str(gig.id),
         "currency": gig.currency,
-        "amount_total": str(gig.amount_total),
+        "amount_minimum": str(gig.amount_minimum),
+        "amount_final": str(gig.amount_final) if gig.amount_final is not None else None,
         "amount_platform_fee": str(gig.amount_platform_fee),
         "amount_pro_gross": str(gig.amount_pro_gross),
         "scheduled_start": gig.scheduled_start.isoformat() if gig.scheduled_start else None,

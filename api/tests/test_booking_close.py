@@ -27,6 +27,7 @@ from app.models.payouts import EarningsLedgerEntry, EarningsSourceType
 from app.services.gallery_completion import is_selection_fully_paid
 from app.services.gig_state import ALLOWED_TRANSITIONS
 from app.services.niche_catalog import ensure_initial_niches, get_active_niche_by_slug
+from app.services.package_pricing import compute_package_total
 from app.services.payment_intents import list_succeeded_payments_for_gig
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 from sqlalchemy import select
@@ -77,8 +78,8 @@ def _create_photo_asset(db_session, owner_user_id: str) -> MediaAsset:
 
 
 def _create_gig_with_curve(db_session, client_id: str, pro_id: str, *, included_photos: int) -> tuple[Gig, ProofGallery]:
-    """Portrait-style curve: entry_rate=2.00, upto 25 @1.00, upto 50 @0.50, else @0.25.
-    amount_minimum = 10 * 2.00 = 20.00 (first bracket is a straight multiply)."""
+    """Portrait-style (exponential) curve, entry_rate=2.00. amount_minimum
+    = 10 * 2.00 = 20.00 (photos 1-10 are always flat at the entry rate)."""
     ensure_initial_niches(db_session)
     niche = get_active_niche_by_slug(db_session, "portraits")
 
@@ -204,24 +205,28 @@ def test_submit_selection_with_markup_creates_difference_charge_and_defers_compl
         lambda **kwargs: DummyStripePI("pi_diff_1", "sec_diff_1"),
     )
 
+    expected_final = compute_package_total(db_session, niche_id=gig.niche_id, entry_rate=Decimal("2.00"), photo_count=25)
+    expected_difference = expected_final - Decimal("20.00")
+    assert expected_difference > 0  # sanity check the seeded curve actually decays past the minimum
+
     resp = client.post(f"/v1/proof-galleries/{gallery.id}/selections/submit", headers={"X-User-Id": client_id})
     assert resp.status_code == 200
     body = resp.json()
     assert body["difference_required"] is True
-    assert body["difference_amount"] == "30.00"  # 25*2.00*1.00 - 20.00 = 30.00
+    assert Decimal(body["difference_amount"]) == expected_difference
     assert body["difference_payment_intent_id"] == "pi_diff_1"
     assert body["upsell_required"] is False
 
     db_session.refresh(gig)
     db_session.refresh(gallery)
-    assert gig.amount_final == Decimal("30.00") + Decimal("20.00")
+    assert gig.amount_final == expected_final
     assert gig.status == GigStatus.paid  # not completed yet
     assert gallery.status != ProofGalleryStatus.selection_submitted
 
     difference_payment = db_session.execute(
         select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.difference)
     ).scalar_one()
-    assert difference_payment.amount == Decimal("30.00")
+    assert difference_payment.amount == expected_difference
     assert difference_payment.status == PaymentStatus.pending
 
 
@@ -302,6 +307,7 @@ def test_difference_charge_succeeding_via_webhook_completes_the_booking(client, 
     _ensure_account(db_session, pro_id)
     gig, gallery = _create_gig_with_curve(db_session, client_id, pro_id, included_photos=25)
     _select_photos(db_session, gallery, pro_id, client_id, count=25)
+    expected_final = compute_package_total(db_session, niche_id=gig.niche_id, entry_rate=Decimal("2.00"), photo_count=25)
 
     monkeypatch.setattr(
         "app.services.payment_intents.stripe.PaymentIntent.create",
@@ -332,7 +338,7 @@ def test_difference_charge_succeeding_via_webhook_completes_the_booking(client, 
             EarningsLedgerEntry.source_id == gig.id,
         )
     ).scalar_one()
-    assert earnings.gross_eur == Decimal("50.00")  # 20.00 base + 30.00 difference
+    assert earnings.gross_eur == expected_final  # base (20.00) + difference, summed
 
 
 # ---------------------------------------------------------------------------

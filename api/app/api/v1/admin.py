@@ -2022,7 +2022,9 @@ def list_package_decay_curves(
         PackageDecayCurveView(
             niche_id=row.niche_id,
             niche_slug=slug_by_id.get(row.niche_id, ""),
-            tiers=row.tiers or [],
+            curve_type=row.curve_type,
+            shape_param=row.shape_param,
+            floor_pct=row.floor_pct,
             updated_at=row.updated_at,
         )
         for row in rows
@@ -2050,7 +2052,9 @@ def upsert_package_decay_curves(
         if not row:
             row = PackageDecayCurve(niche_id=niche.id)
             db.add(row)
-        row.tiers = item.tiers
+        row.curve_type = item.curve_type
+        row.shape_param = item.shape_param
+        row.floor_pct = item.floor_pct
         add_admin_audit_log(
             db,
             actor_user_id=actor.user_id,

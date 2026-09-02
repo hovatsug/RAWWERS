@@ -3,13 +3,18 @@ entry-price caps. Deliberately separate from the extras/upsell pricing
 in client_rewards_pricing.py (ExtraImagePricingPolicy) - different
 feature, not merged.
 
-The curve is marginal, not bracket: each photo is priced according to
-whichever bracket it falls in, so the total always strictly increases
-with photo count and there's no cliff where selecting more photos
-costs the photographer money.
+The curve is a continuous per-photo price function p(n), not a stepped
+bracket table - no discontinuity in the marginal rate at a boundary.
+Photos 1-10 are always priced at exactly the entry rate each (the
+minimum bundle never decays); the curve only shapes photos beyond the
+10th, and is always floored at a niche-configured fraction of the
+entry rate so per-photo price never reaches zero. Totals are computed
+numerically (summing p(i) for i in 1..n) rather than via a closed form,
+since the floor's max() makes the per-photo function piecewise.
 """
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -19,49 +24,38 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
 from app.models.niche import Niche, SkillTier
-from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
+from app.models.package_pricing import NichePackagePriceCap, PackageCurveType, PackageDecayCurve
 
 MINIMUM_PHOTOS = 10
-
-# Fallback curve for any niche without a configured PackageDecayCurve row -
-# no decay (flat rate), so an unconfigured niche never errors, just behaves
-# as if the platform hasn't decided to discount it yet.
-_FLAT_CURVE_TIERS: list[dict] = [{"upto": None, "multiplier": "1.00"}]
-
-# Short tail: clients typically pick 10-25 photos and the value is
-# concentrated there, so the discount ramps down fast.
-_SHORT_TAIL_CURVE_TIERS: list[dict] = [
-    {"upto": 25, "multiplier": "1.00"},
-    {"upto": 50, "multiplier": "0.50"},
-    {"upto": None, "multiplier": "0.25"},
-]
-
-# Long, gentle decay across 100-300 photos for niches where clients pick
-# from large batches (weddings, events, sports galleries).
-_LONG_GENTLE_CURVE_TIERS: list[dict] = [
-    {"upto": 50, "multiplier": "1.00"},
-    {"upto": 150, "multiplier": "0.75"},
-    {"upto": 300, "multiplier": "0.50"},
-    {"upto": None, "multiplier": "0.30"},
-]
 
 # Default per-niche curve shapes, seeded idempotently by
 # ensure_default_package_decay_curves(). Admins can edit/override any of
 # these afterwards via the PackageDecayCurve admin endpoints - this only
 # fills in a sane starting point per niche category.
-DEFAULT_DECAY_CURVE_TIERS_BY_SLUG: dict[str, list[dict]] = {
-    "weddings": _LONG_GENTLE_CURVE_TIERS,
-    "events_nightlife": _LONG_GENTLE_CURVE_TIERS,
-    "sports": _LONG_GENTLE_CURVE_TIERS,
-    "portraits": _SHORT_TAIL_CURVE_TIERS,
-    "family": _SHORT_TAIL_CURVE_TIERS,
-    "maternity": _SHORT_TAIL_CURVE_TIERS,
-    "product": _FLAT_CURVE_TIERS,
-    "corporate": _FLAT_CURVE_TIERS,
-    "real_estate": _FLAT_CURVE_TIERS,
-    "food": _FLAT_CURVE_TIERS,
-    "automotive": _FLAT_CURVE_TIERS,
-    "architecture": _FLAT_CURVE_TIERS,
+#
+# power (long, gentle tail - weddings/events/sports): a=0.35. At entry_rate
+# 1.00 that's ~45% of entry by photo 100, ~30% by photo 300, ~25% by photo
+# 500 - still meaningfully above the 20% floor at the top of the range.
+#
+# exponential (steep early, then flat - portraits/family/maternity): k=0.08.
+# Drops to ~30% of entry by photo 25 (typical selection ceiling for these
+# niches) and reaches the 15% floor by around photo 34, staying flat after.
+#
+# flat (product/corporate/real_estate/food/automotive/architecture):
+# unchanged - p(n) = entry rate for every photo, no decay at all.
+DEFAULT_CURVE_PARAMS_BY_SLUG: dict[str, tuple[PackageCurveType, Decimal | None, Decimal]] = {
+    "weddings": (PackageCurveType.power, Decimal("0.35"), Decimal("0.20")),
+    "events_nightlife": (PackageCurveType.power, Decimal("0.35"), Decimal("0.20")),
+    "sports": (PackageCurveType.power, Decimal("0.35"), Decimal("0.20")),
+    "portraits": (PackageCurveType.exponential, Decimal("0.08"), Decimal("0.15")),
+    "family": (PackageCurveType.exponential, Decimal("0.08"), Decimal("0.15")),
+    "maternity": (PackageCurveType.exponential, Decimal("0.08"), Decimal("0.15")),
+    "product": (PackageCurveType.flat, None, Decimal("1.0000")),
+    "corporate": (PackageCurveType.flat, None, Decimal("1.0000")),
+    "real_estate": (PackageCurveType.flat, None, Decimal("1.0000")),
+    "food": (PackageCurveType.flat, None, Decimal("1.0000")),
+    "automotive": (PackageCurveType.flat, None, Decimal("1.0000")),
+    "architecture": (PackageCurveType.flat, None, Decimal("1.0000")),
 }
 
 
@@ -70,7 +64,7 @@ def ensure_default_package_decay_curves(db: Session) -> None:
     doesn't have one yet. Safe to call repeatedly - existing rows (including
     ones an admin has since edited) are left untouched."""
     niches = db.execute(
-        select(Niche).where(Niche.slug.in_(DEFAULT_DECAY_CURVE_TIERS_BY_SLUG.keys()))
+        select(Niche).where(Niche.slug.in_(DEFAULT_CURVE_PARAMS_BY_SLUG.keys()))
     ).scalars().all()
     if not niches:
         return
@@ -86,59 +80,80 @@ def ensure_default_package_decay_curves(db: Session) -> None:
     for niche in niches:
         if niche.id in existing_niche_ids:
             continue
+        curve_type, shape_param, floor_pct = DEFAULT_CURVE_PARAMS_BY_SLUG[niche.slug]
         db.add(
             PackageDecayCurve(
                 niche_id=niche.id,
-                tiers=DEFAULT_DECAY_CURVE_TIERS_BY_SLUG[niche.slug],
+                curve_type=curve_type,
+                shape_param=shape_param,
+                floor_pct=floor_pct,
                 updated_at=now,
             )
         )
     db.flush()
 
 
-def get_curve_tiers_for_niche(db: Session, niche_id: uuid.UUID) -> list[dict]:
-    curve = db.execute(select(PackageDecayCurve).where(PackageDecayCurve.niche_id == niche_id)).scalar_one_or_none()
-    if not curve or not curve.tiers:
-        return _FLAT_CURVE_TIERS
-    return curve.tiers
+def get_curve_for_niche(db: Session, niche_id: uuid.UUID) -> PackageDecayCurve | None:
+    return db.execute(select(PackageDecayCurve).where(PackageDecayCurve.niche_id == niche_id)).scalar_one_or_none()
 
 
-def compute_total_for_photo_count(entry_rate: Decimal, photo_count: int, curve_tiers: list[dict]) -> Decimal:
-    """Marginal total for `photo_count` photos at `entry_rate`, per `curve_tiers`.
+def price_at_photo(
+    n: int, entry_rate: Decimal, *, curve_type: PackageCurveType, shape_param: Decimal | None, floor_pct: Decimal
+) -> Decimal:
+    """p(n): the price of the n-th photo. Photos 1-10 always cost exactly
+    entry_rate - the curve only shapes photos beyond the minimum bundle."""
+    if n <= MINIMUM_PHOTOS or curve_type == PackageCurveType.flat:
+        return entry_rate
 
-    curve_tiers: ordered list of {"upto": int | None, "multiplier": str | Decimal},
-    "upto" is the cumulative photo count where that bracket ends (None = open-ended,
-    must be last). Each bracket's own photos are priced at entry_rate * multiplier.
-    """
+    floor = entry_rate * floor_pct
+    shape = float(shape_param or 0)
+    entry = float(entry_rate)
+
+    if curve_type == PackageCurveType.power:
+        raw = entry * ((n / 10.0) ** (-shape))
+    elif curve_type == PackageCurveType.exponential:
+        raw = entry * math.exp(-shape * (n - MINIMUM_PHOTOS))
+    else:
+        raw = entry
+
+    return max(floor, Decimal(str(raw)))
+
+
+def compute_total_for_photo_count(
+    entry_rate: Decimal,
+    photo_count: int,
+    *,
+    curve_type: PackageCurveType = PackageCurveType.flat,
+    shape_param: Decimal | None = None,
+    floor_pct: Decimal = Decimal("1.0000"),
+) -> Decimal:
+    """Total for `photo_count` photos at `entry_rate`, computed numerically
+    as the sum of p(1)..p(photo_count) under the given curve."""
     if photo_count <= 0:
         return Decimal("0.00")
 
-    total = Decimal("0.00")
-    previous_upto = 0
-    for tier in curve_tiers:
-        upto = tier.get("upto")
-        multiplier = Decimal(str(tier["multiplier"]))
-        bracket_end = photo_count if upto is None else min(int(upto), photo_count)
-        photos_in_bracket = max(0, bracket_end - previous_upto)
-        if photos_in_bracket:
-            total += Decimal(photos_in_bracket) * entry_rate * multiplier
-        previous_upto = bracket_end
-        if previous_upto >= photo_count:
-            break
+    if photo_count <= MINIMUM_PHOTOS or curve_type == PackageCurveType.flat:
+        total = entry_rate * photo_count
+    else:
+        total = entry_rate * MINIMUM_PHOTOS
+        for n in range(MINIMUM_PHOTOS + 1, photo_count + 1):
+            total += price_at_photo(n, entry_rate, curve_type=curve_type, shape_param=shape_param, floor_pct=floor_pct)
 
     return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def compute_package_total(db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal, photo_count: int) -> Decimal:
-    curve_tiers = get_curve_tiers_for_niche(db, niche_id)
-    return compute_total_for_photo_count(entry_rate, photo_count, curve_tiers)
+    curve = get_curve_for_niche(db, niche_id)
+    if not curve:
+        return compute_total_for_photo_count(entry_rate, photo_count)
+    return compute_total_for_photo_count(
+        entry_rate, photo_count, curve_type=curve.curve_type, shape_param=curve.shape_param, floor_pct=curve.floor_pct
+    )
 
 
 def compute_minimum_amount(db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal) -> Decimal:
-    """amount_minimum = 10 x entry rate, run through the curve (bracket 1
-    is always the entry rate at multiplier 1.00 in every seeded curve, but
-    computing it through the curve rather than a bare multiply keeps this
-    correct even for a curve whose first bracket doesn't start at 1.00)."""
+    """amount_minimum = 10 x entry rate. Photos 1-10 are always flat at the
+    entry rate regardless of curve type, so this holds for every niche."""
     return compute_package_total(db, niche_id=niche_id, entry_rate=entry_rate, photo_count=MINIMUM_PHOTOS)
 
 

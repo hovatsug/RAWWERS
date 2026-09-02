@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -46,7 +47,7 @@ from app.models.reward import RedemptionContextType
 from app.models.reward import ReferralConversionType
 from app.models.ops import WebhookSecurityLog
 from app.services.abuse import detect_payment_failures_anomaly
-from app.services.metrics import observe_business_event, observe_webhook
+from app.services.metrics import observe_business_event, observe_payout_volume, observe_webhook
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.client_rewards_pricing import increment_share_link_conversion
 from app.services.disputes import finalize_refund_case_failed, finalize_refund_case_success
@@ -54,7 +55,7 @@ from app.services.gallery_completion import finalize_gallery_and_complete_gig, i
 from app.services.proof_of_gigs import enqueue_raww_mint, enqueue_raww_refund_reversal
 from app.services.payouts import create_earnings_entry, reverse_earnings_entries_for_source
 from app.services.prints_fulfillment import on_print_payment_failed, on_print_payment_succeeded, on_print_refund_event
-from app.models.payouts import EarningsSourceType
+from app.models.payouts import EarningsSourceType, PayoutAccount, PayoutAccountStatus, PayoutEvent, PayoutRequest, PayoutRequestStatus
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 from app.services.trust_safety import evaluate_payment_failure_rule
@@ -707,6 +708,134 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
+
+    elif event_type == "transfer.created":
+        # execute_payout_request already marks the PayoutRequest paid
+        # synchronously when stripe.Transfer.create() returns - this is a
+        # reconciliation confirmation, not the primary path. It matters if
+        # the app crashed/timed out between the Stripe call succeeding and
+        # that DB write committing.
+        payout_request_id = (obj.get("metadata") or {}).get("payout_request_id")
+        if not payout_request_id:
+            return
+        try:
+            row = db.get(PayoutRequest, uuid.UUID(payout_request_id))
+        except ValueError:
+            return
+        if not row:
+            return
+
+        if row.status != PayoutRequestStatus.paid:
+            row.status = PayoutRequestStatus.paid
+            row.paid_at = datetime.now(timezone.utc)
+            row.reference = {**(row.reference or {}), "stripe_transfer_id": obj.get("id")}
+            row.updated_at = datetime.now(timezone.utc)
+            observe_payout_volume(float(row.amount_eur))
+
+        if not _payout_event_recorded(db, row.id, "transfer_created"):
+            db.add(PayoutEvent(payout_request_id=row.id, type="transfer_created", payload={"stripe_transfer_id": obj.get("id")}))
+            log_event(
+                db,
+                event_name="payout.transfer_created",
+                user_id=row.pro_user_id,
+                properties={"payout_request_id": str(row.id), "stripe_transfer_id": obj.get("id")},
+            )
+            observe_business_event("payout_transfer_created")
+
+    elif event_type == "transfer.failed":
+        # An async failure of a transfer that had already been reported as
+        # paid (e.g. reversed because the destination account was closed
+        # or restricted after the Stripe API call succeeded) - the
+        # synchronous exception path in execute_payout_request only
+        # catches failures raised by the create() call itself, not this.
+        payout_request_id = (obj.get("metadata") or {}).get("payout_request_id")
+        if not payout_request_id:
+            return
+        try:
+            row = db.get(PayoutRequest, uuid.UUID(payout_request_id))
+        except ValueError:
+            return
+        if not row:
+            return
+        if _payout_event_recorded(db, row.id, "transfer_failed"):
+            return
+
+        row.status = PayoutRequestStatus.failed
+        row.failure_reason = (obj.get("failure_message") or "Stripe transfer failed")[:500]
+        row.updated_at = datetime.now(timezone.utc)
+        db.add(PayoutEvent(payout_request_id=row.id, type="transfer_failed", payload={"stripe_transfer_id": obj.get("id"), "reason": row.failure_reason}))
+        add_admin_audit_log(
+            db,
+            actor_user_id=SYSTEM_USER_ID,
+            target_type="payout_request",
+            target_id=str(row.id),
+            action="transfer_failed",
+            reason=row.failure_reason,
+            metadata={"stripe_transfer_id": obj.get("id")},
+        )
+        log_event(
+            db,
+            event_name="payout.transfer_failed",
+            user_id=row.pro_user_id,
+            properties={"payout_request_id": str(row.id), "reason": row.failure_reason},
+        )
+        observe_business_event("payout_transfer_failed")
+
+    elif event_type == "account.updated":
+        stripe_account_id = obj.get("id")
+        if not stripe_account_id:
+            return
+        account = db.execute(
+            select(PayoutAccount).where(PayoutAccount.stripe_connect_account_id == stripe_account_id)
+        ).scalar_one_or_none()
+        if not account:
+            return
+
+        charges_enabled = bool(obj.get("charges_enabled"))
+        payouts_enabled = bool(obj.get("payouts_enabled"))
+        details_submitted = bool(obj.get("details_submitted"))
+        disabled_reason = (obj.get("requirements") or {}).get("disabled_reason")
+
+        if charges_enabled and payouts_enabled and details_submitted:
+            new_status = PayoutAccountStatus.active
+        elif disabled_reason:
+            new_status = PayoutAccountStatus.disabled
+        else:
+            new_status = PayoutAccountStatus.pending_verification
+
+        if account.status != new_status:
+            previous_status = account.status
+            account.status = new_status
+            account.updated_at = datetime.now(timezone.utc)
+            add_admin_audit_log(
+                db,
+                actor_user_id=SYSTEM_USER_ID,
+                target_type="payout_account",
+                target_id=str(account.pro_user_id),
+                action="payout_account_status_updated",
+                reason="Stripe account.updated",
+                metadata={
+                    "stripe_account_id": stripe_account_id,
+                    "from_status": previous_status.value,
+                    "to_status": new_status.value,
+                    "charges_enabled": charges_enabled,
+                    "payouts_enabled": payouts_enabled,
+                    "details_submitted": details_submitted,
+                },
+            )
+            log_event(
+                db,
+                event_name="payout.account_updated",
+                user_id=account.pro_user_id,
+                properties={"stripe_account_id": stripe_account_id, "status": new_status.value},
+            )
+            observe_business_event("payout_account_updated")
+
+
+def _payout_event_recorded(db: Session, payout_request_id, event_type: str) -> bool:
+    return db.execute(
+        select(PayoutEvent.id).where(PayoutEvent.payout_request_id == payout_request_id, PayoutEvent.type == event_type)
+    ).first() is not None
 
 
 def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, reference_id: str) -> bool:

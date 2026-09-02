@@ -911,6 +911,7 @@ def accept_booking_request(
         niche_id=package.niche_id,
         currency=package.currency,
         amount_minimum=amount_minimum,
+        entry_rate=entry_rate,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
         scheduled_start=request.requested_start,

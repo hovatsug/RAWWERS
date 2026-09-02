@@ -71,6 +71,7 @@ class Gig(Base):
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     amount_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_final: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    entry_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     amount_platform_fee: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_pro_gross: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

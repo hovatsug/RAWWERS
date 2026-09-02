@@ -68,6 +68,10 @@ class SubmitSelectionResponse(BaseModel):
     upsell_required: bool
     payment_intent_id: str | None = None
     payment_intent_client_secret: str | None = None
+    difference_required: bool = False
+    difference_amount: Decimal | None = None
+    difference_payment_intent_id: str | None = None
+    difference_payment_intent_client_secret: str | None = None
 
 
 class UpsellCreateIntentResponse(BaseModel):

@@ -24,9 +24,10 @@ TERMINAL_GIG_STATUSES: set[GigStatus] = {
 
 ALLOWED_TRANSITIONS: dict[GigStatus, set[GigStatus]] = {
     GigStatus.payment_pending: {GigStatus.paid, GigStatus.cancelled_by_client, GigStatus.cancelled_by_pro},
-    GigStatus.paid: {GigStatus.refunded, GigStatus.disputed},
+    GigStatus.paid: {GigStatus.refunded, GigStatus.disputed, GigStatus.completed},
     GigStatus.refunded: set(),
     GigStatus.disputed: set(),
+    GigStatus.completed: set(),
 }
 
 

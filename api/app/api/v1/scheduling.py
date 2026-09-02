@@ -553,6 +553,7 @@ def _find_or_create_gig_from_booking(db: Session, booking: BookingRequest) -> Gi
         status=GigStatus.payment_pending,
         currency=package.currency,
         amount_minimum=amount_minimum,
+        entry_rate=entry_rate,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
         scheduled_start=booking.requested_start,

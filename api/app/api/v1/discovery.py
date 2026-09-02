@@ -36,7 +36,7 @@ from app.services.abuse import detect_scraping_activity
 from app.services.authz import enforce_not_banned
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version, get_redis_client
 from app.services.niche_catalog import ensure_initial_niches
-from app.services.package_pricing import compute_total_for_photo_count, get_curve_tiers_for_niche
+from app.services.package_pricing import compute_package_total
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services.storage import create_presigned_get
 from app.services.launch_ops import is_pro_publicly_discoverable
@@ -367,7 +367,6 @@ def get_niche_pricing_preview(
     if not packages:
         raise APIError(code="not_found", message="No active package for this pro in this niche", status_code=404)
 
-    curve_tiers = get_curve_tiers_for_niche(db, niche_id)
     previews = [
         PackagePricingPreview(
             package_id=p.id,
@@ -375,7 +374,7 @@ def get_niche_pricing_preview(
             entry_price=p.price,
             currency=p.currency,
             price_at_photo_count={
-                str(count): compute_total_for_photo_count(p.price, count, curve_tiers)
+                str(count): compute_package_total(db, niche_id=niche_id, entry_rate=p.price, photo_count=count)
                 for count in PRICING_PREVIEW_PHOTO_COUNTS
             },
         )

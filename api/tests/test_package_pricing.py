@@ -24,10 +24,10 @@ from app.models.media import (
     ObjectStatus,
 )
 from app.models.niche import Niche, ProNicheSkill, SkillTier
-from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
+from app.models.package_pricing import NichePackagePriceCap, PackageCurveType, PackageDecayCurve
 from app.services.niche_catalog import ensure_initial_niches, get_active_niche_by_slug
 from app.services.package_pricing import (
-    DEFAULT_DECAY_CURVE_TIERS_BY_SLUG,
+    DEFAULT_CURVE_PARAMS_BY_SLUG,
     MINIMUM_PHOTOS,
     compute_minimum_amount,
     compute_package_total,
@@ -35,7 +35,8 @@ from app.services.package_pricing import (
     enforce_entry_price_cap,
     enforce_minimum_selection_count,
     ensure_default_package_decay_curves,
-    get_curve_tiers_for_niche,
+    get_curve_for_niche,
+    price_at_photo,
 )
 from sqlalchemy import select
 
@@ -77,44 +78,25 @@ def _seed_pro_profile(db_session, pro_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Curve math: marginal, not bracket - total must strictly increase with
-# photo count and never cliff across a bracket boundary.
+# Curve math: continuous per-photo price function, not a stepped bracket
+# table - no discontinuity in the marginal rate at any boundary.
 # ---------------------------------------------------------------------------
 
 
 def test_flat_curve_is_linear():
-    tiers = [{"upto": None, "multiplier": "1.00"}]
     entry = Decimal("3.00")
-    assert compute_total_for_photo_count(entry, 1, tiers) == Decimal("3.00")
-    assert compute_total_for_photo_count(entry, 40, tiers) == Decimal("120.00")
-
-
-def test_marginal_curve_has_no_cliff_across_bracket_boundary():
-    tiers = [
-        {"upto": 10, "multiplier": "1.00"},
-        {"upto": 20, "multiplier": "0.50"},
-        {"upto": None, "multiplier": "0.25"},
-    ]
-    entry = Decimal("2.00")
-    totals = [compute_total_for_photo_count(entry, n, tiers) for n in range(1, 31)]
-    for earlier, later in zip(totals, totals[1:]):
-        assert later > earlier, (earlier, later)
-
-    # first bracket is a straight multiply at the entry rate
-    assert compute_total_for_photo_count(entry, 10, tiers) == Decimal("20.00")
-    # 11th photo priced at the second bracket's multiplier, not retroactively
-    # discounting the first 10
-    assert compute_total_for_photo_count(entry, 11, tiers) == Decimal("21.00")
+    assert compute_total_for_photo_count(entry, 1, curve_type=PackageCurveType.flat) == Decimal("3.00")
+    assert compute_total_for_photo_count(entry, 40, curve_type=PackageCurveType.flat) == Decimal("120.00")
 
 
 def test_compute_total_for_zero_or_negative_photo_count_is_zero():
-    tiers = [{"upto": None, "multiplier": "1.00"}]
-    assert compute_total_for_photo_count(Decimal("5.00"), 0, tiers) == Decimal("0.00")
+    assert compute_total_for_photo_count(Decimal("5.00"), 0, curve_type=PackageCurveType.flat) == Decimal("0.00")
 
 
 def test_unconfigured_niche_falls_back_to_flat_curve(db_session):
-    tiers = get_curve_tiers_for_niche(db_session, uuid.uuid4())
-    assert tiers == [{"upto": None, "multiplier": "1.00"}]
+    assert get_curve_for_niche(db_session, uuid.uuid4()) is None
+    total = compute_package_total(db_session, niche_id=uuid.uuid4(), entry_rate=Decimal("3.00"), photo_count=40)
+    assert total == Decimal("120.00")
 
 
 def test_compute_minimum_amount_is_10_photos_through_the_curve(db_session):
@@ -125,10 +107,63 @@ def test_compute_minimum_amount_is_10_photos_through_the_curve(db_session):
     assert compute_minimum_amount(db_session, niche_id=weddings.id, entry_rate=entry) == expected
 
 
+def test_p_of_10_equals_entry_rate_for_every_curve_type():
+    entry = Decimal("2.00")
+    for curve_type, shape_param in [
+        (PackageCurveType.flat, None),
+        (PackageCurveType.power, Decimal("0.35")),
+        (PackageCurveType.exponential, Decimal("0.08")),
+    ]:
+        p10 = price_at_photo(10, entry, curve_type=curve_type, shape_param=shape_param, floor_pct=Decimal("0.20"))
+        assert p10 == entry, (curve_type, p10)
+
+
+def test_totals_strictly_monotonic_and_floor_never_breached_for_every_seeded_niche(db_session):
+    ensure_initial_niches(db_session)
+    entry = Decimal("2.00")
+    niches_by_slug = {n.slug: n for n in db_session.execute(select(Niche)).scalars().all()}
+
+    for slug, (curve_type, shape_param, floor_pct) in DEFAULT_CURVE_PARAMS_BY_SLUG.items():
+        niche = niches_by_slug[slug]
+        floor = entry * floor_pct
+
+        totals = [
+            compute_package_total(db_session, niche_id=niche.id, entry_rate=entry, photo_count=n)
+            for n in range(MINIMUM_PHOTOS, 501)
+        ]
+        for earlier, later in zip(totals, totals[1:]):
+            assert later > earlier, (slug, earlier, later)
+
+        for n in range(MINIMUM_PHOTOS, 501):
+            p = price_at_photo(n, entry, curve_type=curve_type, shape_param=shape_param, floor_pct=floor_pct)
+            assert p >= floor, (slug, n, p, floor)
+
+
+def test_flat_niches_are_unaffected_by_the_curve():
+    entry = Decimal("2.00")
+    for n in (10, 25, 100, 500):
+        assert price_at_photo(n, entry, curve_type=PackageCurveType.flat, shape_param=None, floor_pct=Decimal("0.20")) == entry
+        assert compute_total_for_photo_count(entry, n, curve_type=PackageCurveType.flat) == entry * n
+
+
+def test_power_curve_has_a_long_gentle_tail_and_exponential_decays_fast_then_flattens():
+    entry = Decimal("2.00")
+    power_params = dict(curve_type=PackageCurveType.power, shape_param=Decimal("0.35"), floor_pct=Decimal("0.20"))
+    exp_params = dict(curve_type=PackageCurveType.exponential, shape_param=Decimal("0.08"), floor_pct=Decimal("0.15"))
+
+    # power: still meaningfully above its floor out at 200 photos
+    p_power_200 = price_at_photo(200, entry, **power_params)
+    assert entry * Decimal("0.20") < p_power_200 < entry
+
+    # exponential: has already reached (or is very close to) its floor by 50
+    p_exp_50 = price_at_photo(50, entry, **exp_params)
+    assert p_exp_50 == entry * Decimal("0.15")
+
+
 # ---------------------------------------------------------------------------
 # Default curve seeding: idempotent, one row per known niche, matching the
-# platform's stated categorization (events-like long-gentle-decay,
-# portrait-like short-tail, product-like flat).
+# platform's stated categorization (events-like power/long-tail,
+# portrait-like exponential/short-tail, product-like flat).
 # ---------------------------------------------------------------------------
 
 
@@ -137,30 +172,15 @@ def test_ensure_default_curves_seeds_every_known_niche_once_and_is_idempotent(db
     ensure_default_package_decay_curves(db_session)  # explicit second call must not duplicate
 
     rows = db_session.execute(select(PackageDecayCurve)).scalars().all()
-    assert len(rows) == len(DEFAULT_DECAY_CURVE_TIERS_BY_SLUG)
+    assert len(rows) == len(DEFAULT_CURVE_PARAMS_BY_SLUG)
 
     niches_by_id = {n.id: n.slug for n in db_session.execute(select(Niche)).scalars().all()}
     for row in rows:
         slug = niches_by_id[row.niche_id]
-        assert row.tiers == DEFAULT_DECAY_CURVE_TIERS_BY_SLUG[slug]
-
-
-def test_events_niche_has_long_gentle_decay_and_portrait_niche_has_short_tail(db_session):
-    ensure_initial_niches(db_session)
-    weddings = get_active_niche_by_slug(db_session, "weddings")
-    portraits = get_active_niche_by_slug(db_session, "portraits")
-    entry = Decimal("2.00")
-
-    # events-style: still meaningfully discounting out at 200 photos
-    weddings_200 = compute_package_total(db_session, niche_id=weddings.id, entry_rate=entry, photo_count=200)
-    weddings_per_photo_at_200 = weddings_200 / 200
-    assert weddings_per_photo_at_200 < entry
-
-    # portrait-style: decay is nearly exhausted by 50 photos already
-    portraits_25 = compute_package_total(db_session, niche_id=portraits.id, entry_rate=entry, photo_count=25)
-    portraits_50 = compute_package_total(db_session, niche_id=portraits.id, entry_rate=entry, photo_count=50)
-    marginal_26_to_50 = portraits_50 - portraits_25
-    assert marginal_26_to_50 / 25 <= entry / 2
+        curve_type, shape_param, floor_pct = DEFAULT_CURVE_PARAMS_BY_SLUG[slug]
+        assert row.curve_type == curve_type
+        assert row.shape_param == shape_param
+        assert row.floor_pct == floor_pct
 
 
 def test_admin_curve_edit_is_preserved_by_a_later_ensure_call(db_session):
@@ -169,13 +189,16 @@ def test_admin_curve_edit_is_preserved_by_a_later_ensure_call(db_session):
     row = db_session.execute(
         select(PackageDecayCurve).where(PackageDecayCurve.niche_id == weddings.id)
     ).scalar_one()
-    row.tiers = [{"upto": None, "multiplier": "0.10"}]
+    row.curve_type = PackageCurveType.exponential
+    row.shape_param = Decimal("0.10")
+    row.floor_pct = Decimal("0.10")
     db_session.commit()
 
     ensure_default_package_decay_curves(db_session)
 
     db_session.refresh(row)
-    assert row.tiers == [{"upto": None, "multiplier": "0.10"}]
+    assert row.curve_type == PackageCurveType.exponential
+    assert row.shape_param == Decimal("0.10")
 
 
 # ---------------------------------------------------------------------------
@@ -521,16 +544,18 @@ def test_admin_can_list_and_upsert_decay_curves(client, db_session):
 
     listing = client.get("/v1/admin/pricing/package-decay-curves", headers={"X-User-Id": ADMIN_USER_ID})
     assert listing.status_code == 200
-    assert len(listing.json()) == len(DEFAULT_DECAY_CURVE_TIERS_BY_SLUG)
+    assert len(listing.json()) == len(DEFAULT_CURVE_PARAMS_BY_SLUG)
 
     upsert = client.put(
         "/v1/admin/pricing/package-decay-curves",
         headers={"X-User-Id": ADMIN_USER_ID},
-        json={"items": [{"niche_slug": "weddings", "tiers": [{"upto": None, "multiplier": "0.75"}]}]},
+        json={"items": [{"niche_slug": "weddings", "curve_type": "exponential", "shape_param": "0.12", "floor_pct": "0.25"}]},
     )
     assert upsert.status_code == 200
     weddings_row = next(row for row in upsert.json() if row["niche_slug"] == "weddings")
-    assert weddings_row["tiers"] == [{"upto": None, "multiplier": "0.75"}]
+    assert weddings_row["curve_type"] == "exponential"
+    assert weddings_row["shape_param"] == "0.1200"
+    assert weddings_row["floor_pct"] == "0.2500"
 
 
 def test_admin_can_list_and_upsert_price_caps(client, db_session):

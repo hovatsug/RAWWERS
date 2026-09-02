@@ -16,6 +16,7 @@ from app.models.admin import (
 from app.models.gig import GigStatus
 from app.models.ops import AbuseSeverity, AbuseSignalStatus, FeatureFlagScope
 from app.models.niche import SkillTier
+from app.models.package_pricing import PackageCurveType
 from app.models.client_rewards_pricing import ConsentRewardLevel, ShareRewardMetric
 from app.models.proof_of_gigs import RawwIssuanceCapScope, RawwIssuanceEventType, RawwMintEventStatus
 
@@ -208,7 +209,9 @@ class ExtraImagePricingPolicyView(BaseModel):
 
 class PackageDecayCurveUpsertItem(BaseModel):
     niche_slug: str
-    tiers: list[dict] = Field(default_factory=list)
+    curve_type: PackageCurveType
+    shape_param: Decimal | None = None
+    floor_pct: Decimal = Decimal("1.0000")
 
 
 class PackageDecayCurveUpsertRequest(BaseModel):
@@ -218,7 +221,9 @@ class PackageDecayCurveUpsertRequest(BaseModel):
 class PackageDecayCurveView(BaseModel):
     niche_id: uuid.UUID
     niche_slug: str
-    tiers: list[dict]
+    curve_type: PackageCurveType
+    shape_param: Decimal | None = None
+    floor_pct: Decimal
     updated_at: datetime
 
 

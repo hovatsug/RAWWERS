@@ -639,8 +639,10 @@ def _refund_multiplier(db: Session, *, ctx: _MintContext, policy: RawwMultiplier
         gig = db.get(Gig, ctx.gig_id)
         if gig and gig.status == GigStatus.refunded:
             return float(policy.refund_penalty_multiplier)
-        payment = db.execute(select(StripePayment).where(StripePayment.gig_id == ctx.gig_id)).scalar_one_or_none()
-        if payment and payment.status == PaymentStatus.refunded:
+        any_refunded_payment = db.execute(
+            select(StripePayment.id).where(StripePayment.gig_id == ctx.gig_id, StripePayment.status == PaymentStatus.refunded)
+        ).first()
+        if any_refunded_payment:
             return float(policy.refund_penalty_multiplier)
         refund_case = db.execute(
             select(RefundCase.id).where(

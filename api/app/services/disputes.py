@@ -33,13 +33,14 @@ from app.models.admin import (
     RefundPolicyDefaultAction,
 )
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
-from app.models.gig import Gig, GigStatus, StripePayment
+from app.models.gig import Gig, GigStatus
 from app.models.media_rights import GigEntitlementType, GigMediaEntitlement
 from app.models.ops import AbuseSeverity
 from app.models.payouts import EarningsHoldReason, EarningsSourceType
 from app.models.reward import RewardEntryType, RewardLedgerEntry
 from app.services.abuse import create_abuse_signal
 from app.services.analytics import log_event
+from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.notifications import enqueue_notification
 from app.services.payouts import create_earnings_hold, release_earnings_holds_for_source, reverse_earnings_entries_for_source
@@ -413,18 +414,18 @@ def create_or_get_refund_case_for_dispute(
     dispute: Dispute,
     decision: str,
     amount: Decimal | None,
-) -> RefundCase | None:
+) -> list[RefundCase]:
+    """Returns one RefundCase per underlying payment needed to cover the
+    resolved amount, oldest payment first. Usually a list of one - only
+    a gig with a difference charge (or a purchase, which stays 1:1)
+    produces more than one."""
     if decision == "no_refund":
-        return None
+        return []
 
-    existing = db.execute(select(RefundCase).where(RefundCase.dispute_id == dispute.id)).scalar_one_or_none()
+    existing = db.execute(select(RefundCase).where(RefundCase.dispute_id == dispute.id)).scalars().all()
     if existing:
-        return existing
+        return list(existing)
 
-    payment_scope: RefundPaymentScope
-    reference_id: uuid.UUID
-    payment_intent_id: str | None
-    amount_authorized: Decimal
     currency = dispute.currency or "EUR"
 
     if dispute.extra_purchase_id:
@@ -433,24 +434,24 @@ def create_or_get_refund_case_for_dispute(
             raise APIError(code="not_found", message="Extra purchase not found", status_code=404)
         payment_scope = RefundPaymentScope.extra_image_purchase
         reference_id = purchase.id
-        payment_intent_id = purchase.stripe_payment_intent_id
         amount_authorized = purchase.total
         currency = purchase.currency if hasattr(purchase, "currency") else currency
         gig_id = purchase.gig_id
         requested_by = dispute.opened_by_user_id
+        payment_allocations = [(purchase.stripe_payment_intent_id, None, amount_authorized)]
     else:
         if not dispute.gig_id:
             raise APIError(code="validation_error", message="Dispute has no payment reference", status_code=422)
-        payment = db.execute(select(StripePayment).where(StripePayment.gig_id == dispute.gig_id)).scalar_one_or_none()
-        if not payment:
+        payments = list_succeeded_payments_for_gig(db, dispute.gig_id)
+        if not payments:
             raise APIError(code="not_found", message="Stripe payment not found", status_code=404)
         payment_scope = RefundPaymentScope.booking_payment
         reference_id = dispute.gig_id
-        payment_intent_id = payment.stripe_payment_intent_id
-        amount_authorized = payment.amount
-        currency = payment.currency
+        amount_authorized = sum((p.amount for p in payments), Decimal("0.00"))
+        currency = payments[0].currency
         gig_id = dispute.gig_id
         requested_by = dispute.opened_by_user_id
+        payment_allocations = None  # computed below, once refund_amount is known
 
     refund_amount = amount
     if refund_amount is None:
@@ -467,25 +468,32 @@ def create_or_get_refund_case_for_dispute(
 
     refund_amount = max(Decimal("0.00"), min(amount_authorized, refund_amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    row = RefundCase(
-        gig_id=gig_id,
-        dispute_id=dispute.id,
-        requested_by_user_id=requested_by,
-        payment_scope=payment_scope,
-        reference_id=reference_id,
-        stripe_payment_intent_id=payment_intent_id,
-        amount_authorized=amount_authorized,
-        amount_refunded=Decimal("0.00"),
-        status=RefundCaseStatus.pending,
-        amount=refund_amount,
-        currency=currency,
-        reason=dispute.reason,
-        admin_note=None,
-        meta={},
-    )
-    db.add(row)
+    if payment_allocations is None:
+        allocation = allocate_amount_oldest_first(payments, refund_amount)
+        payment_allocations = [(p.stripe_payment_intent_id, p.id, take) for p, take in allocation]
+
+    rows: list[RefundCase] = []
+    for stripe_payment_intent_id, stripe_payment_id, take in payment_allocations:
+        row = RefundCase(
+            gig_id=gig_id,
+            dispute_id=dispute.id,
+            requested_by_user_id=requested_by,
+            payment_scope=payment_scope,
+            reference_id=reference_id,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            amount_authorized=amount_authorized,
+            amount_refunded=Decimal("0.00"),
+            status=RefundCaseStatus.pending,
+            amount=take,
+            currency=currency,
+            reason=dispute.reason,
+            admin_note=None,
+            meta={"stripe_payment_id": str(stripe_payment_id)} if stripe_payment_id else {},
+        )
+        db.add(row)
+        rows.append(row)
     db.flush()
-    return row
+    return rows
 
 
 def apply_pro_quality_penalty(db: Session, *, dispute: Dispute, severity: ProQualityPenaltySeverity) -> ProQualityPenalty | None:

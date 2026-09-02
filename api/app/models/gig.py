@@ -54,6 +54,12 @@ class PaymentStatus(str, enum.Enum):
     disputed = "disputed"
 
 
+class StripePaymentKind(str, enum.Enum):
+    base = "base"
+    difference = "difference"
+    extras = "extras"
+
+
 class Gig(Base):
     __tablename__ = "gig"
 
@@ -74,7 +80,7 @@ class Gig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     transitions: Mapped[list["GigTransition"]] = relationship(back_populates="gig", cascade="all, delete-orphan")
-    payment: Mapped["StripePayment"] = relationship(back_populates="gig", uselist=False)
+    payments: Mapped[list["StripePayment"]] = relationship(back_populates="gig")
     ledger_entries: Mapped[list["LedgerEntry"]] = relationship(back_populates="gig", cascade="all, delete-orphan")
 
 
@@ -96,7 +102,12 @@ class StripePayment(Base):
     __tablename__ = "stripe_payment"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, unique=True, index=True)
+    gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
+    kind: Mapped[StripePaymentKind] = mapped_column(
+        Enum(StripePaymentKind, name="stripe_payment_kind", native_enum=False),
+        nullable=False,
+        default=StripePaymentKind.base,
+    )
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status", native_enum=False), index=True, nullable=False)
     stripe_payment_intent_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
@@ -108,7 +119,7 @@ class StripePayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    gig: Mapped[Gig] = relationship(back_populates="payment")
+    gig: Mapped[Gig] = relationship(back_populates="payments")
 
 
 class LedgerEntry(Base):

@@ -147,6 +147,7 @@ from app.schemas.launch_ops import (
     RolloutOverrideUpsertRequest,
 )
 from app.services.audit import add_admin_audit_log
+from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig, total_succeeded_amount_for_gig
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.analytics import log_event
 from app.services.niche_catalog import ensure_initial_niches
@@ -1019,12 +1020,13 @@ def admin_resolve_dispute(
     if decision not in {"full_refund", "partial_refund", "no_refund"}:
         raise APIError(code="validation_error", message="decision must be full_refund|partial_refund|no_refund", status_code=422)
 
-    refund_case = create_or_get_refund_case_for_dispute(
+    refund_cases = create_or_get_refund_case_for_dispute(
         db,
         dispute=dispute,
         decision=decision,
         amount=body.amount,
     )
+    refund_case = refund_cases[0] if refund_cases else None
     previous = dispute.status
     if decision == "full_refund":
         dispute.status = DisputeStatus.resolved_refund
@@ -1076,12 +1078,12 @@ def admin_resolve_dispute(
                 source_id=dispute.extra_purchase_id,
             )
     else:
-        if refund_case:
+        for case in refund_cases:
             enqueue_outbox_event(
                 db,
                 topic="refund.initiate",
-                payload={"refund_case_id": str(refund_case.id)},
-                idempotency_key=f"refund-initiate:{refund_case.id}",
+                payload={"refund_case_id": str(case.id)},
+                idempotency_key=f"refund-initiate:{case.id}",
                 idempotency_scope="refund_initiate",
             )
     if decision in {"full_refund", "partial_refund"}:
@@ -1175,15 +1177,19 @@ def update_gig_status(
             payload={"gig_id": str(gig.id)},
             idempotency_key=f"raww:gig_completed:{gig.id}",
         )
-        payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
-        if payment and payment.status == PaymentStatus.succeeded:
+        succeeded_payments = list_succeeded_payments_for_gig(db, gig.id)
+        if succeeded_payments:
+            gross_eur = sum((p.amount for p in succeeded_payments), Decimal("0.00"))
             create_earnings_entry(
                 db,
                 pro_user_id=gig.pro_user_id,
                 source_type=EarningsSourceType.gig_base,
                 source_id=gig.id,
-                gross_eur=Decimal(str(payment.amount)),
-                metadata={"gig_id": str(gig.id), "payment_intent_id": payment.stripe_payment_intent_id},
+                gross_eur=Decimal(str(gross_eur)),
+                metadata={
+                    "gig_id": str(gig.id),
+                    "payment_intent_ids": [p.stripe_payment_intent_id for p in succeeded_payments],
+                },
             )
     db.commit()
     return {"gig_id": str(gig.id), "status": gig.status.value}
@@ -1207,55 +1213,62 @@ def create_admin_refund(
             RefundCase.gig_id == gig_id,
             RefundCase.status.in_([RefundCaseStatus.processing, RefundCaseStatus.succeeded]),
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
     if existing:
         return _refund_case_view(existing)
 
-    payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig_id)).scalar_one_or_none()
-    if not payment:
+    payments = list_succeeded_payments_for_gig(db, gig_id)
+    if not payments:
         raise APIError(code="invalid_state", message="No stripe payment for gig", status_code=409)
 
-    amount = body.amount or gig.amount_total
-    if amount <= 0 or amount > gig.amount_total:
+    total_paid = total_succeeded_amount_for_gig(db, gig_id)
+    amount = body.amount or total_paid
+    if amount <= 0 or amount > total_paid:
         raise APIError(code="validation_error", message="Invalid refund amount", status_code=422)
 
-    refund = stripe.Refund.create(
-        payment_intent=payment.stripe_payment_intent_id,
-        amount=int((amount * Decimal("100")).quantize(Decimal("1"))),
-        metadata={
-            "gig_id": str(gig.id),
-            "actor_user_id": str(actor.user_id),
-            "dispute_id": str(body.dispute_id) if body.dispute_id else "",
-        },
-    )
+    allocation = allocate_amount_oldest_first(payments, amount)
 
-    refund_case = RefundCase(
-        gig_id=gig.id,
-        dispute_id=body.dispute_id,
-        requested_by_user_id=actor.user_id,
-        status=RefundCaseStatus.processing,
-        amount=amount,
-        currency=gig.currency,
-        reason=body.reason,
-        admin_note=body.reason,
-        meta={"stripe_refund_id": refund.id},
-    )
-    db.add(refund_case)
-
-    db.add(
-        LedgerEntry(
-            gig_id=gig.id,
-            entry_type=LedgerEntryType.refund_initiated,
-            amount=Decimal("0.00"),
-            currency=gig.currency,
-            description=body.reason or "Admin refund initiated",
-            reference_type="stripe_refund",
-            reference_id=refund.id,
+    refund_cases: list[RefundCase] = []
+    for payment, take in allocation:
+        refund = stripe.Refund.create(
+            payment_intent=payment.stripe_payment_intent_id,
+            amount=int((take * Decimal("100")).quantize(Decimal("1"))),
+            metadata={
+                "gig_id": str(gig.id),
+                "actor_user_id": str(actor.user_id),
+                "dispute_id": str(body.dispute_id) if body.dispute_id else "",
+            },
+            idempotency_key=f"gig:{gig.id}:admin-refund:{payment.id}",
         )
-    )
 
-    if payment.status != PaymentStatus.disputed:
-        payment.status = PaymentStatus.pending
+        refund_case = RefundCase(
+            gig_id=gig.id,
+            dispute_id=body.dispute_id,
+            requested_by_user_id=actor.user_id,
+            status=RefundCaseStatus.processing,
+            amount=take,
+            currency=gig.currency,
+            reason=body.reason,
+            admin_note=body.reason,
+            meta={"stripe_refund_id": refund.id, "stripe_payment_id": str(payment.id)},
+        )
+        db.add(refund_case)
+        refund_cases.append(refund_case)
+
+        db.add(
+            LedgerEntry(
+                gig_id=gig.id,
+                entry_type=LedgerEntryType.refund_initiated,
+                amount=Decimal("0.00"),
+                currency=gig.currency,
+                description=body.reason or "Admin refund initiated",
+                reference_type="stripe_refund",
+                reference_id=refund.id,
+            )
+        )
+
+        if payment.status != PaymentStatus.disputed:
+            payment.status = PaymentStatus.pending
 
     add_admin_audit_log(
         db,
@@ -1264,14 +1277,18 @@ def create_admin_refund(
         target_id=str(gig.id),
         action="refund_initiated",
         reason=body.reason,
-        metadata={"amount": str(amount), "refund_id": refund.id, "dispute_id": str(body.dispute_id) if body.dispute_id else None},
+        metadata={
+            "amount": str(amount),
+            "refund_ids": [rc.meta["stripe_refund_id"] for rc in refund_cases],
+            "dispute_id": str(body.dispute_id) if body.dispute_id else None,
+        },
     )
     recompute_pro_public_index(db, gig.pro_user_id)
     if gig.niche_id:
         recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
     db.commit()
-    db.refresh(refund_case)
-    return _refund_case_view(refund_case)
+    db.refresh(refund_cases[0])
+    return _refund_case_view(refund_cases[0])
 
 
 @router.get("/refunds", response_model=list[RefundCaseView])

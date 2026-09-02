@@ -7,11 +7,43 @@ import stripe
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+import uuid
+
 from app.core.config import get_settings
-from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
+from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.services.stripe_service import map_intent_status, to_cents
 
 settings = get_settings()
+
+
+def list_succeeded_payments_for_gig(db: Session, gig_id: uuid.UUID) -> list[StripePayment]:
+    """Oldest first - the order refunds should be applied in against a gig's payments."""
+    return (
+        db.execute(
+            select(StripePayment)
+            .where(StripePayment.gig_id == gig_id, StripePayment.status == PaymentStatus.succeeded)
+            .order_by(StripePayment.created_at.asc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+def total_succeeded_amount_for_gig(db: Session, gig_id: uuid.UUID) -> Decimal:
+    return sum((p.amount for p in list_succeeded_payments_for_gig(db, gig_id)), Decimal("0.00"))
+
+
+def allocate_amount_oldest_first(payments: list[StripePayment], amount: Decimal) -> list[tuple[StripePayment, Decimal]]:
+    """Split `amount` across `payments` (already oldest-first), each capped at its own amount."""
+    remaining = amount
+    allocation: list[tuple[StripePayment, Decimal]] = []
+    for payment in payments:
+        if remaining <= 0:
+            break
+        take = min(remaining, payment.amount)
+        allocation.append((payment, take))
+        remaining -= take
+    return allocation
 
 
 def create_or_get_gig_payment_intent(
@@ -21,8 +53,11 @@ def create_or_get_gig_payment_intent(
     return_url: str | None = None,
     amount_override: Decimal | None = None,
     extra_metadata: dict | None = None,
+    kind: StripePaymentKind = StripePaymentKind.base,
 ):
-    existing = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
+    existing = db.execute(
+        select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == kind)
+    ).scalar_one_or_none()
     if existing:
         pi = stripe.PaymentIntent.retrieve(existing.stripe_payment_intent_id)
         return existing, pi
@@ -34,6 +69,7 @@ def create_or_get_gig_payment_intent(
         "client_user_id": str(gig.client_user_id),
         "pro_user_id": str(gig.pro_user_id),
         "return_url": return_url_value,
+        "kind": kind.value,
     }
     if extra_metadata:
         metadata.update(extra_metadata)
@@ -44,11 +80,12 @@ def create_or_get_gig_payment_intent(
         payment_method_types=payment_method_types or ["card"],
         metadata=metadata,
         automatic_payment_methods={"enabled": True},
-        idempotency_key=f"gig:{gig.id}:pi",
+        idempotency_key=f"gig:{gig.id}:pi:{kind.value}",
     )
 
     payment = StripePayment(
         gig_id=gig.id,
+        kind=kind,
         client_user_id=gig.client_user_id,
         status=PaymentStatus(map_intent_status(pi.status)),
         stripe_payment_intent_id=pi.id,
@@ -65,7 +102,7 @@ def create_or_get_gig_payment_intent(
             entry_type=LedgerEntryType.payment_authorized,
             amount=Decimal("0.00"),
             currency=gig.currency,
-            description="Stripe PaymentIntent created",
+            description=f"Stripe PaymentIntent created ({kind.value})",
             reference_type="stripe_payment_intent",
             reference_id=pi.id,
         )

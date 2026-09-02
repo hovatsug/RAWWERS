@@ -14,7 +14,7 @@ from app.models.admin import ProProfile, UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProAvailabilityRule, ProPackage
 from app.models.client_launch import ClientPreference, ClientWaitlist, MatchRequest as MatchRequestLog, MatchResult as MatchResultLog
 from app.models.discovery import ProPublicIndex
-from app.models.gig import Gig, StripePayment
+from app.models.gig import Gig, StripePayment, StripePaymentKind
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.media_rights import GigConsentLevel
@@ -428,7 +428,13 @@ def client_booking_status(
         .order_by(BookingRequestTransition.created_at.asc())
     ).scalars().all()
     gig = _find_gig_by_booking_request(db, booking_id=booking.id)
-    payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none() if gig else None
+    payment = (
+        db.execute(
+            select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.base)
+        ).scalar_one_or_none()
+        if gig
+        else None
+    )
 
     next_actions: list[str] = []
     if booking.status == BookingRequestStatus.pending:

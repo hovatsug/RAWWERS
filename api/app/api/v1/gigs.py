@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_session, require_not_banned
 from app.core.config import Settings, get_settings
 from app.core.errors import APIError
-from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
+from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gig import (
     CreateGigRequest,
@@ -28,7 +28,11 @@ from app.schemas.gig import (
 from app.schemas.media import CurrentUser
 from app.services.authz import require_kyc_approved_for_pro
 from app.services.analytics import log_event
-from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.payment_intents import (
+    allocate_amount_oldest_first,
+    create_or_get_gig_payment_intent,
+    list_succeeded_payments_for_gig,
+)
 from app.services.followups import schedule_followups
 from app.services.feature_flags import is_feature_enabled
 from app.services.rate_limit import enforce_named_rate_limit
@@ -107,7 +111,9 @@ def get_gig(
 
     _ensure_gig_access(gig, user.user_id)
 
-    payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
+    payment = db.execute(
+        select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.base)
+    ).scalar_one_or_none()
 
     sums = db.execute(
         select(
@@ -154,7 +160,9 @@ def create_payment_intent(
 
     _enforce_pro_kyc_for_payment(db, gig, settings)
 
-    existing_payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
+    existing_payment = db.execute(
+        select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.base)
+    ).scalar_one_or_none()
     existing_redemption = db.execute(
         select(DiscountRedemption).where(
             DiscountRedemption.user_id == user.user_id,
@@ -231,11 +239,12 @@ def create_refund(
     if gig.status != GigStatus.paid:
         raise APIError(code="invalid_state", message="Gig must be paid to request refund", status_code=409)
 
-    payment = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one_or_none()
-    if not payment:
+    payments = list_succeeded_payments_for_gig(db, gig.id)
+    if not payments:
         raise APIError(code="invalid_state", message="No Stripe payment found", status_code=409)
 
-    paid_at_raw = payment.meta.get("paid_at")
+    oldest = payments[0]
+    paid_at_raw = oldest.meta.get("paid_at")
     if not paid_at_raw:
         raise APIError(code="invalid_state", message="Payment paid timestamp missing", status_code=409)
 
@@ -246,29 +255,35 @@ def create_refund(
     if gig.status == GigStatus.shoot_done:
         raise APIError(code="refund_not_allowed", message="Refund not allowed after shoot_done", status_code=409)
 
-    refund = stripe.Refund.create(
-        payment_intent=payment.stripe_payment_intent_id,
-        reason="requested_by_customer",
-        metadata={
-            "gig_id": str(gig.id),
-            "reason": body.reason or "client_requested",
-        },
-    )
-
-    db.add(
-        LedgerEntry(
-            gig_id=gig.id,
-            entry_type=LedgerEntryType.refund_initiated,
-            amount=Decimal("0.00"),
-            currency=gig.currency,
-            description=body.reason or "Refund initiated",
-            reference_type="stripe_refund",
-            reference_id=refund.id,
+    refund_ids: list[str] = []
+    last_refund = None
+    for payment in payments:
+        refund = stripe.Refund.create(
+            payment_intent=payment.stripe_payment_intent_id,
+            reason="requested_by_customer",
+            metadata={
+                "gig_id": str(gig.id),
+                "reason": body.reason or "client_requested",
+            },
+            idempotency_key=f"gig:{gig.id}:client-refund:{payment.id}",
         )
-    )
+        refund_ids.append(refund.id)
+        last_refund = refund
+
+        db.add(
+            LedgerEntry(
+                gig_id=gig.id,
+                entry_type=LedgerEntryType.refund_initiated,
+                amount=Decimal("0.00"),
+                currency=gig.currency,
+                description=body.reason or "Refund initiated",
+                reference_type="stripe_refund",
+                reference_id=refund.id,
+            )
+        )
     db.commit()
 
-    return CreateRefundResponse(refund_id=refund.id, status=refund.status)
+    return CreateRefundResponse(refund_id=refund_ids[0], status=last_refund.status, refund_ids=refund_ids)
 
 
 def transition_gig_seed(gig_id: uuid.UUID, actor_user_id: uuid.UUID, to_status: GigStatus, reason: str):

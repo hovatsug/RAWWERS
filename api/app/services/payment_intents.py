@@ -16,17 +16,20 @@ from app.services.stripe_service import map_intent_status, to_cents
 settings = get_settings()
 
 
-def list_succeeded_payments_for_gig(db: Session, gig_id: uuid.UUID) -> list[StripePayment]:
-    """Oldest first - the order refunds should be applied in against a gig's payments."""
-    return (
-        db.execute(
-            select(StripePayment)
-            .where(StripePayment.gig_id == gig_id, StripePayment.status == PaymentStatus.succeeded)
-            .order_by(StripePayment.created_at.asc())
-        )
-        .scalars()
-        .all()
-    )
+def list_succeeded_payments_for_gig(
+    db: Session, gig_id: uuid.UUID, kinds: list[StripePaymentKind] | None = None
+) -> list[StripePayment]:
+    """Oldest first - the order refunds should be applied in against a gig's payments.
+
+    `kinds` restricts to specific StripePaymentKind values (e.g. base +
+    difference, excluding extras which already get their own earnings
+    entry from the upsell webhook path). Omit for all kinds - the
+    default used by refund allocation, which legitimately spans all
+    of them."""
+    stmt = select(StripePayment).where(StripePayment.gig_id == gig_id, StripePayment.status == PaymentStatus.succeeded)
+    if kinds is not None:
+        stmt = stmt.where(StripePayment.kind.in_(kinds))
+    return db.execute(stmt.order_by(StripePayment.created_at.asc())).scalars().all()
 
 
 def total_succeeded_amount_for_gig(db: Session, gig_id: uuid.UUID) -> Decimal:

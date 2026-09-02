@@ -23,11 +23,10 @@ from app.models.gallery import (
     UpsellPurchase,
     UpsellPurchaseStatus,
 )
-from app.models.gig import Gig, GigStatus
+from app.models.gig import Gig, GigStatus, StripePaymentKind
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaVariant, ObjectStatus
 from app.models.media_rights import GigEntitlementType, MediaDerivativeKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
-from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.gallery import (
     AddGalleryItemsRequest,
     CreateProofGalleryRequest,
@@ -60,8 +59,9 @@ from app.services.client_rewards_pricing import (
 from app.services.media_rights import upsert_gig_entitlement
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
-from app.services.package_pricing import enforce_minimum_selection_count
-from app.services.proof_of_gigs import enqueue_raww_mint
+from app.services.gallery_completion import finalize_gallery_and_complete_gig
+from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count
+from app.services.payment_intents import create_or_get_gig_payment_intent
 
 settings = get_settings()
 router = APIRouter(tags=["proof_galleries"])
@@ -367,6 +367,15 @@ def submit_selection(
     enforce_minimum_selection_count(selected_count)
     extras_count = max(0, selected_count - gallery.included_photos)
 
+    gig = db.get(Gig, gallery.gig_id)
+
+    difference_amount = Decimal("0.00")
+    if gig and gig.niche_id and gig.entry_rate is not None:
+        amount_final = compute_package_total(db, niche_id=gig.niche_id, entry_rate=gig.entry_rate, photo_count=selected_count)
+        gig.amount_final = amount_final
+        difference_amount = max(Decimal("0.00"), (amount_final - gig.amount_minimum).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    difference_required = difference_amount > 0
+
     selection.status = SelectionStatus.submitted
     included_unlock_count = min(gallery.included_photos, selected_count)
     upsert_gig_entitlement(
@@ -385,8 +394,26 @@ def submit_selection(
         target_id=str(gallery.id),
         action="selection_submitted",
         reason=None,
-        metadata={"selection_id": str(selection.id), "selected_count": selected_count, "extras_count": extras_count},
+        metadata={
+            "selection_id": str(selection.id),
+            "selected_count": selected_count,
+            "extras_count": extras_count,
+            "difference_amount": str(difference_amount),
+        },
     )
+
+    difference_payment_intent_id: str | None = None
+    difference_payment_intent_client_secret: str | None = None
+    if difference_required and gig:
+        difference_payment, difference_pi = create_or_get_gig_payment_intent(
+            db,
+            gig,
+            amount_override=difference_amount,
+            kind=StripePaymentKind.difference,
+            extra_metadata={"selection_id": str(selection.id), "gallery_id": str(gallery.id)},
+        )
+        difference_payment_intent_id = difference_payment.stripe_payment_intent_id
+        difference_payment_intent_client_secret = difference_pi.client_secret
 
     if extras_count > 0:
         cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
@@ -401,19 +428,34 @@ def submit_selection(
             upsell_required=True,
             payment_intent_id=purchase.stripe_payment_intent_id,
             payment_intent_client_secret=client_secret,
+            difference_required=difference_required,
+            difference_amount=difference_amount if difference_required else None,
+            difference_payment_intent_id=difference_payment_intent_id,
+            difference_payment_intent_client_secret=difference_payment_intent_client_secret,
         )
 
-    gallery.status = ProofGalleryStatus.selection_submitted
-    gig = db.get(Gig, gallery.gig_id)
-    if gig:
-        upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
-        enqueue_raww_mint(
-            db,
-            event_type=RawwIssuanceEventType.gig_delivery_confirmed,
-            payload={"gig_id": str(gig.id)},
-            idempotency_key=f"raww:gig_delivery_confirmed:{gig.id}",
+    if difference_required:
+        cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
+        db.commit()
+        return SubmitSelectionResponse(
+            selection_id=selection.id,
+            selected_count=selected_count,
+            included_photos=gallery.included_photos,
+            extras_count=0,
+            gallery_status=gallery.status,
+            upsell_required=False,
+            difference_required=True,
+            difference_amount=difference_amount,
+            difference_payment_intent_id=difference_payment_intent_id,
+            difference_payment_intent_client_secret=difference_payment_intent_client_secret,
         )
-    cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
+
+    # Neither extras nor a difference charge is pending - the booking closes now.
+    if gig:
+        finalize_gallery_and_complete_gig(db, gallery=gallery, gig=gig, selection=selection)
+    else:
+        gallery.status = ProofGalleryStatus.selection_submitted
+        cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
     db.commit()
     observe_business_event("proof_selection_submitted")
     return SubmitSelectionResponse(
@@ -423,6 +465,8 @@ def submit_selection(
         extras_count=0,
         gallery_status=gallery.status,
         upsell_required=False,
+        difference_required=False,
+        difference_amount=None,
     )
 
 

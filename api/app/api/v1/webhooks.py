@@ -18,8 +18,9 @@ from app.models.gig import (
     LedgerEntryType,
     PaymentStatus,
     StripePayment,
+    StripePaymentKind,
 )
-from app.models.gallery import ProofGallery, ProofGalleryStatus, UpsellPurchase, UpsellPurchaseStatus
+from app.models.gallery import ClientSelection, ProofGallery, SelectionStatus, UpsellPurchase, UpsellPurchaseStatus
 from app.models.media import MediaAsset, MediaProvider, MediaStatus
 from app.models.media_rights import GigEntitlementType
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
@@ -49,7 +50,7 @@ from app.services.metrics import observe_business_event, observe_webhook
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.client_rewards_pricing import increment_share_link_conversion
 from app.services.disputes import finalize_refund_case_failed, finalize_refund_case_success
-from app.services.disputes import upsert_delivery_sla_snapshot
+from app.services.gallery_completion import finalize_gallery_and_complete_gig, is_selection_fully_paid
 from app.services.proof_of_gigs import enqueue_raww_mint, enqueue_raww_refund_reversal
 from app.services.payouts import create_earnings_entry, reverse_earnings_entries_for_source
 from app.services.prints_fulfillment import on_print_payment_failed, on_print_payment_succeeded, on_print_refund_event
@@ -234,7 +235,6 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 return
 
             upsell.status = UpsellPurchaseStatus.succeeded
-            gallery.status = ProofGalleryStatus.selection_submitted
             snapshot = db.execute(
                 select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
             ).scalar_one_or_none()
@@ -278,13 +278,9 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 entitlement_type=GigEntitlementType.download_extras,
                 delta=upsell.extra_count,
             )
-            upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
-            enqueue_raww_mint(
-                db,
-                event_type=RawwIssuanceEventType.gig_delivery_confirmed,
-                payload={"gig_id": str(gig.id)},
-                idempotency_key=f"raww:gig_delivery_confirmed:{gig.id}",
-            )
+            selection = db.get(ClientSelection, upsell.selection_id)
+            if selection and is_selection_fully_paid(db, gig=gig, gallery=gallery, selection=selection):
+                finalize_gallery_and_complete_gig(db, gallery=gallery, gig=gig, selection=selection)
             observe_business_event("upsell_purchase_succeeded")
             redemption = apply_redemption_for_context(db, RedemptionContextType.upsell_purchase, upsell.id)
             if redemption:
@@ -468,6 +464,20 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
+
+        if payment.kind == StripePaymentKind.difference:
+            gallery = db.execute(select(ProofGallery).where(ProofGallery.gig_id == gig.id)).scalar_one_or_none()
+            selection = (
+                db.execute(
+                    select(ClientSelection)
+                    .where(ClientSelection.gallery_id == gallery.id, ClientSelection.status == SelectionStatus.submitted)
+                    .order_by(ClientSelection.version.desc())
+                ).scalars().first()
+                if gallery
+                else None
+            )
+            if gallery and selection and is_selection_fully_paid(db, gig=gig, gallery=gallery, selection=selection):
+                finalize_gallery_and_complete_gig(db, gallery=gallery, gig=gig, selection=selection)
 
     elif event_type == "payment_intent.payment_failed":
         payment_intent_id = obj.get("id")

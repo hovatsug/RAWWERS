@@ -31,7 +31,7 @@ from app.models.admin import (
     UserRole,
     UserRoleType,
 )
-from app.models.gig import Gig, GigStatus, GigTransition, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
+from app.models.gig import Gig, GigStatus, GigTransition, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.models.learning import (
     Course,
     CourseLevel,
@@ -154,6 +154,7 @@ from app.schemas.launch_ops import (
 from app.services.audit import add_admin_audit_log
 from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig, total_succeeded_amount_for_gig
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.gig_state import transition_gig
 from app.services.analytics import log_event
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.gamification import queue_evaluate_user_milestones, queue_recompute_credentials
@@ -1152,16 +1153,19 @@ def update_gig_status(
         raise APIError(code="invalid_state_transition", message="Target status is not admin-operational", status_code=409)
 
     previous = gig.status
-    gig.status = body.status
-    db.add(
-        GigTransition(
-            gig_id=gig.id,
-            from_status=previous,
-            to_status=body.status,
-            actor_user_id=actor.user_id,
-            reason=body.reason,
+    if body.status == GigStatus.completed:
+        db.add(transition_gig(gig, GigStatus.completed, actor.user_id, reason=body.reason))
+    else:
+        gig.status = body.status
+        db.add(
+            GigTransition(
+                gig_id=gig.id,
+                from_status=previous,
+                to_status=body.status,
+                actor_user_id=actor.user_id,
+                reason=body.reason,
+            )
         )
-    )
     add_admin_audit_log(
         db,
         actor_user_id=actor.user_id,
@@ -1182,7 +1186,9 @@ def update_gig_status(
             payload={"gig_id": str(gig.id)},
             idempotency_key=f"raww:gig_completed:{gig.id}",
         )
-        succeeded_payments = list_succeeded_payments_for_gig(db, gig.id)
+        succeeded_payments = list_succeeded_payments_for_gig(
+            db, gig.id, kinds=[StripePaymentKind.base, StripePaymentKind.difference]
+        )
         if succeeded_payments:
             gross_eur = sum((p.amount for p in succeeded_payments), Decimal("0.00"))
             create_earnings_entry(

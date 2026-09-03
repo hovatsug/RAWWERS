@@ -23,12 +23,15 @@ build/
 .DS_Store
 **/.DS_Store
 
-# Flutter / Dart
+# Flutter / Dart (app/)
+**/build/
 .dart_tool/
-flutter/build/
-flutter/.idea/
-flutter/ios/Pods/
-flutter/ios/.symlinks/
+.flutter-plugins*
+ios/Pods/
+ios/.symlinks/
+android/local.properties
+*.iml
+.idea/
 
 # Claude Code local settings
 .claude/
@@ -42,6 +45,3 @@ __pycache__/
 .env.*
 !.env.example
 !.env.*.example
-
-# Android
-local.properties

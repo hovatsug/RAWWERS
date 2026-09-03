@@ -6,11 +6,13 @@ or a client's bookings. The tests below cover the parts most likely to
 break quietly - scoping, filters, and the keyset cursor.
 """
 
+import base64
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.models.booking import BookingRequest, BookingRequestStatus, ProPackage
+from app.models.communication import Notification, NotificationSeverity, NotificationStatus
 from app.models.gig import Gig, GigStatus
 from app.models.niche import Niche
 
@@ -161,12 +163,19 @@ def test_cursor_pagination_returns_every_row_exactly_once_despite_identical_time
     assert len(set(seen)) == 5, "a row was returned on more than one page"
 
 
-def test_malformed_cursor_restarts_rather_than_erroring(client, db_session):
+def test_malformed_cursor_is_rejected_rather_than_silently_ignored(client, db_session):
+    # Ignoring it would return page one with a 200 and a fresh next_cursor,
+    # so a client looping until the cursor is null loops forever over the
+    # first page - a silent infinite loop instead of one obvious error.
     _seed_request(db_session, pro_id=PRO_A, client_id=CLIENT_A)
 
     resp = client.get("/v1/booking-requests", params={"cursor": "not-a-real-cursor"}, headers={"X-User-Id": PRO_A})
-    assert resp.status_code == 200
-    assert len(resp.json()["items"]) == 1
+    assert resp.status_code == 422
+
+    # A cursor that decodes but has no id component is malformed too - it is
+    # exactly what an old timestamp-only cursor looks like.
+    stale = base64.urlsafe_b64encode(_now().isoformat().encode()).decode()
+    assert client.get("/v1/booking-requests", params={"cursor": stale}, headers={"X-User-Id": PRO_A}).status_code == 422
 
 
 def test_gigs_are_visible_to_both_sides_of_the_same_gig(client, db_session):
@@ -234,3 +243,86 @@ def test_client_booking_row_rolls_up_gig_status(client, db_session):
     item = client.get("/v1/client/bookings", headers={"X-User-Id": CLIENT_A}).json()["items"][0]
     assert item["gig_id"] == str(gig.id)
     assert item["gig_status"] == "paid"
+
+
+# --- GET /v1/me/notifications -------------------------------------------
+#
+# Retrofitted onto the same keyset helper. It previously keyed on created_at
+# alone, which is not a total ordering, and swallowed a bad cursor.
+
+
+def _seed_notification(db_session, *, user_id: str, title: str, created_at: datetime) -> Notification:
+    row = Notification(
+        user_id=uuid.UUID(user_id),
+        topic="booking",
+        type="booking.requested",
+        title=title,
+        body="A client requested a booking.",
+        action={},
+        severity=NotificationSeverity.info,
+        status=NotificationStatus.unread,
+    )
+    db_session.add(row)
+    db_session.flush()
+    row.created_at = created_at
+    db_session.commit()
+    return row
+
+
+def test_notifications_paginate_without_skipping_a_batch(client, db_session):
+    # dispatch_outbox_events processes a batch inside one transaction, so
+    # every notification in a batch lands on the same created_at. That made
+    # the old timestamp-only cursor skip rows systematically, not rarely.
+    batch_stamp = _now() - timedelta(minutes=5)
+    for i in range(5):
+        _seed_notification(db_session, user_id=PRO_A, title=f"Request {i}", created_at=batch_stamp)
+
+    seen: list[str] = []
+    cursor = None
+    for _ in range(10):
+        params = {"limit": 2}
+        if cursor:
+            params["cursor"] = cursor
+        body = client.get("/v1/me/notifications", params=params, headers={"X-User-Id": PRO_A}).json()
+        seen.extend(item["id"] for item in body["items"])
+        cursor = body["next_cursor"]
+        if not cursor:
+            break
+
+    assert cursor is None, "pagination did not terminate"
+    assert len(seen) == 5, f"expected all 5 notifications across pages, saw {len(seen)}"
+    assert len(set(seen)) == 5, "a notification was served on more than one page"
+
+
+def test_notifications_reject_a_malformed_cursor(client, db_session):
+    _seed_notification(db_session, user_id=PRO_A, title="Request", created_at=_now())
+
+    resp = client.get("/v1/me/notifications", params={"cursor": "garbage"}, headers={"X-User-Id": PRO_A})
+    assert resp.status_code == 422
+
+    # The old cursor format was a bare ISO timestamp. A client holding one
+    # across the deploy must get a clear error, not silently re-read page one.
+    legacy = _now().isoformat()
+    assert client.get("/v1/me/notifications", params={"cursor": legacy}, headers={"X-User-Id": PRO_A}).status_code == 422
+
+
+def test_notifications_unread_filter_still_applies_across_pages(client, db_session):
+    stamp = _now() - timedelta(minutes=5)
+    rows = [_seed_notification(db_session, user_id=PRO_A, title=f"N{i}", created_at=stamp) for i in range(4)]
+    rows[0].read_at = _now()
+    rows[1].read_at = _now()
+    db_session.commit()
+
+    body = client.get("/v1/me/notifications", params={"unread_only": True, "limit": 1}, headers={"X-User-Id": PRO_A}).json()
+    seen = [item["id"] for item in body["items"]]
+    cursor = body["next_cursor"]
+    while cursor:
+        body = client.get(
+            "/v1/me/notifications",
+            params={"unread_only": True, "limit": 1, "cursor": cursor},
+            headers={"X-User-Id": PRO_A},
+        ).json()
+        seen.extend(item["id"] for item in body["items"])
+        cursor = body["next_cursor"]
+
+    assert len(seen) == 2, "the unread filter must survive pagination, not just the first page"

@@ -28,6 +28,7 @@ from app.models.communication import (
 )
 from app.services.metrics import increment_notification_event
 from app.services.outbox import enqueue_outbox_event
+from app.services.pagination import apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.i18n import DEFAULT_LOCALE, get_user_locale_preference, t
 
@@ -392,20 +393,24 @@ def list_notifications(
     limit: int,
     cursor: str | None,
 ) -> tuple[list[Notification], str | None]:
+    """Newest-first page of the user's notifications.
+
+    Uses the shared keyset helper rather than its own cursor logic. The
+    previous implementation keyed on `created_at` alone and filtered with a
+    strict `<`, which is not a total ordering: `dispatch_outbox_events`
+    processes a whole batch inside one transaction, so every notification in
+    a batch shares effectively the same `created_at`, and the rows tied at a
+    page boundary were skipped entirely rather than just the one already
+    returned. Batch delivery made that systematic, not occasional. It also
+    swallowed an unparseable cursor and silently re-served page one; the
+    helper now rejects that with a 422.
+    """
     query = select(Notification).where(Notification.user_id == user_id)
     if unread_only:
         query = query.where(Notification.read_at.is_(None))
-    if cursor:
-        try:
-            cursor_dt = datetime.fromisoformat(cursor)
-            if cursor_dt.tzinfo is None:
-                cursor_dt = cursor_dt.replace(tzinfo=timezone.utc)
-            query = query.where(Notification.created_at < cursor_dt)
-        except ValueError:
-            pass
-    rows = db.execute(query.order_by(Notification.created_at.desc()).limit(max(1, min(100, limit)))).scalars().all()
-    next_cursor = rows[-1].created_at.isoformat() if rows else None
-    return rows, next_cursor
+
+    rows = list(db.execute(apply_keyset(query, Notification, cursor, limit)).scalars().all())
+    return build_page(rows, limit)
 
 
 def resend_email_message(db: Session, message: EmailMessage) -> None:

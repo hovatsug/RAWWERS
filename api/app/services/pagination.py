@@ -28,6 +28,8 @@ from typing import Any, NamedTuple
 from sqlalchemy import and_, or_
 from sqlalchemy.sql import Select
 
+from app.core.errors import APIError
+
 MAX_LIMIT = 100
 DEFAULT_LIMIT = 20
 
@@ -43,23 +45,32 @@ def encode_cursor(created_at: datetime, row_id: uuid.UUID) -> str:
 
 
 def decode_cursor(cursor: str | None) -> Cursor | None:
-    """Returns None for anything unparseable.
+    """Rejects an unparseable cursor with a 422 rather than ignoring it.
 
-    A malformed cursor means "start from the beginning", never a 500. It is
-    almost always a truncated URL or a stale client, and failing the whole
-    request over it helps nobody.
+    Silently treating a malformed cursor as "no cursor" is worse than it
+    sounds: the caller asked for the page *after* something, and gets page
+    one back with a 200 and a fresh `next_cursor`. A client looping until
+    the cursor is null then loops forever over the first page, and a
+    truncated or stale cursor looks like duplicated data rather than a bug.
+    Failing loudly turns a silent infinite loop into one obvious error.
     """
     if not cursor:
         return None
     try:
         raw = base64.urlsafe_b64decode(cursor.encode()).decode()
-        stamp, _, row_id = raw.partition("|")
+        stamp, sep, row_id = raw.partition("|")
+        if not sep:
+            raise ValueError("cursor is missing its id component")
         parsed = datetime.fromisoformat(stamp)
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         return Cursor(created_at=parsed, id=uuid.UUID(row_id))
-    except (ValueError, binascii.Error, UnicodeDecodeError):
-        return None
+    except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
+        raise APIError(
+            code="validation_error",
+            message="Invalid pagination cursor. Omit the cursor to start from the first page.",
+            status_code=422,
+        ) from exc
 
 
 def clamp_limit(limit: int | None) -> int:

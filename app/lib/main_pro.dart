@@ -13,15 +13,15 @@ void main() {
   );
 }
 
-class RawwersProApp extends StatelessWidget {
+class RawwersProApp extends ConsumerWidget {
   const RawwersProApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'RAWWERS Pro',
       theme: buildProTheme(),
-      routerConfig: proRouter,
+      routerConfig: ref.watch(proRouterProvider),
     );
   }
 }

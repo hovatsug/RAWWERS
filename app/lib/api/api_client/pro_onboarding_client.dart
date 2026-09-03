@@ -1651,6 +1651,108 @@ abstract class ProOnboardingClient {
       },
     },
   });
+  @GET("/v1/booking-requests")
+  Future<HttpResponse<BookingRequestListResponse>>
+  listBookingRequestsV1BookingRequestsGet({
+    @Query("status") required BookingRequestStatus? status,
+    @Query("cursor") required String? cursor,
+    @Query("limit") int limit = 20,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'List Booking Requests',
+      'description':
+          'The authenticated pro\'s own booking requests, newest first.\n\nScoped to `pro_user_id` only. The client side of the same underlying\nrows is served by `GET /v1/client/bookings`, which returns a different\nshape (booking/gig/payment status rolled together) because the two\naudiences are answering different questions: a pro asks "what needs my\ndecision", a client asks "where is my booking up to".',
+      'operationId': 'list_booking_requests_v1_booking_requests_get',
+      'parameters': [
+        {
+          'name': 'status',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'\$ref': '#/components/schemas/BookingRequestStatus'},
+              {'type': 'null'},
+            ],
+            'title': 'Status',
+          },
+        },
+        {
+          'name': 'cursor',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Cursor',
+          },
+        },
+        {
+          'name': 'limit',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'integer',
+            'maximum': 100,
+            'minimum': 1,
+            'default': 20,
+            'title': 'Limit',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/BookingRequestListResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/booking-requests/{request_id}")
   Future<HttpResponse<BookingRequestView>>
   getBookingRequestV1BookingRequestsRequestIdGet({

@@ -743,6 +743,146 @@ class _ClientLaunchClient implements ClientLaunchClient {
   }
 
   @override
+  Future<HttpResponse<ClientBookingListResponse>>
+  listClientBookingsV1ClientBookingsGet({
+    required BookingRequestStatus? status,
+    required String? cursor,
+    int limit = 20,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'List Client Bookings',
+      'description':
+          'The authenticated client\'s own bookings, newest first.\n\nEach row rolls up booking status with the gig and payment status the\ndetail route leads with, because "where is my booking up to" is not\nanswerable from the booking row alone - an accepted request that hasn\'t\nbeen paid for and one that\'s been shot look identical there.\n\nThe gig and payment lookups are batched across the whole page rather\nthan done per row. `_find_gig_by_booking_request` (used by the detail\nroute, where it runs once) loads every gig in the table and scans it in\nPython; calling that per row would make one list request a full table\nscan per booking. Here the gig query is scoped to this client\'s own\ngigs and joined in memory by booking id.',
+      'operationId': 'list_client_bookings_v1_client_bookings_get',
+      'parameters': [
+        {
+          'name': 'status',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'\$ref': '#/components/schemas/BookingRequestStatus'},
+              {'type': 'null'},
+            ],
+            'title': 'Status',
+          },
+        },
+        {
+          'name': 'cursor',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Cursor',
+          },
+        },
+        {
+          'name': 'limit',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'integer',
+            'maximum': 100,
+            'minimum': 1,
+            'default': 20,
+            'title': 'Limit',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ClientBookingListResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{
+      r'status': status?.toJson(),
+      r'cursor': cursor,
+      r'limit': limit,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ClientBookingListResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/client/bookings',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ClientBookingListResponse _value;
+    try {
+      _value = ClientBookingListResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<ClientBookingStatusResponse>>
   clientBookingStatusV1ClientBookingsBookingIdGet({
     required String bookingId,

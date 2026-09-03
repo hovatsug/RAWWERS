@@ -120,6 +120,171 @@ class _GigsClient implements GigsClient {
   }
 
   @override
+  Future<HttpResponse<GigListResponse>> listGigsV1GigsGet({
+    required GigStatus? status,
+    required DateTime? scheduledFrom,
+    required DateTime? scheduledTo,
+    required String? cursor,
+    int limit = 20,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['gigs'],
+      'summary': 'List Gigs',
+      'description':
+          'Gigs the caller is party to, newest first.\n\nScoped by participation rather than by role: a gig has exactly one pro\nand one client, so `pro_user_id == me OR client_user_id == me` returns\neach side its own gigs from one route, mirroring `_ensure_gig_access` on\nthe detail route. No role lookup is needed and a user who is both a pro\nand a client (the common case - every pro registers as a client first)\ncorrectly sees both sides.\n\nThe date range filters on `scheduled_start`, which is the field a\ncalendar screen orders by, and is nullable: an unscheduled gig has no\ndate, so passing either bound excludes gigs that aren\'t scheduled yet.\nOrdering stays on `created_at` regardless, so the keyset cursor remains\ntotal and stable across pages.',
+      'operationId': 'list_gigs_v1_gigs_get',
+      'parameters': [
+        {
+          'name': 'status',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'\$ref': '#/components/schemas/GigStatus'},
+              {'type': 'null'},
+            ],
+            'title': 'Status',
+          },
+        },
+        {
+          'name': 'scheduled_from',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string', 'format': 'date-time'},
+              {'type': 'null'},
+            ],
+            'title': 'Scheduled From',
+          },
+        },
+        {
+          'name': 'scheduled_to',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string', 'format': 'date-time'},
+              {'type': 'null'},
+            ],
+            'title': 'Scheduled To',
+          },
+        },
+        {
+          'name': 'cursor',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Cursor',
+          },
+        },
+        {
+          'name': 'limit',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'integer',
+            'maximum': 100,
+            'minimum': 1,
+            'default': 20,
+            'title': 'Limit',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/GigListResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{
+      r'status': status?.toJson(),
+      r'scheduled_from': scheduledFrom?.toIso8601String(),
+      r'scheduled_to': scheduledTo?.toIso8601String(),
+      r'cursor': cursor,
+      r'limit': limit,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<GigListResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/gigs',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late GigListResponse _value;
+    try {
+      _value = GigListResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<GigDetailResponse>> getGigV1GigsGigIdGet({
     required String gigId,
     required String? authorization,

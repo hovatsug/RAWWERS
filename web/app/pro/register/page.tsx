@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/store";
 import { Button, Card, Input } from "@/design-system/primitives";
-import { endpoints } from "@/lib/api/endpoints";
+import { auth } from "@/lib/api/auth";
 
 const Schema = z.object({ email: z.string().email(), password: z.string().min(8) });
 
@@ -15,17 +15,21 @@ export default function ProRegisterPage() {
   const [ok, setOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loginAndUpgradePro(inputEmail: string, inputPassword: string) {
-    const token = await endpoints.login(inputEmail, inputPassword);
-    await endpoints.upgradeToPro(token.access_token);
-    const me = await endpoints.me(token.access_token);
+  async function loginAndUpgradePro(inputEmail: string, inputPassword: string): Promise<boolean> {
+    const token = await auth.login(inputEmail, inputPassword);
+    if (!token.ok) return false;
+    const upgraded = await auth.upgradeToPro(token.data.access_token);
+    if (!upgraded.ok) return false;
+    const me = await auth.me(token.data.access_token);
+    if (!me.ok) return false;
     setSession({
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
-      roles: me.roles as any,
-      userId: me.user_id,
-      locale: me.locale || "en-GB",
+      accessToken: token.data.access_token,
+      refreshToken: token.data.refresh_token,
+      roles: me.data.roles as any,
+      userId: me.data.user_id,
+      locale: me.data.locale || "en-GB",
     });
+    return true;
   }
 
   async function onSubmit() {
@@ -33,18 +37,14 @@ export default function ProRegisterPage() {
     const parsed = Schema.safeParse({ email, password });
     if (!parsed.success) return setError("Invalid credentials format.");
 
-    try {
-      await endpoints.register(email, password);
-      await loginAndUpgradePro(email, password);
+    const registered = await auth.register(email, password);
+    // If registration failed (e.g. account already exists), fall through
+    // and try login + pro upgrade instead of failing outright.
+    const loggedIn = await loginAndUpgradePro(email, password);
+    if (loggedIn) {
       setOk(true);
-    } catch {
-      try {
-        // If account already exists, continue with login + pro upgrade.
-        await loginAndUpgradePro(email, password);
-        setOk(true);
-      } catch {
-        setError("Pro registration failed.");
-      }
+    } else {
+      setError(registered.ok ? "Pro registration failed." : registered.error.message || "Pro registration failed.");
     }
   }
 

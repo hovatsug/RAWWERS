@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { BottomSheet, Button, Card, EmptyState, Input } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { gigs } from "@/lib/api/gigs";
 
 export default function ProGigDeliveryPage() {
   const { gigId } = useParams<{ gigId: string }>();
@@ -13,8 +13,8 @@ export default function ProGigDeliveryPage() {
   const [galleryId, setGalleryId] = useState("");
   const [confirmPublish, setConfirmPublish] = useState(false);
 
-  const createGallery = useMutation({ mutationFn: () => proApi.createProofGalleryForGig(gigId, {}, accessToken) });
-  const publishGallery = useMutation({ mutationFn: () => proApi.publishProofGallery(galleryId, accessToken) });
+  const createGallery = useMutation({ mutationFn: () => gigs.createProofGalleryForGig(gigId, {}, accessToken) });
+  const publishGallery = useMutation({ mutationFn: () => gigs.publishProofGallery(galleryId, accessToken) });
 
   return (
     <div className="space-y-3">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Card, EmptyState } from "@/design-system/primitives";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
 import { useAuth } from "@/lib/auth/store";
 
 export default function ProInboxPage() {

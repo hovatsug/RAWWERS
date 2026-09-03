@@ -6,12 +6,12 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Card, EmptyState, Skeleton } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { clientApi } from "@/lib/api/clientApi";
+import { booking } from "@/lib/api/booking";
 
 export default function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { accessToken } = useAuth();
-  const bookingQ = useQuery({ queryKey: ["client", "booking", bookingId], queryFn: () => clientApi.getClientBooking(bookingId, accessToken), enabled: !!bookingId });
+  const bookingQ = useQuery({ queryKey: ["client", "booking", bookingId], queryFn: () => booking.getClientBooking(bookingId, accessToken), enabled: !!bookingId });
 
   if (bookingQ.isLoading) return <Skeleton className="h-24" />;
   if (!bookingQ.data?.ok) return <EmptyState title="Booking unavailable" />;

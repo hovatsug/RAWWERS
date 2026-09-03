@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { useState } from "react";
 import { Button, Card, Input } from "@/design-system/primitives";
-import { endpoints } from "@/lib/api/endpoints";
+import { auth } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/store";
 
 const Schema = z.object({ email: z.string().email(), password: z.string().min(8) });
@@ -19,30 +19,33 @@ export default function ProLoginPage() {
     const parsed = Schema.safeParse({ email, password });
     if (!parsed.success) return setError("Invalid credentials format.");
 
-    try {
-      const token = await endpoints.login(email, password);
-      let me = await endpoints.me(token.access_token);
-      if (!me.roles.includes("pro")) {
-        await endpoints.upgradeToPro(token.access_token);
-        me = await endpoints.me(token.access_token);
-      }
-      setSession({
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token,
-        roles: me.roles as any,
-        userId: me.user_id,
-        locale: me.locale || "en-GB",
-      });
+    const token = await auth.login(email, password);
+    if (!token.ok) return setError(token.error.message || "Pro login failed.");
 
-      if (!me.roles.includes("pro")) {
-        setError("Could not enable Pro role for this account.");
-        return;
-      }
+    let me = await auth.me(token.data.access_token);
+    if (!me.ok) return setError(me.error.message || "Pro login failed.");
 
-      window.location.assign("/pro/dashboard");
-    } catch {
-      setError("Pro login failed.");
+    if (!me.data.roles.includes("pro")) {
+      const upgraded = await auth.upgradeToPro(token.data.access_token);
+      if (!upgraded.ok) return setError(upgraded.error.message || "Could not enable Pro role for this account.");
+      me = await auth.me(token.data.access_token);
+      if (!me.ok) return setError(me.error.message || "Pro login failed.");
     }
+
+    setSession({
+      accessToken: token.data.access_token,
+      refreshToken: token.data.refresh_token,
+      roles: me.data.roles as any,
+      userId: me.data.user_id,
+      locale: me.data.locale || "en-GB",
+    });
+
+    if (!me.data.roles.includes("pro")) {
+      setError("Could not enable Pro role for this account.");
+      return;
+    }
+
+    window.location.assign("/pro/dashboard");
   }
 
   return (

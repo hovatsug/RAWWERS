@@ -4,15 +4,15 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, Card, EmptyState, Input } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { clientApi } from "@/lib/api/clientApi";
+import { discovery } from "@/lib/api/discovery";
 
 export default function WaitlistPage() {
   const { accessToken } = useAuth();
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
 
-  const accessQ = useQuery({ queryKey: ["client", "access"], queryFn: () => clientApi.getClientAccess(accessToken), enabled: !!accessToken });
-  const joinM = useMutation({ mutationFn: () => clientApi.joinWaitlist({ email, city }, accessToken) });
+  const accessQ = useQuery({ queryKey: ["client", "access"], queryFn: () => discovery.getClientAccess(accessToken), enabled: !!accessToken });
+  const joinM = useMutation({ mutationFn: () => discovery.joinWaitlist({ email, city }, accessToken) });
 
   if (!accessToken) return <EmptyState title="Login required" />;
 

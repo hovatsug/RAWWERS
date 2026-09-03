@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, EmptyState, Skeleton } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
 import { Flag } from "@/lib/flags/provider";
 
 export default function ProLeadsPage() {

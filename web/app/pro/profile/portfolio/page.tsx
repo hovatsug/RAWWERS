@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button, Card, EmptyState, Input, Textarea } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
+import { media } from "@/lib/api/media";
+import { trackEvent } from "@/lib/api/client";
 
 export default function ProPortfolioPage() {
   const { accessToken } = useAuth();
@@ -17,17 +19,17 @@ export default function ProPortfolioPage() {
   const createUploadM = useMutation({
     mutationFn: async () => {
       const payload = JSON.parse(uploadPayload) as Record<string, unknown>;
-      return proApi.createPhotoUpload(payload, accessToken);
+      return media.createPhotoUpload(payload, accessToken);
     },
     onSuccess: async () => {
-      await proApi.track("pro_gallery_items_added", { source: "web", stage: "upload_created" }, accessToken);
+      await trackEvent("pro_gallery_items_added", { source: "web", stage: "upload_created" }, accessToken);
     },
   });
 
   const completeUploadM = useMutation({
     mutationFn: async () => {
       const payload = JSON.parse(completePayload || "{}") as Record<string, unknown>;
-      return proApi.completePhotoUpload(mediaId, payload, accessToken);
+      return media.completePhotoUpload(mediaId, payload, accessToken);
     },
   });
 

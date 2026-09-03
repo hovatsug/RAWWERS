@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, EmptyState, Input, Skeleton } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { clientApi } from "@/lib/api/clientApi";
+import { discovery } from "@/lib/api/discovery";
 
 export default function SearchPage() {
   const { accessToken } = useAuth();
@@ -13,7 +13,7 @@ export default function SearchPage() {
   const [city, setCity] = useState("");
 
   const query = useMemo(() => ({ q: q || undefined, city: city || undefined, limit: 24 }), [q, city]);
-  const searchQ = useQuery({ queryKey: ["client", "search", query], queryFn: () => clientApi.searchPros(query, accessToken), staleTime: 30_000 });
+  const searchQ = useQuery({ queryKey: ["client", "search", query], queryFn: () => discovery.searchPros(query, accessToken), staleTime: 30_000 });
 
   return (
     <div className="space-y-4">

@@ -1,0 +1,6 @@
+// Flavor overrides for the client app. Included by Debug-client.xcconfig,
+// Release-client.xcconfig and Profile-client.xcconfig — never included directly
+// by a build configuration.
+PRODUCT_BUNDLE_IDENTIFIER = com.rawwers.client
+PRODUCT_NAME = RAWWERS
+FLUTTER_TARGET = lib/main_client.dart

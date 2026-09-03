@@ -68,6 +68,8 @@ Two schemes (`client`, `pro`), each with its own build configurations (`Debug-cl
 
 Product flavors `client` / `pro` in `android/app/build.gradle.kts`, same bundle-id split via `applicationId`, app label via a per-flavor `resValue`.
 
+**If an Android build fails with a bare version number as the error** (e.g. `* What went wrong: 25.0.3`, no other detail), that's not a flavor problem — it's Gradle failing to even start against a too-new JDK. A freshly installed Android Studio can bundle a JBR ahead of what your pinned Gradle wrapper supports (this repo's `gradle-wrapper.properties` is on Gradle 8.14, which tops out around JDK 24; AGP itself isn't validated past JDK 21/partial 24 as of writing — see [flutter/flutter#187223](https://github.com/flutter/flutter/issues/187223)). Fix: install a JDK 17 or 21 (`brew install openjdk@17`) and point Flutter at it — `flutter config --jdk-dir=$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home` — rather than bumping Gradle/AGP to chase the newest JDK.
+
 ## Money is decimal-string end to end, never a double
 
 The backend serializes every money field (`*_eur`, package `price`/`extra_photo_price`, etc.) as a pattern-constrained JSON string, specifically to avoid float-precision bugs. The generated API client mirrors that: money fields come out as `String`, not `num`/`double`. **Never parse them into a `double` for arithmetic** — a client-side total computed as `double` can silently drift from the backend's figure by a cent, and on this app that's a real charge. Any place the app computes a total itself (the selection gallery's live running total is the only one at MVP) must use a decimal-safe type (e.g. the `decimal` package) for that arithmetic, converting to/from the wire string only at the boundary.

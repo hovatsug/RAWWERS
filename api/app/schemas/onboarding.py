@@ -146,6 +146,29 @@ class BookingRequestView(BaseModel):
     expires_at: datetime
 
 
+class BookingRequestListItem(BookingRequestView):
+    """A list row is the detail view plus the two fields a queue screen needs.
+
+    `expires_at` is inherited from BookingRequestView and is the response
+    deadline: a pending request auto-declines when it passes (see
+    `app.tasks.scheduled.expire_booking_requests`). `seconds_until_expiry`
+    is derived here rather than left to the client because every client
+    would otherwise re-derive it against its own clock, and a phone with a
+    skewed clock would show a photographer the wrong time remaining on the
+    one decision the product gives them a deadline for. It is negative once
+    the deadline has passed, and null for any request no longer pending -
+    a declined request has no countdown.
+    """
+
+    created_at: datetime
+    seconds_until_expiry: int | None = None
+
+
+class BookingRequestListResponse(BaseModel):
+    items: list[BookingRequestListItem] = Field(default_factory=list)
+    next_cursor: str | None = None
+
+
 class BookingDecisionRequest(BaseModel):
     reason: str | None = None
 

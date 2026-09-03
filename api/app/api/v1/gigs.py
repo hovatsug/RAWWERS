@@ -5,11 +5,11 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 import stripe
-from fastapi import APIRouter, Depends
-from sqlalchemy import case, func, select
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, require_not_banned
+from app.api.deps import get_db_read_session, get_db_session, require_not_banned
 from app.core.config import Settings, get_settings
 from app.core.errors import APIError
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
@@ -21,6 +21,7 @@ from app.schemas.gig import (
     CreateRefundRequest,
     CreateRefundResponse,
     GigDetailResponse,
+    GigListResponse,
     GigResponse,
     LedgerSummary,
     PaymentSummary,
@@ -35,6 +36,7 @@ from app.services.payment_intents import (
 )
 from app.services.followups import schedule_followups
 from app.services.feature_flags import is_feature_enabled
+from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.rewards import reserve_points_for_discount
 from app.services.stripe_service import is_within_hours
@@ -97,6 +99,44 @@ def create_gig(
     db.commit()
     db.refresh(gig)
     return _gig_response(gig)
+
+
+@router.get("", response_model=GigListResponse)
+def list_gigs(
+    status: GigStatus | None = Query(default=None),
+    scheduled_from: datetime | None = Query(default=None),
+    scheduled_to: datetime | None = Query(default=None),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_read_session),
+) -> GigListResponse:
+    """Gigs the caller is party to, newest first.
+
+    Scoped by participation rather than by role: a gig has exactly one pro
+    and one client, so `pro_user_id == me OR client_user_id == me` returns
+    each side its own gigs from one route, mirroring `_ensure_gig_access` on
+    the detail route. No role lookup is needed and a user who is both a pro
+    and a client (the common case - every pro registers as a client first)
+    correctly sees both sides.
+
+    The date range filters on `scheduled_start`, which is the field a
+    calendar screen orders by, and is nullable: an unscheduled gig has no
+    date, so passing either bound excludes gigs that aren't scheduled yet.
+    Ordering stays on `created_at` regardless, so the keyset cursor remains
+    total and stable across pages.
+    """
+    query = select(Gig).where(or_(Gig.pro_user_id == user.user_id, Gig.client_user_id == user.user_id))
+    if status is not None:
+        query = query.where(Gig.status == status)
+    if scheduled_from is not None:
+        query = query.where(Gig.scheduled_start.is_not(None), Gig.scheduled_start >= scheduled_from)
+    if scheduled_to is not None:
+        query = query.where(Gig.scheduled_start.is_not(None), Gig.scheduled_start <= scheduled_to)
+
+    rows = db.execute(apply_keyset(query, Gig, cursor, limit)).scalars().all()
+    page, next_cursor = build_page(list(rows), limit)
+    return GigListResponse(items=[_gig_response(row) for row in page], next_cursor=next_cursor)
 
 
 @router.get("/{gig_id}", response_model=GigDetailResponse)

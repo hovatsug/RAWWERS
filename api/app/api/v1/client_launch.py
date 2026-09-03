@@ -25,6 +25,8 @@ from app.schemas.client_launch import (
     ClientBookingPayResponse,
     ClientBookingRequestCreateRequest,
     ClientBookingRequestCreateResponse,
+    ClientBookingListItem,
+    ClientBookingListResponse,
     ClientBookingStatusResponse,
     ClientDiscoverCard,
     ClientDiscoverResponse,
@@ -47,6 +49,7 @@ from app.services.feature_flags import is_feature_enabled
 from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.models.risk import RiskActionType
 from app.services.trust_safety import (
@@ -406,6 +409,77 @@ def client_booking_request(
     evaluate_booking_spam_rule(db, user_id=user.user_id)
     db.commit()
     return ClientBookingRequestCreateResponse(booking_id=booking.id, status=booking.status.value)
+
+
+@router.get("/client/bookings", response_model=ClientBookingListResponse)
+def list_client_bookings(
+    status: BookingRequestStatus | None = Query(default=None),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_read_session),
+) -> ClientBookingListResponse:
+    """The authenticated client's own bookings, newest first.
+
+    Each row rolls up booking status with the gig and payment status the
+    detail route leads with, because "where is my booking up to" is not
+    answerable from the booking row alone - an accepted request that hasn't
+    been paid for and one that's been shot look identical there.
+
+    The gig and payment lookups are batched across the whole page rather
+    than done per row. `_find_gig_by_booking_request` (used by the detail
+    route, where it runs once) loads every gig in the table and scans it in
+    Python; calling that per row would make one list request a full table
+    scan per booking. Here the gig query is scoped to this client's own
+    gigs and joined in memory by booking id.
+    """
+    query = select(BookingRequest).where(BookingRequest.client_user_id == user.user_id)
+    if status is not None:
+        query = query.where(BookingRequest.status == status)
+
+    rows = list(db.execute(apply_keyset(query, BookingRequest, cursor, limit)).scalars().all())
+    page, next_cursor = build_page(rows, limit)
+    if not page:
+        return ClientBookingListResponse(items=[], next_cursor=None)
+
+    booking_ids = {str(row.id) for row in page}
+    client_gigs = db.execute(select(Gig).where(Gig.client_user_id == user.user_id)).scalars().all()
+    gig_by_booking = {
+        (gig.meta or {}).get("booking_request_id"): gig
+        for gig in client_gigs
+        if (gig.meta or {}).get("booking_request_id") in booking_ids
+    }
+
+    payment_by_gig: dict[uuid.UUID, StripePayment] = {}
+    gig_ids = [gig.id for gig in gig_by_booking.values()]
+    if gig_ids:
+        payments = db.execute(
+            select(StripePayment).where(
+                StripePayment.gig_id.in_(gig_ids),
+                StripePayment.kind == StripePaymentKind.base,
+            )
+        ).scalars().all()
+        payment_by_gig = {payment.gig_id: payment for payment in payments}
+
+    items = []
+    for row in page:
+        gig = gig_by_booking.get(str(row.id))
+        payment = payment_by_gig.get(gig.id) if gig else None
+        items.append(
+            ClientBookingListItem(
+                booking_id=row.id,
+                booking_status=row.status.value,
+                gig_id=gig.id if gig else None,
+                gig_status=gig.status.value if gig else None,
+                payment_status=payment.status.value if payment else None,
+                requested_start=row.requested_start,
+                requested_end=row.requested_end,
+                location_text=row.location_text,
+                expires_at=row.expires_at,
+                created_at=row.created_at,
+            )
+        )
+    return ClientBookingListResponse(items=items, next_cursor=next_cursor)
 
 
 @router.get("/client/bookings/{booking_id}", response_model=ClientBookingStatusResponse)

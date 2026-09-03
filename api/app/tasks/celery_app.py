@@ -15,6 +15,15 @@ settings = get_settings()
 celery_app = Celery("rawwers_media", broker=settings.redis_url, backend=settings.redis_url)
 celery_app.conf.task_default_queue = "media"
 celery_app.conf.beat_schedule = {
+    # Drains the transactional outbox. Without this entry the only callers
+    # of dispatch_outbox_events are the Stripe and Mux webhook handlers, so
+    # every email and every in-app notification sat pending until an
+    # unrelated payment webhook happened to flush the queue - which is why
+    # verification emails and the notification feed were both silent.
+    "dispatch-outbox-events": {
+        "task": "app.tasks.outbox_tasks.dispatch_outbox_events",
+        "schedule": timedelta(seconds=settings.outbox_dispatch_interval_seconds),
+    },
     "expire-booking-requests": {
         "task": "app.tasks.scheduled.expire_booking_requests",
         "schedule": timedelta(seconds=settings.booking_request_expiry_sweep_interval_seconds),

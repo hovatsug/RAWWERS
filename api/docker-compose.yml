@@ -50,3 +50,19 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+
+  # beat_schedule only does something if a beat process is actually running
+  # to publish the periodic tasks. Without this service the schedule is
+  # inert config: the worker sits idle, the outbox never drains, and every
+  # other sweep (booking-request expiry, payout holds, dispute escalation)
+  # silently never fires either.
+  beat:
+    build: .
+    env_file:
+      - .env
+    command: celery -A app.tasks.celery_app.celery_app beat -l info
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy

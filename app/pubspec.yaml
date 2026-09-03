@@ -37,12 +37,20 @@ dependencies:
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
   go_router: ^17.5.0
+  dio: ^5.11.0
+  retrofit: 4.6.0
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   riverpod_generator: ^2.6.1
-  build_runner: ^2.4.13
+  build_runner: ^2.5.2
+  swagger_to_dart: ^4.3.0
+  freezed: ^3.0.6
+  json_serializable: ^6.9.0
+  retrofit_generator: ^9.7.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

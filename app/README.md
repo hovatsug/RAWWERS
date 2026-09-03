@@ -48,6 +48,8 @@ dart run build_runner build --delete-conflicting-outputs
 
 Generated `*.g.dart` files are committed.
 
+**Riverpod is pinned to 2.6.1** (`flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`) — deliberately, not just "not yet updated." The latest `riverpod_annotation` (4.x) has no `riverpod_generator` release that resolves against this Flutter SDK's pinned `meta`/Dart version (`flutter pub add` fails version solving). Don't bump these past `2.6.1` without first confirming a compatible `riverpod_generator` exists for the Flutter version in use.
+
 ## Flavor isolation
 
 `features/client/` and `features/pro/` must never import from each other — enforced, not just conventional:
@@ -65,3 +67,9 @@ Two schemes (`client`, `pro`), each with its own build configurations (`Debug-cl
 ## Android flavor setup
 
 Product flavors `client` / `pro` in `android/app/build.gradle.kts`, same bundle-id split via `applicationId`, app label via a per-flavor `resValue`.
+
+## Money is decimal-string end to end, never a double
+
+The backend serializes every money field (`*_eur`, package `price`/`extra_photo_price`, etc.) as a pattern-constrained JSON string, specifically to avoid float-precision bugs. The generated API client mirrors that: money fields come out as `String`, not `num`/`double`. **Never parse them into a `double` for arithmetic** — a client-side total computed as `double` can silently drift from the backend's figure by a cent, and on this app that's a real charge. Any place the app computes a total itself (the selection gallery's live running total is the only one at MVP) must use a decimal-safe type (e.g. the `decimal` package) for that arithmetic, converting to/from the wire string only at the boundary.
+
+A few request bodies (`ProPackageCreateRequest.price`/`extra_photo_price`, `PayoutRequestCreateRequest.amount_eur`, `CreateGigRequest.amount_total`) accept either a number or a string on the way in — the generator can't type these safely (see F-3's hand-written wrappers around exactly these fields). Feature code must go through those wrappers, never the raw generated field, so a value can't accidentally get sent as a `double`.

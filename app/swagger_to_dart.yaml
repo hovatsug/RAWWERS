@@ -1,0 +1,3 @@
+swagger_to_dart:
+  input_directory: openapi/schema.filtered.json
+  output_directory: lib/api

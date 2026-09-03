@@ -165,9 +165,16 @@ jobs:
 
   flutter:
     runs-on: ubuntu-latest
+    needs: backend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download OpenAPI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-openapi
+          path: api
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -178,6 +185,14 @@ jobs:
       - name: Flutter pub get
         working-directory: app
         run: flutter pub get
+
+      - name: OpenAPI contract check
+        working-directory: app
+        env:
+          OPENAPI_SOURCE: ../api/openapi.ci.json
+        run: |
+          make gen-api
+          git diff --exit-code -- lib/api openapi/schema.filtered.json
 
       - name: Flutter analyze
         working-directory: app

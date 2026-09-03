@@ -300,7 +300,7 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
             niche_id=None,
             status=GigStatus.proofs_delivered,
             currency="EUR",
-            amount_total=Decimal("180.00"),
+            amount_minimum=Decimal("180.00"),
             amount_platform_fee=Decimal("36.00"),
             amount_pro_gross=Decimal("144.00"),
             scheduled_start=_now() - timedelta(days=3),

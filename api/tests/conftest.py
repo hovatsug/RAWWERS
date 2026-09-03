@@ -1,6 +1,7 @@
 import os
 import uuid
 from collections.abc import Generator
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,13 +11,24 @@ from sqlalchemy.orm import Session, sessionmaker
 os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("LOG_LEVEL", "DEBUG")
 # Deliberately not SQLite: production runs Postgres, and several models use
-# Postgres-only types (e.g. JSONB) that SQLite can't compile at all. This
-# default is a distinct database from the "rawwers" name used by local dev
-# (api/docker-compose.yml) and CI, specifically so a stray local test run
-# can't drop_all() a developer's real dev data - create it once with
-# `createdb rawwers_test` (or point DATABASE_URL elsewhere) before running
-# tests locally outside CI.
-os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers_test")
+# Postgres-only types (e.g. JSONB) that SQLite can't compile at all.
+#
+# This is an override, not a setdefault. It used to be a setdefault, whose
+# stated purpose was to stop a stray test run from drop_all()-ing a
+# developer's real dev data - but setdefault only takes effect when
+# DATABASE_URL is *unset*, and the environment where that protection
+# actually matters is precisely the one where it is always set: inside the
+# api container, or any shell with a dev .env loaded. The guard was a no-op
+# exactly when it was needed, and running `pytest` inside the api container
+# dropped every table in the local dev database.
+#
+# To point the suite at a different database, set TEST_DATABASE_URL. That
+# is a separate variable on purpose: it cannot be set accidentally by
+# sourcing an app env file, so the escape hatch can't reintroduce the bug.
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers_test",
+)
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("R2_ENDPOINT_URL", "https://example.r2.cloudflarestorage.com")
 os.environ.setdefault("R2_ACCESS_KEY_ID", "test")
@@ -65,6 +77,33 @@ from app.main import app
 from app.services.niche_catalog import ensure_initial_niches
 
 _database_url = os.environ["DATABASE_URL"]
+
+
+def _assert_safe_to_drop(url: str) -> None:
+    """Refuse to run at all unless the target database is clearly a test one.
+
+    The `setup_database` fixture calls `Base.metadata.drop_all()` on every
+    single test. That is unrecoverable against a real database, so it must
+    not be gated on an environment variable being right - env vars are
+    exactly what was wrong the last time this destroyed a dev database.
+    This is a structural check on the resolved connection string, and it
+    fails collection rather than skipping, because a suite that silently
+    declines to run reads as a green build.
+    """
+    if url.startswith("sqlite"):
+        return
+    name = urlsplit(url).path.lstrip("/").split("?")[0]
+    if not name.endswith("_test"):
+        raise RuntimeError(
+            f"Refusing to run: the test suite drops every table on each test, and the target "
+            f"database {name!r} is not named '*_test'. Resolved from DATABASE_URL={url!r}. "
+            f"Create a dedicated database (e.g. `createdb rawwers_test`) and point the suite at "
+            f"it with TEST_DATABASE_URL, rather than running against a dev or production database."
+        )
+
+
+_assert_safe_to_drop(_database_url)
+
 _connect_args = {"check_same_thread": False} if _database_url.startswith("sqlite") else {}
 engine = create_engine(_database_url, connect_args=_connect_args)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)

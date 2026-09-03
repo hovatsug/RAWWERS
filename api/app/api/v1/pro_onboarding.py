@@ -4,11 +4,11 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, require_admin, require_not_banned
+from app.api.deps import get_db_read_session, get_db_session, require_admin, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import KYCStatus, ProProfile, UserRoleType
@@ -39,6 +39,8 @@ from app.schemas.onboarding import (
     BlackoutView,
     BookingDecisionRequest,
     BookingRequestCreateRequest,
+    BookingRequestListItem,
+    BookingRequestListResponse,
     BookingRequestView,
     ProActivateResponse,
     ProPackageCreateRequest,
@@ -62,6 +64,7 @@ from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
 from app.services.package_pricing import compute_minimum_amount, enforce_entry_price_cap
+from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.scheduling import expire_pending_booking_requests
 from app.services.payment_intents import create_or_get_gig_payment_intent
@@ -811,6 +814,35 @@ def create_booking_request(
     return _booking_request_view(request)
 
 
+@router.get("/booking-requests", response_model=BookingRequestListResponse)
+def list_booking_requests(
+    status: BookingRequestStatus | None = Query(default=None),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_read_session),
+) -> BookingRequestListResponse:
+    """The authenticated pro's own booking requests, newest first.
+
+    Scoped to `pro_user_id` only. The client side of the same underlying
+    rows is served by `GET /v1/client/bookings`, which returns a different
+    shape (booking/gig/payment status rolled together) because the two
+    audiences are answering different questions: a pro asks "what needs my
+    decision", a client asks "where is my booking up to".
+    """
+    query = select(BookingRequest).where(BookingRequest.pro_user_id == user.user_id)
+    if status is not None:
+        query = query.where(BookingRequest.status == status)
+
+    rows = db.execute(apply_keyset(query, BookingRequest, cursor, limit)).scalars().all()
+    page, next_cursor = build_page(list(rows), limit)
+    now = datetime.now(timezone.utc)
+    return BookingRequestListResponse(
+        items=[_booking_request_list_item(row, now=now) for row in page],
+        next_cursor=next_cursor,
+    )
+
+
 @router.get("/booking-requests/{request_id}", response_model=BookingRequestView)
 def get_booking_request(
     request_id: uuid.UUID,
@@ -1131,6 +1163,33 @@ def _validate_availability(db: Session, pro_user_id: uuid.UUID, start: datetime,
     ).scalar_one_or_none()
     if overlap:
         raise APIError(code="validation_error", message="Requested time overlaps blackout", status_code=409)
+
+
+def _booking_request_list_item(request: BookingRequest, *, now: datetime) -> BookingRequestListItem:
+    # Only a pending request has a live countdown - once it's accepted,
+    # declined, expired or cancelled the deadline is history, and sending a
+    # number would invite a UI that counts down on a settled request.
+    seconds_left: int | None = None
+    if request.status == BookingRequestStatus.pending:
+        expires_at = request.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        seconds_left = int((expires_at - now).total_seconds())
+
+    return BookingRequestListItem(
+        id=request.id,
+        pro_user_id=request.pro_user_id,
+        client_user_id=request.client_user_id,
+        package_id=request.package_id,
+        requested_start=request.requested_start,
+        requested_end=request.requested_end,
+        location_text=request.location_text,
+        notes=request.notes,
+        status=request.status,
+        expires_at=request.expires_at,
+        created_at=request.created_at,
+        seconds_until_expiry=seconds_left,
+    )
 
 
 def _booking_request_view(request: BookingRequest) -> BookingRequestView:

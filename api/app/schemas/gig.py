@@ -56,6 +56,20 @@ class GigDetailResponse(BaseModel):
     ledger_summary: LedgerSummary
 
 
+class GigListResponse(BaseModel):
+    """Deliberately GigResponse rows, not GigDetailResponse rows.
+
+    The detail view attaches a payment summary and a ledger aggregate, both
+    of which are per-gig queries; returning them for a page of gigs would be
+    an N+1 on the most-hit screen in the pro app. A list row carries what a
+    list actually renders - status, schedule, money - and the detail route
+    stays the way to get the rest.
+    """
+
+    items: list[GigResponse] = Field(default_factory=list)
+    next_cursor: str | None = None
+
+
 class CreatePaymentIntentRequest(BaseModel):
     payment_method_types: list[str] = Field(default_factory=lambda: ["card"])
     return_url: str | None = None

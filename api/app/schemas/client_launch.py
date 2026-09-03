@@ -151,6 +151,33 @@ class ClientBookingStatusResponse(BaseModel):
     next_actions: list[str] = Field(default_factory=list)
 
 
+class ClientBookingListItem(BaseModel):
+    """Summary row for the client's bookings list.
+
+    Carries the same booking/gig/payment status triple the detail route
+    leads with, so a list row and a detail header agree, but omits
+    `timeline` and `next_actions`: both are computed per booking (the
+    timeline is a second query for transitions) and neither is rendered in
+    a list. The detail route remains the way to get them.
+    """
+
+    booking_id: uuid.UUID
+    booking_status: str
+    gig_id: uuid.UUID | None = None
+    gig_status: str | None = None
+    payment_status: str | None = None
+    requested_start: datetime
+    requested_end: datetime
+    location_text: str | None = None
+    expires_at: datetime
+    created_at: datetime
+
+
+class ClientBookingListResponse(BaseModel):
+    items: list[ClientBookingListItem] = Field(default_factory=list)
+    next_cursor: str | None = None
+
+
 class ClientBookingPayRequest(BaseModel):
     payment_mode: str = Field(pattern="^(full|deposit)$")
     points_to_spend: int | None = Field(default=None, ge=1)

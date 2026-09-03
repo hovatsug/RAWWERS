@@ -12,6 +12,7 @@ from app.core.errors import APIError
 from app.models.admin import UserRoleType
 from app.models.repair import (
     GearBenefitOverride,
+    GearCategory,
     GearItem,
     LoanerRequest,
     LoanerRequestStatus,

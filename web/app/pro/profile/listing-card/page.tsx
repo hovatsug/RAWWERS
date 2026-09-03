@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Badge, BottomSheet, Button, Card, EmptyState, Input, Tabs } from "@/design-system/primitives";
 import { ProListingCard } from "@/components/discover/pro-listing-card";
-import { endpoints } from "@/lib/api/endpoints";
+import { pro as proApi } from "@/lib/api/pro";
+import { discovery } from "@/lib/api/discovery";
 import { useAuth } from "@/lib/auth/store";
 
 function normalizeTags(tags: string[]) {
@@ -19,52 +20,56 @@ export default function ListingCardEditorPage() {
   const [previewMode, setPreviewMode] = useState<"list" | "grid">("list");
   const [verifyOpen, setVerifyOpen] = useState(false);
 
-  const profileQ = useQuery({ queryKey: ["my-pro-profile"], queryFn: () => endpoints.myProProfile(accessToken), enabled: !!accessToken });
-  const nichesQ = useQuery({ queryKey: ["my-niches"], queryFn: () => endpoints.myNiches(accessToken), enabled: !!accessToken });
-  const catalogQ = useQuery({ queryKey: ["niches-catalog"], queryFn: () => endpoints.nichesCatalog(accessToken), enabled: !!accessToken });
+  const profileQ = useQuery({ queryKey: ["my-pro-profile"], queryFn: () => proApi.myProProfile(accessToken), enabled: !!accessToken });
+  const nichesQ = useQuery({ queryKey: ["my-niches"], queryFn: () => proApi.getMyNiches(accessToken), enabled: !!accessToken });
+  const catalogQ = useQuery({ queryKey: ["niches-catalog"], queryFn: () => discovery.getNichesCatalog(accessToken), enabled: !!accessToken });
   const publicQ = useQuery({
     queryKey: ["public-pro-profile", userId],
-    queryFn: () => endpoints.publicProProfile(userId!, accessToken),
+    queryFn: () => discovery.getPublicProProfile(userId!, accessToken),
     enabled: !!accessToken && !!userId,
   });
 
+  const profileData = profileQ.data?.ok ? profileQ.data.data : null;
+  const nichesData = nichesQ.data?.ok ? nichesQ.data.data : null;
+  const publicData = publicQ.data?.ok ? publicQ.data.data : null;
+
   useEffect(() => {
-    if (!profileQ.data || !nichesQ.data) return;
-    setHeadline(profileQ.data.headline || "");
-    setCoverMediaAssetId(profileQ.data.cover_media_asset_id || "");
-    setSelectedTags(nichesQ.data.niches.map((item) => item.slug));
-  }, [profileQ.data, nichesQ.data]);
+    if (!profileData || !nichesData) return;
+    setHeadline(profileData.headline || "");
+    setCoverMediaAssetId(profileData.cover_media_asset_id || "");
+    setSelectedTags(nichesData.niches.map((item) => item.slug));
+  }, [profileData, nichesData]);
 
   const minPackage = useMemo(() => {
-    const packages = publicQ.data?.packages || [];
+    const packages = publicData?.packages || [];
     if (!packages.length) return null;
     return [...packages].sort((a, b) => a.price - b.price)[0];
-  }, [publicQ.data]);
+  }, [publicData]);
 
   const previewData = useMemo(() => {
     return {
-      proUserId: userId || profileQ.data?.user_id || "unknown",
-      displayName: profileQ.data?.display_name,
+      proUserId: userId || profileData?.user_id || "unknown",
+      displayName: profileData?.display_name,
       headline,
       coverMediaAssetId: coverMediaAssetId || null,
-      city: profileQ.data?.city,
-      country: profileQ.data?.country,
+      city: profileData?.city,
+      country: profileData?.country,
       tags: normalizeTags(selectedTags),
       fromPrice: minPackage?.price ?? null,
       currency: minPackage?.currency ?? "EUR",
-      avgRating: publicQ.data?.avg_rating,
-      reviewCount: publicQ.data?.review_count,
+      avgRating: publicData?.avg_rating,
+      reviewCount: publicData?.review_count,
     };
-  }, [userId, profileQ.data, headline, coverMediaAssetId, selectedTags, minPackage, publicQ.data]);
+  }, [userId, profileData, headline, coverMediaAssetId, selectedTags, minPackage, publicData]);
 
   const baseline = useMemo(() => {
-    if (!profileQ.data || !nichesQ.data) return null;
+    if (!profileData || !nichesData) return null;
     return {
-      headline: profileQ.data.headline || "",
-      coverMediaAssetId: profileQ.data.cover_media_asset_id || "",
-      tags: normalizeTags(nichesQ.data.niches.map((item) => item.slug)),
+      headline: profileData.headline || "",
+      coverMediaAssetId: profileData.cover_media_asset_id || "",
+      tags: normalizeTags(nichesData.niches.map((item) => item.slug)),
     };
-  }, [profileQ.data, nichesQ.data]);
+  }, [profileData, nichesData]);
 
   const dirty = useMemo(() => {
     if (!baseline) return false;
@@ -75,18 +80,19 @@ export default function ListingCardEditorPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!profileQ.data || !nichesQ.data) return;
-      await endpoints.updateMyProProfile(
+      if (!profileData || !nichesData) return { ok: false as const, error: { kind: "unknown" as const, code: "no_baseline", message: "Profile not loaded yet." } };
+      const profileResult = await proApi.updateMyProProfile(
         {
           headline: headline.trim() || null,
           cover_media_asset_id: coverMediaAssetId.trim() || null,
         },
         accessToken,
       );
+      if (!profileResult.ok) return profileResult;
 
-      const previousBySlug = new Map(nichesQ.data.niches.map((n) => [n.slug, n]));
+      const previousBySlug = new Map(nichesData.niches.map((n) => [n.slug, n]));
       const normalized = normalizeTags(selectedTags);
-      await endpoints.updateMyNiches(
+      return proApi.updateMyNiches(
         {
           primary_niche_slug: normalized[0] || null,
           niches: normalized.map((slug, idx) => ({
@@ -98,7 +104,8 @@ export default function ListingCardEditorPage() {
         accessToken,
       );
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      if (!result.ok) return;
       await Promise.all([profileQ.refetch(), nichesQ.refetch(), publicQ.refetch()]);
     },
   });
@@ -106,18 +113,20 @@ export default function ListingCardEditorPage() {
   const verifyQ = useQuery({
     queryKey: ["verify-public", userId, verifyOpen],
     queryFn: async () => {
-      const pub = await endpoints.publicProProfile(userId!, accessToken);
-      const search = await endpoints.searchPros({ limit: 50, city: pub.city || undefined, country: pub.country || undefined }, accessToken);
-      return { pub, search: search.items.find((item) => item.id === userId) || null };
+      const pub = await discovery.getPublicProProfile(userId!, accessToken);
+      if (!pub.ok) throw new Error(pub.error.message || "Could not load public profile.");
+      const search = await discovery.searchPros({ limit: 50, city: pub.data.city || undefined, country: pub.data.country || undefined }, accessToken);
+      if (!search.ok) throw new Error(search.error.message || "Could not load search results.");
+      return { pub: pub.data, search: search.data.items.find((item) => item.id === userId) || null };
     },
     enabled: verifyOpen && !!userId && !!accessToken,
   });
 
   if (!accessToken) return <EmptyState title="Sign in required" body="Please sign in as a pro user." />;
   if (profileQ.isLoading || nichesQ.isLoading || catalogQ.isLoading || publicQ.isLoading) return <Card>Loading listing card data...</Card>;
-  if (profileQ.error || nichesQ.error || catalogQ.error || publicQ.error) return <EmptyState title="Failed to load" body="Could not load listing card sources." />;
+  if (!profileData || !nichesData || !catalogQ.data?.ok || !publicData) return <EmptyState title="Failed to load" body="Could not load listing card sources." />;
 
-  const availableTags = (catalogQ.data || []).filter((n) => n.is_active);
+  const availableTags = (catalogQ.data.data || []).filter((n) => n.is_active);
 
   return (
     <div className="space-y-4">
@@ -179,6 +188,9 @@ export default function ListingCardEditorPage() {
           <Button disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
             {saveMutation.isPending ? "Saving..." : "Save"}
           </Button>
+        ) : null}
+        {saveMutation.data && !saveMutation.data.ok ? (
+          <p className="text-sm text-red-700">{saveMutation.data.error.message || "Couldn't save. Try again."}</p>
         ) : null}
       </Card>
 

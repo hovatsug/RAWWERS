@@ -13,7 +13,7 @@ import {
   Toast,
 } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
 
 type ProProfile = {
   user_id: string;

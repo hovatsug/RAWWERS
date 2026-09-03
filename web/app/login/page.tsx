@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Input } from "@/design-system/primitives";
-import { endpoints } from "@/lib/api/endpoints";
+import { auth } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/store";
 
 const Schema = z.object({ email: z.string().email(), password: z.string().min(8) });
@@ -20,21 +20,19 @@ export default function LoginPage() {
     setError(null);
     const parsed = Schema.safeParse({ email, password });
     if (!parsed.success) return setError("Invalid credentials format.");
-    try {
-      const token = await endpoints.login(email, password);
-      const me = await endpoints.me(token.access_token);
-      setSession({
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token,
-        roles: me.roles as any,
-        userId: me.user_id,
-        locale: me.locale || "en-GB"
-      });
-      if (me.roles.includes("pro")) router.replace("/pro/inbox");
-      else router.replace("/client/home");
-    } catch {
-      setError("Login failed.");
-    }
+    const token = await auth.login(email, password);
+    if (!token.ok) return setError(token.error.message || "Login failed.");
+    const me = await auth.me(token.data.access_token);
+    if (!me.ok) return setError(me.error.message || "Login failed.");
+    setSession({
+      accessToken: token.data.access_token,
+      refreshToken: token.data.refresh_token,
+      roles: me.data.roles as any,
+      userId: me.data.user_id,
+      locale: me.data.locale || "en-GB"
+    });
+    if (me.data.roles.includes("pro")) router.replace("/pro/inbox");
+    else router.replace("/client/home");
   }
 
   return (

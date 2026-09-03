@@ -4,31 +4,34 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useMemo, type ReactNode } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth/store";
-import { endpoints } from "@/lib/api/endpoints";
+import { auth } from "@/lib/api/auth";
 import { FlagsProvider } from "@/lib/flags/provider";
+
+const FALLBACK_FLAGS: Record<string, boolean> = {
+  client_discovery_enabled: true,
+  client_bookings_enabled: true,
+  proof_gallery_enabled: true,
+  pro_onboarding_enabled: true,
+  notifications_enabled: true,
+  ai_concierge_enabled: false,
+  rewards_enabled: false,
+  share_gallery_enabled: false,
+  pro_leads_enabled: false,
+  checkout_extras_enabled: false
+};
 
 function FlagsBridge({ children }: { children: ReactNode }) {
   const { accessToken } = useAuth();
   const { data } = useQuery({
     queryKey: ["flags", accessToken],
     queryFn: async () => {
-      try {
-        const flags = await endpoints.flags(accessToken);
-        return Object.fromEntries(flags.map((f) => [f.name, f.enabled]));
-      } catch {
-        return {
-          client_discovery_enabled: true,
-          client_bookings_enabled: true,
-          proof_gallery_enabled: true,
-          pro_onboarding_enabled: true,
-          notifications_enabled: true,
-          ai_concierge_enabled: false,
-          rewards_enabled: false,
-          share_gallery_enabled: false,
-          pro_leads_enabled: false,
-          checkout_extras_enabled: false
-        } as Record<string, boolean>;
-      }
+      // GET /v1/feature-flags does not exist on the backend (only the
+      // admin-only variants do) - this always fails and falls back to the
+      // hardcoded map below. See auth.getFeatureFlags for detail; needs a
+      // backend decision, not something to work around further here.
+      const result = await auth.getFeatureFlags(accessToken);
+      if (!result.ok) return FALLBACK_FLAGS;
+      return Object.fromEntries(result.data.map((f) => [f.name, f.enabled]));
     },
     staleTime: 30_000
   });

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, Card, EmptyState, Input, Skeleton, Textarea } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
 
 export default function ProGigChatPage() {
   const { gigId } = useParams<{ gigId: string }>();

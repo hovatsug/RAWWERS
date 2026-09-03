@@ -4,12 +4,12 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Card, EmptyState, Skeleton } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { gigs } from "@/lib/api/gigs";
 
 export default function ProGigDetailPage() {
   const { gigId } = useParams<{ gigId: string }>();
   const { accessToken } = useAuth();
-  const gigQ = useQuery({ queryKey: ["pro", "gig", gigId], queryFn: () => proApi.getGig(gigId, accessToken), enabled: !!accessToken && !!gigId });
+  const gigQ = useQuery({ queryKey: ["pro", "gig", gigId], queryFn: () => gigs.getGig(gigId, accessToken), enabled: !!accessToken && !!gigId });
 
   if (gigQ.isLoading) return <Skeleton className="h-32" />;
   if (gigQ.isError || !gigQ.data?.ok) return <EmptyState title="Gig not found" />;

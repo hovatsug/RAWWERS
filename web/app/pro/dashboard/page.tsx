@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, GlassCard, GlowOrbs, Skeleton } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
+import { trackEvent } from "@/lib/api/client";
 
 function StatCard({
   label,
@@ -43,7 +44,7 @@ export default function ProDashboardPage() {
 
   useEffect(() => {
     if (!accessToken) return;
-    proApi.track("pro_dashboard_viewed", { source: "web" }, accessToken);
+    trackEvent("pro_dashboard_viewed", { source: "web" }, accessToken);
   }, [accessToken]);
 
   if (!accessToken) return <EmptyState title="Sign in required" body="Please login as a pro." />;
@@ -71,7 +72,7 @@ export default function ProDashboardPage() {
   const balance = balanceQ.data?.ok ? balanceQ.data.data : {};
   const threads = threadsQ.data?.ok ? ((threadsQ.data.data as any).items || []) : [];
   const pendingCount = Object.values(checks || {}).filter((v) => v === false).length;
-  const availableBalance = String((balance as any).available_balance ?? (balance as any).available ?? "—");
+  const availableBalance = String((balance as any).available_eur ?? "—");
 
   return (
     <div className="relative space-y-5">

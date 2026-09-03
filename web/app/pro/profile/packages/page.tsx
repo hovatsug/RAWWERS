@@ -4,11 +4,14 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BottomSheet, Button, Card, EmptyState, Input, Skeleton, Textarea } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
+import { trackEvent } from "@/lib/api/client";
 
 export default function ProPackagesPage() {
   const { accessToken, userId } = useAuth();
-  const [packagePayload, setPackagePayload] = useState('{"title":"","price_per_photo":0,"min_photo_qty":0}');
+  const [packagePayload, setPackagePayload] = useState(
+    '{"title":"","duration_minutes":60,"price":0,"included_photos":10,"extra_photo_price":0}',
+  );
   const [packageId, setPackageId] = useState("");
   const [updatePayload, setUpdatePayload] = useState("{}");
   const [disableTarget, setDisableTarget] = useState("");
@@ -22,7 +25,7 @@ export default function ProPackagesPage() {
     },
     onSuccess: async () => {
       await publicQ.refetch();
-      await proApi.track("pro_package_saved", { source: "web", mode: "create" }, accessToken);
+      await trackEvent("pro_package_saved", { source: "web", mode: "create" }, accessToken);
     },
   });
 
@@ -33,7 +36,7 @@ export default function ProPackagesPage() {
     },
     onSuccess: async () => {
       await publicQ.refetch();
-      await proApi.track("pro_package_saved", { source: "web", mode: "update", package_id: packageId }, accessToken);
+      await trackEvent("pro_package_saved", { source: "web", mode: "update", package_id: packageId }, accessToken);
     },
   });
 
@@ -59,13 +62,15 @@ export default function ProPackagesPage() {
         <p className="text-sm font-medium">Current public packages</p>
         {packages.length === 0 ? <EmptyState title="No packages" body="Create your first package below." /> : null}
         {packages.map((pkg) => {
-          const perPhoto = Number(pkg.price_per_photo ?? pkg.extra_photo_price ?? 0);
-          const minQty = Number(pkg.min_photo_qty ?? 0);
-          const fromPrice = perPhoto * minQty;
+          const price = Number(pkg.price ?? 0);
+          const includedPhotos = Number(pkg.included_photos ?? 0);
+          const extraPhotoPrice = Number(pkg.extra_photo_price ?? 0);
           return (
             <div key={pkg.id} className="rounded-xl border border-black/10 p-3">
               <p className="font-medium">{pkg.title || pkg.id}</p>
-              <p className="text-sm text-neutral-600">per photo: {perPhoto} | min qty: {minQty} | derived from price: {fromPrice}</p>
+              <p className="text-sm text-neutral-600">
+                price: {price} {pkg.currency || "EUR"} | included photos: {includedPhotos} | extra photo: {extraPhotoPrice} {pkg.currency || "EUR"}
+              </p>
               <button className="mt-2 text-xs text-red-600 underline" onClick={() => setDisableTarget(pkg.id)}>Disable package</button>
             </div>
           );

@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BottomSheet, Button, Card, EmptyState, Input, Skeleton, Textarea } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
-import { proApi } from "@/lib/api/proApi";
+import { pro as proApi } from "@/lib/api/pro";
+import { trackEvent } from "@/lib/api/client";
 
 export default function ProWalletPage() {
   const { accessToken } = useAuth();
   const [accountJson, setAccountJson] = useState("{}");
-  const [requestJson, setRequestJson] = useState('{"amount": 0}');
+  const [requestJson, setRequestJson] = useState('{"amount_eur": 0}');
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const balanceQ = useQuery({ queryKey: ["pro", "wallet", "balance"], queryFn: () => proApi.getEarningsBalance(accessToken), enabled: !!accessToken });
@@ -24,7 +25,7 @@ export default function ProWalletPage() {
     },
     onSuccess: async () => {
       await accountQ.refetch();
-      await proApi.track("pro_profile_updated", { source: "web", section: "payout_account" }, accessToken);
+      await trackEvent("pro_profile_updated", { source: "web", section: "payout_account" }, accessToken);
     },
   });
 
@@ -36,7 +37,7 @@ export default function ProWalletPage() {
     onSuccess: async () => {
       await payoutsQ.refetch();
       await balanceQ.refetch();
-      await proApi.track("pro_payout_requested", { source: "web" }, accessToken);
+      await trackEvent("pro_payout_requested", { source: "web" }, accessToken);
     },
   });
 
@@ -56,10 +57,14 @@ export default function ProWalletPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Wallet & Payouts</h1>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <Card>
-          <p className="text-xs uppercase text-neutral-500">Balance</p>
-          <p className="mt-1 text-2xl font-semibold">{String(balanceQ.data?.ok ? (balanceQ.data.data as any).available_balance ?? (balanceQ.data.data as any).available ?? "-" : "-")}</p>
+          <p className="text-xs uppercase text-neutral-500">Available</p>
+          <p className="mt-1 text-2xl font-semibold">{String(balanceQ.data?.ok ? (balanceQ.data.data as any).available_eur ?? "-" : "-")}</p>
+        </Card>
+        <Card>
+          <p className="text-xs uppercase text-neutral-500">Pending</p>
+          <p className="mt-1 text-2xl font-semibold">{String(balanceQ.data?.ok ? (balanceQ.data.data as any).pending_eur ?? "-" : "-")}</p>
         </Card>
         <Card>
           <p className="text-xs uppercase text-neutral-500">Ledger entries</p>

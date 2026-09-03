@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/store";
-import { endpoints } from "@/lib/api/endpoints";
+import { auth } from "@/lib/api/auth";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 className="text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors duration-200"
                 onClick={async () => {
-                  await endpoints.logout(refreshToken, accessToken).catch(() => undefined);
+                  await auth.logout(refreshToken, accessToken);
                   clearSession();
                 }}
               >

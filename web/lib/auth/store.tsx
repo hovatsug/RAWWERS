@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { SESSION_UPDATED_EVENT } from "@/lib/api/client";
 
 export type Role = "admin" | "pro" | "client";
 
@@ -38,6 +39,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setHydrated(true);
     }
+  }, []);
+
+  // The API transport can silently refresh the access/refresh token pair
+  // (on a 401 mid-request) and writes the new tokens straight to
+  // sessionStorage, since it has no React context of its own. Re-hydrate
+  // from storage when that happens so this session stays in sync instead
+  // of every subsequent call re-triggering its own refresh.
+  useEffect(() => {
+    function onSessionUpdated() {
+      const raw = window.sessionStorage.getItem("rawwers_session");
+      if (!raw) return;
+      try {
+        setSessionState(JSON.parse(raw) as Session);
+      } catch {
+        // ignore malformed storage, keep current in-memory session
+      }
+    }
+    window.addEventListener(SESSION_UPDATED_EVENT, onSessionUpdated);
+    return () => window.removeEventListener(SESSION_UPDATED_EVENT, onSessionUpdated);
   }, []);
 
   const value = useMemo<AuthContextValue>(

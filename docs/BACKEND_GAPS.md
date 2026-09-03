@@ -20,7 +20,9 @@ Found in F-5 by running the real app against the local backend: `POST /v1/auth/v
 
 **Why this blocks the end-to-end run rather than just verification UX:** booking requests auto-decline after 48h. A photographer who never learns a request arrived cannot act inside that window, so the single most time-critical path in the product depends on notification channels that currently deliver nothing — neither email nor in-app. This is not an F-5/F-6 blocker for the auth work — email verification gates no API, and the apps are built to work without it — but the product cannot be exercised end to end until a provider is configured *and* the outbox is drained on a schedule (`dispatch_outbox_events` added to `beat_schedule`, plus a `beat` service in compose). All three fixes are server-side and outside the Flutter rebuild's scope.
 
-## No list endpoints exist for booking requests, gigs, or bookings
+## ~~No list endpoints exist for booking requests, gigs, or bookings~~ — FIXED in `b91ee8ba`
+
+**Resolved.** `GET /v1/booking-requests`, `GET /v1/gigs` and `GET /v1/client/bookings` were added, with keyset cursor pagination. Kept here because the original finding explains why those routes look the way they do, and because the two entries below qualify the fix. Original finding follows.
 
 Verified against the **full** (unfiltered) OpenAPI schema in F-6 discovery, so this is not an artifact of the MVP tag filter. The API exposes only fetch-by-id and actions:
 
@@ -31,3 +33,17 @@ Verified against the **full** (unfiltered) OpenAPI schema in F-6 discovery, so t
 Payouts and earnings are the exception and *do* have collection routes (`GET /v1/pro/payouts`, `GET /v1/pro/earnings/ledger`), so this is a specific omission rather than a general API style.
 
 **What it blocks:** any screen whose job is "here is your queue of work" — the pro app's Requests, Gigs, and Today tabs, and the client app's bookings list. A pro cannot enumerate the requests awaiting them, which is the same 48h-window problem from the notification gap arriving by a second independent route. There is no client-side workaround: an id-only API cannot be turned into a list, and the notification feed that might have supplied the ids is itself empty (see above). Adding the list routes is a server-side task.
+
+## `GET /v1/me/notifications` paginates on a timestamp alone, so it skips and repeats rows
+
+`list_notifications` (`api/app/services/notifications.py:387`) uses `created_at` as its entire cursor: it returns `rows[-1].created_at` as `next_cursor` and filters the next page with `created_at < cursor`. That ordering is not total. When two notifications share a `created_at` — and they routinely will, because `dispatch_outbox_events` processes a batch inside one transaction, so every notification in a batch lands on effectively the same timestamp — the rows tied at the page boundary are dropped: the strict `<` skips past all of them, not just the one already returned. The `except ValueError: pass` on an unparseable cursor silently ignores the filter entirely and re-serves page one, which is the duplicate half of the same bug.
+
+**Why it matters now specifically:** until `dispatch_outbox_events` was put on `beat_schedule` (`b91ee8ba`) the notification feed was always empty, so this could never fire. Now that the outbox actually drains, the feed fills in batches — exactly the shape that triggers ties — and a photographer paging their notifications can silently miss one. Given the 48h response window, the notification that goes missing may be the booking request itself.
+
+The fix is the keyset helper already in the codebase: `app.services.pagination` orders on `(created_at, id)` and is used by the three list endpoints added in the same commit. Retrofitting `list_notifications` onto it is a small, contained change, deliberately not bundled into that commit — it changes an existing endpoint's cursor format, which is a separate decision from adding new routes.
+
+## The new list endpoints are unit-tested but have never run against a populated queue
+
+`GET /v1/booking-requests`, `GET /v1/gigs` and `GET /v1/client/bookings` pass 11 tests (`api/tests/test_list_endpoints_v1.py`) covering scoping, filters, cursor behaviour under tied timestamps, and malformed cursors. Against the live local backend they have only ever been called by a user with no data, returning `{"items": [], "next_cursor": null}` — correct, but the empty case. `scripts/seed_dev.py` does not create booking requests, so no seeded fixture exercises them either.
+
+**Practical consequence for F-6:** the pro app's Requests, Gigs and Today tabs are the first real consumers. If a response looks wrong there — a missing field, an unexpected null, a filter that doesn't narrow, a cursor that doesn't advance — treat the backend as a live suspect rather than assuming the Flutter side is at fault. In particular `seconds_until_expiry` and the `ClientBookingListItem` gig/payment roll-up have never been observed with real rows behind them, and the gig roll-up depends on `meta["booking_request_id"]` being present, which only holds for gigs created through the accept-booking path.

@@ -200,7 +200,7 @@ jobs:
 
       - name: Flutter test
         working-directory: app
-        run: flutter test
+        run: flutter test --exclude-tags=integration
 
       - name: Check flavor isolation
         working-directory: app

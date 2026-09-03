@@ -516,6 +516,108 @@ abstract class ClientLaunchClient {
       },
     },
   });
+  @GET("/v1/client/bookings")
+  Future<HttpResponse<ClientBookingListResponse>>
+  listClientBookingsV1ClientBookingsGet({
+    @Query("status") required BookingRequestStatus? status,
+    @Query("cursor") required String? cursor,
+    @Query("limit") int limit = 20,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'List Client Bookings',
+      'description':
+          'The authenticated client\'s own bookings, newest first.\n\nEach row rolls up booking status with the gig and payment status the\ndetail route leads with, because "where is my booking up to" is not\nanswerable from the booking row alone - an accepted request that hasn\'t\nbeen paid for and one that\'s been shot look identical there.\n\nThe gig and payment lookups are batched across the whole page rather\nthan done per row. `_find_gig_by_booking_request` (used by the detail\nroute, where it runs once) loads every gig in the table and scans it in\nPython; calling that per row would make one list request a full table\nscan per booking. Here the gig query is scoped to this client\'s own\ngigs and joined in memory by booking id.',
+      'operationId': 'list_client_bookings_v1_client_bookings_get',
+      'parameters': [
+        {
+          'name': 'status',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'\$ref': '#/components/schemas/BookingRequestStatus'},
+              {'type': 'null'},
+            ],
+            'title': 'Status',
+          },
+        },
+        {
+          'name': 'cursor',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Cursor',
+          },
+        },
+        {
+          'name': 'limit',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'integer',
+            'maximum': 100,
+            'minimum': 1,
+            'default': 20,
+            'title': 'Limit',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ClientBookingListResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/client/bookings/{booking_id}")
   Future<HttpResponse<ClientBookingStatusResponse>>
   clientBookingStatusV1ClientBookingsBookingIdGet({

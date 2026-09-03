@@ -1,0 +1,6 @@
+// Flavor overrides for the pro app. Included by Debug-pro.xcconfig,
+// Release-pro.xcconfig and Profile-pro.xcconfig — never included directly
+// by a build configuration.
+PRODUCT_BUNDLE_IDENTIFIER = com.rawwers.pro
+PRODUCT_NAME = RAWWERS Pro
+FLUTTER_TARGET = lib/main_pro.dart

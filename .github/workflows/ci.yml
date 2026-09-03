@@ -172,30 +172,44 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.5"
+          flutter-version: "3.41.2"
           channel: stable
 
       - name: Flutter pub get
-        working-directory: flutter
+        working-directory: app
         run: flutter pub get
 
       - name: Flutter analyze
-        working-directory: flutter
+        working-directory: app
         run: flutter analyze
 
       - name: Flutter test
-        working-directory: flutter
+        working-directory: app
         run: flutter test
 
-      - name: Build Android APK (debug)
-        working-directory: flutter
-        run: flutter build apk --debug
+      - name: Check flavor isolation
+        working-directory: app
+        run: dart run tool/check_flavor_isolation.dart
 
-      - name: Upload Flutter artifact
+      - name: Build Android APK (debug) - client
+        working-directory: app
+        run: flutter build apk --debug --flavor client -t lib/main_client.dart
+
+      - name: Build Android APK (debug) - pro
+        working-directory: app
+        run: flutter build apk --debug --flavor pro -t lib/main_pro.dart
+
+      - name: Upload client APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-apk-debug
-          path: flutter/build/app/outputs/flutter-apk/app-debug.apk
+          name: rawwers-client-apk-debug
+          path: app/build/app/outputs/flutter-apk/app-client-debug.apk
+
+      - name: Upload pro APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rawwers-pro-apk-debug
+          path: app/build/app/outputs/flutter-apk/app-pro-debug.apk
 
   security:
     runs-on: ubuntu-latest

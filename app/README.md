@@ -16,7 +16,14 @@ lib/
     money/              typed Decimal wrappers for the API's dynamic money fields (F-3)
     upload/             presigned-PUT photo upload orchestration (F-3)
   api/               generated OpenAPI client (F-2) — never hand-edited
-  design/            design system (F-4)
+  design/
+    tokens.dart          color/type/spacing/radii/elevation - the only place a hex or size literal should exist
+    typography.dart       shared type-scale builder
+    theme_client.dart      dark ThemeData
+    theme_pro.dart          light ThemeData
+    components/            RButton, RInput, RCard, RStatusChip, RSkeleton, REmptyState,
+                            RErrorState, RImageTile, RProgressBar, showRConfirmDialog, showRSheet
+    gallery/                debug-only widget gallery (not routed from either app yet - F-5 wires an entry point)
   features/
     shared/          used by both flavors
     client/          client-only — must never be imported by main_pro.dart
@@ -102,3 +109,21 @@ No generic retry-on-network-error exists for arbitrary requests. The only two re
 Debug-only logging (`debug_log_interceptor.dart`) logs method/URL/status only — never request or response bodies, which is the simplest way to guarantee a token buried in a login/refresh payload never reaches the log — and redacts the `Authorization` header value.
 
 `test/core/api/integration_transport_test.dart` is tagged `integration` (see `dart_test.yaml`) and makes one real call through the full stack against the local backend (`docker compose up` in `api/`). CI excludes it (`flutter test --exclude-tags=integration`) since that job has no live backend; run it locally with `flutter test --tags=integration`.
+
+## Design system (F-4)
+
+Tokens only, in `lib/design/tokens.dart` — no color or size literal should exist anywhere else. Both themes (`theme_client.dart` dark, `theme_pro.dart` light) build from the same tokens; the divergence is functional, not aesthetic — client is browsed at night making a purchase decision, pro is used outdoors in daylight glare.
+
+**Color**: four named scales. `RInk` is the neutral scale (backgrounds/text/borders, both themes). `RAccent.meter500` (`#4A7FA5`, a light-meter-dial blue) is the one accent — same hex in both apps, deliberately, as a cross-app consistency signal most apps don't bother with. It's cool on purpose: an earlier warm red-orange draft was rejected specifically because warm accent chrome shifts perceived skin tones next to photographs, which is exactly what this app's users are most sensitive to. `RAccent.meter700` is a separate, darker shade used only for button fills, so button label text clears AA contrast — `meter500` itself can't guarantee that at text sizes (see the contrast note below). `RDevelop.develop500` (muted moss) and `RShade.shade600` (muted slate) are booking-state colors, not generic success-green/error-red.
+
+**The booking flow's 15 states collapse to 3 chip treatments** (`RStatusChip`, `RStatusChipKind`) — the state name carries the specific meaning; color only says ongoing (`inProgress`, plain outline), done (`positive`, `develop500` outline), or broken (`stopped`, `shade600` **filled** — the one chip kind that's filled, not outlined, because `CANCELLED`/`DISPUTED` are the two states a photographer must notice immediately).
+
+**Contrast**: given how close to pure black/white `RInk.i950`/`i050` are, ~4.29:1 is the theoretical ceiling for any single hex against both simultaneously (worked out from the WCAG relative-luminance formula) — no accent choice clears 4.5:1 (AA normal text) on both at once, only 3:1 (AA for large text/UI components/graphical objects). `RAccent.meter500` sits close to that ceiling; buttons route through the darker `meter700` fill instead of relying on it directly, and `RTextLink` always underlines rather than depending on color alone for body-sized links. `test/design/contrast_test.dart` computes the real WCAG formula against the actual tokens and asserts each of these — a regression guard against a future token edit silently dropping a pairing below AA.
+
+**Type**: one family only, **Archivo** (`assets/fonts/`, OFL-licensed, variable font — weights are selected via `FontVariation('wght', …)`, see `RType`, not separate font files per weight). Substituted for the original plan's General Sans, which is Fontshare-exclusive with no reliable way to fetch/bundle it here; same intent (single grotesk, no display/body pairing — chrome doesn't compete with the photos, so it doesn't get a second, more expressive typeface). Every number in a data-table-like context uses `RType.tabularFigures` (the `tnum` OpenType feature) so digits stay column-aligned.
+
+**Radii/elevation**: sharp corners (`RRadius.photo = 0`) on photo content specifically — photography is rectangular (prints, negatives, contact sheets) — with slightly-rounded chrome elsewhere and no stadium/pill shapes anywhere. Elevation is border-based (a 1px hairline) almost everywhere; `RElevation.shadowFloat` is the one shadow, reserved for genuinely floating surfaces (sheets, dialogs, the eventual pinned selection-gallery total bar).
+
+**Quality floor**: `test/design/widget_gallery_test.dart` renders every token/component in both themes, at both an iPhone SE-sized and a large-phone viewport, at both 1.0x and 1.3x text scale (dynamic type), and with the OS reduced-motion flag set, asserting no overflow/exceptions in any combination. `test/design/touch_target_test.dart` asserts `RButton`/`RTextLink` meet the 44pt minimum (`rMinTouchTarget`).
+
+The gallery screen (`RWidgetGalleryScreen`) isn't routed from either app's real navigation yet — F-5 wires a debug-only entry point to it, gated by `kDebugMode`.

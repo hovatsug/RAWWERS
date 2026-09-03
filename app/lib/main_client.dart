@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/core/flavor.dart';
 import 'package:rawwers/core/router/app_router_client.dart';
+import 'package:rawwers/design/theme_client.dart';
 
 void main() {
   runApp(
@@ -19,6 +20,7 @@ class RawwersClientApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'RAWWERS',
+      theme: buildClientTheme(),
       routerConfig: clientRouter,
     );
   }

@@ -1,4 +1,4 @@
-/// app__schemas__onboarding__AvailabilityRuleView
+/// OnboardingAvailabilityRuleView
 /// {
 ///     "properties": {
 ///         "id": {
@@ -28,36 +28,39 @@
 ///         "start_time",
 ///         "end_time"
 ///     ],
-///     "title": "AvailabilityRuleView"
+///     "title": "OnboardingAvailabilityRuleView"
 /// }
-library availability_rule_view;
+library onboarding_availability_rule_view;
 
 import 'exports.dart';
-part 'availability_rule_view.freezed.dart';
-part 'availability_rule_view.g.dart'; // AvailabilityRuleView
+part 'onboarding_availability_rule_view.freezed.dart';
+part 'onboarding_availability_rule_view.g.dart'; // OnboardingAvailabilityRuleView
 
 @freezed
-abstract class AvailabilityRuleView with _$AvailabilityRuleView {
-  const AvailabilityRuleView._();
+abstract class OnboardingAvailabilityRuleView
+    with _$OnboardingAvailabilityRuleView {
+  const OnboardingAvailabilityRuleView._();
 
   @jsonSerializable
-  const factory AvailabilityRuleView({
+  const factory OnboardingAvailabilityRuleView({
     /// id
-    @JsonKey(name: AvailabilityRuleView.idKey_) required String id,
+    @JsonKey(name: OnboardingAvailabilityRuleView.idKey_) required String id,
 
     /// dayOfWeek
-    @JsonKey(name: AvailabilityRuleView.dayOfWeekKey_) required int dayOfWeek,
+    @JsonKey(name: OnboardingAvailabilityRuleView.dayOfWeekKey_)
+    required int dayOfWeek,
 
     /// startTime
-    @JsonKey(name: AvailabilityRuleView.startTimeKey_)
+    @JsonKey(name: OnboardingAvailabilityRuleView.startTimeKey_)
     required String startTime,
 
     /// endTime
-    @JsonKey(name: AvailabilityRuleView.endTimeKey_) required String endTime,
-  }) = _AvailabilityRuleView;
+    @JsonKey(name: OnboardingAvailabilityRuleView.endTimeKey_)
+    required String endTime,
+  }) = _OnboardingAvailabilityRuleView;
 
-  factory AvailabilityRuleView.fromJson(Map<String, dynamic> json) =>
-      _$AvailabilityRuleViewFromJson(json);
+  factory OnboardingAvailabilityRuleView.fromJson(Map<String, dynamic> json) =>
+      _$OnboardingAvailabilityRuleViewFromJson(json);
 
   static const String idKey_ = r'id';
 

@@ -1,22 +1,22 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'availability_rule_view.dart';
+part of 'onboarding_availability_rule_view.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_AvailabilityRuleView _$AvailabilityRuleViewFromJson(
+_OnboardingAvailabilityRuleView _$OnboardingAvailabilityRuleViewFromJson(
   Map<String, dynamic> json,
-) => _AvailabilityRuleView(
+) => _OnboardingAvailabilityRuleView(
   id: json['id'] as String,
   dayOfWeek: (json['day_of_week'] as num).toInt(),
   startTime: json['start_time'] as String,
   endTime: json['end_time'] as String,
 );
 
-Map<String, dynamic> _$AvailabilityRuleViewToJson(
-  _AvailabilityRuleView instance,
+Map<String, dynamic> _$OnboardingAvailabilityRuleViewToJson(
+  _OnboardingAvailabilityRuleView instance,
 ) => <String, dynamic>{
   'id': instance.id,
   'day_of_week': instance.dayOfWeek,

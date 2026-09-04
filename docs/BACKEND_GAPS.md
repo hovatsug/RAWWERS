@@ -104,6 +104,32 @@ photographer has already recorded stops counting.
 No `Sunset` header: that is a promise about a removal date, and one has
 not been decided. Add it here when it is.
 
+## ~~Two backend schemas share the name `AvailabilityRuleView`, and the generated client silently kept the wrong one~~ — FIXED in P-3
+
+`app/schemas/onboarding.py` and `app/schemas/scheduling.py` both define a
+class called `AvailabilityRuleView`, with different fields. FastAPI copes
+by qualifying the keys (`app__schemas__scheduling__AvailabilityRuleView`)
+but leaves both `title`s identical - and `swagger_to_dart` names the Dart
+class from the title. So both collapsed into one `AvailabilityRuleView`,
+the onboarding shape won, and `AvailabilityRulesResponse.items` was typed
+with fields the scheduling endpoint does not return.
+
+Reading `GET /v1/pro/scheduling/availability-rules` threw
+`type 'Null' is not a subtype of type 'num'` at runtime. Nothing static
+caught it: the class existed, the names were plausible, `flutter analyze`
+was clean, and the contract check passed because the generated client
+matched the schema it was given.
+
+Fixed client-side in `tool/filter_openapi.dart`, which now renames
+qualified schemas apart (`SchedulingAvailabilityRuleView`), rewrites their
+titles and `$ref`s, and **fails the build** if any two schemas that reach
+the generator still share a title. `test/api/schema_collisions_test.dart`
+decodes the real payload of each endpoint.
+
+Worth renaming one of the two backend classes eventually - the collision
+is the root cause and the client-side fix is a workaround, however
+load-bearing. Not urgent while the guard holds.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

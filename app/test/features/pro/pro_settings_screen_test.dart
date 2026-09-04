@@ -136,6 +136,8 @@ void main() {
     await tester.pumpWidget(_wrap());
     await tester.pump();
 
+    // Below the fold since the "Your work" section landed above Payouts.
+    await _scrollTo(tester, find.text('Not set up'));
     expect(find.text('Not set up'), findsOneWidget);
     expect(find.textContaining('Get in touch'), findsOneWidget);
   });
@@ -171,6 +173,7 @@ void main() {
     expect(find.text('Could not load your listing status.'), findsOneWidget);
     // The rest still renders - a settings screen that goes blank because one
     // of four calls failed is worse than one that says which part is missing.
+    await _scrollTo(tester, find.text('Not set up'));
     expect(find.text('Not set up'), findsOneWidget);
     await _scrollTo(tester, find.text('Log out'));
     expect(find.text('Log out'), findsOneWidget);

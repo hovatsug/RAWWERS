@@ -21,9 +21,18 @@ import 'package:rawwers/features/pro/settings/settings_controller.dart';
 /// on its own ("pending") tells someone nothing about whether they should
 /// be worried.
 class ProSettingsScreen extends ConsumerWidget {
-  const ProSettingsScreen({required this.verifyEmailPath, super.key});
+  const ProSettingsScreen({
+    required this.verifyEmailPath,
+    this.profileEditPath,
+    this.gearPath,
+    this.availabilityPath,
+    super.key,
+  });
 
   final String verifyEmailPath;
+  final String? profileEditPath;
+  final String? gearPath;
+  final String? availabilityPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -67,6 +76,37 @@ class ProSettingsScreen extends ConsumerWidget {
                       Text('Verified', style: theme.textTheme.bodySmall)
                     else
                       RTextLink(label: 'Verify your email', onPressed: () => context.go(verifyEmailPath)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: RSpace.s24),
+              _SectionLabel('Your work'),
+              RCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (profileEditPath != null)
+                      _NavRow(
+                        label: 'Profile',
+                        detail: 'Name, headline, where you work, how far you travel',
+                        onTap: () => context.go(profileEditPath!),
+                      ),
+                    if (availabilityPath != null) ...[
+                      const Divider(height: RSpace.s24),
+                      _NavRow(
+                        label: 'Availability',
+                        detail: 'Working hours, time off, how much notice you need',
+                        onTap: () => context.go(availabilityPath!),
+                      ),
+                    ],
+                    if (gearPath != null) ...[
+                      const Divider(height: RSpace.s24),
+                      _NavRow(
+                        label: 'Your kit',
+                        detail: 'Bodies, lenses and serial numbers',
+                        onTap: () => context.go(gearPath!),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -296,5 +336,37 @@ class _Unavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RCard(child: Text(message, style: Theme.of(context).textTheme.bodyMedium));
+  }
+}
+
+
+class _NavRow extends StatelessWidget {
+  const _NavRow({required this.label, required this.detail, required this.onTap});
+
+  final String label;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: RSpace.s4),
+                Text(detail, style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+    );
   }
 }

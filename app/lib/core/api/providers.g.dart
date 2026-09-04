@@ -166,5 +166,42 @@ final notificationsClientProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef NotificationsClientRef = AutoDisposeProviderRef<NotificationsClient>;
+String _$schedulingClientHash() => r'44a99eda4b78713edb2964bd2b014474f0816264';
+
+/// See also [schedulingClient].
+@ProviderFor(schedulingClient)
+final schedulingClientProvider = AutoDisposeProvider<SchedulingClient>.internal(
+  schedulingClient,
+  name: r'schedulingClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$schedulingClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SchedulingClientRef = AutoDisposeProviderRef<SchedulingClient>;
+String _$repairsClientHash() => r'3dc416830e26cf8cba06f27cf5dc1f6996e34d12';
+
+/// Gear lives under the repairs tag because the repairs marketplace
+/// consumes it; to a photographer it is just the kit they own.
+///
+/// Copied from [repairsClient].
+@ProviderFor(repairsClient)
+final repairsClientProvider = AutoDisposeProvider<RepairsClient>.internal(
+  repairsClient,
+  name: r'repairsClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$repairsClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef RepairsClientRef = AutoDisposeProviderRef<RepairsClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

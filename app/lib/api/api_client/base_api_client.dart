@@ -81,6 +81,10 @@ class BaseApiClient {
     );
   }
 
+  RepairsClient get repairsClient {
+    return RepairsClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   ReviewsClient get reviewsClient {
     return ReviewsClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

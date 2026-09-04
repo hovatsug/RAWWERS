@@ -57,16 +57,30 @@ def get_roles(db: Session, user_id: uuid.UUID) -> list[UserRoleType]:
     return db.execute(select(UserRole.role).where(UserRole.user_id == user_id)).scalars().all()
 
 
-def register_user(db: Session, *, email: str, password: str, ip: str | None, user_agent: str | None) -> UserAccount:
+def register_user(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+    ip: str | None,
+    user_agent: str | None,
+    display_name: str | None = None,
+) -> UserAccount:
     email_norm = normalize_email(email)
     existing = db.execute(select(UserAccount).where(UserAccount.email == email_norm)).scalar_one_or_none()
     if existing:
         raise APIError(code="already_exists", message="Email already registered", status_code=409)
 
+    # Blank is stored as absent rather than as an empty string: a name that is
+    # present but empty renders as a gap everywhere it is used, and reads as a
+    # bug rather than as missing data.
+    name = display_name.strip() if display_name else None
+
     row = UserAccount(
         user_id=uuid.uuid4(),
         email=email_norm,
         password_hash=hash_password(password),
+        display_name=name or None,
         status=UserAccountStatus.active,
         created_at=_now(),
         updated_at=_now(),

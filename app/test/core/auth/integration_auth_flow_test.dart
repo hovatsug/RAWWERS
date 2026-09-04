@@ -41,6 +41,7 @@ void main() {
     final registerError = await container.read(authControllerProvider.notifier).register(
           email: email,
           password: password,
+          displayName: 'F5 Integration',
         );
     expect(registerError, isNull, reason: 'register + follow-up login should both succeed');
 

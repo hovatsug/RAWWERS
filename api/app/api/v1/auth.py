@@ -62,7 +62,14 @@ def register(
     db: Session = Depends(get_db_session),
 ) -> dict:
     enforce_named_rate_limit("auth_mutation", principal=f"register:{_request_ip(request) or 'unknown'}")
-    user = register_user(db, email=body.email, password=body.password, ip=_request_ip(request), user_agent=request.headers.get("user-agent"))
+    user = register_user(
+        db,
+        email=body.email,
+        password=body.password,
+        display_name=body.display_name,
+        ip=_request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
     capture_request_signals(db, request=request, user_id=user.user_id)
     ensure_referral_profile(db, user.user_id)
     session_id = request.cookies.get("rw_sid")

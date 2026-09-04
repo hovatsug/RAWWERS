@@ -16,6 +16,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   String? _error;
@@ -23,14 +24,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   void dispose() {
+    _name.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
+    final name = _name.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
+    // Required here even though the API accepts it as optional: an account
+    // with no name shows up as a blank in the other side's inbox, and the
+    // only moment anyone will supply it is this one.
+    if (name.isEmpty) {
+      setState(() => _error = 'Enter your name so photographers know who they are talking to.');
+      return;
+    }
     if (email.isEmpty || !email.contains('@')) {
       setState(() => _error = 'Enter a valid email address.');
       return;
@@ -45,7 +55,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _submitting = true;
     });
 
-    final error = await ref.read(authControllerProvider.notifier).register(email: email, password: password);
+    final error = await ref
+        .read(authControllerProvider.notifier)
+        .register(email: email, password: password, displayName: name);
 
     if (!mounted) return;
     setState(() {
@@ -74,6 +86,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    RInput(
+                      label: 'Your name',
+                      controller: _name,
+                      autofillHints: const [AutofillHints.name],
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: RSpace.s12),
                     RInput(
                       label: 'Email',
                       controller: _email,

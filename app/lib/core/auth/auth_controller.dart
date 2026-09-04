@@ -74,10 +74,17 @@ class AuthController extends _$AuthController {
   /// something to hand-patch in generated code. The response body is
   /// discarded either way (this always follows with a real login call), so
   /// bypassing the broken typed wrapper costs nothing here.
-  Future<String?> register({required String email, required String password}) async {
+  Future<String?> register({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
     final dio = ref.read(dioProvider);
     try {
-      await dio.post<void>('/v1/auth/register', data: RegisterRequest(email: email, password: password).toJson());
+      await dio.post<void>(
+        '/v1/auth/register',
+        data: RegisterRequest(email: email, password: password, displayName: displayName).toJson(),
+      );
     } on DioException catch (e) {
       return _messageFor(mapDioException(e));
     }

@@ -27,7 +27,7 @@ final requestsFilterControllerProvider =
 
 typedef _$RequestsFilterController = AutoDisposeNotifier<RequestsFilter>;
 String _$requestsControllerHash() =>
-    r'9c59781aa1e761e2952c1fe2cd9289e8c5fadee0';
+    r'20c67a8cc4eec211bdae02180e87fa6636db2abd';
 
 /// See also [RequestsController].
 @ProviderFor(RequestsController)

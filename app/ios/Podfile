@@ -1,5 +1,8 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+# flutter_stripe's stripe_ios pod requires iOS 15.0 (its podspec sets
+# s.platform = :ios, '15.0'), which is above Flutter's default. Setting it
+# here rather than only in Xcode so a fresh `pod install` on any machine
+# agrees with the podspec instead of failing mid-resolve.
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'

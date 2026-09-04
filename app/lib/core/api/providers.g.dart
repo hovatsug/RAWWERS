@@ -110,5 +110,42 @@ final payoutsClientProvider = AutoDisposeProvider<PayoutsClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PayoutsClientRef = AutoDisposeProviderRef<PayoutsClient>;
+String _$clientLaunchClientHash() =>
+    r'1274e255f7c1aaa3c07ac5a26446e9bdad20d770';
+
+/// See also [clientLaunchClient].
+@ProviderFor(clientLaunchClient)
+final clientLaunchClientProvider =
+    AutoDisposeProvider<ClientLaunchClient>.internal(
+      clientLaunchClient,
+      name: r'clientLaunchClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$clientLaunchClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientLaunchClientRef = AutoDisposeProviderRef<ClientLaunchClient>;
+String _$aiConciergeClientHash() => r'7351961f8e4208db2d5582b0eb1d4acdf7f634fd';
+
+/// See also [aiConciergeClient].
+@ProviderFor(aiConciergeClient)
+final aiConciergeClientProvider =
+    AutoDisposeProvider<AIConciergeClient>.internal(
+      aiConciergeClient,
+      name: r'aiConciergeClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$aiConciergeClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AiConciergeClientRef = AutoDisposeProviderRef<AIConciergeClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

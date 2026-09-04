@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_admin, require_not_banned
 from app.api.v1.chats import _booking_request_view, _create_booking_request_from_body
 from app.core.errors import APIError
-from app.models.admin import UserRoleType
+from app.models.admin import ProProfile, UserAccount, UserRoleType
 from app.models.chat import AIInteractionLog, ChatMessage, ChatSenderType, ChatThread, ChatThreadStatus
 from app.models.launch_ops import RolloutCity
 from app.models.ops import FeatureFlagScope
@@ -44,6 +45,55 @@ from app.services.rate_limit import enforce_named_rate_limit
 router = APIRouter(tags=["ai_concierge"])
 
 
+def _thread_summaries(db: Session, threads: Sequence[ChatThread]) -> list[ChatThreadSummary]:
+    """Build thread summaries with both sides' display names resolved.
+
+    Batched across the page: a per-thread lookup would be two extra queries
+    per row on an inbox. A pro is named by their `ProProfile.display_name` -
+    the public brand a client actually recognises - falling back to the
+    account name; a client is named by their account.
+    """
+    if not threads:
+        return []
+
+    pro_ids = {thread.pro_user_id for thread in threads}
+    client_ids = {thread.client_user_id for thread in threads if thread.client_user_id}
+
+    pro_names = {
+        user_id: name
+        for user_id, name in db.execute(
+            select(ProProfile.user_id, ProProfile.display_name).where(ProProfile.user_id.in_(pro_ids))
+        ).all()
+        if name
+    }
+    account_names = {
+        user_id: name
+        for user_id, name in db.execute(
+            select(UserAccount.user_id, UserAccount.display_name).where(
+                UserAccount.user_id.in_(pro_ids | client_ids)
+            )
+        ).all()
+        if name
+    }
+
+    summaries = []
+    for thread in threads:
+        summary = ChatThreadSummary.model_validate(thread, from_attributes=True)
+        summaries.append(
+            summary.model_copy(
+                update={
+                    "pro_display_name": pro_names.get(thread.pro_user_id) or account_names.get(thread.pro_user_id),
+                    "client_display_name": account_names.get(thread.client_user_id) if thread.client_user_id else None,
+                }
+            )
+        )
+    return summaries
+
+
+def _thread_summary(db: Session, thread: ChatThread) -> ChatThreadSummary:
+    return _thread_summaries(db, [thread])[0]
+
+
 @router.post("/chat/threads", response_model=ChatThreadSummary)
 def create_chat_thread_v1(
     body: ChatThreadCreateRequest,
@@ -64,7 +114,7 @@ def create_chat_thread_v1(
             )
         ).scalar_one_or_none()
         if existing:
-            return ChatThreadSummary.model_validate(existing, from_attributes=True)
+            return _thread_summary(db, existing)
 
     thread = ChatThread(
         pro_user_id=body.pro_user_id,
@@ -98,7 +148,7 @@ def create_chat_thread_v1(
         )
     log_event(db, event_name="chat.thread_created", user_id=user.user_id if user else None, properties={"thread_id": str(thread.id), "pro_user_id": str(body.pro_user_id)})
     db.commit()
-    return ChatThreadSummary.model_validate(thread, from_attributes=True)
+    return _thread_summary(db, thread)
 
 
 @router.get("/chat/threads", response_model=ChatThreadListResponse)
@@ -134,7 +184,7 @@ def list_my_chat_threads(
     rows = list(db.execute(apply_keyset(query, ChatThread, cursor, limit)).scalars().all())
     page, next_cursor = build_page(rows, limit)
     return ChatThreadListResponse(
-        items=[ChatThreadSummary.model_validate(row, from_attributes=True) for row in page],
+        items=_thread_summaries(db, page),
         next_cursor=next_cursor,
     )
 
@@ -254,7 +304,7 @@ def list_pro_threads(
     if status:
         stmt = stmt.where(ChatThread.status == status)
     rows = db.execute(stmt.limit(200)).scalars().all()
-    return [ChatThreadSummary.model_validate(row, from_attributes=True) for row in rows]
+    return _thread_summaries(db, rows)
 
 
 @router.get("/pro/chat/threads/{thread_id}", response_model=ChatThreadDetailResponse)
@@ -376,7 +426,7 @@ def _thread_detail(db: Session, thread: ChatThread) -> ChatThreadDetailResponse:
     messages = db.execute(select(ChatMessage).where(ChatMessage.thread_id == thread.id).order_by(ChatMessage.created_at.asc())).scalars().all()
     lead = get_or_create_lead_profile(db, thread_id=thread.id)
     return ChatThreadDetailResponse(
-        thread=ChatThreadSummary.model_validate(thread, from_attributes=True),
+        thread=_thread_summary(db, thread),
         messages=[
             ChatMessageV1View(
                 id=item.id,

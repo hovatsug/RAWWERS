@@ -24,6 +24,14 @@ class ChatThreadSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Both sides' names travel with the thread. Without them an inbox is a
+    # list of UUIDs: the client app cannot title a conversation with anything
+    # but "Photographer", and the pro's inbox has the same problem in reverse.
+    # Nullable because a guest thread has no client account behind it, and
+    # because a pro who has not set a display name is a real state.
+    pro_display_name: str | None = None
+    client_display_name: str | None = None
+
 
 class ChatThreadListResponse(BaseModel):
     """Cursor-paginated thread list, matching the convention in

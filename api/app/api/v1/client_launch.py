@@ -277,11 +277,16 @@ def client_pro_profile(
     if not idx or not profile or not onboarding or onboarding.status != ProOnboardingStatus.approved_public:
         raise APIError(code="not_found", message="Pro not found", status_code=404)
 
-    packages = db.execute(
-        select(ProPackage)
+    # Joined rather than looked up per package: the slug is what makes a
+    # package bookable, and an inner join is safe because ProPackage.niche_id
+    # is non-nullable with a foreign key. A package whose niche vanished could
+    # not be booked anyway, so dropping it beats offering a dead button.
+    package_rows = db.execute(
+        select(ProPackage, Niche.slug)
+        .join(Niche, Niche.id == ProPackage.niche_id)
         .where(ProPackage.pro_user_id == pro_user_id, ProPackage.is_active.is_(True))
         .order_by(ProPackage.price.asc())
-    ).scalars().all()
+    ).all()
     portfolio_rows = db.execute(
         select(MediaAsset.id, MediaAsset.kind)
         .where(
@@ -325,6 +330,7 @@ def client_pro_profile(
         packages=[
             ClientProfilePackage(
                 id=item.id,
+                niche_slug=niche_slug,
                 title=item.title,
                 description=item.description,
                 duration_minutes=item.duration_minutes,
@@ -335,7 +341,7 @@ def client_pro_profile(
                 proofs_sla_days=item.proofs_sla_days,
                 finals_sla_days=item.finals_sla_days,
             )
-            for item in packages
+            for item, niche_slug in package_rows
         ],
         portfolio_preview_asset_ids=[asset_id for asset_id, _ in portfolio_rows],
         portfolio_preview=[

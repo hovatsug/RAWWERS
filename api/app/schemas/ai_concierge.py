@@ -25,6 +25,19 @@ class ChatThreadSummary(BaseModel):
     updated_at: datetime
 
 
+class ChatThreadListResponse(BaseModel):
+    """Cursor-paginated thread list, matching the convention in
+    `app.services.pagination` used by the other collection routes.
+
+    Note the existing `GET /v1/pro/chat/threads` predates that convention and
+    still returns a bare array capped at 200 with no cursor. It is left alone
+    here rather than changed underneath the web app, which consumes it.
+    """
+
+    items: list[ChatThreadSummary] = Field(default_factory=list)
+    next_cursor: str | None = None
+
+
 class ChatMessageCreateV1Request(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
 

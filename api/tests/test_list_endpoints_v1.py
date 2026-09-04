@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.models.booking import BookingRequest, BookingRequestStatus, ProPackage
+from app.models.chat import ChatThread, ChatThreadStatus
 from app.models.communication import Notification, NotificationSeverity, NotificationStatus
 from app.models.gig import Gig, GigStatus
 from app.models.niche import Niche
@@ -326,3 +327,63 @@ def test_notifications_unread_filter_still_applies_across_pages(client, db_sessi
         cursor = body["next_cursor"]
 
     assert len(seen) == 2, "the unread filter must survive pagination, not just the first page"
+
+
+# --- GET /v1/chat/threads (client side) ---------------------------------
+#
+# The pro side has had GET /v1/pro/chat/threads all along; without this the
+# client could only reach a thread whose id they already held.
+
+
+def _seed_thread(db_session, *, client_id: str | None, pro_id: str, created_at: datetime, session_id: str | None = None):
+    row = ChatThread(
+        pro_user_id=uuid.UUID(pro_id),
+        client_user_id=uuid.UUID(client_id) if client_id else None,
+        session_id=session_id,
+        status=ChatThreadStatus.open,
+        context_snapshot={},
+    )
+    db_session.add(row)
+    db_session.flush()
+    row.created_at = created_at
+    db_session.commit()
+    return row
+
+
+def test_client_thread_list_is_scoped_to_the_caller(client, db_session):
+    _seed_thread(db_session, client_id=CLIENT_A, pro_id=PRO_A, created_at=_now())
+    _seed_thread(db_session, client_id=PRO_B, pro_id=PRO_A, created_at=_now())
+
+    items = client.get("/v1/chat/threads", headers={"X-User-Id": CLIENT_A}).json()["items"]
+    assert len(items) == 1
+    assert items[0]["client_user_id"] == CLIENT_A
+
+
+def test_guest_threads_are_not_reachable_from_the_client_list(client, db_session):
+    # A guest thread has a session_id and no client_user_id, so there is no
+    # authenticated owner to scope it to.
+    _seed_thread(db_session, client_id=None, pro_id=PRO_A, created_at=_now(), session_id="guest-abc")
+
+    items = client.get("/v1/chat/threads", headers={"X-User-Id": CLIENT_A}).json()["items"]
+    assert items == []
+
+
+def test_client_thread_list_paginates_without_skipping_tied_rows(client, db_session):
+    shared = _now() - timedelta(hours=2)
+    for _ in range(4):
+        _seed_thread(db_session, client_id=CLIENT_A, pro_id=PRO_A, created_at=shared)
+
+    seen: list[str] = []
+    cursor = None
+    for _ in range(10):
+        params = {"limit": 2}
+        if cursor:
+            params["cursor"] = cursor
+        body = client.get("/v1/chat/threads", params=params, headers={"X-User-Id": CLIENT_A}).json()
+        seen.extend(i["id"] for i in body["items"])
+        cursor = body["next_cursor"]
+        if not cursor:
+            break
+
+    assert cursor is None
+    assert len(set(seen)) == 4, "every thread must appear exactly once across pages"

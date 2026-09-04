@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_optional_current_user, require_admin, require_not_banned
+from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_admin, require_not_banned
 from app.api.v1.chats import _booking_request_view, _create_booking_request_from_body
 from app.core.errors import APIError
 from app.models.admin import UserRoleType
@@ -23,6 +23,7 @@ from app.schemas.ai_concierge import (
     ChatMessageV1View,
     ChatThreadCreateRequest,
     ChatThreadDetailResponse,
+    ChatThreadListResponse,
     ChatThreadSummary,
     CreateBookingFromChatRequest,
     CreateBookingFromChatResponse,
@@ -37,6 +38,7 @@ from app.services.authz import get_user_roles
 from app.services.chat_concierge import snapshot_pro_context
 from app.services.feature_flags import is_feature_enabled, upsert_feature_flag
 from app.services.outbox import enqueue_outbox_event
+from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 
 router = APIRouter(tags=["ai_concierge"])
@@ -97,6 +99,44 @@ def create_chat_thread_v1(
     log_event(db, event_name="chat.thread_created", user_id=user.user_id if user else None, properties={"thread_id": str(thread.id), "pro_user_id": str(body.pro_user_id)})
     db.commit()
     return ChatThreadSummary.model_validate(thread, from_attributes=True)
+
+
+@router.get("/chat/threads", response_model=ChatThreadListResponse)
+def list_my_chat_threads(
+    status: ChatThreadStatus | None = Query(default=None),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_read_session),
+) -> ChatThreadListResponse:
+    """The authenticated client's own chat threads, newest first.
+
+    Mirrors `GET /v1/pro/chat/threads` for the other side of the same
+    threads. Without it a client can only reach a thread whose id they
+    already hold, so "ask a photographer a question before booking" is a
+    one-way door - fine from the pro's inbox, unreachable from the client's.
+
+    Ordered and paginated on `created_at`, not `updated_at`, despite
+    last-activity being the more natural sort for a message list. A keyset
+    cursor needs a stable sort key, and `updated_at` changes every time a
+    message arrives - a thread could move across a page boundary mid-scroll
+    and be skipped or repeated. Thread counts per client are small (you chat
+    with a handful of photographers, not hundreds), so the ordering costs
+    little in practice and the pagination stays correct.
+
+    Guest threads (`session_id` set, no `client_user_id`) are not reachable
+    here by design: they have no authenticated owner to scope to.
+    """
+    query = select(ChatThread).where(ChatThread.client_user_id == user.user_id)
+    if status is not None:
+        query = query.where(ChatThread.status == status)
+
+    rows = list(db.execute(apply_keyset(query, ChatThread, cursor, limit)).scalars().all())
+    page, next_cursor = build_page(rows, limit)
+    return ChatThreadListResponse(
+        items=[ChatThreadSummary.model_validate(row, from_attributes=True) for row in page],
+        next_cursor=next_cursor,
+    )
 
 
 @router.get("/chat/threads/{thread_id}", response_model=ChatThreadDetailResponse)

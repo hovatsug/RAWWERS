@@ -6,6 +6,8 @@ import 'package:rawwers/api/api_client/auth_client.dart';
 import 'package:rawwers/api/api_client/client_launch_client.dart';
 import 'package:rawwers/api/api_client/gigs_client.dart';
 import 'package:rawwers/api/api_client/notifications_client.dart';
+import 'package:rawwers/api/api_client/repairs_client.dart';
+import 'package:rawwers/api/api_client/scheduling_client.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/core/api/dio_client.dart';
@@ -42,3 +44,11 @@ AIConciergeClient aiConciergeClient(Ref ref) => AIConciergeClient(ref.watch(dioP
 
 @riverpod
 NotificationsClient notificationsClient(Ref ref) => NotificationsClient(ref.watch(dioProvider));
+
+@riverpod
+SchedulingClient schedulingClient(Ref ref) => SchedulingClient(ref.watch(dioProvider));
+
+/// Gear lives under the repairs tag because the repairs marketplace
+/// consumes it; to a photographer it is just the kit they own.
+@riverpod
+RepairsClient repairsClient(Ref ref) => RepairsClient(ref.watch(dioProvider));

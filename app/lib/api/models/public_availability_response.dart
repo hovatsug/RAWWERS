@@ -9,7 +9,7 @@
 ///         "rules": {
 ///             "type": "array",
 ///             "items": {
-///                 "$ref": "#/components/schemas/app__schemas__onboarding__AvailabilityRuleView"
+///                 "$ref": "#/components/schemas/OnboardingAvailabilityRuleView"
 ///             },
 ///             "title": "Rules"
 ///         },
@@ -47,7 +47,7 @@ abstract class PublicAvailabilityResponse with _$PublicAvailabilityResponse {
 
     /// rules
     @JsonKey(name: PublicAvailabilityResponse.rulesKey_)
-    required List<AvailabilityRuleView> rules,
+    required List<OnboardingAvailabilityRuleView> rules,
 
     /// blackouts
     @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)

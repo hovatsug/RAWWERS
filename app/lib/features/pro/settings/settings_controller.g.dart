@@ -28,7 +28,7 @@ final payoutAccountProvider =
 // ignore: unused_element
 typedef PayoutAccountRef = AutoDisposeFutureProviderRef<PayoutAccountView>;
 String _$proProfileControllerHash() =>
-    r'a48ca6be49717c15a385555b5b8b2d7b61eec69d';
+    r'5b381c7130174568bb954e79375a38aaa243603b';
 
 /// The pro profile, as Settings needs it: name, KYC state, whether the
 /// listing is live.

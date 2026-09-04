@@ -31,6 +31,12 @@ class ProProfileController extends _$ProProfileController {
     ref.invalidateSelf();
     await future;
   }
+
+  /// Adopts a profile the server has already returned.
+  ///
+  /// Used after a save, so every screen watching this provider updates from
+  /// the response that just succeeded rather than a refetch that might not.
+  void replaceWith(ProProfileView profile) => state = AsyncData(profile);
 }
 
 /// Where payouts would land. Read-only here - entering bank details is

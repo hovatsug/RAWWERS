@@ -15,6 +15,7 @@ export 'media_rights_client.dart';
 export 'notifications_client.dart';
 export 'pro_onboarding_client.dart';
 export 'proof_galleries_client.dart';
+export 'repairs_client.dart';
 export 'reviews_client.dart';
 export 'search_client.dart';
 export 'scheduling_client.dart';

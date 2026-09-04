@@ -4,7 +4,7 @@
 ///         "items": {
 ///             "type": "array",
 ///             "items": {
-///                 "$ref": "#/components/schemas/app__schemas__scheduling__AvailabilityRuleView"
+///                 "$ref": "#/components/schemas/SchedulingAvailabilityRuleView"
 ///             },
 ///             "title": "Items"
 ///         }
@@ -26,7 +26,7 @@ abstract class AvailabilityRulesResponse with _$AvailabilityRulesResponse {
   const factory AvailabilityRulesResponse({
     /// items
     @JsonKey(name: AvailabilityRulesResponse.itemsKey_)
-    List<AvailabilityRuleView>? items,
+    List<SchedulingAvailabilityRuleView>? items,
   }) = _AvailabilityRulesResponse;
 
   factory AvailabilityRulesResponse.fromJson(Map<String, dynamic> json) =>

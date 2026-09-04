@@ -56,3 +56,50 @@ class RStatusChip extends StatelessWidget {
     );
   }
 }
+
+
+/// A chip the user can turn on and off.
+///
+/// Selection reads as a filled ink chip rather than an accent-filled one:
+/// several selected chips in a row would otherwise put more accent on the
+/// screen than the primary action, which is the thing that should stand out.
+class RSelectableChip extends StatelessWidget {
+  const RSelectableChip({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+    super.key,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final background = selected ? scheme.onSurface : Colors.transparent;
+    final foreground = selected ? scheme.surface : scheme.onSurface;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(RRadius.control),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: RSpace.s12, vertical: RSpace.s8),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(RRadius.control),
+            border: Border.all(color: selected ? scheme.onSurface : scheme.outline),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: foreground),
+          ),
+        ),
+      ),
+    );
+  }
+}

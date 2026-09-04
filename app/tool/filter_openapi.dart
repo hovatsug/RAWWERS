@@ -18,6 +18,14 @@ const _excludedTags = {
 
 const _excludedPathPrefixes = ['/v1/admin/'];
 
+// Rescued from an excluded tag. Gear registration is tagged "repairs"
+// because the repairs marketplace consumes it, but to a photographer it is
+// profile data - the bodies and lenses they own - and the pro app needs it
+// without pulling in repair tickets, partners and loaner requests. An
+// allowlist entry here beats re-tagging the backend, which would rename
+// every generated method for the sake of a client-side concern.
+const _includedPathPrefixes = ['/v1/pro/me/gear-items'];
+
 const _httpMethods = {'get', 'post', 'put', 'patch', 'delete', 'head', 'options'};
 
 Future<void> main(List<String> arguments) async {
@@ -51,7 +59,8 @@ Future<void> main(List<String> arguments) async {
       }
       final opMap = op as Map<String, dynamic>;
       final tags = (opMap['tags'] as List?)?.cast<String>().toSet() ?? {};
-      if (excludedByPrefix || tags.intersection(_excludedTags).isNotEmpty) {
+      final rescued = _includedPathPrefixes.any(path.startsWith);
+      if (!rescued && (excludedByPrefix || tags.intersection(_excludedTags).isNotEmpty)) {
         droppedOps++;
         return;
       }
@@ -64,6 +73,16 @@ Future<void> main(List<String> arguments) async {
   });
 
   doc['paths'] = keptPaths;
+
+  // FastAPI qualifies a schema name only when two modules define classes
+  // with the same name: app__schemas__scheduling__AvailabilityRuleView vs
+  // app__schemas__onboarding__AvailabilityRuleView. The Dart generator
+  // takes the last path segment as the class name, so both collapse into
+  // one AvailabilityRuleView - and whichever loses is silently wrong.
+  // It cost a runtime "Null is not a subtype of num" on the first read of
+  // /v1/pro/scheduling/availability-rules, invisible to flutter analyze.
+  // Renaming them apart here gives the generator two distinct classes.
+  _disambiguateQualifiedSchemas(doc);
 
   final components = doc['components'] as Map<String, dynamic>? ?? {};
   final schemas = (components['schemas'] as Map<String, dynamic>? ?? {});
@@ -88,6 +107,11 @@ Future<void> main(List<String> arguments) async {
   components['schemas'] = prunedSchemas;
   doc['components'] = components;
 
+  // After pruning: only the schemas that actually reach the generator can
+  // clash into one Dart class. Excluded surface (admin, referrals) has its
+  // own duplicate titles that are none of this app's business.
+  _assertTitlesUnique(prunedSchemas);
+
   final outFile = File(outPath);
   await outFile.create(recursive: true);
   await outFile.writeAsString(jsonEncode(doc));
@@ -95,6 +119,95 @@ Future<void> main(List<String> arguments) async {
   stdout.writeln('kept $keptOps ops, dropped $droppedOps ops');
   stdout.writeln('kept ${prunedSchemas.length} of ${schemas.length} component schemas');
   stdout.writeln('wrote $outPath');
+}
+
+/// Rewrites `app__schemas__<module>__<Name>` schema names to `<Module><Name>`
+/// and updates every `$ref` that points at them.
+void _disambiguateQualifiedSchemas(Map<String, dynamic> doc) {
+  final components = doc['components'] as Map<String, dynamic>? ?? {};
+  final schemas = components['schemas'] as Map<String, dynamic>? ?? {};
+
+  final renames = <String, String>{};
+  for (final name in schemas.keys) {
+    if (!name.startsWith('app__schemas__')) continue;
+    final parts = name.split('__').where((p) => p.isNotEmpty).toList();
+    if (parts.length < 4) continue;
+    final module = parts[parts.length - 2];
+    final className = parts.last;
+    final prefix = module
+        .split('_')
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join();
+    var candidate = '$prefix$className';
+    // Do not collide with an existing schema while fixing a collision.
+    var suffix = 2;
+    while (schemas.containsKey(candidate) || renames.containsValue(candidate)) {
+      candidate = '$prefix$className$suffix';
+      suffix++;
+    }
+    renames[name] = candidate;
+  }
+  if (renames.isEmpty) return;
+
+  for (final entry in renames.entries) {
+    final schema = schemas.remove(entry.key);
+    // swagger_to_dart names the Dart class from `title`, not the schema
+    // key, and FastAPI leaves both collided schemas titled identically -
+    // so renaming the key alone regenerates the very same clash.
+    if (schema is Map<String, dynamic>) schema['title'] = entry.value;
+    schemas[entry.value] = schema;
+  }
+  _rewriteRefs(doc, renames);
+  components['schemas'] = schemas;
+  doc['components'] = components;
+
+  renames.forEach((from, to) => stdout.writeln('disambiguated schema $from -> $to'));
+}
+
+/// swagger_to_dart derives the Dart class name from `title`, so two schemas
+/// sharing one produce a single class and whichever loses is silently the
+/// wrong shape. Renaming above fixes the case FastAPI flags; this catches
+/// any other duplicate before it reaches the generator, where it would only
+/// surface as a runtime cast error on whichever screen reads it first.
+void _assertTitlesUnique(Map<String, dynamic> schemas) {
+  final byTitle = <String, List<String>>{};
+  schemas.forEach((name, schema) {
+    if (schema is! Map) return;
+    final title = schema['title'];
+    if (title is String) byTitle.putIfAbsent(title, () => []).add(name);
+  });
+
+  final clashes = byTitle.entries.where((e) => e.value.length > 1).toList();
+  if (clashes.isEmpty) return;
+
+  stderr.writeln('Schema titles must be unique - they become Dart class names:');
+  for (final clash in clashes) {
+    stderr.writeln('  "${clash.key}" claimed by: ${clash.value.join(', ')}');
+  }
+  stderr.writeln('Rename one of the backend schema classes, or extend');
+  stderr.writeln('_disambiguateQualifiedSchemas to cover this case.');
+  exit(1);
+}
+
+void _rewriteRefs(dynamic node, Map<String, String> renames) {
+  if (node is Map) {
+    final ref = node[r'$ref'];
+    if (ref is String && ref.startsWith('#/components/schemas/')) {
+      final target = ref.split('/').last;
+      final replacement = renames[target];
+      if (replacement != null) {
+        node[r'$ref'] = '#/components/schemas/$replacement';
+      }
+    }
+    for (final value in node.values) {
+      _rewriteRefs(value, renames);
+    }
+  } else if (node is List) {
+    for (final value in node) {
+      _rewriteRefs(value, renames);
+    }
+  }
 }
 
 Future<String> _fetch(String url) async {

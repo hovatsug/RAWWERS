@@ -9,6 +9,9 @@ class RInput extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.tabularFigures = false,
+    this.autofillHints,
+    this.textInputAction,
+    this.onSubmitted,
     super.key,
   });
 
@@ -22,12 +25,28 @@ class RInput extends StatelessWidget {
   /// stay column-aligned.
   final bool tabularFigures;
 
+  /// What the OS should offer to fill here. Leaving this null does not mean
+  /// "no autofill" - iOS guesses from surrounding labels, and it guesses
+  /// badly: an unhinted email field on a sign-up form was observed being
+  /// offered the device's Apple ID. Every text field that could plausibly
+  /// be autofilled should say what it is, and the register/login split
+  /// matters specifically: `newPassword` is what prompts the OS to offer to
+  /// *save* a generated password, `password` is what prompts it to fill an
+  /// existing one.
+  final List<String>? autofillHints;
+
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      autofillHints: autofillHints,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       style: TextStyle(
         fontFeatures: tabularFigures ? RType.tabularFigures : null,
       ),

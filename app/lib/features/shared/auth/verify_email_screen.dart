@@ -103,7 +103,14 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
               const SizedBox(height: RSpace.s16),
               RTextLink(label: 'Send me a code', onPressed: _sending ? () {} : _sendCode),
               const SizedBox(height: RSpace.s16),
-              RInput(label: 'Code', controller: _code),
+              RInput(
+                label: 'Code',
+                controller: _code,
+                keyboardType: TextInputType.number,
+                // Lets iOS surface the emailed code straight from the
+                // keyboard bar instead of making the user switch apps.
+                autofillHints: const [AutofillHints.oneTimeCode],
+              ),
               if (_error != null) ...[
                 const SizedBox(height: RSpace.s12),
                 Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

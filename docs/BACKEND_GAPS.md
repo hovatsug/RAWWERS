@@ -34,13 +34,41 @@ Payouts and earnings are the exception and *do* have collection routes (`GET /v1
 
 **What it blocks:** any screen whose job is "here is your queue of work" — the pro app's Requests, Gigs, and Today tabs, and the client app's bookings list. A pro cannot enumerate the requests awaiting them, which is the same 48h-window problem from the notification gap arriving by a second independent route. There is no client-side workaround: an id-only API cannot be turned into a list, and the notification feed that might have supplied the ids is itself empty (see above). Adding the list routes is a server-side task.
 
-## `GET /v1/me/notifications` paginates on a timestamp alone, so it skips and repeats rows
+## ~~`GET /v1/me/notifications` paginates on a timestamp alone, so it skips and repeats rows~~ — FIXED in `029e1b38`
+
+**Resolved.** `list_notifications` now uses the shared `(created_at, id)` keyset helper, and an unparseable cursor returns 422 across every endpoint using it rather than silently re-serving page one. Kept for the reasoning. Original finding follows.
 
 `list_notifications` (`api/app/services/notifications.py:387`) uses `created_at` as its entire cursor: it returns `rows[-1].created_at` as `next_cursor` and filters the next page with `created_at < cursor`. That ordering is not total. When two notifications share a `created_at` — and they routinely will, because `dispatch_outbox_events` processes a batch inside one transaction, so every notification in a batch lands on effectively the same timestamp — the rows tied at the page boundary are dropped: the strict `<` skips past all of them, not just the one already returned. The `except ValueError: pass` on an unparseable cursor silently ignores the filter entirely and re-serves page one, which is the duplicate half of the same bug.
 
 **Why it matters now specifically:** until `dispatch_outbox_events` was put on `beat_schedule` (`b91ee8ba`) the notification feed was always empty, so this could never fire. Now that the outbox actually drains, the feed fills in batches — exactly the shape that triggers ties — and a photographer paging their notifications can silently miss one. Given the 48h response window, the notification that goes missing may be the booking request itself.
 
 The fix is the keyset helper already in the codebase: `app.services.pagination` orders on `(created_at, id)` and is used by the three list endpoints added in the same commit. Retrofitting `list_notifications` onto it is a small, contained change, deliberately not bundled into that commit — it changes an existing endpoint's cursor format, which is a separate decision from adding new routes.
+
+## Delayed-notification payment methods are not handled (mitigated for launch by Stripe dashboard config)
+
+Surfaced in F-6 when `8a946064` switched every PaymentIntent to `automatic_payment_methods`. Automatic lets Stripe offer whatever suits the buyer's region, which in Europe includes **delayed-notification** methods — Multibanco, SEPA debit, some bank redirects — where the customer completes their side and the payment clears hours or days later. The code assumes payment either succeeds or fails promptly.
+
+**Not currently reachable:** delayed-notification methods are disabled in the Stripe dashboard for launch, so nothing below can fire. That is configuration, not code — re-enabling any such method in the dashboard arms all of it with no deploy.
+
+### 1 + 2. No `payment_intent.processing` handling, and the payment follow-up therefore nags people who have already paid
+
+These are one fix, not two, and would be implemented together.
+
+`api/app/api/v1/webhooks.py` handles `payment_intent.succeeded`, `payment_intent.payment_failed` and `payment_intent.canceled`. It does **not** handle `payment_intent.processing`, which is the event that says "the customer has paid and it is clearing". Without it there is no state distinguishing *hasn't paid* from *paid, awaiting clearance* — the gig sits at `payment_pending` for both, and neither the photographer nor the client can tell which.
+
+That missing distinction is exactly why the follow-up misfires: `payment_pending.client` sends an in-app "Complete payment — your booking is waiting for payment" at 60 minutes and again at 24 hours (`api/app/services/followups.py:50-61`). Multibanco routinely takes longer, so a client who has already paid is told twice that they haven't. The follow-up cannot be gated correctly until the `processing` state exists to gate it on — hence one fix: record the processing state, then trigger the follow-up on "not yet initiated" rather than "not yet succeeded".
+
+The non-broken half, for the record: `map_intent_status` already maps Stripe's `processing` to `pending`, and `payment_intent.succeeded` is handled, so a payment that clears days later *does* correctly move the gig to `paid`. Nothing is lost or corrupted; the failure is informational.
+
+**This becomes a real blocker for a Portugal launch specifically.** Multibanco is a mainstream way Portuguese customers pay for larger purchases, and a four-figure wedding booking is precisely the amount people reach for it. Enabling it without this fix means telling paying clients, twice, that they haven't paid — on the highest-value bookings in the product.
+
+### 3. The stuck-gig sweep would false-alarm on a legitimately clearing payment (theoretical)
+
+`find_and_flag_stuck_gigs` notifies admins about non-terminal gigs older than `STUCK_BOOKING_MAX_AGE_HOURS`, default **720 hours (30 days)** — far longer than any delayed method takes, so this will not fire in practice. Noted for completeness rather than as a risk. The sweep is also observational by design: it logs and notifies, never transitions a gig, so it cannot corrupt state either way.
+
+### Scope note: MVP is one payment per booking
+
+Recorded here because it bounds the fix above. A booking takes a single payment; there is no splitting a booking across multiple cards or methods. The multi-payment schema from B-1 stays exactly as it is — `StripePaymentKind` of `base` / `difference` / `extras` are sequential charges against one gig, not parallel tenders for one charge — and no third dimension is being added on top of it.
 
 ## The new list endpoints are unit-tested but have never run against a populated queue
 

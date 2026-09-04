@@ -147,5 +147,24 @@ final aiConciergeClientProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AiConciergeClientRef = AutoDisposeProviderRef<AIConciergeClient>;
+String _$notificationsClientHash() =>
+    r'90e9ad9432f80f0a22bc68c546d0fabf2b72f618';
+
+/// See also [notificationsClient].
+@ProviderFor(notificationsClient)
+final notificationsClientProvider =
+    AutoDisposeProvider<NotificationsClient>.internal(
+      notificationsClient,
+      name: r'notificationsClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$notificationsClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NotificationsClientRef = AutoDisposeProviderRef<NotificationsClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

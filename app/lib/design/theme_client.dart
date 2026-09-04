@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/design/color_scheme.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/design/typography.dart';
 
@@ -13,15 +14,7 @@ ThemeData buildClientTheme() {
     fontFamily: RType.fontFamily,
     scaffoldBackgroundColor: RInk.i950,
     textTheme: textTheme,
-    colorScheme: const ColorScheme.dark(
-      surface: RInk.i900,
-      onSurface: RInk.i050,
-      primary: RAccent.meter500,
-      onPrimary: RInk.i050,
-      outline: RInk.i800,
-      error: RShade.shade600,
-      onError: RInk.i050,
-    ),
+    colorScheme: RColorSchemes.dark,
     dividerColor: RInk.i800,
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -56,6 +49,7 @@ ThemeData buildClientTheme() {
         borderSide: const BorderSide(color: RAccent.meter500, width: 2),
       ),
     ),
+    navigationBarTheme: buildNavigationBarTheme(isDark: true),
     focusColor: RAccent.meter500,
   );
 }

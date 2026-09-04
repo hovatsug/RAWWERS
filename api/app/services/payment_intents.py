@@ -52,7 +52,6 @@ def allocate_amount_oldest_first(payments: list[StripePayment], amount: Decimal)
 def create_or_get_gig_payment_intent(
     db: Session,
     gig: Gig,
-    payment_method_types: list[str] | None = None,
     return_url: str | None = None,
     amount_override: Decimal | None = None,
     extra_metadata: dict | None = None,
@@ -77,10 +76,19 @@ def create_or_get_gig_payment_intent(
     if extra_metadata:
         metadata.update(extra_metadata)
 
+    # automatic_payment_methods only, never alongside payment_method_types:
+    # Stripe rejects the combination outright ("You cannot enable
+    # `automatic_payment_methods` and specify `payment_method_types`"), which
+    # made every PaymentIntent creation in the product a 500.
+    #
+    # Automatic is the deliberate choice rather than card-only. Launching in
+    # Europe, a hardcoded ["card"] excludes iDEAL, Bancontact, SEPA debit and
+    # Multibanco - and Multibanco is a mainstream way to pay in Portugal.
+    # Letting Stripe surface the right methods per region also means new
+    # markets need no per-market list maintained here.
     pi = stripe.PaymentIntent.create(
         amount=to_cents(payable_amount),
         currency=gig.currency.lower(),
-        payment_method_types=payment_method_types or ["card"],
         metadata=metadata,
         automatic_payment_methods={"enabled": True},
         idempotency_key=f"gig:{gig.id}:pi:{kind.value}",

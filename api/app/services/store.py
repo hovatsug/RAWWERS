@@ -314,7 +314,6 @@ def create_order_from_cart(
         pi = stripe.PaymentIntent.create(
             amount=to_cents(order.total),
             currency=order.currency.lower(),
-            payment_method_types=["card"],
             metadata={"order_id": str(order.id), "user_id": str(order.user_id), "scope": "commerce_order"},
             automatic_payment_methods={"enabled": True},
             idempotency_key=f"store-order:{order.id}:pi",

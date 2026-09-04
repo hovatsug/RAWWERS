@@ -249,7 +249,6 @@ def create_payment_intent(
     _, pi = create_or_get_gig_payment_intent(
         db,
         gig,
-        payment_method_types=body.payment_method_types or ["card"],
         return_url=body.return_url,
         amount_override=payable_amount,
     )

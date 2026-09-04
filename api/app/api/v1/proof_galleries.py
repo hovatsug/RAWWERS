@@ -685,7 +685,6 @@ def _ensure_upsell_intent(
         pi = stripe.PaymentIntent.create(
             amount=int((subtotal * Decimal("100")).quantize(Decimal("1"))),
             currency=gallery.currency.lower(),
-            payment_method_types=["card"],
             metadata={
                 "proof_gallery_id": str(gallery.id),
                 "selection_id": str(selection.id),
@@ -715,7 +714,6 @@ def _ensure_upsell_intent(
         pi = stripe.PaymentIntent.create(
             amount=int((subtotal * Decimal("100")).quantize(Decimal("1"))),
             currency=gallery.currency.lower(),
-            payment_method_types=["card"],
             metadata={
                 "proof_gallery_id": str(gallery.id),
                 "selection_id": str(selection.id),

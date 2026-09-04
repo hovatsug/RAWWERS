@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:rawwers/api/api_client/media_client.dart';
 import 'package:rawwers/api/models/complete_photo_upload_request.dart';
 import 'package:rawwers/api/models/media_purpose.dart';
+import 'package:rawwers/api/models/media_visibility.dart';
 import 'package:rawwers/api/models/photo_upload_create_request.dart';
 import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
@@ -51,6 +52,7 @@ class PhotoUploadService {
     required MediaPurpose purpose,
     required String contentType,
     String? fileName,
+    MediaVisibility? visibility,
     CancelToken? cancelToken,
     void Function(int sent, int total)? onSendProgress,
     int maxAttempts = 3,
@@ -61,6 +63,7 @@ class PhotoUploadService {
       purpose: purpose,
       contentType: contentType,
       fileName: fileName,
+      visibility: visibility,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       maxAttempts: maxAttempts,
@@ -88,6 +91,7 @@ class PhotoUploadService {
     required MediaPurpose purpose,
     required String contentType,
     String? fileName,
+    MediaVisibility? visibility,
     CancelToken? cancelToken,
     void Function(int sent, int total)? onSendProgress,
     required int maxAttempts,
@@ -97,7 +101,15 @@ class PhotoUploadService {
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       final createResult = await apiCall(
         () => _mediaClient.createPhotoUploadV1MediaPhotosUploadsPost(
-          requestBody: PhotoUploadCreateRequest(purpose: purpose, contentType: contentType, fileName: fileName),
+          // Visibility is passed explicitly by callers that care. Null
+          // lets the backend apply its own default, which for a portfolio
+          // photo is public - but a caller should not have to know that.
+          requestBody: PhotoUploadCreateRequest(
+            purpose: purpose,
+            contentType: contentType,
+            fileName: fileName,
+            visibility: visibility,
+          ),
           authorization: null,
           xMinusUserMinusId: null,
         ),

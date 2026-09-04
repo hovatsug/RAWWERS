@@ -25,6 +25,7 @@ class ProSettingsScreen extends ConsumerWidget {
     required this.verifyEmailPath,
     this.profileEditPath,
     this.gearPath,
+    this.portfolioPath,
     this.availabilityPath,
     super.key,
   });
@@ -32,6 +33,7 @@ class ProSettingsScreen extends ConsumerWidget {
   final String verifyEmailPath;
   final String? profileEditPath;
   final String? gearPath;
+  final String? portfolioPath;
   final String? availabilityPath;
 
   @override
@@ -91,6 +93,14 @@ class ProSettingsScreen extends ConsumerWidget {
                         detail: 'Name, headline, where you work, how far you travel',
                         onTap: () => context.go(profileEditPath!),
                       ),
+                    if (portfolioPath != null) ...[
+                      const Divider(height: RSpace.s24),
+                      _NavRow(
+                        label: 'Portfolio',
+                        detail: 'The photos clients judge you on',
+                        onTap: () => context.go(portfolioPath!),
+                      ),
+                    ],
                     if (availabilityPath != null) ...[
                       const Divider(height: RSpace.s24),
                       _NavRow(

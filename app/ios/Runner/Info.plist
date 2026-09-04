@@ -53,6 +53,14 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- Required by image_picker. The deployment target is iOS 13, below
+	     the 14.0 where PHPicker (which needs no permission) is used, so the
+	     picker falls back to UIImagePickerController - and iOS terminates
+	     the app on the spot if this string is missing. Worded as the reason
+	     rather than the mechanism, since this is what the photographer
+	     reads in the prompt. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RAWWERS needs access to your photos so you can add work to your portfolio.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

@@ -74,9 +74,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(carriedMessage, style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: RSpace.s16),
               ],
-              RInput(label: 'Email', controller: _email, keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: RSpace.s12),
-              RInput(label: 'Password', controller: _password, obscureText: true),
+              // AutofillGroup + hints: without them iOS guesses from nearby
+              // labels and guesses wrong (it offered an Apple ID into the
+              // sign-up email field). `password`, not `newPassword`, so the OS
+              // offers to fill a saved credential rather than save a new one.
+              AutofillGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RInput(
+                      label: 'Email',
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.username, AutofillHints.email],
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: RSpace.s12),
+                    RInput(
+                      label: 'Password',
+                      controller: _password,
+                      obscureText: true,
+                      autofillHints: const [AutofillHints.password],
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (!_submitting) _submit();
+                      },
+                    ),
+                  ],
+                ),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: RSpace.s12),
                 Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

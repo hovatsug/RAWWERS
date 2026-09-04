@@ -82,7 +82,26 @@ class RWidgetGalleryScreen extends StatelessWidget {
               children: [
                 RButton(label: 'Confirm selection', onPressed: () {}),
                 const RButton(label: 'Loading', onPressed: null, loading: true),
+                RButton(label: 'Decline', onPressed: () {}, variant: RButtonVariant.secondary),
+                const RButton(
+                  label: 'Loading',
+                  onPressed: null,
+                  loading: true,
+                  variant: RButtonVariant.secondary,
+                ),
                 RTextLink(label: 'Select all', onPressed: () {}),
+              ],
+            ),
+          ),
+          _Section(
+            title: 'Filter chips (selectable - not status)',
+            child: Wrap(
+              spacing: RSpace.s8,
+              runSpacing: RSpace.s8,
+              children: [
+                RFilterChip(label: 'Pending', selected: true, onPressed: () {}),
+                RFilterChip(label: 'Accepted', selected: false, onPressed: () {}),
+                RFilterChip(label: 'Declined', selected: false, onPressed: () {}),
               ],
             ),
           ),

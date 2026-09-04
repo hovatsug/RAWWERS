@@ -66,9 +66,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RInput(label: 'Email', controller: _email, keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: RSpace.s12),
-              RInput(label: 'Password', controller: _password, obscureText: true),
+              // `newPassword` is the hint that makes the OS offer to save a
+              // generated password; `password` would only offer to fill an
+              // existing one, which is the wrong prompt on a sign-up form.
+              // Without any hint iOS guesses, and it offered an Apple ID here.
+              AutofillGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RInput(
+                      label: 'Email',
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.username, AutofillHints.email],
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: RSpace.s12),
+                    RInput(
+                      label: 'Password',
+                      controller: _password,
+                      obscureText: true,
+                      autofillHints: const [AutofillHints.newPassword],
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (!_submitting) _submit();
+                      },
+                    ),
+                  ],
+                ),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: RSpace.s12),
                 Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

@@ -81,9 +81,21 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RInput(label: 'Code', controller: _code),
+              RInput(
+                label: 'Code',
+                controller: _code,
+                keyboardType: TextInputType.number,
+                autofillHints: const [AutofillHints.oneTimeCode],
+              ),
               const SizedBox(height: RSpace.s12),
-              RInput(label: 'New password', controller: _newPassword, obscureText: true),
+              RInput(
+                label: 'New password',
+                controller: _newPassword,
+                obscureText: true,
+                // newPassword, so the OS offers to save the replacement
+                // rather than autofilling the one being reset away.
+                autofillHints: const [AutofillHints.newPassword],
+              ),
               if (_error != null) ...[
                 const SizedBox(height: RSpace.s12),
                 Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

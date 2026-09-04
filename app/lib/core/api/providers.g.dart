@@ -57,5 +57,58 @@ final authClientProvider = AutoDisposeProvider<AuthClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AuthClientRef = AutoDisposeProviderRef<AuthClient>;
+String _$proOnboardingClientHash() =>
+    r'ac24a3aab3ea71a822105307e3cf2a2203610462';
+
+/// See also [proOnboardingClient].
+@ProviderFor(proOnboardingClient)
+final proOnboardingClientProvider =
+    AutoDisposeProvider<ProOnboardingClient>.internal(
+      proOnboardingClient,
+      name: r'proOnboardingClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$proOnboardingClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProOnboardingClientRef = AutoDisposeProviderRef<ProOnboardingClient>;
+String _$gigsClientHash() => r'5550695e71d9d42b763ca3b91ff023d532fbf6c2';
+
+/// See also [gigsClient].
+@ProviderFor(gigsClient)
+final gigsClientProvider = AutoDisposeProvider<GigsClient>.internal(
+  gigsClient,
+  name: r'gigsClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$gigsClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GigsClientRef = AutoDisposeProviderRef<GigsClient>;
+String _$payoutsClientHash() => r'9da84c8417e2352f7da7351a718d3a198c97b41b';
+
+/// See also [payoutsClient].
+@ProviderFor(payoutsClient)
+final payoutsClientProvider = AutoDisposeProvider<PayoutsClient>.internal(
+  payoutsClient,
+  name: r'payoutsClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$payoutsClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PayoutsClientRef = AutoDisposeProviderRef<PayoutsClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

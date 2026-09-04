@@ -894,4 +894,67 @@ abstract class ClientLaunchClient {
       },
     },
   });
+  @GET("/v1/pro/me/listing-preview")
+  Future<HttpResponse<ProListingPreviewResponse>>
+  proListingPreviewV1ProMeListingPreviewGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'Pro Listing Preview',
+      'description':
+          'The pro\'s own listing, rendered exactly as a client would see it.\n\nDeliberately lives beside _cards_from_index rather than in the pro\nmodule: a preview built by a second code path is a preview that\neventually lies. Works at any onboarding status - a pro who is not yet\nlive is precisely the one who needs to see what they are building.',
+      'operationId': 'pro_listing_preview_v1_pro_me_listing_preview_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProListingPreviewResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
 }

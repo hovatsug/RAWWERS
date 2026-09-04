@@ -106,6 +106,17 @@
 ///                 }
 ///             ],
 ///             "title": "Gear"
+///         },
+///         "travel_radius_km": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Travel Radius Km"
 ///         }
 ///     },
 ///     "type": "object",
@@ -151,6 +162,10 @@ abstract class ProProfileUpdateRequest with _$ProProfileUpdateRequest {
 
     /// gear
     @JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? gear,
+
+    /// travelRadiusKm
+    @JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_)
+    int? travelRadiusKm,
   }) = _ProProfileUpdateRequest;
 
   factory ProProfileUpdateRequest.fromJson(Map<String, dynamic> json) =>
@@ -173,4 +188,6 @@ abstract class ProProfileUpdateRequest with _$ProProfileUpdateRequest {
   static const String stylesKey_ = r'styles';
 
   static const String gearKey_ = r'gear';
+
+  static const String travelRadiusKmKey_ = r'travel_radius_km';
 }

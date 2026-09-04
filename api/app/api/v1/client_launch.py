@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, or_, select
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_write_session, get_optional_current_user, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
-from app.models.admin import ProProfile, UserRoleType
+from app.models.admin import KYCStatus, ProProfile, UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProAvailabilityRule, ProPackage
 from app.models.client_launch import ClientPreference, ClientWaitlist, MatchRequest as MatchRequestLog, MatchResult as MatchResultLog
 from app.models.discovery import ProPublicIndex
@@ -41,11 +41,14 @@ from app.schemas.client_launch import (
     ClientProProfileResponse,
     ClientWaitlistCreateRequest,
     ClientWaitlistCreateResponse,
+    ProListingPreviewResponse,
 )
 from app.schemas.media import CurrentUser
 from app.services.analytics import log_event
+from app.services.availability_blocks import blocked_intervals, window_fully_blocked
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
+from app.services.discovery_index import recompute_pro_public_index
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
 from app.services.media_urls import ORIGINAL_FIRST, THUMBNAIL_FIRST, resolve_image_urls
@@ -401,6 +404,17 @@ def client_booking_request(
     if not has_availability:
         raise APIError(code="validation_error", message="Pro has no availability configured", status_code=409)
 
+    # Told here rather than at accept: a request the pro can only decline
+    # costs the client a day of waiting to learn what the server already
+    # knew. Only a window with no free time at all is refused - see
+    # window_fully_blocked on why partial overlap stays acceptable.
+    if window_fully_blocked(db, body.pro_user_id, start=body.date_window.start_at, end=body.date_window.end_at):
+        raise APIError(
+            code="validation_error",
+            message="This photographer is not available on those dates. Try a different window.",
+            status_code=409,
+        )
+
     booking = BookingRequest(
         pro_user_id=body.pro_user_id,
         client_user_id=user.user_id,
@@ -755,6 +769,77 @@ def _discover_rows(
 # a URL can be handed to a client at the very end of the cache window; the
 # cache TTL is added on top so that even the stalest cached entry still serves
 # a URL with the full base lifetime ahead of it.
+@router.get("/pro/me/listing-preview", response_model=ProListingPreviewResponse)
+def pro_listing_preview(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_write_session),
+) -> ProListingPreviewResponse:
+    """The pro's own listing, rendered exactly as a client would see it.
+
+    Deliberately lives beside _cards_from_index rather than in the pro
+    module: a preview built by a second code path is a preview that
+    eventually lies. Works at any onboarding status - a pro who is not yet
+    live is precisely the one who needs to see what they are building.
+    """
+    ensure_user_account(db, user.user_id)
+    profile = db.get(ProProfile, user.user_id)
+    if not profile:
+        raise APIError(code="not_found", message="No pro profile", status_code=404)
+
+    # Recompute first: the index is what Discover reads, so previewing off a
+    # stale row would show the pro yesterday's card and hide the effect of
+    # the edit they just made.
+    index = recompute_pro_public_index(db, user.user_id)
+    card = _cards_from_index(db, [index])[0]
+
+    reasons: list[str] = []
+    if index.kyc_status != KYCStatus.approved:
+        reasons.append("kyc_not_approved")
+    if not index.is_accepting_bookings:
+        reasons.append("not_accepting_bookings")
+    if index.completeness_score < 60:
+        reasons.append("profile_incomplete")
+    if index.min_package_price is None:
+        reasons.append("no_active_package")
+
+    has_rules = db.execute(
+        select(ProAvailabilityRule.id).where(ProAvailabilityRule.pro_user_id == user.user_id).limit(1)
+    ).scalar_one_or_none()
+    available_days = _free_days_next_fortnight(db, user.user_id) if has_rules else None
+
+    db.commit()
+    return ProListingPreviewResponse(
+        card=card,
+        is_live=not reasons,
+        blocking_reasons=reasons,
+        available_days_next_14=available_days,
+    )
+
+
+FORTNIGHT_DAYS = 14
+
+
+def _free_days_next_fortnight(db: Session, pro_user_id: uuid.UUID) -> int:
+    """Days in the next fortnight not wholly covered by blocked time.
+
+    A coarse number by design - the card says "available 9 of the next 14
+    days", not which ones. Reads through the shared blocked-time helper so
+    it counts blocks from both availability tables.
+    """
+    now = datetime.now(timezone.utc)
+    start = datetime.combine(now.date(), time(0, 0), tzinfo=timezone.utc)
+    end = start + timedelta(days=FORTNIGHT_DAYS)
+    blocks = blocked_intervals(db, pro_user_id, start=start, end=end)
+
+    free = 0
+    for offset in range(FORTNIGHT_DAYS):
+        day_start = start + timedelta(days=offset)
+        day_end = day_start + timedelta(days=1)
+        if not any(b_start <= day_start and b_end >= day_end for b_start, b_end in blocks):
+            free += 1
+    return free
+
+
 MEDIA_URL_BASE_TTL_SECONDS = 900
 
 

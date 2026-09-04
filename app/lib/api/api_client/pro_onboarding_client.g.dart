@@ -1488,8 +1488,11 @@ class _ProOnboardingClient implements ProOnboardingClient {
     Map<String, dynamic>? extras = const {
       'tags': ['pro_onboarding'],
       'summary': 'Replace Availability Rules',
+      'description':
+          'Deprecated. Replaces weekly availability, but drops the timezone and\nlocation mode that PUT /v1/pro/scheduling/availability-rules carries -\nso a pro who set those and then posts here silently loses them.',
       'operationId':
           'replace_availability_rules_v1_pro_me_availability_rules_post',
+      'deprecated': true,
       'parameters': [
         {
           'name': 'Authorization',
@@ -1599,7 +1602,10 @@ class _ProOnboardingClient implements ProOnboardingClient {
     Map<String, dynamic>? extras = const {
       'tags': ['pro_onboarding'],
       'summary': 'Create Blackout',
+      'description':
+          'Deprecated. Still blocks bookings - every enforcement path now reads\nboth tables - but new blocked time belongs in the scheduling exceptions\nroute, which is timezone-explicit and replaces the whole set rather than\nappending one row at a time with no way to remove it.',
       'operationId': 'create_blackout_v1_pro_me_availability_blackouts_post',
+      'deprecated': true,
       'parameters': [
         {
           'name': 'Authorization',
@@ -2241,6 +2247,448 @@ class _ProOnboardingClient implements ProOnboardingClient {
     late PortfolioNicheTagsResponse _value;
     try {
       _value = PortfolioNicheTagsResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ProPortfolioResponse>> getMyPortfolioV1ProMePortfolioGet({
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Get My Portfolio',
+      'description':
+          'The pro\'s own portfolio, with thumbnails and niche tags.\n\nThe gallery previously had no way to list what a pro had uploaded -\nonly to tag an asset it already knew the id of - so there was nothing\nto build a grid from.',
+      'operationId': 'get_my_portfolio_v1_pro_me_portfolio_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ProPortfolioResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ProPortfolioResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/me/portfolio',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProPortfolioResponse _value;
+    try {
+      _value = ProPortfolioResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ProNichePricingPreviewResponse>>
+  getMyNichePricingPreviewV1ProMePricingNichesNicheIdGet({
+    required String nicheId,
+    required dynamic entryPrice,
+    String currency = 'EUR',
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Get My Niche Pricing Preview',
+      'description':
+          'What a client would pay, for a price the pro is still deciding on.\n\nThe public preview at /v1/pros/{id}/niches/{niche_id}/pricing-preview\nreads prices off existing active packages, so it 404s for exactly the\npro who needs it most: one setting a price for the first time. This\ntakes the proposed rate as a parameter instead, and reports the cap\nrather than enforcing it - the pro should see that they are over the\nlimit while typing, not when the save fails.',
+      'operationId':
+          'get_my_niche_pricing_preview_v1_pro_me_pricing_niches__niche_id__get',
+      'parameters': [
+        {
+          'name': 'niche_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Niche Id'},
+        },
+        {
+          'name': 'entry_price',
+          'in': 'query',
+          'required': true,
+          'schema': {
+            'anyOf': [
+              {'type': 'number', 'exclusiveMinimum': 0.0},
+              {
+                'type': 'string',
+                'pattern': '^(?!^[-+.]*\$)[+-]?0*\\d*\\.?\\d*\$',
+              },
+            ],
+            'description': 'Proposed entry rate per photo',
+            'title': 'Entry Price',
+          },
+          'description': 'Proposed entry rate per photo',
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'string',
+            'minLength': 3,
+            'maxLength': 3,
+            'default': 'EUR',
+            'title': 'Currency',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProNichePricingPreviewResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{
+      r'entry_price': entryPrice.toJson(),
+      r'currency': currency,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options =
+        _setStreamType<HttpResponse<ProNichePricingPreviewResponse>>(
+          Options(method: 'GET', headers: _headers, extra: _extra)
+              .compose(
+                _dio.options,
+                '/v1/pro/me/pricing/niches/${nicheId}',
+                queryParameters: queryParameters,
+                data: _data,
+                cancelToken: cancelToken,
+                onSendProgress: onSendProgress,
+                onReceiveProgress: onReceiveProgress,
+              )
+              .copyWith(
+                baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+              ),
+        );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProNichePricingPreviewResponse _value;
+    try {
+      _value = ProNichePricingPreviewResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ProExtraImagePriceResponse>>
+  getMyExtraImagePricesV1ProMeExtraImagePriceGet({
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Get My Extra Image Prices',
+      'operationId':
+          'get_my_extra_image_prices_v1_pro_me_extra_image_price_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProExtraImagePriceResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ProExtraImagePriceResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/me/extra-image-price',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProExtraImagePriceResponse _value;
+    try {
+      _value = ProExtraImagePriceResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ProExtraImagePriceResponse>>
+  putMyExtraImagePricesV1ProMeExtraImagePricePut({
+    required ProExtraImagePriceUpdateRequest requestBody,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Put My Extra Image Prices',
+      'description':
+          'What the pro charges per extra photo, per niche.\n\nPreviously admin-only, which made the onboarding pricing step\nimpossible to finish in the app. The platform\'s per-tier bounds still\nwin at charge time; the value the pro set is stored as given so the\nresponse can show both, rather than clamping their input and leaving\nthem to wonder why the number changed.',
+      'operationId':
+          'put_my_extra_image_prices_v1_pro_me_extra_image_price_put',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              '\$ref': '#/components/schemas/ProExtraImagePriceUpdateRequest',
+            },
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProExtraImagePriceResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    final _data = <String, dynamic>{};
+    _data.addAll(requestBody.toJson());
+    final _options = _setStreamType<HttpResponse<ProExtraImagePriceResponse>>(
+      Options(method: 'PUT', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/me/extra-image-price',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProExtraImagePriceResponse _value;
+    try {
+      _value = ProExtraImagePriceResponse.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

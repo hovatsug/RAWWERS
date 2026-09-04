@@ -24,7 +24,8 @@ mixin _$ProProfileUpdateRequest {
 @JsonKey(name: ProProfileUpdateRequest.countryKey_) String? get country;/// languages
 @JsonKey(name: ProProfileUpdateRequest.languagesKey_) List<String>? get languages;/// styles
 @JsonKey(name: ProProfileUpdateRequest.stylesKey_) List<String>? get styles;/// gear
-@JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? get gear;
+@JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? get gear;/// travelRadiusKm
+@JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_) int? get travelRadiusKm;
 /// Create a copy of ProProfileUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -37,16 +38,16 @@ $ProProfileUpdateRequestCopyWith<ProProfileUpdateRequest> get copyWith => _$ProP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProProfileUpdateRequest&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other.languages, languages)&&const DeepCollectionEquality().equals(other.styles, styles)&&const DeepCollectionEquality().equals(other.gear, gear));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProProfileUpdateRequest&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other.languages, languages)&&const DeepCollectionEquality().equals(other.styles, styles)&&const DeepCollectionEquality().equals(other.gear, gear)&&(identical(other.travelRadiusKm, travelRadiusKm) || other.travelRadiusKm == travelRadiusKm));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(languages),const DeepCollectionEquality().hash(styles),const DeepCollectionEquality().hash(gear));
+int get hashCode => Object.hash(runtimeType,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(languages),const DeepCollectionEquality().hash(styles),const DeepCollectionEquality().hash(gear),travelRadiusKm);
 
 @override
 String toString() {
-  return 'ProProfileUpdateRequest(displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear)';
+  return 'ProProfileUpdateRequest(displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear, travelRadiusKm: $travelRadiusKm)';
 }
 
 
@@ -57,7 +58,7 @@ abstract mixin class $ProProfileUpdateRequestCopyWith<$Res>  {
   factory $ProProfileUpdateRequestCopyWith(ProProfileUpdateRequest value, $Res Function(ProProfileUpdateRequest) _then) = _$ProProfileUpdateRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProProfileUpdateRequest.displayNameKey_) String? displayName,@JsonKey(name: ProProfileUpdateRequest.headlineKey_) String? headline,@JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileUpdateRequest.bioKey_) String? bio,@JsonKey(name: ProProfileUpdateRequest.cityKey_) String? city,@JsonKey(name: ProProfileUpdateRequest.countryKey_) String? country,@JsonKey(name: ProProfileUpdateRequest.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileUpdateRequest.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? gear
+@JsonKey(name: ProProfileUpdateRequest.displayNameKey_) String? displayName,@JsonKey(name: ProProfileUpdateRequest.headlineKey_) String? headline,@JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileUpdateRequest.bioKey_) String? bio,@JsonKey(name: ProProfileUpdateRequest.cityKey_) String? city,@JsonKey(name: ProProfileUpdateRequest.countryKey_) String? country,@JsonKey(name: ProProfileUpdateRequest.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileUpdateRequest.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? gear,@JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_) int? travelRadiusKm
 });
 
 
@@ -74,7 +75,7 @@ class _$ProProfileUpdateRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProProfileUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,Object? travelRadiusKm = freezed,}) {
   return _then(_self.copyWith(
 displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,headline: freezed == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
@@ -85,7 +86,8 @@ as String?,country: freezed == country ? _self.country : country // ignore: cast
 as String?,languages: freezed == languages ? _self.languages : languages // ignore: cast_nullable_to_non_nullable
 as List<String>?,styles: freezed == styles ? _self.styles : styles // ignore: cast_nullable_to_non_nullable
 as List<String>?,gear: freezed == gear ? _self.gear : gear // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,
+as Map<String, dynamic>?,travelRadiusKm: freezed == travelRadiusKm ? _self.travelRadiusKm : travelRadiusKm // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -170,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileUpdateRequest.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_)  String? headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_)  String? bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_)  String? city, @JsonKey(name: ProProfileUpdateRequest.countryKey_)  String? country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_)  Map<String, dynamic>? gear)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileUpdateRequest.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_)  String? headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_)  String? bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_)  String? city, @JsonKey(name: ProProfileUpdateRequest.countryKey_)  String? country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_)  int? travelRadiusKm)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProProfileUpdateRequest() when $default != null:
-return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear);case _:
+return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm);case _:
   return orElse();
 
 }
@@ -191,10 +193,10 @@ return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.b
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileUpdateRequest.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_)  String? headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_)  String? bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_)  String? city, @JsonKey(name: ProProfileUpdateRequest.countryKey_)  String? country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_)  Map<String, dynamic>? gear)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileUpdateRequest.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_)  String? headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_)  String? bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_)  String? city, @JsonKey(name: ProProfileUpdateRequest.countryKey_)  String? country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_)  int? travelRadiusKm)  $default,) {final _that = this;
 switch (_that) {
 case _ProProfileUpdateRequest():
-return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear);case _:
+return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +213,10 @@ return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.b
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProProfileUpdateRequest.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_)  String? headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_)  String? bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_)  String? city, @JsonKey(name: ProProfileUpdateRequest.countryKey_)  String? country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_)  Map<String, dynamic>? gear)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProProfileUpdateRequest.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_)  String? headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_)  String? bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_)  String? city, @JsonKey(name: ProProfileUpdateRequest.countryKey_)  String? country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_)  int? travelRadiusKm)?  $default,) {final _that = this;
 switch (_that) {
 case _ProProfileUpdateRequest() when $default != null:
-return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear);case _:
+return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm);case _:
   return null;
 
 }
@@ -226,7 +228,7 @@ return $default(_that.displayName,_that.headline,_that.coverMediaAssetId,_that.b
 
 @jsonSerializable
 class _ProProfileUpdateRequest extends ProProfileUpdateRequest {
-  const _ProProfileUpdateRequest({@JsonKey(name: ProProfileUpdateRequest.displayNameKey_) this.displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_) this.headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_) this.bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_) this.city, @JsonKey(name: ProProfileUpdateRequest.countryKey_) this.country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_) final  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_) final  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_) final  Map<String, dynamic>? gear}): _languages = languages,_styles = styles,_gear = gear,super._();
+  const _ProProfileUpdateRequest({@JsonKey(name: ProProfileUpdateRequest.displayNameKey_) this.displayName, @JsonKey(name: ProProfileUpdateRequest.headlineKey_) this.headline, @JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ProProfileUpdateRequest.bioKey_) this.bio, @JsonKey(name: ProProfileUpdateRequest.cityKey_) this.city, @JsonKey(name: ProProfileUpdateRequest.countryKey_) this.country, @JsonKey(name: ProProfileUpdateRequest.languagesKey_) final  List<String>? languages, @JsonKey(name: ProProfileUpdateRequest.stylesKey_) final  List<String>? styles, @JsonKey(name: ProProfileUpdateRequest.gearKey_) final  Map<String, dynamic>? gear, @JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_) this.travelRadiusKm}): _languages = languages,_styles = styles,_gear = gear,super._();
   factory _ProProfileUpdateRequest.fromJson(Map<String, dynamic> json) => _$ProProfileUpdateRequestFromJson(json);
 
 /// displayName
@@ -274,6 +276,8 @@ class _ProProfileUpdateRequest extends ProProfileUpdateRequest {
   return EqualUnmodifiableMapView(value);
 }
 
+/// travelRadiusKm
+@override@JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_) final  int? travelRadiusKm;
 
 /// Create a copy of ProProfileUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -288,16 +292,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProProfileUpdateRequest&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other._languages, _languages)&&const DeepCollectionEquality().equals(other._styles, _styles)&&const DeepCollectionEquality().equals(other._gear, _gear));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProProfileUpdateRequest&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other._languages, _languages)&&const DeepCollectionEquality().equals(other._styles, _styles)&&const DeepCollectionEquality().equals(other._gear, _gear)&&(identical(other.travelRadiusKm, travelRadiusKm) || other.travelRadiusKm == travelRadiusKm));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(_languages),const DeepCollectionEquality().hash(_styles),const DeepCollectionEquality().hash(_gear));
+int get hashCode => Object.hash(runtimeType,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(_languages),const DeepCollectionEquality().hash(_styles),const DeepCollectionEquality().hash(_gear),travelRadiusKm);
 
 @override
 String toString() {
-  return 'ProProfileUpdateRequest(displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear)';
+  return 'ProProfileUpdateRequest(displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear, travelRadiusKm: $travelRadiusKm)';
 }
 
 
@@ -308,7 +312,7 @@ abstract mixin class _$ProProfileUpdateRequestCopyWith<$Res> implements $ProProf
   factory _$ProProfileUpdateRequestCopyWith(_ProProfileUpdateRequest value, $Res Function(_ProProfileUpdateRequest) _then) = __$ProProfileUpdateRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProProfileUpdateRequest.displayNameKey_) String? displayName,@JsonKey(name: ProProfileUpdateRequest.headlineKey_) String? headline,@JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileUpdateRequest.bioKey_) String? bio,@JsonKey(name: ProProfileUpdateRequest.cityKey_) String? city,@JsonKey(name: ProProfileUpdateRequest.countryKey_) String? country,@JsonKey(name: ProProfileUpdateRequest.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileUpdateRequest.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? gear
+@JsonKey(name: ProProfileUpdateRequest.displayNameKey_) String? displayName,@JsonKey(name: ProProfileUpdateRequest.headlineKey_) String? headline,@JsonKey(name: ProProfileUpdateRequest.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileUpdateRequest.bioKey_) String? bio,@JsonKey(name: ProProfileUpdateRequest.cityKey_) String? city,@JsonKey(name: ProProfileUpdateRequest.countryKey_) String? country,@JsonKey(name: ProProfileUpdateRequest.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileUpdateRequest.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileUpdateRequest.gearKey_) Map<String, dynamic>? gear,@JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_) int? travelRadiusKm
 });
 
 
@@ -325,7 +329,7 @@ class __$ProProfileUpdateRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProProfileUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,Object? travelRadiusKm = freezed,}) {
   return _then(_ProProfileUpdateRequest(
 displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,headline: freezed == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
@@ -336,7 +340,8 @@ as String?,country: freezed == country ? _self.country : country // ignore: cast
 as String?,languages: freezed == languages ? _self._languages : languages // ignore: cast_nullable_to_non_nullable
 as List<String>?,styles: freezed == styles ? _self._styles : styles // ignore: cast_nullable_to_non_nullable
 as List<String>?,gear: freezed == gear ? _self._gear : gear // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,
+as Map<String, dynamic>?,travelRadiusKm: freezed == travelRadiusKm ? _self.travelRadiusKm : travelRadiusKm // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

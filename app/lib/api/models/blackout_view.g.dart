@@ -12,6 +12,7 @@ _BlackoutView _$BlackoutViewFromJson(Map<String, dynamic> json) =>
       startAt: DateTime.parse(json['start_at'] as String),
       endAt: DateTime.parse(json['end_at'] as String),
       reason: json['reason'] as String?,
+      deprecationNotice: json['deprecation_notice'] as String?,
     );
 
 Map<String, dynamic> _$BlackoutViewToJson(_BlackoutView instance) =>
@@ -20,4 +21,5 @@ Map<String, dynamic> _$BlackoutViewToJson(_BlackoutView instance) =>
       'start_at': instance.startAt.toIso8601String(),
       'end_at': instance.endAt.toIso8601String(),
       'reason': instance.reason,
+      'deprecation_notice': instance.deprecationNotice,
     };

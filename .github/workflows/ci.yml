@@ -206,6 +206,9 @@ jobs:
         working-directory: app
         run: dart run tool/check_flavor_isolation.dart
 
+      # Both flavors are built on every commit, not only on commits that
+      # touch shared code: a shared screen can be changed indirectly (a
+      # widget it uses, a theme it reads) and a path filter would miss that.
       - name: Build Android APK (debug) - client
         working-directory: app
         run: flutter build apk --debug --flavor client -t lib/main_client.dart
@@ -213,6 +216,13 @@ jobs:
       - name: Build Android APK (debug) - pro
         working-directory: app
         run: flutter build apk --debug --flavor pro -t lib/main_pro.dart
+
+      # Asserts both artifacts postdate the shared sources they were built
+      # from, so a reordered or dropped build step cannot leave one flavor
+      # verified against stale code.
+      - name: Check both flavor builds postdate shared changes
+        working-directory: app
+        run: dart run tool/check_shared_builds_fresh.dart
 
       - name: Upload client APK artifact
         uses: actions/upload-artifact@v4

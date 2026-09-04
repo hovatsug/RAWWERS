@@ -232,3 +232,24 @@ class ClientFunnelReportResponse(BaseModel):
     start_at: datetime
     end_at: datetime
     items: list[ClientFunnelCityMetrics] = Field(default_factory=list)
+
+
+class ProListingPreviewResponse(BaseModel):
+    """What a client sees, returned to the pro who owns it.
+
+    `card` is built by the same function that builds the Discover feed, so
+    the preview cannot drift from the real thing - if editing a package
+    changes the price range here, it changes it there.
+    """
+
+    card: ClientDiscoverCard
+    # Whether this card is actually reachable in Discover right now, and if
+    # not, the specific reasons. Discover filters on approved KYC, accepting
+    # bookings, completeness >= 60 and a priced package; a pro looking at a
+    # preview of a listing nobody can find deserves to be told which.
+    is_live: bool
+    blocking_reasons: list[str] = Field(default_factory=list)
+    # Free days in the next fortnight, as the card's availability line. Null
+    # when the pro has set no weekly rules at all, which reads differently
+    # from "no free days".
+    available_days_next_14: int | None = None

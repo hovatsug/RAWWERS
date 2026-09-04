@@ -91,6 +91,17 @@
 ///             "type": "object",
 ///             "title": "Gear"
 ///         },
+///         "travel_radius_km": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Travel Radius Km"
+///         },
 ///         "is_accepting_bookings": {
 ///             "type": "boolean",
 ///             "title": "Is Accepting Bookings"
@@ -156,6 +167,9 @@ abstract class ProProfileView with _$ProProfileView {
     /// gear
     @JsonKey(name: ProProfileView.gearKey_) Map<String, dynamic>? gear,
 
+    /// travelRadiusKm
+    @JsonKey(name: ProProfileView.travelRadiusKmKey_) int? travelRadiusKm,
+
     /// isAcceptingBookings
     @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)
     required bool isAcceptingBookings,
@@ -190,6 +204,8 @@ abstract class ProProfileView with _$ProProfileView {
   static const String stylesKey_ = r'styles';
 
   static const String gearKey_ = r'gear';
+
+  static const String travelRadiusKmKey_ = r'travel_radius_km';
 
   static const String isAcceptingBookingsKey_ = r'is_accepting_bookings';
 

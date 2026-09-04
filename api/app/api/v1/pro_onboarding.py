@@ -4,10 +4,11 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
+from app.api.deprecation import mark_deprecated
 from app.api.deps import get_db_read_session, get_db_session, require_admin, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
@@ -21,6 +22,7 @@ from app.models.booking import (
     ProPackage,
 )
 from app.models.gig import Gig, GigStatus
+from app.models.client_rewards_pricing import ExtraImagePricingPolicy, ProExtraImagePrice
 from app.models.media import MediaAsset, MediaKind, MediaPurpose
 from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
 from app.schemas.media import CurrentUser
@@ -46,6 +48,13 @@ from app.schemas.onboarding import (
     ProPackageCreateRequest,
     ProPackageUpdateRequest,
     ProPackageView,
+    ProExtraImagePriceResponse,
+    ProExtraImagePriceRow,
+    ProExtraImagePriceUpdateRequest,
+    ProNichePricingPreviewResponse,
+    ProPortfolioItem,
+    ProPortfolioResponse,
+    ProPricingCurvePoint,
     ProProfileUpdateRequest,
     ProProfileView,
     PublicAvailabilityResponse,
@@ -57,13 +66,21 @@ from app.schemas.launch_ops import (
     ProOnboardingStatusResponse,
 )
 from app.services.audit import add_admin_audit_log
+from app.services.availability_blocks import blocked_intervals, window_fully_blocked
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
-from app.services.package_pricing import compute_minimum_amount, enforce_entry_price_cap
+from app.services.media_urls import resolve_image_urls
+from app.services.package_pricing import (
+    PRICING_PREVIEW_PHOTO_COUNTS,
+    compute_minimum_amount,
+    compute_package_total,
+    enforce_entry_price_cap,
+    get_price_cap,
+)
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.scheduling import expire_pending_booking_requests
@@ -81,6 +98,9 @@ from app.models.launch_ops import ProOnboardingActorType, ProOnboardingStatus
 
 settings = get_settings()
 router = APIRouter(tags=["pro_onboarding"])
+
+# Mirrors what onboarding_checks() requires for the portfolio step.
+PORTFOLIO_MIN_PHOTOS = 12
 
 
 @router.get("/pro/onboarding", response_model=ProOnboardingStatusResponse)
@@ -277,7 +297,7 @@ def update_my_pro_profile(
     _require_role(db, user.user_id, UserRoleType.pro)
     profile = _ensure_pro_profile(db, user.user_id)
 
-    for field in ["display_name", "headline", "cover_media_asset_id", "bio", "city", "country", "languages", "styles", "gear"]:
+    for field in ["display_name", "headline", "cover_media_asset_id", "bio", "city", "country", "languages", "styles", "gear", "travel_radius_km"]:
         value = getattr(body, field)
         if value is not None:
             setattr(profile, field, value)
@@ -432,13 +452,22 @@ def disable_package(
     return _package_view(package)
 
 
-@router.post("/pro/me/availability/rules")
+@router.post("/pro/me/availability/rules", deprecated=True)
 def replace_availability_rules(
     body: ReplaceAvailabilityRulesRequest,
+    response: Response,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> dict:
+    """Deprecated. Replaces weekly availability, but drops the timezone and
+    location mode that PUT /v1/pro/scheduling/availability-rules carries -
+    so a pro who set those and then posts here silently loses them."""
     _require_role(db, user.user_id, UserRoleType.pro)
+    notice = mark_deprecated(
+        response,
+        successor="/v1/pro/scheduling/availability-rules",
+        reason="this route resets the timezone and location mode it does not accept.",
+    )
     for rule in body.rules:
         if rule.day_of_week < 0 or rule.day_of_week > 6:
             raise APIError(code="validation_error", message="day_of_week must be 0..6", status_code=422)
@@ -456,16 +485,26 @@ def replace_availability_rules(
             )
         )
     db.commit()
-    return {"ok": True, "count": len(body.rules)}
+    return {"ok": True, "count": len(body.rules), "deprecation_notice": notice}
 
 
-@router.post("/pro/me/availability/blackouts", response_model=BlackoutView)
+@router.post("/pro/me/availability/blackouts", response_model=BlackoutView, deprecated=True)
 def create_blackout(
     body: BlackoutCreateRequest,
+    response: Response,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> BlackoutView:
+    """Deprecated. Still blocks bookings - every enforcement path now reads
+    both tables - but new blocked time belongs in the scheduling exceptions
+    route, which is timezone-explicit and replaces the whole set rather than
+    appending one row at a time with no way to remove it."""
     _require_role(db, user.user_id, UserRoleType.pro)
+    notice = mark_deprecated(
+        response,
+        successor="/v1/pro/scheduling/exceptions",
+        reason="blackouts cannot be edited or removed once created.",
+    )
     if body.end_at <= body.start_at:
         raise APIError(code="validation_error", message="end_at must be after start_at", status_code=422)
 
@@ -478,7 +517,13 @@ def create_blackout(
     db.add(blackout)
     db.commit()
     db.refresh(blackout)
-    return BlackoutView(id=blackout.id, start_at=blackout.start_at, end_at=blackout.end_at, reason=blackout.reason)
+    return BlackoutView(
+        id=blackout.id,
+        start_at=blackout.start_at,
+        end_at=blackout.end_at,
+        reason=blackout.reason,
+        deprecation_notice=notice,
+    )
 
 
 @router.get("/pro/{pro_user_id}/availability", response_model=PublicAvailabilityResponse)
@@ -660,6 +705,159 @@ def tag_portfolio_media_niches(
     recompute_pro_public_index(db, user.user_id)
     db.commit()
     return PortfolioNicheTagsResponse(media_asset_id=asset.id, niche_slugs=normalized)
+
+
+@router.get("/pro/me/portfolio", response_model=ProPortfolioResponse)
+def get_my_portfolio(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProPortfolioResponse:
+    """The pro's own portfolio, with thumbnails and niche tags.
+
+    The gallery previously had no way to list what a pro had uploaded -
+    only to tag an asset it already knew the id of - so there was nothing
+    to build a grid from.
+    """
+    _require_role(db, user.user_id, UserRoleType.pro)
+    profile = _ensure_pro_profile(db, user.user_id)
+    assets = db.execute(
+        select(MediaAsset)
+        .where(
+            MediaAsset.owner_user_id == user.user_id,
+            MediaAsset.purpose == MediaPurpose.portfolio_reel,
+            MediaAsset.kind.in_((MediaKind.photo, MediaKind.video)),
+        )
+        .order_by(MediaAsset.created_at.desc())
+    ).scalars().all()
+
+    # One batched presign for the page rather than one per tile.
+    photo_ids = [a.id for a in assets if a.kind == MediaKind.photo]
+    urls = resolve_image_urls(db, photo_ids)
+
+    items = [
+        ProPortfolioItem(
+            media_asset_id=asset.id,
+            kind=asset.kind.value,
+            thumbnail_url=urls.get(asset.id),
+            niche_slugs=sorted(asset.niche_tags or []),
+            is_cover=profile.cover_media_asset_id == asset.id,
+            created_at=asset.created_at,
+        )
+        for asset in assets
+    ]
+    db.commit()
+    return ProPortfolioResponse(
+        items=items,
+        photo_count=sum(1 for a in assets if a.kind == MediaKind.photo),
+        video_count=sum(1 for a in assets if a.kind == MediaKind.video),
+        photo_minimum=PORTFOLIO_MIN_PHOTOS,
+    )
+
+
+@router.get("/pro/me/pricing/niches/{niche_id}", response_model=ProNichePricingPreviewResponse)
+def get_my_niche_pricing_preview(
+    niche_id: uuid.UUID,
+    entry_price: Decimal = Query(..., gt=0, description="Proposed entry rate per photo"),
+    currency: str = Query("EUR", min_length=3, max_length=3),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProNichePricingPreviewResponse:
+    """What a client would pay, for a price the pro is still deciding on.
+
+    The public preview at /v1/pros/{id}/niches/{niche_id}/pricing-preview
+    reads prices off existing active packages, so it 404s for exactly the
+    pro who needs it most: one setting a price for the first time. This
+    takes the proposed rate as a parameter instead, and reports the cap
+    rather than enforcing it - the pro should see that they are over the
+    limit while typing, not when the save fails.
+    """
+    _require_role(db, user.user_id, UserRoleType.pro)
+    niche = db.execute(select(Niche).where(Niche.id == niche_id, Niche.is_active.is_(True))).scalar_one_or_none()
+    if not niche:
+        raise APIError(code="not_found", message="Niche not found", status_code=404)
+
+    entry = entry_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    tier = _resolve_pro_tier_for_niche(db, user.user_id, niche.id)
+    cap = get_price_cap(db, niche_id=niche.id, tier=tier)
+    minimum = cap.entry_price_min if cap else Decimal("0.00")
+    maximum = cap.entry_price_max if cap else None
+    within_cap = entry >= minimum and (maximum is None or entry <= maximum)
+
+    curve = []
+    for count in PRICING_PREVIEW_PHOTO_COUNTS:
+        total = compute_package_total(db, niche_id=niche.id, entry_rate=entry, photo_count=count)
+        curve.append(
+            ProPricingCurvePoint(
+                photo_count=count,
+                total=total,
+                per_photo=(total / count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            )
+        )
+
+    db.commit()
+    return ProNichePricingPreviewResponse(
+        niche_id=niche.id,
+        niche_slug=niche.slug,
+        niche_name=niche.name,
+        tier=tier.value,
+        entry_price=entry,
+        currency=currency.upper(),
+        entry_price_min=minimum,
+        entry_price_max=maximum,
+        within_cap=within_cap,
+        curve=curve,
+    )
+
+
+@router.get("/pro/me/extra-image-price", response_model=ProExtraImagePriceResponse)
+def get_my_extra_image_prices(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProExtraImagePriceResponse:
+    _require_role(db, user.user_id, UserRoleType.pro)
+    return _extra_image_price_response(db, user.user_id)
+
+
+@router.put("/pro/me/extra-image-price", response_model=ProExtraImagePriceResponse)
+def put_my_extra_image_prices(
+    body: ProExtraImagePriceUpdateRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProExtraImagePriceResponse:
+    """What the pro charges per extra photo, per niche.
+
+    Previously admin-only, which made the onboarding pricing step
+    impossible to finish in the app. The platform's per-tier bounds still
+    win at charge time; the value the pro set is stored as given so the
+    response can show both, rather than clamping their input and leaving
+    them to wonder why the number changed.
+    """
+    _require_role(db, user.user_id, UserRoleType.pro)
+    ensure_initial_niches(db)
+    slugs = [item.niche_slug for item in body.items]
+    niche_map = get_niche_map_by_slugs(db, slugs) if slugs else {}
+    missing = sorted(set(slugs) - set(niche_map.keys()))
+    if missing:
+        raise APIError(code="validation_error", message=f"Unknown niche slug(s): {', '.join(missing)}", status_code=422)
+
+    for item in body.items:
+        niche = niche_map[item.niche_slug]
+        price = item.unit_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if price < 0:
+            raise APIError(code="validation_error", message="unit_price cannot be negative", status_code=422)
+        row = db.execute(
+            select(ProExtraImagePrice).where(
+                ProExtraImagePrice.pro_user_id == user.user_id,
+                ProExtraImagePrice.niche_id == niche.id,
+            )
+        ).scalar_one_or_none()
+        if not row:
+            row = ProExtraImagePrice(pro_user_id=user.user_id, niche_id=niche.id, configured_unit_price=price)
+            db.add(row)
+        row.configured_unit_price = price
+
+    db.commit()
+    return _extra_image_price_response(db, user.user_id)
 
 
 @router.get("/pros/{pro_user_id}/skills", response_model=ProNicheSkillListResponse)
@@ -897,6 +1095,18 @@ def accept_booking_request(
         raise APIError(code="invalid_state", message="Only pending requests can be accepted", status_code=409)
     if request.expires_at < datetime.now(timezone.utc):
         raise APIError(code="invalid_state", message="Request has expired", status_code=409)
+
+    # Accepting is what creates the gig and writes scheduled_start/end, so
+    # this is the last point before a photographer is committed to a date.
+    # It used to check nothing: blocked time was enforced when the request
+    # was created on some paths and never on the client funnel, so a pro
+    # who blocked their honeymoon could still accept a request inside it.
+    if window_fully_blocked(db, request.pro_user_id, start=request.requested_start, end=request.requested_end):
+        raise APIError(
+            code="validation_error",
+            message="You have blocked off this time. Clear the block first if you want to take this booking.",
+            status_code=409,
+        )
 
     package = db.get(ProPackage, request.package_id)
     if not package:
@@ -1154,15 +1364,13 @@ def _validate_availability(db: Session, pro_user_id: uuid.UUID, start: datetime,
     if not within_rule:
         raise APIError(code="validation_error", message="Requested time is outside pro availability", status_code=409)
 
-    overlap = db.execute(
-        select(ProBlackoutDate).where(
-            ProBlackoutDate.pro_user_id == pro_user_id,
-            ProBlackoutDate.start_at < end,
-            ProBlackoutDate.end_at > start,
-        )
-    ).scalar_one_or_none()
-    if overlap:
-        raise APIError(code="validation_error", message="Requested time overlaps blackout", status_code=409)
+    # Both families, via the shared reader: a pro who blocked time through
+    # /pro/scheduling/exceptions was previously invisible here, so the same
+    # request was refused or allowed depending on which endpoint had
+    # recorded the block. (The old query also used scalar_one_or_none(),
+    # which raised rather than refusing when two blocks overlapped.)
+    if blocked_intervals(db, pro_user_id, start=start, end=end):
+        raise APIError(code="validation_error", message="Requested time is blocked off", status_code=409)
 
 
 def _booking_request_list_item(request: BookingRequest, *, now: datetime) -> BookingRequestListItem:
@@ -1226,6 +1434,56 @@ def _package_view(package: ProPackage) -> ProPackageView:
     )
 
 
+def _extra_image_price_response(db: Session, pro_user_id: uuid.UUID) -> ProExtraImagePriceResponse:
+    """Both the configured and the effective price, per niche the pro has
+    set one for. The policy bounds are resolved per (niche, tier) exactly
+    as compute_extra_image_unit_price() does at charge time, so what this
+    reports and what a client is billed cannot drift."""
+    rows = db.execute(select(ProExtraImagePrice).where(ProExtraImagePrice.pro_user_id == pro_user_id)).scalars().all()
+    if not rows:
+        return ProExtraImagePriceResponse(items=[])
+
+    niche_ids = {row.niche_id for row in rows}
+    niches = {n.id: n for n in db.execute(select(Niche).where(Niche.id.in_(niche_ids))).scalars().all()}
+
+    items: list[ProExtraImagePriceRow] = []
+    for row in rows:
+        niche = niches.get(row.niche_id)
+        if not niche:
+            continue
+        tier = _resolve_pro_tier_for_niche(db, pro_user_id, row.niche_id)
+        policy = db.execute(
+            select(ExtraImagePricingPolicy).where(
+                ExtraImagePricingPolicy.niche_id == row.niche_id,
+                ExtraImagePricingPolicy.tier == tier,
+                ExtraImagePricingPolicy.is_active.is_(True),
+            )
+        ).scalar_one_or_none()
+        configured = row.configured_unit_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        policy_min = (policy.unit_price_min if policy else Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        policy_max = (
+            policy.unit_price_max.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if policy and policy.unit_price_max is not None
+            else None
+        )
+        applied = max(configured, policy_min)
+        if policy_max is not None:
+            applied = min(applied, policy_max)
+        items.append(
+            ProExtraImagePriceRow(
+                niche_slug=niche.slug,
+                niche_name=niche.name,
+                configured_unit_price=configured,
+                applied_unit_price=applied,
+                policy_min=policy_min,
+                policy_max=policy_max,
+                currency=row.currency,
+            )
+        )
+    items.sort(key=lambda item: item.niche_slug)
+    return ProExtraImagePriceResponse(items=items)
+
+
 def _profile_view(profile: ProProfile) -> ProProfileView:
     return ProProfileView(
         user_id=profile.user_id,
@@ -1238,6 +1496,7 @@ def _profile_view(profile: ProProfile) -> ProProfileView:
         languages=profile.languages or [],
         styles=profile.styles or [],
         gear=profile.gear or {},
+        travel_radius_km=profile.travel_radius_km,
         is_accepting_bookings=profile.is_accepting_bookings,
         completeness_score=profile.completeness_score,
         kyc_status=profile.kyc_status.value,

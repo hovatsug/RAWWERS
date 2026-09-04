@@ -56,6 +56,54 @@ So a client holding a profile response cannot name the niche the package belongs
 
 The redundancy itself remains — the client still echoes back a value the server could derive from `package_id` alone — but it is now a value the client actually has.
 
+## ~~Blocked-off time did not block bookings on the path the apps use~~ — FIXED in P-2
+
+Recorded as "the blackout route writes to a table nothing enforces". That
+was close, but the shape was worse. Two tables hold the same fact -
+`ProBlackoutDate` (written by `POST /v1/pro/me/availability/blackouts`)
+and `ProAvailabilityException` (written by
+`PUT /v1/pro/scheduling/exceptions`) - and enforcement read one, the
+other, or neither depending on the path:
+
+| path | blackouts | exceptions |
+| --- | --- | --- |
+| `POST /v1/client/bookings/request` — what both apps call | no | no |
+| `POST /v1/booking-requests/{id}/accept` — **creates the gig, writes the dates** | no | no |
+| `POST /v1/pro/bookings/{id}/confirm-slot` | no | yes |
+| request creation in `pro_onboarding.py` / `chats.py` | yes | no |
+
+So the honeymoon case was live on the whole client funnel, and blocking
+time through the *successor* route did not help either: accept never
+checked anything. Fixed by routing every decision through
+`app/services/availability_blocks.py`, which reads both tables. The
+blackout query also used `scalar_one_or_none()`, so two overlapping
+blocks raised instead of refusing.
+
+Enforcement is "the window is entirely blocked", not "overlaps at all":
+a booking request carries a window the client is flexible within, and
+refusing a fortnight that clips one blocked afternoon would push clients
+toward narrow windows. The exact time is pinned at confirm-slot, which
+checks the precise slot.
+
+## ~~Two endpoints write weekly availability, and one silently resets timezone and location mode~~ — DEPRECATED in P-2
+
+`POST /v1/pro/me/availability/rules` and
+`POST /v1/pro/me/availability/blackouts` are now marked `deprecated` in
+OpenAPI **and** signal it at runtime: `Deprecation: true`, a `Link`
+header naming the successor, a `Warning` header, and a
+`deprecation_notice` in the response body. A route marked deprecated only
+in the docs is a route somebody keeps calling.
+
+Deprecated rather than repointed. Repointing the blackout route at
+`ProAvailabilityException` would silently change what existing callers'
+writes mean, and leave the AI chat snapshot (`chat_concierge.py`) reading
+an empty table — two new failure modes to fix one. Both routes still
+work, and their writes now genuinely block bookings, so nothing a
+photographer has already recorded stops counting.
+
+No `Sunset` header: that is a promise about a removal date, and one has
+not been decided. Add it here when it is.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

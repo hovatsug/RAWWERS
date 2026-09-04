@@ -18,6 +18,10 @@ class ProProfileView(BaseModel):
     languages: list[str] = Field(default_factory=list)
     styles: list[str] = Field(default_factory=list)
     gear: dict = Field(default_factory=dict)
+    # How far the pro will travel for a shoot. Null means not answered yet,
+    # which is not the same as zero - a client filtering on distance has to
+    # be able to tell "will not travel" from "has not said".
+    travel_radius_km: int | None = None
     is_accepting_bookings: bool
     completeness_score: int
     kyc_status: str
@@ -33,6 +37,7 @@ class ProProfileUpdateRequest(BaseModel):
     languages: list[str] | None = None
     styles: list[str] | None = None
     gear: dict | None = None
+    travel_radius_km: int | None = Field(default=None, ge=0, le=2000)
 
 
 class ProActivateResponse(BaseModel):
@@ -117,6 +122,9 @@ class BlackoutView(BaseModel):
     start_at: datetime
     end_at: datetime
     reason: str | None = None
+    # Populated by the deprecated create route, so a caller that reads only
+    # the body still learns the route is going away. Null everywhere else.
+    deprecation_notice: str | None = None
 
 
 class PublicAvailabilityResponse(BaseModel):
@@ -178,3 +186,74 @@ class AcceptBookingResponse(BaseModel):
     gig_id: uuid.UUID
     payment_intent_id: str
     payment_intent_client_secret: str
+
+
+class ProPortfolioItem(BaseModel):
+    media_asset_id: uuid.UUID
+    kind: str
+    # Signed and short-lived; null while the asset is still processing, or
+    # for a video, whose poster frame is a separate gap (BACKEND_GAPS.md).
+    thumbnail_url: str | None = None
+    niche_slugs: list[str] = Field(default_factory=list)
+    is_cover: bool = False
+    created_at: datetime
+
+
+class ProPortfolioResponse(BaseModel):
+    items: list[ProPortfolioItem] = Field(default_factory=list)
+    photo_count: int
+    video_count: int
+    # What GET /v1/pro/onboarding/checks requires before the portfolio step
+    # passes, returned here so the gallery can show progress toward it
+    # without a second call and without hardcoding the number client-side.
+    photo_minimum: int
+
+
+class ProExtraImagePriceItem(BaseModel):
+    niche_slug: str
+    unit_price: Decimal
+
+
+class ProExtraImagePriceUpdateRequest(BaseModel):
+    items: list[ProExtraImagePriceItem] = Field(default_factory=list)
+
+
+class ProExtraImagePriceRow(BaseModel):
+    niche_slug: str
+    niche_name: str
+    # What the pro asked for, and what clients will actually be charged
+    # after the platform's per-tier bounds are applied. They differ when a
+    # pro prices outside the policy, and showing only the second would make
+    # the app look like it ignored the number they typed.
+    configured_unit_price: Decimal
+    applied_unit_price: Decimal
+    policy_min: Decimal
+    policy_max: Decimal | None = None
+    currency: str
+
+
+class ProExtraImagePriceResponse(BaseModel):
+    items: list[ProExtraImagePriceRow] = Field(default_factory=list)
+
+
+class ProPricingCurvePoint(BaseModel):
+    photo_count: int
+    total: Decimal
+    # The average the client ends up paying per photo at this count. The
+    # decay is the entire argument for the pricing model, and it is only
+    # legible next to the per-photo number.
+    per_photo: Decimal
+
+
+class ProNichePricingPreviewResponse(BaseModel):
+    niche_id: uuid.UUID
+    niche_slug: str
+    niche_name: str
+    tier: str
+    entry_price: Decimal
+    currency: str
+    # Null max means the platform sets no ceiling for this niche and tier.
+    entry_price_min: Decimal
+    entry_price_max: Decimal | None = None
+    within_cap: bool
+    curve: list[ProPricingCurvePoint] = Field(default_factory=list)

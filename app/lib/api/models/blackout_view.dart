@@ -26,6 +26,17 @@
 ///                 }
 ///             ],
 ///             "title": "Reason"
+///         },
+///         "deprecation_notice": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Deprecation Notice"
 ///         }
 ///     },
 ///     "type": "object",
@@ -59,6 +70,10 @@ abstract class BlackoutView with _$BlackoutView {
 
     /// reason
     @JsonKey(name: BlackoutView.reasonKey_) String? reason,
+
+    /// deprecationNotice
+    @JsonKey(name: BlackoutView.deprecationNoticeKey_)
+    String? deprecationNotice,
   }) = _BlackoutView;
 
   factory BlackoutView.fromJson(Map<String, dynamic> json) =>
@@ -71,4 +86,6 @@ abstract class BlackoutView with _$BlackoutView {
   static const String endAtKey_ = r'end_at';
 
   static const String reasonKey_ = r'reason';
+
+  static const String deprecationNoticeKey_ = r'deprecation_notice';
 }

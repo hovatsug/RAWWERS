@@ -71,7 +71,6 @@ class GigListResponse(BaseModel):
 
 
 class CreatePaymentIntentRequest(BaseModel):
-    payment_method_types: list[str] = Field(default_factory=lambda: ["card"])
     return_url: str | None = None
     points_to_spend: int | None = Field(default=None, ge=1)
 

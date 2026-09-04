@@ -356,7 +356,6 @@ def create_stripe_payment_intent_for_pack(
     return stripe.PaymentIntent.create(
         amount=to_cents(amount),
         currency=(pack.currency or "EUR").lower(),
-        payment_method_types=["card"],
         automatic_payment_methods={"enabled": True},
         metadata={
             "content_pack_order_id": str(order_id),

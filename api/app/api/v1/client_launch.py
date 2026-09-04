@@ -566,7 +566,6 @@ def client_booking_pay(
     _, intent = create_or_get_gig_payment_intent(
         db,
         gig,
-        payment_method_types=["card"],
         extra_metadata={"payment_mode": mode},
     )
     gig_pro_profile = db.get(ProProfile, gig.pro_user_id)

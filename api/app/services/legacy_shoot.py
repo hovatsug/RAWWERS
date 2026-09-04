@@ -130,7 +130,6 @@ def checkout_legacy_shoot(db: Session, *, client_user_id: uuid.UUID, payment_mod
     payment, intent = create_or_get_gig_payment_intent(
         db,
         gig,
-        payment_method_types=["card"],
         amount_override=amount_due,
         extra_metadata={
             "legacy_booking_id": str(booking.id),

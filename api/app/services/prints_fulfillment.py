@@ -410,7 +410,6 @@ def create_print_payment_intent(db: Session, *, order: PrintOrder) -> tuple[Prin
     intent = stripe.PaymentIntent.create(
         amount=to_cents(_q2(order.total_eur)),
         currency=(order.currency or "EUR").lower(),
-        payment_method_types=["card"],
         automatic_payment_methods={"enabled": True},
         metadata={
             "type": "print_order",

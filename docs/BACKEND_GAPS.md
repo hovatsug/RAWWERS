@@ -149,6 +149,45 @@ client rescues these four operations by path allowlist in
 to look when wondering why `repairs_client.dart` exists in an app with no
 repairs feature.
 
+## LAUNCH BLOCKER for one niche: working hours cannot cross midnight
+
+`PUT /v1/pro/scheduling/availability-rules` rejects any rule whose
+`end_local` is not after `start_local`:
+
+```
+422 {"code": "validation_error", "message": "start_local must be before end_local"}
+```
+
+So a photographer who works 20:00 to 02:00 cannot describe their hours at
+all. `events_nightlife` ("Events & Nightlife") is a seeded niche with its
+own power decay curve tuned for long shoots, so the product ships a
+category whose practitioners cannot enter realistic availability.
+
+If such a rule did exist in the database, both availability checks would
+then refuse every slot, including squarely mid-shift, because both compare
+plain times without handling a wrap:
+
+| slot against a 20:00-02:00 rule | `validate_slot_available` | `_validate_availability` |
+| --- | --- | --- |
+| 21:00-22:00 (mid-shift) | refuses | refuses |
+| 00:30-01:30 (after midnight) | refuses | refuses |
+| 20:00-21:00 (start of shift) | refuses | refuses |
+
+`_is_in_quiet_hours` in `notifications.py` handles exactly this shape
+correctly (`if start < end: ... else: now >= start or now < end`), so the
+pattern is already established in the codebase - it just was not applied
+here.
+
+Not fixed: how overnight availability should be modelled is a product
+decision, not a transcription of the quiet-hours branch. Either a rule may
+wrap (and both checks learn the two-branch comparison, and the slot
+generator learns to emit slots past midnight), or the UI splits overnight
+hours into two rules (20:00-23:59 plus 00:00-02:00) and the backend keeps
+its simple invariant. The second is less code and more explaining; the
+first is invisible to the pro. The Flutter availability screen currently
+mirrors the backend's rule, so it refuses the same input rather than
+sending something that 422s.
+
 ## The scheduling test fixture failed after 18:00 UTC — FIXED in P-3
 
 Not a product gap, but it broke the regression-comparison method these
@@ -158,6 +197,30 @@ rule wrapped past midnight (21:00 to 03:00). `validate_slot_available`
 compares plain times, so every confirm-slot test failed all evening and
 passed again by morning. The fixture now seeds a full day: those tests are
 about conflicts and notice periods, not office hours.
+
+This mattered beyond the fixture. Every commit in this rebuild is verified
+by comparing the failure set at HEAD against the same subset with changes,
+so a baseline taken before 18:00 UTC and a comparison taken after it would
+have shown two phantom regressions - the verification method itself was
+unreliable for half the day, in a way that looked exactly like a real
+regression.
+
+**Swept the rest of the suite for the same shape.** Three other fixtures
+derive times from the clock; all three are safe, for reasons worth
+recording so nobody re-checks them:
+
+- `test_ai_concierge_v1.py:71` calls `.time().replace(hour=8, minute=0,
+  second=0, microsecond=0)`, which overrides every component - the clock
+  contributes nothing.
+- `test_client_launch.py:153` uses fixed dates.
+- `test_notifications_v1.py:85` builds a quiet-hours window of now +/- 1
+  hour, which *does* wrap past midnight between 23:00 and 01:00 local -
+  but `_is_in_quiet_hours` handles wrapped windows correctly, so it holds
+  at every hour.
+
+That last one is what turned up the midnight-crossing gap recorded above:
+the notification path handles a wrapped window and the scheduling path
+does not.
 
 ## No video poster frames in the portfolio preview
 

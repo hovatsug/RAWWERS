@@ -40,6 +40,21 @@ from app.services.followups import schedule_followups
 from app.services.rate_limit import enforce_named_rate_limit
 
 settings = get_settings()
+
+# DEPRECATED in favour of /v1/chat/threads/* + /v1/pro/chat/threads/*
+# (app/api/v1/ai_concierge.py). Both families read and write the same
+# ChatThread/ChatMessage tables - these are two front doors, not two systems.
+#
+# Routable, not deleted: nothing is known to call these, but removing routes
+# is a separate decision from choosing a canonical family. Build new work
+# against ai_concierge.py.
+#
+# Three things live only here and are tracked as gaps to close on the
+# canonical family, not as features consciously dropped - see
+# docs/BACKEND_GAPS.md, "Chat: /v1/chats/* is deprecated":
+#   1. the ChatHandoff audit row written on takeover,
+#   2. automatic handoff when the AI hits its limits (_handoff_due_to_limit),
+#   3. the pro_takeover vs pro_active enum split, which needs reconciling.
 router = APIRouter(tags=["chats"])
 
 

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/core/paging/cursor_page.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
+import 'package:rawwers/core/router/app_router_pro.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
 import 'package:rawwers/features/pro/gigs/widgets/gig_card.dart';
@@ -39,7 +41,10 @@ class GigsScreen extends ConsumerWidget {
                     emptyTitle: _emptyTitle(filter),
                     emptyBody: _emptyBody(filter),
                     emptyIcon: Icons.camera_outlined,
-                    itemBuilder: (context, gig) => GigCard(gig: gig),
+                    itemBuilder: (context, gig) => GigCard(
+                      gig: gig,
+                      onTap: () => context.push(ProRoute.gigDelivery, extra: gig),
+                    ),
                   ),
                 _ => const SizedBox.shrink(),
               },

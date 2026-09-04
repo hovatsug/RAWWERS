@@ -246,5 +246,24 @@ final photoUploadServiceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PhotoUploadServiceRef = AutoDisposeProviderRef<PhotoUploadService>;
+String _$proofGalleriesClientHash() =>
+    r'ac0a52f113b5470ab8889a8f5598399be11d8c07';
+
+/// See also [proofGalleriesClient].
+@ProviderFor(proofGalleriesClient)
+final proofGalleriesClientProvider =
+    AutoDisposeProvider<ProofGalleriesClient>.internal(
+      proofGalleriesClient,
+      name: r'proofGalleriesClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$proofGalleriesClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProofGalleriesClientRef = AutoDisposeProviderRef<ProofGalleriesClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

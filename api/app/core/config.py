@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     # sweeps, which are minutes-to-hours because they reconcile state
     # nobody is waiting on.
     outbox_dispatch_interval_seconds: int = Field(default=30, alias="OUTBOX_DISPATCH_INTERVAL_SECONDS")
+    # Follow-ups and reminders are user-facing nudges with delays measured in
+    # minutes (the earliest fires at 60), so the sweep interval only needs to
+    # be well under that granularity, not seconds-fresh like the outbox.
+    followup_jobs_interval_seconds: int = Field(default=60, alias="FOLLOWUP_JOBS_INTERVAL_SECONDS")
+    reminders_interval_seconds: int = Field(default=60, alias="REMINDERS_INTERVAL_SECONDS")
     booking_request_expiry_sweep_interval_seconds: int = Field(default=900, alias="BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS")
     payout_hold_release_sweep_interval_seconds: int = Field(default=3600, alias="PAYOUT_HOLD_RELEASE_SWEEP_INTERVAL_SECONDS")
     dispute_escalation_sweep_interval_seconds: int = Field(default=3600, alias="DISPUTE_ESCALATION_SWEEP_INTERVAL_SECONDS")

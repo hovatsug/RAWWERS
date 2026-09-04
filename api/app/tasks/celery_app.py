@@ -24,6 +24,19 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.outbox_tasks.dispatch_outbox_events",
         "schedule": timedelta(seconds=settings.outbox_dispatch_interval_seconds),
     },
+    # Same omission as dispatch_outbox_events had: both of these were in
+    # task_routes but never on a schedule, so nothing ever ran them. Every
+    # follow-up in the product was dead as a result - including the payment
+    # nudge and the "a client is waiting for your response" reminder that
+    # backs the 48h booking window.
+    "process-followup-jobs": {
+        "task": "app.tasks.followup_tasks.process_followup_jobs",
+        "schedule": timedelta(seconds=settings.followup_jobs_interval_seconds),
+    },
+    "process-due-reminders": {
+        "task": "app.tasks.reminder_tasks.process_due_reminders",
+        "schedule": timedelta(seconds=settings.reminders_interval_seconds),
+    },
     "expire-booking-requests": {
         "task": "app.tasks.scheduled.expire_booking_requests",
         "schedule": timedelta(seconds=settings.booking_request_expiry_sweep_interval_seconds),

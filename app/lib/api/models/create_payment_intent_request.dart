@@ -1,13 +1,6 @@
 /// CreatePaymentIntentRequest
 /// {
 ///     "properties": {
-///         "payment_method_types": {
-///             "type": "array",
-///             "items": {
-///                 "type": "string"
-///             },
-///             "title": "Payment Method Types"
-///         },
 ///         "return_url": {
 ///             "anyOf": [
 ///                 {
@@ -46,10 +39,6 @@ abstract class CreatePaymentIntentRequest with _$CreatePaymentIntentRequest {
 
   @jsonSerializable
   const factory CreatePaymentIntentRequest({
-    /// paymentMethodTypes
-    @JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_)
-    List<String>? paymentMethodTypes,
-
     /// returnUrl
     @JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) String? returnUrl,
 
@@ -60,8 +49,6 @@ abstract class CreatePaymentIntentRequest with _$CreatePaymentIntentRequest {
 
   factory CreatePaymentIntentRequest.fromJson(Map<String, dynamic> json) =>
       _$CreatePaymentIntentRequestFromJson(json);
-
-  static const String paymentMethodTypesKey_ = r'payment_method_types';
 
   static const String returnUrlKey_ = r'return_url';
 

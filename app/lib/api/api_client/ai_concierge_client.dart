@@ -80,6 +80,108 @@ abstract class AIConciergeClient {
       },
     },
   });
+  @GET("/v1/chat/threads")
+  Future<HttpResponse<ChatThreadListResponse>>
+  listMyChatThreadsV1ChatThreadsGet({
+    @Query("status") required ChatThreadStatus? status,
+    @Query("cursor") required String? cursor,
+    @Query("limit") int limit = 20,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['ai_concierge'],
+      'summary': 'List My Chat Threads',
+      'description':
+          'The authenticated client\'s own chat threads, newest first.\n\nMirrors `GET /v1/pro/chat/threads` for the other side of the same\nthreads. Without it a client can only reach a thread whose id they\nalready hold, so "ask a photographer a question before booking" is a\none-way door - fine from the pro\'s inbox, unreachable from the client\'s.\n\nOrdered and paginated on `created_at`, not `updated_at`, despite\nlast-activity being the more natural sort for a message list. A keyset\ncursor needs a stable sort key, and `updated_at` changes every time a\nmessage arrives - a thread could move across a page boundary mid-scroll\nand be skipped or repeated. Thread counts per client are small (you chat\nwith a handful of photographers, not hundreds), so the ordering costs\nlittle in practice and the pagination stays correct.\n\nGuest threads (`session_id` set, no `client_user_id`) are not reachable\nhere by design: they have no authenticated owner to scope to.',
+      'operationId': 'list_my_chat_threads_v1_chat_threads_get',
+      'parameters': [
+        {
+          'name': 'status',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'\$ref': '#/components/schemas/ChatThreadStatus'},
+              {'type': 'null'},
+            ],
+            'title': 'Status',
+          },
+        },
+        {
+          'name': 'cursor',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Cursor',
+          },
+        },
+        {
+          'name': 'limit',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'integer',
+            'maximum': 100,
+            'minimum': 1,
+            'default': 20,
+            'title': 'Limit',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ChatThreadListResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/chat/threads/{thread_id}")
   Future<HttpResponse<ChatThreadDetailResponse>>
   getChatThreadV1V1ChatThreadsThreadIdGet({

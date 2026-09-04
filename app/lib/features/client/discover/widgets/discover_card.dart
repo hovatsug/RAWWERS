@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
-import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/tokens.dart';
 
 /// One photographer in the Discover list.
 ///
-/// Deliberately renders no cover photo. `ClientDiscoverCard` carries
-/// `cover_media_asset_id` but no URL, so showing an image would mean one
-/// `GET /v1/media/{id}` per card - twenty extra round trips on a twenty-card
-/// screen, on the first thing a client ever sees. Until the card carries a
-/// URL (or a batch resolve exists), this leads with the things that are
-/// actually in the payload and are what someone picks a photographer on:
-/// price range, rating, and what they shoot.
+/// Photo-led on purpose: this is the first screen a client sees, and nobody
+/// picks a photographer from a price range. The cover is a 3:2 frame - the
+/// native aspect of most cameras - and the text sits beneath it rather than
+/// over it, so a caption is never fighting the image for legibility.
 class DiscoverCard extends StatelessWidget {
   const DiscoverCard({required this.card, required this.onTap, super.key});
 
@@ -21,44 +18,75 @@ class DiscoverCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final name = card.displayName ?? 'Photographer';
 
-    return InkWell(
-      onTap: onTap,
-      child: RCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Semantics(
+      button: true,
+      label: name,
+      child: InkWell(
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+            borderRadius: BorderRadius.circular(RRadius.surface),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(RRadius.surface),
+            child: Column(
+              // Sized to its content: the card is laid out inside a list, and
+              // a max-height column would stretch the photo to whatever space
+              // it happened to be given.
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    card.displayName ?? 'Photographer',
-                    style: theme.textTheme.titleMedium,
+                AspectRatio(
+                  aspectRatio: 3 / 2,
+                  child: RNetworkPhoto(url: card.coverUrl, semanticLabel: '$name cover photo'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(RSpace.s16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: Text(name, style: theme.textTheme.titleMedium)),
+                          if (card.reviewCount > 0) ...[
+                            const SizedBox(width: RSpace.s8),
+                            _Rating(rating: card.avgRating, count: card.reviewCount),
+                          ],
+                        ],
+                      ),
+                      if (card.headline != null) ...[
+                        const SizedBox(height: RSpace.s4),
+                        Text(
+                          card.headline!,
+                          style: theme.textTheme.bodyMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: RSpace.s12),
+                      Text(
+                        _priceLine(card),
+                        style: theme.textTheme.titleSmall?.copyWith(fontFeatures: RType.tabularFigures),
+                      ),
+                      if ((card.topNiches ?? const []).isNotEmpty) ...[
+                        const SizedBox(height: RSpace.s8),
+                        Text(
+                          _nicheLine(card),
+                          style: theme.textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (card.reviewCount > 0) ...[
-                  const SizedBox(width: RSpace.s8),
-                  _Rating(rating: card.avgRating, count: card.reviewCount),
-                ],
               ],
             ),
-            if (card.headline != null) ...[
-              const SizedBox(height: RSpace.s4),
-              Text(card.headline!, style: theme.textTheme.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
-            ],
-            const SizedBox(height: RSpace.s12),
-            Text(_priceLine(card), style: theme.textTheme.titleSmall?.copyWith(fontFeatures: RType.tabularFigures)),
-            if ((card.topNiches ?? const []).isNotEmpty) ...[
-              const SizedBox(height: RSpace.s8),
-              Text(
-                _nicheLine(card),
-                style: theme.textTheme.bodySmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

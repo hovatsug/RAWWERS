@@ -19,7 +19,8 @@ mixin _$ClientProProfileResponse {
 @JsonKey(name: ClientProProfileResponse.proUserIdKey_) String get proUserId;/// displayName
 @JsonKey(name: ClientProProfileResponse.displayNameKey_) String? get displayName;/// headline
 @JsonKey(name: ClientProProfileResponse.headlineKey_) String? get headline;/// coverMediaAssetId
-@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) String? get coverMediaAssetId;/// bio
+@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) String? get coverMediaAssetId;/// coverUrl
+@JsonKey(name: ClientProProfileResponse.coverUrlKey_) String? get coverUrl;/// bio
 @JsonKey(name: ClientProProfileResponse.bioKey_) String? get bio;/// city
 @JsonKey(name: ClientProProfileResponse.cityKey_) String? get city;/// country
 @JsonKey(name: ClientProProfileResponse.countryKey_) String? get country;/// styles
@@ -29,7 +30,8 @@ mixin _$ClientProProfileResponse {
 @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) int get portfolioPhotoCount;/// portfolioVideoCount
 @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) int get portfolioVideoCount;/// packages
 @JsonKey(name: ClientProProfileResponse.packagesKey_) List<ClientProfilePackage>? get packages;/// portfolioPreviewAssetIds
-@JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) List<String>? get portfolioPreviewAssetIds;/// isGuestView
+@JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) List<String>? get portfolioPreviewAssetIds;/// portfolioPreview
+@JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_) List<ClientPortfolioItem>? get portfolioPreview;/// isGuestView
 @JsonKey(name: ClientProProfileResponse.isGuestViewKey_) bool get isGuestView;
 /// Create a copy of ClientProProfileResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -43,16 +45,16 @@ $ClientProProfileResponseCopyWith<ClientProProfileResponse> get copyWith => _$Cl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientProProfileResponse&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other.styles, styles)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount)&&const DeepCollectionEquality().equals(other.packages, packages)&&const DeepCollectionEquality().equals(other.portfolioPreviewAssetIds, portfolioPreviewAssetIds)&&(identical(other.isGuestView, isGuestView) || other.isGuestView == isGuestView));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientProProfileResponse&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other.styles, styles)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount)&&const DeepCollectionEquality().equals(other.packages, packages)&&const DeepCollectionEquality().equals(other.portfolioPreviewAssetIds, portfolioPreviewAssetIds)&&const DeepCollectionEquality().equals(other.portfolioPreview, portfolioPreview)&&(identical(other.isGuestView, isGuestView) || other.isGuestView == isGuestView));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(styles),avgRating,reviewCount,portfolioPhotoCount,portfolioVideoCount,const DeepCollectionEquality().hash(packages),const DeepCollectionEquality().hash(portfolioPreviewAssetIds),isGuestView);
+int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,coverUrl,bio,city,country,const DeepCollectionEquality().hash(styles),avgRating,reviewCount,portfolioPhotoCount,portfolioVideoCount,const DeepCollectionEquality().hash(packages),const DeepCollectionEquality().hash(portfolioPreviewAssetIds),const DeepCollectionEquality().hash(portfolioPreview),isGuestView);
 
 @override
 String toString() {
-  return 'ClientProProfileResponse(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, styles: $styles, avgRating: $avgRating, reviewCount: $reviewCount, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount, packages: $packages, portfolioPreviewAssetIds: $portfolioPreviewAssetIds, isGuestView: $isGuestView)';
+  return 'ClientProProfileResponse(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, coverUrl: $coverUrl, bio: $bio, city: $city, country: $country, styles: $styles, avgRating: $avgRating, reviewCount: $reviewCount, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount, packages: $packages, portfolioPreviewAssetIds: $portfolioPreviewAssetIds, portfolioPreview: $portfolioPreview, isGuestView: $isGuestView)';
 }
 
 
@@ -63,7 +65,7 @@ abstract mixin class $ClientProProfileResponseCopyWith<$Res>  {
   factory $ClientProProfileResponseCopyWith(ClientProProfileResponse value, $Res Function(ClientProProfileResponse) _then) = _$ClientProProfileResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientProProfileResponse.proUserIdKey_) String proUserId,@JsonKey(name: ClientProProfileResponse.displayNameKey_) String? displayName,@JsonKey(name: ClientProProfileResponse.headlineKey_) String? headline,@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientProProfileResponse.bioKey_) String? bio,@JsonKey(name: ClientProProfileResponse.cityKey_) String? city,@JsonKey(name: ClientProProfileResponse.countryKey_) String? country,@JsonKey(name: ClientProProfileResponse.stylesKey_) List<String>? styles,@JsonKey(name: ClientProProfileResponse.avgRatingKey_) String avgRating,@JsonKey(name: ClientProProfileResponse.reviewCountKey_) int reviewCount,@JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) int portfolioVideoCount,@JsonKey(name: ClientProProfileResponse.packagesKey_) List<ClientProfilePackage>? packages,@JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) List<String>? portfolioPreviewAssetIds,@JsonKey(name: ClientProProfileResponse.isGuestViewKey_) bool isGuestView
+@JsonKey(name: ClientProProfileResponse.proUserIdKey_) String proUserId,@JsonKey(name: ClientProProfileResponse.displayNameKey_) String? displayName,@JsonKey(name: ClientProProfileResponse.headlineKey_) String? headline,@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientProProfileResponse.coverUrlKey_) String? coverUrl,@JsonKey(name: ClientProProfileResponse.bioKey_) String? bio,@JsonKey(name: ClientProProfileResponse.cityKey_) String? city,@JsonKey(name: ClientProProfileResponse.countryKey_) String? country,@JsonKey(name: ClientProProfileResponse.stylesKey_) List<String>? styles,@JsonKey(name: ClientProProfileResponse.avgRatingKey_) String avgRating,@JsonKey(name: ClientProProfileResponse.reviewCountKey_) int reviewCount,@JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) int portfolioVideoCount,@JsonKey(name: ClientProProfileResponse.packagesKey_) List<ClientProfilePackage>? packages,@JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) List<String>? portfolioPreviewAssetIds,@JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_) List<ClientPortfolioItem>? portfolioPreview,@JsonKey(name: ClientProProfileResponse.isGuestViewKey_) bool isGuestView
 });
 
 
@@ -80,12 +82,13 @@ class _$ClientProProfileResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientProProfileResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? styles = freezed,Object? avgRating = null,Object? reviewCount = null,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,Object? packages = freezed,Object? portfolioPreviewAssetIds = freezed,Object? isGuestView = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? coverUrl = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? styles = freezed,Object? avgRating = null,Object? reviewCount = null,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,Object? packages = freezed,Object? portfolioPreviewAssetIds = freezed,Object? portfolioPreview = freezed,Object? isGuestView = null,}) {
   return _then(_self.copyWith(
 proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,headline: freezed == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
 as String?,coverMediaAssetId: freezed == coverMediaAssetId ? _self.coverMediaAssetId : coverMediaAssetId // ignore: cast_nullable_to_non_nullable
+as String?,coverUrl: freezed == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
 as String?,bio: freezed == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nullable
 as String?,city: freezed == city ? _self.city : city // ignore: cast_nullable_to_non_nullable
 as String?,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
@@ -96,7 +99,8 @@ as int,portfolioPhotoCount: null == portfolioPhotoCount ? _self.portfolioPhotoCo
 as int,portfolioVideoCount: null == portfolioVideoCount ? _self.portfolioVideoCount : portfolioVideoCount // ignore: cast_nullable_to_non_nullable
 as int,packages: freezed == packages ? _self.packages : packages // ignore: cast_nullable_to_non_nullable
 as List<ClientProfilePackage>?,portfolioPreviewAssetIds: freezed == portfolioPreviewAssetIds ? _self.portfolioPreviewAssetIds : portfolioPreviewAssetIds // ignore: cast_nullable_to_non_nullable
-as List<String>?,isGuestView: null == isGuestView ? _self.isGuestView : isGuestView // ignore: cast_nullable_to_non_nullable
+as List<String>?,portfolioPreview: freezed == portfolioPreview ? _self.portfolioPreview : portfolioPreview // ignore: cast_nullable_to_non_nullable
+as List<ClientPortfolioItem>?,isGuestView: null == isGuestView ? _self.isGuestView : isGuestView // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -182,10 +186,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProProfileResponse.proUserIdKey_)  String proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_)  String? displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_)  String? headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.bioKey_)  String? bio, @JsonKey(name: ClientProProfileResponse.cityKey_)  String? city, @JsonKey(name: ClientProProfileResponse.countryKey_)  String? country, @JsonKey(name: ClientProProfileResponse.stylesKey_)  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_)  String avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_)  int portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_)  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)  bool isGuestView)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProProfileResponse.proUserIdKey_)  String proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_)  String? displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_)  String? headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientProProfileResponse.bioKey_)  String? bio, @JsonKey(name: ClientProProfileResponse.cityKey_)  String? city, @JsonKey(name: ClientProProfileResponse.countryKey_)  String? country, @JsonKey(name: ClientProProfileResponse.stylesKey_)  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_)  String avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_)  int portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_)  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_)  List<ClientPortfolioItem>? portfolioPreview, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)  bool isGuestView)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientProProfileResponse() when $default != null:
-return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.styles,_that.avgRating,_that.reviewCount,_that.portfolioPhotoCount,_that.portfolioVideoCount,_that.packages,_that.portfolioPreviewAssetIds,_that.isGuestView);case _:
+return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.bio,_that.city,_that.country,_that.styles,_that.avgRating,_that.reviewCount,_that.portfolioPhotoCount,_that.portfolioVideoCount,_that.packages,_that.portfolioPreviewAssetIds,_that.portfolioPreview,_that.isGuestView);case _:
   return orElse();
 
 }
@@ -203,10 +207,10 @@ return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMedi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProProfileResponse.proUserIdKey_)  String proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_)  String? displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_)  String? headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.bioKey_)  String? bio, @JsonKey(name: ClientProProfileResponse.cityKey_)  String? city, @JsonKey(name: ClientProProfileResponse.countryKey_)  String? country, @JsonKey(name: ClientProProfileResponse.stylesKey_)  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_)  String avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_)  int portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_)  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)  bool isGuestView)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProProfileResponse.proUserIdKey_)  String proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_)  String? displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_)  String? headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientProProfileResponse.bioKey_)  String? bio, @JsonKey(name: ClientProProfileResponse.cityKey_)  String? city, @JsonKey(name: ClientProProfileResponse.countryKey_)  String? country, @JsonKey(name: ClientProProfileResponse.stylesKey_)  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_)  String avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_)  int portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_)  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_)  List<ClientPortfolioItem>? portfolioPreview, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)  bool isGuestView)  $default,) {final _that = this;
 switch (_that) {
 case _ClientProProfileResponse():
-return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.styles,_that.avgRating,_that.reviewCount,_that.portfolioPhotoCount,_that.portfolioVideoCount,_that.packages,_that.portfolioPreviewAssetIds,_that.isGuestView);case _:
+return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.bio,_that.city,_that.country,_that.styles,_that.avgRating,_that.reviewCount,_that.portfolioPhotoCount,_that.portfolioVideoCount,_that.packages,_that.portfolioPreviewAssetIds,_that.portfolioPreview,_that.isGuestView);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -223,10 +227,10 @@ return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMedi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientProProfileResponse.proUserIdKey_)  String proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_)  String? displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_)  String? headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.bioKey_)  String? bio, @JsonKey(name: ClientProProfileResponse.cityKey_)  String? city, @JsonKey(name: ClientProProfileResponse.countryKey_)  String? country, @JsonKey(name: ClientProProfileResponse.stylesKey_)  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_)  String avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_)  int portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_)  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)  bool isGuestView)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientProProfileResponse.proUserIdKey_)  String proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_)  String? displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_)  String? headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientProProfileResponse.bioKey_)  String? bio, @JsonKey(name: ClientProProfileResponse.cityKey_)  String? city, @JsonKey(name: ClientProProfileResponse.countryKey_)  String? country, @JsonKey(name: ClientProProfileResponse.stylesKey_)  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_)  String avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_)  int portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_)  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_)  List<ClientPortfolioItem>? portfolioPreview, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)  bool isGuestView)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientProProfileResponse() when $default != null:
-return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.styles,_that.avgRating,_that.reviewCount,_that.portfolioPhotoCount,_that.portfolioVideoCount,_that.packages,_that.portfolioPreviewAssetIds,_that.isGuestView);case _:
+return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.bio,_that.city,_that.country,_that.styles,_that.avgRating,_that.reviewCount,_that.portfolioPhotoCount,_that.portfolioVideoCount,_that.packages,_that.portfolioPreviewAssetIds,_that.portfolioPreview,_that.isGuestView);case _:
   return null;
 
 }
@@ -238,7 +242,7 @@ return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMedi
 
 @jsonSerializable
 class _ClientProProfileResponse extends ClientProProfileResponse {
-  const _ClientProProfileResponse({@JsonKey(name: ClientProProfileResponse.proUserIdKey_) required this.proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_) this.displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_) this.headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.bioKey_) this.bio, @JsonKey(name: ClientProProfileResponse.cityKey_) this.city, @JsonKey(name: ClientProProfileResponse.countryKey_) this.country, @JsonKey(name: ClientProProfileResponse.stylesKey_) final  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_) required this.avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_) required this.reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) required this.portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) required this.portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_) final  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) final  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_) this.isGuestView = false}): _styles = styles,_packages = packages,_portfolioPreviewAssetIds = portfolioPreviewAssetIds,super._();
+  const _ClientProProfileResponse({@JsonKey(name: ClientProProfileResponse.proUserIdKey_) required this.proUserId, @JsonKey(name: ClientProProfileResponse.displayNameKey_) this.displayName, @JsonKey(name: ClientProProfileResponse.headlineKey_) this.headline, @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ClientProProfileResponse.coverUrlKey_) this.coverUrl, @JsonKey(name: ClientProProfileResponse.bioKey_) this.bio, @JsonKey(name: ClientProProfileResponse.cityKey_) this.city, @JsonKey(name: ClientProProfileResponse.countryKey_) this.country, @JsonKey(name: ClientProProfileResponse.stylesKey_) final  List<String>? styles, @JsonKey(name: ClientProProfileResponse.avgRatingKey_) required this.avgRating, @JsonKey(name: ClientProProfileResponse.reviewCountKey_) required this.reviewCount, @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) required this.portfolioPhotoCount, @JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) required this.portfolioVideoCount, @JsonKey(name: ClientProProfileResponse.packagesKey_) final  List<ClientProfilePackage>? packages, @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) final  List<String>? portfolioPreviewAssetIds, @JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_) final  List<ClientPortfolioItem>? portfolioPreview, @JsonKey(name: ClientProProfileResponse.isGuestViewKey_) this.isGuestView = false}): _styles = styles,_packages = packages,_portfolioPreviewAssetIds = portfolioPreviewAssetIds,_portfolioPreview = portfolioPreview,super._();
   factory _ClientProProfileResponse.fromJson(Map<String, dynamic> json) => _$ClientProProfileResponseFromJson(json);
 
 /// proUserId
@@ -249,6 +253,8 @@ class _ClientProProfileResponse extends ClientProProfileResponse {
 @override@JsonKey(name: ClientProProfileResponse.headlineKey_) final  String? headline;
 /// coverMediaAssetId
 @override@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) final  String? coverMediaAssetId;
+/// coverUrl
+@override@JsonKey(name: ClientProProfileResponse.coverUrlKey_) final  String? coverUrl;
 /// bio
 @override@JsonKey(name: ClientProProfileResponse.bioKey_) final  String? bio;
 /// city
@@ -296,6 +302,17 @@ class _ClientProProfileResponse extends ClientProProfileResponse {
   return EqualUnmodifiableListView(value);
 }
 
+/// portfolioPreview
+ final  List<ClientPortfolioItem>? _portfolioPreview;
+/// portfolioPreview
+@override@JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_) List<ClientPortfolioItem>? get portfolioPreview {
+  final value = _portfolioPreview;
+  if (value == null) return null;
+  if (_portfolioPreview is EqualUnmodifiableListView) return _portfolioPreview;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 /// isGuestView
 @override@JsonKey(name: ClientProProfileResponse.isGuestViewKey_) final  bool isGuestView;
 
@@ -312,16 +329,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientProProfileResponse&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other._styles, _styles)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount)&&const DeepCollectionEquality().equals(other._packages, _packages)&&const DeepCollectionEquality().equals(other._portfolioPreviewAssetIds, _portfolioPreviewAssetIds)&&(identical(other.isGuestView, isGuestView) || other.isGuestView == isGuestView));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientProProfileResponse&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other._styles, _styles)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount)&&const DeepCollectionEquality().equals(other._packages, _packages)&&const DeepCollectionEquality().equals(other._portfolioPreviewAssetIds, _portfolioPreviewAssetIds)&&const DeepCollectionEquality().equals(other._portfolioPreview, _portfolioPreview)&&(identical(other.isGuestView, isGuestView) || other.isGuestView == isGuestView));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(_styles),avgRating,reviewCount,portfolioPhotoCount,portfolioVideoCount,const DeepCollectionEquality().hash(_packages),const DeepCollectionEquality().hash(_portfolioPreviewAssetIds),isGuestView);
+int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,coverUrl,bio,city,country,const DeepCollectionEquality().hash(_styles),avgRating,reviewCount,portfolioPhotoCount,portfolioVideoCount,const DeepCollectionEquality().hash(_packages),const DeepCollectionEquality().hash(_portfolioPreviewAssetIds),const DeepCollectionEquality().hash(_portfolioPreview),isGuestView);
 
 @override
 String toString() {
-  return 'ClientProProfileResponse(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, styles: $styles, avgRating: $avgRating, reviewCount: $reviewCount, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount, packages: $packages, portfolioPreviewAssetIds: $portfolioPreviewAssetIds, isGuestView: $isGuestView)';
+  return 'ClientProProfileResponse(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, coverUrl: $coverUrl, bio: $bio, city: $city, country: $country, styles: $styles, avgRating: $avgRating, reviewCount: $reviewCount, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount, packages: $packages, portfolioPreviewAssetIds: $portfolioPreviewAssetIds, portfolioPreview: $portfolioPreview, isGuestView: $isGuestView)';
 }
 
 
@@ -332,7 +349,7 @@ abstract mixin class _$ClientProProfileResponseCopyWith<$Res> implements $Client
   factory _$ClientProProfileResponseCopyWith(_ClientProProfileResponse value, $Res Function(_ClientProProfileResponse) _then) = __$ClientProProfileResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientProProfileResponse.proUserIdKey_) String proUserId,@JsonKey(name: ClientProProfileResponse.displayNameKey_) String? displayName,@JsonKey(name: ClientProProfileResponse.headlineKey_) String? headline,@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientProProfileResponse.bioKey_) String? bio,@JsonKey(name: ClientProProfileResponse.cityKey_) String? city,@JsonKey(name: ClientProProfileResponse.countryKey_) String? country,@JsonKey(name: ClientProProfileResponse.stylesKey_) List<String>? styles,@JsonKey(name: ClientProProfileResponse.avgRatingKey_) String avgRating,@JsonKey(name: ClientProProfileResponse.reviewCountKey_) int reviewCount,@JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) int portfolioVideoCount,@JsonKey(name: ClientProProfileResponse.packagesKey_) List<ClientProfilePackage>? packages,@JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) List<String>? portfolioPreviewAssetIds,@JsonKey(name: ClientProProfileResponse.isGuestViewKey_) bool isGuestView
+@JsonKey(name: ClientProProfileResponse.proUserIdKey_) String proUserId,@JsonKey(name: ClientProProfileResponse.displayNameKey_) String? displayName,@JsonKey(name: ClientProProfileResponse.headlineKey_) String? headline,@JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientProProfileResponse.coverUrlKey_) String? coverUrl,@JsonKey(name: ClientProProfileResponse.bioKey_) String? bio,@JsonKey(name: ClientProProfileResponse.cityKey_) String? city,@JsonKey(name: ClientProProfileResponse.countryKey_) String? country,@JsonKey(name: ClientProProfileResponse.stylesKey_) List<String>? styles,@JsonKey(name: ClientProProfileResponse.avgRatingKey_) String avgRating,@JsonKey(name: ClientProProfileResponse.reviewCountKey_) int reviewCount,@JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientProProfileResponse.portfolioVideoCountKey_) int portfolioVideoCount,@JsonKey(name: ClientProProfileResponse.packagesKey_) List<ClientProfilePackage>? packages,@JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_) List<String>? portfolioPreviewAssetIds,@JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_) List<ClientPortfolioItem>? portfolioPreview,@JsonKey(name: ClientProProfileResponse.isGuestViewKey_) bool isGuestView
 });
 
 
@@ -349,12 +366,13 @@ class __$ClientProProfileResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientProProfileResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? styles = freezed,Object? avgRating = null,Object? reviewCount = null,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,Object? packages = freezed,Object? portfolioPreviewAssetIds = freezed,Object? isGuestView = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? coverUrl = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? styles = freezed,Object? avgRating = null,Object? reviewCount = null,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,Object? packages = freezed,Object? portfolioPreviewAssetIds = freezed,Object? portfolioPreview = freezed,Object? isGuestView = null,}) {
   return _then(_ClientProProfileResponse(
 proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,headline: freezed == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
 as String?,coverMediaAssetId: freezed == coverMediaAssetId ? _self.coverMediaAssetId : coverMediaAssetId // ignore: cast_nullable_to_non_nullable
+as String?,coverUrl: freezed == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
 as String?,bio: freezed == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nullable
 as String?,city: freezed == city ? _self.city : city // ignore: cast_nullable_to_non_nullable
 as String?,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
@@ -365,7 +383,8 @@ as int,portfolioPhotoCount: null == portfolioPhotoCount ? _self.portfolioPhotoCo
 as int,portfolioVideoCount: null == portfolioVideoCount ? _self.portfolioVideoCount : portfolioVideoCount // ignore: cast_nullable_to_non_nullable
 as int,packages: freezed == packages ? _self._packages : packages // ignore: cast_nullable_to_non_nullable
 as List<ClientProfilePackage>?,portfolioPreviewAssetIds: freezed == portfolioPreviewAssetIds ? _self._portfolioPreviewAssetIds : portfolioPreviewAssetIds // ignore: cast_nullable_to_non_nullable
-as List<String>?,isGuestView: null == isGuestView ? _self.isGuestView : isGuestView // ignore: cast_nullable_to_non_nullable
+as List<String>?,portfolioPreview: freezed == portfolioPreview ? _self._portfolioPreview : portfolioPreview // ignore: cast_nullable_to_non_nullable
+as List<ClientPortfolioItem>?,isGuestView: null == isGuestView ? _self.isGuestView : isGuestView // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

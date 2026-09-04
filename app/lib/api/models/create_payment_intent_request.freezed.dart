@@ -15,8 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreatePaymentIntentRequest {
 
-/// paymentMethodTypes
-@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_) List<String>? get paymentMethodTypes;/// returnUrl
+/// returnUrl
 @JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) String? get returnUrl;/// pointsToSpend
 @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) int? get pointsToSpend;
 /// Create a copy of CreatePaymentIntentRequest
@@ -31,16 +30,16 @@ $CreatePaymentIntentRequestCopyWith<CreatePaymentIntentRequest> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatePaymentIntentRequest&&const DeepCollectionEquality().equals(other.paymentMethodTypes, paymentMethodTypes)&&(identical(other.returnUrl, returnUrl) || other.returnUrl == returnUrl)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatePaymentIntentRequest&&(identical(other.returnUrl, returnUrl) || other.returnUrl == returnUrl)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(paymentMethodTypes),returnUrl,pointsToSpend);
+int get hashCode => Object.hash(runtimeType,returnUrl,pointsToSpend);
 
 @override
 String toString() {
-  return 'CreatePaymentIntentRequest(paymentMethodTypes: $paymentMethodTypes, returnUrl: $returnUrl, pointsToSpend: $pointsToSpend)';
+  return 'CreatePaymentIntentRequest(returnUrl: $returnUrl, pointsToSpend: $pointsToSpend)';
 }
 
 
@@ -51,7 +50,7 @@ abstract mixin class $CreatePaymentIntentRequestCopyWith<$Res>  {
   factory $CreatePaymentIntentRequestCopyWith(CreatePaymentIntentRequest value, $Res Function(CreatePaymentIntentRequest) _then) = _$CreatePaymentIntentRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_) List<String>? paymentMethodTypes,@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) String? returnUrl,@JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) int? pointsToSpend
+@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) String? returnUrl,@JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) int? pointsToSpend
 });
 
 
@@ -68,10 +67,9 @@ class _$CreatePaymentIntentRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreatePaymentIntentRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? paymentMethodTypes = freezed,Object? returnUrl = freezed,Object? pointsToSpend = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? returnUrl = freezed,Object? pointsToSpend = freezed,}) {
   return _then(_self.copyWith(
-paymentMethodTypes: freezed == paymentMethodTypes ? _self.paymentMethodTypes : paymentMethodTypes // ignore: cast_nullable_to_non_nullable
-as List<String>?,returnUrl: freezed == returnUrl ? _self.returnUrl : returnUrl // ignore: cast_nullable_to_non_nullable
+returnUrl: freezed == returnUrl ? _self.returnUrl : returnUrl // ignore: cast_nullable_to_non_nullable
 as String?,pointsToSpend: freezed == pointsToSpend ? _self.pointsToSpend : pointsToSpend // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
@@ -158,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_)  List<String>? paymentMethodTypes, @JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_)  String? returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_)  int? pointsToSpend)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_)  String? returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_)  int? pointsToSpend)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreatePaymentIntentRequest() when $default != null:
-return $default(_that.paymentMethodTypes,_that.returnUrl,_that.pointsToSpend);case _:
+return $default(_that.returnUrl,_that.pointsToSpend);case _:
   return orElse();
 
 }
@@ -179,10 +177,10 @@ return $default(_that.paymentMethodTypes,_that.returnUrl,_that.pointsToSpend);ca
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_)  List<String>? paymentMethodTypes, @JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_)  String? returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_)  int? pointsToSpend)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_)  String? returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_)  int? pointsToSpend)  $default,) {final _that = this;
 switch (_that) {
 case _CreatePaymentIntentRequest():
-return $default(_that.paymentMethodTypes,_that.returnUrl,_that.pointsToSpend);case _:
+return $default(_that.returnUrl,_that.pointsToSpend);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +197,10 @@ return $default(_that.paymentMethodTypes,_that.returnUrl,_that.pointsToSpend);ca
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_)  List<String>? paymentMethodTypes, @JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_)  String? returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_)  int? pointsToSpend)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_)  String? returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_)  int? pointsToSpend)?  $default,) {final _that = this;
 switch (_that) {
 case _CreatePaymentIntentRequest() when $default != null:
-return $default(_that.paymentMethodTypes,_that.returnUrl,_that.pointsToSpend);case _:
+return $default(_that.returnUrl,_that.pointsToSpend);case _:
   return null;
 
 }
@@ -214,19 +212,8 @@ return $default(_that.paymentMethodTypes,_that.returnUrl,_that.pointsToSpend);ca
 
 @jsonSerializable
 class _CreatePaymentIntentRequest extends CreatePaymentIntentRequest {
-  const _CreatePaymentIntentRequest({@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_) final  List<String>? paymentMethodTypes, @JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) this.returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) this.pointsToSpend}): _paymentMethodTypes = paymentMethodTypes,super._();
+  const _CreatePaymentIntentRequest({@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) this.returnUrl, @JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) this.pointsToSpend}): super._();
   factory _CreatePaymentIntentRequest.fromJson(Map<String, dynamic> json) => _$CreatePaymentIntentRequestFromJson(json);
-
-/// paymentMethodTypes
- final  List<String>? _paymentMethodTypes;
-/// paymentMethodTypes
-@override@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_) List<String>? get paymentMethodTypes {
-  final value = _paymentMethodTypes;
-  if (value == null) return null;
-  if (_paymentMethodTypes is EqualUnmodifiableListView) return _paymentMethodTypes;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(value);
-}
 
 /// returnUrl
 @override@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) final  String? returnUrl;
@@ -246,16 +233,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreatePaymentIntentRequest&&const DeepCollectionEquality().equals(other._paymentMethodTypes, _paymentMethodTypes)&&(identical(other.returnUrl, returnUrl) || other.returnUrl == returnUrl)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreatePaymentIntentRequest&&(identical(other.returnUrl, returnUrl) || other.returnUrl == returnUrl)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_paymentMethodTypes),returnUrl,pointsToSpend);
+int get hashCode => Object.hash(runtimeType,returnUrl,pointsToSpend);
 
 @override
 String toString() {
-  return 'CreatePaymentIntentRequest(paymentMethodTypes: $paymentMethodTypes, returnUrl: $returnUrl, pointsToSpend: $pointsToSpend)';
+  return 'CreatePaymentIntentRequest(returnUrl: $returnUrl, pointsToSpend: $pointsToSpend)';
 }
 
 
@@ -266,7 +253,7 @@ abstract mixin class _$CreatePaymentIntentRequestCopyWith<$Res> implements $Crea
   factory _$CreatePaymentIntentRequestCopyWith(_CreatePaymentIntentRequest value, $Res Function(_CreatePaymentIntentRequest) _then) = __$CreatePaymentIntentRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: CreatePaymentIntentRequest.paymentMethodTypesKey_) List<String>? paymentMethodTypes,@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) String? returnUrl,@JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) int? pointsToSpend
+@JsonKey(name: CreatePaymentIntentRequest.returnUrlKey_) String? returnUrl,@JsonKey(name: CreatePaymentIntentRequest.pointsToSpendKey_) int? pointsToSpend
 });
 
 
@@ -283,10 +270,9 @@ class __$CreatePaymentIntentRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreatePaymentIntentRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? paymentMethodTypes = freezed,Object? returnUrl = freezed,Object? pointsToSpend = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? returnUrl = freezed,Object? pointsToSpend = freezed,}) {
   return _then(_CreatePaymentIntentRequest(
-paymentMethodTypes: freezed == paymentMethodTypes ? _self._paymentMethodTypes : paymentMethodTypes // ignore: cast_nullable_to_non_nullable
-as List<String>?,returnUrl: freezed == returnUrl ? _self.returnUrl : returnUrl // ignore: cast_nullable_to_non_nullable
+returnUrl: freezed == returnUrl ? _self.returnUrl : returnUrl // ignore: cast_nullable_to_non_nullable
 as String?,pointsToSpend: freezed == pointsToSpend ? _self.pointsToSpend : pointsToSpend // ignore: cast_nullable_to_non_nullable
 as int?,
   ));

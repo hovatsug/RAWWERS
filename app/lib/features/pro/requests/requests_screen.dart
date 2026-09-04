@@ -178,7 +178,10 @@ String _emptyTitle(RequestsFilter filter) => switch (filter) {
     };
 
 String? _emptyBody(RequestsFilter filter) => switch (filter) {
-      RequestsFilter.pending => 'New booking requests land here. You have 48 hours to respond to each one.',
+      // 24, not 48 - the backend sets expires_at to now + 24h. Corrected in
+      // F-7 after the live booking showed the real window; see
+      // docs/BACKEND_GAPS.md.
+      RequestsFilter.pending => 'New booking requests land here. You have 24 hours to respond to each one.',
       RequestsFilter.accepted => 'Requests you accept show up here, and become gigs once the client pays.',
       _ => null,
     };

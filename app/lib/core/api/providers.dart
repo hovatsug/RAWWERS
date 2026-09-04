@@ -5,9 +5,11 @@ import 'package:rawwers/api/api_client/ai_concierge_client.dart';
 import 'package:rawwers/api/api_client/auth_client.dart';
 import 'package:rawwers/api/api_client/client_launch_client.dart';
 import 'package:rawwers/api/api_client/gigs_client.dart';
+import 'package:rawwers/api/api_client/media_client.dart';
 import 'package:rawwers/api/api_client/notifications_client.dart';
 import 'package:rawwers/api/api_client/repairs_client.dart';
 import 'package:rawwers/api/api_client/scheduling_client.dart';
+import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/core/api/dio_client.dart';
@@ -52,3 +54,19 @@ SchedulingClient schedulingClient(Ref ref) => SchedulingClient(ref.watch(dioProv
 /// consumes it; to a photographer it is just the kit they own.
 @riverpod
 RepairsClient repairsClient(Ref ref) => RepairsClient(ref.watch(dioProvider));
+
+
+@riverpod
+MediaClient mediaClient(Ref ref) => MediaClient(ref.watch(dioProvider));
+
+/// Uploads photos through the presigned-PUT flow.
+///
+/// The storage Dio is deliberately bare - no baseUrl, no auth or refresh
+/// interceptors. A presigned URL authenticates itself through its query
+/// string, and attaching our Authorization header to a third-party host
+/// would leak the session token to R2.
+@riverpod
+PhotoUploadService photoUploadService(Ref ref) => PhotoUploadService(
+      mediaClient: ref.watch(mediaClientProvider),
+      storageDio: Dio(),
+    );

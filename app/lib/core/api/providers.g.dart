@@ -203,5 +203,48 @@ final repairsClientProvider = AutoDisposeProvider<RepairsClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef RepairsClientRef = AutoDisposeProviderRef<RepairsClient>;
+String _$mediaClientHash() => r'870e00f62f53aed2428f9608084d94d36025f53f';
+
+/// See also [mediaClient].
+@ProviderFor(mediaClient)
+final mediaClientProvider = AutoDisposeProvider<MediaClient>.internal(
+  mediaClient,
+  name: r'mediaClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mediaClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef MediaClientRef = AutoDisposeProviderRef<MediaClient>;
+String _$photoUploadServiceHash() =>
+    r'ec994f3bcc361722112b5b6945ea91591618c49c';
+
+/// Uploads photos through the presigned-PUT flow.
+///
+/// The storage Dio is deliberately bare - no baseUrl, no auth or refresh
+/// interceptors. A presigned URL authenticates itself through its query
+/// string, and attaching our Authorization header to a third-party host
+/// would leak the session token to R2.
+///
+/// Copied from [photoUploadService].
+@ProviderFor(photoUploadService)
+final photoUploadServiceProvider =
+    AutoDisposeProvider<PhotoUploadService>.internal(
+      photoUploadService,
+      name: r'photoUploadServiceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$photoUploadServiceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PhotoUploadServiceRef = AutoDisposeProviderRef<PhotoUploadService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

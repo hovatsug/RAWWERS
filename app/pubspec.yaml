@@ -44,6 +44,9 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   decimal: ^3.2.6
   flutter_stripe: ^14.0.0
+  # Portfolio uploads (P-4). Gallery only - no camera capture path, so no
+  # camera permission is requested.
+  image_picker: ^1.2.0
 
 dev_dependencies:
   flutter_test:

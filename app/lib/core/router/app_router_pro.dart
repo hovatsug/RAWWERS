@@ -9,6 +9,7 @@ import 'package:rawwers/features/pro/availability/availability_screen.dart';
 import 'package:rawwers/features/pro/gear/gear_screen.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/profile/pro_profile_edit_screen.dart';
+import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
 import 'package:rawwers/features/pro/pro_shell.dart';
 import 'package:rawwers/features/pro/requests/requests_screen.dart';
 import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
@@ -41,6 +42,7 @@ abstract final class ProRoute {
   static const settings = '/settings';
   static const profileEdit = '/settings/profile';
   static const gear = '/settings/gear';
+  static const portfolio = '/settings/portfolio';
   static const availability = '/settings/availability';
 }
 
@@ -92,10 +94,12 @@ GoRouter proRouter(Ref ref) {
         verifyEmailPath: ProRoute.verifyEmail,
         profileEditPath: ProRoute.profileEdit,
         gearPath: ProRoute.gear,
+        portfolioPath: ProRoute.portfolio,
         availabilityPath: ProRoute.availability,
       )),
       GoRoute(path: ProRoute.profileEdit, builder: (context, state) => const ProProfileEditScreen()),
       GoRoute(path: ProRoute.gear, builder: (context, state) => const GearScreen()),
+      GoRoute(path: ProRoute.portfolio, builder: (context, state) => const PortfolioScreen()),
       GoRoute(path: ProRoute.availability, builder: (context, state) => const AvailabilityScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ProShell(navigationShell: navigationShell),

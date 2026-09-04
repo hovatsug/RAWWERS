@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import io
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 
+from PIL import Image, ImageDraw
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,12 +17,23 @@ from app.models.discovery import ProPublicIndex
 from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatus
 from app.models.gig import Gig, GigStatus
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus, RolloutCity
-from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
+from app.models.media import (
+    MediaAsset,
+    MediaKind,
+    MediaObject,
+    MediaProvider,
+    MediaPurpose,
+    MediaStatus,
+    MediaVariant,
+    MediaVisibility,
+    ObjectStatus,
+)
 from app.models.niche import Niche
 from app.models.ops import FeatureFlag, FeatureFlagScope
 from app.services.auth_service import hash_password
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.niche_catalog import ensure_initial_niches
+from app.services.storage import generate_variant_key
 
 
 @dataclass(frozen=True)
@@ -244,27 +257,102 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
         package.extra_photo_price = Decimal("7.00")
         package.updated_at = _now()
 
-    for idx in range(3):
-        asset_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-portfolio:{user.user_id}:{idx}")
-        asset = db.get(MediaAsset, asset_id)
-        if asset is None:
-            db.add(
-                MediaAsset(
-                    id=asset_id,
-                    owner_user_id=user.user_id,
-                    kind=MediaKind.photo,
-                    purpose=MediaPurpose.portfolio_reel,
-                    provider=MediaProvider.r2,
-                    status=MediaStatus.ready,
-                    visibility=MediaVisibility.public,
-                    content_type="image/jpeg",
-                    byte_size=1250000,
-                    checksum=f"seed-{idx}",
-                    meta={"seeded": True},
-                )
-            )
+    _ensure_portfolio_media(db, user, profile)
 
     return package
+
+
+def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile) -> None:
+    """Give the seeded pro a portfolio that actually resolves to images.
+
+    The seed used to create MediaAsset rows marked `ready` with no MediaObject
+    rows behind them - an asset claiming to have bytes that live nowhere. That
+    made Discover and the pro profile untestable: every cover resolved to null
+    however correct the resolution code was.
+    """
+    asset_ids: list[uuid.UUID] = []
+    for idx in range(3):
+        asset_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-portfolio:{user.user_id}:{idx}")
+        asset_ids.append(asset_id)
+        storage_key = f"seed/{user.user_id}/portfolio/{idx}.jpg"
+        thumb_key = generate_variant_key(storage_key, "thumbnail")
+
+        asset = db.get(MediaAsset, asset_id)
+        if asset is None:
+            asset = MediaAsset(
+                id=asset_id,
+                owner_user_id=user.user_id,
+                kind=MediaKind.photo,
+                purpose=MediaPurpose.portfolio_reel,
+                provider=MediaProvider.r2,
+                status=MediaStatus.ready,
+                visibility=MediaVisibility.public,
+                content_type="image/jpeg",
+                byte_size=1250000,
+                checksum=f"seed-{idx}",
+                meta={"seeded": True},
+            )
+            db.add(asset)
+
+        for variant, key, size in (
+            (MediaVariant.original, storage_key, (1600, 1067)),
+            (MediaVariant.thumbnail, thumb_key, (512, 341)),
+        ):
+            existing = db.execute(
+                select(MediaObject).where(MediaObject.media_asset_id == asset_id, MediaObject.variant == variant)
+            ).scalar_one_or_none()
+            if existing is None:
+                db.add(
+                    MediaObject(
+                        media_asset_id=asset_id,
+                        variant=variant,
+                        storage_key=key,
+                        width=size[0],
+                        height=size[1],
+                        status=ObjectStatus.ready,
+                    )
+                )
+            _upload_seed_image(key, size, label=user.display_name, index=idx)
+
+    # A pro with a portfolio but no cover is the state that made every seeded
+    # Discover card image-less.
+    if profile.cover_media_asset_id is None and asset_ids:
+        profile.cover_media_asset_id = asset_ids[0]
+
+
+def _upload_seed_image(storage_key: str, size: tuple[int, int], *, label: str, index: int) -> None:
+    """Put a placeholder JPEG behind a seeded storage key.
+
+    Best-effort: seeding must still produce a coherent database when object
+    storage is unreachable (offline, or no R2 credentials in CI). A warning is
+    louder than a silent pass, because the symptom otherwise shows up much
+    later as an image that will not load.
+    """
+    try:
+        from app.services.storage import object_exists, upload_object_bytes
+    except ImportError:  # pragma: no cover - storage module is always present
+        return
+
+    try:
+        if object_exists(storage_key):
+            return
+        palette = [(58, 71, 94), (94, 62, 58), (52, 84, 70)]
+        base = palette[index % len(palette)]
+        image = Image.new("RGB", size, base)
+        draw = ImageDraw.Draw(image)
+        for y in range(size[1]):
+            shade = y / max(1, size[1] - 1)
+            draw.line(
+                [(0, y), (size[0], y)],
+                fill=tuple(int(channel * (0.65 + 0.5 * shade)) for channel in base),
+            )
+        draw.text((size[0] // 20, size[1] - size[1] // 6), f"{label} · {index + 1}", fill=(255, 255, 255))
+
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=82)
+        upload_object_bytes(storage_key, buffer.getvalue(), content_type="image/jpeg")
+    except Exception as exc:  # noqa: BLE001 - seeding should not die on storage
+        print(f"  ! could not upload seed image {storage_key}: {exc}")
 
 
 def _ensure_client_preference(db: Session, user_id: uuid.UUID) -> None:

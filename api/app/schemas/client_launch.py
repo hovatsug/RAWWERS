@@ -50,6 +50,9 @@ class ClientDiscoverCard(BaseModel):
     display_name: str | None = None
     headline: str | None = None
     cover_media_asset_id: uuid.UUID | None = None
+    # Signed and short-lived. Null when the pro has no cover, or when the
+    # cover is still being processed - both are ordinary states to render.
+    cover_url: str | None = None
     city: str | None = None
     country: str | None = None
     min_price: Decimal | None = None
@@ -103,11 +106,21 @@ class ClientProfilePackage(BaseModel):
     finals_sla_days: int
 
 
+class ClientPortfolioItem(BaseModel):
+    media_asset_id: uuid.UUID
+    kind: str
+    # Photos resolve to a signed thumbnail. Videos are served through Mux and
+    # have no MediaObject rows, so `thumbnail_url` is null for them - see
+    # docs/BACKEND_GAPS.md, "no video poster frames".
+    thumbnail_url: str | None = None
+
+
 class ClientProProfileResponse(BaseModel):
     pro_user_id: uuid.UUID
     display_name: str | None = None
     headline: str | None = None
     cover_media_asset_id: uuid.UUID | None = None
+    cover_url: str | None = None
     bio: str | None = None
     city: str | None = None
     country: str | None = None
@@ -118,6 +131,7 @@ class ClientProProfileResponse(BaseModel):
     portfolio_video_count: int
     packages: list[ClientProfilePackage] = Field(default_factory=list)
     portfolio_preview_asset_ids: list[uuid.UUID] = Field(default_factory=list)
+    portfolio_preview: list[ClientPortfolioItem] = Field(default_factory=list)
     is_guest_view: bool = False
 
 

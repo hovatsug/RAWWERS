@@ -34,7 +34,7 @@ final availabilityTimezoneProvider = AutoDisposeFutureProvider<String>.internal(
 // ignore: unused_element
 typedef AvailabilityTimezoneRef = AutoDisposeFutureProviderRef<String>;
 String _$workingHoursControllerHash() =>
-    r'8b6a328d10192ba47b829aecff53ee64586aa77d';
+    r'd0f587635f810e96f6f0e77d6aad5986d6c3c21c';
 
 /// Weekly working hours.
 ///
@@ -47,7 +47,7 @@ String _$workingHoursControllerHash() =>
 final workingHoursControllerProvider =
     AutoDisposeAsyncNotifierProvider<
       WorkingHoursController,
-      List<SchedulingAvailabilityRuleView>
+      List<AvailabilityRuleView>
     >.internal(
       WorkingHoursController.new,
       name: r'workingHoursControllerProvider',
@@ -59,7 +59,7 @@ final workingHoursControllerProvider =
     );
 
 typedef _$WorkingHoursController =
-    AutoDisposeAsyncNotifier<List<SchedulingAvailabilityRuleView>>;
+    AutoDisposeAsyncNotifier<List<AvailabilityRuleView>>;
 String _$blockedTimeControllerHash() =>
     r'63e05cb9aadcb20922cefefd37a5b9deed4af5bc';
 

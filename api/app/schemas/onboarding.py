@@ -104,7 +104,16 @@ class ReplaceAvailabilityRulesRequest(BaseModel):
     rules: list[AvailabilityRuleInput]
 
 
-class AvailabilityRuleView(BaseModel):
+class PublicAvailabilityRuleView(BaseModel):
+    """A weekly rule as the public profile endpoint exposes it.
+
+    Named apart from scheduling.AvailabilityRuleView deliberately. The two
+    shared a name, and FastAPI's collision handling qualifies the schema
+    keys but leaves both titles identical - which collapsed them into one
+    class in the generated Dart client, silently keeping this shape for the
+    scheduling endpoint that returns the other one.
+    """
+
     id: uuid.UUID
     day_of_week: int
     start_time: time
@@ -129,7 +138,7 @@ class BlackoutView(BaseModel):
 
 class PublicAvailabilityResponse(BaseModel):
     pro_user_id: uuid.UUID
-    rules: list[AvailabilityRuleView]
+    rules: list[PublicAvailabilityRuleView]
     blackouts: list[BlackoutView]
 
 

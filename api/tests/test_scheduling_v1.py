@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+from datetime import time as dt_time
 from decimal import Decimal
 
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
@@ -88,12 +89,19 @@ def _seed_pro_and_booking(db_session, pro_id: str, client_id: str):
         .first()
     )
     if not existing_rule:
+        # A full day, deliberately. Deriving the window from the current
+        # clock (start hour, start + 6h) produced a rule that wrapped past
+        # midnight whenever the suite ran after 18:00 UTC - 21:00 to 03:00 -
+        # and validate_slot_available compares plain times, so every
+        # confirm-slot test failed for the evening and passed again by
+        # morning. These tests are about conflicts and notice periods, not
+        # about office hours, so the window should not be a variable.
         db_session.add(
             ProAvailabilityRule(
                 pro_user_id=pro_uuid,
                 day_of_week=start.weekday(),
-                start_time=start.astimezone(timezone.utc).time().replace(minute=0, second=0, microsecond=0),
-                end_time=(start + timedelta(hours=6)).astimezone(timezone.utc).time().replace(minute=0, second=0, microsecond=0),
+                start_time=dt_time(0, 0),
+                end_time=dt_time(23, 59),
                 timezone="UTC",
                 location_mode="both",
             )

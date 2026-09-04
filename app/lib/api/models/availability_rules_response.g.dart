@@ -10,10 +10,7 @@ _AvailabilityRulesResponse _$AvailabilityRulesResponseFromJson(
   Map<String, dynamic> json,
 ) => _AvailabilityRulesResponse(
   items: (json['items'] as List<dynamic>?)
-      ?.map(
-        (e) =>
-            SchedulingAvailabilityRuleView.fromJson(e as Map<String, dynamic>),
-      )
+      ?.map((e) => AvailabilityRuleView.fromJson(e as Map<String, dynamic>))
       .toList(),
 );
 

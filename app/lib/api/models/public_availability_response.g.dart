@@ -12,8 +12,7 @@ _PublicAvailabilityResponse _$PublicAvailabilityResponseFromJson(
   proUserId: json['pro_user_id'] as String,
   rules: (json['rules'] as List<dynamic>)
       .map(
-        (e) =>
-            OnboardingAvailabilityRuleView.fromJson(e as Map<String, dynamic>),
+        (e) => PublicAvailabilityRuleView.fromJson(e as Map<String, dynamic>),
       )
       .toList(),
   blackouts: (json['blackouts'] as List<dynamic>)

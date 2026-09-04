@@ -17,7 +17,7 @@ mixin _$PublicAvailabilityResponse {
 
 /// proUserId
 @JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) String get proUserId;/// rules
-@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<OnboardingAvailabilityRuleView> get rules;/// blackouts
+@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<PublicAvailabilityRuleView> get rules;/// blackouts
 @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) List<BlackoutView> get blackouts;
 /// Create a copy of PublicAvailabilityResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -51,7 +51,7 @@ abstract mixin class $PublicAvailabilityResponseCopyWith<$Res>  {
   factory $PublicAvailabilityResponseCopyWith(PublicAvailabilityResponse value, $Res Function(PublicAvailabilityResponse) _then) = _$PublicAvailabilityResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) String proUserId,@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<OnboardingAvailabilityRuleView> rules,@JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) List<BlackoutView> blackouts
+@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) String proUserId,@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<PublicAvailabilityRuleView> rules,@JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) List<BlackoutView> blackouts
 });
 
 
@@ -72,7 +72,7 @@ class _$PublicAvailabilityResponseCopyWithImpl<$Res>
   return _then(_self.copyWith(
 proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,rules: null == rules ? _self.rules : rules // ignore: cast_nullable_to_non_nullable
-as List<OnboardingAvailabilityRuleView>,blackouts: null == blackouts ? _self.blackouts : blackouts // ignore: cast_nullable_to_non_nullable
+as List<PublicAvailabilityRuleView>,blackouts: null == blackouts ? _self.blackouts : blackouts // ignore: cast_nullable_to_non_nullable
 as List<BlackoutView>,
   ));
 }
@@ -158,7 +158,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_)  String proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_)  List<OnboardingAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)  List<BlackoutView> blackouts)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_)  String proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_)  List<PublicAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)  List<BlackoutView> blackouts)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PublicAvailabilityResponse() when $default != null:
 return $default(_that.proUserId,_that.rules,_that.blackouts);case _:
@@ -179,7 +179,7 @@ return $default(_that.proUserId,_that.rules,_that.blackouts);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_)  String proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_)  List<OnboardingAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)  List<BlackoutView> blackouts)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_)  String proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_)  List<PublicAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)  List<BlackoutView> blackouts)  $default,) {final _that = this;
 switch (_that) {
 case _PublicAvailabilityResponse():
 return $default(_that.proUserId,_that.rules,_that.blackouts);case _:
@@ -199,7 +199,7 @@ return $default(_that.proUserId,_that.rules,_that.blackouts);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_)  String proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_)  List<OnboardingAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)  List<BlackoutView> blackouts)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_)  String proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_)  List<PublicAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_)  List<BlackoutView> blackouts)?  $default,) {final _that = this;
 switch (_that) {
 case _PublicAvailabilityResponse() when $default != null:
 return $default(_that.proUserId,_that.rules,_that.blackouts);case _:
@@ -214,15 +214,15 @@ return $default(_that.proUserId,_that.rules,_that.blackouts);case _:
 
 @jsonSerializable
 class _PublicAvailabilityResponse extends PublicAvailabilityResponse {
-  const _PublicAvailabilityResponse({@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) required this.proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_) required final  List<OnboardingAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) required final  List<BlackoutView> blackouts}): _rules = rules,_blackouts = blackouts,super._();
+  const _PublicAvailabilityResponse({@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) required this.proUserId, @JsonKey(name: PublicAvailabilityResponse.rulesKey_) required final  List<PublicAvailabilityRuleView> rules, @JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) required final  List<BlackoutView> blackouts}): _rules = rules,_blackouts = blackouts,super._();
   factory _PublicAvailabilityResponse.fromJson(Map<String, dynamic> json) => _$PublicAvailabilityResponseFromJson(json);
 
 /// proUserId
 @override@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) final  String proUserId;
 /// rules
- final  List<OnboardingAvailabilityRuleView> _rules;
+ final  List<PublicAvailabilityRuleView> _rules;
 /// rules
-@override@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<OnboardingAvailabilityRuleView> get rules {
+@override@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<PublicAvailabilityRuleView> get rules {
   if (_rules is EqualUnmodifiableListView) return _rules;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_rules);
@@ -271,7 +271,7 @@ abstract mixin class _$PublicAvailabilityResponseCopyWith<$Res> implements $Publ
   factory _$PublicAvailabilityResponseCopyWith(_PublicAvailabilityResponse value, $Res Function(_PublicAvailabilityResponse) _then) = __$PublicAvailabilityResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) String proUserId,@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<OnboardingAvailabilityRuleView> rules,@JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) List<BlackoutView> blackouts
+@JsonKey(name: PublicAvailabilityResponse.proUserIdKey_) String proUserId,@JsonKey(name: PublicAvailabilityResponse.rulesKey_) List<PublicAvailabilityRuleView> rules,@JsonKey(name: PublicAvailabilityResponse.blackoutsKey_) List<BlackoutView> blackouts
 });
 
 
@@ -292,7 +292,7 @@ class __$PublicAvailabilityResponseCopyWithImpl<$Res>
   return _then(_PublicAvailabilityResponse(
 proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,rules: null == rules ? _self._rules : rules // ignore: cast_nullable_to_non_nullable
-as List<OnboardingAvailabilityRuleView>,blackouts: null == blackouts ? _self._blackouts : blackouts // ignore: cast_nullable_to_non_nullable
+as List<PublicAvailabilityRuleView>,blackouts: null == blackouts ? _self._blackouts : blackouts // ignore: cast_nullable_to_non_nullable
 as List<BlackoutView>,
   ));
 }

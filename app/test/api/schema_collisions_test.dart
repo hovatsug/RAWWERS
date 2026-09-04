@@ -5,16 +5,21 @@ import 'package:rawwers/api/models/availability_location_mode.dart';
 import 'package:rawwers/api/models/availability_rules_response.dart';
 import 'package:rawwers/api/models/public_availability_response.dart';
 
-/// FastAPI qualifies a schema name only when two modules define classes with
-/// the same name, and it leaves both `title`s identical. swagger_to_dart
-/// names the Dart class from the title, so two different shapes collapsed
-/// into one `AvailabilityRuleView` - the scheduling one lost, and reading
+/// onboarding.py and scheduling.py both defined `AvailabilityRuleView`.
+/// FastAPI qualified the schema keys but left both `title`s identical, and
+/// swagger_to_dart names the Dart class from the title - so two different
+/// shapes collapsed into one class, the scheduling one lost, and reading
 /// GET /v1/pro/scheduling/availability-rules threw
 /// "Null is not a subtype of num" at runtime.
 ///
 /// Nothing static caught it: the class existed, the field names were
-/// plausible, and `flutter analyze` was clean. These decode the real shape
-/// each endpoint actually returns, which is the only thing that would have.
+/// plausible, `flutter analyze` was clean, and the OpenAPI contract check
+/// passed because the client genuinely matched the schema it was handed.
+///
+/// The backend class is now `PublicAvailabilityRuleView`, so the collision
+/// is gone at source. These stay because they assert the thing that
+/// actually matters - that each endpoint's real payload decodes - which no
+/// amount of renaming guarantees on its own.
 void main() {
   test('scheduling availability rules decode with their own field names', () {
     const raw = '''

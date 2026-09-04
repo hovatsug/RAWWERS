@@ -126,9 +126,38 @@ titles and `$ref`s, and **fails the build** if any two schemas that reach
 the generator still share a title. `test/api/schema_collisions_test.dart`
 decodes the real payload of each endpoint.
 
-Worth renaming one of the two backend classes eventually - the collision
-is the root cause and the client-side fix is a workaround, however
-load-bearing. Not urgent while the guard holds.
+**Root cause removed:** `onboarding.AvailabilityRuleView` is now
+`PublicAvailabilityRuleView`, which is also the more accurate name - it is
+the shape the public profile endpoint returns. One duplicated name across
+503 schema classes, so nothing else was affected. The filter's rename
+heuristic no longer fires; the duplicate-title guard stays, because the
+next collision will not necessarily be one FastAPI flags.
+
+## Gear registration is tagged `repairs`, which is a taxonomy mistake
+
+`POST/GET/PUT/DELETE /v1/pro/me/gear-items` live in `api/app/api/v1/repairs.py`
+and carry the `repairs` tag, because the repairs marketplace consumes
+them. But to a photographer these are profile data - the bodies and lenses
+they own, with serial numbers - and they are needed long before anyone
+books a repair. Anyone reading the API by tag will look for gear under
+profile or onboarding and not find it.
+
+Not re-tagged: the tag is part of every generated client method name, so
+moving it would churn the whole surface for a naming concern. The Flutter
+client rescues these four operations by path allowlist in
+`app/tool/filter_openapi.dart` (`_includedPathPrefixes`), which is where
+to look when wondering why `repairs_client.dart` exists in an app with no
+repairs feature.
+
+## The scheduling test fixture failed after 18:00 UTC — FIXED in P-3
+
+Not a product gap, but it broke the regression-comparison method these
+commits rely on. `_seed_pro_and_booking` built a weekly availability rule
+from the current clock - start hour to start + 6h - so after 18:00 UTC the
+rule wrapped past midnight (21:00 to 03:00). `validate_slot_available`
+compares plain times, so every confirm-slot test failed all evening and
+passed again by morning. The fixture now seeds a full day: those tests are
+about conflicts and notice periods, not office hours.
 
 ## No video poster frames in the portfolio preview
 

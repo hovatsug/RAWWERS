@@ -1,4 +1,4 @@
-/// SchedulingAvailabilityRuleView
+/// AvailabilityRuleView
 /// {
 ///     "properties": {
 ///         "weekday": {
@@ -55,60 +55,56 @@
 ///         "created_at",
 ///         "updated_at"
 ///     ],
-///     "title": "SchedulingAvailabilityRuleView"
+///     "title": "AvailabilityRuleView"
 /// }
-library scheduling_availability_rule_view;
+library availability_rule_view;
 
 import 'exports.dart';
-part 'scheduling_availability_rule_view.freezed.dart';
-part 'scheduling_availability_rule_view.g.dart'; // SchedulingAvailabilityRuleView
+part 'availability_rule_view.freezed.dart';
+part 'availability_rule_view.g.dart'; // AvailabilityRuleView
 
 @freezed
-abstract class SchedulingAvailabilityRuleView
-    with _$SchedulingAvailabilityRuleView {
-  const SchedulingAvailabilityRuleView._();
+abstract class AvailabilityRuleView with _$AvailabilityRuleView {
+  const AvailabilityRuleView._();
 
   @jsonSerializable
-  const factory SchedulingAvailabilityRuleView({
+  const factory AvailabilityRuleView({
     /// weekday
-    @JsonKey(name: SchedulingAvailabilityRuleView.weekdayKey_)
-    required int weekday,
+    @JsonKey(name: AvailabilityRuleView.weekdayKey_) required int weekday,
 
     /// startLocal
-    @JsonKey(name: SchedulingAvailabilityRuleView.startLocalKey_)
+    @JsonKey(name: AvailabilityRuleView.startLocalKey_)
     required String startLocal,
 
     /// endLocal
-    @JsonKey(name: SchedulingAvailabilityRuleView.endLocalKey_)
-    required String endLocal,
+    @JsonKey(name: AvailabilityRuleView.endLocalKey_) required String endLocal,
 
     /// timezone
-    @JsonKey(name: SchedulingAvailabilityRuleView.timezoneKey_)
-    required String timezone,
+    @JsonKey(name: AvailabilityRuleView.timezoneKey_) required String timezone,
 
     /// locationMode
     @Default(AvailabilityLocationMode.both)
-    @JsonKey(name: SchedulingAvailabilityRuleView.locationModeKey_)
+    @JsonKey(name: AvailabilityRuleView.locationModeKey_)
     AvailabilityLocationMode locationMode,
 
     /// id
-    @JsonKey(name: SchedulingAvailabilityRuleView.idKey_) required String id,
+    @JsonKey(name: AvailabilityRuleView.idKey_) required String id,
 
     /// proUserId
-    @JsonKey(name: SchedulingAvailabilityRuleView.proUserIdKey_)
+    @JsonKey(name: AvailabilityRuleView.proUserIdKey_)
     required String proUserId,
 
     /// createdAt
-    @JsonKey(name: SchedulingAvailabilityRuleView.createdAtKey_)
+    @JsonKey(name: AvailabilityRuleView.createdAtKey_)
     required DateTime createdAt,
 
     /// updatedAt
-    @JsonKey(name: SchedulingAvailabilityRuleView.updatedAtKey_)
+    @JsonKey(name: AvailabilityRuleView.updatedAtKey_)
     required DateTime updatedAt,
-  }) = _SchedulingAvailabilityRuleView;
+  }) = _AvailabilityRuleView;
 
-  factory SchedulingAvailabilityRuleView.fromJson(Map<String, dynamic> json) =>
-      _$SchedulingAvailabilityRuleViewFromJson(json);
+  factory AvailabilityRuleView.fromJson(Map<String, dynamic> json) =>
+      _$AvailabilityRuleViewFromJson(json);
 
   static const String weekdayKey_ = r'weekday';
 

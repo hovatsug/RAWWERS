@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/availability_exception_view.dart';
 import 'package:rawwers/api/models/availability_rule_item.dart';
-import 'package:rawwers/api/models/scheduling_availability_rule_view.dart';
+import 'package:rawwers/api/models/availability_rule_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
@@ -96,7 +96,7 @@ class _DayRow extends ConsumerWidget {
   const _DayRow({required this.weekday, required this.rule});
 
   final int weekday;
-  final SchedulingAvailabilityRuleView? rule;
+  final AvailabilityRuleView? rule;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

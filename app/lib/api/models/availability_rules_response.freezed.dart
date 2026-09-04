@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$AvailabilityRulesResponse {
 
 /// items
-@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<SchedulingAvailabilityRuleView>? get items;
+@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<AvailabilityRuleView>? get items;
 /// Create a copy of AvailabilityRulesResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $AvailabilityRulesResponseCopyWith<$Res>  {
   factory $AvailabilityRulesResponseCopyWith(AvailabilityRulesResponse value, $Res Function(AvailabilityRulesResponse) _then) = _$AvailabilityRulesResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<SchedulingAvailabilityRuleView>? items
+@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<AvailabilityRuleView>? items
 });
 
 
@@ -69,7 +69,7 @@ class _$AvailabilityRulesResponseCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? items = freezed,}) {
   return _then(_self.copyWith(
 items: freezed == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
-as List<SchedulingAvailabilityRuleView>?,
+as List<AvailabilityRuleView>?,
   ));
 }
 
@@ -154,7 +154,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: AvailabilityRulesResponse.itemsKey_)  List<SchedulingAvailabilityRuleView>? items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: AvailabilityRulesResponse.itemsKey_)  List<AvailabilityRuleView>? items)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AvailabilityRulesResponse() when $default != null:
 return $default(_that.items);case _:
@@ -175,7 +175,7 @@ return $default(_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: AvailabilityRulesResponse.itemsKey_)  List<SchedulingAvailabilityRuleView>? items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: AvailabilityRulesResponse.itemsKey_)  List<AvailabilityRuleView>? items)  $default,) {final _that = this;
 switch (_that) {
 case _AvailabilityRulesResponse():
 return $default(_that.items);case _:
@@ -195,7 +195,7 @@ return $default(_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: AvailabilityRulesResponse.itemsKey_)  List<SchedulingAvailabilityRuleView>? items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: AvailabilityRulesResponse.itemsKey_)  List<AvailabilityRuleView>? items)?  $default,) {final _that = this;
 switch (_that) {
 case _AvailabilityRulesResponse() when $default != null:
 return $default(_that.items);case _:
@@ -210,13 +210,13 @@ return $default(_that.items);case _:
 
 @jsonSerializable
 class _AvailabilityRulesResponse extends AvailabilityRulesResponse {
-  const _AvailabilityRulesResponse({@JsonKey(name: AvailabilityRulesResponse.itemsKey_) final  List<SchedulingAvailabilityRuleView>? items}): _items = items,super._();
+  const _AvailabilityRulesResponse({@JsonKey(name: AvailabilityRulesResponse.itemsKey_) final  List<AvailabilityRuleView>? items}): _items = items,super._();
   factory _AvailabilityRulesResponse.fromJson(Map<String, dynamic> json) => _$AvailabilityRulesResponseFromJson(json);
 
 /// items
- final  List<SchedulingAvailabilityRuleView>? _items;
+ final  List<AvailabilityRuleView>? _items;
 /// items
-@override@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<SchedulingAvailabilityRuleView>? get items {
+@override@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<AvailabilityRuleView>? get items {
   final value = _items;
   if (value == null) return null;
   if (_items is EqualUnmodifiableListView) return _items;
@@ -258,7 +258,7 @@ abstract mixin class _$AvailabilityRulesResponseCopyWith<$Res> implements $Avail
   factory _$AvailabilityRulesResponseCopyWith(_AvailabilityRulesResponse value, $Res Function(_AvailabilityRulesResponse) _then) = __$AvailabilityRulesResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<SchedulingAvailabilityRuleView>? items
+@JsonKey(name: AvailabilityRulesResponse.itemsKey_) List<AvailabilityRuleView>? items
 });
 
 
@@ -278,7 +278,7 @@ class __$AvailabilityRulesResponseCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? items = freezed,}) {
   return _then(_AvailabilityRulesResponse(
 items: freezed == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
-as List<SchedulingAvailabilityRuleView>?,
+as List<AvailabilityRuleView>?,
   ));
 }
 

@@ -6,7 +6,7 @@ import 'package:rawwers/api/models/availability_exception_view.dart';
 import 'package:rawwers/api/models/availability_location_mode.dart';
 import 'package:rawwers/api/models/availability_rule_item.dart';
 import 'package:rawwers/api/models/availability_rules_replace_request.dart';
-import 'package:rawwers/api/models/scheduling_availability_rule_view.dart';
+import 'package:rawwers/api/models/availability_rule_view.dart';
 import 'package:rawwers/api/models/scheduling_policy_update_request.dart';
 import 'package:rawwers/api/models/scheduling_policy_view.dart';
 import 'package:rawwers/core/api/api_call.dart';
@@ -25,7 +25,7 @@ part 'availability_controller.g.dart';
 @riverpod
 class WorkingHoursController extends _$WorkingHoursController {
   @override
-  Future<List<SchedulingAvailabilityRuleView>> build() async {
+  Future<List<AvailabilityRuleView>> build() async {
     final client = ref.read(schedulingClientProvider);
     final result = await apiCall(
       () => client.getMyAvailabilityRulesV1ProSchedulingAvailabilityRulesGet(

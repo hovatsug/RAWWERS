@@ -21,6 +21,9 @@ class PhotoUploadCreateRequest(BaseModel):
     purpose: MediaPurpose
     content_type: str
     file_name: str | None = None
+    # Mirrors MuxUploadCreateRequest. Omitted means "the default for this
+    # purpose", which is public for portfolio work and owner_only otherwise.
+    visibility: MediaVisibility | None = None
 
 
 class UploadPayload(BaseModel):

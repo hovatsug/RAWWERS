@@ -95,6 +95,13 @@ class ClientMatchResponse(BaseModel):
 
 class ClientProfilePackage(BaseModel):
     id: uuid.UUID
+    # POST /v1/client/bookings/request requires niche_slug and rejects a
+    # request whose slug does not match the package's niche. Without it here,
+    # a client holding this response cannot name the niche and has to fetch
+    # GET /v1/pro/{id}/packages and GET /v1/niches to do a join the server
+    # already has in hand - two extra round trips on the highest-intent
+    # action in the product.
+    niche_slug: str
     title: str
     description: str | None = None
     duration_minutes: int

@@ -8,7 +8,7 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 **Why this matters on mobile specifically:** the classic bad-signal failure mode — the request reaches the server, the server processes it and returns 200, but the client never receives the response (connection drops, app backgrounds, timeout fires first) — leaves the client believing the call failed. If the app auto-retries in that state, the retry 409s even though the upload actually succeeded. Confirmed in F-3: `PhotoUploadService` deliberately calls `complete` at most once and never auto-retries it, surfacing the failure to the caller instead. A real fix (an idempotency key, or accepting a repeat call in the already-`processing`/already-`ready` state as a no-op success) would need to happen server-side; not in scope for the Flutter rebuild.
 
-## Portfolio photos are uploaded `owner_only`, so nobody but the pro can fetch them
+## ~~Portfolio photos are uploaded `owner_only`, so nobody but the pro can fetch them~~ — FIXED
 
 `POST /v1/media/photos/uploads` hardcodes `visibility=MediaVisibility.owner_only` (`api/app/api/v1/media.py`, `create_photo_upload`) and its request schema has no `visibility` field at all. The video path right next to it does the opposite: `create_mux_upload` accepts `visibility` and defaults `portfolio_reel` to `public`. So an uploaded portfolio **photo** is unreachable through `GET /v1/media/{id}` for anyone but its owner — `_ensure_read_access` 403s — while an uploaded portfolio **video** is public.
 
@@ -16,7 +16,7 @@ The dev seed already writes `visibility=public` for portfolio photos, which conf
 
 **Not currently a blocker,** because discover and profile now resolve image URLs server-side (see below) and never consult per-asset visibility. It becomes one the moment anything needs `GET /v1/media/{id}` for a portfolio photo — a full-portfolio screen, a share sheet, the web app — where it will present as an authentication bug rather than a visibility bug.
 
-**Fix, when it's wanted:** mirror the video path (`PhotoUploadCreateRequest` gains `visibility`, `portfolio_reel` defaults to `public`), plus a backfill for existing `portfolio_reel` photo rows. Left out of the cover-URL commit deliberately: it changes the API surface and needs a data migration, neither of which belongs in a tight fix.
+**Fixed:** `PhotoUploadCreateRequest` now accepts `visibility`, and `_default_visibility` gives `portfolio_reel` the same `public` default the video path already used. Migration `20260904_0043` backfills existing rows, narrowed to portfolio photos still sitting at the old hardcoded default so a deliberate choice is never overwritten.
 
 ## Booking requests expire after 24 hours, not the 48 the product describes
 
@@ -24,9 +24,9 @@ The dev seed already writes `visibility=public` for portfolio photos, which conf
 
 Everything downstream inherits it correctly — `seconds_until_expiry`, the pro app's countdown, the expiry sweep — so nothing is inconsistent internally. What was wrong is the **copy**: both apps told people 48 hours. That was corrected to 24 in F-7 (`requests_screen.dart`, `bookings_screen.dart`). The copy follows the code because the failure modes are not symmetric: a pro told they have 48 hours who replies at hour 30 has already lost the request.
 
-**Decision needed:** whether 24 or 48 is the intended window. If 48, the fix is the backend literal (and ideally a setting), not the copy. Flagged rather than changed because it is a product decision about how long a photographer gets, not a bug with an obvious right answer.
+**Resolved: 24 is the truth, and the copy follows it.** Confirmed as the intended behaviour rather than changed. Both apps now say 24 hours, and so does the booking request form before the request goes out. If the window is ever reconsidered, the literal at `client_launch.py:407` is the single place it lives — and it should become a setting at that point, not stay a literal.
 
-## The client's message list has no name to put on a conversation
+## ~~The client's message list has no name to put on a conversation~~ — FIXED (partly)
 
 `ChatThreadSummary` carries `pro_user_id`, `client_user_id`, `session_id`, `status`, `created_at`, `updated_at` — and no display name or avatar for either side. `ChatThreadDetailResponse` adds `messages` and a free-form `lead_profile` dict, still with no pro name. Confirmed live: `GET /v1/chat/threads` returns two threads identified only by UUID.
 
@@ -34,17 +34,25 @@ So the client's Messages tab titles every conversation "Photographer". A UUID wo
 
 There is also no last-message preview or unread count, so the rows carry no signal about which conversation needs attention.
 
-**Same shape of problem as the discover cover URL, and the same shape of fix:** put the resolved values on the summary — `pro_display_name`, `pro_cover_url`, and ideally `last_message_preview` / `last_message_at`. The pro's side has the same gap in reverse (no client name), and the profile lookup is already batched for discover, so one helper serves both.
+**Fixed for the pro's name.** `ChatThreadSummary` now carries `pro_display_name` and `client_display_name`, resolved in one batched lookup across the page and applied to all five construction sites (create, client list, pro list, detail). A pro is named by `ProProfile.display_name` — the brand a client recognises — falling back to the account name.
 
-## A client cannot build a booking request from the profile response alone
+**Still open, and worth knowing about:**
+
+1. **`client_display_name` will be null for almost every real account.** Registration never captures a display name at all — there is no such field on the register request or in `auth.py`. So `UserAccount.display_name` is only ever set by the seed script, and the *pro's* inbox still shows nothing for the client. The client app is unaffected (it reads `pro_display_name`, which populates from `ProProfile`). Fixing it properly means capturing a name at registration, which is a product decision, not a schema one.
+
+2. **No last-message preview or unread count.** The rows still carry no signal about which conversation needs attention. `updated_at` moves on each message, so a preview would need the message itself joined in.
+
+3. **No `pro_cover_url`.** An avatar on each row would help scanning; `resolve_image_urls` already exists to do it.
+
+## ~~A client cannot build a booking request from the profile response alone~~ — FIXED
 
 `POST /v1/client/bookings/request` requires `niche_slug` and validates it against the chosen package: `if not niche or niche.slug != body.niche_slug: raise ... "niche_slug does not match package"` (`api/app/api/v1/client_launch.py:390`). But `ClientProfilePackage` — the only package representation the client profile endpoint returns — carries no niche at all: `id`, `title`, `description`, `duration_minutes`, `price`, `currency`, `included_photos`, `extra_photo_price`, `proofs_sla_days`, `finals_sla_days`.
 
 So a client holding a profile response cannot name the niche the package belongs to. The workaround is two more requests — `GET /v1/pro/{pro_user_id}/packages` returns `ProPackageView` with `niche_id`, and `GET /v1/niches` maps id to slug — which makes the client do a join the server already has in hand, on the highest-intent action in the product.
 
-**Fix:** add `niche_slug` to `ClientProfilePackage`. Additive, one line in the schema and one in the endpoint, no migration. Alternatively make `niche_slug` optional on the request and derive it from `package_id`, since the server validates them against each other anyway and the client's copy is pure redundancy.
+**Fixed:** `ClientProfilePackage` now carries `niche_slug`, joined from `Niche` in the packages query rather than looked up per row. Verified end to end against the live backend: the slug the profile hands over is accepted by `POST /v1/client/bookings/request`, and the booking appears in `GET /v1/client/bookings`.
 
-**This blocks the booking-request flow**, which is why the profile's "Request this package" button does not yet open one. Not fixed inside the cover-URL commit: that commit was scoped to media, and this is a different endpoint's contract.
+The redundancy itself remains — the client still echoes back a value the server could derive from `package_id` alone — but it is now a value the client actually has.
 
 ## No video poster frames in the portfolio preview
 

@@ -47,6 +47,20 @@ router = APIRouter(prefix="/media", tags=["media"])
 settings = get_settings()
 
 
+def _default_visibility(purpose: MediaPurpose, requested: MediaVisibility | None) -> MediaVisibility:
+    """Portfolio work is public; everything else is the owner's alone.
+
+    Photo uploads used to hardcode `owner_only` regardless of purpose, while
+    the video path beside them already defaulted `portfolio_reel` to public.
+    The result was that a pro's portfolio photos 403'd for every client who
+    tried to fetch one - the portfolio being, by definition, the work a pro
+    wants strangers to see.
+    """
+    if requested is not None:
+        return requested
+    return MediaVisibility.public if purpose == MediaPurpose.portfolio_reel else MediaVisibility.owner_only
+
+
 @router.post("/photos/uploads", response_model=PhotoUploadCreateResponse)
 def create_photo_upload(
     body: PhotoUploadCreateRequest,
@@ -67,7 +81,7 @@ def create_photo_upload(
         purpose=body.purpose,
         provider=MediaProvider.r2,
         status=MediaStatus.uploading,
-        visibility=MediaVisibility.owner_only,
+        visibility=_default_visibility(body.purpose, body.visibility),
         content_type=body.content_type,
         meta={"file_name": body.file_name} if body.file_name else {},
     )

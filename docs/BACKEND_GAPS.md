@@ -222,6 +222,27 @@ That last one is what turned up the midnight-crossing gap recorded above:
 the notification path handles a wrapped window and the scheduling path
 does not.
 
+## ~~`GET /v1/niches` returned no id, so a niche picker could not call anything keyed on one~~ — FIXED in P-5
+
+The pro-side pricing preview added in P-2 is
+`GET /v1/pro/me/pricing/niches/{niche_id}`, but the only list of niches
+available to a client returned `{slug, name}`. An existing package carries
+its `niche_id`, so editing one worked; a pro pricing a *new* niche picked a
+slug and had no id to preview with - which is exactly the case the endpoint
+was added for.
+
+`id` is now included. One additive field, and it removes the same trap for
+every future picker rather than adding a slug-shaped variant of one route.
+
+## `/v1/niches` is still `list[dict[str, str]]` with no response schema
+
+Related to the above and unchanged: this endpoint has no Pydantic response
+model, so the shape is convention rather than contract, and the Flutter
+client reads it defensively (dropping rows missing a key rather than
+throwing). Adding `id` was safe because a uuid serialises as a string, but
+the next field that is not a string will not be. Third instance of the
+unenforced-shape pattern recorded in this document.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

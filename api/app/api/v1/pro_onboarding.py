@@ -550,7 +550,11 @@ def list_niches(db: Session = Depends(get_db_session)) -> list[dict[str, str]]:
     ensure_initial_niches(db)
     rows = db.execute(select(Niche).where(Niche.is_active.is_(True)).order_by(Niche.name.asc())).scalars().all()
     db.commit()
-    return [{"slug": row.slug, "name": row.name} for row in rows]
+    # id included because every niche picker in the apps eventually needs
+    # to call an endpoint keyed on it - the pro-side pricing preview takes
+    # a niche_id, and this was the only list of niches a client had, so a
+    # pro choosing a niche by name had no way to price it.
+    return [{"id": str(row.id), "slug": row.slug, "name": row.name} for row in rows]
 
 
 @router.get("/pro/niches/mine", response_model=UpdateMyNichesResponse)

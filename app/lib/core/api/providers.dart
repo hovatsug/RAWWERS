@@ -8,6 +8,7 @@ import 'package:rawwers/api/api_client/gigs_client.dart';
 import 'package:rawwers/api/api_client/media_client.dart';
 import 'package:rawwers/api/api_client/notifications_client.dart';
 import 'package:rawwers/api/api_client/repairs_client.dart';
+import 'package:rawwers/api/api_client/proof_galleries_client.dart';
 import 'package:rawwers/api/api_client/scheduling_client.dart';
 import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
@@ -70,3 +71,6 @@ PhotoUploadService photoUploadService(Ref ref) => PhotoUploadService(
       mediaClient: ref.watch(mediaClientProvider),
       storageDio: Dio(),
     );
+
+@riverpod
+ProofGalleriesClient proofGalleriesClient(Ref ref) => ProofGalleriesClient(ref.watch(dioProvider));

@@ -26,6 +26,7 @@ class ProSettingsScreen extends ConsumerWidget {
     this.profileEditPath,
     this.gearPath,
     this.portfolioPath,
+    this.pricingPath,
     this.availabilityPath,
     super.key,
   });
@@ -34,6 +35,7 @@ class ProSettingsScreen extends ConsumerWidget {
   final String? profileEditPath;
   final String? gearPath;
   final String? portfolioPath;
+  final String? pricingPath;
   final String? availabilityPath;
 
   @override
@@ -99,6 +101,14 @@ class ProSettingsScreen extends ConsumerWidget {
                         label: 'Portfolio',
                         detail: 'The photos clients judge you on',
                         onTap: () => context.go(portfolioPath!),
+                      ),
+                    ],
+                    if (pricingPath != null) ...[
+                      const Divider(height: RSpace.s24),
+                      _NavRow(
+                        label: 'Pricing',
+                        detail: 'What you charge, and what a client ends up paying',
+                        onTap: () => context.go(pricingPath!),
                       ),
                     ],
                     if (availabilityPath != null) ...[

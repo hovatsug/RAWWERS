@@ -7,6 +7,15 @@ import 'package:rawwers/design/tokens.dart';
 Future<T?> showRSheet<T>(BuildContext context, {required WidgetBuilder builder}) {
   return showModalBottomSheet<T>(
     context: context,
+    // Without this a sheet is capped at 9/16 of the screen and clips its own
+    // content - which put the primary action of the gear and pricing editors
+    // below the fold, unreachable, with the keyboard up. Scroll-controlled
+    // sheets size to their content instead, and the 0.9 cap keeps the
+    // dismissing tap target above them.
+    isScrollControlled: true,
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+    ),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(RRadius.sheet)),
     ),

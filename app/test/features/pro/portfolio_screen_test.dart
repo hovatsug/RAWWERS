@@ -42,8 +42,8 @@ class _FakeUploads extends PortfolioUploadController {
 class _FakeNiches extends NichesController {
   @override
   Future<List<NicheOption>> build() async => const [
-        NicheOption(slug: 'portraits', name: 'Portraits'),
-        NicheOption(slug: 'weddings', name: 'Weddings'),
+        NicheOption(id: 'niche-portraits', slug: 'portraits', name: 'Portraits'),
+        NicheOption(id: 'niche-weddings', slug: 'weddings', name: 'Weddings'),
       ];
 }
 

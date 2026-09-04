@@ -6,7 +6,7 @@ part of 'niches_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$nichesControllerHash() => r'7a0e41c1a4c2a42a540df530e66ca8447e853493';
+String _$nichesControllerHash() => r'64de301b4ff0dde4389ca3f609a70acdc03757fd';
 
 /// See also [NichesController].
 @ProviderFor(NichesController)

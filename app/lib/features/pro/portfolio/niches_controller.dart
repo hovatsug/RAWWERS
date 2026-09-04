@@ -11,8 +11,11 @@ part 'niches_controller.g.dart';
 /// so this reads them defensively and drops anything malformed instead of
 /// throwing - a single odd row should not empty the picker.
 class NicheOption {
-  const NicheOption({required this.slug, required this.name});
+  const NicheOption({required this.id, required this.slug, required this.name});
 
+  /// Needed because the pro-side pricing preview is keyed on the niche id,
+  /// and this list is the only place a picker can learn it.
+  final String id;
   final String slug;
   final String name;
 }
@@ -26,8 +29,8 @@ class NichesController extends _$NichesController {
     return switch (result) {
       Ok(:final value) => [
           for (final row in value)
-            if (row['slug'] != null && row['name'] != null)
-              NicheOption(slug: row['slug']!, name: row['name']!),
+            if (row['id'] != null && row['slug'] != null && row['name'] != null)
+              NicheOption(id: row['id']!, slug: row['slug']!, name: row['name']!),
         ],
       Err(:final failure) => throw failure,
     };

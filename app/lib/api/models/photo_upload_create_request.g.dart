@@ -12,6 +12,9 @@ _PhotoUploadCreateRequest _$PhotoUploadCreateRequestFromJson(
   purpose: MediaPurpose.fromJson(json['purpose'] as String),
   contentType: json['content_type'] as String,
   fileName: json['file_name'] as String?,
+  visibility: json['visibility'] == null
+      ? null
+      : MediaVisibility.fromJson(json['visibility'] as String),
 );
 
 Map<String, dynamic> _$PhotoUploadCreateRequestToJson(
@@ -20,4 +23,5 @@ Map<String, dynamic> _$PhotoUploadCreateRequestToJson(
   'purpose': instance.purpose,
   'content_type': instance.contentType,
   'file_name': instance.fileName,
+  'visibility': instance.visibility,
 };

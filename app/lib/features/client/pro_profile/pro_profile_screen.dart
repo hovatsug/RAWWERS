@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/client_portfolio_item.dart';
 import 'package:rawwers/api/models/client_pro_profile_response.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
+import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/discover/discover_controller.dart';
+import 'package:rawwers/features/client/booking_request/booking_request_sheet.dart';
 import 'package:rawwers/features/client/discover/widgets/location_prompt.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
 
@@ -130,7 +133,12 @@ class _Profile extends StatelessWidget {
                 )
               else
                 for (final package in packages) ...[
-                  _PackageCard(package: package, proUserId: profile.proUserId, proName: name),
+                  _PackageCard(
+                    package: package,
+                    proUserId: profile.proUserId,
+                    proName: name,
+                    defaultLocation: profile.city,
+                  ),
                   const SizedBox(height: RSpace.s12),
                 ],
             ],
@@ -176,11 +184,17 @@ class _Meta extends StatelessWidget {
 }
 
 class _PackageCard extends StatelessWidget {
-  const _PackageCard({required this.package, required this.proUserId, required this.proName});
+  const _PackageCard({
+    required this.package,
+    required this.proUserId,
+    required this.proName,
+    this.defaultLocation,
+  });
 
   final ClientProfilePackage package;
   final String proUserId;
   final String proName;
+  final String? defaultLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -227,11 +241,21 @@ class _PackageCard extends StatelessWidget {
     );
   }
 
-  void _requestBooking(BuildContext context) {
-    // Wired to the booking request flow in the Bookings step of F-7.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Booking requests are coming next.')),
+  Future<void> _requestBooking(BuildContext context) async {
+    final bookingId = await showBookingRequestSheet(
+      context,
+      proUserId: proUserId,
+      proName: proName,
+      package: package,
+      defaultLocation: defaultLocation,
     );
+    if (bookingId == null || !context.mounted) return;
+
+    // Straight to the booking rather than a toast: the client's next question
+    // is "did that work, and what happens now", which the booking answers and
+    // a snackbar does not. Pushed onto Discover's stack, so back returns to
+    // the profile they were reading.
+    context.push(ClientRoute.bookingDetail(bookingId));
   }
 }
 

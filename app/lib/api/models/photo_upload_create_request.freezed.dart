@@ -18,7 +18,8 @@ mixin _$PhotoUploadCreateRequest {
 /// purpose
 @JsonKey(name: PhotoUploadCreateRequest.purposeKey_) MediaPurpose get purpose;/// contentType
 @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) String get contentType;/// fileName
-@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? get fileName;
+@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? get fileName;/// visibility
+@JsonKey(name: PhotoUploadCreateRequest.visibilityKey_) MediaVisibility? get visibility;
 /// Create a copy of PhotoUploadCreateRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +32,16 @@ $PhotoUploadCreateRequestCopyWith<PhotoUploadCreateRequest> get copyWith => _$Ph
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoUploadCreateRequest&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.contentType, contentType) || other.contentType == contentType)&&(identical(other.fileName, fileName) || other.fileName == fileName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoUploadCreateRequest&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.contentType, contentType) || other.contentType == contentType)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.visibility, visibility) || other.visibility == visibility));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,purpose,contentType,fileName);
+int get hashCode => Object.hash(runtimeType,purpose,contentType,fileName,visibility);
 
 @override
 String toString() {
-  return 'PhotoUploadCreateRequest(purpose: $purpose, contentType: $contentType, fileName: $fileName)';
+  return 'PhotoUploadCreateRequest(purpose: $purpose, contentType: $contentType, fileName: $fileName, visibility: $visibility)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $PhotoUploadCreateRequestCopyWith<$Res>  {
   factory $PhotoUploadCreateRequestCopyWith(PhotoUploadCreateRequest value, $Res Function(PhotoUploadCreateRequest) _then) = _$PhotoUploadCreateRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: PhotoUploadCreateRequest.purposeKey_) MediaPurpose purpose,@JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) String contentType,@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? fileName
+@JsonKey(name: PhotoUploadCreateRequest.purposeKey_) MediaPurpose purpose,@JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) String contentType,@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? fileName,@JsonKey(name: PhotoUploadCreateRequest.visibilityKey_) MediaVisibility? visibility
 });
 
 
@@ -68,12 +69,13 @@ class _$PhotoUploadCreateRequestCopyWithImpl<$Res>
 
 /// Create a copy of PhotoUploadCreateRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? purpose = null,Object? contentType = null,Object? fileName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? purpose = null,Object? contentType = null,Object? fileName = freezed,Object? visibility = freezed,}) {
   return _then(_self.copyWith(
 purpose: null == purpose ? _self.purpose : purpose // ignore: cast_nullable_to_non_nullable
 as MediaPurpose,contentType: null == contentType ? _self.contentType : contentType // ignore: cast_nullable_to_non_nullable
 as String,fileName: freezed == fileName ? _self.fileName : fileName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,visibility: freezed == visibility ? _self.visibility : visibility // ignore: cast_nullable_to_non_nullable
+as MediaVisibility?,
   ));
 }
 
@@ -158,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateRequest.purposeKey_)  MediaPurpose purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_)  String contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_)  String? fileName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateRequest.purposeKey_)  MediaPurpose purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_)  String contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_)  String? fileName, @JsonKey(name: PhotoUploadCreateRequest.visibilityKey_)  MediaVisibility? visibility)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PhotoUploadCreateRequest() when $default != null:
-return $default(_that.purpose,_that.contentType,_that.fileName);case _:
+return $default(_that.purpose,_that.contentType,_that.fileName,_that.visibility);case _:
   return orElse();
 
 }
@@ -179,10 +181,10 @@ return $default(_that.purpose,_that.contentType,_that.fileName);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateRequest.purposeKey_)  MediaPurpose purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_)  String contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_)  String? fileName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateRequest.purposeKey_)  MediaPurpose purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_)  String contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_)  String? fileName, @JsonKey(name: PhotoUploadCreateRequest.visibilityKey_)  MediaVisibility? visibility)  $default,) {final _that = this;
 switch (_that) {
 case _PhotoUploadCreateRequest():
-return $default(_that.purpose,_that.contentType,_that.fileName);case _:
+return $default(_that.purpose,_that.contentType,_that.fileName,_that.visibility);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +201,10 @@ return $default(_that.purpose,_that.contentType,_that.fileName);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PhotoUploadCreateRequest.purposeKey_)  MediaPurpose purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_)  String contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_)  String? fileName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PhotoUploadCreateRequest.purposeKey_)  MediaPurpose purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_)  String contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_)  String? fileName, @JsonKey(name: PhotoUploadCreateRequest.visibilityKey_)  MediaVisibility? visibility)?  $default,) {final _that = this;
 switch (_that) {
 case _PhotoUploadCreateRequest() when $default != null:
-return $default(_that.purpose,_that.contentType,_that.fileName);case _:
+return $default(_that.purpose,_that.contentType,_that.fileName,_that.visibility);case _:
   return null;
 
 }
@@ -214,7 +216,7 @@ return $default(_that.purpose,_that.contentType,_that.fileName);case _:
 
 @jsonSerializable
 class _PhotoUploadCreateRequest extends PhotoUploadCreateRequest {
-  const _PhotoUploadCreateRequest({@JsonKey(name: PhotoUploadCreateRequest.purposeKey_) required this.purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) required this.contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) this.fileName}): super._();
+  const _PhotoUploadCreateRequest({@JsonKey(name: PhotoUploadCreateRequest.purposeKey_) required this.purpose, @JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) required this.contentType, @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) this.fileName, @JsonKey(name: PhotoUploadCreateRequest.visibilityKey_) this.visibility}): super._();
   factory _PhotoUploadCreateRequest.fromJson(Map<String, dynamic> json) => _$PhotoUploadCreateRequestFromJson(json);
 
 /// purpose
@@ -223,6 +225,8 @@ class _PhotoUploadCreateRequest extends PhotoUploadCreateRequest {
 @override@JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) final  String contentType;
 /// fileName
 @override@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) final  String? fileName;
+/// visibility
+@override@JsonKey(name: PhotoUploadCreateRequest.visibilityKey_) final  MediaVisibility? visibility;
 
 /// Create a copy of PhotoUploadCreateRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -237,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoUploadCreateRequest&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.contentType, contentType) || other.contentType == contentType)&&(identical(other.fileName, fileName) || other.fileName == fileName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoUploadCreateRequest&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.contentType, contentType) || other.contentType == contentType)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.visibility, visibility) || other.visibility == visibility));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,purpose,contentType,fileName);
+int get hashCode => Object.hash(runtimeType,purpose,contentType,fileName,visibility);
 
 @override
 String toString() {
-  return 'PhotoUploadCreateRequest(purpose: $purpose, contentType: $contentType, fileName: $fileName)';
+  return 'PhotoUploadCreateRequest(purpose: $purpose, contentType: $contentType, fileName: $fileName, visibility: $visibility)';
 }
 
 
@@ -257,7 +261,7 @@ abstract mixin class _$PhotoUploadCreateRequestCopyWith<$Res> implements $PhotoU
   factory _$PhotoUploadCreateRequestCopyWith(_PhotoUploadCreateRequest value, $Res Function(_PhotoUploadCreateRequest) _then) = __$PhotoUploadCreateRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: PhotoUploadCreateRequest.purposeKey_) MediaPurpose purpose,@JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) String contentType,@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? fileName
+@JsonKey(name: PhotoUploadCreateRequest.purposeKey_) MediaPurpose purpose,@JsonKey(name: PhotoUploadCreateRequest.contentTypeKey_) String contentType,@JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? fileName,@JsonKey(name: PhotoUploadCreateRequest.visibilityKey_) MediaVisibility? visibility
 });
 
 
@@ -274,12 +278,13 @@ class __$PhotoUploadCreateRequestCopyWithImpl<$Res>
 
 /// Create a copy of PhotoUploadCreateRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? purpose = null,Object? contentType = null,Object? fileName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? purpose = null,Object? contentType = null,Object? fileName = freezed,Object? visibility = freezed,}) {
   return _then(_PhotoUploadCreateRequest(
 purpose: null == purpose ? _self.purpose : purpose // ignore: cast_nullable_to_non_nullable
 as MediaPurpose,contentType: null == contentType ? _self.contentType : contentType // ignore: cast_nullable_to_non_nullable
 as String,fileName: freezed == fileName ? _self.fileName : fileName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,visibility: freezed == visibility ? _self.visibility : visibility // ignore: cast_nullable_to_non_nullable
+as MediaVisibility?,
   ));
 }
 

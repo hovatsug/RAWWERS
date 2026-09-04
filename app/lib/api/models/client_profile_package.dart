@@ -6,6 +6,10 @@
 ///             "format": "uuid",
 ///             "title": "Id"
 ///         },
+///         "niche_slug": {
+///             "type": "string",
+///             "title": "Niche Slug"
+///         },
 ///         "title": {
 ///             "type": "string",
 ///             "title": "Title"
@@ -55,6 +59,7 @@
 ///     "type": "object",
 ///     "required": [
 ///         "id",
+///         "niche_slug",
 ///         "title",
 ///         "duration_minutes",
 ///         "price",
@@ -80,6 +85,10 @@ abstract class ClientProfilePackage with _$ClientProfilePackage {
   const factory ClientProfilePackage({
     /// id
     @JsonKey(name: ClientProfilePackage.idKey_) required String id,
+
+    /// nicheSlug
+    @JsonKey(name: ClientProfilePackage.nicheSlugKey_)
+    required String nicheSlug,
 
     /// title
     @JsonKey(name: ClientProfilePackage.titleKey_) required String title,
@@ -118,6 +127,8 @@ abstract class ClientProfilePackage with _$ClientProfilePackage {
       _$ClientProfilePackageFromJson(json);
 
   static const String idKey_ = r'id';
+
+  static const String nicheSlugKey_ = r'niche_slug';
 
   static const String titleKey_ = r'title';
 

@@ -15,6 +15,8 @@ _ChatThreadSummary _$ChatThreadSummaryFromJson(Map<String, dynamic> json) =>
       status: ChatThreadStatus.fromJson(json['status'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      proDisplayName: json['pro_display_name'] as String?,
+      clientDisplayName: json['client_display_name'] as String?,
     );
 
 Map<String, dynamic> _$ChatThreadSummaryToJson(_ChatThreadSummary instance) =>
@@ -26,4 +28,6 @@ Map<String, dynamic> _$ChatThreadSummaryToJson(_ChatThreadSummary instance) =>
       'status': instance.status,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
+      'pro_display_name': instance.proDisplayName,
+      'client_display_name': instance.clientDisplayName,
     };

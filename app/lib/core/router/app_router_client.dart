@@ -5,10 +5,13 @@ import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
 import 'package:rawwers/core/launch/launch_screen.dart';
 import 'package:rawwers/features/client/account/account_screen.dart';
+import 'package:rawwers/features/client/bookings/booking_detail_screen.dart';
 import 'package:rawwers/features/client/bookings/bookings_screen.dart';
 import 'package:rawwers/features/client/client_shell.dart';
 import 'package:rawwers/features/client/discover/discover_screen.dart';
 import 'package:rawwers/features/client/messages/messages_screen.dart';
+import 'package:rawwers/features/client/messages/thread_screen.dart';
+import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
 import 'package:rawwers/features/shared/auth/forgot_password_screen.dart';
 import 'package:rawwers/features/shared/auth/login_screen.dart';
 import 'package:rawwers/features/shared/auth/register_screen.dart';
@@ -31,6 +34,14 @@ abstract final class ClientRoute {
   static const bookings = '/bookings';
   static const messages = '/messages';
   static const account = '/account';
+
+  /// Nested under Discover so the bottom nav stays put and back returns to
+  /// the results the client was browsing, at the scroll position they left.
+  static String proProfile(String proUserId) => '$discover/pro/$proUserId';
+
+  static String bookingDetail(String bookingId) => '$bookings/$bookingId';
+
+  static String thread(String threadId) => '$messages/$threadId';
 }
 
 @Riverpod(keepAlive: true)
@@ -73,9 +84,48 @@ GoRouter clientRouter(Ref ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ClientShell(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: ClientRoute.discover, builder: (context, state) => const DiscoverScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: ClientRoute.bookings, builder: (context, state) => const BookingsScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: ClientRoute.messages, builder: (context, state) => const MessagesScreen())]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: ClientRoute.discover,
+                builder: (context, state) => const DiscoverScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'pro/:proUserId',
+                    builder: (context, state) => ProProfileScreen(proUserId: state.pathParameters['proUserId']!),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: ClientRoute.bookings,
+                builder: (context, state) => const BookingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':bookingId',
+                    builder: (context, state) => BookingDetailScreen(bookingId: state.pathParameters['bookingId']!),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: ClientRoute.messages,
+                builder: (context, state) => const MessagesScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':threadId',
+                    builder: (context, state) => ThreadScreen(threadId: state.pathParameters['threadId']!),
+                  ),
+                ],
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [GoRoute(path: ClientRoute.account, builder: (context, state) => const AccountScreen(verifyEmailPath: ClientRoute.verifyEmail))],
           ),

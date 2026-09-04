@@ -13,6 +13,7 @@ _ClientProProfileResponse _$ClientProProfileResponseFromJson(
   displayName: json['display_name'] as String?,
   headline: json['headline'] as String?,
   coverMediaAssetId: json['cover_media_asset_id'] as String?,
+  coverUrl: json['cover_url'] as String?,
   bio: json['bio'] as String?,
   city: json['city'] as String?,
   country: json['country'] as String?,
@@ -28,6 +29,9 @@ _ClientProProfileResponse _$ClientProProfileResponseFromJson(
       (json['portfolio_preview_asset_ids'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
+  portfolioPreview: (json['portfolio_preview'] as List<dynamic>?)
+      ?.map((e) => ClientPortfolioItem.fromJson(e as Map<String, dynamic>))
+      .toList(),
   isGuestView: json['is_guest_view'] as bool? ?? false,
 );
 
@@ -38,6 +42,7 @@ Map<String, dynamic> _$ClientProProfileResponseToJson(
   'display_name': instance.displayName,
   'headline': instance.headline,
   'cover_media_asset_id': instance.coverMediaAssetId,
+  'cover_url': instance.coverUrl,
   'bio': instance.bio,
   'city': instance.city,
   'country': instance.country,
@@ -48,5 +53,6 @@ Map<String, dynamic> _$ClientProProfileResponseToJson(
   'portfolio_video_count': instance.portfolioVideoCount,
   'packages': instance.packages,
   'portfolio_preview_asset_ids': instance.portfolioPreviewAssetIds,
+  'portfolio_preview': instance.portfolioPreview,
   'is_guest_view': instance.isGuestView,
 };

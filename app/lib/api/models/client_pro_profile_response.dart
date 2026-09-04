@@ -40,6 +40,17 @@
 ///             ],
 ///             "title": "Cover Media Asset Id"
 ///         },
+///         "cover_url": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Url"
+///         },
 ///         "bio": {
 ///             "anyOf": [
 ///                 {
@@ -112,6 +123,13 @@
 ///             },
 ///             "title": "Portfolio Preview Asset Ids"
 ///         },
+///         "portfolio_preview": {
+///             "type": "array",
+///             "items": {
+///                 "$ref": "#/components/schemas/ClientPortfolioItem"
+///             },
+///             "title": "Portfolio Preview"
+///         },
 ///         "is_guest_view": {
 ///             "type": "boolean",
 ///             "default": false,
@@ -155,6 +173,9 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     @JsonKey(name: ClientProProfileResponse.coverMediaAssetIdKey_)
     String? coverMediaAssetId,
 
+    /// coverUrl
+    @JsonKey(name: ClientProProfileResponse.coverUrlKey_) String? coverUrl,
+
     /// bio
     @JsonKey(name: ClientProProfileResponse.bioKey_) String? bio,
 
@@ -191,6 +212,10 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     @JsonKey(name: ClientProProfileResponse.portfolioPreviewAssetIdsKey_)
     List<String>? portfolioPreviewAssetIds,
 
+    /// portfolioPreview
+    @JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_)
+    List<ClientPortfolioItem>? portfolioPreview,
+
     /// isGuestView
     @Default(false)
     @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)
@@ -207,6 +232,8 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
   static const String headlineKey_ = r'headline';
 
   static const String coverMediaAssetIdKey_ = r'cover_media_asset_id';
+
+  static const String coverUrlKey_ = r'cover_url';
 
   static const String bioKey_ = r'bio';
 
@@ -228,6 +255,8 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
 
   static const String portfolioPreviewAssetIdsKey_ =
       r'portfolio_preview_asset_ids';
+
+  static const String portfolioPreviewKey_ = r'portfolio_preview';
 
   static const String isGuestViewKey_ = r'is_guest_view';
 }

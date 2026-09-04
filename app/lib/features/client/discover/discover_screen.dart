@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
+import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/core/paging/offset_page.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -166,11 +168,10 @@ class _Grid extends ConsumerWidget {
           if (itemIndex >= page.items.length) {
             return _LoadMore(page: page, onLoadMore: notifier.loadMore);
           }
+          final card = page.items[itemIndex];
           return DiscoverCard(
-            card: page.items[itemIndex],
-            onTap: () {
-              // Pro profile lands with the rest of F-7's detail screens.
-            },
+            card: card,
+            onTap: () => context.push(ClientRoute.proProfile(card.proUserId)),
           );
         },
       ),

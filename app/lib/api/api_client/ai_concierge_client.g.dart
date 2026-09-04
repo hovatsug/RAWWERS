@@ -120,6 +120,146 @@ class _AIConciergeClient implements AIConciergeClient {
   }
 
   @override
+  Future<HttpResponse<ChatThreadListResponse>>
+  listMyChatThreadsV1ChatThreadsGet({
+    required ChatThreadStatus? status,
+    required String? cursor,
+    int limit = 20,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['ai_concierge'],
+      'summary': 'List My Chat Threads',
+      'description':
+          'The authenticated client\'s own chat threads, newest first.\n\nMirrors `GET /v1/pro/chat/threads` for the other side of the same\nthreads. Without it a client can only reach a thread whose id they\nalready hold, so "ask a photographer a question before booking" is a\none-way door - fine from the pro\'s inbox, unreachable from the client\'s.\n\nOrdered and paginated on `created_at`, not `updated_at`, despite\nlast-activity being the more natural sort for a message list. A keyset\ncursor needs a stable sort key, and `updated_at` changes every time a\nmessage arrives - a thread could move across a page boundary mid-scroll\nand be skipped or repeated. Thread counts per client are small (you chat\nwith a handful of photographers, not hundreds), so the ordering costs\nlittle in practice and the pagination stays correct.\n\nGuest threads (`session_id` set, no `client_user_id`) are not reachable\nhere by design: they have no authenticated owner to scope to.',
+      'operationId': 'list_my_chat_threads_v1_chat_threads_get',
+      'parameters': [
+        {
+          'name': 'status',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'\$ref': '#/components/schemas/ChatThreadStatus'},
+              {'type': 'null'},
+            ],
+            'title': 'Status',
+          },
+        },
+        {
+          'name': 'cursor',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Cursor',
+          },
+        },
+        {
+          'name': 'limit',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'integer',
+            'maximum': 100,
+            'minimum': 1,
+            'default': 20,
+            'title': 'Limit',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ChatThreadListResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{
+      r'status': status?.toJson(),
+      r'cursor': cursor,
+      r'limit': limit,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ChatThreadListResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/chat/threads',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ChatThreadListResponse _value;
+    try {
+      _value = ChatThreadListResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<ChatThreadDetailResponse>>
   getChatThreadV1V1ChatThreadsThreadIdGet({
     required String threadId,

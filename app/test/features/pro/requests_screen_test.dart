@@ -86,12 +86,12 @@ void main() {
     expect(find.textContaining('to respond'), findsNothing);
   });
 
-  testWidgets('an empty pending queue explains the 48h window', (tester) async {
+  testWidgets('an empty pending queue explains the 24h window', (tester) async {
     await tester.pumpWidget(_wrap(const CursorPage(items: [])));
     await tester.pump();
 
     expect(find.text('Nothing waiting on you'), findsOneWidget);
-    expect(find.textContaining('48 hours'), findsOneWidget);
+    expect(find.textContaining('24 hours'), findsOneWidget);
   });
 
   testWidgets('offers load more when the server sent a cursor', (tester) async {

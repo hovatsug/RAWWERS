@@ -1,14 +1,14 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'scheduling_availability_rule_view.dart';
+part of 'availability_rule_view.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_SchedulingAvailabilityRuleView _$SchedulingAvailabilityRuleViewFromJson(
+_AvailabilityRuleView _$AvailabilityRuleViewFromJson(
   Map<String, dynamic> json,
-) => _SchedulingAvailabilityRuleView(
+) => _AvailabilityRuleView(
   weekday: (json['weekday'] as num).toInt(),
   startLocal: json['start_local'] as String,
   endLocal: json['end_local'] as String,
@@ -22,8 +22,8 @@ _SchedulingAvailabilityRuleView _$SchedulingAvailabilityRuleViewFromJson(
   updatedAt: DateTime.parse(json['updated_at'] as String),
 );
 
-Map<String, dynamic> _$SchedulingAvailabilityRuleViewToJson(
-  _SchedulingAvailabilityRuleView instance,
+Map<String, dynamic> _$AvailabilityRuleViewToJson(
+  _AvailabilityRuleView instance,
 ) => <String, dynamic>{
   'weekday': instance.weekday,
   'start_local': instance.startLocal,

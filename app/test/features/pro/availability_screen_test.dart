@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/availability_exception_view.dart';
 import 'package:rawwers/api/models/availability_location_mode.dart';
 import 'package:rawwers/api/models/availability_rule_item.dart';
-import 'package:rawwers/api/models/scheduling_availability_rule_view.dart';
+import 'package:rawwers/api/models/availability_rule_view.dart';
 import 'package:rawwers/api/models/scheduling_policy_view.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/theme_pro.dart';
@@ -19,11 +19,11 @@ import 'package:rawwers/features/pro/availability/availability_screen.dart';
 class _FakeHours extends WorkingHoursController {
   _FakeHours(this._rules);
 
-  final List<SchedulingAvailabilityRuleView> _rules;
+  final List<AvailabilityRuleView> _rules;
   List<AvailabilityRuleItem>? lastSent;
 
   @override
-  Future<List<SchedulingAvailabilityRuleView>> build() async => _rules;
+  Future<List<AvailabilityRuleView>> build() async => _rules;
 
   @override
   Future<String?> replace(List<AvailabilityRuleItem> rules) async {
@@ -53,10 +53,10 @@ class _FakeBlocked extends BlockedTimeController {
 
 class _FailingHours extends WorkingHoursController {
   @override
-  Future<List<SchedulingAvailabilityRuleView>> build() async => throw const NetworkError();
+  Future<List<AvailabilityRuleView>> build() async => throw const NetworkError();
 }
 
-SchedulingAvailabilityRuleView _rule(int weekday) => SchedulingAvailabilityRuleView(
+AvailabilityRuleView _rule(int weekday) => AvailabilityRuleView(
       id: 'rule-$weekday',
       proUserId: 'pro-1',
       weekday: weekday,

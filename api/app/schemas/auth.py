@@ -11,6 +11,12 @@ from app.models.admin import UserRoleType
 class RegisterRequest(BaseModel):
     email: str
     password: str
+    # Optional on the wire, not because it is optional in the product, but
+    # because the web app already calls this endpoint with email and password
+    # alone and a required field would 422 it. Both Flutter apps require it in
+    # their form. See docs/BACKEND_GAPS.md - the web path can still create a
+    # nameless account.
+    display_name: str | None = None
 
 
 class LoginRequest(BaseModel):

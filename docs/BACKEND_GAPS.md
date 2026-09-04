@@ -18,13 +18,15 @@ The dev seed already writes `visibility=public` for portfolio photos, which conf
 
 **Fixed:** `PhotoUploadCreateRequest` now accepts `visibility`, and `_default_visibility` gives `portfolio_reel` the same `public` default the video path already used. Migration `20260904_0043` backfills existing rows, narrowed to portfolio photos still sitting at the old hardcoded default so a deliberate choice is never overwritten.
 
-## Booking requests expire after 24 hours, not the 48 the product describes
+## ~~Booking requests expire after 24 hours, not the 48 the product describes~~ — RESOLVED (copy corrected; literal noted)
 
 `client_booking_request` sets `expires_at=datetime.now(timezone.utc) + timedelta(hours=24)` (`api/app/api/v1/client_launch.py:407`). It is a literal, not a setting — there is no `BOOKING_REQUEST_EXPIRY_HOURS` to change. Confirmed live: a request created at 11:26 came back with `expires_at` at 11:26 the next day.
 
 Everything downstream inherits it correctly — `seconds_until_expiry`, the pro app's countdown, the expiry sweep — so nothing is inconsistent internally. What was wrong is the **copy**: both apps told people 48 hours. That was corrected to 24 in F-7 (`requests_screen.dart`, `bookings_screen.dart`). The copy follows the code because the failure modes are not symmetric: a pro told they have 48 hours who replies at hour 30 has already lost the request.
 
-**Resolved: 24 is the truth, and the copy follows it.** Confirmed as the intended behaviour rather than changed. Both apps now say 24 hours, and so does the booking request form before the request goes out. If the window is ever reconsidered, the literal at `client_launch.py:407` is the single place it lives — and it should become a setting at that point, not stay a literal.
+**Resolved: 24 is the truth, and the copy follows it.** Confirmed as the intended behaviour rather than changed. Both apps now say 24 hours, and so does the booking request form before the request goes out.
+
+**One thing left, agreed and deferred:** the window is a bare literal at `client_launch.py:407`, not a setting. Every other tunable of its kind in this codebase lives in `app/core/config.py` behind an env alias — `BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS` is right there, so the sweep that enforces the deadline is configurable while the deadline itself is not. `BOOKING_REQUEST_EXPIRY_HOURS` should exist. Not done now because changing it is only worth doing at the moment someone actually wants a different window, and doing it then keeps the change and its reason together.
 
 ## ~~The client's message list has no name to put on a conversation~~ — FIXED (partly)
 
@@ -36,13 +38,13 @@ There is also no last-message preview or unread count, so the rows carry no sign
 
 **Fixed for the pro's name.** `ChatThreadSummary` now carries `pro_display_name` and `client_display_name`, resolved in one batched lookup across the page and applied to all five construction sites (create, client list, pro list, detail). A pro is named by `ProProfile.display_name` — the brand a client recognises — falling back to the account name.
 
-**Still open, and worth knowing about:**
+**And registration now collects a name**, which is what makes `client_display_name` populate — see below. Verified live: a thread created by a newly registered client comes back with both sides named.
 
-1. **`client_display_name` will be null for almost every real account.** Registration never captures a display name at all — there is no such field on the register request or in `auth.py`. So `UserAccount.display_name` is only ever set by the seed script, and the *pro's* inbox still shows nothing for the client. The client app is unaffected (it reads `pro_display_name`, which populates from `ProProfile`). Fixing it properly means capturing a name at registration, which is a product decision, not a schema one.
+**Still open — deliberately deferred, not overlooked:**
 
-2. **No last-message preview or unread count.** The rows still carry no signal about which conversation needs attention. `updated_at` moves on each message, so a preview would need the message itself joined in.
+1. **No last-message preview or unread count.** The rows carry no signal about *which* conversation needs attention. Names make the list readable; they do not make it scannable. A preview means joining the latest `ChatMessage` per thread (a lateral join, or a denormalised `last_message_at` / `last_message_preview` on `ChatThread`); an unread count needs a per-participant read cursor, which does not exist in the schema at all. Deferred on purpose: a readable thread list beats an unreadable one, and scannable comes after the booking loop closes.
 
-3. **No `pro_cover_url`.** An avatar on each row would help scanning; `resolve_image_urls` already exists to do it.
+2. **No `pro_cover_url` on the summary.** An avatar per row would help scanning too; `resolve_image_urls` already exists to do it. Same deferral.
 
 ## ~~A client cannot build a booking request from the profile response alone~~ — FIXED
 

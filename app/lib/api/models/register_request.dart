@@ -8,6 +8,17 @@
 ///         "password": {
 ///             "type": "string",
 ///             "title": "Password"
+///         },
+///         "display_name": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Display Name"
 ///         }
 ///     },
 ///     "type": "object",
@@ -34,6 +45,9 @@ abstract class RegisterRequest with _$RegisterRequest {
 
     /// password
     @JsonKey(name: RegisterRequest.passwordKey_) required String password,
+
+    /// displayName
+    @JsonKey(name: RegisterRequest.displayNameKey_) String? displayName,
   }) = _RegisterRequest;
 
   factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
@@ -42,4 +56,6 @@ abstract class RegisterRequest with _$RegisterRequest {
   static const String emailKey_ = r'email';
 
   static const String passwordKey_ = r'password';
+
+  static const String displayNameKey_ = r'display_name';
 }

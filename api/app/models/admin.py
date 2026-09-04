@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -160,6 +160,9 @@ class ProProfile(Base):
     languages: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     styles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     gear: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Nullable on purpose: "has not answered" and "will not travel" are
+    # different answers to a client deciding whether to send a request.
+    travel_radius_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False)
     completeness_score: Mapped[int] = mapped_column(nullable=False, default=0)
     kyc_status: Mapped[KYCStatus] = mapped_column(Enum(KYCStatus, name="kyc_status", native_enum=False), nullable=False, default=KYCStatus.unsubmitted)

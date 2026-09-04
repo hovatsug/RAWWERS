@@ -971,8 +971,11 @@ abstract class ProOnboardingClient {
     Map<String, dynamic>? extras = const {
       'tags': ['pro_onboarding'],
       'summary': 'Replace Availability Rules',
+      'description':
+          'Deprecated. Replaces weekly availability, but drops the timezone and\nlocation mode that PUT /v1/pro/scheduling/availability-rules carries -\nso a pro who set those and then posts here silently loses them.',
       'operationId':
           'replace_availability_rules_v1_pro_me_availability_rules_post',
+      'deprecated': true,
       'parameters': [
         {
           'name': 'Authorization',
@@ -1047,7 +1050,10 @@ abstract class ProOnboardingClient {
     Map<String, dynamic>? extras = const {
       'tags': ['pro_onboarding'],
       'summary': 'Create Blackout',
+      'description':
+          'Deprecated. Still blocks bookings - every enforcement path now reads\nboth tables - but new blocked time belongs in the scheduling exceptions\nroute, which is timezone-explicit and replaces the whole set rather than\nappending one row at a time with no way to remove it.',
       'operationId': 'create_blackout_v1_pro_me_availability_blackouts_post',
+      'deprecated': true,
       'parameters': [
         {
           'name': 'Authorization',
@@ -1447,6 +1453,305 @@ abstract class ProOnboardingClient {
             'application/json': {
               'schema': {
                 '\$ref': '#/components/schemas/PortfolioNicheTagsResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @GET("/v1/pro/me/portfolio")
+  Future<HttpResponse<ProPortfolioResponse>> getMyPortfolioV1ProMePortfolioGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Get My Portfolio',
+      'description':
+          'The pro\'s own portfolio, with thumbnails and niche tags.\n\nThe gallery previously had no way to list what a pro had uploaded -\nonly to tag an asset it already knew the id of - so there was nothing\nto build a grid from.',
+      'operationId': 'get_my_portfolio_v1_pro_me_portfolio_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ProPortfolioResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @GET("/v1/pro/me/pricing/niches/{niche_id}")
+  Future<HttpResponse<ProNichePricingPreviewResponse>>
+  getMyNichePricingPreviewV1ProMePricingNichesNicheIdGet({
+    @Path("niche_id") required String nicheId,
+    @Query("entry_price") required dynamic entryPrice,
+    @Query("currency") String currency = 'EUR',
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Get My Niche Pricing Preview',
+      'description':
+          'What a client would pay, for a price the pro is still deciding on.\n\nThe public preview at /v1/pros/{id}/niches/{niche_id}/pricing-preview\nreads prices off existing active packages, so it 404s for exactly the\npro who needs it most: one setting a price for the first time. This\ntakes the proposed rate as a parameter instead, and reports the cap\nrather than enforcing it - the pro should see that they are over the\nlimit while typing, not when the save fails.',
+      'operationId':
+          'get_my_niche_pricing_preview_v1_pro_me_pricing_niches__niche_id__get',
+      'parameters': [
+        {
+          'name': 'niche_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Niche Id'},
+        },
+        {
+          'name': 'entry_price',
+          'in': 'query',
+          'required': true,
+          'schema': {
+            'anyOf': [
+              {'type': 'number', 'exclusiveMinimum': 0.0},
+              {
+                'type': 'string',
+                'pattern': '^(?!^[-+.]*\$)[+-]?0*\\d*\\.?\\d*\$',
+              },
+            ],
+            'description': 'Proposed entry rate per photo',
+            'title': 'Entry Price',
+          },
+          'description': 'Proposed entry rate per photo',
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'type': 'string',
+            'minLength': 3,
+            'maxLength': 3,
+            'default': 'EUR',
+            'title': 'Currency',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProNichePricingPreviewResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @GET("/v1/pro/me/extra-image-price")
+  Future<HttpResponse<ProExtraImagePriceResponse>>
+  getMyExtraImagePricesV1ProMeExtraImagePriceGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Get My Extra Image Prices',
+      'operationId':
+          'get_my_extra_image_prices_v1_pro_me_extra_image_price_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProExtraImagePriceResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @PUT("/v1/pro/me/extra-image-price")
+  Future<HttpResponse<ProExtraImagePriceResponse>>
+  putMyExtraImagePricesV1ProMeExtraImagePricePut({
+    @Body() required ProExtraImagePriceUpdateRequest requestBody,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Put My Extra Image Prices',
+      'description':
+          'What the pro charges per extra photo, per niche.\n\nPreviously admin-only, which made the onboarding pricing step\nimpossible to finish in the app. The platform\'s per-tier bounds still\nwin at charge time; the value the pro set is stored as given so the\nresponse can show both, rather than clamping their input and leaving\nthem to wonder why the number changed.',
+      'operationId':
+          'put_my_extra_image_prices_v1_pro_me_extra_image_price_put',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              '\$ref': '#/components/schemas/ProExtraImagePriceUpdateRequest',
+            },
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProExtraImagePriceResponse',
               },
             },
           },

@@ -28,6 +28,11 @@ from app.models.package_pricing import NichePackagePriceCap, PackageCurveType, P
 
 MINIMUM_PHOTOS = 10
 
+# Photo counts the curve is sampled at when showing someone what the
+# decay actually does. Shared by the public preview and the pro-side one
+# so a photographer and their client are never shown different points.
+PRICING_PREVIEW_PHOTO_COUNTS = (10, 25, 50, 100, 200)
+
 # Default per-niche curve shapes, seeded idempotently by
 # ensure_default_package_decay_curves(). Admins can edit/override any of
 # these afterwards via the PackageDecayCurve admin endpoints - this only

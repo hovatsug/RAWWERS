@@ -22,6 +22,7 @@ _ProProfileView _$ProProfileViewFromJson(Map<String, dynamic> json) =>
           ?.map((e) => e as String)
           .toList(),
       gear: json['gear'] as Map<String, dynamic>?,
+      travelRadiusKm: (json['travel_radius_km'] as num?)?.toInt(),
       isAcceptingBookings: json['is_accepting_bookings'] as bool,
       completenessScore: (json['completeness_score'] as num).toInt(),
       kycStatus: json['kyc_status'] as String,
@@ -39,6 +40,7 @@ Map<String, dynamic> _$ProProfileViewToJson(_ProProfileView instance) =>
       'languages': instance.languages,
       'styles': instance.styles,
       'gear': instance.gear,
+      'travel_radius_km': instance.travelRadiusKm,
       'is_accepting_bookings': instance.isAcceptingBookings,
       'completeness_score': instance.completenessScore,
       'kyc_status': instance.kycStatus,

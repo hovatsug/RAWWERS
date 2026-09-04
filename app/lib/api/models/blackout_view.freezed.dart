@@ -19,7 +19,8 @@ mixin _$BlackoutView {
 @JsonKey(name: BlackoutView.idKey_) String get id;/// startAt
 @JsonKey(name: BlackoutView.startAtKey_) DateTime get startAt;/// endAt
 @JsonKey(name: BlackoutView.endAtKey_) DateTime get endAt;/// reason
-@JsonKey(name: BlackoutView.reasonKey_) String? get reason;
+@JsonKey(name: BlackoutView.reasonKey_) String? get reason;/// deprecationNotice
+@JsonKey(name: BlackoutView.deprecationNoticeKey_) String? get deprecationNotice;
 /// Create a copy of BlackoutView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +33,16 @@ $BlackoutViewCopyWith<BlackoutView> get copyWith => _$BlackoutViewCopyWithImpl<B
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BlackoutView&&(identical(other.id, id) || other.id == id)&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.endAt, endAt) || other.endAt == endAt)&&(identical(other.reason, reason) || other.reason == reason));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BlackoutView&&(identical(other.id, id) || other.id == id)&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.endAt, endAt) || other.endAt == endAt)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.deprecationNotice, deprecationNotice) || other.deprecationNotice == deprecationNotice));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,startAt,endAt,reason);
+int get hashCode => Object.hash(runtimeType,id,startAt,endAt,reason,deprecationNotice);
 
 @override
 String toString() {
-  return 'BlackoutView(id: $id, startAt: $startAt, endAt: $endAt, reason: $reason)';
+  return 'BlackoutView(id: $id, startAt: $startAt, endAt: $endAt, reason: $reason, deprecationNotice: $deprecationNotice)';
 }
 
 
@@ -52,7 +53,7 @@ abstract mixin class $BlackoutViewCopyWith<$Res>  {
   factory $BlackoutViewCopyWith(BlackoutView value, $Res Function(BlackoutView) _then) = _$BlackoutViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: BlackoutView.idKey_) String id,@JsonKey(name: BlackoutView.startAtKey_) DateTime startAt,@JsonKey(name: BlackoutView.endAtKey_) DateTime endAt,@JsonKey(name: BlackoutView.reasonKey_) String? reason
+@JsonKey(name: BlackoutView.idKey_) String id,@JsonKey(name: BlackoutView.startAtKey_) DateTime startAt,@JsonKey(name: BlackoutView.endAtKey_) DateTime endAt,@JsonKey(name: BlackoutView.reasonKey_) String? reason,@JsonKey(name: BlackoutView.deprecationNoticeKey_) String? deprecationNotice
 });
 
 
@@ -69,12 +70,13 @@ class _$BlackoutViewCopyWithImpl<$Res>
 
 /// Create a copy of BlackoutView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? startAt = null,Object? endAt = null,Object? reason = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? startAt = null,Object? endAt = null,Object? reason = freezed,Object? deprecationNotice = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,startAt: null == startAt ? _self.startAt : startAt // ignore: cast_nullable_to_non_nullable
 as DateTime,endAt: null == endAt ? _self.endAt : endAt // ignore: cast_nullable_to_non_nullable
 as DateTime,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as String?,deprecationNotice: freezed == deprecationNotice ? _self.deprecationNotice : deprecationNotice // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -160,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: BlackoutView.idKey_)  String id, @JsonKey(name: BlackoutView.startAtKey_)  DateTime startAt, @JsonKey(name: BlackoutView.endAtKey_)  DateTime endAt, @JsonKey(name: BlackoutView.reasonKey_)  String? reason)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: BlackoutView.idKey_)  String id, @JsonKey(name: BlackoutView.startAtKey_)  DateTime startAt, @JsonKey(name: BlackoutView.endAtKey_)  DateTime endAt, @JsonKey(name: BlackoutView.reasonKey_)  String? reason, @JsonKey(name: BlackoutView.deprecationNoticeKey_)  String? deprecationNotice)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BlackoutView() when $default != null:
-return $default(_that.id,_that.startAt,_that.endAt,_that.reason);case _:
+return $default(_that.id,_that.startAt,_that.endAt,_that.reason,_that.deprecationNotice);case _:
   return orElse();
 
 }
@@ -181,10 +183,10 @@ return $default(_that.id,_that.startAt,_that.endAt,_that.reason);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: BlackoutView.idKey_)  String id, @JsonKey(name: BlackoutView.startAtKey_)  DateTime startAt, @JsonKey(name: BlackoutView.endAtKey_)  DateTime endAt, @JsonKey(name: BlackoutView.reasonKey_)  String? reason)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: BlackoutView.idKey_)  String id, @JsonKey(name: BlackoutView.startAtKey_)  DateTime startAt, @JsonKey(name: BlackoutView.endAtKey_)  DateTime endAt, @JsonKey(name: BlackoutView.reasonKey_)  String? reason, @JsonKey(name: BlackoutView.deprecationNoticeKey_)  String? deprecationNotice)  $default,) {final _that = this;
 switch (_that) {
 case _BlackoutView():
-return $default(_that.id,_that.startAt,_that.endAt,_that.reason);case _:
+return $default(_that.id,_that.startAt,_that.endAt,_that.reason,_that.deprecationNotice);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +203,10 @@ return $default(_that.id,_that.startAt,_that.endAt,_that.reason);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: BlackoutView.idKey_)  String id, @JsonKey(name: BlackoutView.startAtKey_)  DateTime startAt, @JsonKey(name: BlackoutView.endAtKey_)  DateTime endAt, @JsonKey(name: BlackoutView.reasonKey_)  String? reason)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: BlackoutView.idKey_)  String id, @JsonKey(name: BlackoutView.startAtKey_)  DateTime startAt, @JsonKey(name: BlackoutView.endAtKey_)  DateTime endAt, @JsonKey(name: BlackoutView.reasonKey_)  String? reason, @JsonKey(name: BlackoutView.deprecationNoticeKey_)  String? deprecationNotice)?  $default,) {final _that = this;
 switch (_that) {
 case _BlackoutView() when $default != null:
-return $default(_that.id,_that.startAt,_that.endAt,_that.reason);case _:
+return $default(_that.id,_that.startAt,_that.endAt,_that.reason,_that.deprecationNotice);case _:
   return null;
 
 }
@@ -216,7 +218,7 @@ return $default(_that.id,_that.startAt,_that.endAt,_that.reason);case _:
 
 @jsonSerializable
 class _BlackoutView extends BlackoutView {
-  const _BlackoutView({@JsonKey(name: BlackoutView.idKey_) required this.id, @JsonKey(name: BlackoutView.startAtKey_) required this.startAt, @JsonKey(name: BlackoutView.endAtKey_) required this.endAt, @JsonKey(name: BlackoutView.reasonKey_) this.reason}): super._();
+  const _BlackoutView({@JsonKey(name: BlackoutView.idKey_) required this.id, @JsonKey(name: BlackoutView.startAtKey_) required this.startAt, @JsonKey(name: BlackoutView.endAtKey_) required this.endAt, @JsonKey(name: BlackoutView.reasonKey_) this.reason, @JsonKey(name: BlackoutView.deprecationNoticeKey_) this.deprecationNotice}): super._();
   factory _BlackoutView.fromJson(Map<String, dynamic> json) => _$BlackoutViewFromJson(json);
 
 /// id
@@ -227,6 +229,8 @@ class _BlackoutView extends BlackoutView {
 @override@JsonKey(name: BlackoutView.endAtKey_) final  DateTime endAt;
 /// reason
 @override@JsonKey(name: BlackoutView.reasonKey_) final  String? reason;
+/// deprecationNotice
+@override@JsonKey(name: BlackoutView.deprecationNoticeKey_) final  String? deprecationNotice;
 
 /// Create a copy of BlackoutView
 /// with the given fields replaced by the non-null parameter values.
@@ -241,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BlackoutView&&(identical(other.id, id) || other.id == id)&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.endAt, endAt) || other.endAt == endAt)&&(identical(other.reason, reason) || other.reason == reason));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BlackoutView&&(identical(other.id, id) || other.id == id)&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.endAt, endAt) || other.endAt == endAt)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.deprecationNotice, deprecationNotice) || other.deprecationNotice == deprecationNotice));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,startAt,endAt,reason);
+int get hashCode => Object.hash(runtimeType,id,startAt,endAt,reason,deprecationNotice);
 
 @override
 String toString() {
-  return 'BlackoutView(id: $id, startAt: $startAt, endAt: $endAt, reason: $reason)';
+  return 'BlackoutView(id: $id, startAt: $startAt, endAt: $endAt, reason: $reason, deprecationNotice: $deprecationNotice)';
 }
 
 
@@ -261,7 +265,7 @@ abstract mixin class _$BlackoutViewCopyWith<$Res> implements $BlackoutViewCopyWi
   factory _$BlackoutViewCopyWith(_BlackoutView value, $Res Function(_BlackoutView) _then) = __$BlackoutViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: BlackoutView.idKey_) String id,@JsonKey(name: BlackoutView.startAtKey_) DateTime startAt,@JsonKey(name: BlackoutView.endAtKey_) DateTime endAt,@JsonKey(name: BlackoutView.reasonKey_) String? reason
+@JsonKey(name: BlackoutView.idKey_) String id,@JsonKey(name: BlackoutView.startAtKey_) DateTime startAt,@JsonKey(name: BlackoutView.endAtKey_) DateTime endAt,@JsonKey(name: BlackoutView.reasonKey_) String? reason,@JsonKey(name: BlackoutView.deprecationNoticeKey_) String? deprecationNotice
 });
 
 
@@ -278,12 +282,13 @@ class __$BlackoutViewCopyWithImpl<$Res>
 
 /// Create a copy of BlackoutView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? startAt = null,Object? endAt = null,Object? reason = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? startAt = null,Object? endAt = null,Object? reason = freezed,Object? deprecationNotice = freezed,}) {
   return _then(_BlackoutView(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,startAt: null == startAt ? _self.startAt : startAt // ignore: cast_nullable_to_non_nullable
 as DateTime,endAt: null == endAt ? _self.endAt : endAt // ignore: cast_nullable_to_non_nullable
 as DateTime,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as String?,deprecationNotice: freezed == deprecationNotice ? _self.deprecationNotice : deprecationNotice // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

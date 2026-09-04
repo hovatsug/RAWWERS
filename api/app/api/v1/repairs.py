@@ -3,8 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, Response
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_admin, require_not_banned
@@ -124,6 +124,37 @@ def update_gear_item(
     db.commit()
     db.refresh(row)
     return GearItemView.model_validate(row, from_attributes=True)
+
+
+@router.delete("/pro/me/gear-items/{gear_item_id}", status_code=204)
+def delete_gear_item(
+    gear_item_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> Response:
+    row = db.get(GearItem, gear_item_id)
+    if not row or row.pro_user_id != user.user_id:
+        raise APIError(code="not_found", message="Gear item not found", status_code=404)
+
+    # A repair ticket references the item it was raised about. Deleting the
+    # item would either break that foreign key or, worse, orphan the ticket
+    # into meaninglessness - the pro would keep a repair record that no
+    # longer says what was repaired. Removing the body you sold is a
+    # reasonable thing to want, so this refuses with the reason rather than
+    # failing on a constraint the caller cannot see.
+    ticket_count = db.execute(
+        select(func.count()).select_from(RepairTicket).where(RepairTicket.gear_item_id == gear_item_id)
+    ).scalar_one()
+    if ticket_count:
+        raise APIError(
+            code="conflict",
+            message="This item has repair tickets against it and cannot be removed.",
+            status_code=409,
+        )
+
+    db.delete(row)
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.post("/repairs/tickets", response_model=RepairTicketView)

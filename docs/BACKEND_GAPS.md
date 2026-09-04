@@ -8,6 +8,62 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 **Why this matters on mobile specifically:** the classic bad-signal failure mode — the request reaches the server, the server processes it and returns 200, but the client never receives the response (connection drops, app backgrounds, timeout fires first) — leaves the client believing the call failed. If the app auto-retries in that state, the retry 409s even though the upload actually succeeded. Confirmed in F-3: `PhotoUploadService` deliberately calls `complete` at most once and never auto-retries it, surfacing the failure to the caller instead. A real fix (an idempotency key, or accepting a repeat call in the already-`processing`/already-`ready` state as a no-op success) would need to happen server-side; not in scope for the Flutter rebuild.
 
+## Portfolio photos are uploaded `owner_only`, so nobody but the pro can fetch them
+
+`POST /v1/media/photos/uploads` hardcodes `visibility=MediaVisibility.owner_only` (`api/app/api/v1/media.py`, `create_photo_upload`) and its request schema has no `visibility` field at all. The video path right next to it does the opposite: `create_mux_upload` accepts `visibility` and defaults `portfolio_reel` to `public`. So an uploaded portfolio **photo** is unreachable through `GET /v1/media/{id}` for anyone but its owner — `_ensure_read_access` 403s — while an uploaded portfolio **video** is public.
+
+The dev seed already writes `visibility=public` for portfolio photos, which confirms `public` is the intent and the upload endpoint is the outlier rather than the policy.
+
+**Not currently a blocker,** because discover and profile now resolve image URLs server-side (see below) and never consult per-asset visibility. It becomes one the moment anything needs `GET /v1/media/{id}` for a portfolio photo — a full-portfolio screen, a share sheet, the web app — where it will present as an authentication bug rather than a visibility bug.
+
+**Fix, when it's wanted:** mirror the video path (`PhotoUploadCreateRequest` gains `visibility`, `portfolio_reel` defaults to `public`), plus a backfill for existing `portfolio_reel` photo rows. Left out of the cover-URL commit deliberately: it changes the API surface and needs a data migration, neither of which belongs in a tight fix.
+
+## Booking requests expire after 24 hours, not the 48 the product describes
+
+`client_booking_request` sets `expires_at=datetime.now(timezone.utc) + timedelta(hours=24)` (`api/app/api/v1/client_launch.py:407`). It is a literal, not a setting — there is no `BOOKING_REQUEST_EXPIRY_HOURS` to change. Confirmed live: a request created at 11:26 came back with `expires_at` at 11:26 the next day.
+
+Everything downstream inherits it correctly — `seconds_until_expiry`, the pro app's countdown, the expiry sweep — so nothing is inconsistent internally. What was wrong is the **copy**: both apps told people 48 hours. That was corrected to 24 in F-7 (`requests_screen.dart`, `bookings_screen.dart`). The copy follows the code because the failure modes are not symmetric: a pro told they have 48 hours who replies at hour 30 has already lost the request.
+
+**Decision needed:** whether 24 or 48 is the intended window. If 48, the fix is the backend literal (and ideally a setting), not the copy. Flagged rather than changed because it is a product decision about how long a photographer gets, not a bug with an obvious right answer.
+
+## The client's message list has no name to put on a conversation
+
+`ChatThreadSummary` carries `pro_user_id`, `client_user_id`, `session_id`, `status`, `created_at`, `updated_at` — and no display name or avatar for either side. `ChatThreadDetailResponse` adds `messages` and a free-form `lead_profile` dict, still with no pro name. Confirmed live: `GET /v1/chat/threads` returns two threads identified only by UUID.
+
+So the client's Messages tab titles every conversation "Photographer". A UUID would be worse, but neither is a name, and a list of identical rows is not a usable inbox once someone has talked to three photographers.
+
+There is also no last-message preview or unread count, so the rows carry no signal about which conversation needs attention.
+
+**Same shape of problem as the discover cover URL, and the same shape of fix:** put the resolved values on the summary — `pro_display_name`, `pro_cover_url`, and ideally `last_message_preview` / `last_message_at`. The pro's side has the same gap in reverse (no client name), and the profile lookup is already batched for discover, so one helper serves both.
+
+## A client cannot build a booking request from the profile response alone
+
+`POST /v1/client/bookings/request` requires `niche_slug` and validates it against the chosen package: `if not niche or niche.slug != body.niche_slug: raise ... "niche_slug does not match package"` (`api/app/api/v1/client_launch.py:390`). But `ClientProfilePackage` — the only package representation the client profile endpoint returns — carries no niche at all: `id`, `title`, `description`, `duration_minutes`, `price`, `currency`, `included_photos`, `extra_photo_price`, `proofs_sla_days`, `finals_sla_days`.
+
+So a client holding a profile response cannot name the niche the package belongs to. The workaround is two more requests — `GET /v1/pro/{pro_user_id}/packages` returns `ProPackageView` with `niche_id`, and `GET /v1/niches` maps id to slug — which makes the client do a join the server already has in hand, on the highest-intent action in the product.
+
+**Fix:** add `niche_slug` to `ClientProfilePackage`. Additive, one line in the schema and one in the endpoint, no migration. Alternatively make `niche_slug` optional on the request and derive it from `package_id`, since the server validates them against each other anyway and the client's copy is pure redundancy.
+
+**This blocks the booking-request flow**, which is why the profile's "Request this package" button does not yet open one. Not fixed inside the cover-URL commit: that commit was scoped to media, and this is a different endpoint's contract.
+
+## No video poster frames in the portfolio preview
+
+`ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.
+
+Low urgency: `portfolio_video_count` is 0 for every seeded pro and video upload is behind the `video_uploads_enabled` flag. It becomes visible the first time a pro uploads a reel.
+
+## Unenforced schema shapes: `ClientPreferenceView.location` and `top_niches`
+
+Two payload shapes the client app depends on are conventions rather than contracts. Both are read defensively in Flutter, which is the right call for now, but neither is protected against a writer that disagrees.
+
+1. **`ClientPreferenceView.location` is `dict`** (`api/app/schemas/client_launch.py`) — untyped, `additionalProperties: true` in the OpenAPI schema. The whole client app is gated on a browse location, which is read out of this object as `{"country": ..., "city": ...}`. That key convention exists only in the seed data and in the two places that write it. Anything that writes a different shape — an admin tool, a migration, a future preferences screen — silently returns the client app to the "where are you looking?" prompt with no error anywhere. `BrowseLocation.fromPreferenceLocation` treats a shape it doesn't recognise as "not set", so the failure is at least benign, but it's invisible.
+
+2. **`ClientDiscoverCard.top_niches` is `list[dict]`** — generates as `List<Map<String, dynamic>>`, so every key access is untyped. The rows carry `slug`, `tier`, `score`, `verified`, `capability`, `confidence`; the card reads `slug` and skips any entry where it isn't a non-empty string.
+
+3. **`ClientBookingStatusResponse.timeline` is `list[dict]`** — same shape problem, found while building the booking detail screen. The backend writes `at`, `from`, `to`, `reason`; the app parses defensively and drops rows missing a usable `at` or `to` rather than rendering "null → null".
+
+**Fix:** give both a real Pydantic model (`ClientLocation`, `ProNicheSummary`). That is a breaking schema change for any existing writer of a differently-shaped `location`, so it wants a migration audit first, not a drive-by edit.
+
 ## LAUNCH BLOCKER: no email is ever delivered, and push does not exist
 
 > **Status.** The outbox drain is FIXED (`b91ee8ba`) and in-app notifications now work end to end — verified live in F-7 discovery: a real booking request produced `booking.request_received` in the pro's `GET /v1/me/notifications`. What remains is items 1 and 4 below: **no mail provider**, and **no push channel at all**. Both are launch blockers rather than task blockers — the apps are built to work without them, and the chain is testable end to end via in-app alone.

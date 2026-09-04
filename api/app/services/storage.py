@@ -2,17 +2,25 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
+from functools import lru_cache
 from uuid import uuid4
 
 import boto3
 from botocore.client import BaseClient
+from botocore.exceptions import ClientError
 
 from app.core.config import get_settings
 
 settings = get_settings()
 
 
+@lru_cache(maxsize=1)
 def get_s3_client() -> BaseClient:
+    # Cached because constructing a boto3 client is not cheap - botocore loads
+    # and parses the service model on every construction. That was tolerable
+    # when the only callers were one-per-request upload endpoints, but signing
+    # a page of discover thumbnails calls this once per image. Clients are safe
+    # to share across the threadpool; only session construction is not.
     return boto3.client(
         "s3",
         endpoint_url=settings.r2_endpoint_url,
@@ -53,6 +61,17 @@ def create_presigned_get(storage_key: str, expires_in: int = 900) -> str:
         Params={"Bucket": settings.r2_bucket, "Key": storage_key},
         ExpiresIn=expires_in,
     )
+
+
+def object_exists(storage_key: str) -> bool:
+    client = get_s3_client()
+    try:
+        client.head_object(Bucket=settings.r2_bucket, Key=storage_key)
+        return True
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+            return False
+        raise
 
 
 def download_object_bytes(storage_key: str, max_bytes: int = 25 * 1024 * 1024) -> bytes:

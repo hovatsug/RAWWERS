@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
@@ -33,6 +34,7 @@ from app.schemas.client_launch import (
     ClientMatchCard,
     ClientMatchCreateRequest,
     ClientMatchResponse,
+    ClientPortfolioItem,
     ClientPreferenceUpdateRequest,
     ClientPreferenceView,
     ClientProfilePackage,
@@ -46,6 +48,7 @@ from app.services.authz import ensure_user_account, get_user_roles
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
+from app.services.media_urls import ORIGINAL_FIRST, THUMBNAIL_FIRST, resolve_image_urls
 from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
@@ -156,7 +159,7 @@ def client_discover(
         limit=limit,
         offset=offset,
     )
-    items = [_card_from_index(db, row) for row in rows]
+    items = _cards_from_index(db, rows)
     response = ClientDiscoverResponse(total=len(items), items=items, guest_limited=user is None)
     cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=max(10, settings.discover_cache_ttl_seconds))
 
@@ -209,8 +212,8 @@ def client_match(
     except ValueError as exc:
         raise APIError(code="validation_error", message=str(exc), status_code=422) from exc
 
-    items: list[ClientMatchCard] = []
     show_breakdown = settings.app_env.lower() in {"dev", "development", "test"}
+    ranked: list[tuple[int, ProPublicIndex, object]] = []
     for idx, candidate in enumerate(scored, start=1):
         row = db.get(ProPublicIndex, candidate.pro_user_id)
         if not row:
@@ -224,15 +227,24 @@ def client_match(
                 score_breakdown=candidate.breakdown,
             )
         )
-        items.append(
-            ClientMatchCard(
-                pro_user_id=row.pro_user_id,
-                rank=idx,
-                score=candidate.score,
-                card=_card_from_index(db, row),
-                score_breakdown=candidate.breakdown if show_breakdown else None,
-            )
+        ranked.append((idx, row, candidate))
+
+    # Cards are built once for the whole result set rather than inside the loop
+    # above, so a twenty-match response resolves cover images in one pass.
+    cards = {
+        card.pro_user_id: card
+        for card in _cards_from_index(db, [row for _, row, _ in ranked])
+    }
+    items = [
+        ClientMatchCard(
+            pro_user_id=row.pro_user_id,
+            rank=rank,
+            score=candidate.score,
+            card=cards[row.pro_user_id],
+            score_breakdown=candidate.breakdown if show_breakdown else None,
         )
+        for rank, row, candidate in ranked
+    ]
 
     log_event(
         db,
@@ -270,8 +282,8 @@ def client_pro_profile(
         .where(ProPackage.pro_user_id == pro_user_id, ProPackage.is_active.is_(True))
         .order_by(ProPackage.price.asc())
     ).scalars().all()
-    photo_ids = db.execute(
-        select(MediaAsset.id)
+    portfolio_rows = db.execute(
+        select(MediaAsset.id, MediaAsset.kind)
         .where(
             MediaAsset.owner_user_id == pro_user_id,
             MediaAsset.purpose == MediaPurpose.portfolio_reel,
@@ -280,13 +292,28 @@ def client_pro_profile(
         )
         .order_by(MediaAsset.created_at.desc())
         .limit(8)
-    ).scalars().all()
+    ).all()
+
+    # This response is not cached, so the base lifetime is the whole story.
+    portfolio_urls = resolve_image_urls(
+        db,
+        [asset_id for asset_id, _ in portfolio_rows],
+        prefer=THUMBNAIL_FIRST,
+        expires_in=MEDIA_URL_BASE_TTL_SECONDS,
+    )
+    cover_urls = resolve_image_urls(
+        db,
+        [profile.cover_media_asset_id],
+        prefer=ORIGINAL_FIRST,
+        expires_in=MEDIA_URL_BASE_TTL_SECONDS,
+    )
 
     response = ClientProProfileResponse(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
         cover_media_asset_id=profile.cover_media_asset_id,
+        cover_url=cover_urls.get(profile.cover_media_asset_id) if profile.cover_media_asset_id else None,
         bio=profile.bio,
         city=profile.city,
         country=profile.country,
@@ -310,7 +337,15 @@ def client_pro_profile(
             )
             for item in packages
         ],
-        portfolio_preview_asset_ids=photo_ids,
+        portfolio_preview_asset_ids=[asset_id for asset_id, _ in portfolio_rows],
+        portfolio_preview=[
+            ClientPortfolioItem(
+                media_asset_id=asset_id,
+                kind=kind.value,
+                thumbnail_url=portfolio_urls.get(asset_id),
+            )
+            for asset_id, kind in portfolio_rows
+        ],
         is_guest_view=False,
     )
     log_event(
@@ -710,24 +745,64 @@ def _discover_rows(
     return db.execute(stmt.offset(offset).limit(limit)).scalars().all()
 
 
-def _card_from_index(db: Session, idx: ProPublicIndex) -> ClientDiscoverCard:
-    profile = db.get(ProProfile, idx.pro_user_id)
-    return ClientDiscoverCard(
-        pro_user_id=idx.pro_user_id,
-        display_name=profile.display_name if profile else None,
-        headline=profile.headline if profile else None,
-        cover_media_asset_id=profile.cover_media_asset_id if profile else None,
-        city=idx.city,
-        country=idx.country,
-        min_price=idx.min_package_price,
-        max_price=idx.max_package_price,
-        currency=idx.currency,
-        avg_rating=idx.avg_rating,
-        review_count=idx.review_count,
-        top_niches=idx.top_niches or [],
-        portfolio_photo_count=idx.portfolio_photo_count,
-        portfolio_video_count=idx.portfolio_video_count,
+# Signed media URLs live at least this long. Discover responses are cached, so
+# a URL can be handed to a client at the very end of the cache window; the
+# cache TTL is added on top so that even the stalest cached entry still serves
+# a URL with the full base lifetime ahead of it.
+MEDIA_URL_BASE_TTL_SECONDS = 900
+
+
+def _media_url_ttl() -> int:
+    return MEDIA_URL_BASE_TTL_SECONDS + max(0, settings.discover_cache_ttl_seconds)
+
+
+def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[ClientDiscoverCard]:
+    """Build a whole page of cards with a fixed number of queries.
+
+    Batched rather than per-row because both callers render up to twenty cards,
+    and the per-row form cost one profile lookup each before it could even
+    begin resolving cover images.
+    """
+    if not rows:
+        return []
+
+    profiles = {
+        profile.user_id: profile
+        for profile in db.execute(
+            select(ProProfile).where(ProProfile.user_id.in_([idx.pro_user_id for idx in rows]))
+        ).scalars().all()
+    }
+    cover_urls = resolve_image_urls(
+        db,
+        (profile.cover_media_asset_id for profile in profiles.values()),
+        prefer=THUMBNAIL_FIRST,
+        expires_in=_media_url_ttl(),
     )
+
+    cards: list[ClientDiscoverCard] = []
+    for idx in rows:
+        profile = profiles.get(idx.pro_user_id)
+        cover_id = profile.cover_media_asset_id if profile else None
+        cards.append(
+            ClientDiscoverCard(
+                pro_user_id=idx.pro_user_id,
+                display_name=profile.display_name if profile else None,
+                headline=profile.headline if profile else None,
+                cover_media_asset_id=cover_id,
+                cover_url=cover_urls.get(cover_id) if cover_id else None,
+                city=idx.city,
+                country=idx.country,
+                min_price=idx.min_package_price,
+                max_price=idx.max_package_price,
+                currency=idx.currency,
+                avg_rating=idx.avg_rating,
+                review_count=idx.review_count,
+                top_niches=idx.top_niches or [],
+                portfolio_photo_count=idx.portfolio_photo_count,
+                portfolio_video_count=idx.portfolio_video_count,
+            )
+        )
+    return cards
 
 
 def _preference_view(row: ClientPreference) -> ClientPreferenceView:

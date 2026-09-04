@@ -8,7 +8,9 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 **Why this matters on mobile specifically:** the classic bad-signal failure mode — the request reaches the server, the server processes it and returns 200, but the client never receives the response (connection drops, app backgrounds, timeout fires first) — leaves the client believing the call failed. If the app auto-retries in that state, the retry 409s even though the upload actually succeeded. Confirmed in F-3: `PhotoUploadService` deliberately calls `complete` at most once and never auto-retries it, surfacing the failure to the caller instead. A real fix (an idempotency key, or accepting a repeat call in the already-`processing`/already-`ready` state as a no-op success) would need to happen server-side; not in scope for the Flutter rebuild.
 
-## No email is ever delivered — every mail path is console-only, and the outbox is never drained on a schedule
+## LAUNCH BLOCKER: no email is ever delivered, and push does not exist
+
+> **Status.** The outbox drain is FIXED (`b91ee8ba`) and in-app notifications now work end to end — verified live in F-7 discovery: a real booking request produced `booking.request_received` in the pro's `GET /v1/me/notifications`. What remains is items 1 and 4 below: **no mail provider**, and **no push channel at all**. Both are launch blockers rather than task blockers — the apps are built to work without them, and the chain is testable end to end via in-app alone.
 
 Found in F-5 by running the real app against the local backend: `POST /v1/auth/verify-email/request` returns **204 and nothing arrives**. The endpoint is not broken — it does exactly what it should, and then the mail dies in two separate places downstream. Both are verified in source, not inferred.
 
@@ -17,6 +19,8 @@ Found in F-5 by running the real app against the local backend: `POST /v1/auth/v
 **2. Nothing drains the outbox periodically.** `_create_email_verification` (`auth_service.py:92`) correctly enqueues an `email.verify.send` outbox event, and `dispatch_outbox_events` (`api/app/tasks/outbox_tasks.py`) correctly dispatches it to the mail provider. But that task is **not in `celery_app.conf.beat_schedule`** — the only callers are the Stripe and Mux webhook handlers (`api/app/api/v1/webhooks.py`, `.delay()`), plus tests. `docker-compose.yml` also runs a `worker` service but no `beat` service, so even the sweeps that *are* scheduled (booking-request expiry, payout-hold release, dispute escalation, stuck bookings) never fire locally. So an auth email sits pending until an unrelated payment webhook happens to kick the queue.
 
 **3. This is not only email — in-app notifications go through the same undrained outbox.** `enqueue_notification` (`api/app/services/notifications.py:245`) does *not* write a notification row synchronously; it enqueues a `notify.create_inapp` outbox event. So `GET /v1/me/notifications` returns an empty list for the same reason, and the in-app bell is as silent as the mailbox. Anything built on top of the notification feed inherits this.
+
+**4. Push notifications do not exist.** Not unconfigured — unbuilt. There is no FCM, APNs, or device-token storage anywhere in `api/`, and `FollowupChannel` is `in_app | email | sms | phone_call`; push is not modelled at all. This matters more than the missing mail provider for the 48h window specifically: in-app notifications only reach someone who has already opened the app, so they cannot *tell* a photographer a request arrived. Email and push are the only channels that reach outward, and neither delivers today.
 
 **Why this blocks the end-to-end run rather than just verification UX:** booking requests auto-decline after 48h. A photographer who never learns a request arrived cannot act inside that window, so the single most time-critical path in the product depends on notification channels that currently deliver nothing — neither email nor in-app. This is not an F-5/F-6 blocker for the auth work — email verification gates no API, and the apps are built to work without it — but the product cannot be exercised end to end until a provider is configured *and* the outbox is drained on a schedule (`dispatch_outbox_events` added to `beat_schedule`, plus a `beat` service in compose). All three fixes are server-side and outside the Flutter rebuild's scope.
 
@@ -33,6 +37,36 @@ Verified against the **full** (unfiltered) OpenAPI schema in F-6 discovery, so t
 Payouts and earnings are the exception and *do* have collection routes (`GET /v1/pro/payouts`, `GET /v1/pro/earnings/ledger`), so this is a specific omission rather than a general API style.
 
 **What it blocks:** any screen whose job is "here is your queue of work" — the pro app's Requests, Gigs, and Today tabs, and the client app's bookings list. A pro cannot enumerate the requests awaiting them, which is the same 48h-window problem from the notification gap arriving by a second independent route. There is no client-side workaround: an id-only API cannot be turned into a list, and the notification feed that might have supplied the ids is itself empty (see above). Adding the list routes is a server-side task.
+
+## Chat: `/v1/chats/*` is deprecated in favour of `/v1/chat/threads/*`
+
+Two API surfaces existed over the **same** `ChatThread`/`ChatMessage` tables — not two systems, two front doors. F-7 picked `/v1/chat/threads/*` + `/v1/pro/chat/threads/*` (`app/api/v1/ai_concierge.py`) as canonical. `/v1/chats/*` + `/v1/pros/{id}/chats` (`app/api/v1/chats.py`) is **deprecated, not deleted** — it stays routable.
+
+Why B won: it holds every list endpoint (`GET /v1/pro/chat/threads`, and `GET /v1/chat/threads` added in `8d6b89b4`), supports guest chat via `session_id`, is feature-flagged and rate-limited, and drives AI replies through the outbox. It is also the only family with a consumer — the web app calls `/pro/chat/threads/*` and never touches `/v1/chats/*`. A's `takeover`/`create-booking-request` routes suggested it was the live one, but nothing calls them.
+
+Three capabilities live only in A. These are gaps to close on B, not features consciously dropped:
+
+### 1. No `ChatHandoff` audit row when a pro takes over
+
+A writes a `ChatHandoff` row (`chats.py:174`, `chats.py:309`) recording that a human took the conversation and why. B changes thread status and records nothing. That row matters twice over: in a dispute it is the evidence of when a human became responsible for what was said, and in tuning the concierge it is the only signal for how often and why the AI is being rescued. The `ChatHandoff` model already exists and is unused by B.
+
+### 2. No automatic handoff when the AI hits its limits — the sharp one
+
+A escalates on its own via `_handoff_due_to_limit` for three conditions: `ai_calls_disabled`, `message_limit_exceeded`, `token_limit_exceeded` (`chats.py:255-269`). B has no equivalent. So on B a client can keep talking to a concierge that has hit its ceiling and simply stopped replying, with nothing telling the pro to step in and nothing telling the client why the answers stopped. Silence is the worst possible failure here: the client reads it as being ignored by the photographer, not by a bot that ran out of budget.
+
+### 3. `pro_takeover` vs `pro_active` — one concept, two enum values (needs reconciling, not documenting)
+
+`ChatThreadStatus` carries both. A sets `pro_takeover`, B sets `pro_active`, for the same event: a human took over. Every reader must handle both, forever, or silently mishandle threads created through the other door.
+
+**Scope of the fix — a small standalone backend task, deliberately not done inside F-7:**
+
+- **Writers are few and known.** `pro_takeover` is written at exactly two sites, both in the deprecated `chats.py` (`:173`, `:308`). `pro_active` at two sites in `ai_concierge.py` (`:172`, `:284`). Nothing else in `api/` assigns either.
+- **No reader branches on the values** beyond those writes — checked across `api/` and `web/`; the web app never compares against either.
+- **The migration is a plain `UPDATE`, not an enum alter.** The column is `Enum(..., native_enum=False)`, stored as `character varying`, so there is no Postgres enum type to modify: `UPDATE chat_thread SET status='pro_active' WHERE status='pro_takeover'`.
+- **Keep `pro_active`** (B's value, the canonical family) and drop `pro_takeover` from the enum once no rows hold it.
+- **Watch for**: `ChatThreadStatus` is serialized into the OpenAPI schema, so removing a value changes the generated client — regenerate, and check nothing in the Flutter app pattern-matches exhaustively on it.
+
+Estimated as one migration, two line changes in the deprecated file, one enum edit, and a client regeneration. The reason to do it separately is that it touches a shipping enum, not that it is large.
 
 ## ~~`GET /v1/me/notifications` paginates on a timestamp alone, so it skips and repeats rows~~ — FIXED in `029e1b38`
 

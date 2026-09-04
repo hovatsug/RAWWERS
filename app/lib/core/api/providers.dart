@@ -5,6 +5,7 @@ import 'package:rawwers/api/api_client/ai_concierge_client.dart';
 import 'package:rawwers/api/api_client/auth_client.dart';
 import 'package:rawwers/api/api_client/client_launch_client.dart';
 import 'package:rawwers/api/api_client/gigs_client.dart';
+import 'package:rawwers/api/api_client/notifications_client.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/core/api/dio_client.dart';
@@ -38,3 +39,6 @@ ClientLaunchClient clientLaunchClient(Ref ref) => ClientLaunchClient(ref.watch(d
 
 @riverpod
 AIConciergeClient aiConciergeClient(Ref ref) => AIConciergeClient(ref.watch(dioProvider));
+
+@riverpod
+NotificationsClient notificationsClient(Ref ref) => NotificationsClient(ref.watch(dioProvider));

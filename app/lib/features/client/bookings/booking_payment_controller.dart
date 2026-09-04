@@ -106,8 +106,10 @@ class BookingPaymentController extends _$BookingPaymentController {
     // recording it - that happens on the `payment_intent.succeeded` webhook.
     // Refetching is what moves the screen forward, and it may briefly still
     // show the pre-payment state if the webhook has not landed yet.
+    // Both invalidated, neither awaited: the payment has already gone
+    // through, so a failed refetch must not present as a failed payment.
     ref.invalidate(bookingDetailProvider(bookingId));
-    await ref.read(bookingsControllerProvider.notifier).refresh();
+    ref.invalidate(bookingsControllerProvider);
   }
 }
 

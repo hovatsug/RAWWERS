@@ -39,6 +39,7 @@ ClientProProfileResponse _profile({
           const [
             ClientProfilePackage(
               id: 'pkg-1',
+              nicheSlug: 'portraits',
               title: 'Portrait session',
               description: 'An hour in your neighbourhood.',
               durationMinutes: 90,

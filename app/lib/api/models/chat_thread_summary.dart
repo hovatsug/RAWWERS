@@ -46,6 +46,28 @@
 ///             "type": "string",
 ///             "format": "date-time",
 ///             "title": "Updated At"
+///         },
+///         "pro_display_name": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Pro Display Name"
+///         },
+///         "client_display_name": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Client Display Name"
 ///         }
 ///     },
 ///     "type": "object",
@@ -91,6 +113,13 @@ abstract class ChatThreadSummary with _$ChatThreadSummary {
 
     /// updatedAt
     @JsonKey(name: ChatThreadSummary.updatedAtKey_) required DateTime updatedAt,
+
+    /// proDisplayName
+    @JsonKey(name: ChatThreadSummary.proDisplayNameKey_) String? proDisplayName,
+
+    /// clientDisplayName
+    @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)
+    String? clientDisplayName,
   }) = _ChatThreadSummary;
 
   factory ChatThreadSummary.fromJson(Map<String, dynamic> json) =>
@@ -109,4 +138,8 @@ abstract class ChatThreadSummary with _$ChatThreadSummary {
   static const String createdAtKey_ = r'created_at';
 
   static const String updatedAtKey_ = r'updated_at';
+
+  static const String proDisplayNameKey_ = r'pro_display_name';
+
+  static const String clientDisplayNameKey_ = r'client_display_name';
 }

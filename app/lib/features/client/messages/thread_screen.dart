@@ -20,14 +20,14 @@ class ThreadScreen extends ConsumerWidget {
     final thread = ref.watch(threadControllerProvider(threadId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Conversation')),
+      appBar: AppBar(title: Text(thread.valueOrNull?.thread.proDisplayName ?? 'Conversation')),
       body: SafeArea(
         child: switch (thread) {
           AsyncLoading() => const PagedListSkeleton(),
           AsyncError(:final error) => RErrorState(
-              message: pagingFailureMessage(error),
-              onRetry: () => ref.invalidate(threadControllerProvider(threadId)),
-            ),
+            message: pagingFailureMessage(error),
+            onRetry: () => ref.invalidate(threadControllerProvider(threadId)),
+          ),
           AsyncData(:final value) => _Thread(threadId: threadId, detail: value),
           _ => const SizedBox.shrink(),
         },
@@ -59,14 +59,12 @@ class _Thread extends StatelessWidget {
                   padding: const EdgeInsets.all(RSpace.s16),
                   itemCount: messages.length,
                   separatorBuilder: (_, _) => const SizedBox(height: RSpace.s12),
-                  itemBuilder: (context, index) => _Bubble(message: messages[messages.length - 1 - index]),
+                  itemBuilder: (context, index) =>
+                      _Bubble(message: messages[messages.length - 1 - index], proName: detail.thread.proDisplayName),
                 ),
         ),
         if (closed)
-          const Padding(
-            padding: EdgeInsets.all(RSpace.s16),
-            child: Text('This conversation is closed.'),
-          )
+          const Padding(padding: EdgeInsets.all(RSpace.s16), child: Text('This conversation is closed.'))
         else
           _Composer(threadId: threadId),
       ],
@@ -75,9 +73,10 @@ class _Thread extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message});
+  const _Bubble({required this.message, this.proName});
 
   final ChatMessageV1View message;
+  final String? proName;
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +94,7 @@ class _Bubble extends StatelessWidget {
             if (!mine)
               Padding(
                 padding: const EdgeInsets.only(bottom: RSpace.s4),
-                child: Text(_senderLabel(message.senderType), style: theme.textTheme.bodySmall),
+                child: Text(_senderLabel(message.senderType, proName), style: theme.textTheme.bodySmall),
               ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: RSpace.s12, vertical: RSpace.s8),
@@ -115,12 +114,15 @@ class _Bubble extends StatelessWidget {
 /// The client is told who is actually answering. An AI reply presented as the
 /// photographer's own words would be a small lie with a large blast radius on
 /// a marketplace built on trust.
-String _senderLabel(ChatSenderType sender) => switch (sender) {
-      ChatSenderType.aI => 'Assistant',
-      ChatSenderType.pro => 'Photographer',
-      ChatSenderType.system => 'RAWWERS',
-      ChatSenderType.client => 'You',
-    };
+String _senderLabel(ChatSenderType sender, String? proName) => switch (sender) {
+  // Named for the photographer it speaks for, but never as them: an AI
+  // reply presented as their own words would be a lie the client cannot
+  // detect.
+  ChatSenderType.aI => proName == null ? 'Assistant' : '$proName\u2019s assistant',
+  ChatSenderType.pro => proName ?? 'Photographer',
+  ChatSenderType.system => 'RAWWERS',
+  ChatSenderType.client => 'You',
+};
 
 class _Composer extends ConsumerStatefulWidget {
   const _Composer({required this.threadId});

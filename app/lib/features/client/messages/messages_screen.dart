@@ -60,12 +60,12 @@ class _ThreadCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // `ChatThreadSummary` carries `pro_user_id` and no display
-                  // name, so there is nothing better to title this with - see
-                  // docs/BACKEND_GAPS.md. A UUID would be worse than a
-                  // generic noun, so the generic noun wins until the summary
-                  // carries a name.
-                  Text('Photographer', style: theme.textTheme.titleSmall),
+                  // Falls back to the generic noun rather than a UUID for a
+                  // pro who has not set a display name.
+                  Text(
+                    thread.proDisplayName ?? 'Photographer',
+                    style: theme.textTheme.titleSmall,
+                  ),
                   const SizedBox(height: RSpace.s4),
                   Text(
                     'Started ${_relative(thread.createdAt)}',

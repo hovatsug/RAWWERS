@@ -10,6 +10,7 @@ _ClientProfilePackage _$ClientProfilePackageFromJson(
   Map<String, dynamic> json,
 ) => _ClientProfilePackage(
   id: json['id'] as String,
+  nicheSlug: json['niche_slug'] as String,
   title: json['title'] as String,
   description: json['description'] as String?,
   durationMinutes: (json['duration_minutes'] as num).toInt(),
@@ -25,6 +26,7 @@ Map<String, dynamic> _$ClientProfilePackageToJson(
   _ClientProfilePackage instance,
 ) => <String, dynamic>{
   'id': instance.id,
+  'niche_slug': instance.nicheSlug,
   'title': instance.title,
   'description': instance.description,
   'duration_minutes': instance.durationMinutes,

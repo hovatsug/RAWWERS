@@ -18,6 +18,16 @@
 ///                 }
 ///             ],
 ///             "title": "File Name"
+///         },
+///         "visibility": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/MediaVisibility"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -49,6 +59,10 @@ abstract class PhotoUploadCreateRequest with _$PhotoUploadCreateRequest {
 
     /// fileName
     @JsonKey(name: PhotoUploadCreateRequest.fileNameKey_) String? fileName,
+
+    /// visibility
+    @JsonKey(name: PhotoUploadCreateRequest.visibilityKey_)
+    MediaVisibility? visibility,
   }) = _PhotoUploadCreateRequest;
 
   factory PhotoUploadCreateRequest.fromJson(Map<String, dynamic> json) =>
@@ -59,4 +73,6 @@ abstract class PhotoUploadCreateRequest with _$PhotoUploadCreateRequest {
   static const String contentTypeKey_ = r'content_type';
 
   static const String fileNameKey_ = r'file_name';
+
+  static const String visibilityKey_ = r'visibility';
 }

@@ -12,6 +12,7 @@ class RInput extends StatelessWidget {
     this.autofillHints,
     this.textInputAction,
     this.onSubmitted,
+    this.maxLines = 1,
     super.key,
   });
 
@@ -38,6 +39,10 @@ class RInput extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
 
+  /// Grows the field for free-text notes. Kept at 1 by default so every
+  /// existing single-line field is unaffected.
+  final int maxLines;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
@@ -47,6 +52,7 @@ class RInput extends StatelessWidget {
       autofillHints: autofillHints,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
+      maxLines: maxLines,
       style: TextStyle(
         fontFeatures: tabularFigures ? RType.tabularFigures : null,
       ),

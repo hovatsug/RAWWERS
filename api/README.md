@@ -22,6 +22,28 @@ Backend foundations implemented:
 - v19: Auth + identity + RBAC v1 (JWT sessions, verification/reset, impersonation)
 - v20: Notifications + messaging v1 (in-app + email, preferences, templates, reliable delivery)
 
+## Do not use `git stash` in this checkout
+
+Use a git worktree instead:
+
+```
+git worktree add ../rawwers-baseline HEAD
+```
+
+`git stash push` / `pop` here has twice produced macOS-style duplicate
+files alongside the originals - `admin 2.py`, `outbox_tasks 2.py` - and
+once left the original truncated by 350 lines while the duplicate held the
+intact copy. Both were caught only by comparing line counts against
+`git show HEAD:<path> | wc -l`.
+
+The cause is the interaction between rapid stash rewrites and the file
+watcher syncing this directory into Docker; it is an environment hazard,
+not something to remember not to do. Baselining a test run against HEAD is
+the usual reason to want a stash, and a worktree does that without
+touching the working copy at all.
+
+If you do end up stashing, check line counts before trusting the result.
+
 ## Setup
 ```bash
 cd api

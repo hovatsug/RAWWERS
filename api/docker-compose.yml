@@ -44,6 +44,13 @@ services:
     build: .
     env_file:
       - .env
+    environment:
+      # Without this the worker buffers stdout and produces nothing at all
+      # after a restart - not even Celery's startup banner - while still
+      # consuming tasks. The outbox and money-path logging added for the
+      # unreproduced webhook anomaly lives here, and instrumentation you
+      # cannot read is not instrumentation.
+      PYTHONUNBUFFERED: "1"
     command: celery -A app.tasks.celery_app.celery_app worker -l info
     depends_on:
       redis:
@@ -60,6 +67,8 @@ services:
     build: .
     env_file:
       - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
     command: celery -A app.tasks.celery_app.celery_app beat -l info
     depends_on:
       redis:

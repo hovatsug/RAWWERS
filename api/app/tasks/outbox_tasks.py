@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.services.outbox import (
@@ -13,6 +15,7 @@ from app.services.disputes import escalate_due_disputes
 from app.tasks.celery_app import celery_app
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="app.tasks.outbox_tasks.dispatch_outbox_events")
@@ -23,15 +26,42 @@ def dispatch_outbox_events_task(limit: int | None = None) -> int:
         rows = claim_pending_outbox_events(db, limit=batch_limit)
         processed = 0
         for row in rows:
+            event_id = (row.payload or {}).get("id")
             try:
                 _dispatch_event(db, row.topic, row.payload)
                 mark_outbox_delivered(db, row)
+                logger.info(
+                    "outbox_event_applied",
+                    extra={"outbox_id": str(row.id), "topic": row.topic,
+                           "event_id": event_id, "attempts": row.attempts},
+                )
             except Exception:
+                # Was swallowed entirely: a handler that raised left the row
+                # marked failed with no record of why, and any partial
+                # mutations it had already made were committed below.
+                logger.exception(
+                    "outbox_event_failed",
+                    extra={"outbox_id": str(row.id), "topic": row.topic,
+                           "event_id": event_id, "attempts": row.attempts},
+                )
                 mark_outbox_failed(db, row, max_attempts=settings.outbox_max_attempts)
             processed += 1
-        escalate_due_disputes(db, limit=batch_limit)
-        process_due_scheduled_notifications(db, limit=batch_limit)
+
+        # Committed here, before the unrelated sweeps below. They used to run
+        # inside the same transaction, so an exception in either one skipped
+        # the commit and the `finally` closed the session - silently
+        # discarding every delivery in the batch, marks and effects alike,
+        # with nothing logged. Outbox delivery must not depend on whether a
+        # dispute sweep happened to succeed.
         db.commit()
+
+        for sweep in (escalate_due_disputes, process_due_scheduled_notifications):
+            try:
+                sweep(db, limit=batch_limit)
+                db.commit()
+            except Exception:
+                logger.exception("outbox_sweep_failed", extra={"sweep": sweep.__name__})
+                db.rollback()
         return processed
     finally:
         db.close()

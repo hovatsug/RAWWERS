@@ -338,11 +338,22 @@ every early return (`stripe_succeeded_no_payment_row`,
 `stripe_succeeded_no_gig`, `stripe_succeeded_matched_store_order`, …).
 Verified firing, in order, by dispatching in-process.
 
-**Caveat worth knowing:** the `worker` container produced no stdout at all
-after a restart in this environment - not even Celery's startup banner -
-while still consuming tasks. If the next occurrence happens on the worker,
-these logs may not be visible in `docker compose logs worker`. Worth
-setting `PYTHONUNBUFFERED=1` on that service before relying on them.
+**The instrumentation was initially unreadable, for a worse reason than
+buffering.** Celery configures only its own loggers and otherwise takes
+over logging setup entirely, so `app.*` loggers had no handler in a worker
+process: everything the application logged from inside a task was
+discarded. Celery's own task lines still appeared, so logging looked like
+it worked. Since the outbox is drained *only* in the worker, none of this
+instrumentation would have been visible when it mattered.
+
+Fixed by connecting `configure_logging` to Celery's `setup_logging`
+signal, which also stops Celery clobbering it. `PYTHONUNBUFFERED=1` is set
+on `worker` and `beat` as well. Verified by dispatching to the worker and
+reading structured JSON back out of `docker logs`.
+
+(The earlier note here said the worker produced no stdout at all. That was
+an artifact of `docker compose logs --since` against a recreated
+container; `docker logs <id>` showed output the whole time.)
 
 ## `GigStatus.final_delivered` is never set
 

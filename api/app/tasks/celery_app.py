@@ -4,15 +4,39 @@ import time
 from datetime import timedelta
 
 from celery import Celery
-from celery.signals import before_task_publish, task_failure, task_postrun, task_prerun
+from celery.signals import (
+    before_task_publish,
+    setup_logging,
+    task_failure,
+    task_postrun,
+    task_prerun,
+)
 
 from app.core.config import get_settings
+from app.core.logging import configure_logging
 from app.core.request_context import clear_request_context, get_request_id, set_request_context
 from app.services.metrics import increment_task_failures, observe_task_duration
 
 settings = get_settings()
 
 celery_app = Celery("rawwers_media", broker=settings.redis_url, backend=settings.redis_url)
+
+
+@setup_logging.connect
+def _configure_worker_logging(**_kwargs) -> None:
+    """Give the worker the application's logging config.
+
+    Celery configures only its own loggers and otherwise takes over
+    logging setup entirely, so `app.*` loggers had no handler in a worker
+    process. Everything the application logged from inside a task was
+    discarded - including the outbox and money-path instrumentation added
+    for the unreproduced webhook anomaly, which runs *only* in the worker.
+    The task lines were visible, so it looked like logging worked.
+
+    Connecting to setup_logging tells Celery not to configure logging
+    itself, which is what stops it clobbering this.
+    """
+    configure_logging(settings.log_level)
 celery_app.conf.task_default_queue = "media"
 celery_app.conf.beat_schedule = {
     # Drains the transactional outbox. Without this entry the only callers

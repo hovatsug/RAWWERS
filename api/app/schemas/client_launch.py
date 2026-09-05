@@ -20,6 +20,10 @@ class ClientWaitlistCreateRequest(BaseModel):
     country: str
     city: str
     niche_slug: str | None = None
+    # "client" or "pro". Optional on the wire so the existing caller does
+    # not break, but the marketing form always sends it - a waitlist that
+    # cannot distinguish demand from supply cannot decide a launch market.
+    role: str | None = None
 
 
 class ClientWaitlistCreateResponse(BaseModel):

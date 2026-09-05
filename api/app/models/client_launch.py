@@ -27,6 +27,10 @@ class ClientWaitlist(Base):
     country: Mapped[str] = mapped_column(Text, nullable=False)
     city: Mapped[str] = mapped_column(Text, nullable=False)
     niche_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Which side of the marketplace signed up. Without it the waitlist
+    # cannot tell demand from supply, and "200 people in Porto" means
+    # nothing until you know whether they are photographers or clients.
+    role: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ClientWaitlistStatus] = mapped_column(
         Enum(ClientWaitlistStatus, name="client_waitlist_status", native_enum=False),
         nullable=False,

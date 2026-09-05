@@ -93,6 +93,18 @@ def create_waitlist_entry(
     if not country or not city:
         raise APIError(code="validation_error", message="country and city are required", status_code=422)
 
+    # Rejected rather than coerced. Quietly filing an unrecognised role as
+    # "client" would fabricate demand signal, and this list exists to
+    # decide which market to open next - a wrong row is worse than a
+    # missing one.
+    normalised_role = (body.role or "").strip().lower() or None
+    if normalised_role is not None and normalised_role not in {"client", "pro"}:
+        raise APIError(
+            code="validation_error",
+            message="role must be 'client' or 'pro'",
+            status_code=422,
+        )
+
     existing = db.execute(
         select(ClientWaitlist).where(
             ClientWaitlist.email == email,
@@ -107,6 +119,9 @@ def create_waitlist_entry(
                 country=country,
                 city=city,
                 niche_slug=body.niche_slug.strip() if body.niche_slug else None,
+                # Normalised here rather than trusted: a free-text role would
+                # make the demand signal unaggregatable.
+                role=normalised_role,
             )
         )
         enqueue_outbox_event(

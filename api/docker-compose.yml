@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rawwers
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rawwers"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: .
+    env_file:
+      - .env
+    environment:
+      # Without this the worker buffers stdout and produces nothing at all
+      # after a restart - not even Celery's startup banner - while still
+      # consuming tasks. The outbox and money-path logging added for the
+      # unreproduced webhook anomaly lives here, and instrumentation you
+      # cannot read is not instrumentation.
+      PYTHONUNBUFFERED: "1"
+    command: celery -A app.tasks.celery_app.celery_app worker -l info
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # beat_schedule only does something if a beat process is actually running
+  # to publish the periodic tasks. Without this service the schedule is
+  # inert config: the worker sits idle, the outbox never drains, and every
+  # other sweep (booking-request expiry, payout holds, dispute escalation)
+  # silently never fires either.
+  beat:
+    build: .
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    command: celery -A app.tasks.celery_app.celery_app beat -l info
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy

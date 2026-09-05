@@ -1,0 +1,47 @@
+# Node.js dependencies
+node_modules/
+apps/web-admin/node_modules
+
+# Package manager caches
+.pnpm-store/
+
+# Next.js build/cache output
+.next/
+web/.next/
+
+# next-pwa generated service worker
+web/public/sw.js
+web/public/workbox-*.js
+
+# Common JS build outputs
+coverage/
+dist/
+build/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+**/.DS_Store
+
+# Flutter / Dart (app/)
+**/build/
+.dart_tool/
+.flutter-plugins*
+ios/Pods/
+ios/.symlinks/
+android/local.properties
+*.iml
+.idea/
+
+# Claude Code local settings
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example

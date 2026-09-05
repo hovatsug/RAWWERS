@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "rawwers-api"
+version = "0.1.0"
+description = "RAWWERS Media subsystem v0"
+authors = ["RAWWERS <dev@rawwers.local>"]
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.116.0"
+uvicorn = { extras = ["standard"], version = "^0.35.0" }
+sqlalchemy = "^2.0.43"
+alembic = "^1.16.4"
+psycopg2-binary = "^2.9.10"
+pydantic-settings = "^2.10.1"
+celery = "^5.5.3"
+redis = "^6.4.0"
+boto3 = "^1.40.29"
+requests = "^2.32.5"
+python-multipart = "^0.0.20"
+pyjwt = "^2.10.1"
+pillow = "^11.3.0"
+python-json-logger = "^3.3.0"
+stripe = "^12.5.0"
+prometheus-client = "^0.23.1"
+argon2-cffi = "^23.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+pytest-cov = "^6.2.1"
+httpx = "^0.27.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

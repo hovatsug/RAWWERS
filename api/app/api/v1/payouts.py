@@ -5,16 +5,26 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_admin, require_not_banned
 from app.core.errors import APIError
 from app.core.config import get_settings
 from app.models.admin import Dispute, ProProfile, UserAccount
-from app.models.payouts import EarningsHold, EarningsSourceType, PayoutRequestStatus, PlatformFeePolicy
+from app.models.payouts import (
+    EarningsHold,
+    EarningsSourceType,
+    PayoutAccountStatus,
+    PayoutMethod,
+    PayoutRequest,
+    PayoutRequestStatus,
+    PlatformFeePolicy,
+)
 from app.schemas.media import CurrentUser
 from app.schemas.payouts import (
+    AdminPayoutQueueResponse,
+    AdminPayoutQueueRow,
     ConnectOnboardingLinkResponse,
     ConnectStatusResponse,
     AdminFinanceProDetailResponse,
@@ -286,6 +296,78 @@ def get_finance_pro_detail_admin(
         ],
         recent_payouts=[PayoutRequestView.model_validate(item, from_attributes=True) for item in payouts],
     )
+
+
+@router.get("/admin/payouts/queue", response_model=AdminPayoutQueueResponse)
+def admin_payout_queue(
+    status: PayoutRequestStatus | None = None,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminPayoutQueueResponse:
+    """Payout requests awaiting a decision, with the context to make it.
+
+    Defaults to the ones that need action rather than every request ever
+    made - the queue should be work, not history.
+    """
+    stmt = select(PayoutRequest).order_by(PayoutRequest.created_at.asc())
+    if status:
+        stmt = stmt.where(PayoutRequest.status == status)
+    else:
+        stmt = stmt.where(
+            PayoutRequest.status.in_([PayoutRequestStatus.requested, PayoutRequestStatus.approved,
+                                      PayoutRequestStatus.processing])
+        )
+    rows = db.execute(stmt.limit(200)).scalars().all()
+
+    items: list[AdminPayoutQueueRow] = []
+    for row in rows:
+        account = get_or_create_payout_account(db, pro_user_id=row.pro_user_id)
+        profile = db.get(ProProfile, row.pro_user_id)
+        user = db.get(UserAccount, row.pro_user_id)
+        balance = payout_balance_view(db, pro_user_id=row.pro_user_id)
+        lifetime = db.execute(
+            select(func.count()).select_from(PayoutRequest).where(
+                PayoutRequest.pro_user_id == row.pro_user_id,
+                PayoutRequest.status == PayoutRequestStatus.paid,
+            )
+        ).scalar_one()
+
+        # Only an unusable Connect account blocks approval. bank_manual is
+        # a real route that works end to end today, and blocking it would
+        # stop the only path that currently functions.
+        blocked = (
+            account.payout_method == PayoutMethod.stripe_connect
+            and account.status != PayoutAccountStatus.active
+        )
+        reason = (
+            f"Stripe Connect account is {account.status.value}, so a transfer would fail."
+            if blocked
+            else None
+        )
+
+        items.append(
+            AdminPayoutQueueRow(
+                payout_request_id=row.id,
+                pro_user_id=row.pro_user_id,
+                display_name=profile.display_name if profile else None,
+                email=user.email if user else None,
+                amount_eur=row.amount_eur,
+                status=row.status,
+                requested_at=row.created_at,
+                payout_method=account.payout_method.value,
+                payout_account_status=account.status.value,
+                approval_blocked=blocked,
+                blocked_reason=reason,
+                available_eur=balance["available_eur"],
+                pending_eur=balance["pending_eur"],
+                withdrawable_eur=balance["withdrawable_eur"],
+                exceeds_withdrawable=row.amount_eur > balance["withdrawable_eur"]
+                and row.status == PayoutRequestStatus.requested,
+                lifetime_payouts=int(lifetime),
+            )
+        )
+    db.commit()
+    return AdminPayoutQueueResponse(items=items)
 
 
 @router.get("/admin/payouts", response_model=PayoutListResponse)

@@ -48,6 +48,12 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-4">
+      <nav className="flex gap-4 text-sm">
+        <span className="font-medium">Approvals</span>
+        <Link href="/admin/payouts" className="text-neutral-500 hover:underline">Payouts</Link>
+        <Link href="/admin/disputes" className="text-neutral-500 hover:underline">Disputes</Link>
+      </nav>
+
       <div>
         <h1 className="text-xl font-semibold">Photographers waiting</h1>
         <p className="mt-1 text-sm text-neutral-600">

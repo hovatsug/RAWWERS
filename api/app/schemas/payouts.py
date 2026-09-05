@@ -174,3 +174,41 @@ class ConnectStatusResponse(BaseModel):
     currently_due: list[str] = Field(default_factory=list)
     past_due: list[str] = Field(default_factory=list)
     disabled_reason: str | None = None
+
+
+class AdminPayoutQueueRow(BaseModel):
+    """A payout request with everything needed to decide on it.
+
+    The plain list endpoint returns ids and an amount, which is not enough
+    to approve safely: whether the destination account can actually receive
+    money, and what the photographer's ledger says, both matter *before*
+    approval rather than after.
+    """
+
+    payout_request_id: uuid.UUID
+    pro_user_id: uuid.UUID
+    display_name: str | None = None
+    email: str | None = None
+    amount_eur: Decimal
+    status: PayoutRequestStatus
+    requested_at: datetime
+
+    payout_method: str
+    payout_account_status: str
+    # Manual bank transfer is a legitimate route and currently the only one
+    # that works end to end, so it is not treated as a blocker. Only an
+    # unusable Connect account is.
+    approval_blocked: bool
+    blocked_reason: str | None = None
+
+    available_eur: Decimal
+    pending_eur: Decimal
+    withdrawable_eur: Decimal
+    # A request for more than the photographer can currently withdraw means
+    # something moved between requesting and reviewing.
+    exceeds_withdrawable: bool
+    lifetime_payouts: int
+
+
+class AdminPayoutQueueResponse(BaseModel):
+    items: list[AdminPayoutQueueRow] = Field(default_factory=list)

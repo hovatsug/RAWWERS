@@ -90,6 +90,38 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<Result<T
   }
 }
 
+export type PayoutQueueRow = {
+  payout_request_id: string;
+  pro_user_id: string;
+  display_name: string | null;
+  email: string | null;
+  amount_eur: string;
+  status: string;
+  requested_at: string;
+  payout_method: string;
+  payout_account_status: string;
+  approval_blocked: boolean;
+  blocked_reason: string | null;
+  available_eur: string;
+  pending_eur: string;
+  withdrawable_eur: string;
+  exceeds_withdrawable: boolean;
+  lifetime_payouts: number;
+};
+
+export type DisputeRow = {
+  id: string;
+  gig_id?: string | null;
+  status: string;
+  category?: string | null;
+  reason?: string | null;
+  summary?: string | null;
+  requested_refund_amount?: string | null;
+  currency?: string | null;
+  opened_at?: string | null;
+  due_response_at?: string | null;
+};
+
 export const admin = {
   reviewQueue: () => adminFetch<{ items: ProReviewRow[] }>("pros/review-queue"),
   reviewDetail: (proUserId: string) => adminFetch<ProReviewDetail>(`pros/${proUserId}/review`),
@@ -98,6 +130,24 @@ export const admin = {
       method: "POST",
       body: JSON.stringify({ note: note || null })
     }),
+  payoutQueue: () => adminFetch<{ items: PayoutQueueRow[] }>("payouts/queue"),
+  approvePayout: (id: string) => adminFetch<unknown>(`payouts/${id}/approve`, { method: "POST" }),
+  markPayoutPaid: (id: string, reference: Record<string, string>) =>
+    adminFetch<unknown>(`payouts/${id}/mark-paid`, {
+      method: "POST",
+      body: JSON.stringify({ reference })
+    }),
+  rejectPayout: (id: string, reason: string) =>
+    adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+
+  disputes: () => adminFetch<DisputeRow[]>("disputes"),
+  dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
+  resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>
+    adminFetch<unknown>(`disputes/${id}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ decision, rationale, amount: amount ?? null })
+    }),
+
   rejectPro: (proUserId: string, note: string) =>
     adminFetch<unknown>(`onboarding/pros/${proUserId}/reject`, {
       method: "POST",

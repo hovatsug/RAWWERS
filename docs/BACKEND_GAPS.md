@@ -534,6 +534,33 @@ refund case `refunded` with €60.00 recorded, events
 `refund_succeeded -60.00`, earnings move 180/36/144 to 120/24/96, gig
 stays `disputed`, payment stays `succeeded`.
 
+## "Failed" does not mean "no effect": the outbox dispatcher commits partial mutations
+
+A general property of `dispatch_outbox_events_task`, not something
+specific to refunds.
+
+The dispatcher catches exceptions per row, marks that row failed, and
+commits once after the loop. Anything a handler mutated *before* it
+raised is in the same session and is committed by that commit. So an
+event can be recorded as failed while having permanently changed the
+database.
+
+Observed concretely: the refund handler set `payment.status = refunded`,
+then raised on a forbidden gig transition. The event was marked failed
+and retried eight times; the payment stayed `refunded` throughout, on a
+booking that had only been partly refunded.
+
+This matters beyond the one case. Every handler is written as though a
+raise means nothing happened, and a retry then re-applies whatever did.
+Handlers that are not idempotent will double-apply on the retry the
+dispatcher performs automatically.
+
+Not fixed here. The options are per-row savepoints (`db.begin_nested()`
+around each `_dispatch_event`, rolled back on failure) or making every
+handler idempotent. The first is one change and covers all handlers; the
+second is correct anyway but is a large audit. Worth deciding before
+launch - the dispatcher drains the money path.
+
 ## Enum column widths are a standing hazard — worth its own task
 
 Two columns were narrower than their enums. **Around forty more sit

@@ -306,23 +306,51 @@ completeness and pricing — but not the publish gate — so an activated but
 unpublished photographer was told "clients can find you". Now reported as
 `not_published_yet`.
 
-## UNEXPLAINED: a Stripe event marked delivered without its effect landing
+## A Stripe event marked delivered without its effect landing — NOT REPRODUCED, now instrumented
 
-During the end-to-end run, `payment_intent.succeeded` was signature-verified,
-accepted (200), and its outbox row ended `delivered` with `attempts=0` — but
-the `StripePayment` row stayed `pending` and the gig stayed `payment_pending`.
-Replaying the *same stored payload* through `_apply_stripe_event` applied it
-correctly, so the applier is not the problem.
+Observed once during the first end-to-end run: `payment_intent.succeeded`
+was signature-verified, accepted (200), and its outbox row ended
+`delivered` with `attempts=0`, yet the `StripePayment` row stayed
+`pending`. Replaying the same stored payload applied it correctly.
 
-This should not be possible: `mark_outbox_delivered` only flushes, so the
-delivery mark and the payment update share one transaction — either both
-commit or neither does. Not reproduced a second time, and not explained.
+**Five deliberate reproduction attempts, each a fresh booking, a fresh
+PaymentIntent, a real card confirmation and a signed webhook: applied
+correctly every time.** Not reproduced, and still not explained.
 
-Recorded rather than diagnosed, because the failure mode is the worst kind:
-a client is charged, Stripe says succeeded, and the gig silently stays
-unpaid with no error anywhere. Worth reproducing deliberately before
-launch — run a second payment end to end and watch the outbox row and the
-worker together.
+Two things were fixed while trying, both real:
+
+1. `dispatch_outbox_events_task` ran `escalate_due_disputes` and
+   `process_due_scheduled_notifications` *inside the same transaction* as
+   outbox delivery, before the only `db.commit()`. An exception in either
+   sweep skipped the commit, and the `finally` closed the session -
+   silently discarding every delivery in the batch, marks and effects
+   alike, with nothing logged. Outbox delivery now commits first; the
+   sweeps run after, each in its own transaction, and their failures are
+   logged instead of swallowed.
+2. The per-row `except Exception:` swallowed the exception entirely, so a
+   handler that raised left a row marked failed with no record of why.
+
+Instrumentation added so the next occurrence explains itself:
+`outbox_event_applied` / `outbox_event_failed` per row with the event id
+and attempt count, and on the money path `stripe_succeeded_applying` with
+the payment and gig status *before* the change, plus a named warning on
+every early return (`stripe_succeeded_no_payment_row`,
+`stripe_succeeded_no_gig`, `stripe_succeeded_matched_store_order`, …).
+Verified firing, in order, by dispatching in-process.
+
+**Caveat worth knowing:** the `worker` container produced no stdout at all
+after a restart in this environment - not even Celery's startup banner -
+while still consuming tasks. If the next occurrence happens on the worker,
+these logs may not be visible in `docker compose logs worker`. Worth
+setting `PYTHONUNBUFFERED=1` on that service before relying on them.
+
+## `GigStatus.final_delivered` is never set
+
+The enum value exists and is read in three places (reviews, disputes,
+prints) but nothing ever assigns it. Gigs go `paid -> completed` directly,
+by a system transition when the selection is submitted and payment has
+settled. Not a hole in the loop - the photographer is credited either way -
+but any logic keyed on `final_delivered` is dead.
 
 ## No video poster frames in the portfolio preview
 

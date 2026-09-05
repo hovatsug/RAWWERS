@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -59,6 +61,9 @@ from app.models.payouts import EarningsSourceType, PayoutAccount, PayoutAccountS
 from app.tasks.store_tasks import submit_order_to_partner_task
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 from app.services.trust_safety import evaluate_payment_failure_rule
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 settings = get_settings()
@@ -210,9 +215,16 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
     if event_type == "payment_intent.succeeded":
         payment_intent_id = obj.get("id")
         if not payment_intent_id:
+            logger.warning("stripe_succeeded_without_id")
             return
+        # This function has several early returns for other kinds of
+        # payment (store orders, prints, upsells). Each one is now named,
+        # so an event that applies to none of them says which it matched
+        # rather than looking identical to one that applied cleanly.
         order = finalize_order_payment_success(db, payment_intent_id)
         if order:
+            logger.info("stripe_succeeded_matched_store_order",
+                        extra={"payment_intent_id": payment_intent_id, "order_id": str(order.id)})
             try:
                 submit_order_to_partner_task.delay(str(order.id))
             except Exception:
@@ -351,11 +363,26 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             select(StripePayment).where(StripePayment.stripe_payment_intent_id == payment_intent_id)
         ).scalar_one_or_none()
         if not payment:
+            # Every early return on the money path is logged. A
+            # payment_intent.succeeded that reaches the end of this function
+            # without moving a gig is the failure that ends a photographer's
+            # relationship with the platform - client charged, Stripe
+            # reporting success, gig silently unpaid - and it must never
+            # again be something we can only observe after the fact.
+            logger.warning("stripe_succeeded_no_payment_row",
+                           extra={"payment_intent_id": payment_intent_id})
             return
 
         gig = db.get(Gig, payment.gig_id)
         if not gig:
+            logger.warning("stripe_succeeded_no_gig",
+                           extra={"payment_intent_id": payment_intent_id,
+                                  "gig_id": str(payment.gig_id)})
             return
+        logger.info("stripe_succeeded_applying",
+                    extra={"payment_intent_id": payment_intent_id, "gig_id": str(gig.id),
+                           "payment_status_before": payment.status.value,
+                           "gig_status_before": gig.status.value})
 
         payment.status = PaymentStatus.succeeded
         payment.last_error = None

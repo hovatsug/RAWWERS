@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "generate:api": "openapi-typescript ${OPENAPI_SCHEMA_URL:-http://localhost:8000/openapi.json} -o ./lib/api/generated/schema.ts",
     "test:e2e": "playwright test",
-    "verify": "pnpm lint && pnpm build && pnpm typecheck"
+    "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm check:admin-isolation",
+    "check:admin-isolation": "bash ../scripts/check-admin-isolation.sh"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.0",

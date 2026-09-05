@@ -145,6 +145,9 @@ jobs:
           pnpm generate:api
           git diff --exit-code -- lib/api/generated/schema.ts
 
+      - name: Admin isolation check
+        run: bash scripts/check-admin-isolation.sh
+
       - name: Build web
         working-directory: web
         env:

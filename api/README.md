@@ -22,6 +22,24 @@ Backend foundations implemented:
 - v19: Auth + identity + RBAC v1 (JWT sessions, verification/reset, impersonation)
 - v20: Notifications + messaging v1 (in-app + email, preferences, templates, reliable delivery)
 
+## Shell gotcha: zsh does not word-split unquoted variables
+
+```zsh
+FILES="a.ts b.ts"
+for f in $FILES; do grep x "$f"; done   # iterates ONCE, over "a.ts b.ts"
+```
+
+In bash this loops twice. In zsh it greps a path that does not exist,
+`grep` finds nothing, and the check reports a confident zero that looks
+exactly like a pass. This has produced three false "everything is clean"
+results in this repository.
+
+Write multi-file checks as bash scripts under `scripts/` with an explicit
+array, the way `scripts/check-admin-isolation.sh` does, rather than as
+ad-hoc zsh loops. That script also refuses to pass when its own pattern
+matches nothing at all, so a pattern that has stopped matching cannot be
+mistaken for a clean result.
+
 ## Do not use `git stash` in this checkout
 
 Use a git worktree instead:

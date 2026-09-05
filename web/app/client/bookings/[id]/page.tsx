@@ -29,7 +29,7 @@ export default function ClientBookingDetailPage() {
         <Link href={`/client/gigs/${id}/proofs`}>Open proof gallery</Link>
       </Card>
       {booking.isLoading ? <p className="text-sm">Loading booking…</p> : null}
-      {booking.data && !booking.data.ok ? <p className="text-sm text-red-700">Couldn't load this booking.</p> : null}
+      {booking.data && !booking.data.ok ? <p className="text-sm text-red-700">Couldn&apos;t load this booking.</p> : null}
     </div>
   );
 }

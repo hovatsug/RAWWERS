@@ -68,6 +68,19 @@ AvailabilityRuleView _rule(int weekday) => AvailabilityRuleView(
       updatedAt: DateTime.utc(2026, 9, 1),
     );
 
+/// An events photographer's Friday: 20:00 into Saturday morning.
+AvailabilityRuleView _nightRule(int weekday) => AvailabilityRuleView(
+      id: 'rule-night-$weekday',
+      proUserId: 'pro-1',
+      weekday: weekday,
+      startLocal: '20:00:00',
+      endLocal: '02:00:00',
+      timezone: 'Europe/Lisbon',
+      locationMode: AvailabilityLocationMode.both,
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+
 AvailabilityExceptionView _block(String id, String reason, int dayOffset) => AvailabilityExceptionView(
       id: id,
       proUserId: 'pro-1',
@@ -184,6 +197,24 @@ void main() {
     await _scrollTo(tester, find.text('1 day'));
     final chip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '1 day'));
     expect(chip.selected, isTrue);
+  });
+
+  testWidgets('a night shift reads as one, not as a typo', (tester) async {
+    // 20:00 - 02:00 on its own looks like a data-entry mistake. A
+    // photographer glancing at their week has to be able to tell the
+    // difference without doing the arithmetic.
+    await tester.pumpWidget(_wrap(hours: () => _FakeHours([_nightRule(4)])));
+    await tester.pump();
+
+    expect(find.text('20:00 – 02:00 (next day)'), findsOneWidget);
+  });
+
+  testWidgets('an ordinary day is not labelled next day', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    expect(find.text('09:00 – 17:00'), findsOneWidget);
+    expect(find.textContaining('(next day)'), findsNothing);
   });
 
   testWidgets('one section failing leaves the others usable', (tester) async {

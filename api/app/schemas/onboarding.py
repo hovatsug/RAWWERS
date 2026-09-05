@@ -200,6 +200,10 @@ class AcceptBookingResponse(BaseModel):
 class ProPortfolioItem(BaseModel):
     media_asset_id: uuid.UUID
     kind: str
+    # An upload is `processing` until a worker has produced its variants.
+    # Exposed so the grid can say so, rather than showing a blank tile that
+    # looks like a failed upload.
+    status: str
     # Signed and short-lived; null while the asset is still processing, or
     # for a video, whose poster frame is a separate gap (BACKEND_GAPS.md).
     thumbnail_url: str | None = None

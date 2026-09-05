@@ -10,6 +10,10 @@
 ///             "type": "string",
 ///             "title": "Kind"
 ///         },
+///         "status": {
+///             "type": "string",
+///             "title": "Status"
+///         },
 ///         "thumbnail_url": {
 ///             "anyOf": [
 ///                 {
@@ -43,6 +47,7 @@
 ///     "required": [
 ///         "media_asset_id",
 ///         "kind",
+///         "status",
 ///         "created_at"
 ///     ],
 ///     "title": "ProPortfolioItem"
@@ -66,6 +71,9 @@ abstract class ProPortfolioItem with _$ProPortfolioItem {
     /// kind
     @JsonKey(name: ProPortfolioItem.kindKey_) required String kind,
 
+    /// status
+    @JsonKey(name: ProPortfolioItem.statusKey_) required String status,
+
     /// thumbnailUrl
     @JsonKey(name: ProPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,
 
@@ -85,6 +93,8 @@ abstract class ProPortfolioItem with _$ProPortfolioItem {
   static const String mediaAssetIdKey_ = r'media_asset_id';
 
   static const String kindKey_ = r'kind';
+
+  static const String statusKey_ = r'status';
 
   static const String thumbnailUrlKey_ = r'thumbnail_url';
 

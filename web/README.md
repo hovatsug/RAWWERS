@@ -184,3 +184,26 @@ To mirror in Flutter with minimal redesign:
 - Keep component API atomic (Button/Card/Input/etc.)
 - Keep route modules bounded by feature flags
 - Keep API wrapper semantics consistent (`endpoints.ts`) across clients
+
+## Before committing
+
+
+> rawwers-web@0.1.0 verify /Users/gustavobarbosa/Documents/RAWWERS/web
+> pnpm lint && pnpm typecheck && pnpm build
+
+
+> rawwers-web@0.1.0 lint /Users/gustavobarbosa/Documents/RAWWERS/web
+> next lint
+
+? How would you like to configure ESLint? https://nextjs.org/docs/basic-features/eslint
+[?25l❯  Strict (recommended)
+   Base
+   Cancel ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+
+Runs lint, typecheck and build - the same three the CI web job runs.
+
+Worth doing locally because CI only runs on push, and this repository has
+gone long stretches unpushed. The build broke on 2026-09-03 (a stale
+import left behind by the API client consolidation) and stayed broken,
+because nothing ran between the commit and the next person to try.

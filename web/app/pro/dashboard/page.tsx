@@ -80,7 +80,7 @@ export default function ProDashboardPage() {
 
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-400">Welcome back. Here's what's happening.</p>
+        <p className="mt-1 text-sm text-slate-400">Welcome back. Here&apos;s what&apos;s happening.</p>
       </div>
 
       {/* Stats */}

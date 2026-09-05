@@ -180,7 +180,7 @@ export default function ProProfilePage() {
     return (
       <div className="mx-auto max-w-lg py-10">
         <EditorialCard className="text-center">
-          <p className="font-display text-xl text-ink">Couldn't load your profile</p>
+          <p className="font-display text-xl text-ink">Couldn&apos;t load your profile</p>
           <p className="mt-2 text-sm text-muted">Refresh the page, or try again in a moment.</p>
           <EditorialButton variant="ghost" className="mt-4" onClick={() => profileQ.refetch()}>
             Try again

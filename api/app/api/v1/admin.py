@@ -42,12 +42,13 @@ from app.models.learning import (
     InstructorProfile,
     InstructorStatus,
 )
-from app.models.media import MediaAsset
+from app.models.booking import ProPackage
+from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.niche import Niche, NicheTierPolicy, ProNicheSkill, ProNicheSkillEvent, SkillTier
-from app.models.discovery import AnalyticsEvent
+from app.models.discovery import AnalyticsEvent, ProPublicIndex
 from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
 from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
-from app.models.payouts import PayoutAccountStatus, EarningsSourceType
+from app.models.payouts import EarningsSourceType, PayoutAccount, PayoutAccountStatus
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.models.proof_of_gigs import RawwIssuanceCap, RawwIssuanceRule, RawwMintEvent, RawwMultiplierPolicy
 from app.models.client_rewards_pricing import (
@@ -70,6 +71,9 @@ from app.models.launch_ops import (
 from app.schemas.admin import (
     AdminProApprovalRequest,
     AdminProApprovalResponse,
+    AdminProReviewDetail,
+    AdminProReviewQueueResponse,
+    AdminProReviewRow,
     AbuseSignalView,
     AdminGigStatusUpdateRequest,
     AdminRefundCreateRequest,
@@ -160,6 +164,7 @@ from app.schemas.launch_ops import (
 from app.services.audit import add_admin_audit_log
 from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig, total_succeeded_amount_for_gig
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.media_urls import resolve_image_urls
 from app.services.launch_ops import onboarding_checks
 from app.services.payouts import get_or_create_payout_account
 from app.services.gig_state import transition_gig
@@ -578,6 +583,135 @@ def approve_pro_onboarding(
     db.commit()
     db.refresh(row)
     return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+def _review_row(db: Session, onboarding: ProOnboarding) -> AdminProReviewRow:
+    pro_user_id = onboarding.pro_user_id
+    profile = db.get(ProProfile, pro_user_id)
+    checks = onboarding_checks(db, pro_user_id=pro_user_id)
+    index = db.get(ProPublicIndex, pro_user_id)
+    account = db.get(PayoutAccount, pro_user_id)
+
+    cover_url = None
+    if profile and profile.cover_media_asset_id:
+        cover_url = resolve_image_urls(db, [profile.cover_media_asset_id]).get(profile.cover_media_asset_id)
+
+    # The four the reviewer can do nothing about themselves; KYC is what
+    # they are here to decide, so it is not listed as "missing".
+    missing = [
+        key for key in ("profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected")
+        if not checks.get(key)
+    ]
+
+    return AdminProReviewRow(
+        pro_user_id=pro_user_id,
+        display_name=profile.display_name if profile else None,
+        headline=profile.headline if profile else None,
+        city=(onboarding.current_city or {}).get("city") if onboarding.current_city else (profile.city if profile else None),
+        country=(onboarding.current_city or {}).get("country") if onboarding.current_city else (profile.country if profile else None),
+        onboarding_status=onboarding.status,
+        kyc_status=profile.kyc_status.value if profile else "unsubmitted",
+        portfolio_photo_count=int(checks.get("portfolio_count") or 0),
+        portfolio_minimum=int(checks.get("portfolio_min_required") or 12),
+        active_packages=int(checks.get("active_packages_count") or 0),
+        min_price=index.min_package_price if index else None,
+        currency=index.currency if index else "EUR",
+        cover_url=cover_url,
+        ready_to_approve=not missing,
+        missing=missing,
+        payout_blocked=(account is None or account.status != PayoutAccountStatus.active),
+        submitted_at=onboarding.updated_at,
+    )
+
+
+@router.get("/pros/review-queue", response_model=AdminProReviewQueueResponse)
+def pro_review_queue(
+    status: ProOnboardingStatus | None = None,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminProReviewQueueResponse:
+    """Photographers waiting on a decision, with enough per row to make it.
+
+    Defaults to the ones actually awaiting review rather than every
+    onboarding row ever created - the queue should be work to do, not a
+    log.
+    """
+    stmt = select(ProOnboarding).order_by(ProOnboarding.updated_at.asc())
+    if status:
+        stmt = stmt.where(ProOnboarding.status == status)
+    else:
+        stmt = stmt.where(
+            ProOnboarding.status.in_(
+                [
+                    ProOnboardingStatus.ready_for_review,
+                    ProOnboardingStatus.kyc_submitted,
+                    ProOnboardingStatus.kyc_approved,
+                ]
+            )
+        )
+    rows = db.execute(stmt.limit(200)).scalars().all()
+    items = [_review_row(db, row) for row in rows]
+    db.commit()
+    return AdminProReviewQueueResponse(items=items)
+
+
+@router.get("/pros/{pro_user_id}/review", response_model=AdminProReviewDetail)
+def pro_review_detail(
+    pro_user_id: uuid.UUID,
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminProReviewDetail:
+    onboarding = db.get(ProOnboarding, pro_user_id)
+    if not onboarding:
+        raise APIError(code="not_found", message="No onboarding record for this user", status_code=404)
+    profile = db.get(ProProfile, pro_user_id)
+    if not profile:
+        raise APIError(code="not_found", message="Pro profile not found", status_code=404)
+
+    assets = db.execute(
+        select(MediaAsset)
+        .where(
+            MediaAsset.owner_user_id == pro_user_id,
+            MediaAsset.purpose == MediaPurpose.portfolio_reel,
+            MediaAsset.kind == MediaKind.photo,
+            MediaAsset.status == MediaStatus.ready,
+        )
+        .order_by(MediaAsset.created_at.desc())
+        .limit(24)
+    ).scalars().all()
+    urls = resolve_image_urls(db, [a.id for a in assets])
+
+    packages = db.execute(
+        select(ProPackage, Niche.slug)
+        .join(Niche, Niche.id == ProPackage.niche_id)
+        .where(ProPackage.pro_user_id == pro_user_id, ProPackage.is_active.is_(True))
+        .order_by(ProPackage.price.asc())
+    ).all()
+    account = get_or_create_payout_account(db, pro_user_id=pro_user_id)
+    row = _review_row(db, onboarding)
+    db.commit()
+
+    return AdminProReviewDetail(
+        row=row,
+        bio=profile.bio,
+        languages=list(profile.languages or []),
+        styles=list(profile.styles or []),
+        travel_radius_km=profile.travel_radius_km,
+        checks=onboarding_checks(db, pro_user_id=pro_user_id),
+        portfolio_urls=[urls[a.id] for a in assets if a.id in urls],
+        packages=[
+            {
+                "title": pkg.title,
+                "niche_slug": slug,
+                "price": str(pkg.price),
+                "currency": pkg.currency,
+                "included_photos": pkg.included_photos,
+                "duration_minutes": pkg.duration_minutes,
+            }
+            for pkg, slug in packages
+        ],
+        payout_account_status=account.status.value,
+    )
 
 
 @router.post("/pros/{pro_user_id}/approve", response_model=AdminProApprovalResponse)

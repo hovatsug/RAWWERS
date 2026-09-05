@@ -49,6 +49,13 @@ function readStoredSession(): StoredSession | null {
   }
 }
 
+/** The current access token, for callers that build their own request
+ *  (the admin proxy) rather than going through apiGet/apiPost. Exported so
+ *  the session storage key stays defined in exactly one place. */
+export function getAccessToken(): string | null {
+  return readStoredSession()?.accessToken ?? null;
+}
+
 function writeRefreshedTokens(accessToken: string, refreshToken: string): void {
   if (typeof window === "undefined") return;
   const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);

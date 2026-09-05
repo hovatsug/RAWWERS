@@ -9,6 +9,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 os.environ.setdefault("APP_ENV", "development")
+# Forced empty, not setdefault: when ADMIN_API_KEYS is configured,
+# require_admin enforces the X-Admin-Api-Key header, and every admin test
+# in this suite sends an empty one. Inheriting a real key from a developer's
+# .env turns those into 403s that look like product failures - which is
+# exactly what happened, and a code-only HEAD baseline could not see it
+# because the environment was identical in both arms.
+#
+# Enforcement itself is covered directly by test_admin_api_key_enforcement.py
+# rather than by making every admin test carry a header.
+os.environ["ADMIN_API_KEYS"] = ""
 os.environ.setdefault("LOG_LEVEL", "DEBUG")
 # Deliberately not SQLite: production runs Postgres, and several models use
 # Postgres-only types (e.g. JSONB) that SQLite can't compile at all.

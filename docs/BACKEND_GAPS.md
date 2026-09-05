@@ -454,6 +454,34 @@ anomaly window), and start from there.
 Note the anomaly rule when doing so: moving `available_at` no longer
 triggers it, but touching `payout_account.updated_at` does.
 
+## Setting `ADMIN_API_KEYS` broke two tests, and my baseline could not see it
+
+Recording the method failure, not just the fix.
+
+Commit `1f388d4a` set `ADMIN_API_KEYS` locally so the admin panel could be
+built. Every admin test in the suite sends `X-Admin-Api-Key: ""`, so with
+a key configured `require_admin` refused them: two tests in
+`test_disputes_refunds` began returning 403 and I reported them as
+pre-existing.
+
+**The baseline was wrong in a way that could not fail.** I compared code
+at HEAD against code with changes using a git worktree - but ran both arms
+in the same container against the same `.env`. The variable that actually
+mattered was held constant, so the comparison was guaranteed to show no
+difference. It agreed with itself.
+
+Caught only because a 403 turned up in a dispute test where a product
+error was expected. The decisive check was one line: run with
+`ADMIN_API_KEYS=` unset. 3 failures became 1.
+
+`conftest.py` now forces `ADMIN_API_KEYS=""` for the suite, and
+`test_admin_api_key_enforcement.py` covers the guard directly - wrong key
+refused, missing key refused, right key accepted - so pinning it for tests
+does not leave enforcement uncovered.
+
+**Correction to commit `20870b97`:** it states that `test_disputes_refunds`
+"already had these same 3 at HEAD". One was pre-existing; two were mine.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

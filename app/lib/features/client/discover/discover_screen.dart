@@ -11,7 +11,7 @@ import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/discover/discover_controller.dart';
 import 'package:rawwers/features/client/discover/location_controller.dart';
-import 'package:rawwers/features/client/discover/widgets/discover_card.dart';
+import 'package:rawwers/features/shared/discover/discover_card.dart';
 import 'package:rawwers/features/client/discover/widgets/location_prompt.dart';
 
 class DiscoverScreen extends ConsumerWidget {

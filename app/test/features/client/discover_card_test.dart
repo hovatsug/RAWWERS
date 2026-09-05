@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
-import 'package:rawwers/features/client/discover/widgets/discover_card.dart';
+import 'package:rawwers/features/shared/discover/discover_card.dart';
 
 /// Discover is the first screen a client sees, so the cover photo reaching the
 /// screen is the thing worth pinning down. `Image.network` cannot actually

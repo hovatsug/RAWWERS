@@ -27,6 +27,8 @@ class ProSettingsScreen extends ConsumerWidget {
     this.gearPath,
     this.portfolioPath,
     this.pricingPath,
+    this.onboardingPath,
+    this.listingPath,
     this.availabilityPath,
     super.key,
   });
@@ -36,6 +38,8 @@ class ProSettingsScreen extends ConsumerWidget {
   final String? gearPath;
   final String? portfolioPath;
   final String? pricingPath;
+  final String? onboardingPath;
+  final String? listingPath;
   final String? availabilityPath;
 
   @override
@@ -84,11 +88,29 @@ class ProSettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: RSpace.s24),
+              if (onboardingPath != null) ...[
+                RCard(
+                  child: _NavRow(
+                    label: 'Getting set up',
+                    detail: 'What is left before clients can book you',
+                    onTap: () => context.go(onboardingPath!),
+                  ),
+                ),
+                const SizedBox(height: RSpace.s24),
+              ],
               _SectionLabel('Your work'),
               RCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (listingPath != null) ...[
+                      _NavRow(
+                        label: 'Your listing',
+                        detail: 'See your card exactly as a client does',
+                        onTap: () => context.go(listingPath!),
+                      ),
+                      const Divider(height: RSpace.s24),
+                    ],
                     if (profileEditPath != null)
                       _NavRow(
                         label: 'Profile',

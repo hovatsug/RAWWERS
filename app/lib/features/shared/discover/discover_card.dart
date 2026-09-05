@@ -5,6 +5,11 @@ import 'package:rawwers/design/tokens.dart';
 
 /// One photographer in the Discover list.
 ///
+/// Lives in shared, not under client, because the pro app renders the same
+/// widget for the listing preview. A photographer being shown a copy of
+/// their card would eventually be shown a card that no longer matches what
+/// a client sees, and the whole point of the preview is that it does.
+///
 /// Photo-led on purpose: this is the first screen a client sees, and nobody
 /// picks a photographer from a price range. The cover is a 3:2 frame - the
 /// native aspect of most cameras - and the text sits beneath it rather than

@@ -29,6 +29,7 @@ class ProSettingsScreen extends ConsumerWidget {
     this.pricingPath,
     this.onboardingPath,
     this.listingPath,
+    this.payoutsPath,
     this.availabilityPath,
     super.key,
   });
@@ -40,6 +41,7 @@ class ProSettingsScreen extends ConsumerWidget {
   final String? pricingPath;
   final String? onboardingPath;
   final String? listingPath;
+  final String? payoutsPath;
   final String? availabilityPath;
 
   @override
@@ -154,7 +156,16 @@ class ProSettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: RSpace.s24),
               _SectionLabel('Payouts'),
-              const _PayoutStatus(),
+              if (payoutsPath != null)
+                RCard(
+                  child: _NavRow(
+                    label: 'Getting paid',
+                    detail: 'Set up where your earnings go, and see what is settling',
+                    onTap: () => context.go(payoutsPath!),
+                  ),
+                )
+              else
+                const _PayoutStatus(),
               const SizedBox(height: RSpace.s24),
               _SectionLabel('Notifications'),
               const _NotificationChannels(),

@@ -363,6 +363,58 @@ by a system transition when the selection is submitted and payment has
 settled. Not a hole in the loop - the photographer is credited either way -
 but any logic keyed on `final_delivered` is dead.
 
+## UNVERIFIED: Stripe Connect onboarding is built but has never run against Connect
+
+Connect is not enabled on the platform's Stripe account, so the whole
+onboarding path is **structurally correct and unproven**. Being precise
+about which is which, because the failure mode is a photographer who
+completes onboarding and still cannot be paid.
+
+**Proven, against real Stripe:**
+
+- `POST /v1/pro/payouts/connect/account` with Connect disabled returns
+  502 carrying Stripe's own sentence: *"You can only create new accounts
+  if you've signed up for Connect…"*. The readable-error path works.
+- `GET /v1/pro/payouts/connect/status` with no account returns `not_set`
+  without calling Stripe at all.
+
+**Proven, but only against a fake Stripe:**
+
+- Account creation is idempotent - a stored account id is returned rather
+  than creating a second one that would strand completed onboarding.
+- The photographer's own country is sent, not the platform's. Country
+  cannot be changed after creation.
+- A new account is `pending_verification`, never `active`.
+- Every onboarding-link request mints a fresh link.
+- `status_from_account` and the `account.updated` webhook classify
+  identically, so the two paths cannot disagree.
+
+**Not proven at all:**
+
+- That the request shapes are what Stripe expects. They come from the API
+  reference, not from a successful call.
+- That hosted onboarding returns to the deep link in `CONNECT_RETURN_URL`.
+- **That `account.updated` actually fires and moves the account to
+  `active`.** This is the transition that turns "pending" into "you can
+  be paid". If it silently does not arrive, a photographer completes
+  onboarding and stays blocked with no error anywhere. The endpoint reads
+  status live from Stripe and reconciles on every open, so a dropped
+  event self-heals when they next look - but that mitigation is itself
+  unproven.
+
+**To verify once Connect is enabled:** create a real Express account,
+complete onboarding with Stripe's test identity, and watch the webhook
+the way the payment webhook was watched - confirm the row actually moves
+to `active`, not just that a 200 came back.
+
+## Flutter payouts needs `url_launcher`
+
+The payouts screen takes an `openUrl` callback rather than opening the
+hosted Stripe URL itself, because opening an external browser needs
+`url_launcher` and that is not a dependency of this project yet. The
+fallback copies the link to the clipboard and says it expires shortly.
+That is honest but poor; the real flow needs the dependency approved.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

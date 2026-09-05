@@ -74,6 +74,8 @@ export 'complete_photo_upload_response.dart';
 export 'confirm_slot_request.dart';
 export 'confirmed_slot_status.dart';
 export 'confirmed_slot_view.dart';
+export 'connect_onboarding_link_response.dart';
+export 'connect_status_response.dart';
 export 'consent_channel.dart';
 export 'consent_scope.dart';
 export 'consent_update_request.dart';

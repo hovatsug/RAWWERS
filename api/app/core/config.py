@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     mux_signing_key_private: str = Field(default="", alias="MUX_SIGNING_KEY_PRIVATE")
 
     stripe_secret_key: str = Field(default="", alias="STRIPE_SECRET_KEY")
+    # Express accounts take a country at creation that cannot be changed
+    # later; used only when a photographer's own country is unknown.
+    default_connect_country: str = Field(default="PT", alias="DEFAULT_CONNECT_COUNTRY")
+    # Where Stripe returns the photographer after hosted onboarding. A deep
+    # link the pro app handles, not a web page.
+    connect_return_url: str = Field(default="rawwerspro://payouts/return", alias="CONNECT_RETURN_URL")
+    connect_refresh_url: str = Field(default="rawwerspro://payouts/refresh", alias="CONNECT_REFRESH_URL")
     stripe_webhook_secret: str = Field(default="", alias="STRIPE_WEBHOOK_SECRET")
     stripe_api_version: str | None = Field(default=None, alias="STRIPE_API_VERSION")
     stripe_webhook_allow_unverified: bool = Field(default=False, alias="STRIPE_WEBHOOK_ALLOW_UNVERIFIED")

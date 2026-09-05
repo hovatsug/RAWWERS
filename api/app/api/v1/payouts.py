@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
@@ -10,10 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_admin, require_not_banned
 from app.core.errors import APIError
-from app.models.admin import Dispute
+from app.core.config import get_settings
+from app.models.admin import Dispute, ProProfile, UserAccount
 from app.models.payouts import EarningsHold, EarningsSourceType, PayoutRequestStatus, PlatformFeePolicy
 from app.schemas.media import CurrentUser
 from app.schemas.payouts import (
+    ConnectOnboardingLinkResponse,
+    ConnectStatusResponse,
     AdminFinanceProDetailResponse,
     AdminFinanceProItem,
     AdminFinanceProsResponse,
@@ -33,6 +36,12 @@ from app.schemas.payouts import (
     PayoutRequestView,
 )
 from app.services.audit import add_admin_audit_log
+from app.services.stripe_connect import (
+    connect_status,
+    create_onboarding_link,
+    ensure_connect_account,
+    status_from_account,
+)
 from app.services.authz import get_user_roles
 from app.models.admin import UserRoleType
 from app.services.payouts import (
@@ -53,6 +62,7 @@ from app.services.payouts import (
     upsert_payout_account,
 )
 
+settings = get_settings()
 router = APIRouter(tags=["payouts"])
 
 
@@ -140,6 +150,102 @@ def put_my_payout_account(
     db.commit()
     db.refresh(row)
     return PayoutAccountView.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/payouts/connect/account", response_model=PayoutAccountView)
+def create_my_connect_account(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> PayoutAccountView:
+    """Create the photographer's Stripe Express account, or return theirs.
+
+    Idempotent: an account id we already hold is returned untouched. A
+    second account would strand whatever onboarding they had completed
+    against the first.
+    """
+    _ensure_pro_user(db, user.user_id)
+    account_row = db.get(UserAccount, user.user_id)
+    profile = db.get(ProProfile, user.user_id)
+    row = ensure_connect_account(
+        db,
+        pro_user_id=user.user_id,
+        email=account_row.email if account_row else None,
+        country=profile.country if profile else None,
+    )
+    db.commit()
+    db.refresh(row)
+    return PayoutAccountView.model_validate(row, from_attributes=True)
+
+
+@router.post("/pro/payouts/connect/onboarding-link", response_model=ConnectOnboardingLinkResponse)
+def create_my_connect_onboarding_link(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ConnectOnboardingLinkResponse:
+    """A fresh hosted-onboarding link, minted per request.
+
+    Never cached and never reused: Stripe account links expire within
+    minutes and are single use. The client asks again rather than storing
+    one, and Stripe's refresh_url points back at this endpoint so a stale
+    link becomes another attempt rather than a dead end.
+    """
+    _ensure_pro_user(db, user.user_id)
+    account_row = db.get(UserAccount, user.user_id)
+    profile = db.get(ProProfile, user.user_id)
+    row = ensure_connect_account(
+        db,
+        pro_user_id=user.user_id,
+        email=account_row.email if account_row else None,
+        country=profile.country if profile else None,
+    )
+    db.commit()
+
+    url = create_onboarding_link(
+        stripe_account_id=row.stripe_connect_account_id,
+        return_url=settings.connect_return_url,
+        refresh_url=settings.connect_refresh_url,
+    )
+    return ConnectOnboardingLinkResponse(url=url, stripe_account_id=row.stripe_connect_account_id)
+
+
+@router.get("/pro/payouts/connect/status", response_model=ConnectStatusResponse)
+def get_my_connect_status(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ConnectStatusResponse:
+    """What Stripe thinks right now, and what it is still waiting for.
+
+    Read live rather than trusting our stored status: the account.updated
+    webhook is what normally moves it, and if that silently fails to
+    arrive a photographer would sit at "pending" forever with no way to
+    find out why. This gives them - and us - a second source.
+    """
+    _ensure_pro_user(db, user.user_id)
+    row = get_or_create_payout_account(db, pro_user_id=user.user_id)
+    db.commit()
+
+    if not row.stripe_connect_account_id:
+        return ConnectStatusResponse(account_status=row.status.value)
+
+    live = connect_status(stripe_account_id=row.stripe_connect_account_id)
+    derived = status_from_account(live)
+    # Reconciled here as well as by webhook, so a dropped event self-heals
+    # the next time the photographer opens the screen.
+    if row.status != derived:
+        row.status = derived
+        row.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
+    return ConnectStatusResponse(
+        stripe_account_id=live["stripe_account_id"],
+        account_status=derived.value,
+        charges_enabled=live["charges_enabled"],
+        payouts_enabled=live["payouts_enabled"],
+        details_submitted=live["details_submitted"],
+        currently_due=live["currently_due"],
+        past_due=live["past_due"],
+        disabled_reason=live["disabled_reason"],
+    )
 
 
 @router.get("/admin/finance/pros", response_model=AdminFinanceProsResponse)

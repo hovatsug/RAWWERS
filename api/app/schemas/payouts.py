@@ -150,3 +150,27 @@ class AdminFinanceProDetailResponse(BaseModel):
     holds: list[EarningsHoldView] = Field(default_factory=list)
     recent_disputes: list[dict] = Field(default_factory=list)
     recent_payouts: list[PayoutRequestView] = Field(default_factory=list)
+
+
+class ConnectOnboardingLinkResponse(BaseModel):
+    """A single-use hosted-onboarding URL.
+
+    Not cached anywhere: Stripe account links expire within minutes and
+    are consumed on first use, so a stored one is a broken one.
+    """
+
+    url: str
+    stripe_account_id: str
+
+
+class ConnectStatusResponse(BaseModel):
+    stripe_account_id: str | None = None
+    account_status: str
+    charges_enabled: bool = False
+    payouts_enabled: bool = False
+    details_submitted: bool = False
+    # What Stripe is still waiting for. The difference between telling a
+    # photographer "pending" and telling them what to go and do.
+    currently_due: list[str] = Field(default_factory=list)
+    past_due: list[str] = Field(default_factory=list)
+    disabled_reason: str | None = None

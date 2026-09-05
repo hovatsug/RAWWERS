@@ -11,6 +11,7 @@ import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
 import 'package:rawwers/features/pro/gear/gear_screen.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_screen.dart';
 import 'package:rawwers/features/pro/onboarding/onboarding_screen.dart';
+import 'package:rawwers/features/pro/payouts/payouts_screen.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/profile/pro_profile_edit_screen.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
@@ -52,6 +53,7 @@ abstract final class ProRoute {
   static const pricing = '/settings/pricing';
   static const onboarding = '/getting-set-up';
   static const listing = '/listing';
+  static const payouts = '/settings/payouts';
   static const availability = '/settings/availability';
 }
 
@@ -107,12 +109,14 @@ GoRouter proRouter(Ref ref) {
         pricingPath: ProRoute.pricing,
         onboardingPath: ProRoute.onboarding,
         listingPath: ProRoute.listing,
+        payoutsPath: ProRoute.payouts,
         availabilityPath: ProRoute.availability,
       )),
       GoRoute(path: ProRoute.profileEdit, builder: (context, state) => const ProProfileEditScreen()),
       GoRoute(path: ProRoute.gear, builder: (context, state) => const GearScreen()),
       GoRoute(path: ProRoute.portfolio, builder: (context, state) => const PortfolioScreen()),
       GoRoute(path: ProRoute.pricing, builder: (context, state) => const PricingScreen()),
+      GoRoute(path: ProRoute.payouts, builder: (context, state) => const PayoutsScreen()),
       GoRoute(
         path: ProRoute.listing,
         builder: (context, state) => const ListingPreviewScreen(

@@ -455,4 +455,191 @@ abstract class PayoutsClient {
       },
     },
   });
+  @POST("/v1/pro/payouts/connect/account")
+  Future<HttpResponse<PayoutAccountView>>
+  createMyConnectAccountV1ProPayoutsConnectAccountPost({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['payouts'],
+      'summary': 'Create My Connect Account',
+      'description':
+          'Create the photographer\'s Stripe Express account, or return theirs.\n\nIdempotent: an account id we already hold is returned untouched. A\nsecond account would strand whatever onboarding they had completed\nagainst the first.',
+      'operationId':
+          'create_my_connect_account_v1_pro_payouts_connect_account_post',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/PayoutAccountView'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @POST("/v1/pro/payouts/connect/onboarding-link")
+  Future<HttpResponse<ConnectOnboardingLinkResponse>>
+  createMyConnectOnboardingLinkV1ProPayoutsConnectOnboardingLinkPost({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['payouts'],
+      'summary': 'Create My Connect Onboarding Link',
+      'description':
+          'A fresh hosted-onboarding link, minted per request.\n\nNever cached and never reused: Stripe account links expire within\nminutes and are single use. The client asks again rather than storing\none, and Stripe\'s refresh_url points back at this endpoint so a stale\nlink becomes another attempt rather than a dead end.',
+      'operationId':
+          'create_my_connect_onboarding_link_v1_pro_payouts_connect_onboarding_link_post',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ConnectOnboardingLinkResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @GET("/v1/pro/payouts/connect/status")
+  Future<HttpResponse<ConnectStatusResponse>>
+  getMyConnectStatusV1ProPayoutsConnectStatusGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['payouts'],
+      'summary': 'Get My Connect Status',
+      'description':
+          'What Stripe thinks right now, and what it is still waiting for.\n\nRead live rather than trusting our stored status: the account.updated\nwebhook is what normally moves it, and if that silently fails to\narrive a photographer would sit at "pending" forever with no way to\nfind out why. This gives them - and us - a second source.',
+      'operationId': 'get_my_connect_status_v1_pro_payouts_connect_status_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ConnectStatusResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
 }

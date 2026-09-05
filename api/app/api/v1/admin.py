@@ -15,6 +15,10 @@ from app.models.admin import (
     BanAction,
     BanActionType,
     DisputeCategory,
+    # Was missing: update_pro_kyc referenced KYCStatus and raised NameError
+    # on every approval, so the only gate between a photographer and going
+    # live returned a 500.
+    KYCStatus,
     DisputeEvent,
     DisputeActorType,
     Dispute,

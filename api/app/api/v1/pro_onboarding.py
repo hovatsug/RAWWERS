@@ -23,7 +23,7 @@ from app.models.booking import (
 )
 from app.models.gig import Gig, GigStatus
 from app.models.client_rewards_pricing import ExtraImagePricingPolicy, ProExtraImagePrice
-from app.models.media import MediaAsset, MediaKind, MediaPurpose
+from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
 from app.schemas.media import CurrentUser
 from app.schemas.niche import (
@@ -628,6 +628,14 @@ def update_my_niches(
         if row.niche_id not in incoming_by_niche_id:
             db.delete(row)
 
+    # Sessions here are autoflush=False, so rows added above are invisible
+    # to the SELECT below until flushed - and the primary block would then
+    # insert a second ProNiche for a niche already being added, violating
+    # uq_pro_niche_pro_niche. That fires whenever primary_niche_slug names
+    # a niche that is also in the list, which is the ordinary way to call
+    # this endpoint.
+    db.flush()
+
     explicit_primary_slug = body.primary_niche_slug
     if explicit_primary_slug:
         primary_niche_id = niche_map[explicit_primary_slug].id
@@ -743,6 +751,7 @@ def get_my_portfolio(
         ProPortfolioItem(
             media_asset_id=asset.id,
             kind=asset.kind.value,
+            status=asset.status.value,
             thumbnail_url=urls.get(asset.id),
             niche_slugs=sorted(asset.niche_tags or []),
             is_cover=profile.cover_media_asset_id == asset.id,
@@ -751,10 +760,15 @@ def get_my_portfolio(
         for asset in assets
     ]
     db.commit()
+    # Counted the same way onboarding_checks counts, which is `ready` only.
+    # Uploading sets `processing` and hands off to a worker, so counting
+    # every asset showed a photographer "12 of 12" on this screen while the
+    # onboarding step still read as incomplete - the same number meaning two
+    # different things on two screens.
     return ProPortfolioResponse(
         items=items,
-        photo_count=sum(1 for a in assets if a.kind == MediaKind.photo),
-        video_count=sum(1 for a in assets if a.kind == MediaKind.video),
+        photo_count=sum(1 for a in assets if a.kind == MediaKind.photo and a.status == MediaStatus.ready),
+        video_count=sum(1 for a in assets if a.kind == MediaKind.video and a.status == MediaStatus.ready),
         photo_minimum=PORTFOLIO_MIN_PHOTOS,
     )
 

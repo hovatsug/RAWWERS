@@ -793,6 +793,15 @@ def pro_listing_preview(
     card = _cards_from_index(db, [index])[0]
 
     reasons: list[str] = []
+    # Discover joins ProOnboarding and requires approved_public, so a pro who
+    # has activated but not been published is invisible. Without this the
+    # preview said "clients can find you" to someone nobody could find -
+    # the one thing a preview must never do.
+    onboarding = db.execute(
+        select(ProOnboarding).where(ProOnboarding.pro_user_id == user.user_id)
+    ).scalar_one_or_none()
+    if onboarding is None or onboarding.status != ProOnboardingStatus.approved_public:
+        reasons.append("not_published_yet")
     if index.kyc_status != KYCStatus.approved:
         reasons.append("kyc_not_approved")
     if not index.is_accepting_bookings:

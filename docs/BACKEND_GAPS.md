@@ -266,6 +266,64 @@ throwing). Adding `id` was safe because a uuid serialises as a string, but
 the next field that is not a string will not be. Third instance of the
 unenforced-shape pattern recorded in this document.
 
+## Found by the first end-to-end run
+
+Four defects, all on the path a real photographer takes. None were
+reachable from unit tests, because each needed the previous step to have
+actually happened.
+
+### ~~`POST /v1/admin/pros/{id}/kyc` raised NameError on every call~~ — FIXED
+
+`KYCStatus` was never imported in `admin.py`, so the branch that awards a
+referral reward on first approval raised `NameError` and the endpoint
+returned a 500 — every time. This is the only gate between a photographer
+and going live, and it had never worked.
+
+### ~~`PUT /v1/pro/me/niches` 500s when the primary niche is also in the list~~ — FIXED
+
+Sessions are `autoflush=False`, so a `ProNiche` added in the first loop was
+invisible to the `SELECT` in the primary-niche block, which then inserted a
+second row for the same niche and violated `uq_pro_niche_pro_niche`. It
+fires whenever `primary_niche_slug` names a niche that is also in `niches`
+— the ordinary way to call it. Fixed with a `db.flush()`.
+
+### ~~`GET /v1/pro/me/portfolio` counted photos differently from onboarding~~ — FIXED
+
+`complete_photo_upload` sets `processing` and hands off to a worker;
+`onboarding_checks` counts only `ready`. The portfolio endpoint counted
+every asset, so a photographer saw "12 of 12" on the portfolio screen while
+the onboarding step still read incomplete. Now counts `ready` only, and
+each item carries its `status` so the grid can say "Processing" instead of
+showing a blank tile that reads as a failed upload.
+
+### ~~The listing preview said "live" to a pro nobody could find~~ — FIXED
+
+Going live takes **two** admin approvals, not one: KYC, and then publishing
+the listing (`POST /v1/admin/onboarding/pros/{id}/approve`, which sets
+onboarding status to `approved_public`). Discover joins `ProOnboarding` and
+requires that status. The preview checked KYC, accepting-bookings,
+completeness and pricing — but not the publish gate — so an activated but
+unpublished photographer was told "clients can find you". Now reported as
+`not_published_yet`.
+
+## UNEXPLAINED: a Stripe event marked delivered without its effect landing
+
+During the end-to-end run, `payment_intent.succeeded` was signature-verified,
+accepted (200), and its outbox row ended `delivered` with `attempts=0` — but
+the `StripePayment` row stayed `pending` and the gig stayed `payment_pending`.
+Replaying the *same stored payload* through `_apply_stripe_event` applied it
+correctly, so the applier is not the problem.
+
+This should not be possible: `mark_outbox_delivered` only flushes, so the
+delivery mark and the payment update share one transaction — either both
+commit or neither does. Not reproduced a second time, and not explained.
+
+Recorded rather than diagnosed, because the failure mode is the worst kind:
+a client is charged, Stripe says succeeded, and the gig silently stays
+unpaid with no error anywhere. Worth reproducing deliberately before
+launch — run a second payment end to end and watch the outbox row and the
+worker together.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

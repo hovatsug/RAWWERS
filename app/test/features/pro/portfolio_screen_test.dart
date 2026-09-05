@@ -51,10 +51,12 @@ ProPortfolioItem _item({
   String id = 'a1',
   bool isCover = false,
   List<String>? niches,
+  String status = 'ready',
 }) =>
     ProPortfolioItem(
       mediaAssetId: id,
       kind: 'photo',
+      status: status,
       thumbnailUrl: null,
       nicheSlugs: niches,
       isCover: isCover,
@@ -111,6 +113,18 @@ void main() {
     await tester.pump();
 
     expect(find.text('Untagged'), findsOneWidget);
+  });
+
+  testWidgets('a photo still being processed says so', (tester) async {
+    // Uploading sets `processing` and hands off to a worker. A blank tile
+    // with no explanation reads as a failed upload.
+    await tester.pumpWidget(_wrap(
+      portfolio: () => _FakePortfolio(_response(photos: 1, items: [_item(status: 'processing')])),
+    ));
+    await tester.pump();
+
+    expect(find.text('Processing'), findsOneWidget);
+    expect(find.text('Untagged'), findsNothing);
   });
 
   testWidgets('the cover is marked', (tester) async {

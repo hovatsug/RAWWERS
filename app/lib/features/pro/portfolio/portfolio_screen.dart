@@ -222,7 +222,9 @@ class _Tile extends StatelessWidget {
           // An untagged photo is invisible to niche filtering, which is how
           // most clients arrive - worth showing on the tile rather than
           // making someone open each one to find out.
-          if (!tagged)
+          if (item.status != 'ready')
+            const Positioned(right: 4, bottom: 4, child: _Badge(label: 'Processing'))
+          else if (!tagged)
             const Positioned(right: 4, bottom: 4, child: _Badge(label: 'Untagged')),
         ],
       ),

@@ -149,44 +149,67 @@ client rescues these four operations by path allowlist in
 to look when wondering why `repairs_client.dart` exists in an app with no
 repairs feature.
 
-## LAUNCH BLOCKER for one niche: working hours cannot cross midnight
+## ~~Working hours cannot cross midnight~~ — FIXED
 
-`PUT /v1/pro/scheduling/availability-rules` rejects any rule whose
-`end_local` is not after `start_local`:
+A rule whose `end_local` is not after its `start_local` now means it ends
+the next day, with `weekday` anchoring the start: Friday 20:00-02:00 is
+Friday night into Saturday morning and belongs to Friday.
+
+The comparison lived in three places and each assumed a rule began and
+ended on the same day. All three now go through
+`app/services/availability_rules.py`, which anchors a rule to its start
+date and follows it past midnight - the save validation, the slot check,
+the booking-request check, and the slot generator.
+
+Wrapping rules are capped at 16 hours. Without a bound, `20:00-19:00` - a
+plausible typo - reads as 23 hours of availability rather than a mistake.
+All-day availability is a non-wrapping `00:00-23:59` and is unaffected.
+
+The deprecated `POST /v1/pro/me/availability/rules` still rejects wrapping
+rules. Teaching a retiring route a new trick is the wrong direction; its
+deprecation notice carries the reason.
+
+Fixing this also corrected a latent leniency: the old checks compared bare
+times, so a slot running from 23:30 to 00:30 passed against a same-day
+rule because `00:30 <= 23:59` reads as true. It now correctly refuses,
+unless a wrapping rule genuinely covers it.
+
+## DST: a shift crossing spring-forward books an hour that does not exist
+
+Pre-existing and not fixed here, but crossing midnight makes it far more
+reachable, so the mechanism is worth writing down rather than rediscovering.
+
+Every conversion in the scheduling path builds local times with
+`datetime.combine(d, t).replace(tzinfo=ZoneInfo(...))`. `replace` attaches
+a zone without asking which side of a transition the time falls on, so on
+a spring-forward night it silently takes the pre-transition offset.
+
+Concretely, a Europe/Lisbon rule of 22:00-04:00 across 28 March 2027,
+when clocks jump 01:00 to 02:00:
 
 ```
-422 {"code": "validation_error", "message": "start_local must be before end_local"}
+local start : 2027-03-27 22:00:00+00:00   utc 22:00
+local end   : 2027-03-28 04:00:00+01:00   utc 03:00
+wall-clock span: 6:00:00      real elapsed: 5:00:00
 ```
 
-So a photographer who works 20:00 to 02:00 cannot describe their hours at
-all. `events_nightlife` ("Events & Nightlife") is a seeded niche with its
-own power decay curve tuned for long shoots, so the product ships a
-category whose practitioners cannot enter realistic availability.
+Two consequences:
 
-If such a rule did exist in the database, both availability checks would
-then refuse every slot, including squarely mid-shift, because both compare
-plain times without handling a wrap:
+1. `generate_candidate_slots` steps in wall-clock increments from the local
+   start, so it emits a slot at 01:30 local - a time that does not occur
+   that night. `replace(tzinfo=tz)` resolves it to 01:30+00:00, which is
+   02:30 local after the jump. A client books "01:30" and is booked at
+   02:30.
+2. The shift is an hour shorter than the rule claims, so the last slot of
+   the night falls outside the real window. Autumn's fall-back is the
+   mirror image: an ambiguous 01:30 resolves to one of two real instants
+   with no rule about which.
 
-| slot against a 20:00-02:00 rule | `validate_slot_available` | `_validate_availability` |
-| --- | --- | --- |
-| 21:00-22:00 (mid-shift) | refuses | refuses |
-| 00:30-01:30 (after midnight) | refuses | refuses |
-| 20:00-21:00 (start of shift) | refuses | refuses |
-
-`_is_in_quiet_hours` in `notifications.py` handles exactly this shape
-correctly (`if start < end: ... else: now >= start or now < end`), so the
-pattern is already established in the codebase - it just was not applied
-here.
-
-Not fixed: how overnight availability should be modelled is a product
-decision, not a transcription of the quiet-hours branch. Either a rule may
-wrap (and both checks learn the two-branch comparison, and the slot
-generator learns to emit slots past midnight), or the UI splits overnight
-hours into two rules (20:00-23:59 plus 00:00-02:00) and the backend keeps
-its simple invariant. The second is less code and more explaining; the
-first is invisible to the pro. The Flutter availability screen currently
-mirrors the backend's rule, so it refuses the same input rather than
-sending something that 422s.
+The fix is to stop using `replace` for local wall-clock times, resolving
+through a fold-aware conversion instead and deciding explicitly what a
+non-existent or ambiguous local time means for a booking. That is a
+correctness change across the scheduling module, deliberately not folded
+into the midnight-crossing work. Twice a year, for anyone shooting nights.
 
 ## The scheduling test fixture failed after 18:00 UTC — FIXED in P-3
 

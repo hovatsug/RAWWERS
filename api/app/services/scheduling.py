@@ -9,6 +9,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
+from app.services.availability_rules import any_rule_covers, rule_window
 from app.models.booking import (
     BookingRequest,
     BookingRequestStatus,
@@ -80,9 +81,10 @@ def generate_candidate_slots(
     while current <= to_date:
         weekday = current.weekday()
         for rule in [r for r in rules if r.day_of_week == weekday]:
-            tz = ZoneInfo(rule.timezone)
-            block_start_local = datetime.combine(current, rule.start_time).replace(tzinfo=tz)
-            block_end_local = datetime.combine(current, rule.end_time).replace(tzinfo=tz)
+            # rule_window follows the rule past midnight when it wraps.
+            # Building the end from `current` alone produced an end before
+            # the start, so the loop below emitted nothing at all.
+            block_start_local, block_end_local = rule_window(rule, current)
             slot_start_local = block_start_local
             while slot_start_local + timedelta(minutes=policy.slot_length_minutes) <= block_end_local:
                 slot_end_local = slot_start_local + timedelta(minutes=policy.slot_length_minutes)
@@ -124,17 +126,10 @@ def validate_slot_available(
     rules = db.execute(select(ProAvailabilityRule).where(ProAvailabilityRule.pro_user_id == pro_user_id)).scalars().all()
     if not rules:
         raise APIError(code="validation_error", message="Pro has no availability rules", status_code=409)
-    fits_any_rule = False
-    for rule in rules:
-        tz = ZoneInfo(rule.timezone)
-        local_start = start_at_utc.astimezone(tz)
-        local_end = end_at_utc.astimezone(tz)
-        if local_start.weekday() != rule.day_of_week:
-            continue
-        if local_start.timetz().replace(tzinfo=None) >= rule.start_time and local_end.timetz().replace(tzinfo=None) <= rule.end_time:
-            fits_any_rule = True
-            break
-    if not fits_any_rule:
+    # Compared as anchored datetimes rather than bare times: a rule that
+    # crosses midnight owns part of the following day, so a 01:00 slot has
+    # to be matched against the previous day's rule.
+    if not any_rule_covers(rules, start_at_utc, end_at_utc):
         raise APIError(code="validation_error", message="Slot is outside pro availability rules", status_code=409)
 
     exceptions = db.execute(

@@ -67,6 +67,7 @@ from app.schemas.launch_ops import (
 )
 from app.services.audit import add_admin_audit_log
 from app.services.availability_blocks import blocked_intervals, window_fully_blocked
+from app.services.availability_rules import any_rule_covers
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
@@ -1357,15 +1358,11 @@ def _validate_availability(db: Session, pro_user_id: uuid.UUID, start: datetime,
     if not rules:
         raise APIError(code="validation_error", message="Pro has no availability configured", status_code=409)
 
-    dow = start.weekday()
-    time_start = start.timetz().replace(tzinfo=None)
-    time_end = end.timetz().replace(tzinfo=None)
-
-    within_rule = any(
-        r.day_of_week == dow and r.start_time <= time_start and r.end_time >= time_end
-        for r in rules
-    )
-    if not within_rule:
+    # Was comparing bare times against the requested day's rules, which
+    # meant a rule crossing midnight matched nothing - not even squarely
+    # mid-shift. The shared helper anchors each rule to the day it starts
+    # on and follows it into the next.
+    if not any_rule_covers(rules, start, end):
         raise APIError(code="validation_error", message="Requested time is outside pro availability", status_code=409)
 
     # Both families, via the shared reader: a pro who blocked time through

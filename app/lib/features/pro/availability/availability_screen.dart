@@ -111,7 +111,7 @@ class _DayRow extends ConsumerWidget {
           if (on)
             TextButton(
               onPressed: () => _editHours(context, ref),
-              child: Text('${_short(rule!.startLocal)} – ${_short(rule!.endLocal)}'),
+              child: Text(_hoursLabel(rule!.startLocal, rule!.endLocal)),
             )
           else
             Text('Not working', style: theme.textTheme.bodySmall),
@@ -126,6 +126,17 @@ class _DayRow extends ConsumerWidget {
 
   /// "09:00:00" reads as a duration; a photographer reads "09:00".
   String _short(String time) => time.length >= 5 ? time.substring(0, 5) : time;
+
+  /// A shift ending at or before it starts runs into the next morning.
+  /// Said outright, because "20:00 - 02:00" on its own reads as a
+  /// data-entry mistake, and a photographer glancing at their week needs
+  /// to tell a night shift from a typo without doing the arithmetic.
+  String _hoursLabel(String start, String end) {
+    final label = '${_short(start)} – ${_short(end)}';
+    return _wrapsMidnight(start, end) ? '$label (next day)' : label;
+  }
+
+  bool _wrapsMidnight(String start, String end) => _minutes(_parse(end)) <= _minutes(_parse(start));
 
   Future<void> _toggle(BuildContext context, WidgetRef ref, bool enabled) async {
     final current = ref.read(workingHoursControllerProvider).valueOrNull ?? const [];
@@ -176,12 +187,9 @@ class _DayRow extends ConsumerWidget {
     );
     if (end == null || !context.mounted) return;
 
-    if (_minutes(end) <= _minutes(start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('The end of the day has to come after the start.')),
-      );
-      return;
-    }
+    // No "end must be after start" check: an end at or before the start
+    // means the shift runs into the next day, which is what night work is.
+    // The backend still refuses one long enough to nearly lap itself.
 
     final current = ref.read(workingHoursControllerProvider).valueOrNull ?? const [];
     final next = [

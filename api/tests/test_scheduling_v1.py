@@ -59,7 +59,16 @@ def _seed_pro_and_booking(db_session, pro_id: str, client_id: str):
     )
     db_session.add(pkg)
     db_session.flush()
-    start = datetime.now(timezone.utc) + timedelta(days=3)
+    # Pinned to mid-morning, not just to a future date. Left at the current
+    # time of day, a slot seeded after 23:00 UTC ran an hour past midnight -
+    # and a rule anchored to the start day genuinely does not cover it. The
+    # old bare-time comparison accepted it anyway (00:52 <= 23:59 reads as
+    # true), so this fixture only looked stable because the check was wrong.
+    start = datetime.combine(
+        (datetime.now(timezone.utc) + timedelta(days=3)).date(),
+        dt_time(10, 0),
+        tzinfo=timezone.utc,
+    )
     booking = BookingRequest(
         pro_user_id=pro_uuid,
         client_user_id=client_uuid,

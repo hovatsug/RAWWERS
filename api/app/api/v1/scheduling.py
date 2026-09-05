@@ -56,6 +56,7 @@ from app.services.authz import get_user_roles
 from app.services.notifications import enqueue_notification
 from app.services.package_pricing import compute_minimum_amount
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.availability_rules import validate_rule_times
 from app.services.scheduling import (
     create_booking_time_request,
     create_slot_reminders,
@@ -136,8 +137,10 @@ def put_my_availability_rules(
 ) -> AvailabilityRulesResponse:
     _require_role(db, user.user_id, UserRoleType.pro)
     for item in body.rules:
-        if item.end_local <= item.start_local:
-            raise APIError(code="validation_error", message="start_local must be before end_local", status_code=422)
+        # A rule whose end is not after its start crosses midnight; that is
+        # a night shift, not an error. validate_rule_times still rejects one
+        # long enough to nearly lap itself.
+        validate_rule_times(item.start_local, item.end_local)
         try:
             ZoneInfo(item.timezone)
         except Exception as exc:

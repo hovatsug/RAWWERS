@@ -5,6 +5,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { BottomSheet, Button, Card, EmptyState, Input, Skeleton, Textarea } from "@/design-system/primitives";
 import { useAuth } from "@/lib/auth/store";
 import { pro as proApi } from "@/lib/api/pro";
+// getPublicProProfile moved to the discovery module during the client
+// consolidation; this caller was missed, and the whole web build has
+// failed on it since.
+import { discovery } from "@/lib/api/discovery";
 import { trackEvent } from "@/lib/api/client";
 
 export default function ProPackagesPage() {
@@ -16,7 +20,7 @@ export default function ProPackagesPage() {
   const [updatePayload, setUpdatePayload] = useState("{}");
   const [disableTarget, setDisableTarget] = useState("");
 
-  const publicQ = useQuery({ queryKey: ["pro", "public", "packages", userId], queryFn: () => proApi.getPublicProProfile(userId || "", accessToken), enabled: !!accessToken && !!userId });
+  const publicQ = useQuery({ queryKey: ["pro", "public", "packages", userId], queryFn: () => discovery.getPublicProProfile(userId || "", accessToken), enabled: !!accessToken && !!userId });
 
   const createM = useMutation({
     mutationFn: async () => {

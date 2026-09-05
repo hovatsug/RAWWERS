@@ -437,3 +437,51 @@ class AdminProApprovalResponse(BaseModel):
     is_accepting_bookings: bool
     payout_account_status: str
     payout_blocked: bool
+
+
+class AdminProReviewRow(BaseModel):
+    """A photographer awaiting review, with enough to decide without
+    opening them.
+
+    The list endpoint this replaces returned onboarding rows and nothing
+    else - no name, no city, no work - which made the queue a list of
+    UUIDs.
+    """
+
+    pro_user_id: uuid.UUID
+    display_name: str | None = None
+    headline: str | None = None
+    city: str | None = None
+    country: str | None = None
+    onboarding_status: ProOnboardingStatus
+    kyc_status: str
+    portfolio_photo_count: int
+    portfolio_minimum: int
+    active_packages: int
+    min_price: Decimal | None = None
+    currency: str = "EUR"
+    cover_url: str | None = None
+    ready_to_approve: bool
+    missing: list[str] = Field(default_factory=list)
+    payout_blocked: bool
+    submitted_at: datetime
+
+
+class AdminProReviewQueueResponse(BaseModel):
+    items: list[AdminProReviewRow] = Field(default_factory=list)
+
+
+class AdminProReviewDetail(BaseModel):
+    """Everything needed to judge one photographer, including the card a
+    client would see. Built from the same index Discover reads, so the
+    reviewer is looking at the real listing rather than a mock-up of it."""
+
+    row: AdminProReviewRow
+    bio: str | None = None
+    languages: list[str] = Field(default_factory=list)
+    styles: list[str] = Field(default_factory=list)
+    travel_radius_km: int | None = None
+    checks: dict = Field(default_factory=dict)
+    portfolio_urls: list[str] = Field(default_factory=list)
+    packages: list[dict] = Field(default_factory=list)
+    payout_account_status: str

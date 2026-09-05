@@ -482,6 +482,75 @@ does not leave enforcement uncovered.
 **Correction to commit `20870b97`:** it states that `test_disputes_refunds`
 "already had these same 3 at HEAD". One was pre-existing; two were mine.
 
+## ~~The dispute-to-refund path was broken in four places~~ — FIXED
+
+Found by walking a real dispute rather than by reading tests. Each defect
+was only reachable once the previous one was fixed, so they surfaced one
+at a time.
+
+1. **`dispute.category` was `varchar(13)`** while `deliverable_quality`
+   (19) and `late_cancellation` (17) are valid values. Opening a dispute
+   in the most likely category for a photography marketplace returned a
+   500. `refund_case.status` had the same shape - `varchar(10)` against
+   `refund_initiated` (16) - which would have stopped the refund one step
+   later. Migration `20260905_0046`.
+
+2. **The refund handler forced `gig -> refunded`.** For a dispute the gig
+   is already `disputed`, and `disputed -> refunded` is not a permitted
+   transition, so the webhook raised, the outbox retried, and it failed
+   identically every time. Money had left Stripe and nothing recorded it.
+   The handler no longer transitions the gig at all: a `charge.refunded`
+   from an admin refund, a client cancellation and a dispute resolution
+   are three different things and the handler sees only an amount. If a
+   full refund should move the gig, that belongs in the resolution path
+   where the intent is known.
+
+3. **Everything scaled to the wrong amount.** The handler assumed every
+   refund was full: it marked the payment `refunded`, reversed the
+   photographer's entire earnings entry, and wrote a ledger line for the
+   whole payment. A €60 refund on a €180 booking would have wiped all
+   €144 of the photographer's earnings. Now scaled to what actually came
+   back, with the platform fee recalculated on the reduced gross so the
+   reduction is shared rather than taken entirely from the photographer.
+
+4. **Finalisation could never match.** `finalize_refund_case_success` used
+   `.astext` - JSONB syntax on a plain JSON column - which raised
+   `AttributeError` on every call, in both the success and the failure
+   path. And for `charge.refunded` the handler passed `obj["id"]`, which
+   is the *charge* (`ch_...`), into a lookup on a field holding a refund
+   id (`re_...`). Fixed with `as_string()`, a correct per-event-type
+   refund id, and a payment-intent fallback for the common case where
+   `charge.refunded` arrives without its refunds list expanded.
+
+**A failed event committed its partial mutations.** The dispatcher catches
+per row and commits after the loop, so mutations made before a handler
+raised were persisted while the event was marked failed. In this case
+`payment.status` was left `refunded` by an event that never completed.
+Noted previously as theoretical; it is not.
+
+Verified by replaying the genuinely stuck event from its stuck state:
+refund case `refunded` with €60.00 recorded, events
+`refund_initiated -> refund_succeeded`, ledger gains
+`refund_succeeded -60.00`, earnings move 180/36/144 to 120/24/96, gig
+stays `disputed`, payment stays `succeeded`.
+
+## Enum column widths are a standing hazard — worth its own task
+
+Two columns were narrower than their enums. **Around forty more sit
+exactly at their limit**, so the next value added to any of those enums
+produces the same 500. `Enum(..., native_enum=False)` sizes the column to
+the longest value *at migration time* and nothing resizes it afterwards.
+
+`alembic check` would catch the whole class, but it currently reports
+~108KB of unrelated drift between models and migrations - JSONB vs JSON,
+index and type differences - so it cannot be a gate until that is
+reconciled. That reconciliation also has to settle JSON vs JSONB
+repo-wide, which is why the `.astext` fix above was done locally rather
+than by changing a column type.
+
+Scope as one task: reconcile model/migration drift, decide JSON vs JSONB,
+then put `alembic check` in CI.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

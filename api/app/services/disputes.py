@@ -594,8 +594,38 @@ def initiate_refund_case(db: Session, refund_case_id: uuid.UUID) -> RefundCase:
     return row
 
 
-def finalize_refund_case_success(db: Session, *, stripe_refund_id: str) -> RefundCase | None:
-    rows = db.execute(select(RefundCase).where(RefundCase.meta["stripe_refund_id"].astext == stripe_refund_id)).scalars().all()
+def finalize_refund_case_success(
+    db: Session, *, stripe_refund_id: str | None = None, payment_intent_id: str | None = None
+) -> RefundCase | None:
+    """Mark a refund case settled.
+
+    Matches on the Stripe refund id where the event carries one, and falls
+    back to the payment intent otherwise - `charge.refunded` often arrives
+    without its refunds list expanded, and an unmatched case sits at
+    refund_initiated forever while the money is already gone.
+    """
+    # `.astext` is JSONB syntax and `meta` is a plain JSON column, so this
+    # raised AttributeError on every call - in both the success and the
+    # failure path, leaving a refund case stuck at refund_initiated with
+    # money already gone from Stripe. as_string() is the JSON equivalent.
+    # Whether these columns should be JSONB at all is a repo-wide question,
+    # deliberately left to the alembic-drift task rather than answered here.
+    rows = []
+    if stripe_refund_id:
+        rows = db.execute(
+            select(RefundCase).where(RefundCase.meta["stripe_refund_id"].as_string() == stripe_refund_id)
+        ).scalars().all()
+    if not rows and payment_intent_id:
+        # charge.refunded frequently arrives without its refunds list
+        # expanded, so the refund id is simply not in the event. The
+        # payment intent is then the only handle we have, and a case still
+        # sitting at refund_initiated for that intent is unambiguous.
+        rows = db.execute(
+            select(RefundCase).where(
+                RefundCase.stripe_payment_intent_id == payment_intent_id,
+                RefundCase.status == RefundCaseStatus.refund_initiated,
+            )
+        ).scalars().all()
     if not rows:
         return None
     row = rows[0]
@@ -670,7 +700,15 @@ def finalize_refund_case_success(db: Session, *, stripe_refund_id: str) -> Refun
 
 
 def finalize_refund_case_failed(db: Session, *, stripe_refund_id: str, reason: str | None = None) -> RefundCase | None:
-    rows = db.execute(select(RefundCase).where(RefundCase.meta["stripe_refund_id"].astext == stripe_refund_id)).scalars().all()
+    # `.astext` is JSONB syntax and `meta` is a plain JSON column, so this
+    # raised AttributeError on every call - in both the success and the
+    # failure path, leaving a refund case stuck at refund_initiated with
+    # money already gone from Stripe. as_string() is the JSON equivalent.
+    # Whether these columns should be JSONB at all is a repo-wide question,
+    # deliberately left to the alembic-drift task rather than answered here.
+    rows = db.execute(
+        select(RefundCase).where(RefundCase.meta["stripe_refund_id"].as_string() == stripe_refund_id)
+    ).scalars().all()
     if not rows:
         return None
     row = rows[0]

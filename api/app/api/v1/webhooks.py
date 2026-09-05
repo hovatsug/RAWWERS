@@ -55,7 +55,11 @@ from app.services.client_rewards_pricing import increment_share_link_conversion
 from app.services.disputes import finalize_refund_case_failed, finalize_refund_case_success
 from app.services.gallery_completion import finalize_gallery_and_complete_gig, is_selection_fully_paid
 from app.services.proof_of_gigs import enqueue_raww_mint, enqueue_raww_refund_reversal
-from app.services.payouts import create_earnings_entry, reverse_earnings_entries_for_source
+from app.services.payouts import (
+    adjust_earnings_for_partial_refund,
+    create_earnings_entry,
+    reverse_earnings_entries_for_source,
+)
 from app.services.prints_fulfillment import on_print_payment_failed, on_print_payment_succeeded, on_print_refund_event
 from app.models.payouts import EarningsSourceType, PayoutAccount, PayoutAccountStatus, PayoutEvent, PayoutRequest, PayoutRequestStatus
 from app.tasks.store_tasks import submit_order_to_partner_task
@@ -619,7 +623,16 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
 
     elif event_type in {"charge.refunded", "refund.succeeded"}:
         payment_intent_id = obj.get("payment_intent")
-        refund_id = obj.get("id")
+        # On `refund.succeeded` the object *is* the refund. On
+        # `charge.refunded` it is the charge, whose id is `ch_...` - passing
+        # that on as a refund id meant finalisation searched for a charge id
+        # in a field holding `re_...` and never matched, leaving every refund
+        # case stuck at refund_initiated after the money had gone.
+        if event_type == "refund.succeeded":
+            refund_id = obj.get("id")
+        else:
+            refunds = (obj.get("refunds") or {}).get("data") or []
+            refund_id = refunds[0].get("id") if refunds else None
         if not payment_intent_id:
             return
         print_order = on_print_refund_event(db, payment_intent_id=payment_intent_id, refund_ref=refund_id)
@@ -654,17 +667,52 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         if not gig:
             return
 
-        payment.status = PaymentStatus.refunded
-        if gig.status != GigStatus.refunded:
-            transition = transition_gig(gig, GigStatus.refunded, SYSTEM_USER_ID, reason="Stripe refund succeeded")
-            db.add(transition)
-        enqueue_raww_refund_reversal(db, gig_id=gig.id)
-        reverse_earnings_entries_for_source(
-            db,
-            source_type=EarningsSourceType.gig_base,
-            source_id=gig.id,
-            reason="stripe_refund",
+        # How much actually came back. `charge.refunded` carries the
+        # charge's cumulative amount_refunded; `refund.succeeded` carries
+        # the individual refund's amount. Everything below scales to this
+        # rather than to the original payment - this handler used to assume
+        # every refund was a full one.
+        refunded_minor = obj.get("amount_refunded")
+        if refunded_minor is None:
+            refunded_minor = obj.get("amount")
+        refunded_amount = (
+            (Decimal(str(refunded_minor)) / Decimal("100")).quantize(Decimal("0.01"))
+            if refunded_minor is not None
+            else payment.amount
         )
+        fully_refunded = refunded_amount >= payment.amount
+
+        # Only a full refund makes the payment "refunded"; after a partial
+        # one most of the money is still with us.
+        if fully_refunded:
+            payment.status = PaymentStatus.refunded
+
+        # Deliberately no gig transition. A charge.refunded arriving from an
+        # admin refund, a client cancellation and a dispute resolution are
+        # three different things, and this handler sees only an amount. It
+        # used to force `refunded` unconditionally, which claimed a
+        # part-refunded booking was cancelled, and raised "Transition
+        # disputed -> refunded not allowed" for any refund arising from a
+        # dispute - failing the event forever while money that had genuinely
+        # left the platform went unrecorded. If a full refund should move
+        # the gig, that belongs in the resolution path, where the intent is
+        # known.
+
+        enqueue_raww_refund_reversal(db, gig_id=gig.id)
+        if fully_refunded:
+            reverse_earnings_entries_for_source(
+                db,
+                source_type=EarningsSourceType.gig_base,
+                source_id=gig.id,
+                reason="stripe_refund",
+            )
+        else:
+            adjust_earnings_for_partial_refund(
+                db,
+                gig_id=gig.id,
+                refunded_amount=refunded_amount,
+                reason="stripe_partial_refund",
+            )
 
         ref_id = refund_id or f"refund:{payment_intent_id}"
         if not _ledger_reference_exists(db, gig.id, LedgerEntryType.refund_succeeded, ref_id):
@@ -672,9 +720,14 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 LedgerEntry(
                     gig_id=gig.id,
                     entry_type=LedgerEntryType.refund_succeeded,
-                    amount=-payment.amount,
+                    # What came back, not what was paid.
+                    amount=-refunded_amount,
                     currency=gig.currency,
-                    description="Stripe refund succeeded",
+                    description=(
+                        "Stripe refund succeeded"
+                        if fully_refunded
+                        else f"Stripe partial refund of {refunded_amount}"
+                    ),
                     reference_type="stripe_refund",
                     reference_id=ref_id,
                 )
@@ -684,10 +737,14 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
 
-        if refund_id:
-            finalized = finalize_refund_case_success(db, stripe_refund_id=refund_id)
-            if finalized:
-                finalized.meta = {**(finalized.meta or {}), "finalized_by_event": event_type}
+        # Falls back to the payment intent: `charge.refunded` does not
+        # always expand its refunds list, so the refund id is frequently
+        # unavailable and the payment intent is the only reliable handle.
+        finalized = finalize_refund_case_success(
+            db, stripe_refund_id=refund_id, payment_intent_id=payment_intent_id
+        )
+        if finalized:
+            finalized.meta = {**(finalized.meta or {}), "finalized_by_event": event_type}
 
     elif event_type == "refund.failed":
         refund_id = obj.get("id")

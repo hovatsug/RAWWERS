@@ -244,6 +244,60 @@ def release_earnings_holds_for_source(db: Session, *, pro_user_id: uuid.UUID, so
     return count
 
 
+def adjust_earnings_for_partial_refund(
+    db: Session,
+    *,
+    gig_id: uuid.UUID,
+    refunded_amount: Decimal,
+    reason: str,
+) -> EarningsLedgerEntry | None:
+    """Reduce a photographer's earnings by a partial refund.
+
+    A full refund reverses the entry outright. A partial one must not: the
+    shoot happened, the client kept most of the photos, and the
+    photographer keeps the corresponding share. The platform fee is
+    recalculated on the reduced gross so the split stays honest rather
+    than the whole reduction coming out of the photographer's side.
+
+    Idempotent on the refunded total: replaying the same webhook, which
+    the outbox will do on retry, leaves the same numbers rather than
+    subtracting twice.
+    """
+    entry = db.execute(
+        select(EarningsLedgerEntry).where(
+            EarningsLedgerEntry.source_type == EarningsSourceType.gig_base,
+            EarningsLedgerEntry.source_id == gig_id,
+            EarningsLedgerEntry.status != EarningsEntryStatus.reversed,
+        )
+    ).scalars().first()
+    if not entry:
+        return None
+
+    already = _q2(Decimal(str((entry.meta or {}).get("refunded_total", "0.00"))))
+    total_refunded = _q2(refunded_amount)
+    if total_refunded <= already:
+        return entry
+
+    original_gross = _q2(Decimal(str((entry.meta or {}).get("original_gross_eur", entry.gross_eur))))
+    new_gross = _q2(max(Decimal("0.00"), original_gross - total_refunded))
+
+    fee_percent = Decimal(str((entry.meta or {}).get("fee_percent", "0")))
+    new_fee = _q2(new_gross * fee_percent / Decimal("100"))
+
+    entry.gross_eur = new_gross
+    entry.platform_fee_eur = new_fee
+    entry.net_eur = _q2(new_gross - new_fee)
+    entry.meta = {
+        **(entry.meta or {}),
+        "original_gross_eur": str(original_gross),
+        "refunded_total": str(total_refunded),
+        "last_adjustment_reason": reason,
+    }
+    db.flush()
+    refresh_earnings_balance_snapshot(db, pro_user_id=entry.pro_user_id)
+    return entry
+
+
 def reverse_earnings_entries_for_source(
     db: Session,
     *,

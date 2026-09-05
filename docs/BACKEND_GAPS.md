@@ -415,6 +415,45 @@ hosted Stripe URL itself, because opening an external browser needs
 fallback copies the link to the clipboard and says it expires shortly.
 That is honest but poor; the real flow needs the dependency approved.
 
+## ~~`payout.anomaly` froze every photographer's first payout~~ — FIXED
+
+The rule fired when a payout was requested within one hour of money
+becoming available. That is a photographer who waited seven days and
+withdrew on the day it cleared - the ordinary case, and for most people
+the only case. Every first payout would have hit it.
+
+It now measures from the payout account's last change (24 hours), which
+is the account takeover the rule was actually defending against: money
+landing in a destination someone just swapped in. Settlement timing is
+irrelevant to it. Migration `20260905_0045` updates the seeded rule row,
+which `ensure_default_risk_rules` would otherwise never revisit.
+
+**The freeze also left no trace.** Verified rather than inferred: over
+HTTP the pro was refused and *zero* risk actions existed afterwards;
+calling the service directly with a commit produced two. The rule wrote
+`freeze_payouts` and `manual_review`, the caller raised a 403
+immediately, and the request rollback discarded both - blocking someone's
+money with nothing recorded, nothing an admin could find, and nothing to
+lift. The freeze is now committed before the refusal.
+
+**And an admin's clear now sticks.** It did not at first: clearing the
+freeze let the next request re-trigger the rule while the window was
+still open, so the clear was undone within seconds. A clear that reverses
+itself is not a clear. The rule now skips a window an admin has already
+reviewed; only a *later* account change re-arms it.
+
+## The €144 test entry is spent
+
+The earnings entry from the first end-to-end run has been settled,
+requested, approved and marked paid - it is `paid`, and withdrawable is
+€0.00. That was the point of exercising the path, but it means **future
+payout work needs a freshly settled entry**: complete a booking, let the
+settlement scan promote it (or move `available_at` back more than the
+anomaly window), and start from there.
+
+Note the anomaly rule when doing so: moving `available_at` no longer
+triggers it, but touching `payout_account.updated_at` does.
+
 ## No video poster frames in the portfolio preview
 
 `ClientProProfileResponse.portfolio_preview` resolves a signed thumbnail for photos, but portfolio **videos** are served through Mux and have no `MediaObject` rows behind them, so `thumbnail_url` is always null for `kind == "video"`. The pieces to fix it exist — `asset.meta["playback_id"]` and `create_mux_playback_token` — but Mux's image service (`image.mux.com/{playback_id}/thumbnail.jpg`) needs its own signed token, separate from the playback token, so it isn't a one-liner.

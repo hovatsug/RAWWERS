@@ -15,7 +15,7 @@ from app.models.auth import AuthEventLog, SessionRefreshToken
 from app.models.booking import BookingRequest
 from app.models.client_rewards_pricing import ShareLinkView
 from app.models.gig import PaymentStatus, StripePayment
-from app.models.payouts import EarningsLedgerEntry
+from app.models.payouts import EarningsLedgerEntry, PayoutAccount
 from app.models.risk import (
     DeviceFingerprint,
     IpSignal,
@@ -60,7 +60,13 @@ DEFAULT_RISK_RULES: dict[str, dict] = {
         "action_on_trigger": {"actions": ["require_verification"]},
     },
     "payout.anomaly": {
-        "params": {"within_hours_of_first_available": 1},
+        # Measured from when the destination account last changed, not from
+        # when money settled. Time since settlement says nothing about risk:
+        # a photographer who has waited a week and withdraws on the day it
+        # clears is the ordinary case, and the old one-hour-after-settlement
+        # window froze every one of them. What this is actually defending
+        # against is money landing in an account someone just swapped in.
+        "params": {"within_hours_of_account_change": 24},
         "score_delta": 25,
         "action_on_trigger": {"actions": ["freeze_payouts", "manual_review"]},
     },
@@ -524,27 +530,69 @@ def evaluate_share_view_farm_rule(db: Session, *, owner_user_id: uuid.UUID, shar
 
 
 def evaluate_payout_anomaly_rule(db: Session, *, pro_user_id: uuid.UUID) -> None:
+    """Freeze a payout requested soon after the destination account changed.
+
+    Fires on a *recently changed payout account*, which is the account
+    takeover this defends against, rather than on how recently the money
+    settled - see the params comment above.
+
+    The freeze is committed before the caller refuses the request. It used
+    to be written and then discarded by the rollback that the refusal
+    caused, so a photographer was blocked with nothing recorded: invisible
+    to them, unfindable by an admin, and impossible to lift. A block that
+    leaves no trace cannot be undone.
+    """
     ensure_default_risk_rules(db)
     rule = db.get(RiskRule, "payout.anomaly")
     if not rule or not rule.is_active:
         return
     params = rule.params or {}
-    within_hours = int(params.get("within_hours_of_first_available", 1))
-    first_available = db.execute(
-        select(EarningsLedgerEntry)
-        .where(EarningsLedgerEntry.pro_user_id == pro_user_id)
-        .order_by(EarningsLedgerEntry.available_at.asc())
-        .limit(1)
+    within_hours = int(
+        params.get("within_hours_of_account_change")
+        # Tolerated so a database seeded before this changed does not crash;
+        # the old key meant something else entirely, so it is not honoured.
+        or 24
+    )
+
+    account = db.execute(
+        select(PayoutAccount).where(PayoutAccount.pro_user_id == pro_user_id)
     ).scalar_one_or_none()
-    if not first_available:
+    if not account or not account.updated_at:
         return
-    if _now() <= (first_available.available_at + timedelta(hours=within_hours)):
-        trigger_risk_rule(
-            db,
-            user_id=pro_user_id,
-            rule_id="payout.anomaly",
-            payload={"first_available_at": first_available.available_at.isoformat(), "within_hours": within_hours},
-        )
+
+    changed_recently = _now() <= account.updated_at + timedelta(hours=within_hours)
+    if not changed_recently:
+        return
+
+    # An admin who has already cleared a freeze for this same account
+    # change has made a decision; re-freezing on the next request would
+    # undo it silently and make the clear action pointless. Only a *later*
+    # account change re-arms the rule.
+    reviewed = db.execute(
+        select(RiskAction).where(
+            RiskAction.user_id == pro_user_id,
+            RiskAction.action_type == RiskActionType.freeze_payouts,
+            RiskAction.status == RiskActionStatus.cleared,
+            RiskAction.cleared_at.is_not(None),
+            RiskAction.cleared_at >= account.updated_at,
+        ).limit(1)
+    ).scalar_one_or_none()
+    if reviewed:
+        return
+
+    trigger_risk_rule(
+        db,
+        user_id=pro_user_id,
+        rule_id="payout.anomaly",
+        payload={
+            "account_changed_at": account.updated_at.isoformat(),
+            "within_hours": within_hours,
+            "payout_method": account.payout_method.value,
+        },
+    )
+    # Committed here on purpose. The caller raises immediately afterwards,
+    # and without this the freeze dies with the request transaction.
+    db.commit()
 
 
 def evaluate_dispute_rate_rule(db: Session, *, user_id: uuid.UUID) -> None:

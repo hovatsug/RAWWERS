@@ -15,6 +15,32 @@ from app.services.metrics import render_metrics
 settings = get_settings()
 configure_logging(settings.log_level)
 
+def _require_admin_api_key_configured() -> None:
+    """Refuse to start with admin routes reachable and no admin API key.
+
+    require_admin skips the header check entirely when no key is
+    configured, so an unset ADMIN_API_KEYS does not weaken the check - it
+    removes it, leaving every admin route open to any authenticated
+    account with the admin role. That is one misconfigured deploy away
+    from an open admin panel, and it fails silently, which is the worst
+    combination.
+
+    Local development is exempt by app_env, so nobody has to invent a key
+    to run the stack; anything else must set one.
+    """
+    if settings.app_env.lower() in {"dev", "development", "test"}:
+        return
+    if settings.admin_api_key_set():
+        return
+    raise RuntimeError(
+        "ADMIN_API_KEYS is not set. Admin routes are mounted and their API-key "
+        "check is skipped when no key is configured, which would leave them open. "
+        "Set ADMIN_API_KEYS, or unmount the admin router for this deployment."
+    )
+
+
+_require_admin_api_key_configured()
+
 app = FastAPI(title="RAWWERS API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,

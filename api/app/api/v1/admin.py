@@ -47,7 +47,7 @@ from app.models.niche import Niche, NicheTierPolicy, ProNicheSkill, ProNicheSkil
 from app.models.discovery import AnalyticsEvent
 from app.models.ops import AbuseSeverity, AbuseSignal, AbuseSignalStatus, FeatureFlag, WebhookSecurityLog
 from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
-from app.models.payouts import EarningsSourceType
+from app.models.payouts import PayoutAccountStatus, EarningsSourceType
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.models.proof_of_gigs import RawwIssuanceCap, RawwIssuanceRule, RawwMintEvent, RawwMultiplierPolicy
 from app.models.client_rewards_pricing import (
@@ -68,6 +68,8 @@ from app.models.launch_ops import (
     RolloutFlagOverride,
 )
 from app.schemas.admin import (
+    AdminProApprovalRequest,
+    AdminProApprovalResponse,
     AbuseSignalView,
     AdminGigStatusUpdateRequest,
     AdminRefundCreateRequest,
@@ -158,6 +160,8 @@ from app.schemas.launch_ops import (
 from app.services.audit import add_admin_audit_log
 from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig, total_succeeded_amount_for_gig
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.launch_ops import onboarding_checks
+from app.services.payouts import get_or_create_payout_account
 from app.services.gig_state import transition_gig
 from app.services.analytics import log_event
 from app.services.niche_catalog import ensure_initial_niches
@@ -574,6 +578,112 @@ def approve_pro_onboarding(
     db.commit()
     db.refresh(row)
     return ProOnboardingStatusResponse.model_validate(row, from_attributes=True)
+
+
+@router.post("/pros/{pro_user_id}/approve", response_model=AdminProApprovalResponse)
+def approve_pro(
+    pro_user_id: uuid.UUID,
+    body: AdminProApprovalRequest | None = None,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminProApprovalResponse:
+    """Approve a photographer: identity check and public listing, together.
+
+    These are two separate gates - KYC on the profile, approved_public on
+    the onboarding row - and Discover requires both. Done as two calls, a
+    failure between them leaves a photographer approved but invisible,
+    which nobody notices until they ask why no requests arrive. One
+    transaction, so it is both or neither.
+
+    Deliberately does *not* touch the payout account: that is the
+    photographer's own bank detail to enter, and an admin filling it in on
+    their behalf would make whoever runs this panel the compliance surface
+    for other people's financial data. It is reported as a blocker instead.
+    """
+    note = (body.note if body else None) or "approved_by_admin"
+
+    has_pro_role = db.execute(
+        select(UserRole).where(UserRole.user_id == pro_user_id, UserRole.role == UserRoleType.pro)
+    ).scalar_one_or_none()
+    if not has_pro_role:
+        raise APIError(code="validation_error", message="User is not a pro", status_code=400)
+
+    profile = db.get(ProProfile, pro_user_id)
+    if not profile:
+        raise APIError(code="not_found", message="Pro profile not found", status_code=404)
+
+    checks = onboarding_checks(db, pro_user_id=pro_user_id)
+    blocking = [
+        key
+        for key in ("profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected")
+        if not checks.get(key)
+    ]
+    if blocking:
+        raise APIError(
+            code="validation_error",
+            message=f"Not ready to approve; still missing: {', '.join(blocking)}",
+            status_code=409,
+        )
+
+    previously_approved = profile.kyc_status == KYCStatus.approved
+    profile.kyc_status = KYCStatus.approved
+    profile.kyc_note = note
+    profile.kyc_updated_at = datetime.now(timezone.utc)
+
+    row = set_pro_onboarding_status(
+        db,
+        pro_user_id=pro_user_id,
+        to_status=ProOnboardingStatus.approved_public,
+        actor_type=ProOnboardingActorType.admin,
+        actor_user_id=actor.user_id,
+        note=note,
+    )
+
+    # The listing only reaches Discover through the index, which is filtered
+    # on kyc_status - recomputed here so approval takes effect immediately
+    # rather than on whatever writes to the profile next.
+    recompute_pro_public_index(db, pro_user_id)
+
+    if not previously_approved:
+        reward_entry = maybe_issue_pro_signup_referral_reward(db, pro_user_id)
+        if reward_entry:
+            log_event(
+                db,
+                event_name="reward.earned",
+                user_id=reward_entry.user_id,
+                properties={
+                    "rule_code": reward_entry.rule_code,
+                    "amount": reward_entry.amount,
+                    "referred_user_id": str(pro_user_id),
+                },
+            )
+
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="pro",
+        target_id=str(pro_user_id),
+        action="pro_approved",
+        reason=note,
+        metadata={"kyc": "approved", "onboarding": ProOnboardingStatus.approved_public.value},
+    )
+    db.commit()
+    db.refresh(profile)
+    db.refresh(row)
+
+    account = get_or_create_payout_account(db, pro_user_id=pro_user_id)
+    db.commit()
+
+    return AdminProApprovalResponse(
+        pro_user_id=pro_user_id,
+        kyc_status=profile.kyc_status.value,
+        onboarding_status=row.status,
+        is_accepting_bookings=profile.is_accepting_bookings,
+        # Surfaced, not fixed: a photographer with no payout method can be
+        # booked and paid into a balance they cannot withdraw.
+        payout_account_status=account.status.value,
+        payout_blocked=account.status != PayoutAccountStatus.active,
+    )
 
 
 @router.post("/onboarding/pros/{pro_user_id}/reject", response_model=ProOnboardingStatusResponse)

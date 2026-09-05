@@ -14,6 +14,7 @@ from app.models.admin import (
     UserRoleType,
 )
 from app.models.gig import GigStatus
+from app.models.launch_ops import ProOnboardingStatus
 from app.models.ops import AbuseSeverity, AbuseSignalStatus, FeatureFlagScope
 from app.models.niche import SkillTier
 from app.models.package_pricing import PackageCurveType
@@ -415,3 +416,24 @@ class RawwClawbackResponse(BaseModel):
     reason: str
     created_by_admin_id: uuid.UUID | None = None
     created_at: datetime
+
+
+class AdminProApprovalRequest(BaseModel):
+    note: str | None = None
+
+
+class AdminProApprovalResponse(BaseModel):
+    """The result of approving a photographer, including what still stops
+    them being paid.
+
+    payout_blocked is reported rather than fixed: the bank details belong
+    to the photographer, and an admin entering them would put whoever runs
+    the panel in the middle of other people's financial data.
+    """
+
+    pro_user_id: uuid.UUID
+    kyc_status: str
+    onboarding_status: ProOnboardingStatus
+    is_accepting_bookings: bool
+    payout_account_status: str
+    payout_blocked: bool

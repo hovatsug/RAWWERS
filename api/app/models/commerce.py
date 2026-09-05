@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, BigInteger, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, BigInteger, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -61,11 +61,11 @@ class CommercePartner(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_type: Mapped[PartnerAPIType] = mapped_column(
-        Enum(PartnerAPIType, name="partner_api_type", native_enum=False),
+        Enum(PartnerAPIType, name="partner_api_type", native_enum=False, length=64),
         nullable=False,
         default=PartnerAPIType.manual,
     )
-    api_config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    api_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -86,14 +86,14 @@ class Product(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     brand: Mapped[str | None] = mapped_column(Text, nullable=True)
-    images_media_asset_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    attributes: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    images_media_asset_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    attributes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     msrp_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     partner_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     is_available: Mapped[bool] = mapped_column(nullable=False, default=True)
     stock_status: Mapped[ProductStockStatus] = mapped_column(
-        Enum(ProductStockStatus, name="product_stock_status", native_enum=False),
+        Enum(ProductStockStatus, name="product_stock_status", native_enum=False, length=64),
         nullable=False,
         default=ProductStockStatus.unknown,
     )
@@ -109,17 +109,17 @@ class PriceRule(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     partner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("commerce_partner.id"), nullable=True, index=True)
     applies_to: Mapped[PriceRuleAppliesTo] = mapped_column(
-        Enum(PriceRuleAppliesTo, name="price_rule_applies_to", native_enum=False),
+        Enum(PriceRuleAppliesTo, name="price_rule_applies_to", native_enum=False, length=64),
         nullable=False,
     )
     match_value: Mapped[str | None] = mapped_column(Text, nullable=True)
     discount_type: Mapped[PriceRuleDiscountType] = mapped_column(
-        Enum(PriceRuleDiscountType, name="price_rule_discount_type", native_enum=False),
+        Enum(PriceRuleDiscountType, name="price_rule_discount_type", native_enum=False, length=64),
         nullable=False,
     )
     discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     min_tier: Mapped[SkillTier] = mapped_column(
-        Enum(SkillTier, name="skill_tier", native_enum=False),
+        Enum(SkillTier, name="skill_tier", native_enum=False, length=64),
         nullable=False,
         default=SkillTier.skilled,
     )
@@ -138,13 +138,13 @@ class StoreAccessPolicy(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     min_tier_any_niche: Mapped[SkillTier] = mapped_column(
-        Enum(SkillTier, name="skill_tier", native_enum=False),
+        Enum(SkillTier, name="skill_tier", native_enum=False, length=64),
         nullable=False,
         default=SkillTier.skilled,
     )
     require_kyc_approved: Mapped[bool] = mapped_column(nullable=False, default=True)
     require_not_banned: Mapped[bool] = mapped_column(nullable=False, default=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
@@ -189,7 +189,7 @@ class CommerceOrder(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     partner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("commerce_partner.id"), nullable=False, index=True)
     status: Mapped[StoreOrderStatus] = mapped_column(
-        Enum(StoreOrderStatus, name="store_order_status", native_enum=False),
+        Enum(StoreOrderStatus, name="store_order_status", native_enum=False, length=64),
         nullable=False,
         default=StoreOrderStatus.created,
     )
@@ -198,9 +198,9 @@ class CommerceOrder(Base):
     discounts_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     points_spent: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    shipping_address: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    shipping_address: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     partner_order_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    tracking: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    tracking: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -229,7 +229,7 @@ class OrderPayment(Base):
     order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("order.id"), nullable=False, unique=True, index=True)
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
     status: Mapped[StoreOrderPaymentStatus] = mapped_column(
-        Enum(StoreOrderPaymentStatus, name="store_order_payment_status", native_enum=False),
+        Enum(StoreOrderPaymentStatus, name="store_order_payment_status", native_enum=False, length=64),
         nullable=False,
         default=StoreOrderPaymentStatus.pending,
     )

@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.media import Base
@@ -124,7 +124,7 @@ class UserAccount(Base):
     phone_e164: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True, index=True)
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[UserAccountStatus] = mapped_column(
-        Enum(UserAccountStatus, name="user_account_status", native_enum=False),
+        Enum(UserAccountStatus, name="user_account_status", native_enum=False, length=64),
         nullable=False,
         default=UserAccountStatus.active,
         index=True,
@@ -141,7 +141,7 @@ class UserRole(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.user_id"), nullable=False, index=True)
-    role: Mapped[UserRoleType] = mapped_column(Enum(UserRoleType, name="user_role_type", native_enum=False), nullable=False)
+    role: Mapped[UserRoleType] = mapped_column(Enum(UserRoleType, name="user_role_type", native_enum=False, length=64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (UniqueConstraint("user_id", "role", name="uq_user_role_user_role"),)
@@ -157,15 +157,15 @@ class ProProfile(Base):
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(Text, nullable=True)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)
-    languages: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    styles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    gear: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    languages: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    styles: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    gear: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     # Nullable on purpose: "has not answered" and "will not travel" are
     # different answers to a client deciding whether to send a request.
     travel_radius_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False)
     completeness_score: Mapped[int] = mapped_column(nullable=False, default=0)
-    kyc_status: Mapped[KYCStatus] = mapped_column(Enum(KYCStatus, name="kyc_status", native_enum=False), nullable=False, default=KYCStatus.unsubmitted)
+    kyc_status: Mapped[KYCStatus] = mapped_column(Enum(KYCStatus, name="kyc_status", native_enum=False, length=64), nullable=False, default=KYCStatus.unsubmitted)
     kyc_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     kyc_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -177,7 +177,7 @@ class BanAction(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    action: Mapped[BanActionType] = mapped_column(Enum(BanActionType, name="ban_action_type", native_enum=False), nullable=False)
+    action: Mapped[BanActionType] = mapped_column(Enum(BanActionType, name="ban_action_type", native_enum=False, length=64), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -194,7 +194,7 @@ class AdminAuditLog(Base):
     target_id: Mapped[str] = mapped_column(Text, nullable=False)
     action: Mapped[str] = mapped_column(Text, nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -206,16 +206,16 @@ class Dispute(Base):
     extra_purchase_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("extra_image_purchase.id"), nullable=True, index=True)
     opened_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     against_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    status: Mapped[DisputeStatus] = mapped_column(Enum(DisputeStatus, name="dispute_status", native_enum=False), nullable=False)
-    category: Mapped[DisputeCategory] = mapped_column(Enum(DisputeCategory, name="dispute_category", native_enum=False), nullable=False)
+    status: Mapped[DisputeStatus] = mapped_column(Enum(DisputeStatus, name="dispute_status", native_enum=False, length=64), nullable=False)
+    category: Mapped[DisputeCategory] = mapped_column(Enum(DisputeCategory, name="dispute_category", native_enum=False, length=64), nullable=False)
     requested_refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     due_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    resolution: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    resolution: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -230,7 +230,7 @@ class DisputeEvidence(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     dispute_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dispute.id"), nullable=False, index=True)
     submitted_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    kind: Mapped[EvidenceKind] = mapped_column(Enum(EvidenceKind, name="evidence_kind", native_enum=False), nullable=False)
+    kind: Mapped[EvidenceKind] = mapped_column(Enum(EvidenceKind, name="evidence_kind", native_enum=False, length=64), nullable=False)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -246,19 +246,19 @@ class RefundCase(Base):
     dispute_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("dispute.id"), nullable=True)
     requested_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     payment_scope: Mapped[RefundPaymentScope | None] = mapped_column(
-        Enum(RefundPaymentScope, name="refund_payment_scope", native_enum=False),
+        Enum(RefundPaymentScope, name="refund_payment_scope", native_enum=False, length=64),
         nullable=True,
     )
     reference_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     amount_authorized: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     amount_refunded: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-    status: Mapped[RefundCaseStatus] = mapped_column(Enum(RefundCaseStatus, name="refund_case_status", native_enum=False), nullable=False)
+    status: Mapped[RefundCaseStatus] = mapped_column(Enum(RefundCaseStatus, name="refund_case_status", native_enum=False, length=64), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -270,7 +270,7 @@ class DisputeMessage(Base):
     dispute_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dispute.id"), nullable=False, index=True)
     sender_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    evidence_media_asset_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    evidence_media_asset_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
 
@@ -282,12 +282,12 @@ class DisputeEvent(Base):
     from_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     to_status: Mapped[str] = mapped_column(Text, nullable=False)
     actor_type: Mapped[DisputeActorType] = mapped_column(
-        Enum(DisputeActorType, name="dispute_actor_type", native_enum=False),
+        Enum(DisputeActorType, name="dispute_actor_type", native_enum=False, length=64),
         nullable=False,
     )
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
 
@@ -297,7 +297,7 @@ class RefundEvent(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     refund_case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("refund_case.id"), nullable=False, index=True)
     type: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -305,7 +305,7 @@ class GigContractSnapshot(Base):
     __tablename__ = "gig_contract_snapshot"
 
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), primary_key=True)
-    snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -328,7 +328,7 @@ class EntitlementHold(Base):
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     hold_type: Mapped[EntitlementHoldType] = mapped_column(
-        Enum(EntitlementHoldType, name="entitlement_hold_type", native_enum=False),
+        Enum(EntitlementHoldType, name="entitlement_hold_type", native_enum=False, length=64),
         nullable=False,
     )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -343,16 +343,16 @@ class ProQualityPenalty(Base):
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     dispute_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("dispute.id"), nullable=True, index=True)
     type: Mapped[ProQualityPenaltyType] = mapped_column(
-        Enum(ProQualityPenaltyType, name="pro_quality_penalty_type", native_enum=False),
+        Enum(ProQualityPenaltyType, name="pro_quality_penalty_type", native_enum=False, length=64),
         nullable=False,
     )
     severity: Mapped[ProQualityPenaltySeverity] = mapped_column(
-        Enum(ProQualityPenaltySeverity, name="pro_quality_penalty_severity", native_enum=False),
+        Enum(ProQualityPenaltySeverity, name="pro_quality_penalty_severity", native_enum=False, length=64),
         nullable=False,
     )
     applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
 
 class RefundPolicy(Base):
@@ -360,12 +360,12 @@ class RefundPolicy(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     category: Mapped[DisputeCategory] = mapped_column(
-        Enum(DisputeCategory, name="dispute_category", native_enum=False),
+        Enum(DisputeCategory, name="dispute_category", native_enum=False, length=64),
         nullable=False,
         unique=True,
     )
     default_action: Mapped[RefundPolicyDefaultAction] = mapped_column(
-        Enum(RefundPolicyDefaultAction, name="refund_policy_default_action", native_enum=False),
+        Enum(RefundPolicyDefaultAction, name="refund_policy_default_action", native_enum=False, length=64),
         nullable=False,
     )
     max_refund_percent: Mapped[int | None] = mapped_column(nullable=True)

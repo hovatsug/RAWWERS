@@ -4,8 +4,8 @@ import enum
 import uuid
 from datetime import datetime, time, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Text, Time, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -119,18 +119,18 @@ class ContactConsent(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     channel: Mapped[ConsentChannel] = mapped_column(
-        Enum(ConsentChannel, name="consent_channel", native_enum=False),
+        Enum(ConsentChannel, name="consent_channel", native_enum=False, length=64),
         nullable=False,
     )
     scope: Mapped[ConsentScope] = mapped_column(
-        Enum(ConsentScope, name="consent_scope", native_enum=False),
+        Enum(ConsentScope, name="consent_scope", native_enum=False, length=64),
         nullable=False,
     )
     granted: Mapped[bool] = mapped_column(nullable=False)
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     source: Mapped[str] = mapped_column(Text, nullable=False)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -143,11 +143,11 @@ class FollowupRule(Base):
     trigger: Mapped[str] = mapped_column(Text, nullable=False)
     delay_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     channel: Mapped[FollowupChannel] = mapped_column(
-        Enum(FollowupChannel, name="followup_channel", native_enum=False),
+        Enum(FollowupChannel, name="followup_channel", native_enum=False, length=64),
         nullable=False,
     )
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -167,7 +167,7 @@ class FollowupJob(Base):
     target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     status: Mapped[FollowupJobStatus] = mapped_column(
-        Enum(FollowupJobStatus, name="followup_job_status", native_enum=False),
+        Enum(FollowupJobStatus, name="followup_job_status", native_enum=False, length=64),
         nullable=False,
         default=FollowupJobStatus.scheduled,
     )
@@ -199,7 +199,7 @@ class CallSession(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     direction: Mapped[CallDirection] = mapped_column(
-        Enum(CallDirection, name="call_direction", native_enum=False),
+        Enum(CallDirection, name="call_direction", native_enum=False, length=64),
         nullable=False,
         default=CallDirection.outbound,
     )
@@ -207,11 +207,11 @@ class CallSession(Base):
     recipient_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     recipient_phone_e164: Mapped[str] = mapped_column(Text, nullable=False)
     purpose: Mapped[CallPurpose] = mapped_column(
-        Enum(CallPurpose, name="call_purpose", native_enum=False),
+        Enum(CallPurpose, name="call_purpose", native_enum=False, length=64),
         nullable=False,
     )
     status: Mapped[CallSessionStatus] = mapped_column(
-        Enum(CallSessionStatus, name="call_session_status", native_enum=False),
+        Enum(CallSessionStatus, name="call_session_status", native_enum=False, length=64),
         nullable=False,
         default=CallSessionStatus.queued,
     )
@@ -219,13 +219,13 @@ class CallSession(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     outcome: Mapped[CallOutcome] = mapped_column(
-        Enum(CallOutcome, name="call_outcome", native_enum=False),
+        Enum(CallOutcome, name="call_outcome", native_enum=False, length=64),
         nullable=False,
         default=CallOutcome.unknown,
     )
     transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -241,7 +241,7 @@ class CallEvent(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     call_session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("call_session.id"), nullable=False, index=True)
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -255,19 +255,19 @@ class Notification(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     deep_link: Mapped[str | None] = mapped_column(Text, nullable=True)  # Legacy field.
-    action: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    action: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     severity: Mapped[NotificationSeverity] = mapped_column(
-        Enum(NotificationSeverity, name="notification_severity", native_enum=False),
+        Enum(NotificationSeverity, name="notification_severity", native_enum=False, length=64),
         nullable=False,
         default=NotificationSeverity.info,
     )
     status: Mapped[NotificationStatus] = mapped_column(
-        Enum(NotificationStatus, name="notification_status", native_enum=False),
+        Enum(NotificationStatus, name="notification_status", native_enum=False, length=64),
         nullable=False,
         default=NotificationStatus.unread,
     )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -282,7 +282,7 @@ class NotificationPreference(Base):
     channel_email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     channel_inapp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     digest_mode: Mapped[NotificationDigestMode] = mapped_column(
-        Enum(NotificationDigestMode, name="notification_digest_mode", native_enum=False),
+        Enum(NotificationDigestMode, name="notification_digest_mode", native_enum=False, length=64),
         nullable=False,
         default=NotificationDigestMode.instant,
     )
@@ -325,13 +325,13 @@ class EmailMessage(Base):
     provider: Mapped[str | None] = mapped_column(Text, nullable=True)
     provider_message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[EmailMessageStatus] = mapped_column(
-        Enum(EmailMessageStatus, name="email_message_status", native_enum=False),
+        Enum(EmailMessageStatus, name="email_message_status", native_enum=False, length=64),
         nullable=False,
         default=EmailMessageStatus.queued,
     )
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     dedupe_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -349,7 +349,7 @@ class NotificationEvent(Base):
     topic: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)
     channel: Mapped[NotificationEventChannel] = mapped_column(
-        Enum(NotificationEventChannel, name="notification_event_channel", native_enum=False),
+        Enum(NotificationEventChannel, name="notification_event_channel", native_enum=False, length=64),
         nullable=False,
     )
     reference_type: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -365,12 +365,12 @@ class ScheduledNotification(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     channel: Mapped[NotificationEventChannel] = mapped_column(
-        Enum(NotificationEventChannel, name="scheduled_notification_channel", native_enum=False),
+        Enum(NotificationEventChannel, name="scheduled_notification_channel", native_enum=False, length=64),
         nullable=False,
         default=NotificationEventChannel.email,
     )
     send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     dedupe_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 

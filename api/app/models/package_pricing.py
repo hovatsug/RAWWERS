@@ -42,7 +42,7 @@ class PackageDecayCurve(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, unique=True, index=True)
     curve_type: Mapped[PackageCurveType] = mapped_column(
-        Enum(PackageCurveType, name="package_curve_type", native_enum=False), nullable=False, default=PackageCurveType.flat
+        Enum(PackageCurveType, name="package_curve_type", native_enum=False, length=64), nullable=False, default=PackageCurveType.flat
     )
     shape_param: Mapped[Decimal | None] = mapped_column(Numeric(6, 4), nullable=True)
     floor_pct: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, default=Decimal("1.0000"))
@@ -60,7 +60,7 @@ class NichePackagePriceCap(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
-    tier: Mapped[SkillTier] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False), nullable=False)
+    tier: Mapped[SkillTier] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False, length=64), nullable=False)
     entry_price_min: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     entry_price_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")

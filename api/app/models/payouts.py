@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, Enum, Index, Integer, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, Enum, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -60,7 +60,7 @@ class EarningsLedgerEntry(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     source_type: Mapped[EarningsSourceType] = mapped_column(
-        Enum(EarningsSourceType, name="earnings_source_type", native_enum=False),
+        Enum(EarningsSourceType, name="earnings_source_type", native_enum=False, length=64),
         nullable=False,
     )
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
@@ -68,14 +68,14 @@ class EarningsLedgerEntry(Base):
     platform_fee_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     net_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[EarningsEntryStatus] = mapped_column(
-        Enum(EarningsEntryStatus, name="earnings_entry_status", native_enum=False),
+        Enum(EarningsEntryStatus, name="earnings_entry_status", native_enum=False, length=64),
         nullable=False,
         default=EarningsEntryStatus.pending,
         index=True,
     )
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     reversed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -108,7 +108,7 @@ class EarningsHold(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     reason: Mapped[EarningsHoldReason] = mapped_column(
-        Enum(EarningsHoldReason, name="earnings_hold_reason", native_enum=False),
+        Enum(EarningsHoldReason, name="earnings_hold_reason", native_enum=False, length=64),
         nullable=False,
     )
     amount_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
@@ -124,14 +124,14 @@ class PayoutAccount(Base):
 
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     payout_method: Mapped[PayoutMethod] = mapped_column(
-        Enum(PayoutMethod, name="payout_method", native_enum=False),
+        Enum(PayoutMethod, name="payout_method", native_enum=False, length=64),
         nullable=False,
         default=PayoutMethod.bank_manual,
     )
     stripe_connect_account_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    bank_details_encrypted: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    bank_details_encrypted: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[PayoutAccountStatus] = mapped_column(
-        Enum(PayoutAccountStatus, name="payout_account_status", native_enum=False),
+        Enum(PayoutAccountStatus, name="payout_account_status", native_enum=False, length=64),
         nullable=False,
         default=PayoutAccountStatus.not_set,
     )
@@ -150,7 +150,7 @@ class PayoutRequest(Base):
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     amount_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[PayoutRequestStatus] = mapped_column(
-        Enum(PayoutRequestStatus, name="payout_request_status", native_enum=False),
+        Enum(PayoutRequestStatus, name="payout_request_status", native_enum=False, length=64),
         nullable=False,
         default=PayoutRequestStatus.requested,
         index=True,
@@ -160,7 +160,7 @@ class PayoutRequest(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reference: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    reference: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -176,7 +176,7 @@ class PayoutEvent(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     payout_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     type: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 

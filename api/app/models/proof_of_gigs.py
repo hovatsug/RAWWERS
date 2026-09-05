@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import JSON, BigInteger, DateTime, Enum, Index, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, DateTime, Enum, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -39,7 +39,7 @@ class RawwIssuanceRule(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_type: Mapped[RawwIssuanceEventType] = mapped_column(
-        Enum(RawwIssuanceEventType, name="raww_issuance_event_type", native_enum=False),
+        Enum(RawwIssuanceEventType, name="raww_issuance_event_type", native_enum=False, length=64),
         nullable=False,
         unique=True,
     )
@@ -60,11 +60,11 @@ class RawwMultiplierPolicy(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    tier_multipliers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    rating_curve: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    dispute_penalty: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    tier_multipliers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    rating_curve: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    dispute_penalty: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     refund_penalty_multiplier: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False, default=Decimal("0.500"))
-    abuse_block_threshold: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    abuse_block_threshold: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -78,7 +78,7 @@ class RawwIssuanceCap(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scope: Mapped[RawwIssuanceCapScope] = mapped_column(
-        Enum(RawwIssuanceCapScope, name="raww_issuance_cap_scope", native_enum=False),
+        Enum(RawwIssuanceCapScope, name="raww_issuance_cap_scope", native_enum=False, length=64),
         nullable=False,
         unique=True,
     )
@@ -100,9 +100,9 @@ class RawwMintEvent(Base):
     reference_type: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     reference_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     raww_awarded: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    multiplier_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    multiplier_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     status: Mapped[RawwMintEventStatus] = mapped_column(
-        Enum(RawwMintEventStatus, name="raww_mint_event_status", native_enum=False),
+        Enum(RawwMintEventStatus, name="raww_mint_event_status", native_enum=False, length=64),
         nullable=False,
         default=RawwMintEventStatus.minted,
     )

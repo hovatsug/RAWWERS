@@ -4,8 +4,8 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -51,7 +51,7 @@ class RolloutCity(Base):
     city: Mapped[str] = mapped_column(Text, nullable=False)
     is_pro_onboarding_enabled: Mapped[bool] = mapped_column(nullable=False, default=False)
     is_client_browsing_enabled: Mapped[bool] = mapped_column(nullable=False, default=False)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -85,11 +85,11 @@ class InviteWave(Base):
     used_invites: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     allowed_role: Mapped[InviteAllowedRole] = mapped_column(
-        Enum(InviteAllowedRole, name="invite_allowed_role", native_enum=False),
+        Enum(InviteAllowedRole, name="invite_allowed_role", native_enum=False, length=64),
         nullable=False,
         default=InviteAllowedRole.pro,
     )
-    allowed_cities: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    allowed_cities: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -111,7 +111,7 @@ class InviteCode(Base):
     redeemed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[InviteCodeStatus] = mapped_column(
-        Enum(InviteCodeStatus, name="invite_code_status", native_enum=False),
+        Enum(InviteCodeStatus, name="invite_code_status", native_enum=False, length=64),
         nullable=False,
         default=InviteCodeStatus.issued,
     )
@@ -129,11 +129,11 @@ class ProOnboarding(Base):
 
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     status: Mapped[ProOnboardingStatus] = mapped_column(
-        Enum(ProOnboardingStatus, name="pro_onboarding_status", native_enum=False),
+        Enum(ProOnboardingStatus, name="pro_onboarding_status", native_enum=False, length=64),
         nullable=False,
         default=ProOnboardingStatus.started,
     )
-    current_city: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    current_city: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     invite_code_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("invite_code.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -153,12 +153,12 @@ class ProOnboardingEvent(Base):
     from_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     to_status: Mapped[str] = mapped_column(Text, nullable=False)
     actor_type: Mapped[ProOnboardingActorType] = mapped_column(
-        Enum(ProOnboardingActorType, name="pro_onboarding_actor_type", native_enum=False),
+        Enum(ProOnboardingActorType, name="pro_onboarding_actor_type", native_enum=False, length=64),
         nullable=False,
     )
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
 
@@ -167,7 +167,7 @@ class OnboardingRequirement(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    value: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    value: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

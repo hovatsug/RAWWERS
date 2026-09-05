@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, Integer, Numeric, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, DateTime, Enum, Integer, Numeric, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.admin import KYCStatus
@@ -15,18 +15,18 @@ class ProPublicIndex(Base):
 
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     primary_niche_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    top_niches: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    niche_tiers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    verified_niches: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    top_niches: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    niche_tiers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    verified_niches: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     city: Mapped[str | None] = mapped_column(Text, nullable=True)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)
-    styles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    styles: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     min_package_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     max_package_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False, index=True)
     kyc_status: Mapped[KYCStatus] = mapped_column(
-        Enum(KYCStatus, name="kyc_status", native_enum=False),
+        Enum(KYCStatus, name="kyc_status", native_enum=False, length=64),
         nullable=False,
         default=KYCStatus.unsubmitted,
         index=True,
@@ -51,5 +51,5 @@ class AnalyticsEvent(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     session_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     event_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    properties: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    properties: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)

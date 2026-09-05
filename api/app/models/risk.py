@@ -4,8 +4,8 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, JSON, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, Enum, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -41,7 +41,7 @@ class DeviceFingerprint(Base):
     fingerprint_hash: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
 
 class IpSignal(Base):
@@ -51,7 +51,7 @@ class IpSignal(Base):
     ip_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
 
 class SessionSignal(Base):
@@ -72,13 +72,13 @@ class RiskProfile(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     risk_score: Mapped[int] = mapped_column(nullable=False, default=0)
     risk_level: Mapped[RiskLevel] = mapped_column(
-        Enum(RiskLevel, name="risk_level", native_enum=False),
+        Enum(RiskLevel, name="risk_level", native_enum=False, length=64),
         nullable=False,
         default=RiskLevel.low,
         index=True,
     )
-    reasons: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    flags: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    reasons: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    flags: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     last_calculated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -89,7 +89,7 @@ class RiskEvent(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     rule_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     delta: Mapped[int] = mapped_column(nullable=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
 
@@ -99,12 +99,12 @@ class RiskAction(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     action_type: Mapped[RiskActionType] = mapped_column(
-        Enum(RiskActionType, name="risk_action_type", native_enum=False),
+        Enum(RiskActionType, name="risk_action_type", native_enum=False, length=64),
         nullable=False,
         index=True,
     )
     status: Mapped[RiskActionStatus] = mapped_column(
-        Enum(RiskActionStatus, name="risk_action_status", native_enum=False),
+        Enum(RiskActionStatus, name="risk_action_status", native_enum=False, length=64),
         nullable=False,
         default=RiskActionStatus.active,
         index=True,
@@ -119,7 +119,7 @@ class RiskRule(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
-    params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    params: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     score_delta: Mapped[int] = mapped_column(nullable=False, default=0)
-    action_on_trigger: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    action_on_trigger: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

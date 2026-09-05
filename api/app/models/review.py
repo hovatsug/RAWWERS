@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, JSON, Numeric, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, Numeric, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -25,14 +25,14 @@ class Review(Base):
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
-    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     would_book_again: Mapped[bool] = mapped_column(nullable=False, default=True)
     video_media_asset_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=True
     )
     status: Mapped[ReviewStatus] = mapped_column(
-        Enum(ReviewStatus, name="review_status", native_enum=False),
+        Enum(ReviewStatus, name="review_status", native_enum=False, length=64),
         nullable=False,
         default=ReviewStatus.published,
         index=True,
@@ -71,7 +71,7 @@ class ProReputation(Base):
     avg_rating: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False, default=Decimal("0.00"))
     review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     would_book_again_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0.00"))
-    tag_counts: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    tag_counts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     last_review_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

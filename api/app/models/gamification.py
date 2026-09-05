@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, JSON, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -47,14 +47,14 @@ class ProCredential(Base):
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
     credential_code: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
-    tier: Mapped[SkillTier] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False), nullable=False)
+    tier: Mapped[SkillTier] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False, length=64), nullable=False)
     mode: Mapped[CredentialMode] = mapped_column(
-        Enum(CredentialMode, name="credential_mode", native_enum=False),
+        Enum(CredentialMode, name="credential_mode", native_enum=False, length=64),
         nullable=False,
         default=CredentialMode.highest_ever,
     )
     awarded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
     __table_args__ = (UniqueConstraint("pro_user_id", "niche_id", "tier", "mode", name="uq_pro_credential_user_niche_tier_mode"),)
 
@@ -69,16 +69,16 @@ class Milestone(Base):
     name_key: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     description_key: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     scope: Mapped[MilestoneScope] = mapped_column(
-        Enum(MilestoneScope, name="milestone_scope", native_enum=False),
+        Enum(MilestoneScope, name="milestone_scope", native_enum=False, length=64),
         nullable=False,
     )
     niche_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=True, index=True)
     difficulty: Mapped[MilestoneDifficulty] = mapped_column(
-        Enum(MilestoneDifficulty, name="milestone_difficulty", native_enum=False),
+        Enum(MilestoneDifficulty, name="milestone_difficulty", native_enum=False, length=64),
         nullable=False,
     )
     audience: Mapped[MilestoneAudience] = mapped_column(
-        Enum(MilestoneAudience, name="milestone_audience", native_enum=False),
+        Enum(MilestoneAudience, name="milestone_audience", native_enum=False, length=64),
         nullable=False,
         default=MilestoneAudience.both,
     )
@@ -86,7 +86,7 @@ class Milestone(Base):
     cooldown_days: Mapped[int | None] = mapped_column(nullable=True)
     start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    criteria: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    criteria: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     reward_rule_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -105,12 +105,12 @@ class MilestoneProgress(Base):
     milestone_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("milestone.id"), nullable=False, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     status: Mapped[MilestoneProgressStatus] = mapped_column(
-        Enum(MilestoneProgressStatus, name="milestone_progress_status", native_enum=False),
+        Enum(MilestoneProgressStatus, name="milestone_progress_status", native_enum=False, length=64),
         nullable=False,
         default=MilestoneProgressStatus.active,
     )
     progress_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-    progress_meta: Mapped[dict] = mapped_column("progress_meta", JSON, nullable=False, default=dict)
+    progress_meta: Mapped[dict] = mapped_column("progress_meta", JSONB, nullable=False, default=dict)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -126,7 +126,7 @@ class MilestoneCompletion(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     reward_ledger_entry_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
 
 class PerformanceCycle(Base):
@@ -139,7 +139,7 @@ class PerformanceCycle(Base):
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

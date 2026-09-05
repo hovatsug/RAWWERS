@@ -2,8 +2,8 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -68,18 +68,18 @@ class MediaAsset(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
-    kind: Mapped[MediaKind] = mapped_column(Enum(MediaKind, name="media_kind", native_enum=False), nullable=False)
-    purpose: Mapped[MediaPurpose] = mapped_column(Enum(MediaPurpose, name="media_purpose", native_enum=False), nullable=False)
-    provider: Mapped[MediaProvider] = mapped_column(Enum(MediaProvider, name="media_provider", native_enum=False), nullable=False)
+    kind: Mapped[MediaKind] = mapped_column(Enum(MediaKind, name="media_kind", native_enum=False, length=64), nullable=False)
+    purpose: Mapped[MediaPurpose] = mapped_column(Enum(MediaPurpose, name="media_purpose", native_enum=False, length=64), nullable=False)
+    provider: Mapped[MediaProvider] = mapped_column(Enum(MediaProvider, name="media_provider", native_enum=False, length=64), nullable=False)
     provider_asset_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     provider_upload_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[MediaStatus] = mapped_column(Enum(MediaStatus, name="media_status", native_enum=False), nullable=False, default=MediaStatus.created)
-    visibility: Mapped[MediaVisibility] = mapped_column(Enum(MediaVisibility, name="media_visibility", native_enum=False), nullable=False, default=MediaVisibility.owner_only)
+    status: Mapped[MediaStatus] = mapped_column(Enum(MediaStatus, name="media_status", native_enum=False, length=64), nullable=False, default=MediaStatus.created)
+    visibility: Mapped[MediaVisibility] = mapped_column(Enum(MediaVisibility, name="media_visibility", native_enum=False, length=64), nullable=False, default=MediaVisibility.owner_only)
     content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     byte_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     checksum: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
-    niche_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
+    niche_tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -91,11 +91,11 @@ class MediaObject(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     media_asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=False, index=True)
-    variant: Mapped[MediaVariant] = mapped_column(Enum(MediaVariant, name="media_variant", native_enum=False), nullable=False)
+    variant: Mapped[MediaVariant] = mapped_column(Enum(MediaVariant, name="media_variant", native_enum=False, length=64), nullable=False)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    status: Mapped[ObjectStatus] = mapped_column(Enum(ObjectStatus, name="object_status", native_enum=False), nullable=False, default=ObjectStatus.created)
+    status: Mapped[ObjectStatus] = mapped_column(Enum(ObjectStatus, name="object_status", native_enum=False, length=64), nullable=False, default=ObjectStatus.created)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -106,11 +106,11 @@ class WebhookEvent(Base):
     __tablename__ = "webhook_event"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    provider: Mapped[WebhookProvider] = mapped_column(Enum(WebhookProvider, name="webhook_provider", native_enum=False), nullable=False)
+    provider: Mapped[WebhookProvider] = mapped_column(Enum(WebhookProvider, name="webhook_provider", native_enum=False, length=64), nullable=False)
     external_event_id: Mapped[str] = mapped_column(Text, nullable=False)
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
 
 Index("ix_media_asset_owner_created", MediaAsset.owner_user_id, MediaAsset.created_at.desc())

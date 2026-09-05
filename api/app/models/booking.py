@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, Numeric, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, Numeric, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -46,7 +46,7 @@ class ProPackage(Base):
     extra_photo_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     proofs_sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     finals_sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
-    addons: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    addons: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -62,7 +62,7 @@ class ProAvailabilityRule(Base):
     end_time: Mapped[datetime.time] = mapped_column(Time(timezone=False), nullable=False)
     timezone: Mapped[str] = mapped_column(Text, nullable=False, default="UTC")
     location_mode: Mapped[AvailabilityLocationMode] = mapped_column(
-        Enum(AvailabilityLocationMode, name="availability_location_mode", native_enum=False),
+        Enum(AvailabilityLocationMode, name="availability_location_mode", native_enum=False, length=64),
         nullable=False,
         default=AvailabilityLocationMode.both,
     )
@@ -126,7 +126,7 @@ class BookingRequest(Base):
     location_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[BookingRequestStatus] = mapped_column(
-        Enum(BookingRequestStatus, name="booking_request_status", native_enum=False),
+        Enum(BookingRequestStatus, name="booking_request_status", native_enum=False, length=64),
         nullable=False,
         default=BookingRequestStatus.pending,
     )
@@ -140,8 +140,8 @@ class BookingRequestTransition(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     booking_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("booking_request.id"), nullable=False, index=True)
-    from_status: Mapped[BookingRequestStatus] = mapped_column(Enum(BookingRequestStatus, name="booking_request_status", native_enum=False), nullable=False)
-    to_status: Mapped[BookingRequestStatus] = mapped_column(Enum(BookingRequestStatus, name="booking_request_status", native_enum=False), nullable=False)
+    from_status: Mapped[BookingRequestStatus] = mapped_column(Enum(BookingRequestStatus, name="booking_request_status", native_enum=False, length=64), nullable=False)
+    to_status: Mapped[BookingRequestStatus] = mapped_column(Enum(BookingRequestStatus, name="booking_request_status", native_enum=False, length=64), nullable=False)
     actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -153,7 +153,7 @@ class BookingTimeRequest(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     booking_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("booking_request.id"), nullable=False, index=True)
     client_timezone: Mapped[str] = mapped_column(Text, nullable=False)
-    windows: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    windows: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
@@ -167,7 +167,7 @@ class ConfirmedSlot(Base):
     start_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[ConfirmedSlotStatus] = mapped_column(
-        Enum(ConfirmedSlotStatus, name="confirmed_slot_status", native_enum=False),
+        Enum(ConfirmedSlotStatus, name="confirmed_slot_status", native_enum=False, length=64),
         nullable=False,
         default=ConfirmedSlotStatus.confirmed,
     )
@@ -189,7 +189,7 @@ class CancellationPolicySnapshot(Base):
     __tablename__ = "cancellation_policy_snapshot"
 
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), primary_key=True)
-    snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 

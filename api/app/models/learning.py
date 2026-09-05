@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -100,7 +100,7 @@ class LearningFeePolicy(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     platform_fee_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     mux_cost_reserve_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -114,10 +114,10 @@ class LearningPartner(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    brand: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    brand: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     contact_email: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[LearningPartnerStatus] = mapped_column(
-        Enum(LearningPartnerStatus, name="learning_partner_status", native_enum=False),
+        Enum(LearningPartnerStatus, name="learning_partner_status", native_enum=False, length=64),
         nullable=False,
         default=LearningPartnerStatus.active,
         index=True,
@@ -139,13 +139,13 @@ class InstructorProfile(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.user_id"), primary_key=True)
     status: Mapped[InstructorStatus] = mapped_column(
-        Enum(InstructorStatus, name="instructor_status", native_enum=False),
+        Enum(InstructorStatus, name="instructor_status", native_enum=False, length=64),
         nullable=False,
         default=InstructorStatus.pending,
         index=True,
     )
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    expertise: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    expertise: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     approved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rejected_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -174,17 +174,17 @@ class Course(Base):
     description_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     description_custom: Mapped[str | None] = mapped_column(Text, nullable=True)
     language: Mapped[str] = mapped_column(Text, nullable=False, default="en-GB")
-    niche_slugs: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    niche_slugs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
-    level: Mapped[CourseLevel] = mapped_column(Enum(CourseLevel, name="course_level", native_enum=False), nullable=False)
+    level: Mapped[CourseLevel] = mapped_column(Enum(CourseLevel, name="course_level", native_enum=False, length=64), nullable=False)
     pricing_mode: Mapped[CoursePricingMode] = mapped_column(
-        Enum(CoursePricingMode, name="course_pricing_mode", native_enum=False),
+        Enum(CoursePricingMode, name="course_pricing_mode", native_enum=False, length=64),
         nullable=False,
         default=CoursePricingMode.free,
         index=True,
     )
     status: Mapped[CourseStatus] = mapped_column(
-        Enum(CourseStatus, name="course_status", native_enum=False),
+        Enum(CourseStatus, name="course_status", native_enum=False, length=64),
         nullable=False,
         default=CourseStatus.draft,
         index=True,
@@ -198,7 +198,7 @@ class Course(Base):
     intro_video_media_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=True)
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    mux_metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    mux_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -218,13 +218,13 @@ class CourseModule(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     type: Mapped[CourseModuleType] = mapped_column(
-        Enum(CourseModuleType, name="course_module_type", native_enum=False),
+        Enum(CourseModuleType, name="course_module_type", native_enum=False, length=64),
         nullable=False,
         default=CourseModuleType.video,
     )
     mux_asset_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -245,7 +245,7 @@ class Lesson(Base):
     module_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("course_module.id"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content_type: Mapped[LessonContentType] = mapped_column(
-        Enum(LessonContentType, name="lesson_content_type", native_enum=False),
+        Enum(LessonContentType, name="lesson_content_type", native_enum=False, length=64),
         nullable=False,
     )
     body_text: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -276,7 +276,7 @@ class Enrollment(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.user_id"), nullable=False, index=True)
     course_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("course.id"), nullable=False, index=True)
     status: Mapped[EnrollmentStatus] = mapped_column(
-        Enum(EnrollmentStatus, name="enrollment_status", native_enum=False),
+        Enum(EnrollmentStatus, name="enrollment_status", native_enum=False, length=64),
         nullable=False,
         default=EnrollmentStatus.enrolled,
         index=True,
@@ -310,14 +310,14 @@ class LessonProgress(Base):
     enrollment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("enrollment.id"), nullable=False, index=True)
     lesson_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("lesson.id"), nullable=False, index=True)
     status: Mapped[ProgressStatus] = mapped_column(
-        Enum(ProgressStatus, name="progress_status", native_enum=False),
+        Enum(ProgressStatus, name="progress_status", native_enum=False, length=64),
         nullable=False,
         default=ProgressStatus.not_started,
         index=True,
     )
     progress_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
     __table_args__ = (
         UniqueConstraint("enrollment_id", "lesson_id", name="uq_lesson_progress_enrollment_lesson"),
@@ -331,7 +331,7 @@ class QuizQuestion(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lesson_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("lesson.id"), nullable=False, index=True)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    choices: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    choices: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     correct_index: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
@@ -359,7 +359,7 @@ class Certificate(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.user_id"), nullable=False, index=True)
     certificate_type: Mapped[CertificateType] = mapped_column(
-        Enum(CertificateType, name="certificate_type", native_enum=False),
+        Enum(CertificateType, name="certificate_type", native_enum=False, length=64),
         nullable=False,
         default=CertificateType.course,
         index=True,
@@ -375,7 +375,7 @@ class Certificate(Base):
     )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pdf_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
     __table_args__ = (
         UniqueConstraint("user_id", "course_id", name="uq_certificate_user_course"),
@@ -393,11 +393,11 @@ class NicheProgramRequirement(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
     tier_target: Mapped[SkillTier] = mapped_column(
-        Enum(SkillTier, name="skill_tier", native_enum=False),
+        Enum(SkillTier, name="skill_tier", native_enum=False, length=64),
         nullable=False,
     )
     requirement_type: Mapped[RequirementType] = mapped_column(
-        Enum(RequirementType, name="requirement_type", native_enum=False),
+        Enum(RequirementType, name="requirement_type", native_enum=False, length=64),
         nullable=False,
         default=RequirementType.course,
     )
@@ -438,7 +438,7 @@ class CurriculumRequirement(Base):
     )
     course_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("course.id"), nullable=False, index=True)
     requirement_type: Mapped[CurriculumRequirementType] = mapped_column(
-        Enum(CurriculumRequirementType, name="curriculum_requirement_type", native_enum=False),
+        Enum(CurriculumRequirementType, name="curriculum_requirement_type", native_enum=False, length=64),
         nullable=False,
     )
     min_score_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=70)
@@ -451,7 +451,7 @@ class CourseQuiz(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     module_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("course_module.id"), nullable=False, unique=True, index=True)
-    questions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    questions: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     pass_score_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=70)
 
 
@@ -462,7 +462,7 @@ class ModuleProgress(Base):
     enrollment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("enrollment.id"), nullable=False, index=True)
     module_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("course_module.id"), nullable=False, index=True)
     status: Mapped[ProgressStatus] = mapped_column(
-        Enum(ProgressStatus, name="progress_status", native_enum=False),
+        Enum(ProgressStatus, name="progress_status", native_enum=False, length=64),
         nullable=False,
         default=ProgressStatus.not_started,
         index=True,
@@ -490,7 +490,7 @@ class CourseSale(Base):
     partner_net_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     stripe_payment_intent_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     status: Mapped[CourseSaleStatus] = mapped_column(
-        Enum(CourseSaleStatus, name="course_sale_status", native_enum=False),
+        Enum(CourseSaleStatus, name="course_sale_status", native_enum=False, length=64),
         nullable=False,
         default=CourseSaleStatus.paid,
     )
@@ -510,7 +510,7 @@ class CourseReview(Base):
         UUID(as_uuid=True), ForeignKey("user_account.user_id"), nullable=False, index=True
     )
     decision: Mapped[CourseReviewDecision] = mapped_column(
-        Enum(CourseReviewDecision, name="course_review_decision", native_enum=False),
+        Enum(CourseReviewDecision, name="course_review_decision", native_enum=False, length=64),
         nullable=False,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -561,22 +561,60 @@ handler idempotent. The first is one change and covers all handlers; the
 second is correct anyway but is a large audit. Worth deciding before
 launch - the dispatcher drains the money path.
 
-## Enum column widths are a standing hazard — worth its own task
+## ~~Enum column widths~~ — FIXED, and alembic could not be trusted to find them
 
-Two columns were narrower than their enums. **Around forty more sit
-exactly at their limit**, so the next value added to any of those enums
-produces the same 500. `Enum(..., native_enum=False)` sizes the column to
-the longest value *at migration time* and nothing resizes it afterwards.
+`Enum(..., native_enum=False)` sizes its VARCHAR to the longest enum
+**member name** at the moment the migration is generated, and nothing
+resizes it when a longer value is added later. Two columns had already
+outgrown their width; **162 more sat exactly at their limit**, one new
+enum value away from the same 500.
 
-`alembic check` would catch the whole class, but it currently reports
-~108KB of unrelated drift between models and migrations - JSONB vs JSON,
-index and type differences - so it cannot be a gate until that is
-reconciled. That reconciliation also has to settle JSON vs JSONB
-repo-wide, which is why the `.astext` fix above was done locally rather
-than by changing a column type.
+Every model now pins `length=64` explicitly, so the width is a decision
+rather than a side effect of whichever names existed when the column was
+created, and migration `20260905_0048` brings the database to match.
+Widening a varchar in Postgres is catalog-only - no table rewrite - so it
+is cheap even on large tables. Result: 164 enum columns, 0 broken, 0 at
+limit.
 
-Scope as one task: reconcile model/migration drift, decide JSON vs JSONB,
-then put `alembic check` in CI.
+**Alembic's numbers were unreliable for exactly this.** It compares
+against member names, not stored values. `feature_flag.scope` and
+`milestone.scope` hold `'global'` (6 characters) but their member is
+`global_scope` (12), so alembic reports them as too narrow when they are
+not. A mechanical make-the-database-match-the-model pass would have
+widened them for no reason - and, worse, would have taught us to trust
+the tool on the next column. Every width in this pass was verified
+against `enum.value`.
+
+Demonstrated rather than argued: a 30-character value now writes to
+`dispute.category` at the database level, and the ORM correctly refuses
+to read back a value not in the enum. Headroom and validation are
+separate concerns and both behave.
+
+## Models said JSON, the database has always held JSONB — FIXED
+
+142 of the 146 type differences alembic reported were one decision
+repeated: the models declared `JSON` while every column is `JSONB`. The
+models were the accidental state - the evidence being that
+`finalize_refund_case_success` was written with `.astext`, which is JSONB
+syntax, and crashed. Changing the models rather than the database means
+no migration and no table rewrite, and `.astext` is correct again.
+
+Drift went from 207 differences to 68, all now index and constraint
+shape.
+
+## Remaining drift: index and constraint shape (~68)
+
+Not addressed in this pass, deliberately. 23 changed indexes, 22 removed
+unique constraints and 11 removed indexes are largely the same handful of
+facts expressed two ways - a `UniqueConstraint` in the model against a
+unique index in the database. Each needs reading individually, which is
+exactly the sort of work that goes wrong when done mechanically.
+
+One genuine type difference remains: `vault_item.bytes` is BIGINT in the
+database and `Integer` in the model.
+
+`alembic check` cannot gate CI until this is reconciled. Worth a pass of
+its own with the numbers above as the starting point.
 
 ## No video poster frames in the portfolio preview
 

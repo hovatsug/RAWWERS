@@ -4,8 +4,8 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, JSON, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -49,7 +49,7 @@ class MediaDerivative(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     media_asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=False, index=True)
     kind: Mapped[MediaDerivativeKind] = mapped_column(
-        Enum(MediaDerivativeKind, name="media_derivative_kind", native_enum=False),
+        Enum(MediaDerivativeKind, name="media_derivative_kind", native_enum=False, length=64),
         nullable=False,
     )
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
@@ -69,13 +69,13 @@ class GigMediaEntitlement(Base):
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     entitlement_type: Mapped[GigEntitlementType] = mapped_column(
-        Enum(GigEntitlementType, name="gig_entitlement_type", native_enum=False),
+        Enum(GigEntitlementType, name="gig_entitlement_type", native_enum=False, length=64),
         nullable=False,
     )
     quantity_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
     __table_args__ = (UniqueConstraint("gig_id", "user_id", "entitlement_type", name="uq_gig_entitlement_unique"),)
 
@@ -88,11 +88,11 @@ class GigUsageConsent(Base):
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     consent_level: Mapped[GigConsentLevel] = mapped_column(
-        Enum(GigConsentLevel, name="gig_consent_level", native_enum=False),
+        Enum(GigConsentLevel, name="gig_consent_level", native_enum=False, length=64),
         nullable=False,
     )
-    scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    incentive: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    scope: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    incentive: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     snapshot_at_booking: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -118,13 +118,13 @@ class ShareLink(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    scope: Mapped[ShareLinkScope] = mapped_column(Enum(ShareLinkScope, name="share_link_scope", native_enum=False), nullable=False)
+    scope: Mapped[ShareLinkScope] = mapped_column(Enum(ShareLinkScope, name="share_link_scope", native_enum=False, length=64), nullable=False)
     token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     max_views: Mapped[int | None] = mapped_column(Integer, nullable=True)
     view_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
@@ -141,7 +141,7 @@ class MediaAccessLog(Base):
     media_asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=False, index=True)
     derivative_kind: Mapped[str] = mapped_column(Text, nullable=False)
     action: Mapped[MediaAccessAction] = mapped_column(
-        Enum(MediaAccessAction, name="media_access_action", native_enum=False),
+        Enum(MediaAccessAction, name="media_access_action", native_enum=False, length=64),
         nullable=False,
     )
     ip_hash: Mapped[str | None] = mapped_column(Text, nullable=True)

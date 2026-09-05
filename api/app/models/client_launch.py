@@ -32,7 +32,7 @@ class ClientWaitlist(Base):
     # nothing until you know whether they are photographers or clients.
     role: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ClientWaitlistStatus] = mapped_column(
-        Enum(ClientWaitlistStatus, name="client_waitlist_status", native_enum=False),
+        Enum(ClientWaitlistStatus, name="client_waitlist_status", native_enum=False, length=64),
         nullable=False,
         default=ClientWaitlistStatus.pending,
     )
@@ -57,7 +57,7 @@ class ClientPreference(Base):
     style_tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     location: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     consent_default: Mapped[GigConsentLevel] = mapped_column(
-        Enum(GigConsentLevel, name="gig_consent_level", native_enum=False),
+        Enum(GigConsentLevel, name="gig_consent_level", native_enum=False, length=64),
         nullable=False,
         default=GigConsentLevel.none,
     )

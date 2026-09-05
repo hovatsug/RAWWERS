@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Index, Numeric, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Numeric, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.media import Base
@@ -67,7 +67,7 @@ class Gig(Base):
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     niche_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), index=True, nullable=True)
-    status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False), index=True, nullable=False)
+    status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False, length=64), index=True, nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     amount_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_final: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
@@ -77,7 +77,7 @@ class Gig(Base):
     scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     scheduled_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     location_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -91,8 +91,8 @@ class GigTransition(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
-    from_status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False), nullable=False)
-    to_status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False), nullable=False)
+    from_status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False, length=64), nullable=False)
+    to_status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False, length=64), nullable=False)
     actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -106,18 +106,18 @@ class StripePayment(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
     kind: Mapped[StripePaymentKind] = mapped_column(
-        Enum(StripePaymentKind, name="stripe_payment_kind", native_enum=False),
+        Enum(StripePaymentKind, name="stripe_payment_kind", native_enum=False, length=64),
         nullable=False,
         default=StripePaymentKind.base,
     )
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
-    status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status", native_enum=False), index=True, nullable=False)
+    status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status", native_enum=False, length=64), index=True, nullable=False)
     stripe_payment_intent_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -129,7 +129,7 @@ class LedgerEntry(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
-    entry_type: Mapped[LedgerEntryType] = mapped_column(Enum(LedgerEntryType, name="ledger_entry_type", native_enum=False), index=True, nullable=False)
+    entry_type: Mapped[LedgerEntryType] = mapped_column(Enum(LedgerEntryType, name="ledger_entry_type", native_enum=False, length=64), index=True, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -146,7 +146,7 @@ class StripeWebhookEvent(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     external_event_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 

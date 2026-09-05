@@ -4,8 +4,8 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Index, Integer, JSON, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Enum, Index, Integer, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -37,7 +37,7 @@ class I18nBundle(Base):
     locale: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     namespace: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
-    content: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    content: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -58,7 +58,7 @@ class I18nKeyAudit(Base):
     namespace: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     key: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     status: Mapped[I18nKeyAuditStatus] = mapped_column(
-        Enum(I18nKeyAuditStatus, name="i18n_key_audit_status", native_enum=False),
+        Enum(I18nKeyAuditStatus, name="i18n_key_audit_status", native_enum=False, length=64),
         nullable=False,
         default=I18nKeyAuditStatus.present,
     )
@@ -79,7 +79,7 @@ class LocalizedText(Base):
     entity_type: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     locale: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

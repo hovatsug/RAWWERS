@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -54,7 +54,7 @@ class ProofGallery(Base):
     extra_photo_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     status: Mapped[ProofGalleryStatus] = mapped_column(
-        Enum(ProofGalleryStatus, name="proof_gallery_status", native_enum=False),
+        Enum(ProofGalleryStatus, name="proof_gallery_status", native_enum=False, length=64),
         nullable=False,
         default=ProofGalleryStatus.draft,
     )
@@ -83,7 +83,7 @@ class ClientSelection(Base):
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[SelectionStatus] = mapped_column(
-        Enum(SelectionStatus, name="selection_status", native_enum=False),
+        Enum(SelectionStatus, name="selection_status", native_enum=False, length=64),
         nullable=False,
         default=SelectionStatus.draft,
     )
@@ -111,11 +111,11 @@ class UpsellPurchase(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     status: Mapped[UpsellPurchaseStatus] = mapped_column(
-        Enum(UpsellPurchaseStatus, name="upsell_purchase_status", native_enum=False),
+        Enum(UpsellPurchaseStatus, name="upsell_purchase_status", native_enum=False, length=64),
         nullable=False,
         default=UpsellPurchaseStatus.pending,
     )
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True, index=True)
-    meta: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

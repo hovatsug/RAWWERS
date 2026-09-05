@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, JSON, DateTime, Enum, ForeignKey, Integer, Numeric, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Integer, Numeric, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.media import Base
@@ -89,7 +89,7 @@ class PremiumProduct(Base):
     base_price_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     deposit_price_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=180)
-    eligibility_rules: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    eligibility_rules: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -106,11 +106,11 @@ class LegacyBooking(Base):
     client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     assigned_pro_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     status: Mapped[LegacyBookingStatus] = mapped_column(
-        Enum(LegacyBookingStatus, name="legacy_booking_status", native_enum=False), nullable=False, default=LegacyBookingStatus.brief_pending, index=True
+        Enum(LegacyBookingStatus, name="legacy_booking_status", native_enum=False, length=64), nullable=False, default=LegacyBookingStatus.brief_pending, index=True
     )
     price_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     payment_mode: Mapped[LegacyPaymentMode] = mapped_column(
-        Enum(LegacyPaymentMode, name="legacy_payment_mode", native_enum=False), nullable=False
+        Enum(LegacyPaymentMode, name="legacy_payment_mode", native_enum=False, length=64), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -122,10 +122,10 @@ class LegacyBrief(Base):
     __tablename__ = "legacy_brief"
 
     legacy_booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("legacy_booking.id"), primary_key=True)
-    answers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    tone: Mapped[LegacyTone | None] = mapped_column(Enum(LegacyTone, name="legacy_tone", native_enum=False), nullable=True)
+    answers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    tone: Mapped[LegacyTone | None] = mapped_column(Enum(LegacyTone, name="legacy_tone", native_enum=False, length=64), nullable=True)
     privacy_level: Mapped[LegacyPrivacyLevel] = mapped_column(
-        Enum(LegacyPrivacyLevel, name="legacy_privacy_level", native_enum=False), nullable=False, default=LegacyPrivacyLevel.private
+        Enum(LegacyPrivacyLevel, name="legacy_privacy_level", native_enum=False, length=64), nullable=False, default=LegacyPrivacyLevel.private
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -138,13 +138,13 @@ class VaultItem(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     legacy_booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("legacy_booking.id"), nullable=False, index=True)
-    type: Mapped[VaultItemType] = mapped_column(Enum(VaultItemType, name="vault_item_type", native_enum=False), nullable=False)
+    type: Mapped[VaultItemType] = mapped_column(Enum(VaultItemType, name="vault_item_type", native_enum=False, length=64), nullable=False)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     bytes: Mapped[int | None] = mapped_column(nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[VaultItemStatus] = mapped_column(
-        Enum(VaultItemStatus, name="vault_item_status", native_enum=False), nullable=False, default=VaultItemStatus.draft, index=True
+        Enum(VaultItemStatus, name="vault_item_status", native_enum=False, length=64), nullable=False, default=VaultItemStatus.draft, index=True
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -160,7 +160,7 @@ class VaultAccessLog(Base):
     legacy_booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("legacy_booking.id"), nullable=False, index=True)
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     action: Mapped[VaultAccessAction] = mapped_column(
-        Enum(VaultAccessAction, name="vault_access_action", native_enum=False), nullable=False
+        Enum(VaultAccessAction, name="vault_access_action", native_enum=False, length=64), nullable=False
     )
     vault_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("vault_item.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
@@ -172,14 +172,14 @@ class LegacyReview(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     legacy_booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("legacy_booking.id"), nullable=False, index=True)
     stage: Mapped[LegacyReviewStage] = mapped_column(
-        Enum(LegacyReviewStage, name="legacy_review_stage", native_enum=False), nullable=False
+        Enum(LegacyReviewStage, name="legacy_review_stage", native_enum=False, length=64), nullable=False
     )
     submitted_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     client_response: Mapped[LegacyReviewResponse] = mapped_column(
-        Enum(LegacyReviewResponse, name="legacy_review_response", native_enum=False), nullable=False, default=LegacyReviewResponse.pending
+        Enum(LegacyReviewResponse, name="legacy_review_response", native_enum=False, length=64), nullable=False, default=LegacyReviewResponse.pending
     )
     client_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    item_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    item_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
@@ -191,7 +191,7 @@ class LegacyMarketingConsent(Base):
 
     legacy_booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("legacy_booking.id"), primary_key=True)
     consent: Mapped[bool] = mapped_column(nullable=False, default=False)
-    channels: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    channels: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )

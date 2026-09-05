@@ -604,16 +604,14 @@ def finalize_refund_case_success(
     without its refunds list expanded, and an unmatched case sits at
     refund_initiated forever while the money is already gone.
     """
-    # `.astext` is JSONB syntax and `meta` is a plain JSON column, so this
-    # raised AttributeError on every call - in both the success and the
-    # failure path, leaving a refund case stuck at refund_initiated with
-    # money already gone from Stripe. as_string() is the JSON equivalent.
-    # Whether these columns should be JSONB at all is a repo-wide question,
-    # deliberately left to the alembic-drift task rather than answered here.
+    # `.astext` reads the JSONB value as text. It briefly raised
+    # AttributeError here because the models declared these columns JSON
+    # while the database has always held JSONB - the models were the
+    # accidental state, and they now match.
     rows = []
     if stripe_refund_id:
         rows = db.execute(
-            select(RefundCase).where(RefundCase.meta["stripe_refund_id"].as_string() == stripe_refund_id)
+            select(RefundCase).where(RefundCase.meta["stripe_refund_id"].astext == stripe_refund_id)
         ).scalars().all()
     if not rows and payment_intent_id:
         # charge.refunded frequently arrives without its refunds list
@@ -700,14 +698,12 @@ def finalize_refund_case_success(
 
 
 def finalize_refund_case_failed(db: Session, *, stripe_refund_id: str, reason: str | None = None) -> RefundCase | None:
-    # `.astext` is JSONB syntax and `meta` is a plain JSON column, so this
-    # raised AttributeError on every call - in both the success and the
-    # failure path, leaving a refund case stuck at refund_initiated with
-    # money already gone from Stripe. as_string() is the JSON equivalent.
-    # Whether these columns should be JSONB at all is a repo-wide question,
-    # deliberately left to the alembic-drift task rather than answered here.
+    # `.astext` reads the JSONB value as text. It briefly raised
+    # AttributeError here because the models declared these columns JSON
+    # while the database has always held JSONB - the models were the
+    # accidental state, and they now match.
     rows = db.execute(
-        select(RefundCase).where(RefundCase.meta["stripe_refund_id"].as_string() == stripe_refund_id)
+        select(RefundCase).where(RefundCase.meta["stripe_refund_id"].astext == stripe_refund_id)
     ).scalars().all()
     if not rows:
         return None

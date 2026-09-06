@@ -458,6 +458,19 @@ the webhook returned 200, the outbox logged `outbox_event_applied`, and
 the row did not move, because the fix was only in the api image. Webhook
 effects land in the worker. Always `docker compose build api worker`.
 
+## Both flavors ship the default Flutter app icon, from one shared asset set
+
+`ios/Runner/Assets.xcassets` contains a single `AppIcon.appiconset`, shared by
+both flavors, still holding the stock Flutter chevrons. So even once there is
+artwork, client and pro would install with the *same* icon - two apps a
+photographer is meant to tell apart on one home screen.
+
+Deferred deliberately: it needs artwork that does not exist yet. Recorded here
+because the shared asset set is the part that will not be obvious later - the
+fix is not "drop in an icon", it is "split the set per flavor first", the same
+shape as the launch-storyboard split already done in `Client.xcconfig` /
+`Pro.xcconfig`.
+
 ## Flutter payouts needs `url_launcher`
 
 The payouts screen takes an `openUrl` callback rather than opening the

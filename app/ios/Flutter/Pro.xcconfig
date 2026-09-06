@@ -4,3 +4,7 @@
 PRODUCT_BUNDLE_IDENTIFIER = com.rawwers.pro
 PRODUCT_NAME = RAWWERS Pro
 FLUTTER_TARGET = lib/main_pro.dart
+
+// Native launch ground, matching this flavor's Flutter splash so the two
+// read as one screen rather than a white flash followed by the app.
+LAUNCH_STORYBOARD_NAME = LaunchScreenPro

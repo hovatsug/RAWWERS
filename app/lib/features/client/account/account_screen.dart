@@ -27,7 +27,7 @@ class AccountScreen extends ConsumerWidget {
           children: [
             if (me?.email != null) Text(me!.email!, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: RSpace.s16),
-            RTextLink(label: 'Verify email', onPressed: () => context.go(verifyEmailPath)),
+            RTextLink(label: 'Verify email', onPressed: () => context.push(verifyEmailPath)),
             const Spacer(),
             RButton(label: 'Log out', onPressed: () => ref.read(authControllerProvider.notifier).logout()),
           ],

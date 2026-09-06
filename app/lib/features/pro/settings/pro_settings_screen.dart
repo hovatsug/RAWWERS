@@ -85,7 +85,7 @@ class ProSettingsScreen extends ConsumerWidget {
                     if (me?.emailVerifiedAt != null)
                       Text('Verified', style: theme.textTheme.bodySmall)
                     else
-                      RTextLink(label: 'Verify your email', onPressed: () => context.go(verifyEmailPath)),
+                      RTextLink(label: 'Verify your email', onPressed: () => context.push(verifyEmailPath)),
                   ],
                 ),
               ),
@@ -95,7 +95,7 @@ class ProSettingsScreen extends ConsumerWidget {
                   child: _NavRow(
                     label: 'Getting set up',
                     detail: 'What is left before clients can book you',
-                    onTap: () => context.go(onboardingPath!),
+                    onTap: () => context.push(onboardingPath!),
                   ),
                 ),
                 const SizedBox(height: RSpace.s24),
@@ -109,7 +109,7 @@ class ProSettingsScreen extends ConsumerWidget {
                       _NavRow(
                         label: 'Your listing',
                         detail: 'See your card exactly as a client does',
-                        onTap: () => context.go(listingPath!),
+                        onTap: () => context.push(listingPath!),
                       ),
                       const Divider(height: RSpace.s24),
                     ],
@@ -117,14 +117,14 @@ class ProSettingsScreen extends ConsumerWidget {
                       _NavRow(
                         label: 'Profile',
                         detail: 'Name, headline, where you work, how far you travel',
-                        onTap: () => context.go(profileEditPath!),
+                        onTap: () => context.push(profileEditPath!),
                       ),
                     if (portfolioPath != null) ...[
                       const Divider(height: RSpace.s24),
                       _NavRow(
                         label: 'Portfolio',
                         detail: 'The photos clients judge you on',
-                        onTap: () => context.go(portfolioPath!),
+                        onTap: () => context.push(portfolioPath!),
                       ),
                     ],
                     if (pricingPath != null) ...[
@@ -132,7 +132,7 @@ class ProSettingsScreen extends ConsumerWidget {
                       _NavRow(
                         label: 'Pricing',
                         detail: 'What you charge, and what a client ends up paying',
-                        onTap: () => context.go(pricingPath!),
+                        onTap: () => context.push(pricingPath!),
                       ),
                     ],
                     if (availabilityPath != null) ...[
@@ -140,7 +140,7 @@ class ProSettingsScreen extends ConsumerWidget {
                       _NavRow(
                         label: 'Availability',
                         detail: 'Working hours, time off, how much notice you need',
-                        onTap: () => context.go(availabilityPath!),
+                        onTap: () => context.push(availabilityPath!),
                       ),
                     ],
                     if (gearPath != null) ...[
@@ -148,7 +148,7 @@ class ProSettingsScreen extends ConsumerWidget {
                       _NavRow(
                         label: 'Your kit',
                         detail: 'Bodies, lenses and serial numbers',
-                        onTap: () => context.go(gearPath!),
+                        onTap: () => context.push(gearPath!),
                       ),
                     ],
                   ],
@@ -161,7 +161,7 @@ class ProSettingsScreen extends ConsumerWidget {
                   child: _NavRow(
                     label: 'Getting paid',
                     detail: 'Set up where your earnings go, and see what is settling',
-                    onTap: () => context.go(payoutsPath!),
+                    onTap: () => context.push(payoutsPath!),
                   ),
                 )
               else

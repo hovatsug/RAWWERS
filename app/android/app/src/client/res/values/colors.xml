@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RInk.i950 - the client app's scaffold ground (theme_client.dart). -->
+    <color name="launch_ground">#FF0E0F11</color>
+</resources>

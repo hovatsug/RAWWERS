@@ -4,3 +4,7 @@
 PRODUCT_BUNDLE_IDENTIFIER = com.rawwers.client
 PRODUCT_NAME = RAWWERS
 FLUTTER_TARGET = lib/main_client.dart
+
+// Native launch ground, matching this flavor's Flutter splash so the two
+// read as one screen rather than a white flash followed by the app.
+LAUNCH_STORYBOARD_NAME = LaunchScreenClient

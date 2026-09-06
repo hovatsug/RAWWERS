@@ -74,7 +74,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 const SizedBox(height: RSpace.s16),
                 RButton(
                   label: 'Enter code',
-                  onPressed: () => context.go(widget.resetPasswordPath),
+                  onPressed: () => context.push(widget.resetPasswordPath),
                 ),
               ] else ...[
                 Text('Enter your email and we\'ll send you a code to reset your password.'),

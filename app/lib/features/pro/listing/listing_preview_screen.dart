@@ -169,17 +169,17 @@ class _WhatFeedsIt extends StatelessWidget {
         _FeedsRow(
           label: 'Cover photo and photo count',
           detail: 'From your portfolio',
-          onTap: () => context.go(portfolioPath),
+          onTap: () => context.push(portfolioPath),
         ),
         _FeedsRow(
           label: 'Price range',
           detail: 'The cheapest and dearest of your packages',
-          onTap: () => context.go(pricingPath),
+          onTap: () => context.push(pricingPath),
         ),
         _FeedsRow(
           label: 'Name, headline and city',
           detail: 'From your profile',
-          onTap: () => context.go(profilePath),
+          onTap: () => context.push(profilePath),
         ),
       ],
     );

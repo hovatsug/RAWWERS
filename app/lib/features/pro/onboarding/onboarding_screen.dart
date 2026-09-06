@@ -116,7 +116,7 @@ class _Checklist extends ConsumerWidget {
         title: 'Your profile',
         detail: 'Name, a line about you, and where you work.',
         done: checkDone(checks, 'profile_completed'),
-        onTap: () => context.go(profilePath),
+        onTap: () => context.push(profilePath),
       ),
       _Step(
         title: 'Your portfolio',
@@ -126,19 +126,19 @@ class _Checklist extends ConsumerWidget {
             ? '$photos photos.'
             : '$photos of $photosNeeded photos.',
         done: checkDone(checks, 'portfolio_uploaded'),
-        onTap: () => context.go(portfolioPath),
+        onTap: () => context.push(portfolioPath),
       ),
       _Step(
         title: 'What you charge',
         detail: 'At least one kind of shoot, priced.',
         done: checkDone(checks, 'packages_configured'),
-        onTap: () => context.go(pricingPath),
+        onTap: () => context.push(pricingPath),
       ),
       _Step(
         title: 'What you shoot',
         detail: 'The niches you want to be found under.',
         done: checkDone(checks, 'niches_selected'),
-        onTap: () => context.go(profilePath),
+        onTap: () => context.push(profilePath),
       ),
     ];
 

@@ -25,15 +25,21 @@ part 'app_router_client.g.dart';
 /// compile error at the call site, not a runtime 404.
 abstract final class ClientRoute {
   static const launch = '/launch';
+
+  /// Login is the auth entry point, and register/forgot/reset are its
+  /// children so that each one stacks on top of it rather than replacing it.
+  static const login = '/auth';
   static const register = '/auth/register';
-  static const login = '/auth/login';
   static const forgotPassword = '/auth/forgot-password';
   static const resetPassword = '/auth/reset-password';
-  static const verifyEmail = '/verify-email';
+
   static const discover = '/discover';
   static const bookings = '/bookings';
   static const messages = '/messages';
   static const account = '/account';
+
+  /// Opened from Account, so it hangs off Account and back returns there.
+  static const verifyEmail = '$account/verify-email';
 
   /// Nested under Discover so the bottom nav stays put and back returns to
   /// the results the client was browsing, at the scroll position they left.
@@ -73,14 +79,18 @@ GoRouter clientRouter(Ref ref) {
     },
     routes: [
       GoRoute(path: ClientRoute.launch, builder: (context, state) => const LaunchScreen(title: 'RAWWERS')),
-      GoRoute(path: ClientRoute.register, builder: (context, state) => const RegisterScreen(loginPath: ClientRoute.login)),
-      GoRoute(path: ClientRoute.login, builder: (context, state) => const LoginScreen(registerPath: ClientRoute.register, forgotPasswordPath: ClientRoute.forgotPassword)),
       GoRoute(
-        path: ClientRoute.forgotPassword,
-        builder: (context, state) => const ForgotPasswordScreen(resetPasswordPath: ClientRoute.resetPassword),
+        path: ClientRoute.login,
+        builder: (context, state) => const LoginScreen(registerPath: ClientRoute.register, forgotPasswordPath: ClientRoute.forgotPassword),
+        routes: [
+          GoRoute(path: 'register', builder: (context, state) => const RegisterScreen(loginPath: ClientRoute.login)),
+          GoRoute(
+            path: 'forgot-password',
+            builder: (context, state) => const ForgotPasswordScreen(resetPasswordPath: ClientRoute.resetPassword),
+          ),
+          GoRoute(path: 'reset-password', builder: (context, state) => const ResetPasswordScreen(loginPath: ClientRoute.login)),
+        ],
       ),
-      GoRoute(path: ClientRoute.resetPassword, builder: (context, state) => const ResetPasswordScreen(loginPath: ClientRoute.login)),
-      GoRoute(path: ClientRoute.verifyEmail, builder: (context, state) => const VerifyEmailScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ClientShell(navigationShell: navigationShell),
         branches: [
@@ -127,7 +137,15 @@ GoRouter clientRouter(Ref ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: ClientRoute.account, builder: (context, state) => const AccountScreen(verifyEmailPath: ClientRoute.verifyEmail))],
+            routes: [
+              GoRoute(
+                path: ClientRoute.account,
+                builder: (context, state) => const AccountScreen(verifyEmailPath: ClientRoute.verifyEmail),
+                routes: [
+                  GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),
+                ],
+              ),
+            ],
           ),
         ],
       ),

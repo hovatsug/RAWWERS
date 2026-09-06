@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -30,31 +31,49 @@ import 'package:rawwers/features/shared/auth/verify_email_screen.dart';
 
 part 'app_router_pro.g.dart';
 
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Route paths for the pro flavor. Kept as named constants rather than
 /// string literals scattered through the app, so a typo in a path is a
 /// compile error at the call site, not a runtime 404.
+///
+/// The paths are hierarchical because the routes are: every destination is
+/// declared as a child of the screen it is opened from, so navigating to it
+/// builds a real stack and Material draws a back arrow without any screen
+/// having to supply one. Declaring these as flat siblings - `/settings/gear`
+/// next to `/settings` rather than inside it - is what previously made
+/// thirteen screens dead ends. See test/core/router/back_navigation_test.dart.
 abstract final class ProRoute {
   static const launch = '/launch';
+
+  /// Login is the auth entry point, and register/forgot/reset are its
+  /// children so that each one stacks on top of it.
+  static const login = '/auth';
   static const register = '/auth/register';
-  static const login = '/auth/login';
   static const forgotPassword = '/auth/forgot-password';
   static const resetPassword = '/auth/reset-password';
-  static const verifyEmail = '/verify-email';
+
   static const upgradeToPro = '/upgrade-to-pro';
+
   static const today = '/today';
   static const requests = '/requests';
   static const gigs = '/gigs';
   static const wallet = '/wallet';
-  static const settings = '/settings';
-  static const profileEdit = '/settings/profile';
-  static const gear = '/settings/gear';
-  static const portfolio = '/settings/portfolio';
-  static const gigDelivery = '/gigs/delivery';
-  static const pricing = '/settings/pricing';
-  static const onboarding = '/getting-set-up';
-  static const listing = '/listing';
-  static const payouts = '/settings/payouts';
-  static const availability = '/settings/availability';
+
+  /// Settings and everything opened from it hang off Today, so the way back
+  /// is always the screen you came from.
+  static const settings = '$today/settings';
+  static const profileEdit = '$settings/profile';
+  static const gear = '$settings/gear';
+  static const portfolio = '$settings/portfolio';
+  static const pricing = '$settings/pricing';
+  static const payouts = '$settings/payouts';
+  static const availability = '$settings/availability';
+  static const listing = '$settings/listing';
+  static const onboarding = '$settings/getting-set-up';
+  static const verifyEmail = '$settings/verify-email';
+
+  static const gigDelivery = '$gigs/delivery';
 }
 
 @Riverpod(keepAlive: true)
@@ -62,6 +81,7 @@ GoRouter proRouter(Ref ref) {
   final authState = ref.watch(authControllerProvider);
 
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: ProRoute.launch,
     redirect: (context, state) {
       final location = state.matchedLocation;
@@ -91,61 +111,107 @@ GoRouter proRouter(Ref ref) {
       return (isAuthRoute || isLaunch || isUpgrade) ? ProRoute.today : null;
     },
     routes: [
-      GoRoute(path: ProRoute.launch, builder: (context, state) => const LaunchScreen(title: 'RAWWERS Pro')),
-      GoRoute(path: ProRoute.register, builder: (context, state) => const RegisterScreen(loginPath: ProRoute.login)),
-      GoRoute(path: ProRoute.login, builder: (context, state) => const LoginScreen(registerPath: ProRoute.register, forgotPasswordPath: ProRoute.forgotPassword)),
       GoRoute(
-        path: ProRoute.forgotPassword,
-        builder: (context, state) => const ForgotPasswordScreen(resetPasswordPath: ProRoute.resetPassword),
+        path: ProRoute.launch,
+        builder: (context, state) => const LaunchScreen(title: 'RAWWERS Pro'),
       ),
-      GoRoute(path: ProRoute.resetPassword, builder: (context, state) => const ResetPasswordScreen(loginPath: ProRoute.login)),
-      GoRoute(path: ProRoute.verifyEmail, builder: (context, state) => const VerifyEmailScreen()),
+      GoRoute(
+        path: ProRoute.login,
+        builder: (context, state) => const LoginScreen(registerPath: ProRoute.register, forgotPasswordPath: ProRoute.forgotPassword),
+        routes: [
+          GoRoute(
+            path: 'register',
+            builder: (context, state) => const RegisterScreen(loginPath: ProRoute.login),
+          ),
+          GoRoute(
+            path: 'forgot-password',
+            builder: (context, state) => const ForgotPasswordScreen(resetPasswordPath: ProRoute.resetPassword),
+          ),
+          GoRoute(
+            path: 'reset-password',
+            builder: (context, state) => const ResetPasswordScreen(loginPath: ProRoute.login),
+          ),
+        ],
+      ),
       GoRoute(path: ProRoute.upgradeToPro, builder: (context, state) => const UpgradeToProScreen()),
-      GoRoute(path: ProRoute.settings, builder: (context, state) => const ProSettingsScreen(
-        verifyEmailPath: ProRoute.verifyEmail,
-        profileEditPath: ProRoute.profileEdit,
-        gearPath: ProRoute.gear,
-        portfolioPath: ProRoute.portfolio,
-        pricingPath: ProRoute.pricing,
-        onboardingPath: ProRoute.onboarding,
-        listingPath: ProRoute.listing,
-        payoutsPath: ProRoute.payouts,
-        availabilityPath: ProRoute.availability,
-      )),
-      GoRoute(path: ProRoute.profileEdit, builder: (context, state) => const ProProfileEditScreen()),
-      GoRoute(path: ProRoute.gear, builder: (context, state) => const GearScreen()),
-      GoRoute(path: ProRoute.portfolio, builder: (context, state) => const PortfolioScreen()),
-      GoRoute(path: ProRoute.pricing, builder: (context, state) => const PricingScreen()),
-      GoRoute(path: ProRoute.payouts, builder: (context, state) => const PayoutsScreen()),
-      GoRoute(
-        path: ProRoute.listing,
-        builder: (context, state) => const ListingPreviewScreen(
-          onboardingPath: ProRoute.onboarding,
-          pricingPath: ProRoute.pricing,
-          profilePath: ProRoute.profileEdit,
-          portfolioPath: ProRoute.portfolio,
-        ),
-      ),
-      GoRoute(
-        path: ProRoute.onboarding,
-        builder: (context, state) => const OnboardingScreen(
-          profilePath: ProRoute.profileEdit,
-          portfolioPath: ProRoute.portfolio,
-          pricingPath: ProRoute.pricing,
-        ),
-      ),
-      GoRoute(
-        path: ProRoute.gigDelivery,
-        builder: (context, state) => DeliveryGalleryScreen(gig: state.extra! as GigResponse),
-      ),
-      GoRoute(path: ProRoute.availability, builder: (context, state) => const AvailabilityScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ProShell(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: ProRoute.today, builder: (context, state) => const TodayScreen(settingsPath: ProRoute.settings))]),
-          StatefulShellBranch(routes: [GoRoute(path: ProRoute.requests, builder: (context, state) => const RequestsScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: ProRoute.gigs, builder: (context, state) => const GigsScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: ProRoute.wallet, builder: (context, state) => const WalletScreen())]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: ProRoute.today,
+                builder: (context, state) => const TodayScreen(settingsPath: ProRoute.settings),
+                routes: [
+                  GoRoute(
+                    path: 'settings',
+                    // Full-screen over the shell, but still a child of Today:
+                    // presentation and stack depth are separate decisions, and
+                    // covering the bottom nav must not cost the way back.
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) => const ProSettingsScreen(
+                      verifyEmailPath: ProRoute.verifyEmail,
+                      profileEditPath: ProRoute.profileEdit,
+                      gearPath: ProRoute.gear,
+                      portfolioPath: ProRoute.portfolio,
+                      pricingPath: ProRoute.pricing,
+                      onboardingPath: ProRoute.onboarding,
+                      listingPath: ProRoute.listing,
+                      payoutsPath: ProRoute.payouts,
+                      availabilityPath: ProRoute.availability,
+                    ),
+                    routes: [
+                      GoRoute(path: 'profile', builder: (context, state) => const ProProfileEditScreen()),
+                      GoRoute(path: 'gear', builder: (context, state) => const GearScreen()),
+                      GoRoute(path: 'portfolio', builder: (context, state) => const PortfolioScreen()),
+                      GoRoute(path: 'pricing', builder: (context, state) => const PricingScreen()),
+                      GoRoute(path: 'payouts', builder: (context, state) => const PayoutsScreen()),
+                      GoRoute(path: 'availability', builder: (context, state) => const AvailabilityScreen()),
+                      GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),
+                      GoRoute(
+                        path: 'listing',
+                        builder: (context, state) => const ListingPreviewScreen(
+                          onboardingPath: ProRoute.onboarding,
+                          pricingPath: ProRoute.pricing,
+                          profilePath: ProRoute.profileEdit,
+                          portfolioPath: ProRoute.portfolio,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'getting-set-up',
+                        builder: (context, state) => const OnboardingScreen(
+                          profilePath: ProRoute.profileEdit,
+                          portfolioPath: ProRoute.portfolio,
+                          pricingPath: ProRoute.pricing,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: ProRoute.requests, builder: (context, state) => const RequestsScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: ProRoute.gigs,
+                builder: (context, state) => const GigsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'delivery',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) => DeliveryGalleryScreen(gig: state.extra! as GigResponse),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: ProRoute.wallet, builder: (context, state) => const WalletScreen())],
+          ),
         ],
       ),
     ],

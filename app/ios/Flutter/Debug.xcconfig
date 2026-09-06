@@ -1,2 +1,6 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// Default so a non-flavored configuration still has a launch screen.
+// Debug-client/Debug-pro include this file first and then override it.
+LAUNCH_STORYBOARD_NAME = LaunchScreen

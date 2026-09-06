@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RInk.i050 - the pro app's scaffold ground (theme_pro.dart). -->
+    <color name="launch_ground">#FFFAFAFA</color>
+</resources>

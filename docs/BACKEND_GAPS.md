@@ -458,6 +458,38 @@ the webhook returned 200, the outbox logged `outbox_event_applied`, and
 the row did not move, because the fix was only in the api image. Webhook
 effects land in the worker. Always `docker compose build api worker`.
 
+## `GET /v1/pro/me/skills` does write work on every read
+
+The endpoint calls `recompute_pro_niche_skills(db, user.user_id)` with no niche
+filter and then `db.commit()`, before it selects anything. That recomputes
+**every active niche** - twelve today - and each recompute counts completed
+gigs, published reviews, lost disputes in the last 90 days and tagged portfolio
+assets for that niche.
+
+That was tolerable while the data sat behind Settings. It is the tier section
+of the pro dashboard now, so it fires on every app launch and every
+pull-to-refresh: a read endpoint doing twelve niches of write work on the
+busiest screen in the app. Fine at twenty photographers, genuinely bad at any
+real number.
+
+**Mitigated, not fixed.** The dashboard calls it once through a shared provider
+and every block reads that result, rather than each block refetching.
+
+**The actual fix, for whoever picks this up:** recompute on the events that
+change the inputs - gig completed, review published, dispute resolved,
+portfolio niche tags changed - rather than on read. The machinery already
+exists: `enqueue_niche_skill_recalc` publishes a `niche_skill.recalc` outbox
+event, and `recompute_pro_niche_skill` takes a single `niche_id`. So the change
+is to call the recompute from those event handlers and let the read endpoint
+just select. Recomputing one niche on an event that affects one niche also
+removes the twelve-way fan-out.
+
+Related: the endpoint returns a row for every active niche regardless of what
+the photographer selected, so the app intersects it with
+`GET /v1/pro/niches/mine`. Rendering it literally would open a new
+photographer's home screen with twelve rookie cards for ten niches they never
+chose.
+
 ## Both flavors ship the default Flutter app icon, from one shared asset set
 
 `ios/Runner/Assets.xcassets` contains a single `AppIcon.appiconset`, shared by

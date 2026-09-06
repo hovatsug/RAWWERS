@@ -363,49 +363,100 @@ by a system transition when the selection is submitted and payment has
 settled. Not a hole in the loop - the photographer is credited either way -
 but any logic keyed on `final_delivered` is dead.
 
-## UNVERIFIED: Stripe Connect onboarding is built but has never run against Connect
+## Stripe Connect: verified against real Stripe, with two blockers found
 
-Connect is not enabled on the platform's Stripe account, so the whole
-onboarding path is **structurally correct and unproven**. Being precise
-about which is which, because the failure mode is a photographer who
-completes onboarding and still cannot be paid.
+Connect is now enabled in test mode (Express). What follows is what was
+actually run, not what was inferred.
 
 **Proven, against real Stripe:**
 
-- `POST /v1/pro/payouts/connect/account` with Connect disabled returns
-  502 carrying Stripe's own sentence: *"You can only create new accounts
-  if you've signed up for Connect…"*. The readable-error path works.
-- `GET /v1/pro/payouts/connect/status` with no account returns `not_set`
-  without calling Stripe at all.
+- All three request shapes are accepted: `Account.create` (Express, PT,
+  `capabilities.transfers.requested`, `business_type=individual`),
+  `AccountLink.create` (`type=account_onboarding`) and
+  `Account.retrieve`. Driven through our own endpoints, not curl.
+- `account.updated` **does** fire for connected accounts and reaches us.
+  The Stripe CLI labels it `connect account.updated` - it arrives on the
+  connected-account channel, carrying a top-level `account` field, and
+  the platform channel is not involved.
+- The event is ingested, dispatched through the outbox, applied by the
+  worker, and **the `payout_account` row moves**. Watched moving
+  `disabled` -> `pending_verification` on a real event, with the
+  matching `admin_audit_log` row.
+- Account creation is idempotent against real Stripe.
 
-**Proven, but only against a fake Stripe:**
+**BLOCKER 1: the onboarding link cannot be created at all.**
+`CONNECT_RETURN_URL`/`CONNECT_REFRESH_URL` defaulted to
+`rawwerspro://payouts/return`. Stripe rejects a custom scheme outright:
+`url_invalid`, *"Not a valid URL"*, on `return_url`. Our endpoint
+returned 502 and no photographer could ever have started onboarding.
+Both must be `http(s)`. Set locally to `https://rawwers.com/payouts/...`
+so the flow could be exercised; **the real destination is still a design
+decision** - see "Where Connect onboarding should return to" below.
 
-- Account creation is idempotent - a stored account id is returned rather
-  than creating a second one that would strand completed onboarding.
-- The photographer's own country is sent, not the platform's. Country
-  cannot be changed after creation.
-- A new account is `pending_verification`, never `active`.
-- Every onboarding-link request mints a fresh link.
-- `status_from_account` and the `account.updated` webhook classify
-  identically, so the two paths cannot disagree.
+**BLOCKER 2: nothing can receive the return anyway.** There is no
+`CFBundleURLTypes` in `app/ios/Runner/Info.plist` and no `intent-filter`
+with a scheme in `AndroidManifest.xml`, so `rawwerspro://` is not
+registered on either platform. The app also cannot *open* the hosted
+link - the payouts screen takes an `openUrl` callback and falls back to
+the clipboard, because `url_launcher` is still not a dependency.
 
-**Not proven at all:**
+**Still not proven:** that completing hosted onboarding moves the account
+to `active`. That transition needs a human to finish Stripe's form in a
+browser; everything downstream of it - the event arriving, being applied,
+and the row moving - is proven above with a real event.
 
-- That the request shapes are what Stripe expects. They come from the API
-  reference, not from a successful call.
-- That hosted onboarding returns to the deep link in `CONNECT_RETURN_URL`.
-- **That `account.updated` actually fires and moves the account to
-  `active`.** This is the transition that turns "pending" into "you can
-  be paid". If it silently does not arrive, a photographer completes
-  onboarding and stays blocked with no error anywhere. The endpoint reads
-  status live from Stripe and reconciles on every open, so a dropped
-  event self-heals when they next look - but that mitigation is itself
-  unproven.
+### Where Connect onboarding should return to - open decision
 
-**To verify once Connect is enabled:** create a real Express account,
-complete onboarding with Stripe's test identity, and watch the webhook
-the way the payment webhook was watched - confirm the row actually moves
-to `active`, not just that a 200 came back.
+Stripe requires http(s), so the return has to land on the web first. Two
+options:
+
+1. **A plain page on `rawwers.com`** saying "you can go back to the app
+   now". No new dependencies. The payouts screen already re-reads live
+   status from Stripe on open and reconciles, so returning by hand
+   self-heals. Honest, slightly clumsy.
+2. **Universal links / app links** on the same URL, so the app reopens
+   itself. Needs `apple-app-site-association` and `assetlinks.json`
+   served from the domain, the Associated Domains entitlement, an
+   `autoVerify` intent-filter, and a Flutter deep-link package. Correct,
+   and considerably more work.
+
+## FIXED: a brand-new Connect account was marked `disabled`
+
+Found by watching the row rather than the 200. Stripe stamps
+`requirements.disabled_reason = "requirements.past_due"` on an Express
+account **the moment it is created**, before the photographer has opened
+the onboarding form. Both status mappings treated any `disabled_reason`
+as disablement, so the first real `account.updated` wrote `disabled`.
+Payout approval refuses a non-`active` Connect account, so every
+photographer would have been permanently unpayable, with the admin
+queue explaining it as "disabled".
+
+A second, opposite bug sat in the same pair. `status_from_account` read
+`requirements.disabled_reason`, but the live-read endpoint passes it the
+*flattened* dict `connect_status()` returns, where `disabled_reason` is
+top-level. That path could therefore never return `disabled` - a
+genuinely rejected account read back as `pending_verification` forever.
+
+**Why the tests did not catch it.** Three of them encoded the bug as the
+spec, and one was a confident zero:
+`test_the_webhook_and_a_live_read_cannot_disagree` transcribed the
+webhook's logic into the test body and compared the transcription to
+`status_from_account` - two copies of the same idea agreeing with each
+other, while the real handler and the real mapper disagreed in opposite
+directions on a live account. It imported `webhooks` only to assert it
+was not `None`. It now drives `_apply_stripe_event` and asserts on the
+row. Both fixes were reverted one at a time and the tests confirmed
+failing (3 and 2 failures respectively).
+
+## Rebuilding `api` does not rebuild `worker`
+
+`docker compose build api` builds only the `api` image. `worker` is a
+separate service with its own image from the same Dockerfile, so
+`docker compose up -d worker` after it restarts the container on the
+*old* code. This produced a false negative during Connect verification:
+the webhook returned 200, the outbox logged `outbox_event_applied`, and
+the row did not move, because the fix was only in the api image. Webhook
+effects land in the worker. Always `docker compose build api worker`.
 
 ## Flutter payouts needs `url_launcher`
 

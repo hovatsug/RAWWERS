@@ -44,6 +44,7 @@ from app.services.rewards import (
 from app.services.growth_engine import maybe_issue_referral_conversion_reward
 from app.services.store import finalize_order_payment_success, handle_order_payment_failure
 from app.services.security import verify_mux_webhook_signature
+from app.services.stripe_connect import status_from_account
 from app.services.stripe_service import construct_stripe_event
 from app.models.reward import RedemptionContextType
 from app.models.reward import ReferralConversionType
@@ -880,12 +881,11 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         details_submitted = bool(obj.get("details_submitted"))
         disabled_reason = (obj.get("requirements") or {}).get("disabled_reason")
 
-        if charges_enabled and payouts_enabled and details_submitted:
-            new_status = PayoutAccountStatus.active
-        elif disabled_reason:
-            new_status = PayoutAccountStatus.disabled
-        else:
-            new_status = PayoutAccountStatus.pending_verification
+        # Shared with the live status read rather than reimplemented here.
+        # The two copies this replaces disagreed on a real account: this one
+        # wrote "disabled" for a freshly created account, the other could not
+        # write "disabled" at all.
+        new_status = status_from_account(obj)
 
         if account.status != new_status:
             previous_status = account.status
@@ -905,6 +905,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     "charges_enabled": charges_enabled,
                     "payouts_enabled": payouts_enabled,
                     "details_submitted": details_submitted,
+                    "disabled_reason": disabled_reason,
                 },
             )
             log_event(

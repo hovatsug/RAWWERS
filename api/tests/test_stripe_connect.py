@@ -5,10 +5,12 @@ link is minted fresh every time, that Stripe failures surface as a
 readable 502 rather than a 500, and that the local status reconciles with
 what Stripe reports.
 
-WHAT THESE DO NOT PROVE: that any of it works against Stripe. Connect is
-not enabled on the platform account, so every call here goes to a fake
-whose shapes come from the API reference. The request shapes themselves
-are unverified. See docs/BACKEND_GAPS.md.
+WHAT THESE DO NOT PROVE: these run against a fake. The request shapes
+themselves were verified separately against real Stripe with Connect
+enabled in test mode - Account.create, AccountLink.create and
+Account.retrieve were all accepted - so the fake's shapes are no longer
+guesses. What still is not covered here is the hosted onboarding flow
+itself. See docs/BACKEND_GAPS.md.
 """
 import uuid
 
@@ -158,9 +160,32 @@ def test_a_stripe_failure_surfaces_readably_not_as_a_500(db_session, monkeypatch
             {"charges_enabled": True, "payouts_enabled": True, "details_submitted": True},
             PayoutAccountStatus.active,
         ),
+        # Stripe stamps requirements.past_due on an Express account the
+        # moment it is created, before the photographer has seen the
+        # onboarding form. Observed on a real account. This expectation
+        # previously said "disabled" and so encoded the bug as the spec.
         (
             {"charges_enabled": False, "payouts_enabled": False, "details_submitted": True,
              "requirements": {"disabled_reason": "requirements.past_due"}},
+            PayoutAccountStatus.pending_verification,
+        ),
+        (
+            {"charges_enabled": False, "payouts_enabled": False, "details_submitted": True,
+             "requirements": {"disabled_reason": "under_review"}},
+            PayoutAccountStatus.pending_verification,
+        ),
+        (
+            {"charges_enabled": False, "payouts_enabled": False, "details_submitted": True,
+             "requirements": {"disabled_reason": "rejected.fraud"}},
+            PayoutAccountStatus.disabled,
+        ),
+        # The shape connect_status() actually returns: flattened, with
+        # disabled_reason at the top level rather than under requirements.
+        # This is the shape the live-read endpoint passes in, and it was
+        # never exercised - so that path could not report "disabled" at all.
+        (
+            {"charges_enabled": False, "payouts_enabled": False, "details_submitted": True,
+             "disabled_reason": "rejected.fraud", "currently_due": [], "past_due": []},
             PayoutAccountStatus.disabled,
         ),
         (
@@ -197,29 +222,63 @@ def test_status_reports_what_stripe_is_still_waiting_for(monkeypatch):
     assert status["payouts_enabled"] is False
 
 
-def test_the_webhook_and_a_live_read_cannot_disagree():
-    """The account.updated handler and status_from_account must classify
-    identically, or a photographer's status would depend on which path
-    last touched it."""
-    from app.api.v1 import webhooks
+def test_a_live_read_round_trips_through_connect_status(monkeypatch):
+    """The live-read endpoint does not pass Stripe's account to the mapper -
+    it passes connect_status()'s reshaped dict. Nothing exercised that
+    hand-off, and the mapper only understood the nested spelling, so a
+    genuinely rejected account read back as pending_verification forever."""
+    fake = _FakeStripe(account=_FakeAccount(payload={
+        "id": "acct_fake_123",
+        "charges_enabled": False,
+        "payouts_enabled": False,
+        "details_submitted": True,
+        "requirements": {"disabled_reason": "rejected.fraud", "currently_due": [], "past_due": []},
+    }))
+    monkeypatch.setattr(stripe_connect, "_stripe", lambda: fake)
 
-    payloads = [
-        {"charges_enabled": True, "payouts_enabled": True, "details_submitted": True},
-        {"charges_enabled": False, "payouts_enabled": False, "details_submitted": True,
-         "requirements": {"disabled_reason": "rejected.fraud"}},
-        {"charges_enabled": False, "payouts_enabled": True, "details_submitted": False, "requirements": {}},
+    live = stripe_connect.connect_status(stripe_account_id="acct_fake_123")
+    assert stripe_connect.status_from_account(live) == PayoutAccountStatus.disabled
+
+
+def test_the_webhook_moves_the_row_the_way_the_mapper_says(db_session):
+    """Drives the real account.updated arm rather than transcribing it.
+
+    The test this replaces copied the handler's logic into itself and
+    compared the copy to the mapper - two copies of the same idea agreeing
+    with each other. It passed while the handler and the mapper genuinely
+    disagreed on a live account, in opposite directions.
+    """
+    from app.api.v1.webhooks import _apply_stripe_event
+
+    cases = [
+        # A brand-new Express account, exactly as Stripe reports it.
+        ({"charges_enabled": False, "payouts_enabled": False, "details_submitted": False,
+          "requirements": {"disabled_reason": "requirements.past_due"}},
+         PayoutAccountStatus.pending_verification),
+        ({"charges_enabled": True, "payouts_enabled": True, "details_submitted": True,
+          "requirements": {"disabled_reason": None}},
+         PayoutAccountStatus.active),
+        ({"charges_enabled": False, "payouts_enabled": False, "details_submitted": True,
+          "requirements": {"disabled_reason": "rejected.fraud"}},
+         PayoutAccountStatus.disabled),
     ]
-    for payload in payloads:
-        charges = bool(payload.get("charges_enabled"))
-        payouts = bool(payload.get("payouts_enabled"))
-        submitted = bool(payload.get("details_submitted"))
-        disabled = (payload.get("requirements") or {}).get("disabled_reason")
-        # Transcribed from webhooks._apply_stripe_event's account.updated arm.
-        if charges and payouts and submitted:
-            webhook_status = PayoutAccountStatus.active
-        elif disabled:
-            webhook_status = PayoutAccountStatus.disabled
-        else:
-            webhook_status = PayoutAccountStatus.pending_verification
-        assert stripe_connect.status_from_account(payload) == webhook_status
-        assert webhooks is not None
+
+    for index, (account_payload, expected) in enumerate(cases):
+        uid = _seed_pro(db_session)
+        acct_id = f"acct_case_{index}"
+        db_session.add(PayoutAccount(
+            pro_user_id=uid,
+            payout_method=PayoutMethod.stripe_connect,
+            stripe_connect_account_id=acct_id,
+            status=PayoutAccountStatus.not_set,
+        ))
+        db_session.commit()
+
+        _apply_stripe_event(db_session, "account.updated", {"id": acct_id, **account_payload})
+        db_session.commit()
+
+        row = db_session.get(PayoutAccount, uid)
+        assert row.status == expected, f"{account_payload} -> {row.status}, expected {expected}"
+        # And the mapper, given the same payload, must agree - checked by
+        # calling it, not by re-deriving it.
+        assert stripe_connect.status_from_account(account_payload) == expected

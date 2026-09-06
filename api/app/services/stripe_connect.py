@@ -4,12 +4,12 @@ Express: Stripe hosts onboarding and KYC, the photographer never has to
 manage a Stripe dashboard they did not ask for, and the platform keeps
 control of the payout schedule.
 
-NOTE ON VERIFICATION: at the time of writing, Connect is not enabled on
-the platform's Stripe account, so none of the calls in this module have
-run against Stripe. The shapes come from the Stripe API reference and the
-error handling is exercised against a fake client in tests. Treat this as
-structurally correct and unproven until Connect is switched on - see
-docs/BACKEND_GAPS.md.
+VERIFICATION STATUS: all three calls in this module - Account.create,
+AccountLink.create and Account.retrieve - have been run against real
+Stripe with Connect enabled in test mode and their request shapes
+accepted. AccountLink.create rejects a custom-scheme URL ("Not a valid
+URL"), so CONNECT_RETURN_URL/CONNECT_REFRESH_URL must be http(s); see
+docs/BACKEND_GAPS.md for what remains unproven.
 """
 from __future__ import annotations
 
@@ -120,13 +120,39 @@ def connect_status(*, stripe_account_id: str) -> dict:
     }
 
 
+# disabled_reason values that mean "onboarding is not finished", not "Stripe
+# has shut this account down". Stripe stamps requirements.past_due on an
+# Express account the moment it is created - observed on a real account, not
+# assumed - so treating any disabled_reason as disablement marks every
+# photographer disabled before they have opened the onboarding form.
+# under_review is Stripe deciding, which is also not a dead end.
+_NOT_YET_REASONS = ("requirements.", "under_review")
+
+
+def is_onboarding_reason(disabled_reason: str | None) -> bool:
+    if not disabled_reason:
+        return False
+    return disabled_reason.startswith(_NOT_YET_REASONS)
+
+
 def status_from_account(payload: dict) -> PayoutAccountStatus:
-    """The same mapping the account.updated webhook applies, so a status
-    read directly from Stripe and one delivered by webhook cannot disagree."""
-    requirements = payload.get("requirements") or {}
+    """The single mapping from a Stripe account to our status.
+
+    Both callers go through here - the account.updated webhook and the live
+    status read - so the two cannot disagree. They previously each had their
+    own copy and did disagree, in opposite directions, on the same account.
+
+    Accepts either shape: a raw Stripe account (disabled_reason nested under
+    `requirements`) or the flattened dict `connect_status` returns (it at the
+    top level). Reading only the nested spelling meant the live-read path
+    could never see a disabled_reason at all.
+    """
     if payload.get("charges_enabled") and payload.get("payouts_enabled") and payload.get("details_submitted"):
         return PayoutAccountStatus.active
-    if requirements.get("disabled_reason"):
+
+    requirements = payload.get("requirements") or {}
+    disabled_reason = requirements.get("disabled_reason") or payload.get("disabled_reason")
+    if disabled_reason and not is_onboarding_reason(disabled_reason):
         return PayoutAccountStatus.disabled
     return PayoutAccountStatus.pending_verification
 

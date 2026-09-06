@@ -165,7 +165,7 @@ def test_account_updated_marks_account_active_when_fully_enabled(db_session):
     assert account.status == PayoutAccountStatus.active
 
 
-def test_account_updated_marks_account_disabled_when_requirements_disabled(db_session):
+def test_account_updated_marks_account_disabled_when_stripe_rejects_it(db_session):
     pro_id = uuid.uuid4()
     _ensure_account(db_session, pro_id)
     account = _create_payout_account(db_session, pro_id, stripe_account_id="acct_456", status=PayoutAccountStatus.active)
@@ -178,13 +178,40 @@ def test_account_updated_marks_account_disabled_when_requirements_disabled(db_se
             "charges_enabled": False,
             "payouts_enabled": False,
             "details_submitted": True,
-            "requirements": {"disabled_reason": "requirements.past_due"},
+            "requirements": {"disabled_reason": "rejected.fraud"},
         },
     )
     db_session.commit()
 
     db_session.refresh(account)
     assert account.status == PayoutAccountStatus.disabled
+
+
+def test_account_updated_does_not_call_an_unfinished_account_disabled(db_session):
+    """requirements.past_due is what Stripe stamps on an Express account the
+    moment it is created - observed on a real one. This test previously
+    asserted "disabled" for exactly this payload, which is how the bug
+    survived: a photographer was marked disabled before they had opened the
+    onboarding form."""
+    pro_id = uuid.uuid4()
+    _ensure_account(db_session, pro_id)
+    account = _create_payout_account(db_session, pro_id, stripe_account_id="acct_457", status=PayoutAccountStatus.pending_verification)
+
+    _apply_stripe_event(
+        db_session,
+        "account.updated",
+        {
+            "id": "acct_457",
+            "charges_enabled": False,
+            "payouts_enabled": False,
+            "details_submitted": False,
+            "requirements": {"disabled_reason": "requirements.past_due"},
+        },
+    )
+    db_session.commit()
+
+    db_session.refresh(account)
+    assert account.status == PayoutAccountStatus.pending_verification
 
 
 def test_account_updated_stays_pending_verification_when_incomplete_and_not_disabled(db_session):

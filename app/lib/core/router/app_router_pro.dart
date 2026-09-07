@@ -33,6 +33,17 @@ part 'app_router_pro.g.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// A full-screen detail view opened from the dashboard.
+///
+/// On the root navigator so it covers the bottom nav, and a direct child of the
+/// dashboard so back returns there rather than into a menu. Both halves matter:
+/// these were briefly nested under `settings`, which - because the parent
+/// declared the root navigator while its children rendered on the shell - drew
+/// the parent above its own child, so every Edit on the dashboard opened the
+/// settings menu instead of the editor.
+GoRoute _editor(String path, Widget Function(BuildContext, GoRouterState) builder) =>
+    GoRoute(path: path, parentNavigatorKey: _rootNavigatorKey, builder: builder);
+
 /// Route paths for the pro flavor. Kept as named constants rather than
 /// string literals scattered through the app, so a typo in a path is a
 /// compile error at the call site, not a runtime 404.
@@ -63,15 +74,15 @@ abstract final class ProRoute {
   /// Settings and everything opened from it hang off the dashboard, so the
   /// way back is always the screen you came from.
   static const settings = '$dashboard/settings';
-  static const profileEdit = '$settings/profile';
-  static const gear = '$settings/gear';
-  static const portfolio = '$settings/portfolio';
-  static const pricing = '$settings/pricing';
-  static const payouts = '$settings/payouts';
-  static const availability = '$settings/availability';
-  static const listing = '$settings/listing';
-  static const onboarding = '$settings/getting-set-up';
-  static const verifyEmail = '$settings/verify-email';
+  static const profileEdit = '$dashboard/profile';
+  static const gear = '$dashboard/gear';
+  static const portfolio = '$dashboard/portfolio';
+  static const pricing = '$dashboard/pricing';
+  static const payouts = '$dashboard/payouts';
+  static const availability = '$dashboard/availability';
+  static const listing = '$dashboard/listing';
+  static const onboarding = '$dashboard/getting-set-up';
+  static const verifyEmail = '$dashboard/verify-email';
 
   static const gigDelivery = '$gigs/delivery';
 }
@@ -151,50 +162,35 @@ GoRouter proRouter(Ref ref) {
                   onboardingPath: ProRoute.onboarding,
                 ),
                 routes: [
-                  GoRoute(
-                    path: 'settings',
-                    // Full-screen over the shell, but still a child of Today:
-                    // presentation and stack depth are separate decisions, and
-                    // covering the bottom nav must not cost the way back.
-                    parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const ProSettingsScreen(
-                      verifyEmailPath: ProRoute.verifyEmail,
-                      profileEditPath: ProRoute.profileEdit,
-                      gearPath: ProRoute.gear,
-                      portfolioPath: ProRoute.portfolio,
-                      pricingPath: ProRoute.pricing,
-                      onboardingPath: ProRoute.onboarding,
-                      listingPath: ProRoute.listing,
-                      payoutsPath: ProRoute.payouts,
-                      availabilityPath: ProRoute.availability,
-                    ),
-                    routes: [
-                      GoRoute(path: 'profile', builder: (context, state) => const ProProfileEditScreen()),
-                      GoRoute(path: 'gear', builder: (context, state) => const GearScreen()),
-                      GoRoute(path: 'portfolio', builder: (context, state) => const PortfolioScreen()),
-                      GoRoute(path: 'pricing', builder: (context, state) => const PricingScreen()),
-                      GoRoute(path: 'payouts', builder: (context, state) => const PayoutsScreen()),
-                      GoRoute(path: 'availability', builder: (context, state) => const AvailabilityScreen()),
-                      GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),
-                      GoRoute(
-                        path: 'listing',
-                        builder: (context, state) => const ListingPreviewScreen(
-                          onboardingPath: ProRoute.onboarding,
-                          pricingPath: ProRoute.pricing,
-                          profilePath: ProRoute.profileEdit,
-                          portfolioPath: ProRoute.portfolio,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'getting-set-up',
-                        builder: (context, state) => const OnboardingScreen(
-                          profilePath: ProRoute.profileEdit,
-                          portfolioPath: ProRoute.portfolio,
-                          pricingPath: ProRoute.pricing,
-                        ),
-                      ),
-                    ],
-                  ),
+                  _editor('settings', (context, state) => const ProSettingsScreen(
+                        verifyEmailPath: ProRoute.verifyEmail,
+                        profileEditPath: ProRoute.profileEdit,
+                        gearPath: ProRoute.gear,
+                        portfolioPath: ProRoute.portfolio,
+                        pricingPath: ProRoute.pricing,
+                        onboardingPath: ProRoute.onboarding,
+                        listingPath: ProRoute.listing,
+                        payoutsPath: ProRoute.payouts,
+                        availabilityPath: ProRoute.availability,
+                      )),
+                  _editor('profile', (context, state) => const ProProfileEditScreen()),
+                  _editor('gear', (context, state) => const GearScreen()),
+                  _editor('portfolio', (context, state) => const PortfolioScreen()),
+                  _editor('pricing', (context, state) => const PricingScreen()),
+                  _editor('payouts', (context, state) => const PayoutsScreen()),
+                  _editor('availability', (context, state) => const AvailabilityScreen()),
+                  _editor('verify-email', (context, state) => const VerifyEmailScreen()),
+                  _editor('listing', (context, state) => const ListingPreviewScreen(
+                        onboardingPath: ProRoute.onboarding,
+                        pricingPath: ProRoute.pricing,
+                        profilePath: ProRoute.profileEdit,
+                        portfolioPath: ProRoute.portfolio,
+                      )),
+                  _editor('getting-set-up', (context, state) => const OnboardingScreen(
+                        profilePath: ProRoute.profileEdit,
+                        portfolioPath: ProRoute.portfolio,
+                        pricingPath: ProRoute.pricing,
+                      )),
                 ],
               ),
             ],

@@ -19,6 +19,8 @@
 // A full-screen child that should cover the shell still nests - it declares
 // `parentNavigatorKey: rootNavigatorKey` - so presentation and stack depth stay
 // independent decisions.
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,6 +62,16 @@ int _pageCount(RouteMatchBase match) {
     return match.matches.fold<int>(0, (sum, child) => sum + _pageCount(child));
   }
   return 1;
+}
+
+/// Every page the router would build, in the order it stacks them. The last
+/// entry is the one on top - the screen a photographer is actually looking at.
+List<String> _pagesInOrder(RouteMatchBase match) {
+  if (match is ShellRouteMatch) {
+    return [for (final child in match.matches) ..._pagesInOrder(child)];
+  }
+  if (match is RouteMatch) return [match.matchedLocation];
+  return const [];
 }
 
 /// Every location the router can match, built by walking the declared tree
@@ -123,6 +135,26 @@ void _assertEveryRouteCanGoBack(
     reason: 'These $flavor routes build a single page, so there is nothing to '
         'pop to and no back arrow is drawn:\n  ${trapped.join('\n  ')}',
   );
+
+  // Depth is not enough. A route can stack three pages and still put the wrong
+  // one on top: declaring a parent with parentNavigatorKey: rootNavigatorKey
+  // while its children render on the shell navigator makes the parent draw
+  // *above* its own child. That shipped, and this check is what would have
+  // caught it - navigating to an editor opened the settings menu instead.
+  final wrongScreen = <String>[];
+  for (final location in locations) {
+    final matches = router.configuration.findMatch(Uri.parse(location));
+    final pages = [for (final m in matches.matches) ..._pagesInOrder(m)];
+    if (pages.isEmpty) continue;
+    if (pages.last != location) wrongScreen.add('$location -> lands on ${pages.last} (stack: ${pages.join(' > ')})');
+  }
+
+  expect(
+    wrongScreen,
+    isEmpty,
+    reason: 'Navigating to these $flavor routes leaves a different screen on '
+        'top, so the photographer does not arrive where they tapped:\n  ${wrongScreen.join('\n  ')}',
+  );
 }
 
 GoRouter _twoLevelRouter({required bool nested}) => GoRouter(
@@ -140,6 +172,53 @@ GoRouter _twoLevelRouter({required bool nested}) => GoRouter(
               GoRoute(path: '/parent/child', builder: (context, state) => const _Screen('child')),
             ],
     );
+
+/// The path constants the app actually navigates with, read out of the router
+/// source and resolved through their own interpolation.
+///
+/// Walking the declared route tree is not enough on its own: the tree and the
+/// `ProRoute`/`ClientRoute` constants are two separate lists, and when the
+/// routes were reparented under the dashboard while the constants still said
+/// `$settings/...`, every guard here passed while the app itself answered
+/// "no routes for location: /dashboard/settings/portfolio". A test that walks
+/// only one of the two lists cannot see them disagree.
+Map<String, String> _declaredPaths(String source, String className) {
+  final classBody = RegExp('abstract final class $className \\{(.*?)\\n\\}', dotAll: true).firstMatch(source);
+  expect(classBody, isNotNull, reason: 'could not find $className in the router source');
+  final resolved = <String, String>{};
+  for (final match in RegExp(r"static const (\w+) = '([^']+)';").allMatches(classBody!.group(1)!)) {
+    var value = match.group(2)!;
+    // Constants are written in terms of each other ('$dashboard/settings').
+    for (final entry in resolved.entries) {
+      value = value.replaceAll('\$${entry.key}', entry.value);
+    }
+    resolved[match.group(1)!] = value;
+  }
+  return resolved;
+}
+
+void _assertEveryDeclaredPathResolves(GoRouter router, String source, String className, String flavor) {
+  final declared = _declaredPaths(source, className);
+  expect(declared, isNotEmpty, reason: 'found no $className constants, so this check would prove nothing');
+
+  final broken = <String>[];
+  for (final entry in declared.entries) {
+    if (entry.value.contains(r'$')) {
+      broken.add('${entry.key} = ${entry.value} (unresolved interpolation)');
+      continue;
+    }
+    final matches = router.configuration.findMatch(Uri.parse(entry.value));
+    final pages = [for (final m in matches.matches) ..._pagesInOrder(m)];
+    if (pages.isEmpty) broken.add('${entry.key} = ${entry.value} (no route matches it)');
+  }
+
+  expect(
+    broken,
+    isEmpty,
+    reason: 'These $flavor path constants do not resolve to a declared route, so navigating with '
+        'them lands on Page Not Found:\n  ${broken.join('\n  ')}',
+  );
+}
 
 void main() {
   testWidgets('a nested route draws a back arrow and a flat sibling does not', (tester) async {
@@ -160,6 +239,28 @@ void main() {
       findsNothing,
       reason: 'the flat-sibling shape is the bug; if this ever draws a back '
           'arrow, the page-count guard above has stopped meaning anything',
+    );
+  });
+
+  test('every pro path constant resolves to a real route', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    _assertEveryDeclaredPathResolves(
+      container.read(proRouterProvider),
+      File('lib/core/router/app_router_pro.dart').readAsStringSync(),
+      'ProRoute',
+      'pro',
+    );
+  });
+
+  test('every client path constant resolves to a real route', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    _assertEveryDeclaredPathResolves(
+      container.read(clientRouterProvider),
+      File('lib/core/router/app_router_client.dart').readAsStringSync(),
+      'ClientRoute',
+      'client',
     );
   });
 

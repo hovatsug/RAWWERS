@@ -20,7 +20,7 @@ import 'package:rawwers/features/pro/pricing/pricing_screen.dart';
 import 'package:rawwers/features/pro/pro_shell.dart';
 import 'package:rawwers/features/pro/requests/requests_screen.dart';
 import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
-import 'package:rawwers/features/pro/today/today_screen.dart';
+import 'package:rawwers/features/pro/dashboard/dashboard_screen.dart';
 import 'package:rawwers/features/pro/upgrade/upgrade_to_pro_screen.dart';
 import 'package:rawwers/features/pro/wallet/wallet_screen.dart';
 import 'package:rawwers/features/shared/auth/forgot_password_screen.dart';
@@ -55,14 +55,14 @@ abstract final class ProRoute {
 
   static const upgradeToPro = '/upgrade-to-pro';
 
-  static const today = '/today';
+  static const dashboard = '/dashboard';
   static const requests = '/requests';
   static const gigs = '/gigs';
   static const wallet = '/wallet';
 
-  /// Settings and everything opened from it hang off Today, so the way back
-  /// is always the screen you came from.
-  static const settings = '$today/settings';
+  /// Settings and everything opened from it hang off the dashboard, so the
+  /// way back is always the screen you came from.
+  static const settings = '$dashboard/settings';
   static const profileEdit = '$settings/profile';
   static const gear = '$settings/gear';
   static const portfolio = '$settings/portfolio';
@@ -108,7 +108,7 @@ GoRouter proRouter(Ref ref) {
         return isUpgrade ? null : ProRoute.upgradeToPro;
       }
 
-      return (isAuthRoute || isLaunch || isUpgrade) ? ProRoute.today : null;
+      return (isAuthRoute || isLaunch || isUpgrade) ? ProRoute.dashboard : null;
     },
     routes: [
       GoRoute(
@@ -140,8 +140,16 @@ GoRouter proRouter(Ref ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: ProRoute.today,
-                builder: (context, state) => const TodayScreen(settingsPath: ProRoute.settings),
+                path: ProRoute.dashboard,
+                builder: (context, state) => const DashboardScreen(
+                  settingsPath: ProRoute.settings,
+                  profilePath: ProRoute.profileEdit,
+                  portfolioPath: ProRoute.portfolio,
+                  pricingPath: ProRoute.pricing,
+                  availabilityPath: ProRoute.availability,
+                  listingPath: ProRoute.listing,
+                  onboardingPath: ProRoute.onboarding,
+                ),
                 routes: [
                   GoRoute(
                     path: 'settings',

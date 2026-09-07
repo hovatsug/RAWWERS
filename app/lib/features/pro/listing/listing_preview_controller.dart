@@ -70,6 +70,13 @@ class ListingPreviewController extends _$ListingPreviewController {
           text: 'You have not priced anything yet.',
           route: pricingPath,
         ),
+      // Reached the generic fallback before this case existed, so a
+      // photographer saw the literal code "not published yet" among four
+      // proper sentences.
+      'not_published_yet' => (
+          text: 'An admin has not published your listing yet.',
+          route: null,
+        ),
       // An unknown code is still worth showing: silence would leave the pro
       // staring at a card that is not live with nothing to explain it.
       _ => (text: reason.replaceAll('_', ' '), route: null),

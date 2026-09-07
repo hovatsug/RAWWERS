@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -8,68 +7,45 @@ import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
 import 'package:rawwers/features/pro/gigs/widgets/gig_card.dart';
 import 'package:rawwers/features/pro/requests/requests_controller.dart';
 
-/// The pro app's home. Answers two questions in order: what am I shooting
-/// today, and is anything waiting on a decision.
+/// What am I shooting today, and is anything waiting on a decision.
 ///
 /// Requests come second deliberately - they're time-boxed but not
 /// time-of-day-bound, whereas a shoot at 09:00 is the thing that ruins the
 /// morning if it's missed.
-class TodayScreen extends ConsumerWidget {
-  const TodayScreen({required this.settingsPath, super.key});
-
-  final String settingsPath;
+///
+/// This used to be the pro app's home screen. It is a section of the dashboard
+/// now: on most days a photographer has nothing scheduled, and an app that
+/// opens on "Nothing scheduled today." every morning is telling them the app
+/// has nothing for them. Their profile does.
+class TodaySection extends ConsumerWidget {
+  const TodaySection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todayControllerProvider);
     final notifier = ref.read(todayControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Today'),
-        actions: [
-          // Settings via the header avatar rather than a fifth tab - one
-          // navigation system per app, four tabs maximum.
-          IconButton(
-            icon: const CircleAvatar(radius: 14, child: Icon(Icons.person_outline, size: 18)),
-            tooltip: 'Profile and settings',
-            onPressed: () => context.push(settingsPath),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await notifier.refresh();
-            await ref.read(requestsControllerProvider.notifier).refresh();
-          },
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(RSpace.s16),
-            children: [
-              Text('Your shoots today', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: RSpace.s12),
-              switch (today) {
-                AsyncLoading() => const _InlineSkeleton(),
-                AsyncError(:final error) => PagedListError(error: error, onRetry: notifier.refresh),
-                AsyncData(:final value) => value.isEmpty
-                    ? const _NothingToday()
-                    : Column(
-                        children: [
-                          for (final gig in value.items) ...[
-                            GigCard(gig: gig),
-                            const SizedBox(height: RSpace.s12),
-                          ],
-                        ],
-                      ),
-                _ => const SizedBox.shrink(),
-              },
-              const SizedBox(height: RSpace.s24),
-              const _PendingRequestsSummary(),
-            ],
-          ),
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        switch (today) {
+          AsyncLoading() => const _InlineSkeleton(),
+          AsyncError(:final error) => PagedListError(error: error, onRetry: notifier.refresh),
+          AsyncData(:final value) => value.isEmpty
+              ? const _NothingToday()
+              : Column(
+                  children: [
+                    for (final gig in value.items) ...[
+                      GigCard(gig: gig),
+                      const SizedBox(height: RSpace.s12),
+                    ],
+                  ],
+                ),
+          _ => const SizedBox.shrink(),
+        },
+        const SizedBox(height: RSpace.s12),
+        const _PendingRequestsSummary(),
+      ],
     );
   }
 }

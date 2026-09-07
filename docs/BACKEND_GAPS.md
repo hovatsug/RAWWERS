@@ -490,6 +490,29 @@ the photographer selected, so the app intersects it with
 photographer's home screen with twelve rookie cards for ten niches they never
 chose.
 
+## A photographer cannot stop taking bookings
+
+`ProProfile.is_accepting_bookings` is written in exactly one place -
+`POST /v1/pro/me/activate` sets it `True` - and **no endpoint ever sets it back
+to `False`**. `ProProfileUpdateRequest` has no such field, and activate takes no
+body, so it is a one-way switch.
+
+Discovery filters on `ProPublicIndex.is_accepting_bookings`, so once activated a
+photographer is permanently listed as bookable. Someone who breaks an ankle,
+goes on holiday, or is simply full has no way to say so.
+
+The workaround that exists is availability: clearing working hours drops
+`available_days_next_14` to zero and the funnel refuses the slot. That works,
+but it is indirect, it loses the schedule they will want back, and nothing in
+the app tells them it is the lever.
+
+The dashboard therefore shows bookable state **read-only** and points at
+Availability, rather than offering a switch that cannot save. A dead control is
+worse than an honest sentence.
+
+The fix is small - accept `is_accepting_bookings` on the profile update, or add
+a pause endpoint - but it is `api/`, so it is recorded rather than made.
+
 ## Both flavors ship the default Flutter app icon, from one shared asset set
 
 `ios/Runner/Assets.xcassets` contains a single `AppIcon.appiconset`, shared by
@@ -729,6 +752,54 @@ Two payload shapes the client app depends on are conventions rather than contrac
 3. **`ClientBookingStatusResponse.timeline` is `list[dict]`** — same shape problem, found while building the booking detail screen. The backend writes `at`, `from`, `to`, `reason`; the app parses defensively and drops rows missing a usable `at` or `to` rather than rendering "null → null".
 
 **Fix:** give both a real Pydantic model (`ClientLocation`, `ProNicheSummary`). That is a breaking schema change for any existing writer of a differently-shaped `location`, so it wants a migration audit first, not a drive-by edit.
+
+## LAUNCH BLOCKER: the tier price cap enforces nothing — zero rows
+
+The entry price cap is the mechanic the whole pricing engine hangs off: the
+per-niche decay curve prices a package upward from an entry price, and the cap
+is what stops a photographer choosing an entry price their standing has not
+earned. **`niche_package_price_cap` has zero rows**, and
+`enforce_entry_price_cap` treats an unconfigured (niche, tier) as no
+restriction and returns early.
+
+So today **a rookie can price at master rates**, and - because the cap carries
+`entry_price_min` as well as `entry_price_max` - can also undercut the floor.
+Neither direction is checked. The enforcement is built, correct, and inert.
+
+`extra_image_pricing_policy` is empty in the same way:
+`enforce_max_extra_images` finds no policy and returns, so the per-tier ceiling
+on extra images is not applied either.
+
+This is not a card-copy problem. It is the quality thesis not being enforced:
+the ladder is fully computed, demotion has hysteresis, admin overrides are
+audited - and the one consequence a photographer would feel in their pricing
+does nothing. The only live effect of tier is discovery placement
+(`recompute_pro_public_index` adds `tier_rank * 8` to `ranking_score`), which
+is why the dashboard's tier card claims placement and nothing else. One false
+claim would make every true one suspect.
+
+**This is a data task, not a code task.** The enforcement is waiting on rows.
+
+`niche_package_price_cap` needs one row per (niche, tier) to be enforced -
+5 tiers across the 12 active niches, 60 rows for full coverage, though a
+partial set is valid: an unconfigured pair simply stays unrestricted.
+
+| column | notes |
+| --- | --- |
+| `niche_id` | FK to `niche.id` |
+| `tier` | `rookie` / `skilled` / `pro` / `elite` / `master` |
+| `entry_price_min` | numeric(12,2), NOT NULL, defaults 0.00 — the floor, enforced |
+| `entry_price_max` | numeric(12,2), nullable — null means no ceiling |
+| `currency` | char(3), defaults `EUR` |
+
+Unique on `(niche_id, tier)`. Active niches: `architecture`, `automotive`,
+`corporate`, `events_nightlife`, `family`, `food`, `maternity`, `portraits`,
+`product`, `real_estate`, `sports`, `weddings`.
+
+`PUT /v1/admin/pricing/niche-package-price-caps` already exists to write them.
+
+Once the rows exist, the tier card can honestly say a tier raises what a
+photographer can charge. Until then it must not.
 
 ## LAUNCH BLOCKER: no email is ever delivered, and push does not exist
 

@@ -9,7 +9,7 @@ import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/requests/requests_controller.dart';
-import 'package:rawwers/features/pro/today/today_screen.dart';
+import 'package:rawwers/features/pro/today/today_section.dart';
 
 class _FakeGigs extends GigsController {
   _FakeGigs(this._page);
@@ -129,19 +129,23 @@ void main() {
   });
 
   group('Today', () {
+    // Today is a section of the dashboard now, not a screen. Its content is
+    // unchanged; what moved is where it sits and who owns the heading.
     Widget wrapToday(CursorPage<GigResponse> page) => ProviderScope(
           overrides: [
             todayControllerProvider.overrideWith(() => _FakeToday(page)),
             requestsControllerProvider.overrideWith(_FakeRequestsEmpty.new),
           ],
-          child: MaterialApp(theme: buildProTheme(), home: const TodayScreen(settingsPath: '/settings')),
+          child: MaterialApp(
+            theme: buildProTheme(),
+            home: const Scaffold(body: SingleChildScrollView(child: TodaySection())),
+          ),
         );
 
     testWidgets('lists todays shoots', (tester) async {
       await tester.pumpWidget(wrapToday(CursorPage(items: [_gig(id: 'g1')])));
       await tester.pump();
 
-      expect(find.text('Your shoots today'), findsOneWidget);
       expect(find.text('Porto, Ribeira'), findsOneWidget);
     });
 
@@ -150,13 +154,6 @@ void main() {
       await tester.pump();
 
       expect(find.text('Nothing scheduled today.'), findsOneWidget);
-    });
-
-    testWidgets('reaches settings from the header, not a fifth tab', (tester) async {
-      await tester.pumpWidget(wrapToday(const CursorPage(items: [])));
-      await tester.pump();
-
-      expect(find.byTooltip('Profile and settings'), findsOneWidget);
     });
   });
 }

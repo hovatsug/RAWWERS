@@ -32,7 +32,7 @@ const _proRoots = <String, String>{
   '/launch': 'transient; only ever a redirect target while auth resolves',
   '/auth': 'the unauthenticated root; register/forgot/reset are its children',
   '/upgrade-to-pro': 'a gate - a back button would defeat it',
-  '/today': 'shell branch root',
+  '/dashboard': 'shell branch root',
   '/requests': 'shell branch root',
   '/gigs': 'shell branch root',
   '/wallet': 'shell branch root',

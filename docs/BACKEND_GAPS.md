@@ -902,3 +902,54 @@ Recorded here because it bounds the fix above. A booking takes a single payment;
 `GET /v1/booking-requests`, `GET /v1/gigs` and `GET /v1/client/bookings` pass 11 tests (`api/tests/test_list_endpoints_v1.py`) covering scoping, filters, cursor behaviour under tied timestamps, and malformed cursors. Against the live local backend they have only ever been called by a user with no data, returning `{"items": [], "next_cursor": null}` — correct, but the empty case. `scripts/seed_dev.py` does not create booking requests, so no seeded fixture exercises them either.
 
 **Practical consequence for F-6:** the pro app's Requests, Gigs and Today tabs are the first real consumers. If a response looks wrong there — a missing field, an unexpected null, a filter that doesn't narrow, a cursor that doesn't advance — treat the backend as a live suspect rather than assuming the Flutter side is at fault. In particular `seconds_until_expiry` and the `ClientBookingListItem` gig/payment roll-up have never been observed with real rows behind them, and the gig roll-up depends on `meta["booking_request_id"]` being present, which only holds for gigs created through the accept-booking path.
+
+## The watermark has never actually watermarked anything (FIXED, but existing objects need a backfill)
+
+Found while planning the fullscreen photo viewer. Three separate faults stacked on top of each other, and all of them were invisible because galleries have only ever been rendered as 512px thumbnails.
+
+**1. No font is installed in the API/worker image.** `_draw_watermark` asked for `/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf` at `image.width // 22` — 194px on a full-frame photo — caught the `OSError`, and fell back to `ImageFont.load_default()`. That fallback *ignores the requested size* and renders a ~8px bitmap face: "RAWWERS" measures **50x8 pixels**. On a 4288px photo the mark covered **0.0145% of the frame**. Every watermarked preview this pipeline has ever produced, in dev and in production, is effectively unmarked. `find / -name "*.ttf"` in the running container returns nothing.
+
+**2. The mark was a single line in one corner**, so a crop removed it at zero cost to the thief. Measured per quadrant on a 1600px frame: top-left, top-right and bottom-left were **0.0000%** marked.
+
+**3. The "preview" was full resolution.** `watermark_preview` and `preview_watermarked` were written from `image.copy()` with no downscale, while `web_res` — which is only served *after* the client holds the entitlement — was capped at 2048px. So the unpaid preview was larger than the paid deliverable. Confirmed in the dev database: `watermark_preview` rows up to **4288px**.
+
+**Fixed** in `app/tasks/media_tasks.py`: previews are downscaled to `WATERMARK_PREVIEW_MAX_PX` (1600) before marking; the mark is tiled diagonally across the whole frame with half-step row offsets; and `_load_font` falls back to `ImageFont.load_default(size=size)`, which is scalable in Pillow 10.1+, so no font package is needed. Covered by `tests/test_gallery_media_delivery.py`, each check verified to fail against the previous implementation.
+
+**Still outstanding — the backfill.** Fixing the pipeline does not fix what is already in the bucket. `scripts/backfill_watermark_previews.py` re-renders oversized previews from their originals; it reports by default and overwrites only with `--apply`. It has **not** been run against any environment. Dev currently holds 6 oversized `watermark_preview` objects and 6 oversized `preview_watermarked` derivatives. Production has not been counted.
+
+**Also note:** the worker runs from a separate image built from the same Dockerfile, and `docker compose build api` does not rebuild it (see the entry above). The watermark change only takes effect for newly processed uploads once the **worker** is rebuilt.
+
+## Presigned gallery URLs expired mid-selection (FIXED)
+
+`get_gallery` signed both the thumbnail and the watermarked preview with `expires_in=300`. A client comparing 200 wedding photos is still deciding well after five minutes, at which point already-rendered images start returning 403 with nothing on screen to explain it. Now signed with `GALLERY_PREVIEW_URL_TTL_SECONDS` (3600) — safe specifically because these point at downscaled, watermarked previews. The finals keep their short window (`media_rights._signed_ttl_seconds`, clamped 60-300s); nothing about this touches them.
+
+## `get_gallery` was N+1 over the whole gallery (FIXED)
+
+Two `MediaObject` queries plus two presigns per item, in a Python loop. Measured against the local backend: 5 items / 0 presigns = 31.8ms; 14 items / 28 presigns = 74.0ms, i.e. ~4.7ms per item, extrapolating to **~970ms and ~400 queries for a 200-photo gallery**. Signing itself is a local HMAC and costs nothing — the cost was the query loop. Replaced with `resolve_variant_urls`, one query for the page, mirroring the `resolve_image_urls` fix already applied to Discover cards. A regression test asserts the query count does not grow with the number of photos; against the old code it measured 16 queries for 3 photos and 46 for 18.
+
+**The same shape still exists in `GET /v1/pro/{id}/public-profile`** (`app/api/v1/discovery.py:283-304`) — two `MediaObject` queries and two presigns per portfolio photo, also at 300s. Left alone because it was outside the authorised scope of this change; it is capped at a smaller page than a proof gallery, but it is the same bug.
+
+## `ProPortfolioItem` carries no full-resolution URL (blocks fullscreen on the pro's own portfolio)
+
+`GET /v1/pro/me/portfolio` returns only `thumbnail_url`, resolved via `resolve_image_urls` with the default `THUMBNAIL_FIRST` — a 512px image. A fullscreen viewer on the pro's own portfolio has nothing larger to show, so it would either display a 512px image blown up across a phone or need a second call per photo. Needs either a `preview_url` on `ProPortfolioItem` or a `prefer=ORIGINAL_FIRST` companion field. Not changed here: it is a schema change and was outside the authorised scope.
+
+## The backend suite is 18% red at HEAD (60 unconditional failures)
+
+Found while establishing a baseline before committing the gallery media work. A full run at `f2a036a9` with no local changes: **62 failed, 270 passed**. The same run with the gallery changes applied: **61 failed, 280 passed**. Diffing the two failure lists gives 60 in common, so the media work introduces no regressions - but the suite was never green to begin with.
+
+**These are not ordering artifacts.** `conftest.setup_database` is autouse and function-scoped: it runs `drop_all` + `create_all` before *every* test, so no test can inherit another's rows and execution order cannot matter. The failures are unconditional.
+
+The dominant signature - 28 of them - is a foreign key violation inserting `user_role` for the admin id with no `user_account` row to point at. `tests/test_media_rights.py:146` is representative:
+
+```python
+db_session.add(UserRole(user_id=uuid.UUID(admin_id), role=UserRoleType.admin))
+db_session.commit()   # user_account row was never created
+```
+
+Other files get this right and would be the pattern to copy - `test_gamification_v0._ensure_user_role` and `test_booking_close._ensure_account` both insert the `UserAccount` first. The fix is mechanical; it is listed here rather than done because it touches ~28 tests across a dozen files and belongs in its own commit.
+
+**Why this matters beyond tidiness:** a suite with 60 known failures cannot tell anyone whether a change broke something. The only way to use it today is to diff a full run against a HEAD baseline, which costs ~25 minutes per side.
+
+## The suite takes ~24 minutes because it rebuilds the schema 334 times
+
+`conftest.setup_database` runs `Base.metadata.drop_all` + `create_all` per test, at ~4s each across 334 tests. A transaction-per-test fixture that rolls back instead would cut this to well under a minute. It also makes the run fragile: every test takes an exclusive lock on every table, so one session left idle-in-transaction (an interrupted run, a killed process) blocks the next run's `DROP TABLE` indefinitely rather than failing fast. That happened during this work and presented as a hang, not an error.

@@ -187,10 +187,10 @@ def test_viral_watermark_footer_only_for_share_variant(db_session):
     db_session.add(asset)
     db_session.flush()
 
+    # _draw_watermark composites a translucent layer, so it returns a new
+    # image rather than drawing onto the one it is handed.
     base = Image.new("RGB", (1200, 900), color=(24, 24, 24))
-    img_plain = base.copy()
-    _draw_watermark(db_session, asset, img_plain, include_powered_by=False)
-    img_share = base.copy()
-    _draw_watermark(db_session, asset, img_share, include_powered_by=True)
+    img_plain = _draw_watermark(db_session, asset, base, include_powered_by=False)
+    img_share = _draw_watermark(db_session, asset, base, include_powered_by=True)
 
     assert img_plain.tobytes() != img_share.tobytes()

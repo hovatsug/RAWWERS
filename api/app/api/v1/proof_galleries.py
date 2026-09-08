@@ -57,6 +57,7 @@ from app.services.client_rewards_pricing import (
     upsert_extra_image_purchase_snapshot,
 )
 from app.services.media_rights import upsert_gig_entitlement
+from app.services.media_urls import GALLERY_PREVIEW_URL_TTL_SECONDS, resolve_variant_urls
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
@@ -261,31 +262,29 @@ def get_gallery(
         select(ProofGalleryItem).where(ProofGalleryItem.gallery_id == gallery_id).order_by(ProofGalleryItem.sort_order.asc())
     ).scalars().all()
 
-    views: list[GalleryItemView] = []
-    for item in items:
-        thumb = db.execute(
-            select(MediaObject).where(
-                MediaObject.media_asset_id == item.media_asset_id,
-                MediaObject.variant == MediaVariant.thumbnail,
-                MediaObject.status == ObjectStatus.ready,
-            )
-        ).scalar_one_or_none()
-        wm = db.execute(
-            select(MediaObject).where(
-                MediaObject.media_asset_id == item.media_asset_id,
-                MediaObject.variant == MediaVariant.watermark_preview,
-                MediaObject.status == ObjectStatus.ready,
-            )
-        ).scalar_one_or_none()
+    # One query and one pass of signing for the whole page. This used to run
+    # two MediaObject queries plus two presigns per item inside the loop, so a
+    # 200-photo gallery - an ordinary wedding - cost ~400 round trips to
+    # render one response.
+    urls = resolve_variant_urls(
+        db,
+        (item.media_asset_id for item in items),
+        variants=(MediaVariant.thumbnail, MediaVariant.watermark_preview),
+        expires_in=GALLERY_PREVIEW_URL_TTL_SECONDS,
+        # Items were validated when the pro attached them; a photo must not
+        # vanish from a published gallery part-way through a selection.
+        require_ready_asset=False,
+    )
 
-        views.append(
-            GalleryItemView(
-                media_asset_id=item.media_asset_id,
-                sort_order=item.sort_order,
-                thumbnail_url=create_presigned_get(thumb.storage_key, expires_in=300) if thumb else None,
-                watermark_preview_url=create_presigned_get(wm.storage_key, expires_in=300) if wm else None,
-            )
+    views = [
+        GalleryItemView(
+            media_asset_id=item.media_asset_id,
+            sort_order=item.sort_order,
+            thumbnail_url=urls.get(item.media_asset_id, {}).get(MediaVariant.thumbnail),
+            watermark_preview_url=urls.get(item.media_asset_id, {}).get(MediaVariant.watermark_preview),
         )
+        for item in items
+    ]
 
     if user.user_id == gallery.client_user_id:
         gig = db.get(Gig, gallery.gig_id)

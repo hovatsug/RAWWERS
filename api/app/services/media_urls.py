@@ -72,3 +72,62 @@ def resolve_image_urls(
         asset_id: create_presigned_get(storage_key, expires_in=expires_in)
         for asset_id, (_, storage_key) in best.items()
     }
+
+
+# A proof gallery is browsed, not glanced at: a client comparing 200 wedding
+# photos will still be deciding well after five minutes, and the 300s TTL the
+# gallery used to sign with expired mid-session, turning already-rendered
+# images into 403s with nothing on screen to explain it. An hour covers a real
+# selection sitting, and re-fetching the gallery mints fresh URLs for anyone
+# who stays longer.
+#
+# Long TTLs are safe *here specifically* because these URLs point at
+# downscaled, watermarked previews. The finals keep their short window
+# (media_rights._signed_ttl_seconds, capped at 300s) - that is the asset worth
+# stealing, and nothing about this constant touches it.
+GALLERY_PREVIEW_URL_TTL_SECONDS = 3600
+
+
+def resolve_variant_urls(
+    db: Session,
+    asset_ids: Iterable[uuid.UUID | None],
+    *,
+    variants: Sequence[MediaVariant],
+    expires_in: int = 900,
+    require_ready_asset: bool = True,
+) -> dict[uuid.UUID, dict[MediaVariant, str]]:
+    """Signed URLs for several variants of many assets, in one query.
+
+    `resolve_image_urls` answers "the best available image for this asset";
+    this answers "each of these specific variants, separately", which is what
+    a gallery tile needs when it carries both a thumbnail and a preview. The
+    per-item form cost two queries and two signatures per photo, so a
+    200-photo gallery spent ~400 round trips building one response.
+
+    `require_ready_asset` exists because a proof gallery validates its items
+    at attach time and must not drop one afterwards: an asset later marked
+    `failed` by a re-run of `process_photo_variants` still has the ready
+    objects the gallery was built on, and making a photo disappear part-way
+    through a client's selection is worse than serving the preview that is
+    demonstrably there. Callers rendering a fresh list keep the default.
+    """
+    wanted = {asset_id for asset_id in asset_ids if asset_id is not None}
+    if not wanted or not variants:
+        return {}
+
+    rows = db.execute(
+        select(MediaObject.media_asset_id, MediaObject.variant, MediaObject.storage_key)
+        .join(MediaAsset, MediaAsset.id == MediaObject.media_asset_id)
+        .where(
+            MediaObject.media_asset_id.in_(wanted),
+            MediaObject.variant.in_(tuple(variants)),
+            MediaObject.status == ObjectStatus.ready,
+            MediaAsset.kind == MediaKind.photo,
+            *([MediaAsset.status == MediaStatus.ready] if require_ready_asset else []),
+        )
+    ).all()
+
+    resolved: dict[uuid.UUID, dict[MediaVariant, str]] = {}
+    for asset_id, variant, storage_key in rows:
+        resolved.setdefault(asset_id, {})[variant] = create_presigned_get(storage_key, expires_in=expires_in)
+    return resolved

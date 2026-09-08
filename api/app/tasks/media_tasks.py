@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import math
 import uuid
 
 from PIL import Image, ImageDraw, ImageFont
@@ -51,15 +52,13 @@ def process_photo_variants(media_asset_id: str) -> None:
         thumb.save(thumb_bytes, format="JPEG", quality=85)
         upload_object_bytes(thumb_key, thumb_bytes.getvalue(), content_type="image/jpeg")
 
-        wm = image.copy()
-        _draw_watermark(db, asset, wm, include_powered_by=False)
+        wm = watermarked_preview(db, asset, image, include_powered_by=False)
         wm_key = generate_variant_key(original_obj.storage_key, "watermark_preview")
         wm_bytes = io.BytesIO()
         wm.save(wm_bytes, format="JPEG", quality=85)
         upload_object_bytes(wm_key, wm_bytes.getvalue(), content_type="image/jpeg")
 
-        wm_share = image.copy()
-        _draw_watermark(db, asset, wm_share, include_powered_by=True)
+        wm_share = watermarked_preview(db, asset, image, include_powered_by=True)
         wm_share_key = generate_variant_key(original_obj.storage_key, "preview_watermarked")
         wm_share_bytes = io.BytesIO()
         wm_share.save(wm_share_bytes, format="JPEG", quality=85)
@@ -161,8 +160,7 @@ def generate_watermarked_preview(media_asset_id: str) -> None:
         asset, original_obj, image = _load_source_image(db, media_asset_id)
         if not asset or not original_obj or image is None:
             return
-        wm = image.copy()
-        _draw_watermark(db, asset, wm, include_powered_by=True)
+        wm = watermarked_preview(db, asset, image, include_powered_by=True)
 
         wm_key = generate_variant_key(original_obj.storage_key, "preview_watermarked")
         wm_bytes = io.BytesIO()
@@ -305,39 +303,131 @@ def _load_source_image(db, media_asset_id: str):
     return asset, original_obj, image
 
 
-def _draw_watermark(db, asset: MediaAsset, image: Image.Image, *, include_powered_by: bool) -> None:
-    draw = ImageDraw.Draw(image)
+# Previews are downscaled before the mark goes on. A watermarked preview used
+# to be written at the original's full size - 4288px wide for a modern body -
+# so the "preview" a client browsed before paying was a near-original with a
+# label on it. 1600px is enough to judge a photograph on any phone or laptop
+# and is not a deliverable. `web_res` (2048px) stays larger because it is only
+# ever served once the client holds the entitlement for it.
+WATERMARK_PREVIEW_MAX_PX = 1600
+
+# The mark is tiled across the whole frame at an angle rather than set once in
+# a corner, because a corner mark is removed by a crop and the crop costs the
+# thief almost nothing. Rows are offset by half a step so no crop can land
+# between them, and the angle stops the text being sliced off along a single
+# horizontal band.
+_WATERMARK_ANGLE = 30
+_WATERMARK_FILL_ALPHA = 68
+_WATERMARK_STROKE_ALPHA = 52
+
+_FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+_FONT_REGULAR = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
+
+def _load_font(path: str, size: int):
+    """A font at `size`, whether or not the image ships system fonts.
+
+    The bare `ImageFont.load_default()` this used to fall back to ignores
+    `size` and renders a ~8px bitmap face: on a 4288px photo that is a 50px
+    line of text, which is why the corner mark was effectively invisible in
+    every image the pipeline has ever produced. No font package is installed
+    in this image, so that fallback was the only path ever taken. Pillow's
+    default face is scalable when a size is passed, so the fallback now
+    produces a mark of the intended size rather than a silent non-mark.
+    """
+    try:
+        return ImageFont.truetype(path, size)
+    except OSError:
+        return ImageFont.load_default(size=size)
+
+
+def _watermark_text(db, asset: MediaAsset) -> str:
     text = settings.media_watermark_text_template or "RAWWERS"
     if settings.media_watermark_include_pro_name:
         profile = db.get(ProProfile, asset.owner_user_id)
         display = profile.display_name if profile and profile.display_name else None
         if display:
-            text = f"RAWWERS • {display}"
+            text = f"RAWWERS \u2022 {display}"
+    return text
 
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", max(24, image.width // 22))
-    except OSError:
-        font = ImageFont.load_default()
-    bbox = draw.textbbox((0, 0), text, font=font)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
-    pad_x = max(16, int(image.width * 0.02))
-    pad_y = max(16, int(image.height * 0.02))
-    x = max(12, image.width - tw - pad_x)
-    y = max(12, image.height - th - pad_y)
-    draw.text((x, y), text, fill=(255, 255, 255), font=font)
+def downscale_for_preview(image: Image.Image) -> Image.Image:
+    """A copy bounded to WATERMARK_PREVIEW_MAX_PX on its long edge."""
+    preview = image.copy()
+    if max(preview.width, preview.height) > WATERMARK_PREVIEW_MAX_PX:
+        preview.thumbnail((WATERMARK_PREVIEW_MAX_PX, WATERMARK_PREVIEW_MAX_PX))
+    return preview
+
+
+def _draw_watermark(db, asset: MediaAsset, image: Image.Image, *, include_powered_by: bool) -> Image.Image:
+    """Return `image` with the repeating mark composited over it.
+
+    Returns a new image rather than mutating in place: compositing a
+    translucent layer is not a draw operation on the original pixels.
+    """
+    text = _watermark_text(db, asset)
+    base = image.convert("RGBA")
+    width, height = base.size
+
+    font_size = max(16, width // 30)
+    font = _load_font(_FONT_BOLD, font_size)
+
+    measure = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    bbox = measure.textbbox((0, 0), text, font=font)
+    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    step_x = text_w + int(text_w * 0.6)
+    step_y = text_h + int(text_h * 3.5)
+
+    # The layer is squared off at the image's diagonal so that rotating it and
+    # cropping back to size never exposes an unmarked corner.
+    span = int(math.hypot(width, height)) + step_x + step_y
+    layer = Image.new("RGBA", (span, span), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    stroke = max(1, font_size // 24)
+
+    for row, y in enumerate(range(0, span, step_y)):
+        offset = (row % 2) * (step_x // 2)
+        for x in range(-step_x, span, step_x):
+            draw.text(
+                (x + offset, y),
+                text,
+                font=font,
+                fill=(255, 255, 255, _WATERMARK_FILL_ALPHA),
+                stroke_width=stroke,
+                stroke_fill=(0, 0, 0, _WATERMARK_STROKE_ALPHA),
+            )
+
+    layer = layer.rotate(_WATERMARK_ANGLE, resample=Image.BICUBIC)
+    left, top = (span - width) // 2, (span - height) // 2
+    layer = layer.crop((left, top, left + width, top + height))
+
+    marked = Image.alpha_composite(base, layer)
 
     if include_powered_by:
         footer_text = "Powered by RAWWERS"
-        try:
-            footer_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", max(14, image.width // 56))
-        except OSError:
-            footer_font = ImageFont.load_default()
-        footer_bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
+        footer_font = _load_font(_FONT_REGULAR, max(14, width // 56))
+        footer_draw = ImageDraw.Draw(marked)
+        footer_bbox = footer_draw.textbbox((0, 0), footer_text, font=footer_font)
         fw, fh = footer_bbox[2] - footer_bbox[0], footer_bbox[3] - footer_bbox[1]
-        fx = max(12, image.width - fw - pad_x)
-        fy = max(12, image.height - fh - pad_y // 3)
-        draw.text((fx, fy), footer_text, fill=(245, 245, 245), font=footer_font)
+        pad_x = max(16, int(width * 0.02))
+        pad_y = max(16, int(height * 0.02))
+        footer_draw.text(
+            (max(12, width - fw - pad_x), max(12, height - fh - pad_y)),
+            footer_text,
+            fill=(245, 245, 245, 235),
+            font=footer_font,
+            stroke_width=max(1, fh // 12),
+            stroke_fill=(0, 0, 0, 120),
+        )
+
+    return marked.convert("RGB")
+
+
+def watermarked_preview(db, asset: MediaAsset, image: Image.Image, *, include_powered_by: bool) -> Image.Image:
+    """Downscale first, then mark. The order matters: marking a 4288px image
+    and shipping it is the bug this pair exists to prevent."""
+    return _draw_watermark(db, asset, downscale_for_preview(image), include_powered_by=include_powered_by)
 
 
 def _upsert_variant(

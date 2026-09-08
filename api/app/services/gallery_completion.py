@@ -24,6 +24,7 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.gamification import queue_evaluate_user_milestones
 from app.services.gig_state import transition_gig
 from app.services.niche_skills import recompute_pro_niche_skills
+from app.services.package_pricing import is_curve_priced
 from app.services.payment_intents import list_succeeded_payments_for_gig
 from app.services.payouts import create_earnings_entry
 from app.services.proof_of_gigs import enqueue_raww_mint
@@ -36,7 +37,7 @@ def is_selection_fully_paid(db: Session, *, gig: Gig, gallery: ProofGallery, sel
         select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
     ).scalar_one()
 
-    if selected_count > gallery.included_photos:
+    if not is_curve_priced(gig) and selected_count > gallery.included_photos:
         latest_upsell = db.execute(
             select(UpsellPurchase)
             .where(UpsellPurchase.selection_id == selection.id)

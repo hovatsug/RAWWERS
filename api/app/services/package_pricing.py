@@ -156,10 +156,42 @@ def compute_package_total(db: Session, *, niche_id: uuid.UUID, entry_rate: Decim
     )
 
 
-def compute_minimum_amount(db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal) -> Decimal:
-    """amount_minimum = 10 x entry rate. Photos 1-10 are always flat at the
-    entry rate regardless of curve type, so this holds for every niche."""
-    return compute_package_total(db, niche_id=niche_id, entry_rate=entry_rate, photo_count=MINIMUM_PHOTOS)
+def compute_minimum_amount(
+    db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal, included_photos: int
+) -> Decimal:
+    """What a booking charges up front: the curve total for the photos the
+    package already includes.
+
+    This used to be the curve total for MINIMUM_PHOTOS (10) regardless of what
+    the package included, which meant a client who selected exactly the photos
+    their package promised still owed a difference charge for everything past
+    the tenth. Basing it on `included_photos` makes that difference exactly
+    zero, which is what "included" has to mean.
+
+    Deliberately the curve total rather than `included_photos * entry_rate`:
+    photos past the tenth are priced by the decay curve, so charging them flat
+    up front would collect more than `amount_final` ever comes to, and
+    `difference_amount` clamps at zero - the client would overpay at checkout
+    with nothing to reconcile it against.
+    """
+    return compute_package_total(
+        db, niche_id=niche_id, entry_rate=entry_rate, photo_count=max(MINIMUM_PHOTOS, included_photos)
+    )
+
+
+def is_curve_priced(gig) -> bool:
+    """Whether this gig's photos are priced by the package decay curve.
+
+    A curve-priced gig charges for *every* selected photo through
+    `amount_final`, so the flat per-extra upsell must not also apply to it -
+    photos past `included_photos` were billed twice, once by the curve and
+    once by the upsell, and both charges gated the booking from closing.
+
+    One predicate, used by everything that asks the question, so the pricing
+    path and the unlocking path cannot drift apart again. Gigs without a niche
+    or an entry rate (the legacy shoot path) keep the flat extras model.
+    """
+    return bool(gig is not None and gig.niche_id is not None and gig.entry_rate is not None)
 
 
 def get_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier) -> NichePackagePriceCap | None:

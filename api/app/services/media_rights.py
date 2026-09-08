@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, ProofGalleryItem, SelectionStatus, UpsellPurchase, UpsellPurchaseStatus
 from app.models.gig import Gig
+from app.services.package_pricing import is_curve_priced
 from app.models.media_rights import (
     GigConsentLevel,
     GigEntitlementType,
@@ -225,6 +226,11 @@ def unlocked_final_asset_ids(db: Session, *, gallery: ProofGallery) -> list[uuid
     selected_ids = selected_asset_ids(db, gallery_id=gallery.id, submitted_only=True)
     if not selected_ids:
         return []
+
+    # A curve-priced gig charged for every selected photo through
+    # amount_final, so there is no upsell to wait on and nothing to truncate.
+    if is_curve_priced(db.get(Gig, gallery.gig_id)):
+        return selected_ids
 
     extras_needed = max(0, len(selected_ids) - gallery.included_photos)
     if extras_needed <= 0:

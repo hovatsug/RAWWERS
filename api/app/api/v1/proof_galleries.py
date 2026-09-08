@@ -61,7 +61,7 @@ from app.services.media_urls import GALLERY_PREVIEW_URL_TTL_SECONDS, resolve_var
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
-from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count
+from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count, is_curve_priced
 from app.services.payment_intents import create_or_get_gig_payment_intent
 
 settings = get_settings()
@@ -364,19 +364,26 @@ def submit_selection(
         select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
     ).scalar_one()
     enforce_minimum_selection_count(selected_count)
-    extras_count = max(0, selected_count - gallery.included_photos)
 
     gig = db.get(Gig, gallery.gig_id)
+    curve_priced = is_curve_priced(gig)
+
+    # A curve-priced gig charges for every selected photo through
+    # amount_final, so there are no extras to sell on top. Photos past
+    # included_photos used to be billed twice - once inside the curve's
+    # difference charge and once as flat extras - and the booking could not
+    # close until both were paid.
+    extras_count = 0 if curve_priced else max(0, selected_count - gallery.included_photos)
 
     difference_amount = Decimal("0.00")
-    if gig and gig.niche_id and gig.entry_rate is not None:
+    if curve_priced:
         amount_final = compute_package_total(db, niche_id=gig.niche_id, entry_rate=gig.entry_rate, photo_count=selected_count)
         gig.amount_final = amount_final
         difference_amount = max(Decimal("0.00"), (amount_final - gig.amount_minimum).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
     difference_required = difference_amount > 0
 
     selection.status = SelectionStatus.submitted
-    included_unlock_count = min(gallery.included_photos, selected_count)
+    included_unlock_count = selected_count if curve_priced else min(gallery.included_photos, selected_count)
     upsert_gig_entitlement(
         db,
         gig_id=gallery.gig_id,
@@ -489,6 +496,15 @@ def create_upsell_intent(
     selected_count = db.execute(
         select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
     ).scalar_one()
+    if is_curve_priced(db.get(Gig, gallery.gig_id)):
+        # Every selected photo is already priced by the curve through
+        # amount_final; selling extras on top would charge twice for the same
+        # photos.
+        raise APIError(
+            code="invalid_state",
+            message="This booking is priced by the package curve; there are no extras to purchase",
+            status_code=409,
+        )
     extras_count = max(0, selected_count - gallery.included_photos)
     if extras_count <= 0:
         raise APIError(code="invalid_state", message="No extras to purchase", status_code=409)
@@ -548,7 +564,9 @@ def get_download_links(
     if is_admin:
         unlocked_ids = list(selected_item_ids)
     else:
-        extras_needed = max(0, len(selected_item_ids) - gallery.included_photos)
+        extras_needed = 0 if is_curve_priced(db.get(Gig, gallery.gig_id)) else max(
+            0, len(selected_item_ids) - gallery.included_photos
+        )
         purchase = db.execute(
             select(UpsellPurchase)
             .where(UpsellPurchase.gallery_id == gallery_id, UpsellPurchase.selection_id == latest_submitted.id)
@@ -558,7 +576,7 @@ def get_download_links(
         if extras_needed > 0 and (not purchase or purchase.status != UpsellPurchaseStatus.succeeded):
             raise APIError(code="payment_required", message="Upsell purchase not completed", status_code=402)
 
-        if extras_needed > 0:
+        if extras_needed > 0 or is_curve_priced(db.get(Gig, gallery.gig_id)):
             unlocked_ids = list(selected_item_ids)
         else:
             ordered_ids = _ordered_gallery_asset_ids(db, gallery.id)

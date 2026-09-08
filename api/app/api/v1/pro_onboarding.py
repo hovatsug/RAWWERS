@@ -1143,7 +1143,7 @@ def accept_booking_request(
     )
 
     entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate)
+    amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate, included_photos=package.included_photos)
     fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 

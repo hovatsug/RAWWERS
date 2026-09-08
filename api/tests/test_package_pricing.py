@@ -99,12 +99,30 @@ def test_unconfigured_niche_falls_back_to_flat_curve(db_session):
     assert total == Decimal("120.00")
 
 
-def test_compute_minimum_amount_is_10_photos_through_the_curve(db_session):
+def test_compute_minimum_amount_is_the_included_photos_through_the_curve(db_session):
+    """What a booking charges up front covers the photos the package includes.
+
+    This used to assert the curve total for MINIMUM_PHOTOS regardless of the
+    package, which is the defect rather than the spec: a 25-photo package
+    collected for 10 up front and then billed a difference for photos 11-25 -
+    photos the client had been told were included.
+    """
     ensure_initial_niches(db_session)
     weddings = get_active_niche_by_slug(db_session, "weddings")
     entry = Decimal("2.00")
-    expected = compute_package_total(db_session, niche_id=weddings.id, entry_rate=entry, photo_count=MINIMUM_PHOTOS)
-    assert compute_minimum_amount(db_session, niche_id=weddings.id, entry_rate=entry) == expected
+
+    for included in (10, 25, 60):
+        expected = compute_package_total(db_session, niche_id=weddings.id, entry_rate=entry, photo_count=included)
+        assert (
+            compute_minimum_amount(db_session, niche_id=weddings.id, entry_rate=entry, included_photos=included)
+            == expected
+        )
+
+    # A package including fewer than the platform minimum still collects for
+    # the minimum, since that is the smallest selection anyone can submit.
+    assert compute_minimum_amount(
+        db_session, niche_id=weddings.id, entry_rate=entry, included_photos=3
+    ) == compute_package_total(db_session, niche_id=weddings.id, entry_rate=entry, photo_count=MINIMUM_PHOTOS)
 
 
 def test_p_of_10_equals_entry_rate_for_every_curve_type():

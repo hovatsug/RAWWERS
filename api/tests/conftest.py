@@ -135,6 +135,63 @@ def _assert_safe_to_drop(url: str) -> None:
 
 _assert_safe_to_drop(_database_url)
 
+
+def _assert_storage_is_not_real(bucket: str, endpoint: str) -> None:
+    """Refuse to run if the suite could reach the real media bucket.
+
+    Forcing R2_* above fixes the common case, but a forced value is still
+    just a value: anyone adding a new variable, or running a script in an
+    environment that sets these another way, gets production storage back.
+    A test that can silently write to the real bucket is worse than one
+    that fails, because nothing announces it - six real objects were
+    overwritten by a maintenance script before this was noticed.
+
+    Structural, like the database check, and it fails collection rather
+    than skipping.
+    """
+    if bucket != "bucket" and not bucket.endswith("-test"):
+        raise RuntimeError(
+            f"Refusing to run: R2_BUCKET is {bucket!r}, which is not a test bucket. "
+            f"The suite writes objects, and this one may be real."
+        )
+    if "cloudflarestorage.com" in endpoint and "example" not in endpoint:
+        raise RuntimeError(
+            f"Refusing to run: R2_ENDPOINT_URL is {endpoint!r}, a real storage endpoint."
+        )
+
+
+def _assert_stripe_is_not_real(key: str) -> None:
+    """A live secret key means tests can create real charges.
+
+    test_a_window_only_partly_blocked_can_still_be_accepted reaches
+    stripe.PaymentIntent.create with no mock, and passed for as long as a
+    real key was in the environment - it was creating real PaymentIntents
+    on every run. The key is now fake, so that call fails loudly. This
+    stops a real one being reintroduced.
+    """
+    if key and not key.startswith("sk_test_"):
+        raise RuntimeError(f"Refusing to run: STRIPE_SECRET_KEY is not a test key ({key[:8]}...).")
+    if key.startswith("sk_test_") and len(key) > 40:
+        raise RuntimeError(
+            "Refusing to run: STRIPE_SECRET_KEY looks like a real test-mode key from an account, "
+            "not the suite's placeholder. Tests must not reach Stripe at all."
+        )
+
+
+_assert_storage_is_not_real(os.environ["R2_BUCKET"], os.environ["R2_ENDPOINT_URL"])
+_assert_stripe_is_not_real(os.environ["STRIPE_SECRET_KEY"])
+
+# Belt and braces: point the Stripe client at a domain that cannot resolve.
+# A fake key already makes real charges impossible, but it still lets an
+# unmocked call leave the machine and fail slowly against Stripe's servers.
+# With this, an unmocked call fails immediately and locally, and the error
+# names the test that made it rather than looking like a network blip.
+# Tests that patch stripe.* never reach this at all.
+import stripe as _stripe
+
+_stripe.api_base = "http://stripe.invalid"
+_stripe.upload_api_base = "http://stripe.invalid"
+
 _connect_args = {"check_same_thread": False} if _database_url.startswith("sqlite") else {}
 engine = create_engine(_database_url, connect_args=_connect_args)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)

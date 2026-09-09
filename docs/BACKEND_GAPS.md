@@ -981,3 +981,19 @@ What remains has no dominant cause left - the largest group is 6, and those six 
 ## The suite takes ~24 minutes because it rebuilds the schema 334 times
 
 `conftest.setup_database` runs `Base.metadata.drop_all` + `create_all` per test, at ~4s each across 334 tests. A transaction-per-test fixture that rolls back instead would cut this to well under a minute. It also makes the run fragile: every test takes an exclusive lock on every table, so one session left idle-in-transaction (an interrupted run, a killed process) blocks the next run's `DROP TABLE` indefinitely rather than failing fast. That happened during this work and presented as a hang, not an error.
+
+## The test environment now refuses to run against anything real
+
+Forcing the variables was necessary but not sufficient: a forced value is still just a value, and anyone adding a new one - or running the suite somewhere that sets these another way - gets production back. `tests/conftest.py` now fails collection outright if the resolved environment could reach anything real, in the same shape as the existing database guard:
+
+- `_assert_storage_is_not_real` rejects an `R2_BUCKET` that is neither `bucket` nor `*-test`, and any `R2_ENDPOINT_URL` pointing at a real cloudflarestorage host.
+- `_assert_stripe_is_not_real` rejects a live key, and also a genuine test-mode key belonging to an account - the suite's placeholder is the only accepted value, because tests should not reach Stripe at all.
+- `stripe.api_base` is pointed at `http://stripe.invalid`, so an unmocked call fails immediately at DNS instead of leaving the machine. Verified: `test_a_window_only_partly_blocked_can_still_be_accepted` now fails locally in milliseconds rather than creating a real PaymentIntent.
+
+Each guard was checked against the real values it exists to reject, not only the safe ones.
+
+## Missing imports have taken out four separate paths
+
+`log_event` in `media_rights.py` was the third instance of this shape after the KYC 500 and the GearCategory one, and a sweep turned up a fourth: `CurrentUser` used as an annotation five times in `app/api/v1/i18n.py` and never imported. That one is latent rather than live - `from __future__ import annotations` defers evaluation and FastAPI leaves it as an unresolved `ForwardRef` - but deleting that future import, or anything calling `get_type_hints` on those handlers, turns it into a `NameError`.
+
+Python does not catch this at import time when the name sits in a function body or a deferred annotation, so nothing fails until the line runs. `tests/test_no_unbound_names.py` now walks every module in `app/` and fails on any name loaded but never bound, with a companion test that feeds it the shape of the real bug to prove it still catches one.

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_locale, require_admin
+from app.api.deps import CurrentUser, get_db_session, get_locale, require_admin
 from app.models.i18n import I18nBundle
 from app.schemas.i18n import (
     I18nBundleCreateRequest,

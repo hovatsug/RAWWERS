@@ -13,6 +13,7 @@ _ClientWaitlistCreateRequest _$ClientWaitlistCreateRequestFromJson(
   country: json['country'] as String,
   city: json['city'] as String,
   nicheSlug: json['niche_slug'] as String?,
+  role: json['role'] as String?,
 );
 
 Map<String, dynamic> _$ClientWaitlistCreateRequestToJson(
@@ -22,4 +23,5 @@ Map<String, dynamic> _$ClientWaitlistCreateRequestToJson(
   'country': instance.country,
   'city': instance.city,
   'niche_slug': instance.nicheSlug,
+  'role': instance.role,
 };

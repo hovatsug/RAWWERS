@@ -19,7 +19,8 @@ mixin _$ClientWaitlistCreateRequest {
 @JsonKey(name: ClientWaitlistCreateRequest.emailKey_) String get email;/// country
 @JsonKey(name: ClientWaitlistCreateRequest.countryKey_) String get country;/// city
 @JsonKey(name: ClientWaitlistCreateRequest.cityKey_) String get city;/// nicheSlug
-@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? get nicheSlug;
+@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? get nicheSlug;/// role
+@JsonKey(name: ClientWaitlistCreateRequest.roleKey_) String? get role;
 /// Create a copy of ClientWaitlistCreateRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +33,16 @@ $ClientWaitlistCreateRequestCopyWith<ClientWaitlistCreateRequest> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientWaitlistCreateRequest&&(identical(other.email, email) || other.email == email)&&(identical(other.country, country) || other.country == country)&&(identical(other.city, city) || other.city == city)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientWaitlistCreateRequest&&(identical(other.email, email) || other.email == email)&&(identical(other.country, country) || other.country == country)&&(identical(other.city, city) || other.city == city)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.role, role) || other.role == role));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,email,country,city,nicheSlug);
+int get hashCode => Object.hash(runtimeType,email,country,city,nicheSlug,role);
 
 @override
 String toString() {
-  return 'ClientWaitlistCreateRequest(email: $email, country: $country, city: $city, nicheSlug: $nicheSlug)';
+  return 'ClientWaitlistCreateRequest(email: $email, country: $country, city: $city, nicheSlug: $nicheSlug, role: $role)';
 }
 
 
@@ -52,7 +53,7 @@ abstract mixin class $ClientWaitlistCreateRequestCopyWith<$Res>  {
   factory $ClientWaitlistCreateRequestCopyWith(ClientWaitlistCreateRequest value, $Res Function(ClientWaitlistCreateRequest) _then) = _$ClientWaitlistCreateRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientWaitlistCreateRequest.emailKey_) String email,@JsonKey(name: ClientWaitlistCreateRequest.countryKey_) String country,@JsonKey(name: ClientWaitlistCreateRequest.cityKey_) String city,@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? nicheSlug
+@JsonKey(name: ClientWaitlistCreateRequest.emailKey_) String email,@JsonKey(name: ClientWaitlistCreateRequest.countryKey_) String country,@JsonKey(name: ClientWaitlistCreateRequest.cityKey_) String city,@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? nicheSlug,@JsonKey(name: ClientWaitlistCreateRequest.roleKey_) String? role
 });
 
 
@@ -69,12 +70,13 @@ class _$ClientWaitlistCreateRequestCopyWithImpl<$Res>
 
 /// Create a copy of ClientWaitlistCreateRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? email = null,Object? country = null,Object? city = null,Object? nicheSlug = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? email = null,Object? country = null,Object? city = null,Object? nicheSlug = freezed,Object? role = freezed,}) {
   return _then(_self.copyWith(
 email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,country: null == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
 as String,city: null == city ? _self.city : city // ignore: cast_nullable_to_non_nullable
 as String,nicheSlug: freezed == nicheSlug ? _self.nicheSlug : nicheSlug // ignore: cast_nullable_to_non_nullable
+as String?,role: freezed == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -160,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientWaitlistCreateRequest.emailKey_)  String email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_)  String country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_)  String city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_)  String? nicheSlug)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientWaitlistCreateRequest.emailKey_)  String email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_)  String country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_)  String city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ClientWaitlistCreateRequest.roleKey_)  String? role)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientWaitlistCreateRequest() when $default != null:
-return $default(_that.email,_that.country,_that.city,_that.nicheSlug);case _:
+return $default(_that.email,_that.country,_that.city,_that.nicheSlug,_that.role);case _:
   return orElse();
 
 }
@@ -181,10 +183,10 @@ return $default(_that.email,_that.country,_that.city,_that.nicheSlug);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientWaitlistCreateRequest.emailKey_)  String email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_)  String country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_)  String city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_)  String? nicheSlug)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientWaitlistCreateRequest.emailKey_)  String email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_)  String country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_)  String city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ClientWaitlistCreateRequest.roleKey_)  String? role)  $default,) {final _that = this;
 switch (_that) {
 case _ClientWaitlistCreateRequest():
-return $default(_that.email,_that.country,_that.city,_that.nicheSlug);case _:
+return $default(_that.email,_that.country,_that.city,_that.nicheSlug,_that.role);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +203,10 @@ return $default(_that.email,_that.country,_that.city,_that.nicheSlug);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientWaitlistCreateRequest.emailKey_)  String email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_)  String country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_)  String city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_)  String? nicheSlug)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientWaitlistCreateRequest.emailKey_)  String email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_)  String country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_)  String city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ClientWaitlistCreateRequest.roleKey_)  String? role)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientWaitlistCreateRequest() when $default != null:
-return $default(_that.email,_that.country,_that.city,_that.nicheSlug);case _:
+return $default(_that.email,_that.country,_that.city,_that.nicheSlug,_that.role);case _:
   return null;
 
 }
@@ -216,7 +218,7 @@ return $default(_that.email,_that.country,_that.city,_that.nicheSlug);case _:
 
 @jsonSerializable
 class _ClientWaitlistCreateRequest extends ClientWaitlistCreateRequest {
-  const _ClientWaitlistCreateRequest({@JsonKey(name: ClientWaitlistCreateRequest.emailKey_) required this.email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_) required this.country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_) required this.city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) this.nicheSlug}): super._();
+  const _ClientWaitlistCreateRequest({@JsonKey(name: ClientWaitlistCreateRequest.emailKey_) required this.email, @JsonKey(name: ClientWaitlistCreateRequest.countryKey_) required this.country, @JsonKey(name: ClientWaitlistCreateRequest.cityKey_) required this.city, @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) this.nicheSlug, @JsonKey(name: ClientWaitlistCreateRequest.roleKey_) this.role}): super._();
   factory _ClientWaitlistCreateRequest.fromJson(Map<String, dynamic> json) => _$ClientWaitlistCreateRequestFromJson(json);
 
 /// email
@@ -227,6 +229,8 @@ class _ClientWaitlistCreateRequest extends ClientWaitlistCreateRequest {
 @override@JsonKey(name: ClientWaitlistCreateRequest.cityKey_) final  String city;
 /// nicheSlug
 @override@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) final  String? nicheSlug;
+/// role
+@override@JsonKey(name: ClientWaitlistCreateRequest.roleKey_) final  String? role;
 
 /// Create a copy of ClientWaitlistCreateRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -241,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientWaitlistCreateRequest&&(identical(other.email, email) || other.email == email)&&(identical(other.country, country) || other.country == country)&&(identical(other.city, city) || other.city == city)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientWaitlistCreateRequest&&(identical(other.email, email) || other.email == email)&&(identical(other.country, country) || other.country == country)&&(identical(other.city, city) || other.city == city)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.role, role) || other.role == role));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,email,country,city,nicheSlug);
+int get hashCode => Object.hash(runtimeType,email,country,city,nicheSlug,role);
 
 @override
 String toString() {
-  return 'ClientWaitlistCreateRequest(email: $email, country: $country, city: $city, nicheSlug: $nicheSlug)';
+  return 'ClientWaitlistCreateRequest(email: $email, country: $country, city: $city, nicheSlug: $nicheSlug, role: $role)';
 }
 
 
@@ -261,7 +265,7 @@ abstract mixin class _$ClientWaitlistCreateRequestCopyWith<$Res> implements $Cli
   factory _$ClientWaitlistCreateRequestCopyWith(_ClientWaitlistCreateRequest value, $Res Function(_ClientWaitlistCreateRequest) _then) = __$ClientWaitlistCreateRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientWaitlistCreateRequest.emailKey_) String email,@JsonKey(name: ClientWaitlistCreateRequest.countryKey_) String country,@JsonKey(name: ClientWaitlistCreateRequest.cityKey_) String city,@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? nicheSlug
+@JsonKey(name: ClientWaitlistCreateRequest.emailKey_) String email,@JsonKey(name: ClientWaitlistCreateRequest.countryKey_) String country,@JsonKey(name: ClientWaitlistCreateRequest.cityKey_) String city,@JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? nicheSlug,@JsonKey(name: ClientWaitlistCreateRequest.roleKey_) String? role
 });
 
 
@@ -278,12 +282,13 @@ class __$ClientWaitlistCreateRequestCopyWithImpl<$Res>
 
 /// Create a copy of ClientWaitlistCreateRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? email = null,Object? country = null,Object? city = null,Object? nicheSlug = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? email = null,Object? country = null,Object? city = null,Object? nicheSlug = freezed,Object? role = freezed,}) {
   return _then(_ClientWaitlistCreateRequest(
 email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,country: null == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
 as String,city: null == city ? _self.city : city // ignore: cast_nullable_to_non_nullable
 as String,nicheSlug: freezed == nicheSlug ? _self.nicheSlug : nicheSlug // ignore: cast_nullable_to_non_nullable
+as String?,role: freezed == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

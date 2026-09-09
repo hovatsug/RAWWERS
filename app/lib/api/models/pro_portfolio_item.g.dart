@@ -12,6 +12,7 @@ _ProPortfolioItem _$ProPortfolioItemFromJson(Map<String, dynamic> json) =>
       kind: json['kind'] as String,
       status: json['status'] as String,
       thumbnailUrl: json['thumbnail_url'] as String?,
+      previewUrl: json['preview_url'] as String?,
       nicheSlugs: (json['niche_slugs'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
@@ -25,6 +26,7 @@ Map<String, dynamic> _$ProPortfolioItemToJson(_ProPortfolioItem instance) =>
       'kind': instance.kind,
       'status': instance.status,
       'thumbnail_url': instance.thumbnailUrl,
+      'preview_url': instance.previewUrl,
       'niche_slugs': instance.nicheSlugs,
       'is_cover': instance.isCover,
       'created_at': instance.createdAt.toIso8601String(),

@@ -23,6 +23,17 @@
 ///                 }
 ///             ],
 ///             "title": "Niche Slug"
+///         },
+///         "role": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Role"
 ///         }
 ///     },
 ///     "type": "object",
@@ -57,6 +68,9 @@ abstract class ClientWaitlistCreateRequest with _$ClientWaitlistCreateRequest {
 
     /// nicheSlug
     @JsonKey(name: ClientWaitlistCreateRequest.nicheSlugKey_) String? nicheSlug,
+
+    /// role
+    @JsonKey(name: ClientWaitlistCreateRequest.roleKey_) String? role,
   }) = _ClientWaitlistCreateRequest;
 
   factory ClientWaitlistCreateRequest.fromJson(Map<String, dynamic> json) =>
@@ -69,4 +83,6 @@ abstract class ClientWaitlistCreateRequest with _$ClientWaitlistCreateRequest {
   static const String cityKey_ = r'city';
 
   static const String nicheSlugKey_ = r'niche_slug';
+
+  static const String roleKey_ = r'role';
 }

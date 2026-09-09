@@ -25,6 +25,17 @@
 ///             ],
 ///             "title": "Thumbnail Url"
 ///         },
+///         "preview_url": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Preview Url"
+///         },
 ///         "niche_slugs": {
 ///             "type": "array",
 ///             "items": {
@@ -77,6 +88,9 @@ abstract class ProPortfolioItem with _$ProPortfolioItem {
     /// thumbnailUrl
     @JsonKey(name: ProPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,
 
+    /// previewUrl
+    @JsonKey(name: ProPortfolioItem.previewUrlKey_) String? previewUrl,
+
     /// nicheSlugs
     @JsonKey(name: ProPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs,
 
@@ -97,6 +111,8 @@ abstract class ProPortfolioItem with _$ProPortfolioItem {
   static const String statusKey_ = r'status';
 
   static const String thumbnailUrlKey_ = r'thumbnail_url';
+
+  static const String previewUrlKey_ = r'preview_url';
 
   static const String nicheSlugsKey_ = r'niche_slugs';
 

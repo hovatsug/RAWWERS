@@ -7,6 +7,7 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
@@ -59,7 +60,7 @@ class PortfolioScreen extends ConsumerWidget {
                           final item = value.items![index];
                           return _Tile(
                             item: item,
-                            onTap: () => _openTagger(context, ref, item),
+                            onTap: () => _openPhoto(context, ref, value.items!, index),
                           );
                         },
                       ),
@@ -79,6 +80,41 @@ class PortfolioScreen extends ConsumerWidget {
               ),
             ),
         },
+      ),
+    );
+  }
+
+  /// Tapping a photo opens it, and tagging happens in there.
+  ///
+  /// Tapping used to open the niche tagger directly off a 512px tile, which
+  /// asked a photographer to decide what a photo *is* while looking at a
+  /// thumbnail barely bigger than a stamp. The tagger is still one tap away,
+  /// now from a screen where the photo is actually legible.
+  ///
+  /// A photo with no preview is still processing, so there is nothing to open:
+  /// it goes straight to the tagger, which does work on an unprocessed asset.
+  Future<void> _openPhoto(
+    BuildContext context,
+    WidgetRef ref,
+    List<ProPortfolioItem> items,
+    int index,
+  ) async {
+    final item = items[index];
+    if (item.previewUrl == null) {
+      await _openTagger(context, ref, item);
+      return;
+    }
+    await showRPhotoViewer(
+      context,
+      title: 'Your portfolio',
+      initialIndex: index,
+      urls: [for (final entry in items) entry.previewUrl ?? entry.thumbnailUrl],
+      actionsBuilder: (viewerContext, current) => Align(
+        alignment: Alignment.centerLeft,
+        child: RButton(
+          label: (items[current].nicheSlugs?.isNotEmpty ?? false) ? 'Edit tags' : 'Tag niches',
+          onPressed: () => _openTagger(viewerContext, ref, items[current]),
+        ),
       ),
     );
   }

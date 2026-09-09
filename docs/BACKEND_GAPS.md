@@ -997,3 +997,11 @@ Each guard was checked against the real values it exists to reject, not only the
 `log_event` in `media_rights.py` was the third instance of this shape after the KYC 500 and the GearCategory one, and a sweep turned up a fourth: `CurrentUser` used as an annotation five times in `app/api/v1/i18n.py` and never imported. That one is latent rather than live - `from __future__ import annotations` defers evaluation and FastAPI leaves it as an unresolved `ForwardRef` - but deleting that future import, or anything calling `get_type_hints` on those handlers, turns it into a `NameError`.
 
 Python does not catch this at import time when the name sits in a function body or a deferred annotation, so nothing fails until the line runs. `tests/test_no_unbound_names.py` now walks every module in `app/` and fails on any name loaded but never bound, with a companion test that feeds it the shape of the real bug to prove it still catches one.
+
+## `ProPortfolioItem` still blocks fullscreen on the pro's own portfolio
+
+The fullscreen viewer is wired into the delivery gallery, which carries `watermark_preview_url` - now a 1600px image after the watermark fix, which is exactly what a photographer needs to check focus before publishing.
+
+The pro's own portfolio cannot use it yet. `GET /v1/pro/me/portfolio` returns `thumbnail_url` only, resolved with the default `THUMBNAIL_FIRST`, so the largest image available is 512px. Opening that fullscreen shows a 512px image stretched across a phone, which is worse than not offering the gesture. The photos do have larger variants - `process_photo_variants` writes `watermark_preview` for every photo regardless of purpose - they are simply not exposed on this response.
+
+Needs one field on `ProPortfolioItem` (a `preview_url`, resolved the way the proof gallery resolves its own) plus a client regeneration. Not made here: it is a schema change and was outside the authorised scope.

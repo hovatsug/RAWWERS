@@ -9,6 +9,7 @@ import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -62,8 +63,23 @@ class DeliveryGalleryScreen extends ConsumerWidget {
                           crossAxisSpacing: RSpace.s8,
                         ),
                         itemCount: value.items.length,
-                        itemBuilder: (context, index) => RNetworkPhoto(
-                          url: value.items[index].thumbnailUrl ?? value.items[index].watermarkPreviewUrl,
+                        itemBuilder: (context, index) => GestureDetector(
+                          // The grid shows 512px thumbnails; opening one shows
+                          // the watermarked preview, which is what a
+                          // photographer needs to check focus before they
+                          // publish. Falls back to the thumbnail so a photo
+                          // still opens while its preview is being generated.
+                          onTap: () => showRPhotoViewer(
+                            context,
+                            title: 'Deliver photos',
+                            initialIndex: index,
+                            urls: [
+                              for (final item in value.items) item.watermarkPreviewUrl ?? item.thumbnailUrl,
+                            ],
+                          ),
+                          child: RNetworkPhoto(
+                            url: value.items[index].thumbnailUrl ?? value.items[index].watermarkPreviewUrl,
+                          ),
                         ),
                       ),
                     ),

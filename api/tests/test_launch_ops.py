@@ -17,6 +17,9 @@ def _seed_pro(db_session, pro_id: str) -> uuid.UUID:
     uid = uuid.UUID(pro_id)
     if not db_session.get(UserAccount, uid):
         db_session.add(UserAccount(user_id=uid, email=f"{pro_id}@example.com"))
+        # The profile below points at this row, and a single flush does not
+        # reliably insert the parent first - so make it explicit.
+        db_session.flush()
     if not db_session.query(UserRole).filter_by(user_id=uid, role=UserRoleType.pro).one_or_none():
         db_session.add(UserRole(user_id=uid, role=UserRoleType.pro))
     profile = db_session.get(ProProfile, uid)

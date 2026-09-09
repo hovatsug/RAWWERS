@@ -255,6 +255,9 @@ def test_discovery_niche_filter_orders_by_tier_before_rank(client, db_session):
 
     for pro_id in [pro_master, pro_skilled]:
         db_session.add(UserAccount(user_id=pro_id))
+        # The profile below points at this row, and a single flush does not
+        # reliably insert the parent first - so make it explicit.
+        db_session.flush()
         db_session.add(UserRole(user_id=pro_id, role=UserRoleType.pro))
         db_session.add(
             ProProfile(

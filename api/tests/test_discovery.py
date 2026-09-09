@@ -5,6 +5,7 @@ from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserR
 from app.models.booking import ProPackage
 from app.models.discovery import AnalyticsEvent
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
+from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.niche import Niche
 from app.services.discovery_index import _compute_ranking_score, recompute_pro_public_index
 
@@ -13,6 +14,9 @@ def _seed_pro(db_session, *, approved: bool = True, accepting: bool = True, comp
     pro_id = str(uuid.uuid4())
     uid = uuid.UUID(pro_id)
     db_session.add(UserAccount(user_id=uid))
+    # The profile below points at this row, and a single flush does not
+    # reliably insert the parent first - so make it explicit.
+    db_session.flush()
     db_session.add(UserRole(user_id=uid, role=UserRoleType.pro))
     db_session.add(
         ProProfile(
@@ -24,6 +28,20 @@ def _seed_pro(db_session, *, approved: bool = True, accepting: bool = True, comp
             is_accepting_bookings=accepting,
             completeness_score=completeness,
             kyc_status=KYCStatus.approved if approved else KYCStatus.pending,
+        )
+    )
+    # Being discoverable takes two independent gates, not one. The profile's
+    # kyc_status is what these tests vary; ProOnboarding.approved_public is a
+    # separate publish gate that GET /v1/discover/pros enforces with a join,
+    # and this fixture never created the row - so the join dropped every pro
+    # and the endpoint returned nothing at all. Both pros get it here, so
+    # exclusion is decided by the thing under test rather than by an absent
+    # onboarding record.
+    db_session.add(
+        ProOnboarding(
+            pro_user_id=uid,
+            status=ProOnboardingStatus.approved_public,
+            current_city={"city": "Lisbon", "country": "PT"},
         )
     )
     db_session.commit()

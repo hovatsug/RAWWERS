@@ -31,6 +31,9 @@ def test_indexing_pipeline_idempotent_for_pro_upsert(db_session, monkeypatch):
 
     pro_id = uuid.uuid4()
     db_session.add(UserAccount(user_id=pro_id, display_name="Pro One"))
+    # The profile below points at this row, and a single flush does not
+    # reliably insert the parent first - so make it explicit.
+    db_session.flush()
     db_session.add(
         ProProfile(
             user_id=pro_id,
@@ -75,14 +78,18 @@ def test_indexing_deletes_unpublished_course(db_session, monkeypatch):
     monkeypatch.setattr("app.services.search_indexing.get_search_provider", lambda: provider)
 
     instructor_id = uuid.uuid4()
-    niche_id = uuid.uuid4()
     course_id = uuid.uuid4()
 
-    from app.models.niche import Niche
     from app.models.learning import InstructorProfile, InstructorStatus
+    from app.services.niche_catalog import get_active_niche_by_slug
 
-    db_session.add(Niche(id=niche_id, slug="weddings", name="Weddings", is_active=True))
+    # setup_database already seeds the catalogue, so inserting another
+    # 'weddings' row here both duplicates it and leaves the course pointing
+    # at a niche that was never written - the course insert reached the
+    # database before its parent did.
+    niche_id = get_active_niche_by_slug(db_session, "weddings").id
     db_session.add(UserAccount(user_id=instructor_id, display_name="Instructor"))
+    db_session.flush()
     db_session.add(InstructorProfile(user_id=instructor_id, status=InstructorStatus.approved, expertise=[]))
     db_session.add(
         Course(

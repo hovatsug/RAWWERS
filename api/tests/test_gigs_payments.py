@@ -30,6 +30,9 @@ def _ensure_pro_kyc_approved(db_session, pro_user_id: str):
     pro_uuid = uuid.UUID(pro_user_id)
     if not db_session.get(UserAccount, pro_uuid):
         db_session.add(UserAccount(user_id=pro_uuid))
+        # The profile below points at this row, and a single flush does not
+        # reliably insert the parent first - so make it explicit.
+        db_session.flush()
     if not db_session.query(UserRole).filter_by(user_id=pro_uuid, role=UserRoleType.pro).first():
         db_session.add(UserRole(user_id=pro_uuid, role=UserRoleType.pro))
     profile = db_session.get(ProProfile, pro_uuid)

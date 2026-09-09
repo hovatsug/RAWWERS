@@ -933,22 +933,50 @@ Two `MediaObject` queries plus two presigns per item, in a Python loop. Measured
 
 `GET /v1/pro/me/portfolio` returns only `thumbnail_url`, resolved via `resolve_image_urls` with the default `THUMBNAIL_FIRST` — a 512px image. A fullscreen viewer on the pro's own portfolio has nothing larger to show, so it would either display a 512px image blown up across a phone or need a second call per photo. Needs either a `preview_url` on `ProPortfolioItem` or a `prefer=ORIGINAL_FIRST` companion field. Not changed here: it is a schema change and was outside the authorised scope.
 
-## The backend suite is 18% red at HEAD (60 unconditional failures)
+## The test suite was running against live Stripe and R2 credentials
 
-Found while establishing a baseline before committing the gallery media work. A full run at `f2a036a9` with no local changes: **62 failed, 270 passed**. The same run with the gallery changes applied: **61 failed, 280 passed**. Diffing the two failure lists gives 60 in common, so the media work introduces no regressions - but the suite was never green to begin with.
+**This entry replaces an earlier one that said "60 unconditional failures, 28 of them a `user_role` FK". Both numbers were wrong.** The 28 came from an OR'd `grep -c` counting *log lines* - the string `is not present in table "user_account"` appears in the captured logs of tests that fail for unrelated reasons - so a line count was reported as a test count. The real figure for that constraint was 1. More importantly, most of the failures were not the code's fault at all; they were an artifact of where the suite was being run.
 
-**These are not ordering artifacts.** `conftest.setup_database` is autouse and function-scoped: it runs `drop_all` + `create_all` before *every* test, so no test can inherit another's rows and execution order cannot matter. The failures are unconditional.
+`tests/conftest.py` set 43 environment variables with `os.environ.setdefault`, which is a no-op whenever the variable already exists. Run inside the api container - where `.env` has already populated everything - **21 of those defaults never applied**:
 
-The dominant signature - 28 of them - is a foreign key violation inserting `user_role` for the admin id with no `user_account` row to point at. `tests/test_media_rights.py:146` is representative:
+| variable | conftest intends | container supplies |
+| --- | --- | --- |
+| `ADMIN_USER_IDS` | the test admin uuid | *empty string* |
+| `STRIPE_WEBHOOK_ALLOW_UNVERIFIED` | `true` | `false` |
+| `STRIPE_SECRET_KEY` | `sk_test_123` | a real key |
+| `R2_BUCKET` + keys | `bucket` / `test` | `rawwers-media` + live credentials |
 
-```python
-db_session.add(UserRole(user_id=uuid.UUID(admin_id), role=UserRoleType.admin))
-db_session.commit()   # user_account row was never created
-```
+Three consequences, in order of seriousness:
 
-Other files get this right and would be the pattern to copy - `test_gamification_v0._ensure_user_role` and `test_booking_close._ensure_account` both insert the `UserAccount` first. The fix is mechanical; it is listed here rather than done because it touches ~28 tests across a dozen files and belongs in its own commit.
+1. **Tests reached live external services.** `test_a_window_only_partly_blocked_can_still_be_accepted` calls `accept_booking_request`, which reaches `stripe.PaymentIntent.create` with no mock anywhere in the file. With a real key in the environment it was creating real PaymentIntents on every run, and passing because of it. Likewise `R2_*` pointed at the live media bucket, which is how a maintenance script run in that container overwrote six real objects.
+2. `ADMIN_USER_IDS` arriving empty meant `_seed_admin_role_if_needed` seeded nothing, so `require_admin` answered 403 and 17 tests failed looking like broken authorization.
+3. `STRIPE_WEBHOOK_ALLOW_UNVERIFIED=false` produced 4 more failures as 401s.
 
-**Why this matters beyond tidiness:** a suite with 60 known failures cannot tell anyone whether a change broke something. The only way to use it today is to diff a full run against a HEAD baseline, which costs ~25 minutes per side.
+conftest had already learned this exact lesson for `DATABASE_URL` alone, with a comment describing the identical trap - "setdefault only takes effect when DATABASE_URL is *unset*, and the environment where that protection actually matters is precisely the one where it is always set: inside the api container". It was never generalised. It is now: 40 variables are forced by explicit assignment, and `REDIS_URL`, `LOG_LEVEL` and `APP_ENV` stay as defaults because those are infrastructure the surrounding environment legitimately owns.
+
+## Parent rows are not reliably inserted before the children that reference them
+
+Adding a `UserAccount` and a `ProProfile` to one session and committing them together fails on `pro_profile_user_id_fkey`, even though `ProProfile.user_id` declares `ForeignKey("user_account.user_id")`. Demonstrated directly: the one-shot commit raises, and inserting a `flush()` between the two succeeds. Seven test helpers had that shape and 12 tests failed on it; each now flushes the parent explicitly, which is what the application code does anyway via `ensure_user_account`.
+
+Worth understanding properly rather than working around forever - the unit-of-work sort should handle this, and something about these mappings defeats it.
+
+## Two discovery gates, and the fixtures only knew about one
+
+Being visible in Discover takes five conditions, and `GET /v1/discover/pros` (and `GET /v1/search/pros`) enforce the fifth with a join on `ProOnboarding.status == approved_public` - a publish gate entirely separate from `ProProfile.kyc_status`. Fixtures in `test_discovery.py` and `test_search_api_fallback.py` never created a `ProOnboarding` row, so the join removed every pro and the endpoints returned nothing at all. These tests cannot have passed since that join was added.
+
+Both fixtures now grant `approved_public` to *every* seeded pro, so exclusion is decided by the property under test. Granting it only to the pro expected to appear would leave the test passing while asserting nothing.
+
+## The suite: 62 failures down to 33
+
+Full runs, `-p no:randomly`, same database:
+
+| | failed | passed |
+| --- | --- | --- |
+| baseline at `f2a036a9` | 62 | 270 |
+| after forcing the test environment | 40 | 308 |
+| after the fixture fixes above | 33 | 315 |
+
+What remains has no dominant cause left - the largest group is 6, and those six are unrelated to each other. It is ordinary accumulated test debt plus a handful of genuine bugs, and it now needs reading test by test rather than in clusters. Until it reaches zero the suite still cannot answer "did my change break something" on its own, and the procedure remains a full run diffed against a baseline.
 
 ## The suite takes ~24 minutes because it rebuilds the schema 334 times
 

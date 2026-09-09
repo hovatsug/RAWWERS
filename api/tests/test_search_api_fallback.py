@@ -1,5 +1,6 @@
 import uuid
 
+from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.admin import KYCStatus, ProProfile, UserAccount
 from app.models.discovery import ProPublicIndex
 
@@ -24,6 +25,9 @@ def test_search_fallback_when_provider_fails(client, db_session, monkeypatch):
 
     pro_id = uuid.uuid4()
     db_session.add(UserAccount(user_id=pro_id, display_name="Fallback Pro"))
+    # The profile below points at this row, and a single flush does not
+    # reliably insert the parent first - so make it explicit.
+    db_session.flush()
     db_session.add(
         ProProfile(
             user_id=pro_id,
@@ -32,6 +36,16 @@ def test_search_fallback_when_provider_fails(client, db_session, monkeypatch):
             country="PT",
             is_accepting_bookings=True,
             kyc_status=KYCStatus.approved,
+        )
+    )
+    # GET /v1/search/pros joins ProOnboarding on approved_public, the same
+    # publish gate discover enforces, so an indexed pro without this row is
+    # invisible however well the index matches.
+    db_session.add(
+        ProOnboarding(
+            pro_user_id=pro_id,
+            status=ProOnboardingStatus.approved_public,
+            current_city={"city": "Porto", "country": "PT"},
         )
     )
     db_session.add(

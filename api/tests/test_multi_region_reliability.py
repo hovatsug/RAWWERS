@@ -77,6 +77,9 @@ def test_discover_cache_and_index_version_invalidation(client, db_session, monke
 
     pro_user_id = uuid.uuid4()
     db_session.add(UserAccount(user_id=pro_user_id, display_name="Public Pro"))
+    # The profile below points at this row, and a single flush does not
+    # reliably insert the parent first - so make it explicit.
+    db_session.flush()
     db_session.add(
         ProProfile(
             user_id=pro_user_id,

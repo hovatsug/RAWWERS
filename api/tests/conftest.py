@@ -39,47 +39,68 @@ os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers_test",
 )
+# Everything below is an override, not a setdefault, for the reason spelled
+# out above DATABASE_URL - and the lesson generalises further than it was
+# applied. setdefault is a no-op whenever the variable already exists, and
+# the environment that matters is exactly the one where it always does:
+# inside the api container, where .env has already populated all of it.
+#
+# Measured there, 21 of these defaults never applied. Three mattered:
+#
+#   ADMIN_USER_IDS arrived as an empty string, so _seed_admin_role_if_needed
+#   seeded no role and every admin endpoint answered 403 - 17 failures that
+#   looked like broken tests and were nothing of the kind.
+#
+#   STRIPE_WEBHOOK_ALLOW_UNVERIFIED arrived false, so webhook tests 401'd.
+#
+#   R2_* pointed at the live rawwers-media bucket with real credentials,
+#   which a test suite should not be able to reach at all. A script run in
+#   that container overwrote six real objects before this was noticed.
+#
+# REDIS_URL, LOG_LEVEL and APP_ENV stay as defaults: those are
+# infrastructure the surrounding environment legitimately owns, the same
+# way TEST_DATABASE_URL is the deliberate escape hatch for the database.
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
-os.environ.setdefault("R2_ENDPOINT_URL", "https://example.r2.cloudflarestorage.com")
-os.environ.setdefault("R2_ACCESS_KEY_ID", "test")
-os.environ.setdefault("R2_SECRET_ACCESS_KEY", "test")
-os.environ.setdefault("R2_BUCKET", "bucket")
-os.environ.setdefault("R2_REGION", "auto")
-os.environ.setdefault("MUX_TOKEN_ID", "token-id")
-os.environ.setdefault("MUX_TOKEN_SECRET", "token-secret")
-os.environ.setdefault("MUX_WEBHOOK_SECRET", "test-webhook-secret")
-os.environ.setdefault("MUX_SIGNING_KEY_ID", "key-id")
-os.environ.setdefault("MUX_SIGNING_KEY_PRIVATE", "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKSwN2zWi4KFOeFHrgb3R04QLbTjaCj1eO0MJdHj7FVFvXZHzVvz\nY9q24apqYh6gMPkTFogyXv3gZH/BqhGlywECAwEAAQJAQ0f+T5cxrFAxo0xO+ogz\n31xHn0SI7RyhokW2N7DbStO2Qd6hw2yYB9H9n1tFoZT3zh0+BTtPlqvGjYH6G+jD\nwQIhANBGSAdoo6gWQBaIj++ImQxGc1dQc5sKXc5teLoI0lpNAiEAxwoMvV7lidh+\nNangNh4tW7x1YgnPZXoqBYwygJyI072cCIDQXl3k5iADG7n2AFD+a83H8XTur2qx\n8pY/+bexdFv+AiEAjNFaUG2RglN6E466+vWXTjhBMWrMUR3pvN8MPmMXxMECIAxM\nN8MPmMXxMECIAxMN8MPmMXxMECIAxMN8MPmMXxMEC\n-----END RSA PRIVATE KEY-----")
-os.environ.setdefault("STRIPE_SECRET_KEY", "sk_test_123")
-os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_123")
-os.environ.setdefault("STRIPE_WEBHOOK_ALLOW_UNVERIFIED", "true")
-os.environ.setdefault("STRIPE_API_VERSION", "2024-06-20")
-os.environ.setdefault("PLATFORM_FEE_BPS", "2000")
-os.environ.setdefault("APP_PUBLIC_URL", "http://localhost:3000")
-os.environ.setdefault("ADMIN_USER_IDS", "00000000-0000-0000-0000-0000000000aa")
-os.environ.setdefault("BAN_ENFORCEMENT_MODE", "strict")
-os.environ.setdefault("ALLOW_UNVERIFIED_PRO", "true")
-os.environ.setdefault("LLM_PROVIDER", "mock")
-os.environ.setdefault("OPENAI_MODEL", "")
-os.environ.setdefault("OPENAI_API_KEY", "")
-os.environ.setdefault("LLM_MAX_TOKENS_PER_THREAD", "4000")
-os.environ.setdefault("LLM_MAX_MESSAGES_PER_THREAD", "50")
-os.environ.setdefault("TELEPHONY_PROVIDER", "mock")
-os.environ.setdefault("TELEPHONY_FROM_E164", "+351300000000")
-os.environ.setdefault("TELEPHONY_WEBHOOK_SECRET", "telephony-secret")
-os.environ.setdefault("CALL_RATE_LIMIT_PER_USER_PER_DAY", "2")
-os.environ.setdefault("CALL_RATE_LIMIT_PER_PRO_PER_DAY", "20")
-os.environ.setdefault("SEARCH_PROVIDER", "none")
-os.environ.setdefault("SEARCH_ENABLED", "true")
-os.environ.setdefault("SEARCH_INDEX_PREFIX", "rawwers_test")
-os.environ.setdefault("MEILI_URL", "http://localhost:7700")
-os.environ.setdefault("MEILI_API_KEY", "")
-os.environ.setdefault("AUTH_JWT_SECRET", "test-auth-secret")
-os.environ.setdefault("AUTH_ACCESS_TOKEN_TTL_MINUTES", "15")
-os.environ.setdefault("AUTH_REFRESH_TOKEN_TTL_DAYS", "30")
-os.environ.setdefault("AUTH_EMAIL_VERIFICATION_TTL_MINUTES", "30")
-os.environ.setdefault("AUTH_PASSWORD_RESET_TTL_MINUTES", "30")
-os.environ.setdefault("AUTH_DEV_BYPASS", "true")
+os.environ["R2_ENDPOINT_URL"] = "https://example.r2.cloudflarestorage.com"
+os.environ["R2_ACCESS_KEY_ID"] = "test"
+os.environ["R2_SECRET_ACCESS_KEY"] = "test"
+os.environ["R2_BUCKET"] = "bucket"
+os.environ["R2_REGION"] = "auto"
+os.environ["MUX_TOKEN_ID"] = "token-id"
+os.environ["MUX_TOKEN_SECRET"] = "token-secret"
+os.environ["MUX_WEBHOOK_SECRET"] = "test-webhook-secret"
+os.environ["MUX_SIGNING_KEY_ID"] = "key-id"
+os.environ["MUX_SIGNING_KEY_PRIVATE"] = "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKSwN2zWi4KFOeFHrgb3R04QLbTjaCj1eO0MJdHj7FVFvXZHzVvz\nY9q24apqYh6gMPkTFogyXv3gZH/BqhGlywECAwEAAQJAQ0f+T5cxrFAxo0xO+ogz\n31xHn0SI7RyhokW2N7DbStO2Qd6hw2yYB9H9n1tFoZT3zh0+BTtPlqvGjYH6G+jD\nwQIhANBGSAdoo6gWQBaIj++ImQxGc1dQc5sKXc5teLoI0lpNAiEAxwoMvV7lidh+\nNangNh4tW7x1YgnPZXoqBYwygJyI072cCIDQXl3k5iADG7n2AFD+a83H8XTur2qx\n8pY/+bexdFv+AiEAjNFaUG2RglN6E466+vWXTjhBMWrMUR3pvN8MPmMXxMECIAxM\nN8MPmMXxMECIAxMN8MPmMXxMECIAxMN8MPmMXxMEC\n-----END RSA PRIVATE KEY-----"
+os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"
+os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test_123"
+os.environ["STRIPE_WEBHOOK_ALLOW_UNVERIFIED"] = "true"
+os.environ["STRIPE_API_VERSION"] = "2024-06-20"
+os.environ["PLATFORM_FEE_BPS"] = "2000"
+os.environ["APP_PUBLIC_URL"] = "http://localhost:3000"
+os.environ["ADMIN_USER_IDS"] = "00000000-0000-0000-0000-0000000000aa"
+os.environ["BAN_ENFORCEMENT_MODE"] = "strict"
+os.environ["ALLOW_UNVERIFIED_PRO"] = "true"
+os.environ["LLM_PROVIDER"] = "mock"
+os.environ["OPENAI_MODEL"] = ""
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["LLM_MAX_TOKENS_PER_THREAD"] = "4000"
+os.environ["LLM_MAX_MESSAGES_PER_THREAD"] = "50"
+os.environ["TELEPHONY_PROVIDER"] = "mock"
+os.environ["TELEPHONY_FROM_E164"] = "+351300000000"
+os.environ["TELEPHONY_WEBHOOK_SECRET"] = "telephony-secret"
+os.environ["CALL_RATE_LIMIT_PER_USER_PER_DAY"] = "2"
+os.environ["CALL_RATE_LIMIT_PER_PRO_PER_DAY"] = "20"
+os.environ["SEARCH_PROVIDER"] = "none"
+os.environ["SEARCH_ENABLED"] = "true"
+os.environ["SEARCH_INDEX_PREFIX"] = "rawwers_test"
+os.environ["MEILI_URL"] = "http://localhost:7700"
+os.environ["MEILI_API_KEY"] = ""
+os.environ["AUTH_JWT_SECRET"] = "test-auth-secret"
+os.environ["AUTH_ACCESS_TOKEN_TTL_MINUTES"] = "15"
+os.environ["AUTH_REFRESH_TOKEN_TTL_DAYS"] = "30"
+os.environ["AUTH_EMAIL_VERIFICATION_TTL_MINUTES"] = "30"
+os.environ["AUTH_PASSWORD_RESET_TTL_MINUTES"] = "30"
+os.environ["AUTH_DEV_BYPASS"] = "true"
 
 from app.api.deps import get_db_read_session, get_db_session, get_db_write_session
 from app.db.base import Base

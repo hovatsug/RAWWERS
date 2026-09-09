@@ -42,6 +42,7 @@ from app.schemas.media_rights import (
     SignedUrlResponse,
     UpdateGigConsentRequest,
 )
+from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
 from app.services.authz import get_user_roles
 from app.services.feature_flags import is_feature_enabled

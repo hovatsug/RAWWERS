@@ -316,3 +316,97 @@ def test_the_backfill_refuses_to_write_over_an_original(db_session):
     assert f"{original.storage_key}_preview_watermarked.jpg" not in protected, (
         "the preview is protected too, so the backfill could never do its job"
     )
+
+
+# ---------------------------------------------------------------------------
+# The pro's own portfolio carries a copy big enough to open full screen.
+# ---------------------------------------------------------------------------
+
+
+def _portfolio_photo(db_session, owner: str, *, with_web_res: bool = True):
+    from app.models.media import MediaPurpose
+    from app.models.media_rights import MediaDerivative, MediaDerivativeKind
+
+    asset = _create_photo_asset(db_session, owner, with_wm=True)
+    asset.purpose = MediaPurpose.portfolio_reel
+    if with_web_res:
+        db_session.add(
+            MediaDerivative(
+                media_asset_id=asset.id,
+                kind=MediaDerivativeKind.web_res,
+                storage_key=f"users/{owner}/photo/{asset.id}_web.jpg",
+                content_type="image/jpeg",
+                width=2048,
+                height=1365,
+                bytes=222,
+            )
+        )
+    db_session.commit()
+    return asset
+
+
+def test_portfolio_carries_a_preview_big_enough_for_fullscreen(client, db_session):
+    """thumbnail_url is 512px. Stretched across a phone it looks broken, which
+    is why the viewer was not wired to the portfolio until this existed."""
+    from app.models.admin import UserAccount, UserRole, UserRoleType
+
+    pro_id = str(uuid.uuid4())
+    db_session.add(UserAccount(user_id=uuid.UUID(pro_id)))
+    db_session.flush()
+    db_session.add(UserRole(user_id=uuid.UUID(pro_id), role=UserRoleType.pro))
+    db_session.commit()
+    _portfolio_photo(db_session, pro_id)
+
+    body = client.get("/v1/pro/me/portfolio", headers={"X-User-Id": pro_id}).json()
+    assert body["items"], "no portfolio items came back"
+    item = body["items"][0]
+    assert item["preview_url"], "no full-screen copy on the response"
+    assert item["preview_url"] != item["thumbnail_url"], "the preview is just the 512px thumbnail again"
+    assert "_web.jpg" in item["preview_url"]
+
+
+def test_a_photo_without_a_web_copy_reports_no_preview_rather_than_a_thumbnail(client, db_session):
+    """Null means "open nothing", which the caller renders as a grid tile that
+    does not offer the gesture. Silently substituting the thumbnail would put
+    a 512px image full screen, the exact thing this field exists to avoid."""
+    from app.models.admin import UserAccount, UserRole, UserRoleType
+
+    pro_id = str(uuid.uuid4())
+    db_session.add(UserAccount(user_id=uuid.UUID(pro_id)))
+    db_session.flush()
+    db_session.add(UserRole(user_id=uuid.UUID(pro_id), role=UserRoleType.pro))
+    db_session.commit()
+    _portfolio_photo(db_session, pro_id, with_web_res=False)
+
+    item = client.get("/v1/pro/me/portfolio", headers={"X-User-Id": pro_id}).json()["items"][0]
+    assert item["preview_url"] is None
+    assert item["thumbnail_url"] is not None
+
+
+def test_portfolio_previews_cost_a_fixed_number_of_queries(client, db_session):
+    """Resolving the full-screen copies must not reintroduce the per-item loop
+    the gallery endpoint was just rid of."""
+    from app.models.admin import UserAccount, UserRole, UserRoleType
+
+    pro_id = str(uuid.uuid4())
+    db_session.add(UserAccount(user_id=uuid.UUID(pro_id)))
+    db_session.flush()
+    db_session.add(UserRole(user_id=uuid.UUID(pro_id), role=UserRoleType.pro))
+    db_session.commit()
+    for _ in range(3):
+        _portfolio_photo(db_session, pro_id)
+
+    counter, stop = _count_queries(db_session)
+    try:
+        counter[0] = 0
+        assert client.get("/v1/pro/me/portfolio", headers={"X-User-Id": pro_id}).status_code == 200
+        few = counter[0]
+        for _ in range(9):
+            _portfolio_photo(db_session, pro_id)
+        counter[0] = 0
+        assert client.get("/v1/pro/me/portfolio", headers={"X-User-Id": pro_id}).status_code == 200
+        many = counter[0]
+    finally:
+        stop()
+
+    assert many - few <= 2, f"3 photos cost {few} queries, 12 cost {many}: per-item again"

@@ -207,6 +207,12 @@ class ProPortfolioItem(BaseModel):
     # Signed and short-lived; null while the asset is still processing, or
     # for a video, whose poster frame is a separate gap (BACKEND_GAPS.md).
     thumbnail_url: str | None = None
+    # The 2048px unwatermarked copy, for opening a photo full screen. The
+    # thumbnail is 512px, which is fine in a grid and looks broken stretched
+    # across a phone. Null while the asset is still processing, or for a video.
+    # Not the original: a 4288px frame decodes to ~48MB, and a viewer holding
+    # three of them gets killed on an older device.
+    preview_url: str | None = None
     niche_slugs: list[str] = Field(default_factory=list)
     is_cover: bool = False
     created_at: datetime

@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset, MediaKind, MediaObject, MediaStatus, MediaVariant, ObjectStatus
+from app.models.media_rights import MediaDerivative, MediaDerivativeKind
 from app.services.storage import create_presigned_get
 
 # A list card wants the 512px thumbnail; the original is the fallback for
@@ -130,4 +131,38 @@ def resolve_variant_urls(
     resolved: dict[uuid.UUID, dict[MediaVariant, str]] = {}
     for asset_id, variant, storage_key in rows:
         resolved.setdefault(asset_id, {})[variant] = create_presigned_get(storage_key, expires_in=expires_in)
+    return resolved
+
+
+def resolve_derivative_urls(
+    db: Session,
+    asset_ids: Iterable[uuid.UUID | None],
+    *,
+    kinds: Sequence[MediaDerivativeKind],
+    expires_in: int = 900,
+) -> dict[uuid.UUID, dict[MediaDerivativeKind, str]]:
+    """The derivative counterpart to `resolve_variant_urls`, in one query.
+
+    The two media tables are separate: `MediaObject` holds original/thumbnail/
+    watermark_preview, `MediaDerivative` holds full_res/web_res/thumbnail/
+    preview_watermarked. A caller wanting `web_res` - the 2048px unwatermarked
+    copy - cannot get it from the variant resolver at all.
+    """
+    wanted = {asset_id for asset_id in asset_ids if asset_id is not None}
+    if not wanted or not kinds:
+        return {}
+
+    rows = db.execute(
+        select(MediaDerivative.media_asset_id, MediaDerivative.kind, MediaDerivative.storage_key)
+        .join(MediaAsset, MediaAsset.id == MediaDerivative.media_asset_id)
+        .where(
+            MediaDerivative.media_asset_id.in_(wanted),
+            MediaDerivative.kind.in_(tuple(kinds)),
+            MediaAsset.kind == MediaKind.photo,
+        )
+    ).all()
+
+    resolved: dict[uuid.UUID, dict[MediaDerivativeKind, str]] = {}
+    for asset_id, kind, storage_key in rows:
+        resolved.setdefault(asset_id, {})[kind] = create_presigned_get(storage_key, expires_in=expires_in)
     return resolved

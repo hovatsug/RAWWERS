@@ -74,7 +74,8 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
-from app.services.media_urls import resolve_image_urls
+from app.models.media_rights import MediaDerivativeKind
+from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
 from app.services.package_pricing import (
     PRICING_PREVIEW_PHOTO_COUNTS,
     compute_minimum_amount,
@@ -743,9 +744,12 @@ def get_my_portfolio(
         .order_by(MediaAsset.created_at.desc())
     ).scalars().all()
 
-    # One batched presign for the page rather than one per tile.
+    # One batched presign for the page rather than one per tile, and one more
+    # for the full-screen copies. Two queries for the whole grid, not two per
+    # tile.
     photo_ids = [a.id for a in assets if a.kind == MediaKind.photo]
     urls = resolve_image_urls(db, photo_ids)
+    previews = resolve_derivative_urls(db, photo_ids, kinds=(MediaDerivativeKind.web_res,))
 
     items = [
         ProPortfolioItem(
@@ -753,22 +757,30 @@ def get_my_portfolio(
             kind=asset.kind.value,
             status=asset.status.value,
             thumbnail_url=urls.get(asset.id),
+            preview_url=previews.get(asset.id, {}).get(MediaDerivativeKind.web_res),
             niche_slugs=sorted(asset.niche_tags or []),
             is_cover=profile.cover_media_asset_id == asset.id,
             created_at=asset.created_at,
         )
         for asset in assets
     ]
-    db.commit()
     # Counted the same way onboarding_checks counts, which is `ready` only.
     # Uploading sets `processing` and hands off to a worker, so counting
     # every asset showed a photographer "12 of 12" on this screen while the
     # onboarding step still read as incomplete - the same number meaning two
     # different things on two screens.
+    #
+    # Counted *before* the commit, deliberately: commit expires every loaded
+    # object, so touching a.kind and a.status afterwards refreshed each asset
+    # with its own SELECT - one query per photo, on a screen whose whole point
+    # is showing a lot of photos.
+    photo_count = sum(1 for a in assets if a.kind == MediaKind.photo and a.status == MediaStatus.ready)
+    video_count = sum(1 for a in assets if a.kind == MediaKind.video and a.status == MediaStatus.ready)
+    db.commit()
     return ProPortfolioResponse(
         items=items,
-        photo_count=sum(1 for a in assets if a.kind == MediaKind.photo and a.status == MediaStatus.ready),
-        video_count=sum(1 for a in assets if a.kind == MediaKind.video and a.status == MediaStatus.ready),
+        photo_count=photo_count,
+        video_count=video_count,
         photo_minimum=PORTFOLIO_MIN_PHOTOS,
     )
 

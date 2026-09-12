@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
@@ -77,6 +78,33 @@ PRO_USERS = [
         roles=(UserRoleType.pro, UserRoleType.client),
     ),
 ]
+
+
+# Which environments may be seeded at all.
+#
+# `seed_dev.py` and `seed_staging.py` are two argument parsers around one
+# function, so until now the only thing separating dev data from production
+# was the filename someone typed. That is not a separation. Seeding creates
+# users, writes pro profiles and mutates the discovery index - pointed at
+# production it injects fake photographers into a live marketplace, and there
+# is no undo for that.
+#
+# Structural, in the shape of tests/conftest.py's database guard: it fails
+# collection-time rather than skipping, because a seed that quietly declines
+# to run looks exactly like one that worked.
+_SEEDABLE_ENVIRONMENTS = frozenset({"development", "dev", "local", "test", "staging"})
+
+
+def assert_environment_is_seedable() -> None:
+    """Refuse to seed anything that is not clearly a development environment."""
+    environment = (os.environ.get("APP_ENV") or "development").strip().lower()
+    if environment not in _SEEDABLE_ENVIRONMENTS:
+        raise RuntimeError(
+            f"Refusing to seed: APP_ENV is {environment!r}. Seeding creates users, writes pro "
+            f"profiles and rewrites the discovery index, none of which can be undone on a live "
+            f"marketplace. Seedable environments are: "
+            f"{', '.join(sorted(_SEEDABLE_ENVIRONMENTS))}."
+        )
 
 
 def _now() -> datetime:
@@ -470,6 +498,9 @@ def _ensure_sample_booking_request(db: Session, *, pro_user_id: uuid.UUID, clien
 
 
 def seed_environment(db: Session, *, city: str, country: str, include_sample_booking: bool = True) -> None:
+    # Both entry points funnel through here, so this is the one place the
+    # check has to be for it to be unavoidable.
+    assert_environment_is_seedable()
     ensure_initial_niches(db)
     _ensure_flags(db)
     _ensure_rollout_city(db, country=country, city=city)

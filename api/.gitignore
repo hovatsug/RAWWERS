@@ -6,3 +6,7 @@ __pycache__/
 coverage.xml
 htmlcov/
 *.db
+
+# Downloaded stock photography for dev seeding. Cached so a re-seed after a
+# database wipe does not re-download ~144 images.
+.seed-cache/

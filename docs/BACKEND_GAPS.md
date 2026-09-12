@@ -1022,3 +1022,11 @@ The Dockerfile is now two stages: `runtime` is what ships, and `dev` extends it 
 `get_download_links` signed with `expires_in=60`. A real save is tap, share sheet, choose a destination, wait for the write - easily over a minute on a slow connection - so the link could expire mid-save, and a 403 there lands immediately after the client has paid. Now `FINALS_DOWNLOAD_URL_TTL_SECONDS` (600), deliberately far shorter than the hour a preview gets: a preview is downscaled and watermarked, a final is the photograph itself. The app asks for a fresh link per download rather than reusing one minted at page load, which the 20-per-minute rate limit comfortably allows.
 
 The same endpoint was also the last per-item presign loop in the codebase - one `MediaObject` query per photo, on the path a client uses after paying. Now batched through `resolve_variant_urls` like the gallery and portfolio endpoints.
+
+## `/v1/discover/pros` returns no cover image for anyone
+
+Found while verifying the seeded photographers surfaced. The endpoint builds each `ProCard` without ever setting `cover_media_asset_id` or `cover_url`; both fields exist on the schema and default to null, so every card comes back image-less however good the underlying data is.
+
+**Not currently urgent, and worth knowing why:** the Flutter client calls `/v1/client/discover`, which resolves covers correctly through `_cards_from_index`. This route is not used by the app. Reported rather than fixed because it is dead code, and fixing unused endpoints is how dead code acquires the appearance of being load-bearing.
+
+**It is a trap for the Netflix-style rows in Part 1.** A horizontal photo row reaching for this endpoint would render a wall of blank cards, and the cause - a card builder silently omitting two fields - looks nothing like the symptom. Cheap to write down now, expensive to rediscover after the rows are built.

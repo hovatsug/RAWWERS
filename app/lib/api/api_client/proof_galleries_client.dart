@@ -377,6 +377,94 @@ abstract class ProofGalleriesClient {
       },
     },
   });
+  @GET("/v1/proof-galleries/{gallery_id}/selection-quote")
+  Future<HttpResponse<SelectionQuoteResponse>>
+  getSelectionQuoteV1ProofGalleriesGalleryIdSelectionQuoteGet({
+    @Path("gallery_id") required String galleryId,
+    @Query("selected_count") required int? selectedCount,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['proof_galleries'],
+      'summary': 'Get Selection Quote',
+      'description':
+          'Price a selection without committing to it.\n\nThe client is choosing photographs and spending money at the same time, so\nthe total and the cost of one more have to be on screen while they decide,\nand both have to be the real numbers. This calls `quote_selection` - the\nsame function `submit_selection` charges from - rather than reproducing the\narithmetic, so the screen cannot quote one price while Stripe takes\nanother.',
+      'operationId':
+          'get_selection_quote_v1_proof_galleries__gallery_id__selection_quote_get',
+      'parameters': [
+        {
+          'name': 'gallery_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
+        },
+        {
+          'name': 'selected_count',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'integer', 'minimum': 0},
+              {'type': 'null'},
+            ],
+            'description':
+                'Price a hypothetical selection of this size. Defaults to what is currently saved.',
+            'title': 'Selected Count',
+          },
+          'description':
+              'Price a hypothetical selection of this size. Defaults to what is currently saved.',
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/SelectionQuoteResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @POST("/v1/proof-galleries/{gallery_id}/selections/submit")
   Future<HttpResponse<SubmitSelectionResponse>>
   submitSelectionV1ProofGalleriesGalleryIdSelectionsSubmitPost({

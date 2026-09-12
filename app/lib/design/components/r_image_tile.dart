@@ -36,7 +36,22 @@ class RImageTile extends StatelessWidget {
               decoration: BoxDecoration(
                 border: selected ? Border.all(color: RAccent.meter500, width: 2) : null,
               ),
-              child: Image(image: image, fit: BoxFit.cover),
+              child: Image(
+                image: image,
+                fit: BoxFit.cover,
+                // Same stance as RNetworkPhoto: these URLs are signed and
+                // expire, so a tile that cannot load is an ordinary event and
+                // gets the quiet placeholder. Without this the failure is an
+                // uncaught exception rather than a missing photo.
+                errorBuilder: (context, error, stack) => ColoredBox(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.photo_camera_outlined,
+                    size: RSpace.s24,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+              ),
             ),
             if (selected)
               Positioned(

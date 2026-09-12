@@ -555,6 +555,128 @@ class _ProofGalleriesClient implements ProofGalleriesClient {
   }
 
   @override
+  Future<HttpResponse<SelectionQuoteResponse>>
+  getSelectionQuoteV1ProofGalleriesGalleryIdSelectionQuoteGet({
+    required String galleryId,
+    required int? selectedCount,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['proof_galleries'],
+      'summary': 'Get Selection Quote',
+      'description':
+          'Price a selection without committing to it.\n\nThe client is choosing photographs and spending money at the same time, so\nthe total and the cost of one more have to be on screen while they decide,\nand both have to be the real numbers. This calls `quote_selection` - the\nsame function `submit_selection` charges from - rather than reproducing the\narithmetic, so the screen cannot quote one price while Stripe takes\nanother.',
+      'operationId':
+          'get_selection_quote_v1_proof_galleries__gallery_id__selection_quote_get',
+      'parameters': [
+        {
+          'name': 'gallery_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
+        },
+        {
+          'name': 'selected_count',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'integer', 'minimum': 0},
+              {'type': 'null'},
+            ],
+            'description':
+                'Price a hypothetical selection of this size. Defaults to what is currently saved.',
+            'title': 'Selected Count',
+          },
+          'description':
+              'Price a hypothetical selection of this size. Defaults to what is currently saved.',
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/SelectionQuoteResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{r'selected_count': selectedCount};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<SelectionQuoteResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/proof-galleries/${galleryId}/selection-quote',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late SelectionQuoteResponse _value;
+    try {
+      _value = SelectionQuoteResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<SubmitSelectionResponse>>
   submitSelectionV1ProofGalleriesGalleryIdSelectionsSubmitPost({
     required String galleryId,

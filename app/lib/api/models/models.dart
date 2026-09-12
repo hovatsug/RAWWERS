@@ -231,6 +231,7 @@ export 'scheduling_policy_view.dart';
 export 'scheduling_slot_view.dart';
 export 'scheduling_slots_response.dart';
 export 'search_response.dart';
+export 'selection_quote_response.dart';
 export 'selection_response.dart';
 export 'selection_status.dart';
 export 'share_link_create_request.dart';

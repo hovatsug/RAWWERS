@@ -58,7 +58,11 @@ from app.services.client_rewards_pricing import (
     upsert_extra_image_purchase_snapshot,
 )
 from app.services.media_rights import upsert_gig_entitlement
-from app.services.media_urls import GALLERY_PREVIEW_URL_TTL_SECONDS, resolve_variant_urls
+from app.services.media_urls import (
+    FINALS_DOWNLOAD_URL_TTL_SECONDS,
+    GALLERY_PREVIEW_URL_TTL_SECONDS,
+    resolve_variant_urls,
+)
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
@@ -661,17 +665,24 @@ def get_download_links(
             selected_set = set(selected_item_ids)
             unlocked_ids = [asset_id for asset_id in ordered_ids if asset_id in selected_set][: gallery.included_photos]
 
-    urls: dict[str, str] = {}
-    for asset_id in unlocked_ids:
-        original = db.execute(
-            select(MediaObject).where(
-                MediaObject.media_asset_id == asset_id,
-                MediaObject.variant == MediaVariant.original,
-                MediaObject.status == ObjectStatus.ready,
-            )
-        ).scalar_one_or_none()
-        if original:
-            urls[str(asset_id)] = create_presigned_get(original.storage_key, expires_in=60)
+    # One query for the page, like the gallery and portfolio endpoints. This
+    # was the last per-item presign loop left, and it sat on the path a client
+    # uses after paying - the worst one to leave slow.
+    resolved = resolve_variant_urls(
+        db,
+        unlocked_ids,
+        variants=(MediaVariant.original,),
+        expires_in=FINALS_DOWNLOAD_URL_TTL_SECONDS,
+        # Same reasoning as the gallery: these assets were unlocked by a
+        # completed purchase, and a final must not vanish because a later
+        # reprocess marked its asset row failed.
+        require_ready_asset=False,
+    )
+    urls: dict[str, str] = {
+        str(asset_id): variants[MediaVariant.original]
+        for asset_id, variants in resolved.items()
+        if MediaVariant.original in variants
+    }
 
     add_admin_audit_log(
         db,

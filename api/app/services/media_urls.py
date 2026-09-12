@@ -89,6 +89,20 @@ def resolve_image_urls(
 GALLERY_PREVIEW_URL_TTL_SECONDS = 3600
 
 
+# Downloading a final is tap -> share sheet -> pick a destination -> wait for
+# the write, and on a slow connection that is easily over a minute. The 60s
+# this used to sign with meant a save could 403 *after* the client had paid,
+# which is the worst possible moment for it.
+#
+# Deliberately far shorter than the preview TTL above: a preview is a
+# downscaled, watermarked image and a final is the photograph itself, so the
+# cost of a leaked URL is not remotely the same. Ten minutes covers a slow
+# save without leaving a link to an original lying around for an hour, and
+# the app asks for a fresh one per download rather than reusing one minted at
+# page load.
+FINALS_DOWNLOAD_URL_TTL_SECONDS = 600
+
+
 def resolve_variant_urls(
     db: Session,
     asset_ids: Iterable[uuid.UUID | None],

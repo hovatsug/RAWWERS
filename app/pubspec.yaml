@@ -44,6 +44,16 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   decimal: ^3.2.6
   flutter_stripe: ^14.0.0
+  # Saving a delivered photograph to the client's own device. The system
+  # share sheet is deliberate rather than a direct write to the photo
+  # library: it needs no photo-library permission, and it lets someone put
+  # the file wherever they actually want it - Photos, Files, a message -
+  # instead of the one destination we guessed at.
+  share_plus: ^13.3.0
+  # Somewhere to put the bytes before handing them to the share sheet. A
+  # temporary directory, cleared by the OS; the delivered copy lives wherever
+  # the person chose to save it, not in our sandbox.
+  path_provider: ^2.1.5
   # Portfolio uploads (P-4). Gallery only - no camera capture path, so no
   # camera permission is requested.
   image_picker: ^1.2.0

@@ -173,3 +173,73 @@ def test_the_total_is_the_curve_not_a_flat_rate(client, db_session):
     )
     assert Decimal(body["amount_total"]) == expected
     assert Decimal(body["amount_total"]) < gig.entry_rate * 30, "flat pricing, not the curve"
+
+
+# ---------------------------------------------------------------------------
+# Downloading the finals, after paying.
+# ---------------------------------------------------------------------------
+
+
+def test_download_links_outlive_a_share_sheet(client, db_session, monkeypatch):
+    """60 seconds was tap, share sheet, pick a destination, wait for the write
+    - easily over a minute on a slow connection, and a 403 there lands right
+    after the client has paid."""
+    from app.models.gig import PaymentStatus
+    from app.services.media_urls import FINALS_DOWNLOAD_URL_TTL_SECONDS
+
+    client_id, _pro_id, gig, gallery = _setup(db_session, included=20, photos=12)
+
+    created: list[dict] = []
+    monkeypatch.setattr(
+        "stripe.PaymentIntent.create",
+        lambda **kwargs: (created.append(kwargs), DummyStripePI("pi_d", "sec_d"))[1],
+    )
+    assert client.post(
+        f"/v1/proof-galleries/{gallery.id}/selections/submit", headers={"X-User-Id": client_id}
+    ).status_code == 200
+
+    # Settle whatever the submit raised, so the finals are unlocked.
+    for payment in db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalars():
+        payment.status = PaymentStatus.succeeded
+    db_session.commit()
+
+    resp = client.get(f"/v1/proof-galleries/{gallery.id}/downloads", headers={"X-User-Id": client_id})
+    assert resp.status_code == 200, resp.text
+    urls = resp.json()["urls"]
+    assert urls, "no download links came back"
+
+    for url in urls.values():
+        assert f"X-Amz-Expires={FINALS_DOWNLOAD_URL_TTL_SECONDS}" in url
+    assert FINALS_DOWNLOAD_URL_TTL_SECONDS >= 300, "too tight for a real save"
+    # Still far shorter than a preview: this is the photograph itself.
+    from app.services.media_urls import GALLERY_PREVIEW_URL_TTL_SECONDS
+
+    assert FINALS_DOWNLOAD_URL_TTL_SECONDS < GALLERY_PREVIEW_URL_TTL_SECONDS
+
+
+def test_download_links_cost_a_fixed_number_of_queries(client, db_session, monkeypatch):
+    """The last per-item presign loop, on the path a client uses after paying."""
+    from app.models.gig import PaymentStatus
+
+    from tests.test_gallery_media_delivery import _count_queries
+
+    client_id, _pro_id, gig, gallery = _setup(db_session, included=20, photos=25)
+    monkeypatch.setattr("stripe.PaymentIntent.create", lambda **kwargs: DummyStripePI("pi_d", "sec_d"))
+    client.post(f"/v1/proof-galleries/{gallery.id}/selections/submit", headers={"X-User-Id": client_id})
+    for payment in db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalars():
+        payment.status = PaymentStatus.succeeded
+    db_session.commit()
+
+    counter, stop = _count_queries(db_session)
+    try:
+        counter[0] = 0
+        assert client.get(
+            f"/v1/proof-galleries/{gallery.id}/downloads", headers={"X-User-Id": client_id}
+        ).status_code == 200
+        queries = counter[0]
+    finally:
+        stop()
+
+    # 25 photos. A per-item loop would be 25 queries on its own, before the
+    # rest of the handler's work.
+    assert queries < 20, f"{queries} queries for 25 photos: still per-item"

@@ -1005,3 +1005,18 @@ The fullscreen viewer is wired into the delivery gallery, which carries `waterma
 The pro's own portfolio cannot use it yet. `GET /v1/pro/me/portfolio` returns `thumbnail_url` only, resolved with the default `THUMBNAIL_FIRST`, so the largest image available is 512px. Opening that fullscreen shows a 512px image stretched across a phone, which is worse than not offering the gesture. The photos do have larger variants - `process_photo_variants` writes `watermark_preview` for every photo regardless of purpose - they are simply not exposed on this response.
 
 Needs one field on `ProPortfolioItem` (a `preview_url`, resolved the way the proof gallery resolves its own) plus a client regeneration. Not made here: it is a schema change and was outside the authorised scope.
+
+## The watermark fix is now actually in the bucket (RESOLVED)
+
+Both halves of item 1 are in effect, not just committed:
+
+- **The worker image was rebuilt.** `docker compose build api` does not rebuild `worker` - they are separate images from the same Dockerfile - so until `build api worker`, every newly uploaded photo still got the old corner mark at full resolution. Verified after recreate: the worker now has `WATERMARK_PREVIEW_MAX_PX` and the scalable font fallback.
+- **The backfill ran.** 6 oversized `preview_watermarked` derivatives rewritten (3000-4288px down to 1600), rebuilt from their intact originals. Dry run first: 6 to rewrite, 0 blocked, 0 skipped. Afterwards nothing in the bucket exceeds the limit, `original` and `full_res` are untouched at 124 and 116 rows, and `web_res` remains 2048. One rewritten object was pulled back out of R2 and looked at: 1600x1200, mark tiled across the whole frame, photograph still perfectly judgeable.
+
+**Rebuilding the image removes pytest.** The Dockerfile runs `poetry install --without dev`, so the freshly built image has no test dependencies - the image the suite had been running in all along predated that. Tests now need either `pip install pytest pytest-cov httpx` in the running container (what was done here, and it does not survive a recreate) or a dev stage in the Dockerfile. Worth fixing properly: the current state is that rebuilding the API silently removes the ability to test it.
+
+## Finals download URLs expired in 60 seconds (FIXED)
+
+`get_download_links` signed with `expires_in=60`. A real save is tap, share sheet, choose a destination, wait for the write - easily over a minute on a slow connection - so the link could expire mid-save, and a 403 there lands immediately after the client has paid. Now `FINALS_DOWNLOAD_URL_TTL_SECONDS` (600), deliberately far shorter than the hour a preview gets: a preview is downscaled and watermarked, a final is the photograph itself. The app asks for a fresh link per download rather than reusing one minted at page load, which the 20-per-minute rate limit comfortably allows.
+
+The same endpoint was also the last per-item presign loop in the codebase - one `MediaObject` query per photo, on the path a client uses after paying. Now batched through `resolve_variant_urls` like the gallery and portfolio endpoints.

@@ -44,6 +44,29 @@
 ///             ],
 ///             "title": "Payment Status"
 ///         },
+///         "proof_gallery_id": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "uuid"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Proof Gallery Id"
+///         },
+///         "proof_gallery_status": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Proof Gallery Status"
+///         },
 ///         "timeline": {
 ///             "type": "array",
 ///             "items": {
@@ -96,6 +119,14 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
     @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)
     String? paymentStatus,
 
+    /// proofGalleryId
+    @JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_)
+    String? proofGalleryId,
+
+    /// proofGalleryStatus
+    @JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_)
+    String? proofGalleryStatus,
+
     /// timeline
     @JsonKey(name: ClientBookingStatusResponse.timelineKey_)
     List<Map<String, dynamic>>? timeline,
@@ -117,6 +148,10 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
   static const String gigStatusKey_ = r'gig_status';
 
   static const String paymentStatusKey_ = r'payment_status';
+
+  static const String proofGalleryIdKey_ = r'proof_gallery_id';
+
+  static const String proofGalleryStatusKey_ = r'proof_gallery_status';
 
   static const String timelineKey_ = r'timeline';
 

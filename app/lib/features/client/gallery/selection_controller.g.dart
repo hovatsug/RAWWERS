@@ -7,7 +7,7 @@ part of 'selection_controller.dart';
 // **************************************************************************
 
 String _$selectionControllerHash() =>
-    r'188d4dced49715648049723375d03f87dd756f33';
+    r'2e57465e3b756543ae6ccc7dde411b552389a034';
 
 /// Copied from Dart SDK
 class _SystemHash {

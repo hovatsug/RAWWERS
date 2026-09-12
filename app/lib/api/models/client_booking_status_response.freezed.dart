@@ -20,7 +20,9 @@ mixin _$ClientBookingStatusResponse {
 @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) String get bookingStatus;/// gigId
 @JsonKey(name: ClientBookingStatusResponse.gigIdKey_) String? get gigId;/// gigStatus
 @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) String? get gigStatus;/// paymentStatus
-@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) String? get paymentStatus;/// timeline
+@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) String? get paymentStatus;/// proofGalleryId
+@JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_) String? get proofGalleryId;/// proofGalleryStatus
+@JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_) String? get proofGalleryStatus;/// timeline
 @JsonKey(name: ClientBookingStatusResponse.timelineKey_) List<Map<String, dynamic>>? get timeline;/// nextActions
 @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) List<String>? get nextActions;
 /// Create a copy of ClientBookingStatusResponse
@@ -35,16 +37,16 @@ $ClientBookingStatusResponseCopyWith<ClientBookingStatusResponse> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingStatusResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&const DeepCollectionEquality().equals(other.timeline, timeline)&&const DeepCollectionEquality().equals(other.nextActions, nextActions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingStatusResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.proofGalleryId, proofGalleryId) || other.proofGalleryId == proofGalleryId)&&(identical(other.proofGalleryStatus, proofGalleryStatus) || other.proofGalleryStatus == proofGalleryStatus)&&const DeepCollectionEquality().equals(other.timeline, timeline)&&const DeepCollectionEquality().equals(other.nextActions, nextActions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,const DeepCollectionEquality().hash(timeline),const DeepCollectionEquality().hash(nextActions));
+int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,proofGalleryId,proofGalleryStatus,const DeepCollectionEquality().hash(timeline),const DeepCollectionEquality().hash(nextActions));
 
 @override
 String toString() {
-  return 'ClientBookingStatusResponse(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, timeline: $timeline, nextActions: $nextActions)';
+  return 'ClientBookingStatusResponse(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, proofGalleryId: $proofGalleryId, proofGalleryStatus: $proofGalleryStatus, timeline: $timeline, nextActions: $nextActions)';
 }
 
 
@@ -55,7 +57,7 @@ abstract mixin class $ClientBookingStatusResponseCopyWith<$Res>  {
   factory $ClientBookingStatusResponseCopyWith(ClientBookingStatusResponse value, $Res Function(ClientBookingStatusResponse) _then) = _$ClientBookingStatusResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingStatusResponse.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingStatusResponse.timelineKey_) List<Map<String, dynamic>>? timeline,@JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) List<String>? nextActions
+@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingStatusResponse.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_) String? proofGalleryId,@JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_) String? proofGalleryStatus,@JsonKey(name: ClientBookingStatusResponse.timelineKey_) List<Map<String, dynamic>>? timeline,@JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) List<String>? nextActions
 });
 
 
@@ -72,13 +74,15 @@ class _$ClientBookingStatusResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingStatusResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? timeline = freezed,Object? nextActions = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? proofGalleryId = freezed,Object? proofGalleryStatus = freezed,Object? timeline = freezed,Object? nextActions = freezed,}) {
   return _then(_self.copyWith(
 bookingId: null == bookingId ? _self.bookingId : bookingId // ignore: cast_nullable_to_non_nullable
 as String,bookingStatus: null == bookingStatus ? _self.bookingStatus : bookingStatus // ignore: cast_nullable_to_non_nullable
 as String,gigId: freezed == gigId ? _self.gigId : gigId // ignore: cast_nullable_to_non_nullable
 as String?,gigStatus: freezed == gigStatus ? _self.gigStatus : gigStatus // ignore: cast_nullable_to_non_nullable
 as String?,paymentStatus: freezed == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as String?,proofGalleryId: freezed == proofGalleryId ? _self.proofGalleryId : proofGalleryId // ignore: cast_nullable_to_non_nullable
+as String?,proofGalleryStatus: freezed == proofGalleryStatus ? _self.proofGalleryStatus : proofGalleryStatus // ignore: cast_nullable_to_non_nullable
 as String?,timeline: freezed == timeline ? _self.timeline : timeline // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>?,nextActions: freezed == nextActions ? _self.nextActions : nextActions // ignore: cast_nullable_to_non_nullable
 as List<String>?,
@@ -166,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_)  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)  List<String>? nextActions)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_)  String? proofGalleryId, @JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_)  String? proofGalleryStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_)  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)  List<String>? nextActions)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientBookingStatusResponse() when $default != null:
-return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.timeline,_that.nextActions);case _:
+return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.proofGalleryId,_that.proofGalleryStatus,_that.timeline,_that.nextActions);case _:
   return orElse();
 
 }
@@ -187,10 +191,10 @@ return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_)  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)  List<String>? nextActions)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_)  String? proofGalleryId, @JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_)  String? proofGalleryStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_)  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)  List<String>? nextActions)  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingStatusResponse():
-return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.timeline,_that.nextActions);case _:
+return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.proofGalleryId,_that.proofGalleryStatus,_that.timeline,_that.nextActions);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +211,10 @@ return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_)  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)  List<String>? nextActions)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_)  String? proofGalleryId, @JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_)  String? proofGalleryStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_)  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)  List<String>? nextActions)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingStatusResponse() when $default != null:
-return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.timeline,_that.nextActions);case _:
+return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.proofGalleryId,_that.proofGalleryStatus,_that.timeline,_that.nextActions);case _:
   return null;
 
 }
@@ -222,7 +226,7 @@ return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,
 
 @jsonSerializable
 class _ClientBookingStatusResponse extends ClientBookingStatusResponse {
-  const _ClientBookingStatusResponse({@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_) required this.bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) required this.bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_) this.gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) this.gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) this.paymentStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_) final  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) final  List<String>? nextActions}): _timeline = timeline,_nextActions = nextActions,super._();
+  const _ClientBookingStatusResponse({@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_) required this.bookingId, @JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) required this.bookingStatus, @JsonKey(name: ClientBookingStatusResponse.gigIdKey_) this.gigId, @JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) this.gigStatus, @JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) this.paymentStatus, @JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_) this.proofGalleryId, @JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_) this.proofGalleryStatus, @JsonKey(name: ClientBookingStatusResponse.timelineKey_) final  List<Map<String, dynamic>>? timeline, @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) final  List<String>? nextActions}): _timeline = timeline,_nextActions = nextActions,super._();
   factory _ClientBookingStatusResponse.fromJson(Map<String, dynamic> json) => _$ClientBookingStatusResponseFromJson(json);
 
 /// bookingId
@@ -235,6 +239,10 @@ class _ClientBookingStatusResponse extends ClientBookingStatusResponse {
 @override@JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) final  String? gigStatus;
 /// paymentStatus
 @override@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) final  String? paymentStatus;
+/// proofGalleryId
+@override@JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_) final  String? proofGalleryId;
+/// proofGalleryStatus
+@override@JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_) final  String? proofGalleryStatus;
 /// timeline
  final  List<Map<String, dynamic>>? _timeline;
 /// timeline
@@ -271,16 +279,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingStatusResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&const DeepCollectionEquality().equals(other._timeline, _timeline)&&const DeepCollectionEquality().equals(other._nextActions, _nextActions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingStatusResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.proofGalleryId, proofGalleryId) || other.proofGalleryId == proofGalleryId)&&(identical(other.proofGalleryStatus, proofGalleryStatus) || other.proofGalleryStatus == proofGalleryStatus)&&const DeepCollectionEquality().equals(other._timeline, _timeline)&&const DeepCollectionEquality().equals(other._nextActions, _nextActions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,const DeepCollectionEquality().hash(_timeline),const DeepCollectionEquality().hash(_nextActions));
+int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,proofGalleryId,proofGalleryStatus,const DeepCollectionEquality().hash(_timeline),const DeepCollectionEquality().hash(_nextActions));
 
 @override
 String toString() {
-  return 'ClientBookingStatusResponse(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, timeline: $timeline, nextActions: $nextActions)';
+  return 'ClientBookingStatusResponse(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, proofGalleryId: $proofGalleryId, proofGalleryStatus: $proofGalleryStatus, timeline: $timeline, nextActions: $nextActions)';
 }
 
 
@@ -291,7 +299,7 @@ abstract mixin class _$ClientBookingStatusResponseCopyWith<$Res> implements $Cli
   factory _$ClientBookingStatusResponseCopyWith(_ClientBookingStatusResponse value, $Res Function(_ClientBookingStatusResponse) _then) = __$ClientBookingStatusResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingStatusResponse.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingStatusResponse.timelineKey_) List<Map<String, dynamic>>? timeline,@JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) List<String>? nextActions
+@JsonKey(name: ClientBookingStatusResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingStatusResponse.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingStatusResponse.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingStatusResponse.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingStatusResponse.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingStatusResponse.proofGalleryIdKey_) String? proofGalleryId,@JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_) String? proofGalleryStatus,@JsonKey(name: ClientBookingStatusResponse.timelineKey_) List<Map<String, dynamic>>? timeline,@JsonKey(name: ClientBookingStatusResponse.nextActionsKey_) List<String>? nextActions
 });
 
 
@@ -308,13 +316,15 @@ class __$ClientBookingStatusResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingStatusResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? timeline = freezed,Object? nextActions = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? proofGalleryId = freezed,Object? proofGalleryStatus = freezed,Object? timeline = freezed,Object? nextActions = freezed,}) {
   return _then(_ClientBookingStatusResponse(
 bookingId: null == bookingId ? _self.bookingId : bookingId // ignore: cast_nullable_to_non_nullable
 as String,bookingStatus: null == bookingStatus ? _self.bookingStatus : bookingStatus // ignore: cast_nullable_to_non_nullable
 as String,gigId: freezed == gigId ? _self.gigId : gigId // ignore: cast_nullable_to_non_nullable
 as String?,gigStatus: freezed == gigStatus ? _self.gigStatus : gigStatus // ignore: cast_nullable_to_non_nullable
 as String?,paymentStatus: freezed == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as String?,proofGalleryId: freezed == proofGalleryId ? _self.proofGalleryId : proofGalleryId // ignore: cast_nullable_to_non_nullable
+as String?,proofGalleryStatus: freezed == proofGalleryStatus ? _self.proofGalleryStatus : proofGalleryStatus // ignore: cast_nullable_to_non_nullable
 as String?,timeline: freezed == timeline ? _self._timeline : timeline // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>?,nextActions: freezed == nextActions ? _self._nextActions : nextActions // ignore: cast_nullable_to_non_nullable
 as List<String>?,

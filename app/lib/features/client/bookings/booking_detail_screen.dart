@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/client_booking_status_response.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
@@ -9,6 +10,7 @@ import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/bookings/booking_detail_controller.dart';
 import 'package:rawwers/features/client/bookings/booking_payment_controller.dart';
+import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/features/client/bookings/booking_status_display.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
@@ -67,6 +69,10 @@ class _Detail extends ConsumerWidget {
           if (status.canPay) ...[
             const SizedBox(height: RSpace.s16),
             _PayPanel(bookingId: bookingId),
+          ],
+          if (booking.proofGalleryId != null) ...[
+            const SizedBox(height: RSpace.s16),
+            _PhotosPanel(bookingId: bookingId, booking: booking),
           ],
           const SizedBox(height: RSpace.s24),
           Text('History', style: theme.textTheme.titleMedium),
@@ -171,3 +177,44 @@ String _stamp(DateTime at) {
 }
 
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+
+/// The way into the photographs.
+///
+/// Only rendered once the backend hands over a gallery id, which it does only
+/// for a gallery the client is allowed to open - a draft one the photographer
+/// is still filling is withheld, so this cannot offer a door onto a 403.
+class _PhotosPanel extends StatelessWidget {
+  const _PhotosPanel({required this.bookingId, required this.booking});
+
+  final String bookingId;
+  final ClientBookingStatusResponse booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final galleryId = booking.proofGalleryId!;
+    final choosing = booking.proofGalleryStatus == 'published';
+
+    return RCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(choosing ? 'Your photos are ready' : 'Your photos', style: theme.textTheme.titleSmall),
+          const SizedBox(height: RSpace.s4),
+          Text(
+            choosing
+                ? 'Choose the ones you want to keep.'
+                : 'You have already chosen. These are yours.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: RSpace.s12),
+          RButton(
+            label: choosing ? 'Choose your photos' : 'View your photos',
+            onPressed: () => context.push(ClientRoute.gallery(bookingId, galleryId)),
+          ),
+        ],
+      ),
+    );
+  }
+}

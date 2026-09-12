@@ -14,6 +14,8 @@ _ClientBookingStatusResponse _$ClientBookingStatusResponseFromJson(
   gigId: json['gig_id'] as String?,
   gigStatus: json['gig_status'] as String?,
   paymentStatus: json['payment_status'] as String?,
+  proofGalleryId: json['proof_gallery_id'] as String?,
+  proofGalleryStatus: json['proof_gallery_status'] as String?,
   timeline: (json['timeline'] as List<dynamic>?)
       ?.map((e) => e as Map<String, dynamic>)
       .toList(),
@@ -30,6 +32,8 @@ Map<String, dynamic> _$ClientBookingStatusResponseToJson(
   'gig_id': instance.gigId,
   'gig_status': instance.gigStatus,
   'payment_status': instance.paymentStatus,
+  'proof_gallery_id': instance.proofGalleryId,
+  'proof_gallery_status': instance.proofGalleryStatus,
   'timeline': instance.timeline,
   'next_actions': instance.nextActions,
 };

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_write_session, get_optional_current_user, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.models.gallery import ProofGallery, ProofGalleryStatus
 from app.models.admin import KYCStatus, ProProfile, UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProAvailabilityRule, ProPackage
 from app.models.client_launch import ClientPreference, ClientWaitlist, MatchRequest as MatchRequestLog, MatchResult as MatchResultLog
@@ -580,13 +581,34 @@ def client_booking_status(
         else None
     )
 
+    # A draft gallery is one the photographer is still filling; it is not the
+    # client's to see, and get_gallery refuses it for them anyway. Surfacing
+    # it here would put a door on the screen that opens onto a 403.
+    gallery = (
+        db.execute(
+            select(ProofGallery).where(
+                ProofGallery.gig_id == gig.id,
+                ProofGallery.status != ProofGalleryStatus.draft,
+            )
+        ).scalars().first()
+        if gig
+        else None
+    )
+
     next_actions: list[str] = []
     if booking.status == BookingRequestStatus.pending:
         next_actions.append("await_pro_response")
     if booking.status == BookingRequestStatus.accepted and gig and gig.status.value == "payment_pending":
         next_actions.append("pay_now")
     if gig and gig.status.value in {"paid", "scheduled", "shoot_done"}:
-        next_actions.append("await_delivery")
+        # Once there are photos to act on, say so rather than leaving the
+        # client waiting on a delivery that has already arrived.
+        if gallery and gallery.status == ProofGalleryStatus.published:
+            next_actions.append("choose_photos")
+        elif gallery:
+            next_actions.append("view_photos")
+        else:
+            next_actions.append("await_delivery")
 
     return ClientBookingStatusResponse(
         booking_id=booking.id,
@@ -594,6 +616,8 @@ def client_booking_status(
         gig_id=gig.id if gig else None,
         gig_status=gig.status.value if gig else None,
         payment_status=payment.status.value if payment else None,
+        proof_gallery_id=gallery.id if gallery else None,
+        proof_gallery_status=gallery.status.value if gallery else None,
         timeline=[
             {
                 "at": item.created_at.isoformat(),

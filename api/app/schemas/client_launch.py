@@ -172,6 +172,16 @@ class ClientBookingStatusResponse(BaseModel):
     gig_id: uuid.UUID | None = None
     gig_status: str | None = None
     payment_status: str | None = None
+    # The client's way into their own photographs. Every gallery route is
+    # keyed by gallery id, and the only route that creates one is pro-only,
+    # so without this there was no path from "my booking" to "my photos" at
+    # all - a client who had paid could not reach what they paid for.
+    proof_gallery_id: uuid.UUID | None = None
+    # Which screen to open: `published` means there is a selection to make,
+    # `selection_submitted` means the photos are chosen and the downloads
+    # screen is the right destination. Carried here so the app does not have
+    # to fetch the gallery to find out which one to show.
+    proof_gallery_status: str | None = None
     timeline: list[dict] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
 

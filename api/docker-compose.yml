@@ -24,7 +24,10 @@ services:
       retries: 5
 
   api:
-    build: .
+    build:
+      context: .
+      # `runtime` unless BUILD_TARGET says otherwise - see the Dockerfile.
+      target: ${BUILD_TARGET:-runtime}
     env_file:
       - .env
     ports:
@@ -41,7 +44,9 @@ services:
       retries: 5
 
   worker:
-    build: .
+    build:
+      context: .
+      target: ${BUILD_TARGET:-runtime}
     env_file:
       - .env
     environment:

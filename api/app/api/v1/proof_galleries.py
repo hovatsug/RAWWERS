@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 import stripe
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -36,6 +36,7 @@ from app.schemas.gallery import (
     ProofGalleryResponse,
     PublishGalleryResponse,
     SaveSelectionRequest,
+    SelectionQuoteResponse,
     SelectionResponse,
     SubmitSelectionResponse,
     UpsellCreateIntentRequest,
@@ -62,6 +63,7 @@ from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
 from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count, is_curve_priced
+from app.services.selection_quote import gallery_photo_count, quote_selection
 from app.services.payment_intents import create_or_get_gig_payment_intent
 
 settings = get_settings()
@@ -344,6 +346,77 @@ def save_selection(
     )
 
 
+@router.get("/proof-galleries/{gallery_id}/selection-quote", response_model=SelectionQuoteResponse)
+def get_selection_quote(
+    gallery_id: uuid.UUID,
+    selected_count: int | None = Query(
+        default=None,
+        ge=0,
+        description="Price a hypothetical selection of this size. Defaults to what is currently saved.",
+    ),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> SelectionQuoteResponse:
+    """Price a selection without committing to it.
+
+    The client is choosing photographs and spending money at the same time, so
+    the total and the cost of one more have to be on screen while they decide,
+    and both have to be the real numbers. This calls `quote_selection` - the
+    same function `submit_selection` charges from - rather than reproducing the
+    arithmetic, so the screen cannot quote one price while Stripe takes
+    another.
+    """
+    gallery = db.get(ProofGallery, gallery_id)
+    if not gallery:
+        raise APIError(code="not_found", message="Gallery not found", status_code=404)
+
+    is_admin = _is_admin(db, user.user_id)
+    if gallery.client_user_id != user.user_id and not is_admin:
+        raise APIError(code="forbidden", message="Only the client can price their selection", status_code=403)
+
+    gig = db.get(Gig, gallery.gig_id)
+    if not gig:
+        raise APIError(code="not_found", message="Booking not found for this gallery", status_code=404)
+
+    available = gallery_photo_count(db, gallery.id)
+
+    if selected_count is None:
+        selection = _latest_selection(db, gallery_id)
+        selected_count = (
+            db.execute(
+                select(func.count())
+                .select_from(ClientSelectionItem)
+                .where(ClientSelectionItem.selection_id == selection.id)
+            ).scalar_one()
+            if selection
+            else 0
+        )
+
+    if selected_count > available:
+        raise APIError(
+            code="validation_error",
+            message=f"This gallery has {available} photos; cannot price a selection of {selected_count}",
+            status_code=422,
+        )
+
+    quote = quote_selection(
+        db, gig=gig, gallery=gallery, selected_count=selected_count, max_photos=available
+    )
+    return SelectionQuoteResponse(
+        selected_count=quote.selected_count,
+        included_photos=quote.included_photos,
+        minimum_photos=quote.minimum_photos,
+        currency=quote.currency,
+        amount_total=quote.amount_total,
+        amount_paid=quote.amount_paid,
+        amount_due=quote.amount_due,
+        next_photo_price=quote.next_photo_price,
+        extras_count=quote.extras_count,
+        can_submit=quote.can_submit,
+        photos_still_needed=quote.photos_still_needed,
+    )
+
+
 @router.post("/proof-galleries/{gallery_id}/selections/submit", response_model=SubmitSelectionResponse)
 def submit_selection(
     gallery_id: uuid.UUID,
@@ -368,18 +441,23 @@ def submit_selection(
     gig = db.get(Gig, gallery.gig_id)
     curve_priced = is_curve_priced(gig)
 
+    # The same call the quote endpoint makes. Deliberately not a second
+    # implementation that agrees with it: one that agrees today diverges
+    # eventually, and the failure is the app showing one price while Stripe
+    # charges another.
+    #
     # A curve-priced gig charges for every selected photo through
     # amount_final, so there are no extras to sell on top. Photos past
     # included_photos used to be billed twice - once inside the curve's
     # difference charge and once as flat extras - and the booking could not
     # close until both were paid.
-    extras_count = 0 if curve_priced else max(0, selected_count - gallery.included_photos)
+    quote = quote_selection(db, gig=gig, gallery=gallery, selected_count=selected_count) if gig else None
+    extras_count = quote.extras_count if quote else 0
 
     difference_amount = Decimal("0.00")
-    if curve_priced:
-        amount_final = compute_package_total(db, niche_id=gig.niche_id, entry_rate=gig.entry_rate, photo_count=selected_count)
-        gig.amount_final = amount_final
-        difference_amount = max(Decimal("0.00"), (amount_final - gig.amount_minimum).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    if curve_priced and quote:
+        gig.amount_final = quote.amount_total
+        difference_amount = quote.amount_due
     difference_required = difference_amount > 0
 
     selection.status = SelectionStatus.submitted

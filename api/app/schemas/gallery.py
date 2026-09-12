@@ -91,3 +91,29 @@ class UpsellCreateIntentRequest(BaseModel):
 class DownloadsResponse(BaseModel):
     gallery_id: uuid.UUID
     urls: dict[str, str]
+
+
+class SelectionQuoteResponse(BaseModel):
+    """What a selection of this size costs, computed by the same code that
+    charges for it. Every money field is a Decimal and serialises as a string
+    - a float here would round someone's bill."""
+
+    selected_count: int
+    included_photos: int
+    minimum_photos: int
+    currency: str
+
+    # The whole selection, including what was collected at booking.
+    amount_total: Decimal
+    amount_paid: Decimal
+    # What submitting now would charge. Never negative.
+    amount_due: Decimal
+    # What one more photo would add to amount_due - the change in the charge,
+    # not the curve's price for that photo, so it is zero while the running
+    # total is still under what was already paid. Null when the gallery holds
+    # no more photos to add.
+    next_photo_price: Decimal | None = None
+
+    extras_count: int
+    can_submit: bool
+    photos_still_needed: int

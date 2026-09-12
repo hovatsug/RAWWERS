@@ -7,6 +7,7 @@ import 'package:rawwers/core/launch/launch_screen.dart';
 import 'package:rawwers/features/client/account/account_screen.dart';
 import 'package:rawwers/features/client/bookings/booking_detail_screen.dart';
 import 'package:rawwers/features/client/bookings/bookings_screen.dart';
+import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
 import 'package:rawwers/features/client/gallery/selection_gallery_screen.dart';
 import 'package:rawwers/features/client/client_shell.dart';
 import 'package:rawwers/features/client/discover/discover_screen.dart';
@@ -39,6 +40,10 @@ abstract final class ClientRoute {
   /// Choosing which photographs to keep. Nested under the booking it belongs
   /// to, so backing out lands on that booking rather than the bookings list.
   static String gallery(String bookingId, String galleryId) => '$bookings/$bookingId/gallery/$galleryId';
+
+  /// The photographs already chosen and paid for.
+  static String delivered(String bookingId, String galleryId) =>
+      '$bookings/$bookingId/photos/$galleryId';
   static const messages = '/messages';
   static const account = '/account';
 
@@ -125,6 +130,12 @@ GoRouter clientRouter(Ref ref) {
                       GoRoute(
                         path: 'gallery/:galleryId',
                         builder: (context, state) => SelectionGalleryScreen(
+                          galleryId: state.pathParameters['galleryId']!,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'photos/:galleryId',
+                        builder: (context, state) => DeliveredGalleryScreen(
                           galleryId: state.pathParameters['galleryId']!,
                         ),
                       ),

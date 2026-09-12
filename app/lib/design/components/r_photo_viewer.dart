@@ -29,6 +29,7 @@ class RPhotoViewer extends StatefulWidget {
     required this.initialIndex,
     this.title,
     this.actionsBuilder,
+    this.prefetchNeighbours = true,
     super.key,
   });
 
@@ -45,6 +46,14 @@ class RPhotoViewer extends StatefulWidget {
   /// Lets a caller put controls over the photo - selection, in the client
   /// galleries - without this widget knowing what they mean.
   final Widget Function(BuildContext context, int index)? actionsBuilder;
+
+  /// Decode the next and previous photo ahead of the swipe.
+  ///
+  /// Right for previews, wrong for full-size originals: a 4288px frame
+  /// decodes to roughly 48MB, so holding three of them is ~145MB and an
+  /// older device kills the app. Callers showing originals turn this off and
+  /// accept a brief spinner on the photo the person actually asked for.
+  final bool prefetchNeighbours;
 
   @override
   State<RPhotoViewer> createState() => _RPhotoViewerState();
@@ -94,6 +103,7 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
   /// originals previews used to be, the same three frames came to ~145MB and
   /// would be killed on an older phone.
   void _prefetchNeighbours() {
+    if (!widget.prefetchNeighbours) return;
     for (final neighbour in [_index - 1, _index + 1]) {
       if (neighbour < 0 || neighbour >= widget.urls.length) continue;
       final url = widget.urls[neighbour];
@@ -313,6 +323,7 @@ Future<void> showRPhotoViewer(
   required int initialIndex,
   String? title,
   Widget Function(BuildContext context, int index)? actionsBuilder,
+  bool prefetchNeighbours = true,
 }) {
   final reduceMotion = MediaQuery.disableAnimationsOf(context);
   return Navigator.of(context).push<void>(
@@ -326,6 +337,7 @@ Future<void> showRPhotoViewer(
         initialIndex: initialIndex,
         title: title,
         actionsBuilder: actionsBuilder,
+        prefetchNeighbours: prefetchNeighbours,
       ),
       transitionsBuilder: (context, animation, secondary, child) {
         if (reduceMotion) return child;

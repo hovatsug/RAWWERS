@@ -44,12 +44,14 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   decimal: ^3.2.6
   flutter_stripe: ^14.0.0
-  # Saving a delivered photograph to the client's own device. The system
-  # share sheet is deliberate rather than a direct write to the photo
-  # library: it needs no photo-library permission, and it lets someone put
-  # the file wherever they actually want it - Photos, Files, a message -
-  # instead of the one destination we guessed at.
-  share_plus: ^13.3.0
+  # Saving a delivered photograph to the client's own device.
+  #
+  # share_plus is the package this wants and cannot have yet: every 13.x
+  # release depends on share_plus_platform_interface 7.2.0, which declares
+  # Dart >=3.10, and build_runner here analyses through an analyzer capped at
+  # language 3.9 by source_gen 2.x and riverpod_generator 2.x. It does not
+  # fail at runtime - it kills code generation for the whole app. Lifting the
+  # cap means riverpod 2 to 3, which is its own migration.
   # Somewhere to put the bytes before handing them to the share sheet. A
   # temporary directory, cleared by the OS; the delivered copy lives wherever
   # the person chose to save it, not in our sandbox.

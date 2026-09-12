@@ -211,7 +211,11 @@ class _PhotosPanel extends StatelessWidget {
           const SizedBox(height: RSpace.s12),
           RButton(
             label: choosing ? 'Choose your photos' : 'View your photos',
-            onPressed: () => context.push(ClientRoute.gallery(bookingId, galleryId)),
+            onPressed: () => context.push(
+              choosing
+                  ? ClientRoute.gallery(bookingId, galleryId)
+                  : ClientRoute.delivered(bookingId, galleryId),
+            ),
           ),
         ],
       ),

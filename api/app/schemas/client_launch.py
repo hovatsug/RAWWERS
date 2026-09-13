@@ -267,3 +267,30 @@ class ProListingPreviewResponse(BaseModel):
     # when the pro has set no weekly rules at all, which reads differently
     # from "no free days".
     available_days_next_14: int | None = None
+
+
+class ClientHomeRow(BaseModel):
+    """One horizontal row on the client home screen.
+
+    `key` is stable and machine-readable so the app can special-case
+    presentation; `title` is what the client reads. Both are decided by the
+    server rather than the app, because what belongs in a row is a fairness
+    rule - "new photographers" must never quietly blend into "most
+    experienced" - and a rule implemented in more than one place drifts. This
+    project has already paid for that once, in pricing.
+    """
+
+    key: str
+    title: str
+    subtitle: str | None = None
+    # Never empty. A row with nothing honest to show is omitted from the
+    # response entirely rather than sent for the app to render as a blank
+    # shelf.
+    items: list[ClientDiscoverCard] = Field(default_factory=list)
+
+
+class ClientHomeResponse(BaseModel):
+    rows: list[ClientHomeRow] = Field(default_factory=list)
+    # True when the caller is a guest, so the app can show the sign-in prompt
+    # the deeper-browsing limit will eventually enforce.
+    guest_limited: bool = False

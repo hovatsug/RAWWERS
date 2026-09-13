@@ -1030,3 +1030,19 @@ Found while verifying the seeded photographers surfaced. The endpoint builds eac
 **Not currently urgent, and worth knowing why:** the Flutter client calls `/v1/client/discover`, which resolves covers correctly through `_cards_from_index`. This route is not used by the app. Reported rather than fixed because it is dead code, and fixing unused endpoints is how dead code acquires the appearance of being load-bearing.
 
 **It is a trap for the Netflix-style rows in Part 1.** A horizontal photo row reaching for this endpoint would render a wall of blank cards, and the cause - a card builder silently omitting two fields - looks nothing like the symptom. Cheap to write down now, expensive to rediscover after the rows are built.
+
+## Editing the discovery index without recomputing serves a stale home screen
+
+The client home and discover responses are cached in Redis under a key containing `get_public_index_version()`, and that version is bumped in exactly one place: the end of `recompute_pro_public_index`. Any path that changes what should appear in Discover **without** going through that function leaves the cached response in place until its TTL expires.
+
+Found while writing tests for the rows endpoint. Six tests failed together and every one of them passed in isolation: the per-test database wipe does not touch Redis, so each test was being served the previous test's answer under an unchanged version key. The tests now flush the cache themselves, but the tests are not the point.
+
+**Why it matters in production:** the symptom is "this photographer was approved days ago and still is not showing", with nothing wrong in the database, nothing wrong in the query, and nothing in the logs. Anyone debugging it looks at the gates - which all pass - rather than at a cache key that never moved. Direct admin edits, data migrations, and any future background job that touches `ProPublicIndex` all have this shape.
+
+**Options, in rough order of preference:**
+
+1. Bump the version inside a SQLAlchemy `after_update` hook on `ProPublicIndex`, so it is impossible to change the row without invalidating the cache. Structural rather than remembered, and the same argument as the seed guard sitting on the shared path rather than in each entry point.
+2. Include a cheap `max(updated_at)` for the city in the cache key, so any row edit changes the key naturally.
+3. Shorten the TTL. Cheapest, and only narrows the window rather than closing it.
+
+Not fixed here: the rows endpoint does not introduce the behaviour, it only made it visible, and changing cache invalidation touches every discovery read.

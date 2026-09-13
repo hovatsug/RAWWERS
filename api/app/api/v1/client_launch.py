@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from datetime import datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_read_session, get_db_write_session, get_optional_current_user, require_not_banned
@@ -30,6 +30,8 @@ from app.schemas.client_launch import (
     ClientBookingListItem,
     ClientBookingListResponse,
     ClientBookingStatusResponse,
+    ClientHomeResponse,
+    ClientHomeRow,
     ClientDiscoverCard,
     ClientDiscoverResponse,
     ClientMatchCard,
@@ -722,6 +724,187 @@ def put_client_preference(
     db.commit()
     db.refresh(row)
     return _preference_view(row)
+
+
+# How many cards a row carries. A horizontal shelf that cannot be scrolled to
+# the end in a few flicks stops being a curated row and becomes a list.
+_ROW_SIZE = 12
+
+# How many niche rows to offer. Every niche with photographers in the city
+# would be eight shelves on one screen, which is the crowding the design
+# brief's fourth signature exists to prevent.
+_MAX_NICHE_ROWS = 4
+
+
+def _row_base_query(country: str, city: str):
+    """The five discovery gates, once, shared by every row.
+
+    Identical to what _discover_rows enforces. Kept in one expression so a row
+    cannot accidentally surface a photographer the ordinary Discover list
+    would hide - which would be a fairness bug visible only by comparing two
+    screens.
+    """
+    return (
+        select(ProPublicIndex)
+        .join(
+            ProOnboarding,
+            and_(
+                ProOnboarding.pro_user_id == ProPublicIndex.pro_user_id,
+                ProOnboarding.status == ProOnboardingStatus.approved_public,
+            ),
+        )
+        .where(
+            ProPublicIndex.country == country.strip().upper(),
+            ProPublicIndex.city == city.strip(),
+            ProPublicIndex.kyc_status == KYCStatus.approved,
+            ProPublicIndex.is_accepting_bookings.is_(True),
+            ProPublicIndex.completeness_score >= 60,
+            ProPublicIndex.min_package_price.is_not(None),
+        )
+    )
+
+
+@router.get("/client/home", response_model=ClientHomeResponse)
+def client_home(
+    country: str,
+    city: str,
+    user: CurrentUser | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db_read_session),
+    db_write: Session = Depends(get_db_write_session),
+) -> ClientHomeResponse:
+    """The browsing home screen: several differently-sorted cuts of one catalogue.
+
+    One request rather than one per row, for three reasons. The city gate,
+    guest check and rate limit run once instead of five times - five parallel
+    row requests would trip the public_read limiter on first paint. Row
+    composition stays server-side, where the honesty rules can be enforced in
+    one place. And a row with nothing to show can be omitted rather than sent
+    empty, which the app cannot decide for itself without knowing why the row
+    exists.
+
+    Every row sorts on a column the index already has. No row here required a
+    new ranking, and any row that would have needed one was dropped instead of
+    inventing one - "top rated" is not here, because ranking_score is a
+    composite of completeness, portfolio size, gigs, rating and tier, and a row
+    named for rating that sorts by a composite is a row with a false name.
+    """
+    _enforce_city_gate(db, country=country, city=city, user=user)
+    _enforce_guest_mode(db, user=user)
+    enforce_named_rate_limit("public_read", principal=str(user.user_id) if user else "guest")
+
+    cache_key = (
+        f"client:home:v{get_public_index_version()}:country={country.upper()}:"
+        f"city={city.lower()}:guest={not bool(user)}"
+    )
+    cached = cache_get_json(cache_key)
+    if cached:
+        return ClientHomeResponse.model_validate(cached)
+
+    base = _row_base_query(country, city)
+    plans: list[tuple[str, str, str | None, list[ProPublicIndex]]] = []
+
+    # Deliberately its own row rather than a weighting hidden inside another
+    # one. A photographer with no completed work is invisible under every
+    # popularity sort there is, and the honest fix is a row that says what it
+    # is - not a quiet boost inside "most experienced", which would make that
+    # row's name a lie in the service of fairness.
+    newcomers = db.execute(
+        base.where(ProPublicIndex.gigs_completed == 0)
+        .order_by(ProPublicIndex.updated_at.desc())
+        .limit(_ROW_SIZE)
+    ).scalars().all()
+    plans.append(
+        (
+            "new_photographers",
+            "New photographers",
+            "Just joined, and looking for their first booking",
+            list(newcomers),
+        )
+    )
+
+    # Named for what it sorts by. "Top rated" would be the natural name and
+    # the wrong one: this orders by completed work, which is experience rather
+    # than rating.
+    experienced = db.execute(
+        base.where(ProPublicIndex.gigs_completed > 0)
+        .order_by(ProPublicIndex.gigs_completed.desc(), ProPublicIndex.ranking_score.desc())
+        .limit(_ROW_SIZE)
+    ).scalars().all()
+    plans.append(("most_experienced", "Most experienced", "Photographers with the most completed shoots", list(experienced)))
+
+    for slug, name in _niches_present(db, country=country, city=city):
+        rows = db.execute(
+            base.where(ProPublicIndex.top_niches.contains([{"slug": slug}]))
+            .order_by(ProPublicIndex.ranking_score.desc())
+            .limit(_ROW_SIZE)
+        ).scalars().all()
+        plans.append((f"niche:{slug}", f"{name} in {city.strip()}", None, list(rows)))
+
+    # Cards are built once across every row rather than per row. The same
+    # photographer appears in several rows, and building per row would resolve
+    # their profile and presign their cover once per appearance.
+    unique: dict[uuid.UUID, ProPublicIndex] = {}
+    for _key, _title, _subtitle, rows in plans:
+        for row in rows:
+            unique.setdefault(row.pro_user_id, row)
+    cards = {card.pro_user_id: card for card in _cards_from_index(db, list(unique.values()))}
+
+    response = ClientHomeResponse(
+        rows=[
+            ClientHomeRow(
+                key=key,
+                title=title,
+                subtitle=subtitle,
+                items=[cards[row.pro_user_id] for row in rows if row.pro_user_id in cards],
+            )
+            for key, title, subtitle, rows in plans
+            # An empty shelf is worse than no shelf: it reads as a failure to
+            # load rather than as an honest absence.
+            if any(row.pro_user_id in cards for row in rows)
+        ],
+        guest_limited=user is None,
+    )
+
+    cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=max(10, settings.discover_cache_ttl_seconds))
+    log_event(
+        db_write,
+        event_name="client.home_view",
+        user_id=user.user_id if user else None,
+        properties={"country": country.upper(), "city": city, "rows": [r.key for r in response.rows]},
+    )
+    db_write.commit()
+    return response
+
+
+def _niches_present(db: Session, *, country: str, city: str) -> list[tuple[str, str]]:
+    """Niches that actually have photographers here, busiest first.
+
+    Queried rather than hardcoded: a niche row for a category with nobody in
+    this city is exactly the empty shelf the response omits, and offering it
+    would mean building a row only to discard it.
+    """
+    rows = db.execute(
+        select(Niche.slug, Niche.name, func.count(ProPublicIndex.pro_user_id).label("n"))
+        .select_from(ProPublicIndex)
+        .join(Niche, Niche.id == ProPublicIndex.primary_niche_id)
+        .join(
+            ProOnboarding,
+            and_(
+                ProOnboarding.pro_user_id == ProPublicIndex.pro_user_id,
+                ProOnboarding.status == ProOnboardingStatus.approved_public,
+            ),
+        )
+        .where(
+            ProPublicIndex.country == country.strip().upper(),
+            ProPublicIndex.city == city.strip(),
+            ProPublicIndex.kyc_status == KYCStatus.approved,
+            ProPublicIndex.is_accepting_bookings.is_(True),
+        )
+        .group_by(Niche.slug, Niche.name)
+        .order_by(func.count(ProPublicIndex.pro_user_id).desc())
+        .limit(_MAX_NICHE_ROWS)
+    ).all()
+    return [(slug, name) for slug, name, _n in rows]
 
 
 def _discover_rows(

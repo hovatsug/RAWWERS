@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_portfolio_item.dart';
 import 'package:rawwers/api/models/client_pro_profile_response.dart';
+import 'package:rawwers/api/models/client_profile_niche.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
+import 'package:rawwers/api/models/skill_tier.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
@@ -21,6 +23,7 @@ ClientProProfileResponse _profile({
   String? coverUrl = 'https://media.example/cover.jpg',
   List<ClientPortfolioItem>? portfolio,
   List<ClientProfilePackage>? packages,
+  List<ClientProfileNiche>? niches,
 }) =>
     ClientProProfileResponse(
       proUserId: _proId,
@@ -57,6 +60,7 @@ ClientProProfileResponse _profile({
               finalsSlaDays: 7,
             ),
           ],
+      niches: niches ?? const [],
       portfolioPreview: portfolio ??
           const [
             ClientPortfolioItem(mediaAssetId: 'a', kind: 'photo', thumbnailUrl: 'https://media.example/1.jpg'),
@@ -187,5 +191,144 @@ void main() {
     await tester.pump();
 
     expect(find.text('Retry'), findsOneWidget);
+  });
+  _multiNicheTests();
+}
+
+// ---------------------------------------------------------------------------
+// A multi-niche portfolio, split by the niche it belongs to.
+// ---------------------------------------------------------------------------
+
+const _weddings = ClientProfileNiche(
+  slug: 'weddings',
+  name: 'Weddings',
+  tier: SkillTier.elite,
+  photoCount: 2,
+  description: 'Long days, shot quietly.',
+);
+
+const _portraits = ClientProfileNiche(
+  slug: 'portraits',
+  name: 'Portraits',
+  tier: SkillTier.rookie,
+  photoCount: 1,
+);
+
+const _mixedPortfolio = [
+  ClientPortfolioItem(
+    mediaAssetId: 'w1',
+    kind: 'photo',
+    thumbnailUrl: 'https://media.example/wedding-1.jpg',
+    nicheSlugs: ['weddings'],
+  ),
+  ClientPortfolioItem(
+    mediaAssetId: 'w2',
+    kind: 'photo',
+    thumbnailUrl: 'https://media.example/wedding-2.jpg',
+    nicheSlugs: ['weddings'],
+  ),
+  ClientPortfolioItem(
+    mediaAssetId: 'p1',
+    kind: 'photo',
+    thumbnailUrl: 'https://media.example/portrait-1.jpg',
+    nicheSlugs: ['portraits'],
+  ),
+];
+
+List<String?> _photoUrls(WidgetTester tester) =>
+    tester.widgetList<RNetworkPhoto>(find.byType(RNetworkPhoto)).map((p) => p.url).toList();
+
+void _multiNicheTests() {
+  testWidgets('choosing a niche shows only that niche\'s photos', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(
+      _wrap(_data(_profile(portfolio: _mixedPortfolio, niches: const [_weddings, _portraits]))),
+    );
+    await tester.pump();
+
+    // Opens on everything, so nothing is hidden behind a control nobody has
+    // touched yet.
+    expect(_photoUrls(tester), contains('https://media.example/portrait-1.jpg'));
+    expect(_photoUrls(tester), contains('https://media.example/wedding-1.jpg'));
+
+    await tester.tap(find.text('Weddings'));
+    await tester.pump();
+
+    final urls = _photoUrls(tester);
+    expect(urls, contains('https://media.example/wedding-1.jpg'));
+    expect(
+      urls,
+      isNot(contains('https://media.example/portrait-1.jpg')),
+      reason: 'the grid still shows work from a niche the client filtered away',
+    );
+  });
+
+  testWidgets('a single-niche photographer gets no selector at all', (tester) async {
+    _usePhoneSurface(tester);
+    // The server sends an empty list for a one-niche photographer, which is
+    // the signal. A one-option tab bar is clutter on a profile with nothing
+    // to choose between.
+    await tester.pumpWidget(_wrap(_data(_profile(portfolio: _mixedPortfolio, niches: const []))));
+    await tester.pump();
+
+    expect(find.text('All'), findsNothing, reason: 'a one-niche profile was given a niche selector');
+    expect(find.text('Weddings'), findsNothing);
+  });
+
+  testWidgets('a niche with a description shows it instead of the general bio', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(
+      _wrap(_data(_profile(portfolio: _mixedPortfolio, niches: const [_weddings, _portraits]))),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('Twelve years shooting people'), findsOneWidget);
+
+    await tester.tap(find.text('Weddings'));
+    await tester.pump();
+
+    expect(find.text('Long days, shot quietly.'), findsOneWidget);
+    expect(find.textContaining('Twelve years shooting people'), findsNothing);
+  });
+
+  testWidgets('a niche with no description falls back to the bio, never to nothing', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(
+      _wrap(_data(_profile(portfolio: _mixedPortfolio, niches: const [_weddings, _portraits]))),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Portraits'));
+    await tester.pump();
+
+    // An empty section under a tab reads as a loading failure.
+    expect(
+      find.textContaining('Twelve years shooting people'),
+      findsOneWidget,
+      reason: 'an undescribed niche rendered no description at all',
+    );
+  });
+
+  testWidgets('the tier shown is the one held in the selected niche', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(
+      _wrap(_data(_profile(portfolio: _mixedPortfolio, niches: const [_weddings, _portraits]))),
+    );
+    await tester.pump();
+
+    // Nothing claimed while the whole portfolio is shown: picking one niche's
+    // tier and presenting it as the photographer's is the flat claim the
+    // per-niche model replaces.
+    expect(find.text('Elite'), findsNothing);
+    expect(find.text('Rookie'), findsNothing);
+
+    await tester.tap(find.text('Weddings'));
+    await tester.pump();
+    expect(find.text('Elite'), findsOneWidget);
+
+    await tester.tap(find.text('Portraits'));
+    await tester.pump();
+    expect(find.text('Rookie'), findsOneWidget, reason: 'the tier did not follow the selected niche');
+    expect(find.text('Elite'), findsNothing, reason: 'the previous niche\'s tier is still on screen');
   });
 }

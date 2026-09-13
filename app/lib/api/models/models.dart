@@ -68,6 +68,7 @@ export 'client_portfolio_item.dart';
 export 'client_preference_update_request.dart';
 export 'client_preference_view.dart';
 export 'client_pro_profile_response.dart';
+export 'client_profile_niche.dart';
 export 'client_profile_package.dart';
 export 'client_waitlist_create_request.dart';
 export 'client_waitlist_create_response.dart';

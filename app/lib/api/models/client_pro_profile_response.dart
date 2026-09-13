@@ -130,6 +130,13 @@
 ///             },
 ///             "title": "Portfolio Preview"
 ///         },
+///         "niches": {
+///             "type": "array",
+///             "items": {
+///                 "$ref": "#/components/schemas/ClientProfileNiche"
+///             },
+///             "title": "Niches"
+///         },
 ///         "is_guest_view": {
 ///             "type": "boolean",
 ///             "default": false,
@@ -216,6 +223,10 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     @JsonKey(name: ClientProProfileResponse.portfolioPreviewKey_)
     List<ClientPortfolioItem>? portfolioPreview,
 
+    /// niches
+    @JsonKey(name: ClientProProfileResponse.nichesKey_)
+    List<ClientProfileNiche>? niches,
+
     /// isGuestView
     @Default(false)
     @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)
@@ -257,6 +268,8 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
       r'portfolio_preview_asset_ids';
 
   static const String portfolioPreviewKey_ = r'portfolio_preview';
+
+  static const String nichesKey_ = r'niches';
 
   static const String isGuestViewKey_ = r'is_guest_view';
 }

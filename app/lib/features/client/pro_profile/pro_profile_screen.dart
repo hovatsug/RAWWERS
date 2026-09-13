@@ -8,6 +8,8 @@ import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/api/models/client_profile_niche.dart';
+import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
@@ -48,17 +50,50 @@ class ProProfileScreen extends ConsumerWidget {
   }
 }
 
-class _Profile extends StatelessWidget {
+/// A photographer's public profile.
+///
+/// Stateful only because of the niche filter. Everything else here renders
+/// what the server sent - which niches exist, in what order, and the tier
+/// held in each are all decided server-side, because they are claims about a
+/// photographer rather than presentation.
+class _Profile extends StatefulWidget {
   const _Profile({required this.profile});
 
   final ClientProProfileResponse profile;
 
   @override
+  State<_Profile> createState() => _ProfileState();
+}
+
+class _ProfileState extends State<_Profile> {
+  /// Null means every niche. A multi-niche profile opens on everything rather
+  /// than on the busiest niche: defaulting to a filter would hide most of a
+  /// portfolio behind a control the client has not touched yet.
+  String? _niche;
+
+  @override
   Widget build(BuildContext context) {
+    final profile = widget.profile;
     final theme = Theme.of(context);
     final name = profile.displayName ?? 'Photographer';
-    final portfolio = profile.portfolioPreview ?? const <ClientPortfolioItem>[];
+    final allPhotos = profile.portfolioPreview ?? const <ClientPortfolioItem>[];
     final packages = profile.packages ?? const <ClientProfilePackage>[];
+
+    // Empty for a single-niche photographer. The server sends nothing rather
+    // than one entry, so there is no selector to suppress here.
+    final niches = profile.niches ?? const <ClientProfileNiche>[];
+    final selected = _niche == null
+        ? null
+        : niches.where((n) => n.slug == _niche).firstOrNull;
+
+    final portfolio = selected == null
+        ? allPhotos
+        : allPhotos.where((p) => (p.nicheSlugs ?? const []).contains(selected.slug)).toList();
+
+    // What this photographer says about the niche being viewed, falling back
+    // to their general bio. Never an empty section: a tab that renders
+    // nothing reads as a loading failure.
+    final about = selected?.description?.isNotEmpty == true ? selected!.description! : profile.bio;
 
     return CustomScrollView(
       slivers: [
@@ -80,9 +115,9 @@ class _Profile extends StatelessWidget {
               ],
               const SizedBox(height: RSpace.s8),
               _Meta(profile: profile),
-              if (profile.bio != null && profile.bio!.isNotEmpty) ...[
+              if (about != null && about.isNotEmpty) ...[
                 const SizedBox(height: RSpace.s16),
-                Text(profile.bio!, style: theme.textTheme.bodyMedium),
+                Text(about, style: theme.textTheme.bodyMedium),
               ],
               if ((profile.styles ?? const []).isNotEmpty) ...[
                 const SizedBox(height: RSpace.s16),
@@ -98,11 +133,57 @@ class _Profile extends StatelessWidget {
             ],
           ),
         ),
+        if (niches.length > 1)
+          SliverPadding(
+            padding: const EdgeInsets.only(top: RSpace.s8),
+            sliver: SliverToBoxAdapter(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: RSpace.s16),
+                child: Row(
+                  children: [
+                    RFilterChip(
+                      label: 'All',
+                      selected: _niche == null,
+                      onPressed: () => setState(() => _niche = null),
+                    ),
+                    for (final niche in niches) ...[
+                      const SizedBox(width: RSpace.s8),
+                      RFilterChip(
+                        label: niche.name,
+                        selected: _niche == niche.slug,
+                        onPressed: () => setState(() => _niche = niche.slug),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
         if (portfolio.isNotEmpty) ...[
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: RSpace.s16),
+            padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, 0),
             sliver: SliverToBoxAdapter(
-              child: Text('Recent work', style: theme.textTheme.titleMedium),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selected == null ? 'Recent work' : '${selected.name} work',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  // Tier is per-niche, so it appears only when a niche is
+                  // being viewed. Shown on the whole-portfolio view it would
+                  // have to pick one niche's tier and present it as the
+                  // photographer's, which is the flat claim the per-niche
+                  // model exists to replace.
+                  if (selected != null)
+                    Text(
+                      rTierName(selected.tier),
+                      style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline),
+                    ),
+                ],
+              ),
             ),
           ),
           SliverPadding(

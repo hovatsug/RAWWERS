@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/skill_tier.dart';
+import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
@@ -313,13 +314,11 @@ class _FormulaRow extends StatelessWidget {
   }
 }
 
-String _tierName(SkillTier tier) => switch (tier) {
-      SkillTier.rookie => 'Rookie',
-      SkillTier.skilled => 'Skilled',
-      SkillTier.pro => 'Pro',
-      SkillTier.elite => 'Elite',
-      SkillTier.master => 'Master',
-    };
+/// Kept as a local alias so the call sites below read unchanged. The names
+/// themselves moved to the design layer once the public profile needed them
+/// too - two copies of a tier's name is one rename away from a photographer
+/// being an "Elite" on their dashboard and something else on their profile.
+String _tierName(SkillTier tier) => rTierName(tier);
 
 /// Deliberately modest. Tier feeds the Discover ranking score - each step up is
 /// worth 8 points there, which is the only thing it currently changes. The

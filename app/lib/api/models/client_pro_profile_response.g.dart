@@ -32,6 +32,9 @@ _ClientProProfileResponse _$ClientProProfileResponseFromJson(
   portfolioPreview: (json['portfolio_preview'] as List<dynamic>?)
       ?.map((e) => ClientPortfolioItem.fromJson(e as Map<String, dynamic>))
       .toList(),
+  niches: (json['niches'] as List<dynamic>?)
+      ?.map((e) => ClientProfileNiche.fromJson(e as Map<String, dynamic>))
+      .toList(),
   isGuestView: json['is_guest_view'] as bool? ?? false,
 );
 
@@ -54,5 +57,6 @@ Map<String, dynamic> _$ClientProProfileResponseToJson(
   'packages': instance.packages,
   'portfolio_preview_asset_ids': instance.portfolioPreviewAssetIds,
   'portfolio_preview': instance.portfolioPreview,
+  'niches': instance.niches,
   'is_guest_view': instance.isGuestView,
 };

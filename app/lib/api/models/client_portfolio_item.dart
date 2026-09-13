@@ -20,6 +20,13 @@
 ///                 }
 ///             ],
 ///             "title": "Thumbnail Url"
+///         },
+///         "niche_slugs": {
+///             "type": "array",
+///             "items": {
+///                 "type": "string"
+///             },
+///             "title": "Niche Slugs"
 ///         }
 ///     },
 ///     "type": "object",
@@ -50,6 +57,9 @@ abstract class ClientPortfolioItem with _$ClientPortfolioItem {
 
     /// thumbnailUrl
     @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,
+
+    /// nicheSlugs
+    @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs,
   }) = _ClientPortfolioItem;
 
   factory ClientPortfolioItem.fromJson(Map<String, dynamic> json) =>
@@ -60,4 +70,6 @@ abstract class ClientPortfolioItem with _$ClientPortfolioItem {
   static const String kindKey_ = r'kind';
 
   static const String thumbnailUrlKey_ = r'thumbnail_url';
+
+  static const String nicheSlugsKey_ = r'niche_slugs';
 }

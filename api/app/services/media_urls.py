@@ -180,3 +180,51 @@ def resolve_derivative_urls(
     for asset_id, kind, storage_key in rows:
         resolved.setdefault(asset_id, {})[kind] = create_presigned_get(storage_key, expires_in=expires_in)
     return resolved
+
+
+def resolve_niche_cover_urls(
+    db: Session,
+    pro_user_ids: Iterable[uuid.UUID],
+    *,
+    niche_slug: str,
+    expires_in: int = 900,
+) -> dict[uuid.UUID, str]:
+    """One photograph per photographer, from a given niche.
+
+    A profile carries a single cover, so a wedding row built from covers shows
+    whatever each photographer chose as their overall best - which for a
+    portrait specialist who also shoots weddings is a portrait. Every
+    photograph in a wedding row should be wedding work, and `niche_tags` on
+    the asset is what makes that possible.
+
+    One query for the whole row. Returns nothing for a photographer with no
+    tagged photo in that niche; the caller falls back to their profile cover,
+    which is the honest second-best rather than a blank tile.
+    """
+    wanted = {pro_id for pro_id in pro_user_ids if pro_id is not None}
+    if not wanted:
+        return {}
+
+    rows = db.execute(
+        select(MediaAsset.owner_user_id, MediaObject.storage_key, MediaAsset.created_at)
+        .join(MediaObject, MediaObject.media_asset_id == MediaAsset.id)
+        .where(
+            MediaAsset.owner_user_id.in_(wanted),
+            MediaAsset.kind == MediaKind.photo,
+            MediaAsset.status == MediaStatus.ready,
+            MediaAsset.niche_tags.contains([niche_slug]),
+            MediaObject.variant == MediaVariant.thumbnail,
+            MediaObject.status == ObjectStatus.ready,
+        )
+        .order_by(MediaAsset.owner_user_id, MediaAsset.created_at.desc())
+    ).all()
+
+    # First row per owner wins - newest tagged photo in that niche.
+    best: dict[uuid.UUID, str] = {}
+    for owner_id, storage_key, _created in rows:
+        best.setdefault(owner_id, storage_key)
+
+    return {
+        owner_id: create_presigned_get(storage_key, expires_in=expires_in)
+        for owner_id, storage_key in best.items()
+    }

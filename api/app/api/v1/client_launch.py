@@ -20,7 +20,7 @@ from app.models.gig import Gig, StripePayment, StripePaymentKind
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.media_rights import GigConsentLevel
-from app.models.niche import Niche
+from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.schemas.client_launch import (
     ClientAccessResponse,
     ClientBookingPayRequest,
@@ -54,7 +54,7 @@ from app.services.cache import cache_get_json, cache_set_json, get_public_index_
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
-from app.services.media_urls import ORIGINAL_FIRST, THUMBNAIL_FIRST, resolve_image_urls
+from app.services.media_urls import ORIGINAL_FIRST, THUMBNAIL_FIRST, resolve_image_urls, resolve_niche_cover_urls
 from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
@@ -832,12 +832,46 @@ def client_home(
     ).scalars().all()
     plans.append(("most_experienced", "Most experienced", "Photographers with the most completed shoots", list(experienced)))
 
+    niche_rows: dict[str, list[ProPublicIndex]] = {}
     for slug, name in _niches_present(db, country=country, city=city):
+        niche = db.execute(select(Niche).where(Niche.slug == slug)).scalar_one_or_none()
+        if niche is None:
+            continue
         rows = db.execute(
-            base.where(ProPublicIndex.top_niches.contains([{"slug": slug}]))
+            base.join(
+                ProNicheSkill,
+                and_(
+                    ProNicheSkill.pro_user_id == ProPublicIndex.pro_user_id,
+                    ProNicheSkill.niche_id == niche.id,
+                ),
+            )
+            .where(
+                # Their own niche, or one they are genuinely skilled in.
+                #
+                # This used to filter on top_niches.contains(slug), and
+                # top_niches is a photographer's top *three* - so a food
+                # photographer with weddings in third place ranked into
+                # "Weddings in Lisbon". Worse, recompute_pro_niche_skills
+                # creates a skill row for every active niche, 619 of them at
+                # zero score, so third place was routinely filler nobody had
+                # ever worked in. A row that names its contents and is wrong
+                # about them is the same failure as a row named "top rated"
+                # that sorts by something else.
+                #
+                # Primary always qualifies, so a brand-new wedding
+                # photographer still appears in the wedding row - they are a
+                # wedding photographer, they simply have no history yet.
+                or_(
+                    ProPublicIndex.primary_niche_id == niche.id,
+                    ProNicheSkill.tier.in_(
+                        [SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
+                    ),
+                )
+            )
             .order_by(ProPublicIndex.ranking_score.desc())
             .limit(_ROW_SIZE)
         ).scalars().all()
+        niche_rows[slug] = list(rows)
         plans.append((f"niche:{slug}", f"{name} in {city.strip()}", None, list(rows)))
 
     # Cards are built once across every row rather than per row. The same
@@ -849,13 +883,33 @@ def client_home(
             unique.setdefault(row.pro_user_id, row)
     cards = {card.pro_user_id: card for card in _cards_from_index(db, list(unique.values()))}
 
+    # In a niche row, show that niche's work. A profile cover is one image for
+    # the whole photographer, so a wedding row built from covers shows a
+    # portrait for anyone whose best overall frame is a portrait - the row
+    # would be correctly populated and still visibly wrong. One batched
+    # resolve per row, not per card.
+    niche_covers: dict[str, dict[uuid.UUID, str]] = {
+        slug: resolve_niche_cover_urls(
+            db,
+            [row.pro_user_id for row in rows],
+            niche_slug=slug,
+            expires_in=_media_url_ttl(),
+        )
+        for slug, rows in niche_rows.items()
+        if rows
+    }
+
     response = ClientHomeResponse(
         rows=[
             ClientHomeRow(
                 key=key,
                 title=title,
                 subtitle=subtitle,
-                items=[cards[row.pro_user_id] for row in rows if row.pro_user_id in cards],
+                items=[
+                    _with_niche_cover(cards[row.pro_user_id], niche_covers.get(key.removeprefix("niche:")))
+                    for row in rows
+                    if row.pro_user_id in cards
+                ],
             )
             for key, title, subtitle, rows in plans
             # An empty shelf is worse than no shelf: it reads as a failure to
@@ -876,6 +930,20 @@ def client_home(
     return response
 
 
+def _with_niche_cover(card: ClientDiscoverCard, covers: dict[uuid.UUID, str] | None) -> ClientDiscoverCard:
+    """The same card, showing this niche's work where we have it.
+
+    Falls back to the profile cover rather than to nothing: a photographer in
+    a wedding row who has not tagged any wedding photo still belongs there -
+    membership is decided by their skill, not by their tagging - and a blank
+    tile would punish them for a metadata gap.
+    """
+    if not covers:
+        return card
+    url = covers.get(card.pro_user_id)
+    return card if url is None else card.model_copy(update={"cover_url": url})
+
+
 def _niches_present(db: Session, *, country: str, city: str) -> list[tuple[str, str]]:
     """Niches that actually have photographers here, busiest first.
 
@@ -883,10 +951,20 @@ def _niches_present(db: Session, *, country: str, city: str) -> list[tuple[str, 
     this city is exactly the empty shelf the response omits, and offering it
     would mean building a row only to discard it.
     """
+    # Counted by the same rule that decides who is *in* a row: primary, or
+    # genuinely skilled in it. Joining on primary_niche_id alone would mean a
+    # city whose wedding photographers all shoot weddings as a strong second
+    # specialism gets no wedding row at all - the row would be populated if it
+    # existed, and simply never be offered. Two rules for one question is how
+    # they drift.
     rows = db.execute(
         select(Niche.slug, Niche.name, func.count(ProPublicIndex.pro_user_id).label("n"))
         .select_from(ProPublicIndex)
-        .join(Niche, Niche.id == ProPublicIndex.primary_niche_id)
+        .join(
+            ProNicheSkill,
+            ProNicheSkill.pro_user_id == ProPublicIndex.pro_user_id,
+        )
+        .join(Niche, Niche.id == ProNicheSkill.niche_id)
         .join(
             ProOnboarding,
             and_(
@@ -899,6 +977,12 @@ def _niches_present(db: Session, *, country: str, city: str) -> list[tuple[str, 
             ProPublicIndex.city == city.strip(),
             ProPublicIndex.kyc_status == KYCStatus.approved,
             ProPublicIndex.is_accepting_bookings.is_(True),
+            or_(
+                ProPublicIndex.primary_niche_id == ProNicheSkill.niche_id,
+                ProNicheSkill.tier.in_(
+                    [SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
+                ),
+            ),
         )
         .group_by(Niche.slug, Niche.name)
         .order_by(func.count(ProPublicIndex.pro_user_id).desc())

@@ -19,7 +19,7 @@ import pytest
 from app.models.admin import KYCStatus, ProProfile, UserAccount
 from app.models.discovery import ProPublicIndex
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus, RolloutCity
-from app.models.niche import Niche
+from app.models.niche import Niche, SkillTier
 from app.services.niche_catalog import ensure_initial_niches
 from sqlalchemy import select
 
@@ -253,3 +253,158 @@ def test_the_response_cost_does_not_grow_with_the_catalogue(client, db_session, 
         event.remove(db_session, "do_orm_execute", _count)
 
     assert many - few <= 2, f"3 photographers cost {few} queries, 15 cost {many}: per-item"
+
+
+# ---------------------------------------------------------------------------
+# Niche scope: a wedding row must be wedding photographers, showing wedding
+# work. Both halves of one fault - membership, and the image.
+# ---------------------------------------------------------------------------
+
+
+def _skill(db_session, pro_user_id, niche_slug: str, tier):
+    from app.models.niche import ProNicheSkill
+
+    niche = db_session.execute(select(Niche).where(Niche.slug == niche_slug)).scalar_one()
+    db_session.add(
+        ProNicheSkill(
+            pro_user_id=pro_user_id,
+            niche_id=niche.id,
+            tier=tier,
+            score=80 if tier != SkillTier.rookie else 10,
+        )
+    )
+    db_session.commit()
+
+
+def _tagged_photo(db_session, owner_id, niche_slug: str, marker: str):
+    """A portfolio photo tagged to one niche, with a findable storage key."""
+    from app.models.media import (
+        MediaAsset,
+        MediaKind,
+        MediaObject,
+        MediaProvider,
+        MediaPurpose,
+        MediaStatus,
+        MediaVariant,
+        MediaVisibility,
+        ObjectStatus,
+    )
+
+    asset = MediaAsset(
+        owner_user_id=owner_id,
+        kind=MediaKind.photo,
+        purpose=MediaPurpose.portfolio_reel,
+        provider=MediaProvider.r2,
+        status=MediaStatus.ready,
+        visibility=MediaVisibility.public,
+        niche_tags=[niche_slug],
+        meta={},
+    )
+    db_session.add(asset)
+    db_session.flush()
+    db_session.add(
+        MediaObject(
+            media_asset_id=asset.id,
+            variant=MediaVariant.thumbnail,
+            storage_key=f"seed/{marker}.jpg",
+            status=ObjectStatus.ready,
+            width=512,
+            height=342,
+        )
+    )
+    db_session.commit()
+    return asset.id
+
+
+def test_a_third_place_niche_does_not_make_someone_a_wedding_photographer(client, db_session, viewer):
+    """The bug this fixes: rows filtered on top_niches, which is a
+    photographer's top *three*, and recompute creates a zero-score skill row
+    for every active niche - so a food photographer routinely ranked into
+    "Weddings in Lisbon" on a niche they had never worked in."""
+    _city(db_session)
+    wedding_pro = _pro(db_session, name="Wedding Pro", gigs=10, niche_slug="weddings")
+    _skill(db_session, wedding_pro, "weddings", SkillTier.pro)
+
+    food_pro = _pro(db_session, name="Food Pro", gigs=10, niche_slug="food")
+    _skill(db_session, food_pro, "food", SkillTier.pro)
+    # Present in the niche, but at rookie with a token score - the filler
+    # state recompute creates for every active niche.
+    _skill(db_session, food_pro, "weddings", SkillTier.rookie)
+
+    # And present in top_niches, which is what the old rule filtered on.
+    # Without this the fixture cannot reproduce the bug at all: reverting the
+    # fix left this test passing, because top_niches held only the primary
+    # niche and the third-place case never arose. A test named for a bug it
+    # cannot reproduce is worse than no test - it reads as coverage.
+    index = db_session.get(ProPublicIndex, food_pro)
+    index.top_niches = [
+        {"slug": "food", "tier": "pro"},
+        {"slug": "product", "tier": "rookie"},
+        {"slug": "weddings", "tier": "rookie"},
+    ]
+    db_session.commit()
+
+    rows = _home(client, viewer)
+    wedding_row = rows.get("niche:weddings")
+    assert wedding_row is not None
+    names = [i["display_name"] for i in wedding_row["items"]]
+    assert "Wedding Pro" in names
+    assert "Food Pro" not in names, "a rookie filler skill ranked into a niche row"
+
+
+def test_a_genuine_second_specialism_still_counts(client, db_session, viewer):
+    """The reason for a threshold rather than primary-only: someone can
+    honestly work in two niches, and excluding them would be its own lie."""
+    _city(db_session)
+    pro = _pro(db_session, name="Both", gigs=10, niche_slug="portraits")
+    _skill(db_session, pro, "portraits", SkillTier.master)
+    _skill(db_session, pro, "weddings", SkillTier.elite)
+
+    rows = _home(client, viewer)
+    assert "Both" in [i["display_name"] for i in rows["niche:weddings"]["items"]]
+    assert "Both" in [i["display_name"] for i in rows["niche:portraits"]["items"]]
+
+
+def test_a_new_photographer_appears_in_their_own_niche(client, db_session, viewer):
+    """Primary always qualifies. A brand-new wedding photographer is a wedding
+    photographer; they simply have no history yet, and a threshold that hid
+    them would undo the fairness the new-photographers row exists for."""
+    _city(db_session)
+    pro = _pro(db_session, name="Brand New", gigs=0, niche_slug="weddings")
+    _skill(db_session, pro, "weddings", SkillTier.rookie)
+
+    rows = _home(client, viewer)
+    assert "Brand New" in [i["display_name"] for i in rows["niche:weddings"]["items"]]
+
+
+def test_a_niche_row_shows_that_niche_s_work(client, db_session, viewer):
+    """A profile carries one cover. In a wedding row, a portrait specialist
+    who also shoots weddings would otherwise show their portrait - the row
+    correctly populated and still visibly wrong."""
+    _city(db_session)
+    pro = _pro(db_session, name="Both", gigs=10, niche_slug="portraits")
+    _skill(db_session, pro, "portraits", SkillTier.master)
+    _skill(db_session, pro, "weddings", SkillTier.elite)
+    _tagged_photo(db_session, pro, "portraits", "a-portrait")
+    _tagged_photo(db_session, pro, "weddings", "a-wedding")
+
+    rows = _home(client, viewer)
+    wedding_card = next(i for i in rows["niche:weddings"]["items"] if i["display_name"] == "Both")
+    portrait_card = next(i for i in rows["niche:portraits"]["items"] if i["display_name"] == "Both")
+
+    assert "a-wedding" in wedding_card["cover_url"], "the wedding row is not showing wedding work"
+    assert "a-portrait" in portrait_card["cover_url"]
+    assert wedding_card["cover_url"] != portrait_card["cover_url"]
+
+
+def test_an_untagged_photographer_keeps_their_profile_cover(client, db_session, viewer):
+    """Membership is decided by skill, not by tagging. Someone who belongs in
+    the row but has tagged nothing falls back to their profile cover rather
+    than rendering a blank tile, which would punish a metadata gap."""
+    _city(db_session)
+    pro = _pro(db_session, name="Untagged", gigs=10, niche_slug="weddings")
+    _skill(db_session, pro, "weddings", SkillTier.pro)
+
+    rows = _home(client, viewer)
+    card = next(i for i in rows["niche:weddings"]["items"] if i["display_name"] == "Untagged")
+    assert card["display_name"] == "Untagged"  # present, not dropped

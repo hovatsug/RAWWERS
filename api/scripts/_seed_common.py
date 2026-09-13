@@ -168,6 +168,23 @@ def _ensure_flags(db: Session) -> None:
             row.updated_at = _now()
 
 
+# Availability rules carry a real timezone, so a seed that says Lisbon and
+# stores America/New_York puts every seeded photographer's working hours five
+# hours off. Unknown cities fall back to UTC rather than to whichever city
+# happened to be the default.
+CITY_TIMEZONES = {
+    "Lisbon": "Europe/Lisbon",
+    "Porto": "Europe/Lisbon",
+    "Madrid": "Europe/Madrid",
+    "Barcelona": "Europe/Madrid",
+    "New York": "America/New_York",
+}
+
+
+def _timezone_for(city: str) -> str:
+    return CITY_TIMEZONES.get(city, "UTC")
+
+
 def _ensure_rollout_city(db: Session, *, country: str, city: str) -> None:
     row = db.execute(
         select(RolloutCity).where(RolloutCity.country == country, RolloutCity.city == city)
@@ -209,23 +226,12 @@ def _capped_entry_rate(db: Session, *, niche: Niche, pro_user_id: uuid.UUID, fal
     Four fifths of the ceiling leaves visible headroom, so editing the price
     in the demo is not an instant rejection either.
 
-    The tier lookup is repeated here rather than imported. The only copy lives
-    in `app/api/v1/pro_onboarding._resolve_pro_tier_for_niche`, and importing
-    a router from a seed script pulls the whole task graph and fails on a
-    circular import. It belongs next to `get_price_cap` in
-    `app/services/package_pricing.py`, which is app code this change is not
-    authorised to move. The fallback matches: no skill row means rookie, the
-    strictest cap.
+    The tier comes from the same function the enforcement calls, so the seed
+    cannot be priced against a tier the API disagrees with.
     """
-    from app.models.niche import ProNicheSkill, SkillTier
-    from app.services.package_pricing import get_price_cap
+    from app.services.package_pricing import get_price_cap, resolve_pro_tier_for_niche
 
-    skill = db.execute(
-        select(ProNicheSkill).where(
-            ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche.id
-        )
-    ).scalar_one_or_none()
-    tier = skill.tier if skill else SkillTier.rookie
+    tier = resolve_pro_tier_for_niche(db, pro_user_id, niche.id)
     cap = get_price_cap(db, niche_id=niche.id, tier=tier)
     if cap is None or cap.entry_price_max is None:
         return fallback
@@ -289,7 +295,7 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
                 day_of_week=2,
                 start_time=time(9, 0),
                 end_time=time(18, 0),
-                timezone="America/New_York",
+                timezone=_timezone_for(city),
                 location_mode=AvailabilityLocationMode.both,
             )
         )
@@ -421,7 +427,16 @@ def _upload_seed_image(storage_key: str, size: tuple[int, int], *, label: str, i
         print(f"  ! could not upload seed image {storage_key}: {exc}")
 
 
-def _ensure_client_preference(db: Session, user_id: uuid.UUID) -> None:
+def _ensure_client_preference(db: Session, user_id: uuid.UUID, *, city: str, country: str) -> None:
+    """The demo client's saved browse location.
+
+    This is what the client app actually reads to decide which city to show -
+    not the seed's `--city` flag - so hard-coding New York here pinned the
+    home screen to New York no matter what the seed was told. With the
+    photographers seeded into Lisbon, Porto, Barcelona and Madrid, that meant
+    a home screen with two rows and three photographers, one of them a test
+    artifact, which reads as "the browsing rows do not work".
+    """
     pref = db.get(ClientPreference, user_id)
     if pref is None:
         db.add(
@@ -431,7 +446,7 @@ def _ensure_client_preference(db: Session, user_id: uuid.UUID) -> None:
                 budget_min=Decimal("50.00"),
                 budget_max=Decimal("400.00"),
                 style_tags=["editorial"],
-                location={"country": "US", "city": "New York"},
+                location={"country": country, "city": city},
             )
         )
     else:
@@ -439,11 +454,11 @@ def _ensure_client_preference(db: Session, user_id: uuid.UUID) -> None:
         pref.budget_min = Decimal("50.00")
         pref.budget_max = Decimal("400.00")
         pref.style_tags = ["editorial"]
-        pref.location = {"country": "US", "city": "New York"}
+        pref.location = {"country": country, "city": city}
         pref.updated_at = _now()
 
 
-def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client_user_id: uuid.UUID) -> None:
+def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client_user_id: uuid.UUID, city: str) -> None:
     gig_id = uuid.UUID("00000000-0000-0000-0000-000000000211")
     gig = db.get(Gig, gig_id)
     if gig is None:
@@ -459,7 +474,7 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
             amount_pro_gross=Decimal("144.00"),
             scheduled_start=_now() - timedelta(days=3),
             scheduled_end=_now() - timedelta(days=3) + timedelta(hours=2),
-            location_text="New York",
+            location_text=city,
             meta={"seeded": True},
         )
         db.add(gig)
@@ -515,7 +530,7 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
             )
 
 
-def _ensure_sample_booking_request(db: Session, *, pro_user_id: uuid.UUID, client_user_id: uuid.UUID, package_id: uuid.UUID) -> None:
+def _ensure_sample_booking_request(db: Session, *, pro_user_id: uuid.UUID, client_user_id: uuid.UUID, package_id: uuid.UUID, city: str) -> None:
     booking_id = uuid.UUID("00000000-0000-0000-0000-000000000411")
     booking = db.get(BookingRequest, booking_id)
     if booking is None:
@@ -527,7 +542,7 @@ def _ensure_sample_booking_request(db: Session, *, pro_user_id: uuid.UUID, clien
                 package_id=package_id,
                 requested_start=_now() + timedelta(days=7),
                 requested_end=_now() + timedelta(days=7, hours=2),
-                location_text="New York",
+                location_text=city,
                 notes="Seed booking request",
                 status=BookingRequestStatus.pending,
                 expires_at=_now() + timedelta(days=2),
@@ -566,8 +581,8 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
     _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("4.00"))
     db.flush()
 
-    _ensure_client_preference(db, CLIENT_USER.user_id)
-    _ensure_sample_gig_and_proofs(db, pro_user_id=PRO_USERS[0].user_id, client_user_id=CLIENT_USER.user_id)
+    _ensure_client_preference(db, CLIENT_USER.user_id, city=city, country=country)
+    _ensure_sample_gig_and_proofs(db, pro_user_id=PRO_USERS[0].user_id, client_user_id=CLIENT_USER.user_id, city=city)
     db.flush()
 
     if include_sample_booking:
@@ -576,6 +591,7 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
             pro_user_id=PRO_USERS[0].user_id,
             client_user_id=CLIENT_USER.user_id,
             package_id=package_main.id,
+            city=city,
         )
 
     db.flush()

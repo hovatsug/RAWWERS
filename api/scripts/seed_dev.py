@@ -13,8 +13,12 @@ from _seed_common import seed_environment
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Seed RAWWERS dev/test data")
-    parser.add_argument("--city", default="New York")
-    parser.add_argument("--country", default="US")
+    # Lisbon, not New York, because the 40 seeded photographers live in
+    # Lisbon, Porto, Barcelona and Madrid. A dev environment defaulting to a
+    # city with nobody in it makes the browsing rows look broken when they are
+    # simply being asked about an empty market.
+    parser.add_argument("--city", default="Lisbon")
+    parser.add_argument("--country", default="PT")
     parser.add_argument("--deterministic", action="store_true", help="No-op flag kept for CI clarity")
     return parser.parse_args()
 

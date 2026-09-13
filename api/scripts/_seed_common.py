@@ -196,6 +196,42 @@ def _ensure_niche(db: Session, slug: str) -> Niche:
     return niche
 
 
+def _capped_entry_rate(db: Session, *, niche: Niche, pro_user_id: uuid.UUID, fallback: Decimal) -> Decimal:
+    """A per-photo rate this seeded pro is actually allowed to charge.
+
+    `ProPackage.price` is the per-photo entry rate, not the price of the
+    shoot. The seed used to set 120.00 and 160.00 here - day-rate numbers,
+    written when the field was still read as a total. Once the price caps were
+    populated those two accounts sat 20x over a rookie ceiling, and the demo
+    photographers could not rename their own package: a correct 422 that looks
+    exactly like a broken screen.
+
+    Four fifths of the ceiling leaves visible headroom, so editing the price
+    in the demo is not an instant rejection either.
+
+    The tier lookup is repeated here rather than imported. The only copy lives
+    in `app/api/v1/pro_onboarding._resolve_pro_tier_for_niche`, and importing
+    a router from a seed script pulls the whole task graph and fails on a
+    circular import. It belongs next to `get_price_cap` in
+    `app/services/package_pricing.py`, which is app code this change is not
+    authorised to move. The fallback matches: no skill row means rookie, the
+    strictest cap.
+    """
+    from app.models.niche import ProNicheSkill, SkillTier
+    from app.services.package_pricing import get_price_cap
+
+    skill = db.execute(
+        select(ProNicheSkill).where(
+            ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche.id
+        )
+    ).scalar_one_or_none()
+    tier = skill.tier if skill else SkillTier.rookie
+    cap = get_price_cap(db, niche_id=niche.id, tier=tier)
+    if cap is None or cap.entry_price_max is None:
+        return fallback
+    return (cap.entry_price_max * Decimal("0.8")).quantize(Decimal("0.01"))
+
+
 def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, country: str, price: Decimal) -> ProPackage:
     profile = db.get(ProProfile, user.user_id)
     if profile is None:
@@ -257,6 +293,8 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
                 location_mode=AvailabilityLocationMode.both,
             )
         )
+
+    price = _capped_entry_rate(db, niche=niche, pro_user_id=user.user_id, fallback=price)
 
     package_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-package:{user.user_id}")
     package = db.get(ProPackage, package_id)
@@ -514,8 +552,18 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
     portraits = _ensure_niche(db, "portraits")
     events = _ensure_niche(db, "events_nightlife")
 
-    package_main = _ensure_pro_profile(db, PRO_USERS[0], portraits, city=city, country=country, price=Decimal("120.00"))
-    _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("160.00"))
+    # Before anyone is priced, so the accounts this seed creates obey the same
+    # ceiling the API enforces on them. Imported here rather than at module
+    # level because seed_price_caps imports this module for the environment
+    # guard, and a module-level import would close that loop.
+    from seed_price_caps import apply_caps
+
+    apply_caps(db)
+
+    # These are fallbacks for an unconfigured niche only; the real numbers come
+    # from the cap table above. Per-photo, not per-shoot.
+    package_main = _ensure_pro_profile(db, PRO_USERS[0], portraits, city=city, country=country, price=Decimal("5.00"))
+    _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("4.00"))
     db.flush()
 
     _ensure_client_preference(db, CLIENT_USER.user_id)

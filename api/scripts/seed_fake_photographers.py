@@ -357,12 +357,27 @@ GIG_BANDS: dict[str, tuple[int, int]] = {
     "many": (21, 60),
 }
 
-CITY_PRICE: dict[str, tuple[int, int]] = {
-    "Lisbon": (95, 260),
-    "Porto": (80, 210),
-    "Madrid": (110, 300),
-    "Barcelona": (105, 285),
+# A per-city multiplier on the cap, rather than absolute prices.
+#
+# Absolute figures here (95-260 per photo) predated the price caps and put 59
+# of 66 seeded packages over their ceiling the moment caps were seeded - so a
+# photographer opening their own package in the demo could not save it. Not a
+# bug, but indistinguishable from one for anybody testing the app.
+#
+# Pricing as a fraction of the tier's cap keeps the seed compliant by
+# construction: if the caps move, the seeded prices move with them, and there
+# is no second table of numbers to keep in step.
+CITY_PRICE_FACTOR: dict[str, tuple[float, float]] = {
+    "Lisbon": (0.70, 0.95),
+    "Porto": (0.55, 0.80),
+    "Madrid": (0.75, 1.00),
+    "Barcelona": (0.72, 0.97),
 }
+
+# What a master charges, since master is uncapped and a fraction of nothing is
+# nothing. Sits above the elite ceiling for the niche, which is the point of
+# being uncapped.
+MASTER_PREMIUM = (1.15, 1.60)
 
 
 def _sid(*parts: str) -> uuid.UUID:
@@ -494,7 +509,7 @@ def _upload(storage_key: str, image: Image.Image) -> None:
 # --------------------------------------------------------------------------
 
 
-def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
+def seed(db, *, pools: dict[str, list[int]], rng: random.Random, prices_only: bool = False) -> Counter:
     stats: Counter = Counter()
     niches = {n.slug: n for n in db.execute(select(Niche)).scalars().all()}
     now = datetime.now(UTC)
@@ -538,7 +553,6 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
         onboarding.status = ProOnboardingStatus.approved_public
         onboarding.current_city = {"city": city, "country": country}
 
-        low, high = CITY_PRICE[city]
 
         # Every niche this photographer works in: the primary first, then any
         # secondary ones a step down the tier ladder. Each gets its own
@@ -551,13 +565,22 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
         asset_ids: list[uuid.UUID] = []
         for niche_index, (plan_slug, plan_tier) in enumerate(niche_plan):
             plan_niche = niches[plan_slug]
-            price = Decimal(rng.randint(low, high)).quantize(Decimal("0.01"))
+            price = _compliant_price(db, niche=plan_niche, tier=plan_tier, city=city, rng=rng)
             package = db.execute(
                 select(ProPackage).where(
                     ProPackage.pro_user_id == user_id, ProPackage.niche_id == plan_niche.id
                 )
             ).scalar_one_or_none()
-            if package is None:
+            if package is not None:
+                # Re-running must bring an existing package back into line,
+                # not skip it. The first version only created, so a reseed
+                # after the price caps landed finished successfully and
+                # changed nothing - 56 packages stayed over cap while the
+                # script reported success.
+                package.price = price
+                package.included_photos = package.included_photos or rng.choice([15, 20, 25, 30])
+                package.is_active = True
+            else:
                 db.add(
                     ProPackage(
                         pro_user_id=user_id,
@@ -587,7 +610,7 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
             else:
                 chosen = []
 
-            for index, photo_id in enumerate(chosen):
+            for index, photo_id in enumerate([] if prices_only else chosen):
                 asset_id = _build_media(
                     db,
                     owner_id=user_id,
@@ -618,7 +641,7 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
 
         gig_low, gig_high = GIG_BANDS[band]
         gig_count = rng.randint(gig_low, gig_high) if gig_high else 0
-        _ensure_gigs(db, pro_user_id=user_id, niche_id=niche.id, count=gig_count, price=Decimal(low), now=now)
+        _ensure_gigs(db, pro_user_id=user_id, niche_id=niche.id, count=gig_count, price=_compliant_price(db, niche=niche, tier=tier, city=city, rng=rng), now=now)
         # Completed work belongs to the niche it was booked in, so only the
         # primary skill carries the gig count. A secondary niche with the same
         # number of gigs as the primary would be a claim the gigs table
@@ -642,6 +665,36 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
         print(f"  [{position + 1:>2}/{len(PHOTOGRAPHERS)}] {name:<22} {niche_slug:<17} {tier.value:<8} {len(asset_ids):>2} photos, {gig_count:>2} gigs")
 
     return stats
+
+
+def _compliant_price(db, *, niche, tier: SkillTier, city: str, rng: random.Random) -> Decimal:
+    """A per-photo rate this photographer is actually allowed to charge.
+
+    Read from the cap rather than invented, so seeded data obeys the
+    platform's own rules. A seed that violates them produces a demo where
+    every photographer is blocked from editing their own package - correct
+    enforcement, and indistinguishable from a broken screen.
+
+    Master is uncapped, so there is no fraction to take: they price above the
+    elite ceiling, which is what being uncapped is for.
+    """
+    from app.services.package_pricing import get_price_cap
+
+    low_factor, high_factor = CITY_PRICE_FACTOR[city]
+    cap = get_price_cap(db, niche_id=niche.id, tier=tier)
+
+    if cap is not None and cap.entry_price_max is not None:
+        ceiling = float(cap.entry_price_max)
+    else:
+        elite = get_price_cap(db, niche_id=niche.id, tier=SkillTier.elite)
+        if elite is None or elite.entry_price_max is None:
+            # No caps configured for this niche at all - the pre-cap state.
+            return Decimal(rng.randint(80, 200)).quantize(Decimal("0.01"))
+        low_factor, high_factor = MASTER_PREMIUM
+        ceiling = float(elite.entry_price_max)
+
+    price = ceiling * rng.uniform(low_factor, high_factor)
+    return Decimal(str(round(price, 2))).quantize(Decimal("0.01"))
 
 
 def _ensure_skill(db, *, user_id, niche, tier, gig_count: int, portfolio_count: int, rng) -> None:
@@ -705,6 +758,11 @@ def _ensure_gigs(db, *, pro_user_id: uuid.UUID, niche_id: uuid.UUID, count: int,
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Fetch and report, write nothing")
+    parser.add_argument(
+        "--prices-only",
+        action="store_true",
+        help="Skip media entirely and only bring package prices back within their caps",
+    )
     parser.add_argument("--seed", type=int, default=20260912, help="RNG seed, so runs are reproducible")
     args = parser.parse_args()
 
@@ -718,7 +776,11 @@ def main() -> int:
     rng = random.Random(args.seed)
 
     print("Fetching stock photography (cached on disk after the first run):")
-    pools = {slug: fetch_niche_pool(slug, api_key=api_key, count=IMAGES_PER_NICHE) for slug in NICHE_QUERIES}
+    pools = (
+        {}
+        if args.prices_only
+        else {slug: fetch_niche_pool(slug, api_key=api_key, count=IMAGES_PER_NICHE) for slug in NICHE_QUERIES}
+    )
     total_images = sum(len(v) for v in pools.values())
     print(f"  pool total: {total_images} images across {len(pools)} niches\n")
 
@@ -734,7 +796,7 @@ def main() -> int:
         db.flush()
 
         print("Creating photographers:")
-        stats = seed(db, pools=pools, rng=rng)
+        stats = seed(db, pools=pools, rng=rng, prices_only=args.prices_only)
         db.commit()
 
         # Order matters, and getting it wrong made the first run's tier

@@ -122,7 +122,35 @@ export type DisputeRow = {
   due_response_at?: string | null;
 };
 
+
+/** One cell of the tier x niche price-cap grid. */
+export type PriceCapRow = {
+  niche_id: string;
+  niche_slug: string;
+  tier: "rookie" | "skilled" | "pro" | "elite" | "master";
+  entry_price_min: string;
+  /** Null means uncapped. Master is uncapped in every niche by design. */
+  entry_price_max: string | null;
+  currency: string;
+  updated_at: string;
+};
+
 export const admin = {
+  priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
+  savePriceCaps: (
+    items: Array<{
+      niche_slug: string;
+      tier: string;
+      entry_price_min: string;
+      entry_price_max: string | null;
+      currency: string;
+    }>
+  ) =>
+    adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps", {
+      method: "PUT",
+      body: JSON.stringify({ items })
+    }),
+
   reviewQueue: () => adminFetch<{ items: ProReviewRow[] }>("pros/review-queue"),
   reviewDetail: (proUserId: string) => adminFetch<ProReviewDetail>(`pros/${proUserId}/review`),
   approvePro: (proUserId: string, note?: string) =>

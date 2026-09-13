@@ -59,6 +59,8 @@ export 'client_booking_request_create_response.dart';
 export 'client_booking_status_response.dart';
 export 'client_discover_card.dart';
 export 'client_discover_response.dart';
+export 'client_home_response.dart';
+export 'client_home_row.dart';
 export 'client_match_card.dart';
 export 'client_match_create_request.dart';
 export 'client_match_response.dart';

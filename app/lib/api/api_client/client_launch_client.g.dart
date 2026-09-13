@@ -1297,6 +1297,117 @@ class _ClientLaunchClient implements ClientLaunchClient {
   }
 
   @override
+  Future<HttpResponse<ClientHomeResponse>> clientHomeV1ClientHomeGet({
+    required String country,
+    required String city,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'Client Home',
+      'description':
+          'The browsing home screen: several differently-sorted cuts of one catalogue.\n\nOne request rather than one per row, for three reasons. The city gate,\nguest check and rate limit run once instead of five times - five parallel\nrow requests would trip the public_read limiter on first paint. Row\ncomposition stays server-side, where the honesty rules can be enforced in\none place. And a row with nothing to show can be omitted rather than sent\nempty, which the app cannot decide for itself without knowing why the row\nexists.\n\nEvery row sorts on a column the index already has. No row here required a\nnew ranking, and any row that would have needed one was dropped instead of\ninventing one - "top rated" is not here, because ranking_score is a\ncomposite of completeness, portfolio size, gigs, rating and tier, and a row\nnamed for rating that sorts by a composite is a row with a false name.',
+      'operationId': 'client_home_v1_client_home_get',
+      'parameters': [
+        {
+          'name': 'country',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'title': 'Country'},
+        },
+        {
+          'name': 'city',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'title': 'City'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ClientHomeResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{
+      r'country': country,
+      r'city': city,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ClientHomeResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/client/home',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ClientHomeResponse _value;
+    try {
+      _value = ClientHomeResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<ProListingPreviewResponse>>
   proListingPreviewV1ProMeListingPreviewGet({
     required String? authorization,

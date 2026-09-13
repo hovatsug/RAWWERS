@@ -894,6 +894,80 @@ abstract class ClientLaunchClient {
       },
     },
   });
+  @GET("/v1/client/home")
+  Future<HttpResponse<ClientHomeResponse>> clientHomeV1ClientHomeGet({
+    @Query("country") required String country,
+    @Query("city") required String city,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'Client Home',
+      'description':
+          'The browsing home screen: several differently-sorted cuts of one catalogue.\n\nOne request rather than one per row, for three reasons. The city gate,\nguest check and rate limit run once instead of five times - five parallel\nrow requests would trip the public_read limiter on first paint. Row\ncomposition stays server-side, where the honesty rules can be enforced in\none place. And a row with nothing to show can be omitted rather than sent\nempty, which the app cannot decide for itself without knowing why the row\nexists.\n\nEvery row sorts on a column the index already has. No row here required a\nnew ranking, and any row that would have needed one was dropped instead of\ninventing one - "top rated" is not here, because ranking_score is a\ncomposite of completeness, portfolio size, gigs, rating and tier, and a row\nnamed for rating that sorts by a composite is a row with a false name.',
+      'operationId': 'client_home_v1_client_home_get',
+      'parameters': [
+        {
+          'name': 'country',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'title': 'Country'},
+        },
+        {
+          'name': 'city',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'title': 'City'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ClientHomeResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/pro/me/listing-preview")
   Future<HttpResponse<ProListingPreviewResponse>>
   proListingPreviewV1ProMeListingPreviewGet({

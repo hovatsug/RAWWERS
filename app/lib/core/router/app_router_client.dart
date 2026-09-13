@@ -10,7 +10,7 @@ import 'package:rawwers/features/client/bookings/bookings_screen.dart';
 import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
 import 'package:rawwers/features/client/gallery/selection_gallery_screen.dart';
 import 'package:rawwers/features/client/client_shell.dart';
-import 'package:rawwers/features/client/discover/discover_screen.dart';
+import 'package:rawwers/features/client/discover/home_screen.dart';
 import 'package:rawwers/features/client/messages/messages_screen.dart';
 import 'package:rawwers/features/client/messages/thread_screen.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
@@ -107,7 +107,12 @@ GoRouter clientRouter(Ref ref) {
             routes: [
               GoRoute(
                 path: ClientRoute.discover,
-                builder: (context, state) => const DiscoverScreen(),
+                // The browsing home replaces the plain search-and-filter list
+                // as the primary way in. Search still exists and is reachable
+                // from here; it is no longer the first thing anyone meets.
+                builder: (context, state) => ClientHomeScreen(
+                  onOpenPro: (proUserId) => context.push('${ClientRoute.discover}/pro/$proUserId'),
+                ),
                 routes: [
                   GoRoute(
                     path: 'pro/:proUserId',

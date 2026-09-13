@@ -1,0 +1,240 @@
+// The browsing home screen.
+//
+// The assertions worth having are about what this screen does NOT do. Row
+// membership, ordering and titles are fairness rules that live on the server,
+// and the failure mode is the app quietly acquiring a second opinion - a
+// client-side sort, a re-ordering, a row filtered for looks. That drift is
+// invisible in a screenshot and is exactly how one rule in two places
+// disagrees.
+//
+// Plus the honest-absence rule: "no city chosen" and "no photographers here"
+// are different facts and must never render as the same message.
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/api/models/client_discover_card.dart';
+import 'package:rawwers/api/models/client_home_row.dart';
+import 'package:rawwers/core/api/api_failure.dart';
+import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/design/theme_client.dart';
+import 'package:rawwers/features/client/discover/home_controller.dart';
+import 'package:rawwers/features/client/discover/home_screen.dart';
+
+class _FakeHome extends HomeController {
+  _FakeHome(this._state);
+  final HomeState _state;
+  @override
+  Future<HomeState> build() async => _state;
+}
+
+class _FailingHome extends HomeController {
+  @override
+  Future<HomeState> build() async => throw const NetworkError();
+}
+
+ClientDiscoverCard _card(String name, {String? cover, String price = '150.00'}) {
+  return ClientDiscoverCard(
+    proUserId: 'pro-$name',
+    displayName: name,
+    coverUrl: cover ?? 'https://example.test/$name.jpg',
+    currency: 'EUR',
+    minPrice: price,
+    avgRating: '4.80',
+    reviewCount: 10,
+    portfolioPhotoCount: 12,
+    portfolioVideoCount: 0,
+  );
+}
+
+ClientHomeRow _row(String key, String title, List<ClientDiscoverCard> items, {String? subtitle}) {
+  return ClientHomeRow(key: key, title: title, subtitle: subtitle, items: items);
+}
+
+Future<void> _pump(WidgetTester tester, HomeState state, {void Function(String)? onOpenNiche}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [homeControllerProvider.overrideWith(() => _FakeHome(state))],
+      child: MaterialApp(
+        theme: buildClientTheme(),
+        home: Scaffold(body: ClientHomeScreen(onOpenNiche: onOpenNiche)),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('rows render in the order the server sent them', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('new_photographers', 'New photographers', [_card('Newcomer')]),
+        _row('most_experienced', 'Most experienced', [_card('Veteran')]),
+      ]),
+    );
+
+    // Titles appear top to bottom in server order. A client-side sort - by
+    // item count, alphabetically, anything - would reverse or shuffle this.
+    final newY = tester.getTopLeft(find.text('New photographers')).dy;
+    final expY = tester.getTopLeft(find.text('Most experienced')).dy;
+    expect(newY, lessThan(expY), reason: 'the screen re-ordered rows the server had already ordered');
+  });
+
+  testWidgets('cards render in the order the server sent them', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [_card('Many'), _card('Some'), _card('Few')]),
+      ]),
+    );
+
+    final manyX = tester.getTopLeft(find.text('Many')).dx;
+    final someX = tester.getTopLeft(find.text('Some')).dx;
+    final fewX = tester.getTopLeft(find.text('Few')).dx;
+    expect(manyX, lessThan(someX));
+    expect(someX, lessThan(fewX));
+  });
+
+  testWidgets('every row the server sent is shown, none dropped', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('new_photographers', 'New photographers', [_card('A')]),
+        _row('most_experienced', 'Most experienced', [_card('B')]),
+        _row('niche:weddings', 'Weddings in Lisbon', [_card('C')]),
+      ]),
+    );
+    expect(find.text('New photographers'), findsOneWidget);
+    expect(find.text('Most experienced'), findsOneWidget);
+    expect(find.text('Weddings in Lisbon'), findsOneWidget);
+  });
+
+  // -------------------------------------------------------------------------
+  // The niche tile.
+  // -------------------------------------------------------------------------
+
+  testWidgets('a niche row is headed by a photograph, a popularity row is not', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [_card('A')]),
+        _row('niche:weddings', 'Weddings in Lisbon', [_card('B', cover: 'https://example.test/lead.jpg')]),
+      ]),
+    );
+
+    final tiles = tester.widgetList<RNicheTile>(find.byType(RNicheTile)).toList();
+    expect(tiles.length, 1, reason: 'only the niche row gets a photo tile');
+    expect(tiles.first.label, 'Weddings in Lisbon');
+  });
+
+  testWidgets('the tile shows the top-ranked photographer in that niche', (tester) async {
+    // The first card is, by construction, the highest-ranked in this niche
+    // and city. Using any other card would make the tile a decoration rather
+    // than a live sample of what is actually on offer.
+    await _pump(
+      tester,
+      HomeRows([
+        _row('niche:weddings', 'Weddings in Lisbon', [
+          _card('Top', cover: 'https://example.test/top.jpg'),
+          _card('Second', cover: 'https://example.test/second.jpg'),
+        ]),
+      ]),
+    );
+
+    final tile = tester.widget<RNicheTile>(find.byType(RNicheTile));
+    expect(tile.imageUrl, 'https://example.test/top.jpg');
+  });
+
+  testWidgets('the niche slug comes from the key, not the title', (tester) async {
+    // Titles are prose for a person and will be translated; the key is the
+    // machine-readable fact.
+    String? tapped;
+    await _pump(
+      tester,
+      HomeRows([
+        _row('niche:events_nightlife', 'Events & Nightlife in Porto', [_card('A')]),
+      ]),
+      onOpenNiche: (slug) => tapped = slug,
+    );
+
+    await tester.tap(find.byType(RNicheTile));
+    await tester.pumpAndSettle();
+    expect(tapped, 'events_nightlife');
+  });
+
+  // -------------------------------------------------------------------------
+  // Honest absence.
+  // -------------------------------------------------------------------------
+
+  testWidgets('no city chosen is not reported as no photographers', (tester) async {
+    await _pump(tester, const HomeNeedsLocation());
+    expect(find.text('Where are you looking?'), findsOneWidget);
+    expect(
+      find.textContaining('No photographers'),
+      findsNothing,
+      reason: 'claimed a city is empty when no city was ever chosen',
+    );
+  });
+
+  testWidgets('an empty city says so plainly', (tester) async {
+    await _pump(tester, const HomeRows([]));
+    expect(find.text('No photographers here yet'), findsOneWidget);
+  });
+
+  testWidgets('a failure is retryable rather than silently empty', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [homeControllerProvider.overrideWith(_FailingHome.new)],
+        child: MaterialApp(theme: buildClientTheme(), home: const Scaffold(body: ClientHomeScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Could not load'), findsOneWidget);
+    expect(find.textContaining('No photographers'), findsNothing);
+  });
+
+  testWidgets('a card with no price shows no price, never a zero', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [
+          ClientDiscoverCard(
+            proUserId: 'p1',
+            displayName: 'No Price',
+            coverUrl: 'https://example.test/a.jpg',
+            currency: 'EUR',
+            avgRating: '0.00',
+            reviewCount: 0,
+            portfolioPhotoCount: 3,
+            portfolioVideoCount: 0,
+          ),
+        ]),
+      ]),
+    );
+    expect(find.text('No Price'), findsOneWidget);
+    expect(find.textContaining('EUR 0'), findsNothing);
+    expect(find.textContaining('from'), findsNothing);
+  });
+
+  testWidgets('the first row clears the status bar', (tester) async {
+    // Without a top inset the first heading is drawn under the clock. The
+    // list scrolls beneath the status bar by design, so the inset belongs on
+    // the content rather than on a SafeArea, which would clip the scroll.
+    tester.view.padding = const FakeViewPadding(top: 118);
+    addTearDown(tester.view.reset);
+
+    await _pump(
+      tester,
+      HomeRows([
+        _row('new_photographers', 'New photographers', [_card('A')]),
+      ]),
+    );
+
+    final headingTop = tester.getTopLeft(find.text('New photographers')).dy;
+    expect(
+      headingTop,
+      greaterThanOrEqualTo(118 / tester.view.devicePixelRatio),
+      reason: 'the first heading is drawn under the status bar',
+    );
+  });
+}

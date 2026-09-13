@@ -1060,3 +1060,56 @@ Caught locally exactly this way: three photographers had been recomputed and the
 **What closes it:** a bulk recompute of every `ProPublicIndex` row as part of deploying this change - a migration step or a one-off script run during the deploy, not the natural reindex cadence. `recompute_pro_public_index(db, pro_user_id)` for every row is sufficient; locally that was 56 rows and a few seconds. Until it has run, Discover's budget filter and price sort are mixing units and must not be trusted.
 
 The general shape is the one already recorded for the discovery cache: a derived value that does not update itself when the thing deriving it changes. The code change and the data migration are separate events, and nothing in the system makes them happen together.
+
+## Eleven test failures that predate the price-cap work
+
+Recorded so they are not mistaken for fallout from the cap enforcement, the
+tier-resolver move, or the seed changes. None were introduced by them, and
+none are fixed.
+
+**Established by comparison, not assertion.** The same `-k` subset was run
+before and after the resolver move and produced an identical five failures,
+same names and same counts. A wider subset then surfaced six more, in files
+that had not been run at all that session. Neither of the two inspected goes
+through `resolve_pro_tier_for_niche`: `activate_pro` does not call it and
+neither does `recompute_pro_niche_skills`, so the move cannot reach them.
+
+Diagnosed:
+
+- `test_client_rewards_pricing::test_tier_based_price_clamp_and_master_no_cap`
+  does `select(Niche.id).scalar_one()`, which expects a single niche. The
+  harness seeds the whole catalogue, so it raises `MultipleResultsFound`.
+  Written when the catalogue had one row.
+- `test_niche_skill_matrix_v2::test_extra_image_price_cap_uses_niche_tier`
+  passes `title=` to `ProofGallery`, which no longer accepts it. Stale
+  against the model.
+- `test_pro_onboarding_booking::test_pro_cannot_activate_without_kyc_in_production`
+  gets 401 where it expects 409, so it fails at authentication before
+  reaching the behaviour under test.
+- `test_niche_skill_matrix_v2::test_tier_assignment_respects_verified_requirement`
+  expects a promotion to pro or above and gets skilled. This is about what
+  `recompute_pro_niche_skills` **writes**, not what the resolver **reads**.
+
+Not yet diagnosed: `test_chat_concierge::test_ai_reply_is_grounded_to_snapshot_packages`,
+`test_niches_skills::test_discovery_niche_filter_orders_by_tier_before_rank`,
+`test_pro_availability_and_listing::test_listing_preview_reflects_a_pricing_edit`,
+`test_launch_ops::test_onboarding_transitions_requirements_and_approve_triggers_events`,
+`test_learning_v0::test_certification_completion_triggers_niche_skill_recompute`,
+`test_niche_skill_matrix_v2::test_hysteresis_blocks_rapid_promotion_flip`,
+`test_niche_skill_matrix_v2::test_badge_award_and_revoke_current_only`.
+
+**Why it is worth a section.** Four of the eleven carry tier or pricing in
+their names, so anyone running the suite after this arc will reasonably
+suspect the cap work first. The two stale ones above are both a test frozen
+against an older schema rather than a defect in shipped code, and the rest
+should be triaged on that assumption before any other.
+
+**Running the suite at all needs a flag.** The container has no bind mounts,
+so a script change needs `docker compose build api` before it takes effect -
+a stale image already produced one false "the seed changed nothing" result
+this session. And `TEST_DATABASE_URL` must point at the `postgres` host
+rather than the default `localhost`, or every test errors during fixture
+setup with a connection refusal that looks nothing like a configuration
+problem:
+
+    docker compose exec -e TEST_DATABASE_URL="postgresql+psycopg2://postgres:postgres@postgres:5432/rawwers_test" api python -m pytest tests/ -q

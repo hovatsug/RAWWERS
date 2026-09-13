@@ -62,6 +62,7 @@ from app.models.media import (  # noqa: E402
 )
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind  # noqa: E402
 from app.models.niche import Niche, ProNicheSkill, SkillTier  # noqa: E402
+from app.models.discovery import ProPublicIndex  # noqa: E402
 from app.services.discovery_index import recompute_pro_public_index  # noqa: E402
 from app.services.niche_catalog import ensure_initial_niches  # noqa: E402
 from app.services.storage import generate_variant_key, object_exists, upload_object_bytes  # noqa: E402
@@ -194,6 +195,40 @@ PHOTOGRAPHERS: list[tuple[str, str, str, str, SkillTier, str]] = [
     ("Simão Vasques", "Lisbon", "PT", "family", SkillTier.rookie, "none"),
     ("Catarina Lobo", "Barcelona", "ES", "portraits", SkillTier.pro, "some"),
 ]
+
+# Photographers who work in more than one niche.
+#
+# Added because the per-niche profile presentation has a tab-vs-no-tab
+# decision in it, and with every seeded photographer in exactly one niche
+# that branch was untestable - the tabs would have been built against a
+# dataset that could never exercise them. Pairings are ones that actually
+# co-occur: wedding photographers shoot families, event photographers get
+# hired for corporate work, food and product share a studio and a lighting
+# kit.
+#
+# The secondary tier sits one step below the primary. Someone established in
+# weddings is rarely equally established in portraits, and a profile showing
+# master in both reads as fake.
+SECONDARY_NICHES: dict[str, list[str]] = {
+    "Inês Carvalho": ["portraits", "family"],
+    "Tomás Belmonte": ["portraits"],
+    "Marta Vieira": ["family"],
+    "Daniel Roque": ["corporate", "weddings"],
+    "Beatriz Lemos": ["corporate"],
+    "Xavier Molins": ["corporate"],
+    "Joana Rebelo": ["product"],
+    "Vasco Teixeira": ["food"],
+    "Madalena Seixas": ["portraits", "weddings"],
+    "Patrícia Boaventura": ["portraits"],
+}
+
+_TIER_LADDER = [SkillTier.rookie, SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
+
+
+def _one_step_down(tier: SkillTier) -> SkillTier:
+    index = _TIER_LADDER.index(tier)
+    return _TIER_LADDER[max(0, index - 1)]
+
 
 HEADLINES: dict[str, list[str]] = {
     "weddings": [
@@ -504,44 +539,77 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
         onboarding.current_city = {"city": city, "country": country}
 
         low, high = CITY_PRICE[city]
-        price = Decimal(rng.randint(low, high)).quantize(Decimal("0.01"))
-        package = db.execute(
-            select(ProPackage).where(ProPackage.pro_user_id == user_id, ProPackage.niche_id == niche.id)
-        ).scalar_one_or_none()
-        if package is None:
-            package = ProPackage(
-                pro_user_id=user_id,
-                niche_id=niche.id,
-                title=f"{niche.name} session",
-                duration_minutes=rng.choice([60, 90, 120, 180]),
-                price=price,
-                currency="EUR",
-                included_photos=rng.choice([15, 20, 25, 30]),
-                extra_photo_price=Decimal("12.00"),
-                proofs_sla_days=3,
-                finals_sla_days=10,
-                addons=[],
-                is_active=True,
-            )
-            db.add(package)
 
-        # Portfolio: 8-15 images drawn from this niche's shared pool, offset
-        # per photographer so two wedding photographers do not show the same
-        # grid in the same order.
-        pool = pools.get(niche_slug, [])
-        wanted = rng.randint(8, 15)
-        if pool:
-            offset = (position * 5) % len(pool)
-            chosen = [pool[(offset + i) % len(pool)] for i in range(min(wanted, len(pool)))]
-        else:
-            chosen = []
+        # Every niche this photographer works in: the primary first, then any
+        # secondary ones a step down the tier ladder. Each gets its own
+        # package, its own portfolio subset and its own skill row, because
+        # that is what the per-niche profile presentation reads.
+        niche_plan: list[tuple[str, SkillTier]] = [(niche_slug, tier)]
+        for extra_slug in SECONDARY_NICHES.get(name, []):
+            niche_plan.append((extra_slug, _one_step_down(tier)))
 
         asset_ids: list[uuid.UUID] = []
-        for index, photo_id in enumerate(chosen):
-            asset_id = _build_media(db, owner_id=user_id, photo_id=photo_id, index=index, niche_slugs=[niche_slug])
-            if asset_id:
-                asset_ids.append(asset_id)
+        for niche_index, (plan_slug, plan_tier) in enumerate(niche_plan):
+            plan_niche = niches[plan_slug]
+            price = Decimal(rng.randint(low, high)).quantize(Decimal("0.01"))
+            package = db.execute(
+                select(ProPackage).where(
+                    ProPackage.pro_user_id == user_id, ProPackage.niche_id == plan_niche.id
+                )
+            ).scalar_one_or_none()
+            if package is None:
+                db.add(
+                    ProPackage(
+                        pro_user_id=user_id,
+                        niche_id=plan_niche.id,
+                        title=f"{plan_niche.name} session",
+                        duration_minutes=rng.choice([60, 90, 120, 180]),
+                        price=price,
+                        currency="EUR",
+                        included_photos=rng.choice([15, 20, 25, 30]),
+                        extra_photo_price=Decimal("12.00"),
+                        proofs_sla_days=3,
+                        finals_sla_days=10,
+                        addons=[],
+                        is_active=True,
+                    )
+                )
+
+            # Portfolio: images from this niche's shared pool, offset per
+            # photographer so two wedding photographers do not show the same
+            # grid in the same order. A secondary niche gets a smaller set,
+            # which is also true of real photographers.
+            pool = pools.get(plan_slug, [])
+            wanted = rng.randint(8, 15) if niche_index == 0 else rng.randint(4, 7)
+            if pool:
+                offset = (position * 5 + niche_index * 7) % len(pool)
+                chosen = [pool[(offset + i) % len(pool)] for i in range(min(wanted, len(pool)))]
+            else:
+                chosen = []
+
+            for index, photo_id in enumerate(chosen):
+                asset_id = _build_media(
+                    db,
+                    owner_id=user_id,
+                    photo_id=photo_id,
+                    index=index + niche_index * 100,
+                    niche_slugs=[plan_slug],
+                )
+                if asset_id:
+                    asset_ids.append(asset_id)
+
+            _ensure_skill(
+                db,
+                user_id=user_id,
+                niche=plan_niche,
+                tier=plan_tier,
+                gig_count=0,  # set below for the primary niche only
+                portfolio_count=len(chosen),
+                rng=rng,
+            )
+
         stats["images"] += len(asset_ids)
+        stats[f"niches_per_pro:{len(niche_plan)}"] += 1
 
         # The cover is deliberately not asset_ids[0]: a hero identical to the
         # first grid tile makes the profile look like a bug.
@@ -550,31 +618,20 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
 
         gig_low, gig_high = GIG_BANDS[band]
         gig_count = rng.randint(gig_low, gig_high) if gig_high else 0
-        _ensure_gigs(db, pro_user_id=user_id, niche_id=niche.id, count=gig_count, price=price, now=now)
-
-        skill = db.execute(
-            select(ProNicheSkill).where(ProNicheSkill.pro_user_id == user_id, ProNicheSkill.niche_id == niche.id)
-        ).scalar_one_or_none()
-        if skill is None:
-            skill = ProNicheSkill(pro_user_id=user_id, niche_id=niche.id)
-            db.add(skill)
-        skill.tier = tier
-        skill.gigs_completed = gig_count
-        skill.review_count = max(0, gig_count - rng.randint(0, 3))
-        skill.avg_rating = Decimal("0.00") if gig_count == 0 else Decimal(str(round(rng.uniform(4.1, 5.0), 2)))
-        skill.verified = tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
-        skill.score = {
-            SkillTier.rookie: rng.randint(5, 24),
-            SkillTier.skilled: rng.randint(25, 49),
-            SkillTier.pro: rng.randint(50, 69),
-            SkillTier.elite: rng.randint(70, 84),
-            SkillTier.master: rng.randint(85, 100),
-        }[tier]
-        skill.capability_score = skill.score
-        skill.confidence = Decimal(str(round(min(0.95, 0.2 + gig_count / 60), 2)))
-        skill.evidence_gigs = gig_count
-        skill.evidence_reviews = skill.review_count
-        skill.evidence_portfolio = len(asset_ids)
+        _ensure_gigs(db, pro_user_id=user_id, niche_id=niche.id, count=gig_count, price=Decimal(low), now=now)
+        # Completed work belongs to the niche it was booked in, so only the
+        # primary skill carries the gig count. A secondary niche with the same
+        # number of gigs as the primary would be a claim the gigs table
+        # contradicts.
+        _ensure_skill(
+            db,
+            user_id=user_id,
+            niche=niche,
+            tier=tier,
+            gig_count=gig_count,
+            portfolio_count=len(asset_ids),
+            rng=rng,
+        )
 
         db.flush()
         stats[f"niche:{niche_slug}"] += 1
@@ -585,6 +642,39 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random) -> Counter:
         print(f"  [{position + 1:>2}/{len(PHOTOGRAPHERS)}] {name:<22} {niche_slug:<17} {tier.value:<8} {len(asset_ids):>2} photos, {gig_count:>2} gigs")
 
     return stats
+
+
+def _ensure_skill(db, *, user_id, niche, tier, gig_count: int, portfolio_count: int, rng) -> None:
+    """One ProNicheSkill row. Called once per niche the photographer works in,
+    because tier is per-niche in this data model and a profile that shows the
+    same tier everywhere is the flat version the per-niche presentation
+    exists to replace."""
+    skill = db.execute(
+        select(ProNicheSkill).where(
+            ProNicheSkill.pro_user_id == user_id, ProNicheSkill.niche_id == niche.id
+        )
+    ).scalar_one_or_none()
+    if skill is None:
+        skill = ProNicheSkill(pro_user_id=user_id, niche_id=niche.id)
+        db.add(skill)
+
+    skill.tier = tier
+    skill.gigs_completed = gig_count
+    skill.review_count = max(0, gig_count - rng.randint(0, 3))
+    skill.avg_rating = Decimal("0.00") if gig_count == 0 else Decimal(str(round(rng.uniform(4.1, 5.0), 2)))
+    skill.verified = tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
+    skill.score = {
+        SkillTier.rookie: rng.randint(5, 24),
+        SkillTier.skilled: rng.randint(25, 49),
+        SkillTier.pro: rng.randint(50, 69),
+        SkillTier.elite: rng.randint(70, 84),
+        SkillTier.master: rng.randint(85, 100),
+    }[tier]
+    skill.capability_score = skill.score
+    skill.confidence = Decimal(str(round(min(0.95, 0.2 + gig_count / 60), 2)))
+    skill.evidence_gigs = gig_count
+    skill.evidence_reviews = skill.review_count
+    skill.evidence_portfolio = portfolio_count
 
 
 def _ensure_gigs(db, *, pro_user_id: uuid.UUID, niche_id: uuid.UUID, count: int, price: Decimal, now) -> None:
@@ -647,13 +737,27 @@ def main() -> int:
         stats = seed(db, pools=pools, rng=rng)
         db.commit()
 
+        # Order matters, and getting it wrong made the first run's tier
+        # distribution a fiction. recompute_pro_public_index() calls
+        # recompute_pro_niche_skills() first, which derives tier from real
+        # evidence and overwrote every seeded tier back to rookie - 672 rows
+        # of it. The seeded distribution existed only in this script's own
+        # counter, never in the database.
+        #
+        # So: index first, then re-apply the intended tiers, then refresh the
+        # index fields that read from them, using the same helpers the
+        # recompute uses rather than hand-writing the JSON shape.
         print("\nRebuilding the discovery index:")
         for name, *_rest in PHOTOGRAPHERS:
             recompute_pro_public_index(db, _sid("user", name))
         db.commit()
-        print(f"  indexed {stats['photographers']} photographers")
 
-        _report(stats)
+        print("Applying seeded tiers (after the recompute, not before):")
+        applied = _apply_tiers(db, rng=rng)
+        db.commit()
+        print(f"  set {applied} skill rows and refreshed their index entries")
+
+        _report(db, stats)
     except Exception:
         db.rollback()
         raise
@@ -662,18 +766,158 @@ def main() -> int:
     return 0
 
 
-def _report(stats: Counter) -> None:
-    def block(title: str, prefix: str) -> None:
-        rows = sorted(((k.split(":", 1)[1], v) for k, v in stats.items() if k.startswith(prefix)), key=lambda r: -r[1])
+def _apply_tiers(db, *, rng: random.Random) -> int:
+    """Re-assert the intended tiers, and rebuild what the index derives.
+
+    recompute_pro_niche_skills() is the real promotion engine and it is right
+    to overwrite an invented tier - a photographer with no gigs and no reviews
+    genuinely is a rookie. But seed data exists to populate states the real
+    engine would take months to produce, so the tiers are applied afterwards
+    and the index is refreshed from them.
+
+    The index fields are rebuilt with get_top_niches_for_index and friends -
+    the same functions recompute_pro_public_index calls - rather than by
+    writing the JSON by hand, so the shape cannot drift from what readers
+    expect.
+    """
+    from app.services.niche_skills import (
+        get_niche_tier_map_for_index,
+        get_top_niches_for_index,
+        get_verified_niches_for_index,
+    )
+
+    niches = {n.slug: n for n in db.execute(select(Niche)).scalars().all()}
+    applied = 0
+
+    for name, _city, _country, niche_slug, tier, _band in PHOTOGRAPHERS:
+        user_id = _sid("user", name)
+        plan = [(niche_slug, tier)] + [
+            (extra, _one_step_down(tier)) for extra in SECONDARY_NICHES.get(name, [])
+        ]
+        for plan_slug, plan_tier in plan:
+            skill = db.execute(
+                select(ProNicheSkill).where(
+                    ProNicheSkill.pro_user_id == user_id,
+                    ProNicheSkill.niche_id == niches[plan_slug].id,
+                )
+            ).scalar_one_or_none()
+            if skill is None:
+                continue
+            skill.tier = plan_tier
+            skill.score = {
+                SkillTier.rookie: rng.randint(5, 24),
+                SkillTier.skilled: rng.randint(25, 49),
+                SkillTier.pro: rng.randint(50, 69),
+                SkillTier.elite: rng.randint(70, 84),
+                SkillTier.master: rng.randint(85, 100),
+            }[plan_tier]
+            skill.capability_score = skill.score
+            skill.verified = plan_tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
+            skill.certification_score = 100 if skill.verified else 0
+            applied += 1
+        db.flush()
+
+        index = db.get(ProPublicIndex, user_id)
+        if index is None:
+            continue
+        top = get_top_niches_for_index(db, user_id, limit=3)
+        index.top_niches = top
+        index.niche_tiers = get_niche_tier_map_for_index(db, user_id)
+        index.verified_niches = get_verified_niches_for_index(db, user_id)
+        if top:
+            index.primary_niche_id = niches[top[0]["slug"]].id
+            rank = {"rookie": 0, "skilled": 1, "pro": 2, "elite": 3, "master": 4}.get(str(top[0].get("tier")), 0)
+            # Mirrors recompute_pro_public_index: the stored ranking_score
+            # carries a tier bonus the pure scoring function does not.
+            index.ranking_score = (index.ranking_score or Decimal("0")) + Decimal(str(rank * 8))
+
+    return applied
+
+
+def _report(db, stats: Counter) -> None:
+    """Report what is in the database, not what this script believed it set.
+
+    The first run reported a tier spread of 11 skilled / 9 pro / 8 rookie /
+    7 elite / 5 master. All of it was false: recompute_pro_niche_skills ran
+    afterwards and reset every row to rookie, and this function was counting
+    an in-memory Counter that never touched the database. A seed report that
+    reads its own intentions back is not a report.
+    """
+    from sqlalchemy import func
+
+    seeded_ids = [_sid("user", name) for name, *_ in PHOTOGRAPHERS]
+
+    print(f"\n{'=' * 56}")
+    pro_count = db.execute(
+        select(func.count()).select_from(ProProfile).where(ProProfile.user_id.in_(seeded_ids))
+    ).scalar_one()
+    asset_count = db.execute(
+        select(func.count()).select_from(MediaAsset).where(MediaAsset.owner_user_id.in_(seeded_ids))
+    ).scalar_one()
+    print(f"In the database: {pro_count} photographers, {asset_count} portfolio images")
+
+    def show(title: str, rows) -> None:
         print(f"\n{title}")
         for label, count in rows:
-            print(f"  {label:<20} {count:>3}")
+            print(f"  {str(label):<22} {count:>3}")
 
-    print(f"\n{'=' * 52}\nSeeded {stats['photographers']} photographers, {stats['images']} portfolio images")
-    block("Per niche", "niche:")
-    block("Per tier", "tier:")
-    block("Per gig-count band", "band:")
-    block("Per city", "city:")
+    show(
+        "Per niche (primary, from the index)",
+        db.execute(
+            select(Niche.slug, func.count())
+            .select_from(ProPublicIndex)
+            .join(Niche, Niche.id == ProPublicIndex.primary_niche_id)
+            .where(ProPublicIndex.pro_user_id.in_(seeded_ids))
+            .group_by(Niche.slug)
+            .order_by(func.count().desc())
+        ).all(),
+    )
+    show(
+        "Per tier (from pro_niche_skill, seeded niches only)",
+        db.execute(
+            select(ProNicheSkill.tier, func.count())
+            .where(
+                ProNicheSkill.pro_user_id.in_(seeded_ids),
+                ProNicheSkill.score > 0,
+            )
+            .group_by(ProNicheSkill.tier)
+            .order_by(func.count().desc())
+        ).all(),
+    )
+    show(
+        "Per city (from the index)",
+        db.execute(
+            select(ProPublicIndex.city, func.count())
+            .where(ProPublicIndex.pro_user_id.in_(seeded_ids))
+            .group_by(ProPublicIndex.city)
+            .order_by(func.count().desc())
+        ).all(),
+    )
+
+    bands = db.execute(
+        select(ProPublicIndex.gigs_completed).where(ProPublicIndex.pro_user_id.in_(seeded_ids))
+    ).scalars().all()
+    show(
+        "Per gig-count band (from the index)",
+        [
+            ("none (0)", sum(1 for g in bands if g == 0)),
+            ("few (1-5)", sum(1 for g in bands if 1 <= g <= 5)),
+            ("some (6-20)", sum(1 for g in bands if 6 <= g <= 20)),
+            ("many (21+)", sum(1 for g in bands if g > 20)),
+        ],
+    )
+
+    multi = db.execute(
+        select(func.count())
+        .select_from(
+            select(ProNicheSkill.pro_user_id)
+            .where(ProNicheSkill.pro_user_id.in_(seeded_ids), ProNicheSkill.score > 0)
+            .group_by(ProNicheSkill.pro_user_id)
+            .having(func.count() > 1)
+            .subquery()
+        )
+    ).scalar_one()
+    print(f"\nPhotographers working in more than one niche   {multi}")
 
 
 if __name__ == "__main__":

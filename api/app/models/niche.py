@@ -55,6 +55,13 @@ class ProNiche(Base):
         Enum(DeclaredLevel, name="declared_level", native_enum=False, length=64), nullable=True
     )
     is_primary: Mapped[bool] = mapped_column(nullable=False, default=False)
+    # What this photographer says about this particular kind of work.
+    #
+    # Nullable on purpose: most photographers will never write one, and the
+    # profile falls back to their general bio rather than showing an empty
+    # section under a niche tab. A blank string and "not written" are the same
+    # thing to the reader, so the fallback treats them alike.
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )

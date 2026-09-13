@@ -61,7 +61,7 @@ from app.models.media import (  # noqa: E402
     ObjectStatus,
 )
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind  # noqa: E402
-from app.models.niche import Niche, ProNicheSkill, SkillTier  # noqa: E402
+from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier  # noqa: E402
 from app.models.discovery import ProPublicIndex  # noqa: E402
 from app.services.discovery_index import recompute_pro_public_index  # noqa: E402
 from app.services.niche_catalog import ensure_initial_niches  # noqa: E402
@@ -220,6 +220,29 @@ SECONDARY_NICHES: dict[str, list[str]] = {
     "Vasco Teixeira": ["food"],
     "Madalena Seixas": ["portraits", "weddings"],
     "Patrícia Boaventura": ["portraits"],
+}
+
+# What a photographer says about one particular kind of work, keyed by niche.
+#
+# Deliberately partial. A profile falls back to the general bio when a niche
+# has no description, and seeding every one would leave that fallback never
+# rendered - the same reason the price caps left master uncapped rather than
+# giving every tier a number.
+NICHE_DESCRIPTIONS: dict[str, str] = {
+    "weddings": "Long days, shot quietly. I stay out of the way and come back with the day as it actually happened.",
+    "portraits": "Studio or daylight, always directed. Most people arrive certain they photograph badly and leave with something they use for years.",
+    "family": "Loose, warm and quick, because nobody under six holds a pose. Shot where the family already is.",
+    "corporate": "Headshots and team work on location, lit to match the brand rather than the boardroom.",
+    "product": "Controlled light on a clean set. Built for a catalogue that has to look consistent across a hundred frames.",
+    "food": "Shot while it is still worth eating. I work alongside the kitchen rather than after service.",
+}
+
+# Only these photographers have written them. Everyone else falls back.
+DESCRIBES_THEIR_NICHES = {
+    "Inês Carvalho",
+    "Tomás Belmonte",
+    "Daniel Roque",
+    "Madalena Seixas",
 }
 
 _TIER_LADDER = [SkillTier.rookie, SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
@@ -565,6 +588,23 @@ def seed(db, *, pools: dict[str, list[int]], rng: random.Random, prices_only: bo
         asset_ids: list[uuid.UUID] = []
         for niche_index, (plan_slug, plan_tier) in enumerate(niche_plan):
             plan_niche = niches[plan_slug]
+
+            # The pro/niche association itself, which nothing had ever
+            # written. Without it a photographer has skill rows and tagged
+            # photos but has never declared what they do, and the description
+            # the profile reads has nowhere to live.
+            declared = db.execute(
+                select(ProNiche).where(
+                    ProNiche.pro_user_id == user_id, ProNiche.niche_id == plan_niche.id
+                )
+            ).scalar_one_or_none()
+            if declared is None:
+                declared = ProNiche(pro_user_id=user_id, niche_id=plan_niche.id)
+                db.add(declared)
+            declared.is_primary = niche_index == 0
+            declared.description = (
+                NICHE_DESCRIPTIONS.get(plan_slug) if name in DESCRIBES_THEIR_NICHES else None
+            )
             price = _compliant_price(db, niche=plan_niche, tier=plan_tier, city=city, rng=rng)
             package = db.execute(
                 select(ProPackage).where(

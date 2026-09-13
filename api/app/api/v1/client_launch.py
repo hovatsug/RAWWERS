@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, time, timedelta, timezone
 
@@ -20,26 +21,27 @@ from app.models.gig import Gig, StripePayment, StripePaymentKind
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.media_rights import GigConsentLevel
-from app.models.niche import Niche, ProNicheSkill, SkillTier
+from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
 from app.schemas.client_launch import (
     ClientAccessResponse,
+    ClientBookingListItem,
+    ClientBookingListResponse,
     ClientBookingPayRequest,
     ClientBookingPayResponse,
     ClientBookingRequestCreateRequest,
     ClientBookingRequestCreateResponse,
-    ClientBookingListItem,
-    ClientBookingListResponse,
     ClientBookingStatusResponse,
-    ClientHomeResponse,
-    ClientHomeRow,
     ClientDiscoverCard,
     ClientDiscoverResponse,
+    ClientHomeResponse,
+    ClientHomeRow,
     ClientMatchCard,
     ClientMatchCreateRequest,
     ClientMatchResponse,
     ClientPortfolioItem,
     ClientPreferenceUpdateRequest,
     ClientPreferenceView,
+    ClientProfileNiche,
     ClientProfilePackage,
     ClientProProfileResponse,
     ClientWaitlistCreateRequest,
@@ -70,6 +72,15 @@ from app.services.trust_safety import (
 from app.services.search_provider import get_index_name, get_search_provider, search_provider_enabled
 
 settings = get_settings()
+# How many portfolio photos a public profile returns.
+#
+# 8 covered a single flat grid. Once the grid splits by niche the same 8 has
+# to cover every tab, and a photographer working in three niches would show
+# three photos each - the tabs would make the profile look emptier than the
+# undivided grid they replace.
+PROFILE_PORTFOLIO_LIMIT = 24
+
+
 router = APIRouter(tags=["client_launch"])
 
 
@@ -309,8 +320,12 @@ def client_pro_profile(
         .where(ProPackage.pro_user_id == pro_user_id, ProPackage.is_active.is_(True))
         .order_by(ProPackage.price.asc())
     ).all()
+    # 8 was enough for one flat grid. Splitting the same 8 across a
+    # photographer's niches leaves three or four photos per tab, which is
+    # thinner than the grid it replaces - the tabs would make the profile look
+    # emptier, not better organised.
     portfolio_rows = db.execute(
-        select(MediaAsset.id, MediaAsset.kind)
+        select(MediaAsset.id, MediaAsset.kind, MediaAsset.niche_tags)
         .where(
             MediaAsset.owner_user_id == pro_user_id,
             MediaAsset.purpose == MediaPurpose.portfolio_reel,
@@ -318,13 +333,54 @@ def client_pro_profile(
             MediaAsset.kind.in_([MediaKind.photo, MediaKind.video]),
         )
         .order_by(MediaAsset.created_at.desc())
-        .limit(8)
+        .limit(PROFILE_PORTFOLIO_LIMIT)
     ).all()
+
+    # Which niches this photographer actually has work in, and how much.
+    # Counted from the photos being returned rather than from their skill
+    # rows: recompute_pro_niche_skills writes a row for every active niche, so
+    # skills would offer a tab for all twelve and leave ten of them empty.
+    photos_per_niche: Counter[str] = Counter()
+    for _asset_id, kind, tags in portfolio_rows:
+        if kind != MediaKind.photo:
+            continue
+        for slug in tags or []:
+            photos_per_niche[slug] += 1
+
+    profile_niches: list[ClientProfileNiche] = []
+    if photos_per_niche:
+        niche_rows = db.execute(
+            select(Niche, ProNicheSkill)
+            .outerjoin(
+                ProNicheSkill,
+                (ProNicheSkill.niche_id == Niche.id) & (ProNicheSkill.pro_user_id == pro_user_id),
+            )
+            .where(Niche.slug.in_(photos_per_niche.keys()))
+        ).all()
+        declared = {
+            row.niche_id: row
+            for row in db.execute(select(ProNiche).where(ProNiche.pro_user_id == pro_user_id)).scalars().all()
+        }
+        profile_niches = sorted(
+            (
+                ClientProfileNiche(
+                    slug=niche.slug,
+                    name=niche.name,
+                    # No skill row means rookie, the same default the price cap
+                    # resolves to, rather than omitting the niche entirely.
+                    tier=skill.tier if skill else SkillTier.rookie,
+                    photo_count=photos_per_niche[niche.slug],
+                    description=(declared[niche.id].description if niche.id in declared else None),
+                )
+                for niche, skill in niche_rows
+            ),
+            key=lambda item: (-item.photo_count, item.slug),
+        )
 
     # This response is not cached, so the base lifetime is the whole story.
     portfolio_urls = resolve_image_urls(
         db,
-        [asset_id for asset_id, _ in portfolio_rows],
+        [asset_id for asset_id, _, _ in portfolio_rows],
         prefer=THUMBNAIL_FIRST,
         expires_in=MEDIA_URL_BASE_TTL_SECONDS,
     )
@@ -373,15 +429,19 @@ def client_pro_profile(
             )
             for item, niche_slug in package_rows
         ],
-        portfolio_preview_asset_ids=[asset_id for asset_id, _ in portfolio_rows],
+        portfolio_preview_asset_ids=[asset_id for asset_id, _, _ in portfolio_rows],
         portfolio_preview=[
             ClientPortfolioItem(
                 media_asset_id=asset_id,
                 kind=kind.value,
                 thumbnail_url=portfolio_urls.get(asset_id),
+                niche_slugs=list(tags or []),
             )
-            for asset_id, kind in portfolio_rows
+            for asset_id, kind, tags in portfolio_rows
         ],
+        # One niche is not a choice, so it is sent as none at all and the
+        # client renders no selector.
+        niches=profile_niches if len(profile_niches) > 1 else [],
         is_guest_view=False,
     )
     log_event(

@@ -6,6 +6,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from app.models.niche import SkillTier
+
 from app.models.media_rights import GigConsentLevel
 
 
@@ -144,6 +146,29 @@ class ClientPortfolioItem(BaseModel):
     # have no MediaObject rows, so `thumbnail_url` is null for them - see
     # docs/BACKEND_GAPS.md, "no video poster frames".
     thumbnail_url: str | None = None
+    # Which niches this photo belongs to. Without it the client cannot split a
+    # multi-niche portfolio at all: a wedding, a studio portrait and a festival
+    # crowd shot arrive indistinguishable and render in one flat grid.
+    niche_slugs: list[str] = Field(default_factory=list)
+
+
+class ClientProfileNiche(BaseModel):
+    """One niche a photographer actually has work in.
+
+    Derived from the tags on their portfolio rather than from their skill
+    rows. `recompute_pro_niche_skills` writes a row for every active niche, so
+    skills say nothing about where someone works - a tab list built from them
+    would offer twelve tabs, ten of them empty.
+    """
+
+    slug: str
+    name: str
+    tier: SkillTier
+    photo_count: int
+    # What the photographer wrote about this particular kind of work. Null
+    # when they have not written one, and the client falls back to the general
+    # bio rather than rendering an empty section.
+    description: str | None = None
 
 
 class ClientProProfileResponse(BaseModel):
@@ -163,6 +188,9 @@ class ClientProProfileResponse(BaseModel):
     packages: list[ClientProfilePackage] = Field(default_factory=list)
     portfolio_preview_asset_ids: list[uuid.UUID] = Field(default_factory=list)
     portfolio_preview: list[ClientPortfolioItem] = Field(default_factory=list)
+    # Empty for a single-niche photographer, which is the signal the client
+    # uses to render no tab bar at all rather than one redundant tab.
+    niches: list[ClientProfileNiche] = Field(default_factory=list)
     is_guest_view: bool = False
 
 

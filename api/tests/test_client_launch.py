@@ -276,3 +276,200 @@ def test_admin_client_funnel_metrics(client, db_session):
     assert row["pro_profile_views"] == 1
     assert row["booking_requests"] == 1
     assert row["payments_succeeded"] == 1
+
+
+def _profile(client, pro_id: str, client_id: str) -> dict:
+    """Fetch a public profile, refusing to hand back anything but a 200.
+
+    The first version of these tests read `body["niches"]` straight off the
+    response and failed with a KeyError. The cause was a 403 - the rollout
+    city was not enabled in the test database - so five tests reported a
+    missing field when the request had never reached the endpoint.
+    """
+    resp = client.get(
+        f"/v1/client/pros/{pro_id}",
+        params={"country": "PT", "city": "Lisbon"},
+        headers={"X-User-Id": client_id},
+    )
+    assert resp.status_code == 200, f"profile request failed: {resp.status_code} {resp.text}"
+    return resp.json()
+
+
+# ---------------------------------------------------------------------------
+# A multi-niche portfolio has to be separable by the client.
+# ---------------------------------------------------------------------------
+
+
+def _seed_portfolio_photo(db_session, pro_uuid: uuid.UUID, *, tags: list[str], index: int) -> uuid.UUID:
+    from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
+
+    asset_id = uuid.uuid5(uuid.NAMESPACE_URL, f"test-portfolio:{pro_uuid}:{index}")
+    db_session.add(
+        MediaAsset(
+            id=asset_id,
+            owner_user_id=pro_uuid,
+            kind=MediaKind.photo,
+            purpose=MediaPurpose.portfolio_reel,
+            provider=MediaProvider.r2,
+            status=MediaStatus.ready,
+            visibility=MediaVisibility.public,
+            content_type="image/jpeg",
+            byte_size=1000,
+            checksum=f"test-{index}",
+            niche_tags=tags,
+            meta={},
+        )
+    )
+    db_session.flush()
+    return asset_id
+
+
+def test_a_multi_niche_portfolio_says_which_niche_each_photo_belongs_to(client, db_session):
+    """Without the tags the client cannot split the grid at all - a wedding, a
+    studio portrait and a festival crowd shot arrive indistinguishable."""
+    pro_id = "00000000-0000-0000-0000-0000000009a1"
+    pro_uuid = _seed_pro(db_session, pro_id)
+    client_id = "00000000-0000-0000-0000-0000000009b1"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+    for i in range(3):
+        _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=i)
+    _seed_portfolio_photo(db_session, pro_uuid, tags=["portraits"], index=9)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    body = _profile(client, pro_id, client_id)
+
+    tags = [item["niche_slugs"] for item in body["portfolio_preview"]]
+    assert any("weddings" in t for t in tags), "no photo carries its niche, so the grid cannot be split"
+    assert any("portraits" in t for t in tags)
+
+
+def test_the_niche_list_is_ordered_by_how_much_work_is_in_each(client, db_session):
+    """A tab bar led by the niche with one photo in it misrepresents what the
+    photographer mostly does."""
+    pro_id = "00000000-0000-0000-0000-0000000009a2"
+    pro_uuid = _seed_pro(db_session, pro_id)
+    client_id = "00000000-0000-0000-0000-0000000009b2"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+    for i in range(4):
+        _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=i)
+    _seed_portfolio_photo(db_session, pro_uuid, tags=["portraits"], index=9)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    body = _profile(client, pro_id, client_id)
+
+    niches = body["niches"]
+    assert [n["slug"] for n in niches] == ["weddings", "portraits"], "niches are not ordered by volume of work"
+    assert [n["photo_count"] for n in niches] == [4, 1]
+
+
+def test_a_single_niche_photographer_gets_no_niche_list(client, db_session):
+    """One niche is not a choice. Sending it anyway would put a one-tab
+    selector on a profile that has nothing to select between."""
+    pro_id = "00000000-0000-0000-0000-0000000009a3"
+    pro_uuid = _seed_pro(db_session, pro_id)
+    client_id = "00000000-0000-0000-0000-0000000009b3"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+    for i in range(3):
+        _seed_portfolio_photo(db_session, pro_uuid, tags=["portraits"], index=i)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    body = _profile(client, pro_id, client_id)
+    assert body["niches"] == [], "a one-niche profile was sent a selector with one option"
+
+
+def test_the_niche_list_carries_the_tier_held_in_that_niche(client, db_session):
+    """Tier is per-niche. A badge showing the same tier on every tab is the
+    flat presentation the per-niche model exists to replace."""
+    pro_id = "00000000-0000-0000-0000-0000000009a4"
+    pro_uuid = _seed_pro(db_session, pro_id, tier=SkillTier.master)
+    client_id = "00000000-0000-0000-0000-0000000009b4"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+
+    weddings = db_session.query(Niche).filter_by(slug="weddings").first()
+    db_session.add(
+        ProNicheSkill(
+            pro_user_id=pro_uuid,
+            niche_id=weddings.id,
+            tier=SkillTier.rookie,
+            capability_score=5,
+            certification_score=5,
+            confidence=Decimal("0.1"),
+            breakdown={},
+        )
+    )
+    for i in range(3):
+        _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=i)
+    _seed_portfolio_photo(db_session, pro_uuid, tags=["portraits"], index=9)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    body = _profile(client, pro_id, client_id)
+    by_slug = {n["slug"]: n["tier"] for n in body["niches"]}
+    assert by_slug["weddings"] == "rookie"
+    assert by_slug["portraits"] == "master", "the tier is not read per niche"
+
+
+def test_a_niche_with_no_photos_is_not_offered_as_a_tab(client, db_session):
+    """recompute_pro_niche_skills writes a row for every active niche, so a
+    tab list built from skills would offer twelve tabs and leave ten empty."""
+    pro_id = "00000000-0000-0000-0000-0000000009a5"
+    pro_uuid = _seed_pro(db_session, pro_id)
+    client_id = "00000000-0000-0000-0000-0000000009b5"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+
+    for slug in ["food", "real_estate", "corporate"]:
+        niche = db_session.query(Niche).filter_by(slug=slug).first()
+        db_session.add(
+            ProNicheSkill(
+                pro_user_id=pro_uuid,
+                niche_id=niche.id,
+                tier=SkillTier.elite,
+                capability_score=90,
+                certification_score=90,
+                confidence=Decimal("0.9"),
+                breakdown={},
+            )
+        )
+    for i in range(2):
+        _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=i)
+    _seed_portfolio_photo(db_session, pro_uuid, tags=["portraits"], index=9)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    body = _profile(client, pro_id, client_id)
+    slugs = {n["slug"] for n in body["niches"]}
+    assert slugs == {"weddings", "portraits"}, f"niches with no photos were offered as tabs: {slugs}"
+
+
+def test_a_niche_description_is_returned_when_written_and_null_when_not(client, db_session):
+    """The client falls back to the general bio when this is null, so the two
+    cases must stay distinguishable. A column that always came back null would
+    make the written case dead code - which it was, for exactly as long as the
+    seeder created no ProNiche rows at all."""
+    from app.models.niche import ProNiche
+
+    pro_id = "00000000-0000-0000-0000-0000000009a6"
+    pro_uuid = _seed_pro(db_session, pro_id)
+    client_id = "00000000-0000-0000-0000-0000000009b6"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+
+    weddings = db_session.query(Niche).filter_by(slug="weddings").first()
+    portraits = db_session.query(Niche).filter_by(slug="portraits").first()
+    db_session.add(
+        ProNiche(pro_user_id=pro_uuid, niche_id=weddings.id, description="Long days, shot quietly.")
+    )
+    # Declared, but nothing written about it.
+    db_session.add(ProNiche(pro_user_id=pro_uuid, niche_id=portraits.id))
+    for i in range(3):
+        _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=i)
+    _seed_portfolio_photo(db_session, pro_uuid, tags=["portraits"], index=9)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    body = _profile(client, pro_id, client_id)
+    by_slug = {n["slug"]: n["description"] for n in body["niches"]}
+    assert by_slug["weddings"] == "Long days, shot quietly."
+    assert by_slug["portraits"] is None, "an undescribed niche must stay null so the client can fall back"

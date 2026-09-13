@@ -20,6 +20,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--city", default="Lisbon")
     parser.add_argument("--country", default="PT")
     parser.add_argument("--deterministic", action="store_true", help="No-op flag kept for CI clarity")
+    parser.add_argument(
+        "--refresh-media",
+        action="store_true",
+        help="Re-upload the demo photographers' portfolio images, replacing what is already in storage.",
+    )
     return parser.parse_args()
 
 
@@ -27,7 +32,7 @@ def main() -> int:
     args = parse_args()
     db = SessionLocal()
     try:
-        seed_environment(db, city=args.city, country=args.country, include_sample_booking=True)
+        seed_environment(db, city=args.city, country=args.country, include_sample_booking=True, refresh_media=args.refresh_media)
         db.commit()
     except Exception:
         db.rollback()

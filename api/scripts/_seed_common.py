@@ -238,7 +238,7 @@ def _capped_entry_rate(db: Session, *, niche: Niche, pro_user_id: uuid.UUID, fal
     return (cap.entry_price_max * Decimal("0.8")).quantize(Decimal("0.01"))
 
 
-def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, country: str, price: Decimal) -> ProPackage:
+def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, country: str, price: Decimal, refresh_media: bool = False) -> ProPackage:
     profile = db.get(ProProfile, user.user_id)
     if profile is None:
         profile = ProProfile(
@@ -329,12 +329,12 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
         package.extra_photo_price = Decimal("7.00")
         package.updated_at = _now()
 
-    _ensure_portfolio_media(db, user, profile)
+    _ensure_portfolio_media(db, user, profile, niche_slug=niche.slug, refresh_media=refresh_media)
 
     return package
 
 
-def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile) -> None:
+def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile, *, niche_slug: str, refresh_media: bool = False) -> None:
     """Give the seeded pro a portfolio that actually resolves to images.
 
     The seed used to create MediaAsset rows marked `ready` with no MediaObject
@@ -384,7 +384,7 @@ def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile) ->
                         status=ObjectStatus.ready,
                     )
                 )
-            _upload_seed_image(key, size, label=user.display_name, index=idx)
+            _upload_seed_image(key, size, label=user.display_name, index=idx, niche_slug=niche_slug, force=refresh_media)
 
     # A pro with a portfolio but no cover is the state that made every seeded
     # Discover card image-less.
@@ -392,8 +392,70 @@ def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile) ->
         profile.cover_media_asset_id = asset_ids[0]
 
 
-def _upload_seed_image(storage_key: str, size: tuple[int, int], *, label: str, index: int) -> None:
-    """Put a placeholder JPEG behind a seeded storage key.
+# One Pexels search per niche per process, not one per image.
+_NICHE_PHOTO_IDS: dict[str, list[int]] = {}
+
+
+def _real_photo(niche_slug: str, index: int, size: tuple[int, int]) -> bytes | None:
+    """A genuine photograph for this niche, cropped to the variant's size.
+
+    The two demo accounts were the only photographers in the database without
+    real work behind them, because this seeder painted a grey-blue gradient
+    and called it a cover. On the client home they read as broken cards next
+    to forty photographers with real portfolios - the exact complaint the
+    photographer seeder's own docstring makes about placeholder rectangles.
+
+    Returns None whenever real photography is unavailable - no API key, no
+    network, an empty cache - so the painted fallback still covers CI and
+    offline seeding. That promise is why this returns rather than raises.
+    """
+    try:
+        from seed_fake_photographers import NICHE_QUERIES, _cache_path, fetch_niche_pool
+    except ImportError:
+        return None
+
+    key = os.environ.get("PEXELS_API_KEY")
+    if not key or niche_slug not in NICHE_QUERIES:
+        return None
+
+    if niche_slug not in _NICHE_PHOTO_IDS:
+        try:
+            _NICHE_PHOTO_IDS[niche_slug] = fetch_niche_pool(niche_slug, api_key=key, count=6)
+        except Exception:  # noqa: BLE001 - offline is a fallback, not a failure
+            _NICHE_PHOTO_IDS[niche_slug] = []
+
+    ids = _NICHE_PHOTO_IDS[niche_slug]
+    if not ids:
+        return None
+
+    source = _cache_path(ids[index % len(ids)])
+    if not source.exists():
+        return None
+
+    try:
+        image = Image.open(io.BytesIO(source.read_bytes())).convert("RGB")
+    except Exception:  # noqa: BLE001
+        return None
+
+    # Cover-crop to exactly the declared size, because the MediaObject rows
+    # state these dimensions and a row that lies about its own image is the
+    # kind of thing that surfaces three screens away.
+    target_w, target_h = size
+    scale = max(target_w / image.width, target_h / image.height)
+    resized = image.resize((max(1, round(image.width * scale)), max(1, round(image.height * scale))))
+    left = (resized.width - target_w) // 2
+    top = (resized.height - target_h) // 2
+    cropped = resized.crop((left, top, left + target_w, top + target_h))
+
+    buffer = io.BytesIO()
+    cropped.save(buffer, format="JPEG", quality=86)
+    return buffer.getvalue()
+
+
+def _upload_seed_image(storage_key: str, size: tuple[int, int], *, label: str, index: int, niche_slug: str | None = None, force: bool = False) -> None:
+    """Put a JPEG behind a seeded storage key.
+
+    Real photography when it can be had, a painted gradient when it cannot.
 
     Best-effort: seeding must still produce a coherent database when object
     storage is unreachable (offline, or no R2 credentials in CI). A warning is
@@ -406,8 +468,15 @@ def _upload_seed_image(storage_key: str, size: tuple[int, int], *, label: str, i
         return
 
     try:
-        if object_exists(storage_key):
+        if object_exists(storage_key) and not force:
             return
+
+        if niche_slug is not None:
+            real = _real_photo(niche_slug, index, size)
+            if real is not None:
+                upload_object_bytes(storage_key, real, content_type="image/jpeg")
+                return
+
         palette = [(58, 71, 94), (94, 62, 58), (52, 84, 70)]
         base = palette[index % len(palette)]
         image = Image.new("RGB", size, base)
@@ -550,7 +619,7 @@ def _ensure_sample_booking_request(db: Session, *, pro_user_id: uuid.UUID, clien
         )
 
 
-def seed_environment(db: Session, *, city: str, country: str, include_sample_booking: bool = True) -> None:
+def seed_environment(db: Session, *, city: str, country: str, include_sample_booking: bool = True, refresh_media: bool = False) -> None:
     # Both entry points funnel through here, so this is the one place the
     # check has to be for it to be unavoidable.
     assert_environment_is_seedable()
@@ -577,8 +646,8 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
 
     # These are fallbacks for an unconfigured niche only; the real numbers come
     # from the cap table above. Per-photo, not per-shoot.
-    package_main = _ensure_pro_profile(db, PRO_USERS[0], portraits, city=city, country=country, price=Decimal("5.00"))
-    _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("4.00"))
+    package_main = _ensure_pro_profile(db, PRO_USERS[0], portraits, city=city, country=country, price=Decimal("5.00"), refresh_media=refresh_media)
+    _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("4.00"), refresh_media=refresh_media)
     db.flush()
 
     _ensure_client_preference(db, CLIENT_USER.user_id, city=city, country=country)

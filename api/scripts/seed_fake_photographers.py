@@ -730,29 +730,89 @@ def _ensure_skill(db, *, user_id, niche, tier, gig_count: int, portfolio_count: 
     skill.evidence_portfolio = portfolio_count
 
 
+def gig_schedule(gig, *, duration_minutes: int, now) -> tuple[datetime, datetime] | None:
+    """When a completed gig was actually shot.
+
+    Derived the way the real flow derives it rather than invented. A client
+    sends a booking request for a date, the photographer accepts, and the gig
+    is created at acceptance with `scheduled_start = request.requested_start`
+    and the end taken from the package duration. So acceptance comes first
+    and the shoot follows some days later.
+
+    `created_at` is the acceptance here, and the lead time is a deterministic
+    function of the gig id so re-running produces the same dates rather than
+    moving everyone's history. The result is clamped to stay in the past: a
+    gig that is both completed and scheduled for next week is the same
+    contradiction this exists to remove.
+    """
+    accepted = gig.created_at
+    if accepted is None:
+        return None
+    if accepted.tzinfo is None:
+        accepted = accepted.replace(tzinfo=UTC)
+
+    # 3 to 20 days between accepting and shooting, and a daylight hour.
+    spread = int(gig.id.int % 18) + 3
+    hour = 9 + int(gig.id.int % 8)
+    start = (accepted + timedelta(days=spread)).replace(hour=hour, minute=0, second=0, microsecond=0)
+
+    end = start + timedelta(minutes=max(30, duration_minutes))
+    if end >= now:
+        # The most recent gigs are only a week old, so a long lead would put
+        # the shoot in the future. Fall back to the day after acceptance.
+        start = (accepted + timedelta(days=1)).replace(hour=hour, minute=0, second=0, microsecond=0)
+        end = start + timedelta(minutes=max(30, duration_minutes))
+        if end >= now:
+            return None
+    return start, end
+
+
+def _package_duration(db, *, pro_user_id: uuid.UUID, niche_id: uuid.UUID) -> int:
+    package = db.execute(
+        select(ProPackage).where(
+            ProPackage.pro_user_id == pro_user_id, ProPackage.niche_id == niche_id
+        )
+    ).scalars().first()
+    return int(package.duration_minutes) if package and package.duration_minutes else 120
+
+
 def _ensure_gigs(db, *, pro_user_id: uuid.UUID, niche_id: uuid.UUID, count: int, price: Decimal, now) -> None:
     """Completed gigs, because the discovery index counts rows rather than
     trusting a number written on the profile."""
     existing = db.execute(
         select(Gig).where(Gig.pro_user_id == pro_user_id, Gig.status == GigStatus.completed)
     ).scalars().all()
+    duration = _package_duration(db, pro_user_id=pro_user_id, niche_id=niche_id)
+
     for index in range(len(existing), count):
-        db.add(
-            Gig(
-                id=_sid("gig", str(pro_user_id), str(index)),
-                client_user_id=_sid("client", str(pro_user_id), str(index)),
-                pro_user_id=pro_user_id,
-                niche_id=niche_id,
-                status=GigStatus.completed,
-                currency="EUR",
-                amount_minimum=price * 10,
-                entry_rate=price,
-                amount_platform_fee=price * 2,
-                amount_pro_gross=price * 8,
-                created_at=now - timedelta(days=7 * (index + 1)),
-                meta={"seeded": True},
-            )
+        gig = Gig(
+            id=_sid("gig", str(pro_user_id), str(index)),
+            client_user_id=_sid("client", str(pro_user_id), str(index)),
+            pro_user_id=pro_user_id,
+            niche_id=niche_id,
+            status=GigStatus.completed,
+            currency="EUR",
+            amount_minimum=price * 10,
+            entry_rate=price,
+            amount_platform_fee=price * 2,
+            amount_pro_gross=price * 8,
+            created_at=now - timedelta(days=7 * (index + 1)),
+            meta={"seeded": True},
         )
+        schedule = gig_schedule(gig, duration_minutes=duration, now=now)
+        if schedule is not None:
+            gig.scheduled_start, gig.scheduled_end = schedule
+        db.add(gig)
+
+    # Re-running repairs what is already there. The first version wrote no
+    # dates at all, so every seeded gig rendered as "Not scheduled yet" on a
+    # card that also called it completed.
+    for gig in existing:
+        if gig.scheduled_start is not None and gig.scheduled_end is not None:
+            continue
+        schedule = gig_schedule(gig, duration_minutes=duration, now=now)
+        if schedule is not None:
+            gig.scheduled_start, gig.scheduled_end = schedule
 
 
 def main() -> int:

@@ -1046,3 +1046,17 @@ Found while writing tests for the rows endpoint. Six tests failed together and e
 3. Shorten the TTL. Cheapest, and only narrows the window rather than closing it.
 
 Not fixed here: the rows endpoint does not introduce the behaviour, it only made it visible, and changing cache invalidation touches every discovery read.
+
+## DEPLOY REQUIREMENT: recompute every `min_package_price` before trusting the budget filter
+
+`min_package_price` changed meaning. It was `min(ProPackage.price)` - a per-photo entry rate - and is now the starting total for the cheapest package, via `compute_minimum_amount`. Every reader inherits that automatically **only once the row is recomputed**, and nothing forces the recompute to happen when the code ships.
+
+**This is not a display concern.** The column gates discoverability, backs the `min_price`/`max_price` budget filter, and drives `price_asc`/`price_desc` sorting. Until a row is reindexed it answers those queries in the old unit.
+
+**What it looks like when it happens:** some photographers respond correctly to a budget filter and others do not. A search for "under EUR 500" returns a handful of people whose rows still hold a per-photo rate, and omits everyone already migrated. No error anywhere, nothing in the logs, and the result reads as thin inventory rather than as a broken filter. Sorting by price interleaves two units, so the order is meaningless without looking wrong.
+
+Caught locally exactly this way: three photographers had been recomputed and the rest had not, so `EUR 0-500` returned ten people whose real starting totals are in the thousands.
+
+**What closes it:** a bulk recompute of every `ProPublicIndex` row as part of deploying this change - a migration step or a one-off script run during the deploy, not the natural reindex cadence. `recompute_pro_public_index(db, pro_user_id)` for every row is sufficient; locally that was 56 rows and a few seconds. Until it has run, Discover's budget filter and price sort are mixing units and must not be trusted.
+
+The general shape is the one already recorded for the discovery cache: a derived value that does not update itself when the thing deriving it changes. The code change and the data migration are separate events, and nothing in the system makes them happen together.

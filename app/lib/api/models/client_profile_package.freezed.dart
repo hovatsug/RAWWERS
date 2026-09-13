@@ -23,7 +23,10 @@ mixin _$ClientProfilePackage {
 @JsonKey(name: ClientProfilePackage.durationMinutesKey_) int get durationMinutes;/// price
 @JsonKey(name: ClientProfilePackage.priceKey_) String get price;/// currency
 @JsonKey(name: ClientProfilePackage.currencyKey_) String get currency;/// includedPhotos
-@JsonKey(name: ClientProfilePackage.includedPhotosKey_) int get includedPhotos;/// extraPhotoPrice
+@JsonKey(name: ClientProfilePackage.includedPhotosKey_) int get includedPhotos;/// entryRate
+@JsonKey(name: ClientProfilePackage.entryRateKey_) String get entryRate;/// minimumPhotos
+@JsonKey(name: ClientProfilePackage.minimumPhotosKey_) int get minimumPhotos;/// startingTotal
+@JsonKey(name: ClientProfilePackage.startingTotalKey_) String get startingTotal;/// extraPhotoPrice
 @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) String get extraPhotoPrice;/// proofsSlaDays
 @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) int get proofsSlaDays;/// finalsSlaDays
 @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) int get finalsSlaDays;
@@ -39,16 +42,16 @@ $ClientProfilePackageCopyWith<ClientProfilePackage> get copyWith => _$ClientProf
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientProfilePackage&&(identical(other.id, id) || other.id == id)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientProfilePackage&&(identical(other.id, id) || other.id == id)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.entryRate, entryRate) || other.entryRate == entryRate)&&(identical(other.minimumPhotos, minimumPhotos) || other.minimumPhotos == minimumPhotos)&&(identical(other.startingTotal, startingTotal) || other.startingTotal == startingTotal)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,nicheSlug,title,description,durationMinutes,price,currency,includedPhotos,extraPhotoPrice,proofsSlaDays,finalsSlaDays);
+int get hashCode => Object.hash(runtimeType,id,nicheSlug,title,description,durationMinutes,price,currency,includedPhotos,entryRate,minimumPhotos,startingTotal,extraPhotoPrice,proofsSlaDays,finalsSlaDays);
 
 @override
 String toString() {
-  return 'ClientProfilePackage(id: $id, nicheSlug: $nicheSlug, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays)';
+  return 'ClientProfilePackage(id: $id, nicheSlug: $nicheSlug, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, entryRate: $entryRate, minimumPhotos: $minimumPhotos, startingTotal: $startingTotal, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays)';
 }
 
 
@@ -59,7 +62,7 @@ abstract mixin class $ClientProfilePackageCopyWith<$Res>  {
   factory $ClientProfilePackageCopyWith(ClientProfilePackage value, $Res Function(ClientProfilePackage) _then) = _$ClientProfilePackageCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientProfilePackage.idKey_) String id,@JsonKey(name: ClientProfilePackage.nicheSlugKey_) String nicheSlug,@JsonKey(name: ClientProfilePackage.titleKey_) String title,@JsonKey(name: ClientProfilePackage.descriptionKey_) String? description,@JsonKey(name: ClientProfilePackage.durationMinutesKey_) int durationMinutes,@JsonKey(name: ClientProfilePackage.priceKey_) String price,@JsonKey(name: ClientProfilePackage.currencyKey_) String currency,@JsonKey(name: ClientProfilePackage.includedPhotosKey_) int includedPhotos,@JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) int finalsSlaDays
+@JsonKey(name: ClientProfilePackage.idKey_) String id,@JsonKey(name: ClientProfilePackage.nicheSlugKey_) String nicheSlug,@JsonKey(name: ClientProfilePackage.titleKey_) String title,@JsonKey(name: ClientProfilePackage.descriptionKey_) String? description,@JsonKey(name: ClientProfilePackage.durationMinutesKey_) int durationMinutes,@JsonKey(name: ClientProfilePackage.priceKey_) String price,@JsonKey(name: ClientProfilePackage.currencyKey_) String currency,@JsonKey(name: ClientProfilePackage.includedPhotosKey_) int includedPhotos,@JsonKey(name: ClientProfilePackage.entryRateKey_) String entryRate,@JsonKey(name: ClientProfilePackage.minimumPhotosKey_) int minimumPhotos,@JsonKey(name: ClientProfilePackage.startingTotalKey_) String startingTotal,@JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) int finalsSlaDays
 });
 
 
@@ -76,7 +79,7 @@ class _$ClientProfilePackageCopyWithImpl<$Res>
 
 /// Create a copy of ClientProfilePackage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nicheSlug = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nicheSlug = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? entryRate = null,Object? minimumPhotos = null,Object? startingTotal = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,nicheSlug: null == nicheSlug ? _self.nicheSlug : nicheSlug // ignore: cast_nullable_to_non_nullable
@@ -86,7 +89,10 @@ as String?,durationMinutes: null == durationMinutes ? _self.durationMinutes : du
 as int,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
 as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,includedPhotos: null == includedPhotos ? _self.includedPhotos : includedPhotos // ignore: cast_nullable_to_non_nullable
-as int,extraPhotoPrice: null == extraPhotoPrice ? _self.extraPhotoPrice : extraPhotoPrice // ignore: cast_nullable_to_non_nullable
+as int,entryRate: null == entryRate ? _self.entryRate : entryRate // ignore: cast_nullable_to_non_nullable
+as String,minimumPhotos: null == minimumPhotos ? _self.minimumPhotos : minimumPhotos // ignore: cast_nullable_to_non_nullable
+as int,startingTotal: null == startingTotal ? _self.startingTotal : startingTotal // ignore: cast_nullable_to_non_nullable
+as String,extraPhotoPrice: null == extraPhotoPrice ? _self.extraPhotoPrice : extraPhotoPrice // ignore: cast_nullable_to_non_nullable
 as String,proofsSlaDays: null == proofsSlaDays ? _self.proofsSlaDays : proofsSlaDays // ignore: cast_nullable_to_non_nullable
 as int,finalsSlaDays: null == finalsSlaDays ? _self.finalsSlaDays : finalsSlaDays // ignore: cast_nullable_to_non_nullable
 as int,
@@ -174,10 +180,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProfilePackage.idKey_)  String id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_)  String title, @JsonKey(name: ClientProfilePackage.descriptionKey_)  String? description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_)  String price, @JsonKey(name: ClientProfilePackage.currencyKey_)  String currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_)  int finalsSlaDays)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProfilePackage.idKey_)  String id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_)  String title, @JsonKey(name: ClientProfilePackage.descriptionKey_)  String? description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_)  String price, @JsonKey(name: ClientProfilePackage.currencyKey_)  String currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ClientProfilePackage.entryRateKey_)  String entryRate, @JsonKey(name: ClientProfilePackage.minimumPhotosKey_)  int minimumPhotos, @JsonKey(name: ClientProfilePackage.startingTotalKey_)  String startingTotal, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_)  int finalsSlaDays)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientProfilePackage() when $default != null:
-return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays);case _:
+return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.entryRate,_that.minimumPhotos,_that.startingTotal,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays);case _:
   return orElse();
 
 }
@@ -195,10 +201,10 @@ return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.dur
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProfilePackage.idKey_)  String id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_)  String title, @JsonKey(name: ClientProfilePackage.descriptionKey_)  String? description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_)  String price, @JsonKey(name: ClientProfilePackage.currencyKey_)  String currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_)  int finalsSlaDays)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientProfilePackage.idKey_)  String id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_)  String title, @JsonKey(name: ClientProfilePackage.descriptionKey_)  String? description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_)  String price, @JsonKey(name: ClientProfilePackage.currencyKey_)  String currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ClientProfilePackage.entryRateKey_)  String entryRate, @JsonKey(name: ClientProfilePackage.minimumPhotosKey_)  int minimumPhotos, @JsonKey(name: ClientProfilePackage.startingTotalKey_)  String startingTotal, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_)  int finalsSlaDays)  $default,) {final _that = this;
 switch (_that) {
 case _ClientProfilePackage():
-return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays);case _:
+return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.entryRate,_that.minimumPhotos,_that.startingTotal,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +221,10 @@ return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.dur
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientProfilePackage.idKey_)  String id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_)  String title, @JsonKey(name: ClientProfilePackage.descriptionKey_)  String? description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_)  String price, @JsonKey(name: ClientProfilePackage.currencyKey_)  String currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_)  int finalsSlaDays)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientProfilePackage.idKey_)  String id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_)  String title, @JsonKey(name: ClientProfilePackage.descriptionKey_)  String? description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_)  String price, @JsonKey(name: ClientProfilePackage.currencyKey_)  String currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ClientProfilePackage.entryRateKey_)  String entryRate, @JsonKey(name: ClientProfilePackage.minimumPhotosKey_)  int minimumPhotos, @JsonKey(name: ClientProfilePackage.startingTotalKey_)  String startingTotal, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_)  int finalsSlaDays)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientProfilePackage() when $default != null:
-return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays);case _:
+return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.entryRate,_that.minimumPhotos,_that.startingTotal,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays);case _:
   return null;
 
 }
@@ -230,7 +236,7 @@ return $default(_that.id,_that.nicheSlug,_that.title,_that.description,_that.dur
 
 @jsonSerializable
 class _ClientProfilePackage extends ClientProfilePackage {
-  const _ClientProfilePackage({@JsonKey(name: ClientProfilePackage.idKey_) required this.id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_) required this.nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_) required this.title, @JsonKey(name: ClientProfilePackage.descriptionKey_) this.description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_) required this.durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_) required this.price, @JsonKey(name: ClientProfilePackage.currencyKey_) required this.currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_) required this.includedPhotos, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) required this.extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) required this.proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) required this.finalsSlaDays}): super._();
+  const _ClientProfilePackage({@JsonKey(name: ClientProfilePackage.idKey_) required this.id, @JsonKey(name: ClientProfilePackage.nicheSlugKey_) required this.nicheSlug, @JsonKey(name: ClientProfilePackage.titleKey_) required this.title, @JsonKey(name: ClientProfilePackage.descriptionKey_) this.description, @JsonKey(name: ClientProfilePackage.durationMinutesKey_) required this.durationMinutes, @JsonKey(name: ClientProfilePackage.priceKey_) required this.price, @JsonKey(name: ClientProfilePackage.currencyKey_) required this.currency, @JsonKey(name: ClientProfilePackage.includedPhotosKey_) required this.includedPhotos, @JsonKey(name: ClientProfilePackage.entryRateKey_) required this.entryRate, @JsonKey(name: ClientProfilePackage.minimumPhotosKey_) required this.minimumPhotos, @JsonKey(name: ClientProfilePackage.startingTotalKey_) required this.startingTotal, @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) required this.extraPhotoPrice, @JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) required this.proofsSlaDays, @JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) required this.finalsSlaDays}): super._();
   factory _ClientProfilePackage.fromJson(Map<String, dynamic> json) => _$ClientProfilePackageFromJson(json);
 
 /// id
@@ -249,6 +255,12 @@ class _ClientProfilePackage extends ClientProfilePackage {
 @override@JsonKey(name: ClientProfilePackage.currencyKey_) final  String currency;
 /// includedPhotos
 @override@JsonKey(name: ClientProfilePackage.includedPhotosKey_) final  int includedPhotos;
+/// entryRate
+@override@JsonKey(name: ClientProfilePackage.entryRateKey_) final  String entryRate;
+/// minimumPhotos
+@override@JsonKey(name: ClientProfilePackage.minimumPhotosKey_) final  int minimumPhotos;
+/// startingTotal
+@override@JsonKey(name: ClientProfilePackage.startingTotalKey_) final  String startingTotal;
 /// extraPhotoPrice
 @override@JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) final  String extraPhotoPrice;
 /// proofsSlaDays
@@ -269,16 +281,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientProfilePackage&&(identical(other.id, id) || other.id == id)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientProfilePackage&&(identical(other.id, id) || other.id == id)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.entryRate, entryRate) || other.entryRate == entryRate)&&(identical(other.minimumPhotos, minimumPhotos) || other.minimumPhotos == minimumPhotos)&&(identical(other.startingTotal, startingTotal) || other.startingTotal == startingTotal)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,nicheSlug,title,description,durationMinutes,price,currency,includedPhotos,extraPhotoPrice,proofsSlaDays,finalsSlaDays);
+int get hashCode => Object.hash(runtimeType,id,nicheSlug,title,description,durationMinutes,price,currency,includedPhotos,entryRate,minimumPhotos,startingTotal,extraPhotoPrice,proofsSlaDays,finalsSlaDays);
 
 @override
 String toString() {
-  return 'ClientProfilePackage(id: $id, nicheSlug: $nicheSlug, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays)';
+  return 'ClientProfilePackage(id: $id, nicheSlug: $nicheSlug, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, entryRate: $entryRate, minimumPhotos: $minimumPhotos, startingTotal: $startingTotal, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays)';
 }
 
 
@@ -289,7 +301,7 @@ abstract mixin class _$ClientProfilePackageCopyWith<$Res> implements $ClientProf
   factory _$ClientProfilePackageCopyWith(_ClientProfilePackage value, $Res Function(_ClientProfilePackage) _then) = __$ClientProfilePackageCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientProfilePackage.idKey_) String id,@JsonKey(name: ClientProfilePackage.nicheSlugKey_) String nicheSlug,@JsonKey(name: ClientProfilePackage.titleKey_) String title,@JsonKey(name: ClientProfilePackage.descriptionKey_) String? description,@JsonKey(name: ClientProfilePackage.durationMinutesKey_) int durationMinutes,@JsonKey(name: ClientProfilePackage.priceKey_) String price,@JsonKey(name: ClientProfilePackage.currencyKey_) String currency,@JsonKey(name: ClientProfilePackage.includedPhotosKey_) int includedPhotos,@JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) int finalsSlaDays
+@JsonKey(name: ClientProfilePackage.idKey_) String id,@JsonKey(name: ClientProfilePackage.nicheSlugKey_) String nicheSlug,@JsonKey(name: ClientProfilePackage.titleKey_) String title,@JsonKey(name: ClientProfilePackage.descriptionKey_) String? description,@JsonKey(name: ClientProfilePackage.durationMinutesKey_) int durationMinutes,@JsonKey(name: ClientProfilePackage.priceKey_) String price,@JsonKey(name: ClientProfilePackage.currencyKey_) String currency,@JsonKey(name: ClientProfilePackage.includedPhotosKey_) int includedPhotos,@JsonKey(name: ClientProfilePackage.entryRateKey_) String entryRate,@JsonKey(name: ClientProfilePackage.minimumPhotosKey_) int minimumPhotos,@JsonKey(name: ClientProfilePackage.startingTotalKey_) String startingTotal,@JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ClientProfilePackage.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ClientProfilePackage.finalsSlaDaysKey_) int finalsSlaDays
 });
 
 
@@ -306,7 +318,7 @@ class __$ClientProfilePackageCopyWithImpl<$Res>
 
 /// Create a copy of ClientProfilePackage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nicheSlug = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nicheSlug = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? entryRate = null,Object? minimumPhotos = null,Object? startingTotal = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,}) {
   return _then(_ClientProfilePackage(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,nicheSlug: null == nicheSlug ? _self.nicheSlug : nicheSlug // ignore: cast_nullable_to_non_nullable
@@ -316,7 +328,10 @@ as String?,durationMinutes: null == durationMinutes ? _self.durationMinutes : du
 as int,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
 as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,includedPhotos: null == includedPhotos ? _self.includedPhotos : includedPhotos // ignore: cast_nullable_to_non_nullable
-as int,extraPhotoPrice: null == extraPhotoPrice ? _self.extraPhotoPrice : extraPhotoPrice // ignore: cast_nullable_to_non_nullable
+as int,entryRate: null == entryRate ? _self.entryRate : entryRate // ignore: cast_nullable_to_non_nullable
+as String,minimumPhotos: null == minimumPhotos ? _self.minimumPhotos : minimumPhotos // ignore: cast_nullable_to_non_nullable
+as int,startingTotal: null == startingTotal ? _self.startingTotal : startingTotal // ignore: cast_nullable_to_non_nullable
+as String,extraPhotoPrice: null == extraPhotoPrice ? _self.extraPhotoPrice : extraPhotoPrice // ignore: cast_nullable_to_non_nullable
 as String,proofsSlaDays: null == proofsSlaDays ? _self.proofsSlaDays : proofsSlaDays // ignore: cast_nullable_to_non_nullable
 as int,finalsSlaDays: null == finalsSlaDays ? _self.finalsSlaDays : finalsSlaDays // ignore: cast_nullable_to_non_nullable
 as int,

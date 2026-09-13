@@ -190,6 +190,8 @@ class _Card extends StatelessWidget {
             // than as a zero, which would read as free.
             if (card.minPrice != null)
               Text(
+                // min_package_price is now the real starting total -
+                // the cheapest complete booking, not a per-photo rate.
                 'from ${card.currency} ${card.minPrice}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

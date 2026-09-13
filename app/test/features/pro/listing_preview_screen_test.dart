@@ -144,7 +144,9 @@ void main() {
       find.text('Price range'), 200, scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Price range'), findsOneWidget);
-    expect(find.text('The cheapest and dearest of your packages'), findsOneWidget);
+    // Now names the minimum explicitly: the field behind this is the
+    // starting total, not the per-photo rate it used to be.
+    expect(find.text('The cheapest and dearest of your packages, at their minimum'), findsOneWidget);
     expect(find.text('Cover photo and photo count'), findsOneWidget);
   });
 

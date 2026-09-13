@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_input.dart';
+import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/booking_request/booking_request_controller.dart';
 
@@ -156,8 +157,18 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
           Text('Request ${widget.package.title}', style: theme.textTheme.headlineSmall),
           const SizedBox(height: RSpace.s4),
           Text(
-            'with ${widget.proName} · €${widget.package.price} · ${_duration(widget.package.durationMinutes)}',
+            'with ${widget.proName} · ${_duration(widget.package.durationMinutes)}',
             style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: RSpace.s12),
+          // The last screen before someone commits, so the price has to be
+          // the real one. It previously showed package.price here too - the
+          // per-photo rate, presented as the cost of the booking.
+          RPackagePrice(
+            entryRate: widget.package.entryRate,
+            minimumPhotos: widget.package.minimumPhotos,
+            startingTotal: widget.package.startingTotal,
+            currency: widget.package.currency,
           ),
           const SizedBox(height: RSpace.s24),
           _PickerRow(

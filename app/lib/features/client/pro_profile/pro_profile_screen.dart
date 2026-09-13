@@ -8,6 +8,7 @@ import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -204,18 +205,17 @@ class _PackageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: Text(package.title, style: theme.textTheme.titleSmall)),
-              const SizedBox(width: RSpace.s8),
-              // Money is a decimal string from the API and stays one all the
-              // way to the screen.
-              Text(
-                '€${package.price}',
-                style: theme.textTheme.titleSmall?.copyWith(fontFeatures: RType.tabularFigures),
-              ),
-            ],
+          Text(package.title, style: theme.textTheme.titleSmall),
+          const SizedBox(height: RSpace.s8),
+          // The per-photo rate leads. This used to render package.price beside
+          // the title as though it were the package price - but that field is
+          // the entry rate, so the card advertised EUR 243 for work that
+          // charges EUR 6,075.
+          RPackagePrice(
+            entryRate: package.entryRate,
+            minimumPhotos: package.minimumPhotos,
+            startingTotal: package.startingTotal,
+            currency: package.currency,
           ),
           if (package.description != null && package.description!.isNotEmpty) ...[
             const SizedBox(height: RSpace.s4),

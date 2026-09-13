@@ -46,6 +46,11 @@ const _package = ClientProfilePackage(
   price: '180.00',
   currency: 'EUR',
   includedPhotos: 15,
+  entryRate: '180.00',
+  minimumPhotos: 15,
+  // Not 180 x 15: portraits decay past the tenth photo, so the server's
+  // figure is lower than the multiplication.
+  startingTotal: '2405.88',
   extraPhotoPrice: '7.00',
   proofsSlaDays: 3,
   finalsSlaDays: 7,

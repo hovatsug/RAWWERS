@@ -46,6 +46,12 @@ ClientProProfileResponse _profile({
               price: '180.00',
               currency: 'EUR',
               includedPhotos: 15,
+              entryRate: '180.00',
+              minimumPhotos: 15,
+              // Not 180 x 15. Portraits decay past the tenth photo, so the
+              // server's figure is lower than the multiplication - which is
+              // the whole reason this comes from the server.
+              startingTotal: '2405.88',
               extraPhotoPrice: '7.00',
               proofsSlaDays: 3,
               finalsSlaDays: 7,
@@ -112,9 +118,56 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Portrait session'), 200);
 
-    expect(find.text('€180.00'), findsOneWidget);
+    // The per-photo rate leads, and the starting total is the server's
+    // figure. This test previously asserted a bare "€180.00" - the entry rate
+    // rendered as the package price, which is the bug.
+    expect(find.textContaining('/photo'), findsOneWidget);
+    expect(find.text('minimum 15 photos · from €2405.88'), findsOneWidget);
     expect(find.text('1 hour 30 min · 15 photos included'), findsOneWidget);
     expect(find.text('Proofs in 3 days, finals in 7'), findsOneWidget);
+  });
+
+  testWidgets('the per-photo rate is never shown as the package price', (tester) async {
+    // The bug, precisely: package.price is the per-photo entry rate, and
+    // every client-facing screen rendered it as the price of the package. A
+    // real seeded package advertised €243 for work that charges €6,075, above
+    // a "Request this package" button.
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+    await tester.scrollUntilVisible(find.text('Portrait session'), 200);
+
+    expect(
+      find.text('€180.00'),
+      findsNothing,
+      reason: 'the entry rate is rendered bare, with nothing saying it is per photo',
+    );
+  });
+
+  testWidgets('every figure comes from the server, none multiplied locally', (tester) async {
+    // 180.00 x 15 = 2700.00. The server says 2405.88, because portraits decay
+    // past the tenth photo. A screen that multiplies would overstate this
+    // package by nearly €300 and would look entirely correct on a flat-curve
+    // niche like real estate.
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+    await tester.scrollUntilVisible(find.text('Portrait session'), 200);
+
+    expect(find.textContaining('2405.88'), findsOneWidget);
+    expect(find.textContaining('2700'), findsNothing, reason: 'the total was computed locally');
+  });
+
+  testWidgets('the curve is stated before anyone requests a booking', (tester) async {
+    // Nothing previously told a client the eleventh photo costs less than the
+    // first. Discovering that mid-selection is too late to affect the choice
+    // of photographer.
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+    await tester.scrollUntilVisible(find.text('Portrait session'), 200);
+
+    expect(find.textContaining('drops as you choose more'), findsOneWidget);
   });
 
   testWidgets('a pro with no packages says so instead of showing nothing', (tester) async {

@@ -20,6 +20,7 @@ from app.services.gamification import queue_evaluate_user_milestones
 from app.services.cache import bump_public_index_version
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import get_niche_tier_map_for_index, get_verified_niches_for_index
+from app.services.package_pricing import compute_minimum_amount
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.search_indexing import enqueue_pro_index_upsert
 
@@ -32,8 +33,36 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
         select(ProPackage).where(ProPackage.pro_user_id == pro_user_id, ProPackage.is_active.is_(True))
     ).scalars().all()
 
-    min_price = min((p.price for p in packages), default=None)
-    max_price = max((p.price for p in packages), default=None)
+    # What a client would actually pay, not what one photograph costs.
+    #
+    # These were min/max of ProPackage.price - the per-photo entry rate -
+    # presented on Discover cards as "from EUR 243". The real minimum for that
+    # package is EUR 6,075. The field is read by more than the cards: it gates
+    # discoverability (null means hidden), backs the min_price/max_price
+    # budget filter, and drives price_asc/price_desc sorting. So the filter
+    # was comparing budgets against per-photo rates, which matched everyone
+    # and meant nothing.
+    #
+    # Fixing it here rather than at each of the six readers is the point: a
+    # value with two meanings in two places is how the pricing double-charge
+    # happened. Changing it does rescale the budget filter by 10-25x, which is
+    # the filter becoming meaningful for the first time rather than a side
+    # effect.
+    #
+    # compute_minimum_amount() rather than entry_rate * photos: photos past
+    # the tenth follow the niche's decay curve, so multiplying overstates a
+    # portrait package by EUR 1,679 while looking correct on flat niches.
+    package_minimums = [
+        compute_minimum_amount(
+            db,
+            niche_id=package.niche_id,
+            entry_rate=package.price,
+            included_photos=package.included_photos,
+        )
+        for package in packages
+    ]
+    min_price = min(package_minimums, default=None)
+    max_price = max(package_minimums, default=None)
     currency = packages[0].currency if packages else "EUR"
 
     portfolio_photos = db.execute(

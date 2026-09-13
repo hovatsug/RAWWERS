@@ -173,7 +173,9 @@ class _WhatFeedsIt extends StatelessWidget {
         ),
         _FeedsRow(
           label: 'Price range',
-          detail: 'The cheapest and dearest of your packages',
+          // The starting total, not the per-photo rate: what a client would
+          // pay for the smallest bookable selection of each package.
+          detail: 'The cheapest and dearest of your packages, at their minimum',
           onTap: () => context.push(pricingPath),
         ),
         _FeedsRow(

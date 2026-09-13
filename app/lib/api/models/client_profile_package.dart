@@ -42,6 +42,20 @@
 ///             "type": "integer",
 ///             "title": "Included Photos"
 ///         },
+///         "entry_rate": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "title": "Entry Rate"
+///         },
+///         "minimum_photos": {
+///             "type": "integer",
+///             "title": "Minimum Photos"
+///         },
+///         "starting_total": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "title": "Starting Total"
+///         },
 ///         "extra_photo_price": {
 ///             "type": "string",
 ///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -65,6 +79,9 @@
 ///         "price",
 ///         "currency",
 ///         "included_photos",
+///         "entry_rate",
+///         "minimum_photos",
+///         "starting_total",
 ///         "extra_photo_price",
 ///         "proofs_sla_days",
 ///         "finals_sla_days"
@@ -110,6 +127,18 @@ abstract class ClientProfilePackage with _$ClientProfilePackage {
     @JsonKey(name: ClientProfilePackage.includedPhotosKey_)
     required int includedPhotos,
 
+    /// entryRate
+    @JsonKey(name: ClientProfilePackage.entryRateKey_)
+    required String entryRate,
+
+    /// minimumPhotos
+    @JsonKey(name: ClientProfilePackage.minimumPhotosKey_)
+    required int minimumPhotos,
+
+    /// startingTotal
+    @JsonKey(name: ClientProfilePackage.startingTotalKey_)
+    required String startingTotal,
+
     /// extraPhotoPrice
     @JsonKey(name: ClientProfilePackage.extraPhotoPriceKey_)
     required String extraPhotoPrice,
@@ -141,6 +170,12 @@ abstract class ClientProfilePackage with _$ClientProfilePackage {
   static const String currencyKey_ = r'currency';
 
   static const String includedPhotosKey_ = r'included_photos';
+
+  static const String entryRateKey_ = r'entry_rate';
+
+  static const String minimumPhotosKey_ = r'minimum_photos';
+
+  static const String startingTotalKey_ = r'starting_total';
 
   static const String extraPhotoPriceKey_ = r'extra_photo_price';
 

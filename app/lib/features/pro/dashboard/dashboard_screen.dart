@@ -343,7 +343,11 @@ class _PricingBlock extends ConsumerWidget {
                 child: Text(
                   value.card.minPrice == null
                       ? 'No price set, so your card says "price on request".'
-                      : 'From ${value.card.currency} ${value.card.minPrice}',
+                      // The cheapest complete booking, not the per-photo
+                      // rate. Naming it plainly so a photographer is not
+                      // surprised by what clients see.
+                      : 'Clients see "from ${value.card.currency} ${value.card.minPrice}" '
+                          'for your smallest booking',
                   style: theme.textTheme.bodyMedium,
                 ),
               ),

@@ -73,6 +73,31 @@ class ClientHomeScreen extends ConsumerWidget {
   }
 }
 
+/// Geometry shared by a loaded row and the placeholder that stands in for it.
+///
+/// These used to be two independent sets of numbers. The placeholder drew a
+/// 148pt row with no side padding of its own; the loaded row is 208pt and
+/// bleeds to the screen edge. So every row on the home screen grew by 60pt
+/// and shifted sideways the instant content arrived, which reads as broken
+/// however correct the rest of the screen is.
+///
+/// A placeholder's whole job is to occupy the space its content will occupy.
+/// Naming the numbers once is what stops the two drifting apart again.
+abstract final class _RowMetrics {
+  static const cardWidth = 148.0;
+  static const coverSize = 148.0;
+
+  /// Cover, gap, name, and the price line when there is one.
+  static const rowHeight = 208.0;
+
+  static const gap = RSpace.s12;
+  static const sidePadding = EdgeInsets.symmetric(horizontal: RSpace.s16);
+  static const headingPadding = EdgeInsets.fromLTRB(RSpace.s16, RSpace.s24, RSpace.s16, RSpace.s8);
+  static const headingHeight = 20.0;
+  static const headingWidth = 180.0;
+}
+
+
 class _Row extends StatelessWidget {
   const _Row({required this.row, this.onOpenPro, this.onOpenNiche});
 
@@ -100,7 +125,7 @@ class _Row extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s24, RSpace.s16, RSpace.s8),
+          padding: _RowMetrics.headingPadding,
           child: slug == null
               ? _RowHeading(title: row.title, subtitle: row.subtitle)
               : RNicheTile(
@@ -112,12 +137,12 @@ class _Row extends StatelessWidget {
                 ),
         ),
         SizedBox(
-          height: 208,
+          height: _RowMetrics.rowHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: RSpace.s16),
+            padding: _RowMetrics.sidePadding,
             itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: RSpace.s12),
+            separatorBuilder: (context, index) => const SizedBox(width: _RowMetrics.gap),
             itemBuilder: (context, index) => _Card(
               card: items[index],
               onTap: onOpenPro == null ? null : () => onOpenPro!(items[index].proUserId),
@@ -169,13 +194,13 @@ class _Card extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: SizedBox(
-        width: 148,
+        width: _RowMetrics.cardWidth,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 148,
-              width: 148,
+              height: _RowMetrics.coverSize,
+              width: _RowMetrics.coverSize,
               child: RNetworkPhoto(url: card.coverUrl, semanticLabel: card.displayName),
             ),
             const SizedBox(height: RSpace.s8),
@@ -210,23 +235,55 @@ class _LoadingRows extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(RSpace.s16),
+      // Matches the loaded list's own insets, so the first heading does not
+      // move down the moment rows arrive.
+      padding: EdgeInsets.only(
+        top: MediaQuery.paddingOf(context).top + RSpace.s8,
+        bottom: RSpace.s32,
+      ),
       children: [
         for (var row = 0; row < 3; row++) ...[
-          const RSkeleton(width: 180, height: 20),
-          const SizedBox(height: RSpace.s12),
+          const Padding(
+            padding: _RowMetrics.headingPadding,
+            child: RSkeleton(width: _RowMetrics.headingWidth, height: _RowMetrics.headingHeight),
+          ),
           SizedBox(
-            height: 148,
+            height: _RowMetrics.rowHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              padding: _RowMetrics.sidePadding,
               itemCount: 4,
-              separatorBuilder: (context, index) => const SizedBox(width: RSpace.s12),
-              itemBuilder: (context, index) => const RSkeleton(width: 148, height: 148),
+              separatorBuilder: (context, index) => const SizedBox(width: _RowMetrics.gap),
+              itemBuilder: (context, index) => const _CardSkeleton(),
             ),
           ),
-          const SizedBox(height: RSpace.s24),
         ],
       ],
+    );
+  }
+}
+
+
+/// The shape of a card before it has loaded: cover, then the name line.
+///
+/// Built from the same metrics as the real card so the two occupy the same
+/// box. A single full-height block would fill the space without standing in
+/// for anything, and would jump differently once text arrived.
+class _CardSkeleton extends StatelessWidget {
+  const _CardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: _RowMetrics.cardWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RSkeleton(width: _RowMetrics.coverSize, height: _RowMetrics.coverSize),
+          SizedBox(height: RSpace.s8),
+          RSkeleton(width: 96, height: 12),
+        ],
+      ),
     );
   }
 }

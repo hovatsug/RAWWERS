@@ -9,13 +9,17 @@
 //
 // Plus the honest-absence rule: "no city chosen" and "no photographers here"
 // are different facts and must never render as the same message.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/core/api/api_failure.dart';
+import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/discover/home_controller.dart';
 import 'package:rawwers/features/client/discover/home_screen.dart';
@@ -237,4 +241,83 @@ void main() {
       reason: 'the first heading is drawn under the status bar',
     );
   });
+
+  // ---------------------------------------------------------------------
+  // The placeholder has to occupy the space its content will occupy.
+  // ---------------------------------------------------------------------
+
+  testWidgets('a loading row is the same height and inset as the row it stands in for', (tester) async {
+    // The placeholder drew a 148pt row with no side padding while the loaded
+    // row is 208pt and runs to the screen edge, so every row grew by 60pt and
+    // shifted sideways the instant content arrived. A skeleton that does not
+    // reserve the right box is worse than none: it guarantees a reflow.
+    //
+    // Loaded first, then loading. The reverse order silently measured the
+    // placeholder twice, because the fake controller's value had not resolved
+    // by the time the second measurement was taken - so the test compared the
+    // skeleton with itself and passed against any geometry at all.
+    await _pump(
+      tester,
+      HomeRows([
+        _row('new_photographers', 'New photographers', [_card('A'), _card('B'), _card('C')]),
+      ]),
+    );
+    expect(find.text('A'), findsOneWidget, reason: 'the loaded row never rendered');
+
+    final loadedRow = tester.getSize(_firstHorizontalList(tester));
+    // The first card's own leading edge, not the list's. A ListView's box is
+    // full width whatever its internal padding, so measuring the list made
+    // the inset assertion pass with the padding deleted.
+    final loadedCardLeft = tester.getTopLeft(find.byType(RNetworkPhoto).first).dx;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        // A distinct key, so Flutter rebuilds the element instead of updating
+        // it. Without this the container survives the pump, the previously
+        // resolved rows stay in place, and the "loading" measurement is taken
+        // against loaded content.
+        key: const ValueKey('loading-scope'),
+        overrides: [homeControllerProvider.overrideWith(_NeverLoadingHome.new)],
+        child: MaterialApp(
+          theme: buildClientTheme(),
+          home: const Scaffold(body: ClientHomeScreen()),
+        ),
+      ),
+    );
+    // Pumped by hand: RSkeleton repeats forever, so pumpAndSettle can never
+    // settle while a placeholder is on screen.
+    await tester.pump();
+    expect(find.text('A'), findsNothing, reason: 'the placeholder never replaced the loaded rows');
+
+    final loadingRow = tester.getSize(_firstHorizontalList(tester));
+    final loadingCardLeft = tester.getTopLeft(
+      find.descendant(of: _firstHorizontalList(tester), matching: find.byType(RSkeleton)).first,
+    ).dx;
+
+    expect(
+      loadingRow.height,
+      loadedRow.height,
+      reason: 'the row changes height when content arrives, so every row below it jumps',
+    );
+    expect(
+      loadingCardLeft,
+      loadedCardLeft,
+      reason: 'the first card starts at a different x once content arrives, so the row shifts sideways',
+    );
+    expect(loadingRow.width, loadedRow.width);
+  });
+}
+
+/// A home controller whose first load never completes, so the screen stays in
+/// its loading state for as long as the test needs it.
+class _NeverLoadingHome extends HomeController {
+  @override
+  Future<HomeState> build() => Completer<HomeState>().future;
+}
+
+/// The horizontal carousel inside the first row, in either state.
+Finder _firstHorizontalList(WidgetTester tester) {
+  return find
+      .byWidgetPredicate((w) => w is ListView && w.scrollDirection == Axis.horizontal)
+      .first;
 }

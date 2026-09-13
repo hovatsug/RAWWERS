@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
-from app.models.niche import Niche, SkillTier
+from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.package_pricing import NichePackagePriceCap, PackageCurveType, PackageDecayCurve
 
 MINIMUM_PHOTOS = 10
@@ -192,6 +192,27 @@ def is_curve_priced(gig) -> bool:
     or an entry rate (the legacy shoot path) keep the flat extras model.
     """
     return bool(gig is not None and gig.niche_id is not None and gig.entry_rate is not None)
+
+
+def resolve_pro_tier_for_niche(db: Session, pro_user_id: uuid.UUID, niche_id: uuid.UUID) -> SkillTier:
+    """The tier a photographer holds in one niche, which is the tier their
+    cap is read against.
+
+    Tier is per-niche: a master in weddings who has never shot product is a
+    rookie in product and is capped as one. No skill row means rookie, the
+    strictest cap, so a brand-new account cannot price as a master.
+
+    Lives here rather than in the router that used to own it because the cap
+    it selects is enforced here. A second copy of this three-line query is
+    how the caller and the enforcement drift apart, and a seed priced against
+    the wrong tier produces packages the API then refuses to let anyone edit.
+    """
+    skill = db.execute(
+        select(ProNicheSkill).where(
+            ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche_id
+        )
+    ).scalar_one_or_none()
+    return skill.tier if skill else SkillTier.rookie
 
 
 def get_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier) -> NichePackagePriceCap | None:

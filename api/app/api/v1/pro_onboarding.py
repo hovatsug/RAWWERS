@@ -24,7 +24,7 @@ from app.models.booking import (
 from app.models.gig import Gig, GigStatus
 from app.models.client_rewards_pricing import ExtraImagePricingPolicy, ProExtraImagePrice
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
-from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
+from app.models.niche import Niche, ProNiche, ProNicheSkill
 from app.schemas.media import CurrentUser
 from app.schemas.niche import (
     PortfolioNicheTagsRequest,
@@ -82,6 +82,7 @@ from app.services.package_pricing import (
     compute_package_total,
     enforce_entry_price_cap,
     get_price_cap,
+    resolve_pro_tier_for_niche,
 )
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
@@ -351,7 +352,7 @@ def create_package(
     _require_role(db, user.user_id, UserRoleType.pro)
     niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
     entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    tier = _resolve_pro_tier_for_niche(db, user.user_id, niche.id)
+    tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
     enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price)
     package = ProPackage(
         pro_user_id=user.user_id,
@@ -405,7 +406,7 @@ def update_package(
 
     if body.price is not None:
         entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        tier = _resolve_pro_tier_for_niche(db, user.user_id, niche.id)
+        tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
         enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price)
 
     for field in [
@@ -808,7 +809,7 @@ def get_my_niche_pricing_preview(
         raise APIError(code="not_found", message="Niche not found", status_code=404)
 
     entry = entry_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    tier = _resolve_pro_tier_for_niche(db, user.user_id, niche.id)
+    tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
     cap = get_price_cap(db, niche_id=niche.id, tier=tier)
     minimum = cap.entry_price_min if cap else Decimal("0.00")
     maximum = cap.entry_price_max if cap else None
@@ -1478,7 +1479,7 @@ def _extra_image_price_response(db: Session, pro_user_id: uuid.UUID) -> ProExtra
         niche = niches.get(row.niche_id)
         if not niche:
             continue
-        tier = _resolve_pro_tier_for_niche(db, pro_user_id, row.niche_id)
+        tier = resolve_pro_tier_for_niche(db, pro_user_id, row.niche_id)
         policy = db.execute(
             select(ExtraImagePricingPolicy).where(
                 ExtraImagePricingPolicy.niche_id == row.niche_id,
@@ -1556,15 +1557,6 @@ def _resolve_package_niche(db: Session, niche_id: uuid.UUID | None, niche_slug: 
             raise APIError(code="validation_error", message="Unknown niche_slug", status_code=422)
         return niche
     raise APIError(code="validation_error", message="niche_id or niche_slug is required", status_code=400)
-
-
-def _resolve_pro_tier_for_niche(db: Session, pro_user_id: uuid.UUID, niche_id: uuid.UUID) -> SkillTier:
-    skill = db.execute(
-        select(ProNicheSkill).where(
-            ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche_id
-        )
-    ).scalar_one_or_none()
-    return skill.tier if skill else SkillTier.rookie
 
 
 def _sanitize_public_breakdown(breakdown: dict | None) -> dict:

@@ -195,7 +195,7 @@ class _NicheCardState extends State<_NicheCard> {
           const SizedBox(height: RSpace.s12),
           Text(
             'Kit is not part of this yet.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -304,7 +304,7 @@ class _FormulaRow extends StatelessWidget {
             text,
             style: theme.textTheme.bodySmall?.copyWith(
               color: value == null
-                  ? theme.colorScheme.outline
+                  ? theme.colorScheme.onSurfaceVariant
                   : (subtracts ? theme.colorScheme.error : theme.colorScheme.onSurface),
             ),
           ),

@@ -200,13 +200,13 @@ class _PriceBar extends ConsumerWidget {
                         Text(
                           _totalLabel(quote, value.quoteFailed),
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: value.quoteStale ? theme.colorScheme.outline : null,
+                            color: value.quoteStale ? theme.colorScheme.onSurfaceVariant : null,
                           ),
                         ),
                       if (quote != null && quote.nextPhotoPrice != null && !value.quoteFailed)
                         Text(
                           _marginalLabel(quote),
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
                     ],
                   ),
@@ -218,7 +218,7 @@ class _PriceBar extends ConsumerWidget {
                 const SizedBox(height: RSpace.s8),
                 Text(
                   'This selection has been submitted. It cannot be changed here.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
             ],

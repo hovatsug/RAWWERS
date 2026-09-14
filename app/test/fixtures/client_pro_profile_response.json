@@ -1,0 +1,244 @@
+{
+  "pro_user_id": "9bc3c32e-9db5-5664-b6fd-198149bed288",
+  "display_name": "Tomás Belmonte",
+  "headline": "Documentary weddings with nothing staged",
+  "cover_media_asset_id": "a6063fee-3a49-5098-ab28-15393cd83a82",
+  "cover_url": "https://media.example/scrubbed.jpg",
+  "bio": "I work alone, in available light, and I do not ask anyone to do anything twice. Full-day coverage, everything delivered.",
+  "city": "Lisbon",
+  "country": "PT",
+  "styles": [
+    "documentary",
+    "editorial"
+  ],
+  "avg_rating": "0.00",
+  "review_count": 0,
+  "portfolio_photo_count": 19,
+  "portfolio_video_count": 0,
+  "packages": [
+    {
+      "id": "a78cdcff-2d55-477f-b6ea-451a27f1114f",
+      "niche_slug": "portraits",
+      "title": "Portraits session",
+      "description": null,
+      "duration_minutes": 180,
+      "price": "15.95",
+      "currency": "EUR",
+      "included_photos": 30,
+      "entry_rate": "15.95",
+      "minimum_photos": 30,
+      "starting_total": "312.34",
+      "extra_photo_price": "12.00",
+      "proofs_sla_days": 3,
+      "finals_sla_days": 10
+    },
+    {
+      "id": "e58986ad-e9e3-4133-8f14-cf7ad3097c90",
+      "niche_slug": "weddings",
+      "title": "Weddings session",
+      "description": null,
+      "duration_minutes": 180,
+      "price": "16.63",
+      "currency": "EUR",
+      "included_photos": 15,
+      "entry_rate": "16.63",
+      "minimum_photos": 15,
+      "starting_total": "242.37",
+      "extra_photo_price": "12.00",
+      "proofs_sla_days": 3,
+      "finals_sla_days": 10
+    }
+  ],
+  "portfolio_preview_asset_ids": [
+    "a6063fee-3a49-5098-ab28-15393cd83a82",
+    "7a88855f-4639-5ac2-9d1b-9669d380f9ce",
+    "84604d09-b915-5c07-8ea4-ba807ab61a6f",
+    "66d5cda1-b820-5de4-bb5f-2788c695101f",
+    "616f51bf-81e6-5c90-89a2-a9940394cd11",
+    "efeb85c6-e7ab-5cbd-af1a-9c5160537df5",
+    "6b637f62-73df-5151-a5ec-b8aa5ce1684e",
+    "bf818a88-d801-567b-9fe5-1d4374bac6ae",
+    "0f510ff4-72d7-5b02-8aed-4d9ee1a83376",
+    "3d2ceca9-2351-512f-ba1f-66f58722407e",
+    "edd1efb4-575a-5b55-8e0d-afadda9055b8",
+    "f531ce16-3de9-52af-9cfc-437a05993565",
+    "03f96946-09b4-51fa-b07d-ec53319efe72",
+    "3ecd2a9e-9225-59f6-b429-52b47dfb38f4",
+    "030368a4-76b4-5cb6-b1c0-10aaa645ccc3",
+    "edb42a6f-d9ed-5795-88f5-80619bd574d2",
+    "b552cc04-6512-53ca-bb01-5cf23f120c0e",
+    "74ad0744-c66a-5ec6-9242-c33228eea3bf",
+    "a5640bc6-dfd8-52ba-bd8c-36a1e1284251"
+  ],
+  "portfolio_preview": [
+    {
+      "media_asset_id": "a6063fee-3a49-5098-ab28-15393cd83a82",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "portraits"
+      ]
+    },
+    {
+      "media_asset_id": "7a88855f-4639-5ac2-9d1b-9669d380f9ce",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "portraits"
+      ]
+    },
+    {
+      "media_asset_id": "84604d09-b915-5c07-8ea4-ba807ab61a6f",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "portraits"
+      ]
+    },
+    {
+      "media_asset_id": "66d5cda1-b820-5de4-bb5f-2788c695101f",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "portraits"
+      ]
+    },
+    {
+      "media_asset_id": "616f51bf-81e6-5c90-89a2-a9940394cd11",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "efeb85c6-e7ab-5cbd-af1a-9c5160537df5",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "6b637f62-73df-5151-a5ec-b8aa5ce1684e",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "bf818a88-d801-567b-9fe5-1d4374bac6ae",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "0f510ff4-72d7-5b02-8aed-4d9ee1a83376",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "3d2ceca9-2351-512f-ba1f-66f58722407e",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "edd1efb4-575a-5b55-8e0d-afadda9055b8",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "f531ce16-3de9-52af-9cfc-437a05993565",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "03f96946-09b4-51fa-b07d-ec53319efe72",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "3ecd2a9e-9225-59f6-b429-52b47dfb38f4",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "030368a4-76b4-5cb6-b1c0-10aaa645ccc3",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "edb42a6f-d9ed-5795-88f5-80619bd574d2",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "b552cc04-6512-53ca-bb01-5cf23f120c0e",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "74ad0744-c66a-5ec6-9242-c33228eea3bf",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    },
+    {
+      "media_asset_id": "a5640bc6-dfd8-52ba-bd8c-36a1e1284251",
+      "kind": "photo",
+      "thumbnail_url": "https://media.example/scrubbed.jpg",
+      "niche_slugs": [
+        "weddings"
+      ]
+    }
+  ],
+  "niches": [
+    {
+      "slug": "weddings",
+      "name": "Weddings",
+      "tier": "elite",
+      "photo_count": 15,
+      "description": "Long days, shot quietly. I stay out of the way and come back with the day as it actually happened."
+    },
+    {
+      "slug": "portraits",
+      "name": "Portraits",
+      "tier": "pro",
+      "photo_count": 4,
+      "description": "Studio or daylight, always directed. Most people arrive certain they photograph badly and leave with something they use for years."
+    }
+  ],
+  "is_guest_view": false
+}

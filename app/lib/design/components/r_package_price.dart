@@ -98,9 +98,33 @@ class RPackagePrice extends StatelessWidget {
         ),
         if (!compact) ...[
           const SizedBox(height: RSpace.s4),
-          Text(
-            'Price per photo drops as you choose more',
-            style: theme.textTheme.bodySmall?.copyWith(color: RAccent.meter500),
+          // The accent carries this line because the decay curve is the one
+          // fact most likely to change what a client books, and it should not
+          // read as fine print. But meter500 at body size is 3.99:1 on the
+          // client card and 3.75:1 on the pro card - past the 3:1 bar for
+          // graphical objects, short of the 4.5:1 bar for text. The tokens
+          // file's own rule is that the accent never carries body text
+          // without a non-colour signal beside it.
+          //
+          // An icon rather than an underline. Underlines mean links in this
+          // design language - RTextLink uses one for exactly this reason - and
+          // borrowing that signal would make an explanatory line look
+          // tappable. A downward trend is also the more literal statement:
+          // sell_outlined already means "pricing" elsewhere in the app, and
+          // the point here is not that this concerns price but that the price
+          // falls.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.trending_down, size: 14, color: RAccent.meter500),
+              const SizedBox(width: RSpace.s4),
+              Flexible(
+                child: Text(
+                  'Price per photo drops as you choose more',
+                  style: theme.textTheme.bodySmall?.copyWith(color: RAccent.meter500),
+                ),
+              ),
+            ],
           ),
         ],
       ],

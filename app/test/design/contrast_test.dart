@@ -132,4 +132,58 @@ void main() {
       );
     });
   }
+
+  // -------------------------------------------------------------------------
+  // The accent's own rule, enforced rather than documented.
+  // -------------------------------------------------------------------------
+
+  test('the accent cannot clear AA normal text on a card in either theme', () {
+    // Why the rule exists. meter500 is deliberately one hue, used in both
+    // themes, and no single accent clears 4.5:1 against both a dark and a
+    // light surface at once. It passes the 3:1 bar for graphical objects,
+    // which is what lets it carry an icon.
+    final client = buildClientTheme();
+    final pro = buildProTheme();
+
+    expect(contrastRatio(RAccent.meter500, client.cardTheme.color!), lessThan(4.5));
+    expect(contrastRatio(RAccent.meter500, pro.cardTheme.color!), lessThan(4.5));
+    expect(contrastRatio(RAccent.meter500, client.cardTheme.color!), greaterThanOrEqualTo(3.0));
+    expect(contrastRatio(RAccent.meter500, pro.cardTheme.color!), greaterThanOrEqualTo(3.0));
+  });
+
+  testWidgets('accent-coloured body text carries a non-colour signal beside it', (tester) async {
+    // The curve line keeps the accent because it is the fact most likely to
+    // change what a client books. That is only allowed with a second signal
+    // that does not depend on colour - an icon here, not an underline, which
+    // means "link" in this design language.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildClientTheme(),
+        home: const Scaffold(
+          body: RCard(
+            child: RPackagePrice(
+              entryRate: '5.07',
+              minimumPhotos: 25,
+              startingTotal: '93.24',
+              currency: 'EUR',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final line = find.textContaining('drops as you choose more');
+    expect(line, findsOneWidget);
+
+    final accentIcon = find.descendant(
+      of: find.ancestor(of: line, matching: find.byType(Row)).first,
+      matching: find.byType(Icon),
+    );
+    expect(
+      accentIcon,
+      findsOneWidget,
+      reason: 'accent-coloured body text with nothing but colour to carry it, at 3.99:1',
+    );
+    expect(tester.widget<Icon>(accentIcon).color, RAccent.meter500);
+  });
 }

@@ -251,3 +251,23 @@ class GigInvoiceView(BaseModel):
 
 class GigInvoiceListResponse(BaseModel):
     items: list[GigInvoiceView] = Field(default_factory=list)
+
+
+class InvoiceSummaryView(BaseModel):
+    """Totals across every completed, invoiced gig."""
+
+    bookings: int
+    gross: Decimal
+    #: The platform's whole take, which is what a photographer means by fees
+    #: paid - not only the share the platform keeps.
+    platform_fees: Decimal
+    pro_raww: Decimal
+    #: What this photographer has chosen to hand back to their clients.
+    client_raww: Decimal
+    pro_cash: Decimal
+    #: Null with no bookings. A photographer with no completed work has no
+    #: average, and 0.00 would state one.
+    average_gross: Decimal | None = None
+    #: How many of these totals came from reconstructed rather than recorded
+    #: rates, so a summary built mostly from reconstructions can say so.
+    reconstructed: int = 0

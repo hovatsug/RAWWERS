@@ -27,7 +27,16 @@ def _pro(db_session) -> uuid.UUID:
     return user_id
 
 
-def _gig(db_session, pro_id: uuid.UUID, *, gross: str, stamped: bool, credit: int = 0) -> Gig:
+def _gig(
+    db_session,
+    pro_id: uuid.UUID,
+    *,
+    gross: str,
+    stamped: bool,
+    credit: int = 0,
+    retained: int = 15,
+    pro_raww: int = 5,
+) -> Gig:
     ensure_initial_niches(db_session)
     niche = db_session.execute(select(Niche).where(Niche.slug == "portraits")).scalar_one()
     amount = Decimal(gross)
@@ -43,9 +52,9 @@ def _gig(db_session, pro_id: uuid.UUID, *, gross: str, stamped: bool, credit: in
         meta={},
     )
     if stamped:
-        gig.fee_percent = 20
-        gig.retained_percent = 15
-        gig.pro_raww_percent = 5
+        gig.fee_percent = retained + pro_raww
+        gig.retained_percent = retained
+        gig.pro_raww_percent = pro_raww
         gig.client_credit_percent = credit
     db_session.add(gig)
     db_session.flush()
@@ -122,3 +131,89 @@ def test_photos_delivered_is_unknown_rather_than_zero(db_session):
 
     invoice = build_invoice(db_session, gig)
     assert invoice.photos_delivered is None, "an unrecorded count was reported as zero"
+
+
+# ---------------------------------------------------------------------------
+# The Wallet summary.
+# ---------------------------------------------------------------------------
+
+
+def test_the_summary_is_the_sum_of_the_invoices(db_session):
+    """The property the summary exists to have.
+
+    It could have been a SQL aggregate over the gig table, which would be
+    faster and would be a second implementation of the split. The two would
+    agree until somebody edited one, and the disagreement would surface as a
+    Wallet total that does not match the invoices behind it.
+    """
+    from app.services.invoices import summarise_invoices
+
+    ensure_default_platform_fee_policy(db_session)
+    pro_id = _pro(db_session)
+    gigs = [
+        _gig(db_session, pro_id, gross="1490.00", stamped=True, credit=0),
+        _gig(db_session, pro_id, gross="847.33", stamped=True, credit=10),
+        _gig(db_session, pro_id, gross="3.33", stamped=True, credit=7),
+        # Stamped at rates that are not the current policy's. Without this the
+        # summed lines and a naive "20% of total gross" aggregate produce the
+        # same number, and the assertion below cannot tell them apart - the
+        # first version of this test passed against exactly that aggregate.
+        _gig(db_session, pro_id, gross="2000.00", stamped=True, retained=25, pro_raww=5),
+        _gig(db_session, pro_id, gross="1000.00", stamped=False),
+    ]
+    db_session.flush()
+
+    invoices = [build_invoice(db_session, gig) for gig in gigs]
+    summary = summarise_invoices(db_session, pro_id)
+
+    assert summary.bookings == len(gigs)
+    assert summary.gross == sum((i.client_total for i in invoices), Decimal("0.00"))
+    assert summary.pro_cash == sum((i.pro_cash for i in invoices), Decimal("0.00"))
+    assert summary.client_raww == sum((i.client_raww for i in invoices), Decimal("0.00"))
+    assert summary.pro_raww == sum((i.pro_raww for i in invoices), Decimal("0.00"))
+    assert summary.platform_fees == sum(
+        (i.platform_retained + i.pro_raww for i in invoices), Decimal("0.00")
+    )
+
+
+def test_the_summary_totals_reconcile_to_the_gross(db_session):
+    from app.services.invoices import summarise_invoices
+
+    ensure_default_platform_fee_policy(db_session)
+    pro_id = _pro(db_session)
+    for gross, credit in [("1490.00", 0), ("847.33", 10), ("0.07", 3)]:
+        _gig(db_session, pro_id, gross=gross, stamped=True, credit=credit)
+    db_session.flush()
+
+    s = summarise_invoices(db_session, pro_id)
+    # platform_fees already contains pro_raww, so it is not added again.
+    assert s.platform_fees + s.pro_cash + s.client_raww == s.gross
+
+
+def test_a_photographer_with_no_completed_work_has_no_average(db_session):
+    """Not zero. An average of 0.00 states that their bookings average
+    nothing, which is a different claim from having none."""
+    from app.services.invoices import summarise_invoices
+
+    ensure_default_platform_fee_policy(db_session)
+    pro_id = _pro(db_session)
+
+    summary = summarise_invoices(db_session, pro_id)
+    assert summary.bookings == 0
+    assert summary.average_gross is None
+    assert summary.gross == Decimal("0.00")
+
+
+def test_the_summary_counts_how_many_totals_were_reconstructed(db_session):
+    """A total built mostly from gigs predating the stamped rates should be
+    able to say so, rather than presenting every figure as recorded."""
+    from app.services.invoices import summarise_invoices
+
+    ensure_default_platform_fee_policy(db_session)
+    pro_id = _pro(db_session)
+    _gig(db_session, pro_id, gross="1000.00", stamped=True)
+    _gig(db_session, pro_id, gross="1000.00", stamped=False)
+    _gig(db_session, pro_id, gross="1000.00", stamped=False)
+    db_session.flush()
+
+    assert summarise_invoices(db_session, pro_id).reconstructed == 2

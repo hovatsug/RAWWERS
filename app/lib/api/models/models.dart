@@ -134,6 +134,7 @@ export 'gig_response.dart';
 export 'gig_status.dart';
 export 'http_validation_error.dart';
 export 'i18n_bundle_fetch_response.dart';
+export 'invoice_summary_view.dart';
 export 'ledger_summary.dart';
 export 'locale_preference_update_request.dart';
 export 'locale_preference_view.dart';

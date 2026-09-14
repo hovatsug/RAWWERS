@@ -24,6 +24,7 @@ from app.models.payouts import (
 )
 from app.schemas.media import CurrentUser
 from app.schemas.payouts import (
+    InvoiceSummaryView,
     GigInvoiceListResponse,
     GigInvoiceView,
     AdminPayoutQueueResponse,
@@ -48,7 +49,7 @@ from app.schemas.payouts import (
     PayoutRequestCreateRequest,
     PayoutRequestView,
 )
-from app.services.invoices import build_invoice
+from app.services.invoices import build_invoice, summarise_invoices
 from app.services.audit import add_admin_audit_log
 from app.services.stripe_connect import (
     connect_status,
@@ -104,6 +105,27 @@ def _invoice_view(invoice) -> GigInvoiceView:
         client_credit_percent=invoice.client_credit_percent,
         photos_delivered=invoice.photos_delivered,
         rates_were_stamped=invoice.rates_were_stamped,
+    )
+
+
+@router.get("/pro/earnings/summary", response_model=InvoiceSummaryView)
+def get_my_earnings_summary(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> InvoiceSummaryView:
+    """Totals across every completed gig, from the same figures each invoice
+    shows rather than a separate aggregate that could disagree with them."""
+    _ensure_pro_user(db, user.user_id)
+    summary = summarise_invoices(db, user.user_id)
+    return InvoiceSummaryView(
+        bookings=summary.bookings,
+        gross=summary.gross,
+        platform_fees=summary.platform_fees,
+        pro_raww=summary.pro_raww,
+        client_raww=summary.client_raww,
+        pro_cash=summary.pro_cash,
+        average_gross=summary.average_gross,
+        reconstructed=summary.reconstructed,
     )
 
 

@@ -12,6 +12,7 @@ import 'package:rawwers/api/models/earnings_source_type.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/wallet/earnings_summary_card.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 
 class WalletScreen extends ConsumerWidget {
@@ -38,6 +39,10 @@ class WalletScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(RSpace.s16),
               children: [
                 _BalanceCard(data: value),
+                const SizedBox(height: RSpace.s16),
+                // What the balance does not say: how it got there. The
+                // balance is a position; this is the history behind it.
+                const EarningsSummaryCard(),
                 const SizedBox(height: RSpace.s16),
                 _PayoutCard(data: value),
                 const SizedBox(height: RSpace.s24),

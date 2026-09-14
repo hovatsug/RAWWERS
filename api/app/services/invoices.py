@@ -95,8 +95,29 @@ def photos_delivered_for(db: Session, gig: Gig) -> int | None:
     )
 
 
-def build_invoice(db: Session, gig: Gig) -> Invoice:
-    """The invoice for one gig, from its own record wherever possible."""
+@dataclass(frozen=True)
+class InvoiceAmounts:
+    """The money on one invoice, without the things that cost a query.
+
+    Split out so the Wallet summary can total hundreds of gigs without a
+    gallery lookup each - and, more importantly, so it totals the same
+    arithmetic the invoice screen shows rather than a second implementation
+    that agrees until one of them is edited.
+    """
+
+    gross: Decimal
+    platform_retained: Decimal
+    pro_raww: Decimal
+    client_raww: Decimal
+    pro_cash: Decimal
+    retained_percent: int
+    pro_raww_percent: int
+    client_credit_percent: int
+    rates_were_stamped: bool
+
+
+def invoice_amounts(db: Session, gig: Gig) -> InvoiceAmounts:
+    """What one gig's money divides into, from its own stamped rates."""
     gross = _q2(gig.amount_final or gig.amount_minimum)
     stamped = gig.retained_percent is not None and gig.pro_raww_percent is not None
 
@@ -124,13 +145,8 @@ def build_invoice(db: Session, gig: Gig) -> Invoice:
         client_raww = split.client_raww
         pro_cash = split.pro_cash
 
-    return Invoice(
-        gig_id=gig.id,
-        # The shoot's own date where it has one. `created_at` is when the
-        # booking was accepted, which is not when the work happened.
-        issued_at=gig.scheduled_end or gig.scheduled_start or gig.created_at,
-        currency=gig.currency or "EUR",
-        client_total=gross,
+    return InvoiceAmounts(
+        gross=gross,
         platform_retained=platform_retained,
         pro_raww=pro_raww,
         client_raww=client_raww,
@@ -138,6 +154,89 @@ def build_invoice(db: Session, gig: Gig) -> Invoice:
         retained_percent=retained_percent,
         pro_raww_percent=pro_raww_percent,
         client_credit_percent=client_credit_percent,
-        photos_delivered=photos_delivered_for(db, gig),
         rates_were_stamped=stamped,
+    )
+
+
+def build_invoice(db: Session, gig: Gig) -> Invoice:
+    """One gig's invoice: its money, plus what it cost a query to know."""
+    amounts = invoice_amounts(db, gig)
+    return Invoice(
+        gig_id=gig.id,
+        # The shoot's own date where it has one. `created_at` is when the
+        # booking was accepted, which is not when the work happened.
+        issued_at=gig.scheduled_end or gig.scheduled_start or gig.created_at,
+        currency=gig.currency or "EUR",
+        client_total=amounts.gross,
+        platform_retained=amounts.platform_retained,
+        pro_raww=amounts.pro_raww,
+        client_raww=amounts.client_raww,
+        pro_cash=amounts.pro_cash,
+        retained_percent=amounts.retained_percent,
+        pro_raww_percent=amounts.pro_raww_percent,
+        client_credit_percent=amounts.client_credit_percent,
+        photos_delivered=photos_delivered_for(db, gig),
+        rates_were_stamped=amounts.rates_were_stamped,
+    )
+
+
+@dataclass(frozen=True)
+class InvoiceSummary:
+    """Every completed gig a photographer has been paid for, totalled.
+
+    Built by adding up the same `invoice_amounts` each invoice screen shows,
+    rather than by a SQL aggregate over the gig table. An aggregate would be
+    faster and would be a second implementation of the split - the two would
+    agree until somebody edited one, and the disagreement would appear as a
+    Wallet total that does not match the invoices behind it.
+    """
+
+    bookings: int
+    gross: Decimal
+    platform_fees: Decimal
+    pro_raww: Decimal
+    client_raww: Decimal
+    pro_cash: Decimal
+
+    #: None rather than zero when there are no bookings. A photographer with
+    #: no completed work has no average, and rendering 0.00 would state one.
+    average_gross: Decimal | None
+
+    #: How many of these were reconstructed rather than read from stamped
+    #: rates, so a total built mostly from reconstructions can say so.
+    reconstructed: int
+
+
+def summarise_invoices(db: Session, pro_user_id: uuid.UUID) -> InvoiceSummary:
+    from app.models.gig import GigStatus
+
+    gigs = db.execute(
+        select(Gig).where(Gig.pro_user_id == pro_user_id, Gig.status == GigStatus.completed)
+    ).scalars().all()
+
+    zero = Decimal("0.00")
+    totals = {"gross": zero, "platform_fees": zero, "pro_raww": zero, "client_raww": zero, "pro_cash": zero}
+    reconstructed = 0
+
+    for gig in gigs:
+        amounts = invoice_amounts(db, gig)
+        totals["gross"] += amounts.gross
+        # The platform's whole take, which is what a photographer means by
+        # "fees paid" - not just the part the platform keeps.
+        totals["platform_fees"] += amounts.platform_retained + amounts.pro_raww
+        totals["pro_raww"] += amounts.pro_raww
+        totals["client_raww"] += amounts.client_raww
+        totals["pro_cash"] += amounts.pro_cash
+        if not amounts.rates_were_stamped:
+            reconstructed += 1
+
+    return InvoiceSummary(
+        bookings=len(gigs),
+        gross=_q2(totals["gross"]),
+        platform_fees=_q2(totals["platform_fees"]),
+        pro_raww=_q2(totals["pro_raww"]),
+        client_raww=_q2(totals["client_raww"]),
+        pro_cash=_q2(totals["pro_cash"]),
+        average_gross=_q2(totals["gross"] / len(gigs)) if gigs else None,
+        reconstructed=reconstructed,
     )

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/features/pro/wallet/summary_controller.dart';
+import 'package:rawwers/api/models/invoice_summary_view.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_account_view.dart';
@@ -42,7 +44,12 @@ WalletData _wallet({
 }
 
 Widget _wrap(WalletData data) => ProviderScope(
-      overrides: [walletControllerProvider.overrideWith(() => _FakeWallet(data))],
+      overrides: [
+        walletControllerProvider.overrideWith(() => _FakeWallet(data)),
+        // The all-time summary above the ledger is its own request. Without
+        // this override it reaches the network and the test hangs.
+        earningsSummaryProvider.overrideWith((ref) async => _summary()),
+      ],
       child: MaterialApp(theme: buildProTheme(), home: const WalletScreen()),
     );
 
@@ -101,3 +108,15 @@ void main() {
     expect(find.text('Earnings'), findsOneWidget);
   });
 }
+
+
+/// A photographer with no completed work, so the summary card renders nothing
+/// and these tests stay about the balance and the payout form.
+InvoiceSummaryView _summary() => const InvoiceSummaryView(
+      bookings: 0,
+      gross: '0.00',
+      platformFees: '0.00',
+      proRaww: '0.00',
+      clientRaww: '0.00',
+      proCash: '0.00',
+    );

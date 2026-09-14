@@ -6,6 +6,9 @@ import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_request_view.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
+import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/router/app_router_pro.dart';
+import 'package:rawwers/api/models/earnings_source_type.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -24,23 +27,26 @@ class WalletScreen extends ConsumerWidget {
       body: SafeArea(
         child: switch (wallet) {
           AsyncLoading() => const PagedListSkeleton(itemCount: 3),
-          AsyncError(:final error) => PagedListError(error: error, onRetry: notifier.refresh),
+          AsyncError(:final error) => PagedListError(
+            error: error,
+            onRetry: notifier.refresh,
+          ),
           AsyncData(:final value) => RefreshIndicator(
-              onRefresh: notifier.refresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(RSpace.s16),
-                children: [
-                  _BalanceCard(data: value),
-                  const SizedBox(height: RSpace.s16),
-                  _PayoutCard(data: value),
-                  const SizedBox(height: RSpace.s24),
-                  _PayoutHistory(payouts: value.payouts),
-                  const SizedBox(height: RSpace.s24),
-                  _Ledger(entries: value.ledger),
-                ],
-              ),
+            onRefresh: notifier.refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(RSpace.s16),
+              children: [
+                _BalanceCard(data: value),
+                const SizedBox(height: RSpace.s16),
+                _PayoutCard(data: value),
+                const SizedBox(height: RSpace.s24),
+                _PayoutHistory(payouts: value.payouts),
+                const SizedBox(height: RSpace.s24),
+                _Ledger(entries: value.ledger),
+              ],
             ),
+          ),
           _ => const SizedBox.shrink(),
         },
       ),
@@ -64,7 +70,9 @@ class _BalanceCard extends StatelessWidget {
           const SizedBox(height: RSpace.s4),
           Text(
             '€${data.balance.withdrawableEur}',
-            style: theme.textTheme.displaySmall?.copyWith(fontFeatures: RType.tabularFigures),
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontFeatures: RType.tabularFigures,
+            ),
           ),
           const SizedBox(height: RSpace.s16),
           // The other four buckets exist because money moves through stages -
@@ -97,7 +105,9 @@ class _BalanceRow extends StatelessWidget {
           const Spacer(),
           Text(
             '€$amount',
-            style: theme.textTheme.bodyMedium?.copyWith(fontFeatures: RType.tabularFigures),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontFeatures: RType.tabularFigures,
+            ),
           ),
         ],
       ),
@@ -132,11 +142,17 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
       return;
     }
     if (parsed < PayoutRules.minimum) {
-      setState(() => _error = 'The minimum payout is €${PayoutRules.minimum.toStringAsFixed(2)}.');
+      setState(
+        () => _error =
+            'The minimum payout is €${PayoutRules.minimum.toStringAsFixed(2)}.',
+      );
       return;
     }
     if (parsed > widget.data.withdrawable) {
-      setState(() => _error = 'You can withdraw up to €${widget.data.withdrawable.toStringAsFixed(2)}.');
+      setState(
+        () => _error =
+            'You can withdraw up to €${widget.data.withdrawable.toStringAsFixed(2)}.',
+      );
       return;
     }
 
@@ -144,7 +160,9 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
       _busy = true;
       _error = null;
     });
-    final message = await ref.read(walletControllerProvider.notifier).requestPayout(parsed);
+    final message = await ref
+        .read(walletControllerProvider.notifier)
+        .requestPayout(parsed);
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -185,7 +203,9 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
             RInput(
               label: 'Amount (€)',
               controller: _amount,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               tabularFigures: true,
             ),
             if (_error != null) ...[
@@ -193,7 +213,11 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
               Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ],
             const SizedBox(height: RSpace.s12),
-            RButton(label: 'Request payout', loading: _busy, onPressed: _busy ? null : _submit),
+            RButton(
+              label: 'Request payout',
+              loading: _busy,
+              onPressed: _busy ? null : _submit,
+            ),
             const SizedBox(height: RSpace.s8),
             Text(
               'Minimum €${PayoutRules.minimum.toStringAsFixed(2)}. '
@@ -218,10 +242,22 @@ class _PayoutAccountStatus extends StatelessWidget {
     // Connect onboarding is a hosted flow rather than a form, so entry is a
     // task of its own rather than a field bolted onto this card.
     final (label, detail) = switch (status) {
-      PayoutAccountStatus.active => ('Verified', 'Payouts go to your verified account.'),
-      PayoutAccountStatus.pendingVerification => ('Being verified', 'We\'re still checking your details.'),
-      PayoutAccountStatus.disabled => ('Disabled', 'Your payout account needs attention before you can withdraw.'),
-      PayoutAccountStatus.notSet => ('Not set up', 'You haven\'t added a payout account yet.'),
+      PayoutAccountStatus.active => (
+        'Verified',
+        'Payouts go to your verified account.',
+      ),
+      PayoutAccountStatus.pendingVerification => (
+        'Being verified',
+        'We\'re still checking your details.',
+      ),
+      PayoutAccountStatus.disabled => (
+        'Disabled',
+        'Your payout account needs attention before you can withdraw.',
+      ),
+      PayoutAccountStatus.notSet => (
+        'Not set up',
+        'You haven\'t added a payout account yet.',
+      ),
     };
 
     final theme = Theme.of(context);
@@ -255,10 +291,17 @@ class _PayoutHistory extends StatelessWidget {
             RCard(
               child: Row(
                 children: [
-                  Expanded(child: Text(payout.status.name, style: theme.textTheme.bodyMedium)),
+                  Expanded(
+                    child: Text(
+                      payout.status.name,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
                   Text(
                     '€${payout.amountEur}',
-                    style: theme.textTheme.titleMedium?.copyWith(fontFeatures: RType.tabularFigures),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontFeatures: RType.tabularFigures,
+                    ),
                   ),
                 ],
               ),
@@ -287,23 +330,39 @@ class _Ledger extends StatelessWidget {
           Text('Nothing earned yet.', style: theme.textTheme.bodySmall)
         else ...[
           for (final entry in entries) ...[
-            RCard(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_sourceLabel(entry), style: theme.textTheme.bodyMedium),
-                        Text(entry.status.name, style: theme.textTheme.bodySmall),
-                      ],
+            // Only gig earnings have an invoice behind them. An extras or
+            // Studioverse row has no gig to itemise, so it stays flat rather
+            // than offering a tap that goes nowhere.
+            _MaybeTappable(
+              onTap: entry.sourceType == EarningsSourceType.gigBase
+                  ? () => context.push(ProRoute.invoice, extra: entry.sourceId)
+                  : null,
+              child: RCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _sourceLabel(entry),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          Text(
+                            entry.status.name,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Text(
-                    '€${entry.netEur}',
-                    style: theme.textTheme.titleMedium?.copyWith(fontFeatures: RType.tabularFigures),
-                  ),
-                ],
+                    Text(
+                      '€${entry.netEur}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontFeatures: RType.tabularFigures,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: RSpace.s8),
@@ -321,9 +380,27 @@ class _Ledger extends StatelessWidget {
   }
 }
 
-String _sourceLabel(EarningsLedgerItemView entry) => switch (entry.sourceType.name) {
+String _sourceLabel(EarningsLedgerItemView entry) =>
+    switch (entry.sourceType.name) {
       'gigBase' => 'Gig',
       'extraImages' => 'Extra images',
       'studioverseSale' => 'Studioverse sale',
       _ => 'Earning',
     };
+
+/// Wraps a row in a tap target only when there is somewhere to go.
+///
+/// An InkWell with a null onTap still draws a splash on press, which reads as
+/// a control that failed rather than one that was never there.
+class _MaybeTappable extends StatelessWidget {
+  const _MaybeTappable({required this.child, this.onTap});
+
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onTap == null) return child;
+    return InkWell(onTap: onTap, child: child);
+  }
+}

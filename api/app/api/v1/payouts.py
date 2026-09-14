@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_session, require_admin, require_not_banned
 from app.core.errors import APIError
 from app.core.config import get_settings
+from app.models.gig import Gig, GigStatus
 from app.models.admin import Dispute, ProProfile, UserAccount
 from app.models.payouts import (
     EarningsHold,
@@ -23,6 +24,8 @@ from app.models.payouts import (
 )
 from app.schemas.media import CurrentUser
 from app.schemas.payouts import (
+    GigInvoiceListResponse,
+    GigInvoiceView,
     AdminPayoutQueueResponse,
     AdminPayoutQueueRow,
     ConnectOnboardingLinkResponse,
@@ -45,6 +48,7 @@ from app.schemas.payouts import (
     PayoutRequestCreateRequest,
     PayoutRequestView,
 )
+from app.services.invoices import build_invoice
 from app.services.audit import add_admin_audit_log
 from app.services.stripe_connect import (
     connect_status,
@@ -83,6 +87,56 @@ def get_my_earnings_balance(
 ) -> EarningsBalanceView:
     _ensure_pro_user(db, user.user_id)
     return EarningsBalanceView(**payout_balance_view(db, pro_user_id=user.user_id))
+
+
+def _invoice_view(invoice) -> GigInvoiceView:
+    return GigInvoiceView(
+        gig_id=invoice.gig_id,
+        issued_at=invoice.issued_at,
+        currency=invoice.currency,
+        client_total=invoice.client_total,
+        platform_retained=invoice.platform_retained,
+        pro_raww=invoice.pro_raww,
+        client_raww=invoice.client_raww,
+        pro_cash=invoice.pro_cash,
+        retained_percent=invoice.retained_percent,
+        pro_raww_percent=invoice.pro_raww_percent,
+        client_credit_percent=invoice.client_credit_percent,
+        photos_delivered=invoice.photos_delivered,
+        rates_were_stamped=invoice.rates_were_stamped,
+    )
+
+
+@router.get("/pro/earnings/invoices", response_model=GigInvoiceListResponse)
+def list_my_invoices(
+    limit: int = Query(default=100, ge=1, le=500),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> GigInvoiceListResponse:
+    """Every completed gig this photographer has been paid for, itemised."""
+    _ensure_pro_user(db, user.user_id)
+    gigs = db.execute(
+        select(Gig)
+        .where(Gig.pro_user_id == user.user_id, Gig.status == GigStatus.completed)
+        .order_by(Gig.scheduled_end.desc().nullslast(), Gig.created_at.desc())
+        .limit(limit)
+    ).scalars().all()
+    return GigInvoiceListResponse(items=[_invoice_view(build_invoice(db, gig)) for gig in gigs])
+
+
+@router.get("/pro/earnings/invoices/{gig_id}", response_model=GigInvoiceView)
+def get_my_invoice(
+    gig_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> GigInvoiceView:
+    _ensure_pro_user(db, user.user_id)
+    gig = db.get(Gig, gig_id)
+    # Not found rather than forbidden for somebody else's gig: whether a gig
+    # id exists is not something to confirm to a stranger.
+    if gig is None or gig.pro_user_id != user.user_id:
+        raise APIError(code="not_found", message="Invoice not found", status_code=404)
+    return _invoice_view(build_invoice(db, gig))
 
 
 @router.get("/pro/earnings/ledger", response_model=EarningsLedgerResponse)

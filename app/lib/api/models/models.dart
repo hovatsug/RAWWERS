@@ -125,6 +125,8 @@ export 'gear_item_view.dart';
 export 'gig_consent_level.dart';
 export 'gig_consent_view.dart';
 export 'gig_detail_response.dart';
+export 'gig_invoice_list_response.dart';
+export 'gig_invoice_view.dart';
 export 'gig_list_response.dart';
 export 'gig_media_asset_view.dart';
 export 'gig_media_list_response.dart';

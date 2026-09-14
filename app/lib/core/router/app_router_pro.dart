@@ -22,6 +22,7 @@ import 'package:rawwers/features/pro/requests/requests_screen.dart';
 import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
 import 'package:rawwers/features/pro/dashboard/dashboard_screen.dart';
 import 'package:rawwers/features/pro/upgrade/upgrade_to_pro_screen.dart';
+import 'package:rawwers/features/pro/wallet/invoice_screen.dart';
 import 'package:rawwers/features/pro/wallet/wallet_screen.dart';
 import 'package:rawwers/features/shared/auth/forgot_password_screen.dart';
 import 'package:rawwers/features/shared/auth/login_screen.dart';
@@ -85,6 +86,9 @@ abstract final class ProRoute {
   static const verifyEmail = '$dashboard/verify-email';
 
   static const gigDelivery = '$gigs/delivery';
+
+  /// One gig's invoice, opened from a Wallet earnings row.
+  static const invoice = '$wallet/invoice';
 }
 
 @Riverpod(keepAlive: true)
@@ -214,7 +218,19 @@ GoRouter proRouter(Ref ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: ProRoute.wallet, builder: (context, state) => const WalletScreen())],
+            routes: [
+              GoRoute(
+                path: ProRoute.wallet,
+                builder: (context, state) => const WalletScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'invoice',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) => InvoiceScreen(gigId: state.extra! as String),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

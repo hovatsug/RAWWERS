@@ -212,3 +212,42 @@ class AdminPayoutQueueRow(BaseModel):
 
 class AdminPayoutQueueResponse(BaseModel):
     items: list[AdminPayoutQueueRow] = Field(default_factory=list)
+
+
+class GigInvoiceView(BaseModel):
+    """One completed gig, line by line.
+
+    Every figure is computed server-side from the gig's own record. The app
+    renders these and adds nothing up itself - the same rule the pricing curve
+    follows, and for the same reason: two places doing the same arithmetic is
+    how they end up disagreeing.
+    """
+
+    gig_id: uuid.UUID
+    issued_at: datetime
+    currency: str
+
+    #: What the client paid in total.
+    client_total: Decimal
+
+    platform_retained: Decimal
+    pro_raww: Decimal
+    client_raww: Decimal
+    pro_cash: Decimal
+
+    retained_percent: int
+    pro_raww_percent: int
+    client_credit_percent: int
+
+    #: Null when no selection was submitted. Not zero - a completed gig with
+    #: no recorded count has an unknown count, and rendering zero on it would
+    #: be the invoice claiming nothing was delivered.
+    photos_delivered: int | None = None
+
+    #: False when this gig predates the stamped rates, so the split above was
+    #: reconstructed from the current policy rather than read from the record.
+    rates_were_stamped: bool = True
+
+
+class GigInvoiceListResponse(BaseModel):
+    items: list[GigInvoiceView] = Field(default_factory=list)

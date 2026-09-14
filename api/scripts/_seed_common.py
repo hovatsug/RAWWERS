@@ -107,6 +107,28 @@ def assert_environment_is_seedable() -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# A standing rule for everything in this file.
+#
+# Seed scripts are re-run against databases that already have rows in them.
+# Every helper here must therefore do two jobs: create a row correctly, and
+# bring an existing row back into line. Writing only the first is the single
+# most repeated bug in this file, three times now and each time found by
+# something downstream rather than by review:
+#
+#   - package prices: a reseed after the price caps landed reported success
+#     and changed nothing, leaving 56 packages over cap.
+#   - gig dates: existing gigs kept rendering "Not scheduled yet" on a card
+#     that also called them completed.
+#   - availability timezone: the demo pros kept New York working hours after
+#     their city moved to Lisbon, so every booking request landed outside
+#     their hours.
+#
+# So: when adding a field to anything seeded here, write its backfill in the
+# same change. Not afterwards, and not when a fourth bug proves the point.
+# ---------------------------------------------------------------------------
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
 

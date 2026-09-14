@@ -1113,3 +1113,25 @@ setup with a connection refusal that looks nothing like a configuration
 problem:
 
     docker compose exec -e TEST_DATABASE_URL="postgresql+psycopg2://postgres:postgres@postgres:5432/rawwers_test" api python -m pytest tests/ -q
+
+## The accept endpoint's body is optional server-side and required in the app
+
+`POST /v1/booking-requests/{id}/accept` gained an optional body carrying the
+per-booking client-credit override. Every field on it has a default, so the
+endpoint is still callable with no body at all - which is how it had always
+been called.
+
+`swagger_to_dart` generated `requestBody` as a **required** parameter anyway,
+so the Flutter caller now always sends one, passing a null override to mean
+"use the photographer's default".
+
+Harmless today: a body of `{"client_credit_percent": null}` and no body at
+all produce the same split. Worth writing down because the two sides disagree
+about whether the body is optional, and that stops being harmless the moment
+something depends on the distinction - a future caller that genuinely wants
+to send no body, or a change that makes an absent field mean something other
+than a null one.
+
+If it needs fixing later, the fix is on the generator side or by marking the
+body explicitly optional in the OpenAPI schema, not by making the field
+non-null in the app.

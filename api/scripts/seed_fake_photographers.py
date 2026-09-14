@@ -14,6 +14,11 @@ photographers and several hundred images, and the two must not ride along
 together - an e2e failure should never be explained by "the fake data
 changed".
 
+Re-running must repair, not only create: every helper here is expected to
+bring an existing row back into line as well as write a new one. See the
+standing rule at the top of _seed_common.py, which lists the three times
+forgetting that has cost this project.
+
 Safety: refuses to run outside a development environment, through the same
 assert_environment_is_seedable() guard seed_environment() uses.
 

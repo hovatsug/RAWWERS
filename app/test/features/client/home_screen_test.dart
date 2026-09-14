@@ -36,12 +36,22 @@ class _FailingHome extends HomeController {
   Future<HomeState> build() async => throw const NetworkError();
 }
 
-ClientDiscoverCard _card(String name, {String? cover, String price = '150.00'}) {
+ClientDiscoverCard _card(
+  String name, {
+  String? cover,
+  String price = '150.00',
+  String? entryRate,
+  int? entryPhotos,
+  List<Map<String, dynamic>>? topNiches,
+}) {
   return ClientDiscoverCard(
     proUserId: 'pro-$name',
     displayName: name,
     coverUrl: cover ?? 'https://example.test/$name.jpg',
     currency: 'EUR',
+    minEntryRate: entryRate,
+    minEntryPhotos: entryPhotos,
+    topNiches: topNiches,
     minPrice: price,
     avgRating: '4.80',
     reviewCount: 10,
@@ -55,6 +65,14 @@ ClientHomeRow _row(String key, String title, List<ClientDiscoverCard> items, {St
 }
 
 Future<void> _pump(WidgetTester tester, HomeState state, {void Function(String)? onOpenNiche}) async {
+  // A tall surface, because ListView.builder only builds what is on screen
+  // and the hero now takes the first 320pt. On the default 600pt viewport the
+  // later rows are never constructed, and "every row is shown" would fail on
+  // laziness rather than on anything the screen did wrong.
+  tester.view.physicalSize = const Size(1170, 7200);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: [homeControllerProvider.overrideWith(() => _FakeHome(state))],
@@ -64,7 +82,12 @@ Future<void> _pump(WidgetTester tester, HomeState state, {void Function(String)?
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  // Not pumpAndSettle: the hero's Ken Burns pass repeats for as long as it is
+  // on screen, exactly as RSkeleton's shimmer does, so nothing ever settles.
+  // Two pumps is enough - one to flush the fake controller's future, one to
+  // lay out what it produced.
+  await tester.pump();
+  await tester.pump();
 }
 
 void main() {
@@ -110,7 +133,10 @@ void main() {
     );
     expect(find.text('New photographers'), findsOneWidget);
     expect(find.text('Most experienced'), findsOneWidget);
-    expect(find.text('Weddings in Lisbon'), findsOneWidget);
+    // Twice, legitimately: the hero shows the leading niche's own row title,
+    // and the row itself is still below. Both come from the same server
+    // string rather than one of them recomposing it.
+    expect(find.text('Weddings in Lisbon'), findsWidgets);
   });
 
   // -------------------------------------------------------------------------
@@ -162,7 +188,8 @@ void main() {
     );
 
     await tester.tap(find.byType(RNicheTile));
-    await tester.pumpAndSettle();
+    // Not pumpAndSettle: the hero animates continuously, so nothing settles.
+    await tester.pump();
     expect(tapped, 'events_nightlife');
   });
 
@@ -306,6 +333,7 @@ void main() {
     );
     expect(loadingRow.width, loadedRow.width);
   });
+  _cardContentTests();
 }
 
 /// A home controller whose first load never completes, so the screen stays in
@@ -320,4 +348,87 @@ Finder _firstHorizontalList(WidgetTester tester) {
   return find
       .byWidgetPredicate((w) => w is ListView && w.scrollDirection == Axis.horizontal)
       .first;
+}
+
+// ---------------------------------------------------------------------------
+// What a card says about price, and what it claims about a photographer.
+// ---------------------------------------------------------------------------
+
+void _cardContentTests() {
+  testWidgets('the per-photo rate leads and the total follows', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [
+          _card('Rated', price: '310.64', entryRate: '18.70', entryPhotos: 20),
+        ]),
+      ]),
+    );
+
+    final rate = find.textContaining('18.70');
+    final total = find.textContaining('310.64');
+    expect(rate, findsOneWidget, reason: 'the card shows a total with no per-photo rate');
+    expect(total, findsOneWidget);
+
+    // Hierarchy, not just presence. A rate printed no larger than the total
+    // repeats this bug in a different arrangement, so this measures what is
+    // actually painted rather than trusting the styles named in the source.
+    final rateHeight = tester.getSize(rate).height;
+    final totalHeight = tester.getSize(total).height;
+    expect(
+      rateHeight,
+      greaterThan(totalHeight),
+      reason: 'the rate is painted at ${rateHeight}px against the total at ${totalHeight}px, '
+          'so the total still reads as the headline figure',
+    );
+  });
+
+  testWidgets('a card with no rate yet still shows its total rather than nothing', (tester) async {
+    // Every index row is null here until it has been recomputed since the
+    // column landed. Falling back to the total is what the card showed
+    // before; falling back to nothing would hide the price entirely.
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [_card('NoRate', price: '310.64')]),
+      ]),
+    );
+    expect(find.textContaining('310.64'), findsOneWidget);
+  });
+
+  testWidgets('a tier backed by real work is shown on the card', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [
+          _card('Veteran', topNiches: [
+            {'slug': 'weddings', 'tier': 'master', 'score': 100},
+          ]),
+        ]),
+      ]),
+    );
+    expect(find.text('Master'), findsOneWidget);
+  });
+
+  testWidgets('a zero-score tier row is not stamped on a new photographer', (tester) async {
+    // recompute_pro_niche_skills writes a row for every active niche, so a
+    // brand-new photographer arrives carrying a rookie entry scoring zero in
+    // a niche they have never worked in. Reading it would label exactly the
+    // people the "New photographers" row exists to protect.
+    await _pump(
+      tester,
+      HomeRows([
+        _row('new_photographers', 'New photographers', [
+          _card('Newcomer', topNiches: [
+            {'slug': 'weddings', 'tier': 'rookie', 'score': 0},
+          ]),
+        ]),
+      ]),
+    );
+    expect(
+      find.text('Rookie'),
+      findsNothing,
+      reason: 'a photographer with no completed work was labelled by the filler skill row',
+    );
+  });
 }

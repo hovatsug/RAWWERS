@@ -6,9 +6,13 @@ import 'package:rawwers/design/components/r_empty_state.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/design/components/r_package_price.dart';
+import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/discover/home_controller.dart';
+import 'package:rawwers/features/client/discover/widgets/hero_carousel.dart';
+import 'package:rawwers/features/client/discover/hero_slides.dart';
 
 /// Browsing photographers the way people browse things they might want.
 ///
@@ -44,25 +48,11 @@ class ClientHomeScreen extends ConsumerWidget {
           body: 'Nobody is taking bookings in this city at the moment. Try another one.',
           icon: Icons.photo_camera_outlined,
         ),
-      AsyncData(value: HomeRows(rows: final value)) => RefreshIndicator(
+      AsyncData(value: HomeRows(rows: final value)) => _Rows(
+          rows: value,
+          onOpenPro: onOpenPro,
+          onOpenNiche: onOpenNiche,
           onRefresh: () => ref.read(homeControllerProvider.notifier).refresh(),
-          child: ListView.builder(
-            // The first row's heading sits directly under the status bar
-            // without this - the clock draws straight through it. The list
-            // scrolls under the status bar by design, so the inset belongs on
-            // the content rather than on a SafeArea wrapper, which would
-            // clip the scroll instead of padding it.
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top + RSpace.s8,
-              bottom: RSpace.s32,
-            ),
-            itemCount: value.length,
-            itemBuilder: (context, index) => _Row(
-              row: value[index],
-              onOpenPro: onOpenPro,
-              onOpenNiche: onOpenNiche,
-            ),
-          ),
         ),
       AsyncError() => RErrorState(
           message: 'Could not load photographers.',
@@ -72,6 +62,68 @@ class ClientHomeScreen extends ConsumerWidget {
     };
   }
 }
+
+/// The loaded home: a hero, then the rows.
+///
+/// The hero is the first item of the same list rather than a separate widget
+/// above it, so it scrolls away with everything else instead of pinning a
+/// third of the screen in place.
+class _Rows extends StatelessWidget {
+  const _Rows({
+    required this.rows,
+    required this.onRefresh,
+    this.onOpenPro,
+    this.onOpenNiche,
+  });
+
+  final List<ClientHomeRow> rows;
+  final Future<void> Function() onRefresh;
+  final void Function(String proUserId)? onOpenPro;
+  final void Function(String nicheSlug)? onOpenNiche;
+
+  @override
+  Widget build(BuildContext context) {
+    final slides = heroSlidesFrom(rows);
+    final hasHero = slides.isNotEmpty;
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        // The first row's heading sits directly under the status bar without
+        // this - the clock draws straight through it. The list scrolls under
+        // the status bar by design, so the inset belongs on the content
+        // rather than on a SafeArea wrapper, which would clip the scroll
+        // instead of padding it.
+        //
+        // The hero is the exception: it is a photograph and is meant to run
+        // under the clock, so when one is present the inset moves off the
+        // list and onto the rows beneath it.
+        padding: EdgeInsets.only(
+          top: hasHero ? 0 : MediaQuery.paddingOf(context).top + RSpace.s8,
+          bottom: RSpace.s32,
+        ),
+        itemCount: rows.length + (hasHero ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (hasHero && index == 0) {
+            return HeroCarousel(
+              slides: slides,
+              // The niche's own page does not exist yet, so a slide opens the
+              // photographer it is showing. The slide carries its nicheSlug
+              // for when that page lands.
+              onOpen: (slide) => onOpenPro?.call(slide.card.proUserId),
+            );
+          }
+          return _Row(
+            row: rows[index - (hasHero ? 1 : 0)],
+            onOpenPro: onOpenPro,
+            onOpenNiche: onOpenNiche,
+          );
+        },
+      ),
+    );
+  }
+}
+
 
 /// Geometry shared by a loaded row and the placeholder that stands in for it.
 ///
@@ -87,8 +139,10 @@ abstract final class _RowMetrics {
   static const cardWidth = 148.0;
   static const coverSize = 148.0;
 
-  /// Cover, gap, name, and the price line when there is one.
-  static const rowHeight = 208.0;
+  /// Cover, gap, name, then the rate and the total it produces. 208 fitted
+  /// a name and one price line; the rate needs a line of its own, and a card
+  /// that clips its own price is worse than one that is a little taller.
+  static const rowHeight = 224.0;
 
   static const gap = RSpace.s12;
   static const sidePadding = EdgeInsets.symmetric(horizontal: RSpace.s16);
@@ -204,19 +258,41 @@ class _Card extends StatelessWidget {
               child: RNetworkPhoto(url: card.coverUrl, semanticLabel: card.displayName),
             ),
             const SizedBox(height: RSpace.s8),
-            Text(
-              card.displayName ?? 'Photographer',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    card.displayName ?? 'Photographer',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (rTierBadgeFor(card) case final tier?) ...[
+                  const SizedBox(width: RSpace.s4),
+                  RTierLabel(tier: tier),
+                ],
+              ],
             ),
             // Price is the second thing anyone wants and the first thing that
             // must not be invented: a null price renders as nothing rather
             // than as a zero, which would read as free.
-            if (card.minPrice != null)
+            //
+            // The rate leads, as it does on the profile. A card showing only
+            // a total gives a large bare number with no unit - the same
+            // misrepresentation the profile card was fixed for. The rate is
+            // null until the index row has been recomputed since the column
+            // landed, and then the total alone is still better than a guess.
+            if (card.minEntryRate != null && card.minPrice != null)
+              RPackagePrice(
+                entryRate: card.minEntryRate!,
+                minimumPhotos: card.minEntryPhotos ?? 0,
+                startingTotal: card.minPrice!,
+                currency: card.currency,
+                density: RPackagePriceDensity.card,
+              )
+            else if (card.minPrice != null)
               Text(
-                // min_package_price is now the real starting total -
-                // the cheapest complete booking, not a per-photo rate.
                 'from ${card.currency} ${card.minPrice}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

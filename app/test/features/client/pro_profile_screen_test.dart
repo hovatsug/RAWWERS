@@ -316,10 +316,10 @@ void _multiNicheTests() {
     );
     await tester.pump();
 
-    // Nothing claimed while the whole portfolio is shown: picking one niche's
-    // tier and presenting it as the photographer's is the flat claim the
-    // per-niche model replaces.
-    expect(find.text('Elite'), findsNothing);
+    // The whole-portfolio view names the niche alongside the tier. A bare
+    // tier there would be the flat claim the per-niche model replaces, but
+    // showing nothing at all was worse: tier was invisible on every profile.
+    expect(find.text('Elite in Weddings'), findsOneWidget);
     expect(find.text('Rookie'), findsNothing);
 
     await tester.tap(find.text('Weddings'));
@@ -330,5 +330,24 @@ void _multiNicheTests() {
     await tester.pump();
     expect(find.text('Rookie'), findsOneWidget, reason: 'the tier did not follow the selected niche');
     expect(find.text('Elite'), findsNothing, reason: 'the previous niche\'s tier is still on screen');
+  });
+
+  testWidgets('a single-niche photographer still shows their tier, with no selector', (tester) async {
+    // The server used to send an empty niche list for these photographers as
+    // a signal not to draw a selector, and the tier rides on that list - so
+    // 32 of 42 profiles carried no tier at all. The server now always sends
+    // it, and the decision not to draw a selector lives here.
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(
+      _wrap(_data(_profile(portfolio: _mixedPortfolio, niches: const [_weddings]))),
+    );
+    await tester.pump();
+
+    expect(find.text('All'), findsNothing, reason: 'a one-niche profile was given a selector');
+    expect(
+      find.text('Elite in Weddings'),
+      findsOneWidget,
+      reason: 'the tier is invisible on a single-niche profile',
+    );
   });
 }

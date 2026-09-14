@@ -364,9 +364,13 @@ def test_the_niche_list_is_ordered_by_how_much_work_is_in_each(client, db_sessio
     assert [n["photo_count"] for n in niches] == [4, 1]
 
 
-def test_a_single_niche_photographer_gets_no_niche_list(client, db_session):
-    """One niche is not a choice. Sending it anyway would put a one-tab
-    selector on a profile that has nothing to select between."""
+def test_a_single_niche_photographer_still_gets_their_niche_and_tier(client, db_session):
+    """The niche list carries the tier, so withholding it for a single-niche
+    photographer hid the tier on 32 of 42 profiles.
+
+    Whether one niche is worth a selector is a presentation question and
+    belongs to the client - see the widget test that asserts no selector is
+    drawn. The server states what is true."""
     pro_id = "00000000-0000-0000-0000-0000000009a3"
     pro_uuid = _seed_pro(db_session, pro_id)
     client_id = "00000000-0000-0000-0000-0000000009b3"
@@ -377,7 +381,8 @@ def test_a_single_niche_photographer_gets_no_niche_list(client, db_session):
     db_session.commit()
 
     body = _profile(client, pro_id, client_id)
-    assert body["niches"] == [], "a one-niche profile was sent a selector with one option"
+    assert [n["slug"] for n in body["niches"]] == ["portraits"]
+    assert body["niches"][0]["tier"] == "pro", "the tier is missing, so the profile cannot show it"
 
 
 def test_the_niche_list_carries_the_tier_held_in_that_niche(client, db_session):

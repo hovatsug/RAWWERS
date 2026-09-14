@@ -177,6 +177,21 @@ class _ProfileState extends State<_Profile> {
                   // have to pick one niche's tier and present it as the
                   // photographer's, which is the flat claim the per-niche
                   // model exists to replace.
+                  // Always something, never nothing. Tier is the signal the
+                  // whole pricing-cap and ranking system rests on, and it was
+                  // invisible on every profile: withheld entirely for
+                  // single-niche photographers, and shown for the rest only
+                  // after a tab was tapped, which the default view never is.
+                  //
+                  // On the whole-portfolio view it names its niche, because a
+                  // bare tier there would be the flat claim the per-niche
+                  // model exists to replace.
+                  if (selected == null && niches.isNotEmpty)
+                    Text(
+                      '${rTierName(niches.first.tier)} in ${niches.first.name}',
+                      style: theme.textTheme.labelMedium
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
                   if (selected != null)
                     Text(
                       rTierName(selected.tier),

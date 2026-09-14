@@ -63,6 +63,12 @@ class ClientDiscoverCard(BaseModel):
     country: str | None = None
     min_price: Decimal | None = None
     max_price: Decimal | None = None
+    # The per-photo rate of the package `min_price` comes from, and how many
+    # photos that total covers. Null until the index row has been recomputed
+    # since these columns landed, and a card falls back to the total alone -
+    # which is what it showed before, rather than a guess.
+    min_entry_rate: Decimal | None = None
+    min_entry_photos: int | None = None
     currency: str
     avg_rating: Decimal
     review_count: int

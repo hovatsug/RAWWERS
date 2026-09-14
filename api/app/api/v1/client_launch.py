@@ -439,9 +439,17 @@ def client_pro_profile(
             )
             for asset_id, kind, tags in portfolio_rows
         ],
-        # One niche is not a choice, so it is sent as none at all and the
-        # client renders no selector.
-        niches=profile_niches if len(profile_niches) > 1 else [],
+        # Every niche this photographer has work in, always - including when
+        # there is only one.
+        #
+        # This used to send an empty list for a single-niche photographer as a
+        # signal not to draw a selector. That conflated "do not show a
+        # selector" with "do not send the data", and the tier rides on this
+        # list: 32 of 42 photographers had no tier on their profile at all,
+        # and the other 10 showed one only after a tab was tapped. The server
+        # states what is true; whether one niche is worth a selector is the
+        # client's decision.
+        niches=profile_niches,
         is_guest_view=False,
     )
     log_event(
@@ -1269,6 +1277,8 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
                 country=idx.country,
                 min_price=idx.min_package_price,
                 max_price=idx.max_package_price,
+                min_entry_rate=idx.min_entry_rate,
+                min_entry_photos=idx.min_entry_photos,
                 currency=idx.currency,
                 avg_rating=idx.avg_rating,
                 review_count=idx.review_count,

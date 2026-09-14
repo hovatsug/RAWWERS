@@ -164,6 +164,10 @@ class ProProfile(Base):
     # different answers to a client deciding whether to send a request.
     travel_radius_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False)
+    # How much of their own cash this photographer passes to the client as
+    # $RAWW credit, as whole percentage points of gross. A default rather than
+    # a per-booking question: nobody wants to be asked on every request.
+    client_credit_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     completeness_score: Mapped[int] = mapped_column(nullable=False, default=0)
     kyc_status: Mapped[KYCStatus] = mapped_column(Enum(KYCStatus, name="kyc_status", native_enum=False, length=64), nullable=False, default=KYCStatus.unsubmitted)
     kyc_note: Mapped[str | None] = mapped_column(Text, nullable=True)

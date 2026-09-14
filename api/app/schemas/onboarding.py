@@ -25,6 +25,12 @@ class ProProfileView(BaseModel):
     is_accepting_bookings: bool
     completeness_score: int
     kyc_status: str
+    # How much of their own cash this photographer passes to the client as
+    # $RAWW credit, in whole percentage points of gross.
+    client_credit_percent: int = 0
+    # The cap, sent alongside so the app does not carry its own copy of a
+    # number the platform sets.
+    max_client_credit_percent: int = 10
 
 
 class ProProfileUpdateRequest(BaseModel):
@@ -38,6 +44,10 @@ class ProProfileUpdateRequest(BaseModel):
     styles: list[str] | None = None
     gear: dict | None = None
     travel_radius_km: int | None = Field(default=None, ge=0, le=2000)
+    # Bounds are checked again server-side against the policy's own cap:
+    # this only stops an obviously wrong value arriving, and the cap is
+    # admin-editable so a schema constant cannot be the authority.
+    client_credit_percent: int | None = Field(default=None, ge=0, le=100)
 
 
 class ProActivateResponse(BaseModel):
@@ -276,3 +286,17 @@ class ProNichePricingPreviewResponse(BaseModel):
     entry_price_max: Decimal | None = None
     within_cap: bool
     curve: list[ProPricingCurvePoint] = Field(default_factory=list)
+
+
+class AcceptBookingRequest(BaseModel):
+    """Optional body on accepting a booking.
+
+    Everything here has a default, so the endpoint stays callable with no body
+    at all - which is how every existing caller invokes it.
+    """
+
+    # Overrides the photographer's standing setting for this booking only, for
+    # when they want to be more generous on a particular job. Omitted means
+    # use their default rather than zero: a missing field must never be read
+    # as "give the client nothing".
+    client_credit_percent: int | None = Field(default=None, ge=0, le=100)

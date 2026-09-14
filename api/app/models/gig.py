@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Numeric, Text
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -74,6 +74,14 @@ class Gig(Base):
     entry_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     amount_platform_fee: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_pro_gross: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # The rates this booking was created under, recorded rather than looked up
+    # later. The refund path already worked this way - it reads the fee
+    # percentage stamped on the earnings entry - and for the same reason: a
+    # rate change tomorrow must not rewrite what settled today.
+    fee_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    retained_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pro_raww_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    client_credit_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     scheduled_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     location_text: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -21,6 +21,7 @@ _ProProfileUpdateRequest _$ProProfileUpdateRequestFromJson(
   styles: (json['styles'] as List<dynamic>?)?.map((e) => e as String).toList(),
   gear: json['gear'] as Map<String, dynamic>?,
   travelRadiusKm: (json['travel_radius_km'] as num?)?.toInt(),
+  clientCreditPercent: (json['client_credit_percent'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$ProProfileUpdateRequestToJson(
@@ -36,4 +37,5 @@ Map<String, dynamic> _$ProProfileUpdateRequestToJson(
   'styles': instance.styles,
   'gear': instance.gear,
   'travel_radius_km': instance.travelRadiusKm,
+  'client_credit_percent': instance.clientCreditPercent,
 };

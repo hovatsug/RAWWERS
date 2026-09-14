@@ -117,6 +117,17 @@
 ///                 }
 ///             ],
 ///             "title": "Travel Radius Km"
+///         },
+///         "client_credit_percent": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Client Credit Percent"
 ///         }
 ///     },
 ///     "type": "object",
@@ -166,6 +177,10 @@ abstract class ProProfileUpdateRequest with _$ProProfileUpdateRequest {
     /// travelRadiusKm
     @JsonKey(name: ProProfileUpdateRequest.travelRadiusKmKey_)
     int? travelRadiusKm,
+
+    /// clientCreditPercent
+    @JsonKey(name: ProProfileUpdateRequest.clientCreditPercentKey_)
+    int? clientCreditPercent,
   }) = _ProProfileUpdateRequest;
 
   factory ProProfileUpdateRequest.fromJson(Map<String, dynamic> json) =>
@@ -190,4 +205,6 @@ abstract class ProProfileUpdateRequest with _$ProProfileUpdateRequest {
   static const String gearKey_ = r'gear';
 
   static const String travelRadiusKmKey_ = r'travel_radius_km';
+
+  static const String clientCreditPercentKey_ = r'client_credit_percent';
 }

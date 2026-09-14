@@ -2,6 +2,7 @@ library models;
 
 export 'ai_draft_request.dart';
 export 'ai_draft_response.dart';
+export 'accept_booking_request.dart';
 export 'accept_booking_response.dart';
 export 'add_gallery_items_request.dart';
 export 'analytics_create_request.dart';

@@ -197,6 +197,13 @@ class PlatformFeePolicy(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fee_percent_gigs: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    # How the take above divides. These must sum to fee_percent_gigs, which
+    # split_booking() refuses to proceed without - a policy that does not add
+    # up would silently lose or invent money on every booking.
+    retained_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    pro_raww_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    # The most a photographer may pass to their client, out of their own cash.
+    max_client_credit_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     fee_percent_extras: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     fee_percent_studioverse: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     settlement_delay_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)

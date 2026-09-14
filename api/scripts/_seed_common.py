@@ -299,6 +299,14 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
                 location_mode=AvailabilityLocationMode.both,
             )
         )
+    else:
+        # Re-running repairs the existing row. Threading the city through only
+        # fixed rules created afterwards, so the demo pros kept New York
+        # working hours in Lisbon - and every booking request landed outside
+        # their availability. Third time this seeder has needed the same
+        # lesson: creating correctly is not the same as bringing an existing
+        # row back into line.
+        availability.timezone = _timezone_for(city)
 
     price = _capped_entry_rate(db, niche=niche, pro_user_id=user.user_id, fallback=price)
 
@@ -527,6 +535,19 @@ def _ensure_client_preference(db: Session, user_id: uuid.UUID, *, city: str, cou
         pref.updated_at = _now()
 
 
+def _sample_split(db: Session, pro_user_id: uuid.UUID):
+    """The demo gig's split, from the policy rather than from 36 and 144.
+
+    Those literals were the platform's 20% written a third time, next to an
+    environment variable and a database row that said the same thing. Seeded
+    money that does not track the real rate is money that lies about what the
+    platform would have taken.
+    """
+    from app.services.commission import split_for_pro
+
+    return split_for_pro(db, gross=Decimal("180.00"), pro_user_id=pro_user_id)
+
+
 def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client_user_id: uuid.UUID, city: str) -> None:
     gig_id = uuid.UUID("00000000-0000-0000-0000-000000000211")
     gig = db.get(Gig, gig_id)
@@ -538,9 +559,13 @@ def _ensure_sample_gig_and_proofs(db: Session, *, pro_user_id: uuid.UUID, client
             niche_id=None,
             status=GigStatus.proofs_delivered,
             currency="EUR",
-            amount_minimum=Decimal("180.00"),
-            amount_platform_fee=Decimal("36.00"),
-            amount_pro_gross=Decimal("144.00"),
+            amount_minimum=_sample_split(db, pro_user_id).gross,
+            amount_platform_fee=_sample_split(db, pro_user_id).platform_total,
+            amount_pro_gross=_sample_split(db, pro_user_id).pro_total,
+            fee_percent=_sample_split(db, pro_user_id).fee_percent,
+            retained_percent=_sample_split(db, pro_user_id).retained_percent,
+            pro_raww_percent=_sample_split(db, pro_user_id).pro_raww_percent,
+            client_credit_percent=_sample_split(db, pro_user_id).client_credit_percent,
             scheduled_start=_now() - timedelta(days=3),
             scheduled_end=_now() - timedelta(days=3) + timedelta(hours=2),
             location_text=city,

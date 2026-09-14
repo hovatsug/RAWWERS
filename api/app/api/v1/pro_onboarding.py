@@ -36,6 +36,7 @@ from app.schemas.niche import (
     UpdateMyNichesResponse,
 )
 from app.schemas.onboarding import (
+    AcceptBookingRequest,
     AcceptBookingResponse,
     BlackoutCreateRequest,
     BlackoutView,
@@ -76,6 +77,8 @@ from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_i
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
 from app.models.media_rights import MediaDerivativeKind
 from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
+from app.services.payouts import ensure_default_platform_fee_policy
+from app.services.commission import max_client_credit_percent, split_for_pro, validate_client_credit_percent
 from app.services.package_pricing import (
     PRICING_PREVIEW_PHOTO_COUNTS,
     compute_minimum_amount,
@@ -288,7 +291,7 @@ def get_my_pro_profile(
     _require_role(db, user.user_id, UserRoleType.pro)
     profile = _ensure_pro_profile(db, user.user_id)
     db.commit()
-    return _profile_view(profile)
+    return _profile_view(profile, db)
 
 
 @router.put("/pro/me/profile", response_model=ProProfileView)
@@ -300,6 +303,12 @@ def update_my_pro_profile(
     _require_role(db, user.user_id, UserRoleType.pro)
     profile = _ensure_pro_profile(db, user.user_id)
 
+    if body.client_credit_percent is not None:
+        profile.client_credit_percent = validate_client_credit_percent(
+            int(body.client_credit_percent),
+            maximum=max_client_credit_percent(ensure_default_platform_fee_policy(db)),
+        )
+
     for field in ["display_name", "headline", "cover_media_asset_id", "bio", "city", "country", "languages", "styles", "gear", "travel_radius_km"]:
         value = getattr(body, field)
         if value is not None:
@@ -309,7 +318,7 @@ def update_my_pro_profile(
     recompute_pro_public_index(db, user.user_id)
     db.commit()
     db.refresh(profile)
-    return _profile_view(profile)
+    return _profile_view(profile, db)
 
 
 @router.post("/pro/me/activate", response_model=ProActivateResponse)
@@ -1093,6 +1102,7 @@ def get_booking_request(
 @router.post("/booking-requests/{request_id}/accept", response_model=AcceptBookingResponse)
 def accept_booking_request(
     request_id: uuid.UUID,
+    body: AcceptBookingRequest | None = None,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> AcceptBookingResponse:
@@ -1157,8 +1167,18 @@ def accept_booking_request(
 
     entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate, included_photos=package.included_photos)
-    fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # One source for the rate. This read settings.platform_fee_bps while
+    # earnings were computed from the admin-editable policy row - two
+    # definitions of one number, agreeing only because nobody had changed
+    # either of them.
+    split = split_for_pro(
+        db,
+        gross=amount_minimum,
+        pro_user_id=request.pro_user_id,
+        client_credit_percent_override=body.client_credit_percent if body else None,
+    )
+    fee = split.platform_total
+    pro_gross = split.pro_total
 
     snapshot = {
         "package_id": str(package.id),
@@ -1188,6 +1208,13 @@ def accept_booking_request(
         entry_rate=entry_rate,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
+        # Recorded, not looked up later. An invoice a year from now must show
+        # the split this booking was actually created under, whatever the
+        # policy says by then.
+        fee_percent=split.fee_percent,
+        retained_percent=split.retained_percent,
+        pro_raww_percent=split.pro_raww_percent,
+        client_credit_percent=split.client_credit_percent,
         scheduled_start=request.requested_start,
         scheduled_end=request.requested_end,
         location_text=request.location_text,
@@ -1512,7 +1539,11 @@ def _extra_image_price_response(db: Session, pro_user_id: uuid.UUID) -> ProExtra
     return ProExtraImagePriceResponse(items=items)
 
 
-def _profile_view(profile: ProProfile) -> ProProfileView:
+def _profile_view(profile: ProProfile, db: Session | None = None) -> ProProfileView:
+    # The cap travels with the value so the app renders a slider bounded by
+    # what the platform currently allows, rather than carrying its own copy of
+    # a number an admin can change.
+    cap = max_client_credit_percent(ensure_default_platform_fee_policy(db)) if db is not None else 10
     return ProProfileView(
         user_id=profile.user_id,
         display_name=profile.display_name,
@@ -1528,6 +1559,8 @@ def _profile_view(profile: ProProfile) -> ProProfileView:
         is_accepting_bookings=profile.is_accepting_bookings,
         completeness_score=profile.completeness_score,
         kyc_status=profile.kyc_status.value,
+        client_credit_percent=int(profile.client_credit_percent or 0),
+        max_client_credit_percent=cap,
     )
 
 

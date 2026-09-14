@@ -3228,6 +3228,7 @@ class _ProOnboardingClient implements ProOnboardingClient {
   @override
   Future<HttpResponse<AcceptBookingResponse>>
   acceptBookingRequestV1BookingRequestsRequestIdAcceptPost({
+    required AcceptBookingRequest? requestBody,
     required String requestId,
     required String? authorization,
     required String? xMinusUserMinusId,
@@ -3271,6 +3272,19 @@ class _ProOnboardingClient implements ProOnboardingClient {
           },
         },
       ],
+      'requestBody': {
+        'content': {
+          'application/json': {
+            'schema': {
+              'anyOf': [
+                {'\$ref': '#/components/schemas/AcceptBookingRequest'},
+                {'type': 'null'},
+              ],
+              'title': 'Body',
+            },
+          },
+        },
+      },
       'responses': {
         '200': {
           'description': 'Successful Response',
@@ -3300,7 +3314,8 @@ class _ProOnboardingClient implements ProOnboardingClient {
       r'X-User-Id': xMinusUserMinusId,
     };
     _headers.removeWhere((k, v) => v == null);
-    const Map<String, dynamic>? _data = null;
+    final _data = <String, dynamic>{};
+    _data.addAll(requestBody?.toJson() ?? <String, dynamic>{});
     final _options = _setStreamType<HttpResponse<AcceptBookingResponse>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(

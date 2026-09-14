@@ -63,6 +63,7 @@ from app.models.media import (  # noqa: E402
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind  # noqa: E402
 from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier  # noqa: E402
 from app.models.discovery import ProPublicIndex  # noqa: E402
+from app.services.commission import split_for_pro  # noqa: E402
 from app.services.discovery_index import recompute_pro_public_index  # noqa: E402
 from app.services.niche_catalog import ensure_initial_niches  # noqa: E402
 from app.services.storage import generate_variant_key, object_exists, upload_object_bytes  # noqa: E402
@@ -825,6 +826,13 @@ def _ensure_gigs(db, *, pro_user_id: uuid.UUID, niche_id: uuid.UUID, count: int,
     duration = _package_duration(db, pro_user_id=pro_user_id, niche_id=niche_id)
 
     for index in range(len(existing), count):
+        # The rate comes from the policy, not from multiplying by 2 and 8.
+        # Those literals were a third definition of the platform's 20%, and
+        # seeded money that does not track the real rate is money that lies
+        # about what the platform would actually have taken.
+        gross = (price * 10).quantize(Decimal("0.01"))
+        split = split_for_pro(db, gross=gross, pro_user_id=pro_user_id)
+
         gig = Gig(
             id=_sid("gig", str(pro_user_id), str(index)),
             client_user_id=_sid("client", str(pro_user_id), str(index)),
@@ -832,10 +840,14 @@ def _ensure_gigs(db, *, pro_user_id: uuid.UUID, niche_id: uuid.UUID, count: int,
             niche_id=niche_id,
             status=GigStatus.completed,
             currency="EUR",
-            amount_minimum=price * 10,
+            amount_minimum=gross,
             entry_rate=price,
-            amount_platform_fee=price * 2,
-            amount_pro_gross=price * 8,
+            amount_platform_fee=split.platform_total,
+            amount_pro_gross=split.pro_total,
+            fee_percent=split.fee_percent,
+            retained_percent=split.retained_percent,
+            pro_raww_percent=split.pro_raww_percent,
+            client_credit_percent=split.client_credit_percent,
             created_at=now - timedelta(days=7 * (index + 1)),
             meta={"seeded": True},
         )

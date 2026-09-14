@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/features/pro/settings/settings_controller.dart';
+import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/api/models/pro_niche_pricing_preview_response.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
 import 'package:rawwers/api/models/pro_pricing_curve_point.dart';
@@ -98,6 +100,10 @@ Widget _wrap({
     ProviderScope(
       overrides: [
         packagesControllerProvider.overrideWith(packages ?? () => _FakePackages([_package()])),
+        // The client-credit card at the top of this screen reads the
+        // photographer's own profile. Without this override it reaches the
+        // network and the test hangs on a pending timer.
+        proProfileControllerProvider.overrideWith(() => _FakeProfile(_creditProfile())),
         nichesControllerProvider.overrideWith(_FakeNiches.new),
         pricingPreviewProvider(nicheId: 'niche-portraits', entryPrice: '12.00')
             .overrideWith((ref) async => preview ?? _preview()),
@@ -251,4 +257,26 @@ void main() {
 
     expect(find.text('Could not load your pricing.'), findsOneWidget);
   });
+}
+
+
+/// A photographer whose client-credit setting is untouched, so the card at the
+/// top of Pricing renders without reaching the network.
+ProProfileView _creditProfile({int credit = 0, int cap = 10}) => ProProfileView(
+      userId: 'pro-1',
+      displayName: 'Test Pro',
+      isAcceptingBookings: true,
+      completenessScore: 80,
+      kycStatus: 'approved',
+      clientCreditPercent: credit,
+      maxClientCreditPercent: cap,
+    );
+
+class _FakeProfile extends ProProfileController {
+  _FakeProfile(this._profile);
+
+  final ProProfileView _profile;
+
+  @override
+  Future<ProProfileView> build() async => _profile;
 }

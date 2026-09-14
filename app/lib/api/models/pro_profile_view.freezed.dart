@@ -29,7 +29,9 @@ mixin _$ProProfileView {
 @JsonKey(name: ProProfileView.travelRadiusKmKey_) int? get travelRadiusKm;/// isAcceptingBookings
 @JsonKey(name: ProProfileView.isAcceptingBookingsKey_) bool get isAcceptingBookings;/// completenessScore
 @JsonKey(name: ProProfileView.completenessScoreKey_) int get completenessScore;/// kycStatus
-@JsonKey(name: ProProfileView.kycStatusKey_) String get kycStatus;
+@JsonKey(name: ProProfileView.kycStatusKey_) String get kycStatus;/// clientCreditPercent
+@JsonKey(name: ProProfileView.clientCreditPercentKey_) int get clientCreditPercent;/// maxClientCreditPercent
+@JsonKey(name: ProProfileView.maxClientCreditPercentKey_) int get maxClientCreditPercent;
 /// Create a copy of ProProfileView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -42,16 +44,16 @@ $ProProfileViewCopyWith<ProProfileView> get copyWith => _$ProProfileViewCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProProfileView&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other.languages, languages)&&const DeepCollectionEquality().equals(other.styles, styles)&&const DeepCollectionEquality().equals(other.gear, gear)&&(identical(other.travelRadiusKm, travelRadiusKm) || other.travelRadiusKm == travelRadiusKm)&&(identical(other.isAcceptingBookings, isAcceptingBookings) || other.isAcceptingBookings == isAcceptingBookings)&&(identical(other.completenessScore, completenessScore) || other.completenessScore == completenessScore)&&(identical(other.kycStatus, kycStatus) || other.kycStatus == kycStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProProfileView&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other.languages, languages)&&const DeepCollectionEquality().equals(other.styles, styles)&&const DeepCollectionEquality().equals(other.gear, gear)&&(identical(other.travelRadiusKm, travelRadiusKm) || other.travelRadiusKm == travelRadiusKm)&&(identical(other.isAcceptingBookings, isAcceptingBookings) || other.isAcceptingBookings == isAcceptingBookings)&&(identical(other.completenessScore, completenessScore) || other.completenessScore == completenessScore)&&(identical(other.kycStatus, kycStatus) || other.kycStatus == kycStatus)&&(identical(other.clientCreditPercent, clientCreditPercent) || other.clientCreditPercent == clientCreditPercent)&&(identical(other.maxClientCreditPercent, maxClientCreditPercent) || other.maxClientCreditPercent == maxClientCreditPercent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(languages),const DeepCollectionEquality().hash(styles),const DeepCollectionEquality().hash(gear),travelRadiusKm,isAcceptingBookings,completenessScore,kycStatus);
+int get hashCode => Object.hash(runtimeType,userId,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(languages),const DeepCollectionEquality().hash(styles),const DeepCollectionEquality().hash(gear),travelRadiusKm,isAcceptingBookings,completenessScore,kycStatus,clientCreditPercent,maxClientCreditPercent);
 
 @override
 String toString() {
-  return 'ProProfileView(userId: $userId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear, travelRadiusKm: $travelRadiusKm, isAcceptingBookings: $isAcceptingBookings, completenessScore: $completenessScore, kycStatus: $kycStatus)';
+  return 'ProProfileView(userId: $userId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear, travelRadiusKm: $travelRadiusKm, isAcceptingBookings: $isAcceptingBookings, completenessScore: $completenessScore, kycStatus: $kycStatus, clientCreditPercent: $clientCreditPercent, maxClientCreditPercent: $maxClientCreditPercent)';
 }
 
 
@@ -62,7 +64,7 @@ abstract mixin class $ProProfileViewCopyWith<$Res>  {
   factory $ProProfileViewCopyWith(ProProfileView value, $Res Function(ProProfileView) _then) = _$ProProfileViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProProfileView.userIdKey_) String userId,@JsonKey(name: ProProfileView.displayNameKey_) String? displayName,@JsonKey(name: ProProfileView.headlineKey_) String? headline,@JsonKey(name: ProProfileView.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileView.bioKey_) String? bio,@JsonKey(name: ProProfileView.cityKey_) String? city,@JsonKey(name: ProProfileView.countryKey_) String? country,@JsonKey(name: ProProfileView.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileView.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileView.gearKey_) Map<String, dynamic>? gear,@JsonKey(name: ProProfileView.travelRadiusKmKey_) int? travelRadiusKm,@JsonKey(name: ProProfileView.isAcceptingBookingsKey_) bool isAcceptingBookings,@JsonKey(name: ProProfileView.completenessScoreKey_) int completenessScore,@JsonKey(name: ProProfileView.kycStatusKey_) String kycStatus
+@JsonKey(name: ProProfileView.userIdKey_) String userId,@JsonKey(name: ProProfileView.displayNameKey_) String? displayName,@JsonKey(name: ProProfileView.headlineKey_) String? headline,@JsonKey(name: ProProfileView.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileView.bioKey_) String? bio,@JsonKey(name: ProProfileView.cityKey_) String? city,@JsonKey(name: ProProfileView.countryKey_) String? country,@JsonKey(name: ProProfileView.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileView.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileView.gearKey_) Map<String, dynamic>? gear,@JsonKey(name: ProProfileView.travelRadiusKmKey_) int? travelRadiusKm,@JsonKey(name: ProProfileView.isAcceptingBookingsKey_) bool isAcceptingBookings,@JsonKey(name: ProProfileView.completenessScoreKey_) int completenessScore,@JsonKey(name: ProProfileView.kycStatusKey_) String kycStatus,@JsonKey(name: ProProfileView.clientCreditPercentKey_) int clientCreditPercent,@JsonKey(name: ProProfileView.maxClientCreditPercentKey_) int maxClientCreditPercent
 });
 
 
@@ -79,7 +81,7 @@ class _$ProProfileViewCopyWithImpl<$Res>
 
 /// Create a copy of ProProfileView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,Object? travelRadiusKm = freezed,Object? isAcceptingBookings = null,Object? completenessScore = null,Object? kycStatus = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,Object? travelRadiusKm = freezed,Object? isAcceptingBookings = null,Object? completenessScore = null,Object? kycStatus = null,Object? clientCreditPercent = null,Object? maxClientCreditPercent = null,}) {
   return _then(_self.copyWith(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -95,7 +97,9 @@ as Map<String, dynamic>?,travelRadiusKm: freezed == travelRadiusKm ? _self.trave
 as int?,isAcceptingBookings: null == isAcceptingBookings ? _self.isAcceptingBookings : isAcceptingBookings // ignore: cast_nullable_to_non_nullable
 as bool,completenessScore: null == completenessScore ? _self.completenessScore : completenessScore // ignore: cast_nullable_to_non_nullable
 as int,kycStatus: null == kycStatus ? _self.kycStatus : kycStatus // ignore: cast_nullable_to_non_nullable
-as String,
+as String,clientCreditPercent: null == clientCreditPercent ? _self.clientCreditPercent : clientCreditPercent // ignore: cast_nullable_to_non_nullable
+as int,maxClientCreditPercent: null == maxClientCreditPercent ? _self.maxClientCreditPercent : maxClientCreditPercent // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -180,10 +184,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileView.userIdKey_)  String userId, @JsonKey(name: ProProfileView.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileView.headlineKey_)  String? headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_)  String? bio, @JsonKey(name: ProProfileView.cityKey_)  String? city, @JsonKey(name: ProProfileView.countryKey_)  String? country, @JsonKey(name: ProProfileView.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_)  int? travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)  bool isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_)  int completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_)  String kycStatus)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileView.userIdKey_)  String userId, @JsonKey(name: ProProfileView.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileView.headlineKey_)  String? headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_)  String? bio, @JsonKey(name: ProProfileView.cityKey_)  String? city, @JsonKey(name: ProProfileView.countryKey_)  String? country, @JsonKey(name: ProProfileView.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_)  int? travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)  bool isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_)  int completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_)  String kycStatus, @JsonKey(name: ProProfileView.clientCreditPercentKey_)  int clientCreditPercent, @JsonKey(name: ProProfileView.maxClientCreditPercentKey_)  int maxClientCreditPercent)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProProfileView() when $default != null:
-return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm,_that.isAcceptingBookings,_that.completenessScore,_that.kycStatus);case _:
+return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm,_that.isAcceptingBookings,_that.completenessScore,_that.kycStatus,_that.clientCreditPercent,_that.maxClientCreditPercent);case _:
   return orElse();
 
 }
@@ -201,10 +205,10 @@ return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAs
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileView.userIdKey_)  String userId, @JsonKey(name: ProProfileView.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileView.headlineKey_)  String? headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_)  String? bio, @JsonKey(name: ProProfileView.cityKey_)  String? city, @JsonKey(name: ProProfileView.countryKey_)  String? country, @JsonKey(name: ProProfileView.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_)  int? travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)  bool isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_)  int completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_)  String kycStatus)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProProfileView.userIdKey_)  String userId, @JsonKey(name: ProProfileView.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileView.headlineKey_)  String? headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_)  String? bio, @JsonKey(name: ProProfileView.cityKey_)  String? city, @JsonKey(name: ProProfileView.countryKey_)  String? country, @JsonKey(name: ProProfileView.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_)  int? travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)  bool isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_)  int completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_)  String kycStatus, @JsonKey(name: ProProfileView.clientCreditPercentKey_)  int clientCreditPercent, @JsonKey(name: ProProfileView.maxClientCreditPercentKey_)  int maxClientCreditPercent)  $default,) {final _that = this;
 switch (_that) {
 case _ProProfileView():
-return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm,_that.isAcceptingBookings,_that.completenessScore,_that.kycStatus);case _:
+return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm,_that.isAcceptingBookings,_that.completenessScore,_that.kycStatus,_that.clientCreditPercent,_that.maxClientCreditPercent);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -221,10 +225,10 @@ return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAs
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProProfileView.userIdKey_)  String userId, @JsonKey(name: ProProfileView.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileView.headlineKey_)  String? headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_)  String? bio, @JsonKey(name: ProProfileView.cityKey_)  String? city, @JsonKey(name: ProProfileView.countryKey_)  String? country, @JsonKey(name: ProProfileView.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_)  int? travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)  bool isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_)  int completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_)  String kycStatus)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProProfileView.userIdKey_)  String userId, @JsonKey(name: ProProfileView.displayNameKey_)  String? displayName, @JsonKey(name: ProProfileView.headlineKey_)  String? headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_)  String? bio, @JsonKey(name: ProProfileView.cityKey_)  String? city, @JsonKey(name: ProProfileView.countryKey_)  String? country, @JsonKey(name: ProProfileView.languagesKey_)  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_)  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_)  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_)  int? travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_)  bool isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_)  int completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_)  String kycStatus, @JsonKey(name: ProProfileView.clientCreditPercentKey_)  int clientCreditPercent, @JsonKey(name: ProProfileView.maxClientCreditPercentKey_)  int maxClientCreditPercent)?  $default,) {final _that = this;
 switch (_that) {
 case _ProProfileView() when $default != null:
-return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm,_that.isAcceptingBookings,_that.completenessScore,_that.kycStatus);case _:
+return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.bio,_that.city,_that.country,_that.languages,_that.styles,_that.gear,_that.travelRadiusKm,_that.isAcceptingBookings,_that.completenessScore,_that.kycStatus,_that.clientCreditPercent,_that.maxClientCreditPercent);case _:
   return null;
 
 }
@@ -236,7 +240,7 @@ return $default(_that.userId,_that.displayName,_that.headline,_that.coverMediaAs
 
 @jsonSerializable
 class _ProProfileView extends ProProfileView {
-  const _ProProfileView({@JsonKey(name: ProProfileView.userIdKey_) required this.userId, @JsonKey(name: ProProfileView.displayNameKey_) this.displayName, @JsonKey(name: ProProfileView.headlineKey_) this.headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_) this.bio, @JsonKey(name: ProProfileView.cityKey_) this.city, @JsonKey(name: ProProfileView.countryKey_) this.country, @JsonKey(name: ProProfileView.languagesKey_) final  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_) final  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_) final  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_) this.travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_) required this.isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_) required this.completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_) required this.kycStatus}): _languages = languages,_styles = styles,_gear = gear,super._();
+  const _ProProfileView({@JsonKey(name: ProProfileView.userIdKey_) required this.userId, @JsonKey(name: ProProfileView.displayNameKey_) this.displayName, @JsonKey(name: ProProfileView.headlineKey_) this.headline, @JsonKey(name: ProProfileView.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ProProfileView.bioKey_) this.bio, @JsonKey(name: ProProfileView.cityKey_) this.city, @JsonKey(name: ProProfileView.countryKey_) this.country, @JsonKey(name: ProProfileView.languagesKey_) final  List<String>? languages, @JsonKey(name: ProProfileView.stylesKey_) final  List<String>? styles, @JsonKey(name: ProProfileView.gearKey_) final  Map<String, dynamic>? gear, @JsonKey(name: ProProfileView.travelRadiusKmKey_) this.travelRadiusKm, @JsonKey(name: ProProfileView.isAcceptingBookingsKey_) required this.isAcceptingBookings, @JsonKey(name: ProProfileView.completenessScoreKey_) required this.completenessScore, @JsonKey(name: ProProfileView.kycStatusKey_) required this.kycStatus, @JsonKey(name: ProProfileView.clientCreditPercentKey_) this.clientCreditPercent = 0, @JsonKey(name: ProProfileView.maxClientCreditPercentKey_) this.maxClientCreditPercent = 10}): _languages = languages,_styles = styles,_gear = gear,super._();
   factory _ProProfileView.fromJson(Map<String, dynamic> json) => _$ProProfileViewFromJson(json);
 
 /// userId
@@ -294,6 +298,10 @@ class _ProProfileView extends ProProfileView {
 @override@JsonKey(name: ProProfileView.completenessScoreKey_) final  int completenessScore;
 /// kycStatus
 @override@JsonKey(name: ProProfileView.kycStatusKey_) final  String kycStatus;
+/// clientCreditPercent
+@override@JsonKey(name: ProProfileView.clientCreditPercentKey_) final  int clientCreditPercent;
+/// maxClientCreditPercent
+@override@JsonKey(name: ProProfileView.maxClientCreditPercentKey_) final  int maxClientCreditPercent;
 
 /// Create a copy of ProProfileView
 /// with the given fields replaced by the non-null parameter values.
@@ -308,16 +316,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProProfileView&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other._languages, _languages)&&const DeepCollectionEquality().equals(other._styles, _styles)&&const DeepCollectionEquality().equals(other._gear, _gear)&&(identical(other.travelRadiusKm, travelRadiusKm) || other.travelRadiusKm == travelRadiusKm)&&(identical(other.isAcceptingBookings, isAcceptingBookings) || other.isAcceptingBookings == isAcceptingBookings)&&(identical(other.completenessScore, completenessScore) || other.completenessScore == completenessScore)&&(identical(other.kycStatus, kycStatus) || other.kycStatus == kycStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProProfileView&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&const DeepCollectionEquality().equals(other._languages, _languages)&&const DeepCollectionEquality().equals(other._styles, _styles)&&const DeepCollectionEquality().equals(other._gear, _gear)&&(identical(other.travelRadiusKm, travelRadiusKm) || other.travelRadiusKm == travelRadiusKm)&&(identical(other.isAcceptingBookings, isAcceptingBookings) || other.isAcceptingBookings == isAcceptingBookings)&&(identical(other.completenessScore, completenessScore) || other.completenessScore == completenessScore)&&(identical(other.kycStatus, kycStatus) || other.kycStatus == kycStatus)&&(identical(other.clientCreditPercent, clientCreditPercent) || other.clientCreditPercent == clientCreditPercent)&&(identical(other.maxClientCreditPercent, maxClientCreditPercent) || other.maxClientCreditPercent == maxClientCreditPercent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(_languages),const DeepCollectionEquality().hash(_styles),const DeepCollectionEquality().hash(_gear),travelRadiusKm,isAcceptingBookings,completenessScore,kycStatus);
+int get hashCode => Object.hash(runtimeType,userId,displayName,headline,coverMediaAssetId,bio,city,country,const DeepCollectionEquality().hash(_languages),const DeepCollectionEquality().hash(_styles),const DeepCollectionEquality().hash(_gear),travelRadiusKm,isAcceptingBookings,completenessScore,kycStatus,clientCreditPercent,maxClientCreditPercent);
 
 @override
 String toString() {
-  return 'ProProfileView(userId: $userId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear, travelRadiusKm: $travelRadiusKm, isAcceptingBookings: $isAcceptingBookings, completenessScore: $completenessScore, kycStatus: $kycStatus)';
+  return 'ProProfileView(userId: $userId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, bio: $bio, city: $city, country: $country, languages: $languages, styles: $styles, gear: $gear, travelRadiusKm: $travelRadiusKm, isAcceptingBookings: $isAcceptingBookings, completenessScore: $completenessScore, kycStatus: $kycStatus, clientCreditPercent: $clientCreditPercent, maxClientCreditPercent: $maxClientCreditPercent)';
 }
 
 
@@ -328,7 +336,7 @@ abstract mixin class _$ProProfileViewCopyWith<$Res> implements $ProProfileViewCo
   factory _$ProProfileViewCopyWith(_ProProfileView value, $Res Function(_ProProfileView) _then) = __$ProProfileViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProProfileView.userIdKey_) String userId,@JsonKey(name: ProProfileView.displayNameKey_) String? displayName,@JsonKey(name: ProProfileView.headlineKey_) String? headline,@JsonKey(name: ProProfileView.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileView.bioKey_) String? bio,@JsonKey(name: ProProfileView.cityKey_) String? city,@JsonKey(name: ProProfileView.countryKey_) String? country,@JsonKey(name: ProProfileView.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileView.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileView.gearKey_) Map<String, dynamic>? gear,@JsonKey(name: ProProfileView.travelRadiusKmKey_) int? travelRadiusKm,@JsonKey(name: ProProfileView.isAcceptingBookingsKey_) bool isAcceptingBookings,@JsonKey(name: ProProfileView.completenessScoreKey_) int completenessScore,@JsonKey(name: ProProfileView.kycStatusKey_) String kycStatus
+@JsonKey(name: ProProfileView.userIdKey_) String userId,@JsonKey(name: ProProfileView.displayNameKey_) String? displayName,@JsonKey(name: ProProfileView.headlineKey_) String? headline,@JsonKey(name: ProProfileView.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProProfileView.bioKey_) String? bio,@JsonKey(name: ProProfileView.cityKey_) String? city,@JsonKey(name: ProProfileView.countryKey_) String? country,@JsonKey(name: ProProfileView.languagesKey_) List<String>? languages,@JsonKey(name: ProProfileView.stylesKey_) List<String>? styles,@JsonKey(name: ProProfileView.gearKey_) Map<String, dynamic>? gear,@JsonKey(name: ProProfileView.travelRadiusKmKey_) int? travelRadiusKm,@JsonKey(name: ProProfileView.isAcceptingBookingsKey_) bool isAcceptingBookings,@JsonKey(name: ProProfileView.completenessScoreKey_) int completenessScore,@JsonKey(name: ProProfileView.kycStatusKey_) String kycStatus,@JsonKey(name: ProProfileView.clientCreditPercentKey_) int clientCreditPercent,@JsonKey(name: ProProfileView.maxClientCreditPercentKey_) int maxClientCreditPercent
 });
 
 
@@ -345,7 +353,7 @@ class __$ProProfileViewCopyWithImpl<$Res>
 
 /// Create a copy of ProProfileView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,Object? travelRadiusKm = freezed,Object? isAcceptingBookings = null,Object? completenessScore = null,Object? kycStatus = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? bio = freezed,Object? city = freezed,Object? country = freezed,Object? languages = freezed,Object? styles = freezed,Object? gear = freezed,Object? travelRadiusKm = freezed,Object? isAcceptingBookings = null,Object? completenessScore = null,Object? kycStatus = null,Object? clientCreditPercent = null,Object? maxClientCreditPercent = null,}) {
   return _then(_ProProfileView(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -361,7 +369,9 @@ as Map<String, dynamic>?,travelRadiusKm: freezed == travelRadiusKm ? _self.trave
 as int?,isAcceptingBookings: null == isAcceptingBookings ? _self.isAcceptingBookings : isAcceptingBookings // ignore: cast_nullable_to_non_nullable
 as bool,completenessScore: null == completenessScore ? _self.completenessScore : completenessScore // ignore: cast_nullable_to_non_nullable
 as int,kycStatus: null == kycStatus ? _self.kycStatus : kycStatus // ignore: cast_nullable_to_non_nullable
-as String,
+as String,clientCreditPercent: null == clientCreditPercent ? _self.clientCreditPercent : clientCreditPercent // ignore: cast_nullable_to_non_nullable
+as int,maxClientCreditPercent: null == maxClientCreditPercent ? _self.maxClientCreditPercent : maxClientCreditPercent // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

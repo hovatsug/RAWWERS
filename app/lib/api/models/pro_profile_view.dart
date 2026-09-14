@@ -113,6 +113,16 @@
 ///         "kyc_status": {
 ///             "type": "string",
 ///             "title": "Kyc Status"
+///         },
+///         "client_credit_percent": {
+///             "type": "integer",
+///             "default": 0,
+///             "title": "Client Credit Percent"
+///         },
+///         "max_client_credit_percent": {
+///             "type": "integer",
+///             "default": 10,
+///             "title": "Max Client Credit Percent"
 ///         }
 ///     },
 ///     "type": "object",
@@ -180,6 +190,16 @@ abstract class ProProfileView with _$ProProfileView {
 
     /// kycStatus
     @JsonKey(name: ProProfileView.kycStatusKey_) required String kycStatus,
+
+    /// clientCreditPercent
+    @Default(0)
+    @JsonKey(name: ProProfileView.clientCreditPercentKey_)
+    int clientCreditPercent,
+
+    /// maxClientCreditPercent
+    @Default(10)
+    @JsonKey(name: ProProfileView.maxClientCreditPercentKey_)
+    int maxClientCreditPercent,
   }) = _ProProfileView;
 
   factory ProProfileView.fromJson(Map<String, dynamic> json) =>
@@ -212,4 +232,8 @@ abstract class ProProfileView with _$ProProfileView {
   static const String completenessScoreKey_ = r'completeness_score';
 
   static const String kycStatusKey_ = r'kyc_status';
+
+  static const String clientCreditPercentKey_ = r'client_credit_percent';
+
+  static const String maxClientCreditPercentKey_ = r'max_client_credit_percent';
 }

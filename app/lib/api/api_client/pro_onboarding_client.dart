@@ -2127,6 +2127,7 @@ abstract class ProOnboardingClient {
   @POST("/v1/booking-requests/{request_id}/accept")
   Future<HttpResponse<AcceptBookingResponse>>
   acceptBookingRequestV1BookingRequestsRequestIdAcceptPost({
+    @Body() required AcceptBookingRequest? requestBody,
     @Path("request_id") required String requestId,
     @Header("Authorization") required String? authorization,
     @Header("X-User-Id") required String? xMinusUserMinusId,
@@ -2171,6 +2172,19 @@ abstract class ProOnboardingClient {
           },
         },
       ],
+      'requestBody': {
+        'content': {
+          'application/json': {
+            'schema': {
+              'anyOf': [
+                {'\$ref': '#/components/schemas/AcceptBookingRequest'},
+                {'type': 'null'},
+              ],
+              'title': 'Body',
+            },
+          },
+        },
+      },
       'responses': {
         '200': {
           'description': 'Successful Response',

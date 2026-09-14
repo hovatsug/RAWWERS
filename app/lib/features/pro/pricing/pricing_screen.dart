@@ -10,6 +10,7 @@ import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/pricing/client_credit_card.dart';
 import 'package:rawwers/features/pro/portfolio/niches_controller.dart';
 import 'package:rawwers/features/pro/pricing/pricing_controller.dart';
 
@@ -41,12 +42,18 @@ class PricingScreen extends ConsumerWidget {
               onRefresh: () async => ref.invalidate(packagesControllerProvider),
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, RSpace.s64),
-                itemCount: value.length,
+                // One extra row at the top: how much of their earnings this
+                // photographer passes back to clients. A standing decision
+                // about how they work rather than a property of any package,
+                // so it heads the list instead of sitting inside one.
+                itemCount: value.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: RSpace.s12),
-                itemBuilder: (context, index) => _PackageRow(
-                  package: value[index],
-                  onEdit: () => _openEditor(context, existing: value[index]),
-                ),
+                itemBuilder: (context, index) => index == 0
+                    ? const ClientCreditCard()
+                    : _PackageRow(
+                        package: value[index - 1],
+                        onEdit: () => _openEditor(context, existing: value[index - 1]),
+                      ),
               ),
             ),
           AsyncError() => RErrorState(

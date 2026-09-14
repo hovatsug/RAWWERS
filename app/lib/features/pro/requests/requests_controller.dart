@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:rawwers/api/models/accept_booking_request.dart';
 import 'package:rawwers/api/models/booking_decision_request.dart';
 import 'package:rawwers/api/models/booking_request_list_item.dart';
 import 'package:rawwers/api/models/booking_request_status.dart';
@@ -94,11 +95,17 @@ class RequestsController extends _$RequestsController {
   }
 
   /// Returns null on success, a user-facing message otherwise.
-  Future<String?> accept(String requestId) async {
+  ///
+  /// [clientCreditPercent] overrides this photographer's standing setting for
+  /// this booking only - for being more generous on one large job without
+  /// changing how they price everything else. Null means use their default,
+  /// which is not the same as zero.
+  Future<String?> accept(String requestId, {int? clientCreditPercent}) async {
     final client = ref.read(proOnboardingClientProvider);
     final result = await apiCall(
       () => client.acceptBookingRequestV1BookingRequestsRequestIdAcceptPost(
         requestId: requestId,
+        requestBody: AcceptBookingRequest(clientCreditPercent: clientCreditPercent),
         authorization: null,
         xMinusUserMinusId: null,
       ),

@@ -54,6 +54,7 @@ from app.schemas.scheduling import (
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.notifications import enqueue_notification
+from app.services.commission import split_for_pro
 from app.services.package_pricing import compute_minimum_amount
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.availability_rules import validate_rule_times
@@ -547,8 +548,9 @@ def _find_or_create_gig_from_booking(db: Session, booking: BookingRequest) -> Gi
         raise APIError(code="validation_error", message="Package not found", status_code=409)
     entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate, included_photos=package.included_photos)
-    fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    split = split_for_pro(db, gross=amount_minimum, pro_user_id=booking.pro_user_id)
+    fee = split.platform_total
+    pro_gross = split.pro_total
     gig = Gig(
         client_user_id=booking.client_user_id,
         pro_user_id=booking.pro_user_id,
@@ -559,6 +561,13 @@ def _find_or_create_gig_from_booking(db: Session, booking: BookingRequest) -> Gi
         entry_rate=entry_rate,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
+        # Recorded, not looked up later. An invoice a year from now must show
+        # the split this booking was actually created under, whatever the
+        # policy says by then.
+        fee_percent=split.fee_percent,
+        retained_percent=split.retained_percent,
+        pro_raww_percent=split.pro_raww_percent,
+        client_credit_percent=split.client_credit_percent,
         scheduled_start=booking.requested_start,
         scheduled_end=booking.requested_end,
         location_text=booking.location_text,

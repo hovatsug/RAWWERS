@@ -27,6 +27,7 @@ from app.schemas.gig import (
     PaymentSummary,
 )
 from app.schemas.media import CurrentUser
+from app.services.commission import split_for_pro
 from app.services.authz import require_kyc_approved_for_pro
 from app.services.analytics import log_event
 from app.services.payment_intents import (
@@ -57,10 +58,9 @@ def create_gig(
     if amount_minimum <= 0:
         raise APIError(code="validation_error", message="amount_total must be > 0", status_code=422)
 
-    fee = (amount_minimum * Decimal(settings.platform_fee_bps) / Decimal(10000)).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
-    pro_gross = (amount_minimum - fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    split = split_for_pro(db, gross=amount_minimum, pro_user_id=body.pro_user_id)
+    fee = split.platform_total
+    pro_gross = split.pro_total
 
     gig = Gig(
         client_user_id=user.user_id,
@@ -71,6 +71,13 @@ def create_gig(
         amount_minimum=amount_minimum,
         amount_platform_fee=fee,
         amount_pro_gross=pro_gross,
+        # Recorded, not looked up later. An invoice a year from now must show
+        # the split this booking was actually created under, whatever the
+        # policy says by then.
+        fee_percent=split.fee_percent,
+        retained_percent=split.retained_percent,
+        pro_raww_percent=split.pro_raww_percent,
+        client_credit_percent=split.client_credit_percent,
         location_text=body.location_text,
         scheduled_start=body.scheduled_start,
         scheduled_end=body.scheduled_end,

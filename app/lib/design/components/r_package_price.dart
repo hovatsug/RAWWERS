@@ -85,7 +85,14 @@ class RPackagePrice extends StatelessWidget {
         Text(
           'minimum $minimumPhotos photos · from $_symbol$startingTotal',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.outline,
+            // onSurfaceVariant, not outline. `outline` is the card's own
+            // hairline border colour - one step from the card fill by design -
+            // so using it as text rendered the starting total at 1.11:1
+            // against a 4.5:1 requirement, in both themes. The line was
+            // legible only on close inspection, which made this card look
+            // like it disagreed with the Discover card when the two numbers
+            // were identical.
+            color: theme.colorScheme.onSurfaceVariant,
             fontFeatures: RType.tabularFigures,
           ),
         ),

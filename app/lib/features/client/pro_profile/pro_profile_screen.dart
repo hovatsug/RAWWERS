@@ -180,7 +180,12 @@ class _ProfileState extends State<_Profile> {
                   if (selected != null)
                     Text(
                       rTierName(selected.tier),
-                      style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline),
+                      // Not `outline`: that is the card's border colour and
+                      // renders at 1.11:1 on the fill. Same mistake as the
+                      // starting-total line, made again hours later, which is
+                      // why the contrast suite now covers text on a card.
+                      style: theme.textTheme.labelMedium
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                 ],
               ),

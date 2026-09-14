@@ -2,6 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_package_price.dart';
+import 'package:rawwers/design/theme_client.dart';
+import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/design/tokens.dart';
 
 /// WCAG 2.1 relative luminance / contrast ratio, computed directly rather
@@ -56,4 +60,76 @@ void main() {
       expect(onDark < 4.5 || onLight < 4.5, isTrue);
     },
   );
+
+  // -------------------------------------------------------------------------
+  // Text on a card, not just on the page background.
+  //
+  // Everything above pairs a colour with RInk.i950 or RInk.i050 - the page.
+  // Cards are a different surface, one step in from the page, and nothing
+  // checked text against them. That gap hid a real bug: the package price's
+  // secondary line rendered in `colorScheme.outline`, which is the card's own
+  // hairline border colour, giving 1.11:1 on the card fill in both themes.
+  // The rate above it was legible only because it set no colour at all.
+  // -------------------------------------------------------------------------
+
+  test('secondary text on a card clears AA normal text (4.5:1) in both themes', () {
+    final client = buildClientTheme();
+    final pro = buildProTheme();
+
+    expect(
+      contrastRatio(client.colorScheme.onSurfaceVariant, client.cardTheme.color!),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      contrastRatio(pro.colorScheme.onSurfaceVariant, pro.cardTheme.color!),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
+  test('outline is a border colour and must never be used as text on a card', () {
+    // Pinned deliberately. `outline` reads like a plausible choice for muted
+    // text, and it is one step from the card colour by design - so reaching
+    // for it produces text that is very nearly invisible rather than merely
+    // dim. Anyone who tries it should find this test, not a screenshot.
+    final client = buildClientTheme();
+    final pro = buildProTheme();
+
+    expect(contrastRatio(client.colorScheme.outline, client.cardTheme.color!), lessThan(4.5));
+    expect(contrastRatio(pro.colorScheme.outline, pro.cardTheme.color!), lessThan(4.5));
+  });
+
+  for (final (name, theme, card) in [
+    ('client', buildClientTheme(), buildClientTheme().cardTheme.color!),
+    ('pro', buildProTheme(), buildProTheme().cardTheme.color!),
+  ]) {
+    testWidgets('the package price secondary line is legible on a card ($name theme)', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: const Scaffold(
+            body: RCard(
+              child: RPackagePrice(
+                entryRate: '5.07',
+                minimumPhotos: 25,
+                startingTotal: '93.24',
+                currency: 'EUR',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final line = tester.widget<Text>(find.textContaining('minimum 25 photos'));
+      final colour = line.style?.color;
+      expect(colour, isNotNull, reason: 'the price line sets no colour, so this test proves nothing');
+
+      final ratio = contrastRatio(colour!, card);
+      expect(
+        ratio,
+        greaterThanOrEqualTo(4.5),
+        reason: 'the starting total renders at ${ratio.toStringAsFixed(2)}:1 on the card, '
+            'which is not readable',
+      );
+    });
+  }
 }

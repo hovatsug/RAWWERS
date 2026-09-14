@@ -20,7 +20,7 @@ from app.services.gamification import queue_evaluate_user_milestones
 from app.services.cache import bump_public_index_version
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import get_niche_tier_map_for_index, get_verified_niches_for_index
-from app.services.package_pricing import compute_minimum_amount
+from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.search_indexing import enqueue_pro_index_upsert
 
@@ -63,6 +63,19 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     ]
     min_price = min(package_minimums, default=None)
     max_price = max(package_minimums, default=None)
+
+    # The entry rate and photo count belonging to the cheapest package, found
+    # by index rather than by taking min() over the rates. The package with
+    # the lowest rate is not always the package with the lowest total - a low
+    # rate over many photos beats a high rate over ten - and mixing the two
+    # would advertise a pairing that no package offers.
+    min_entry_rate = None
+    min_entry_photos = None
+    if package_minimums:
+        cheapest = packages[package_minimums.index(min_price)]
+        min_entry_rate = cheapest.price
+        min_entry_photos = max(MINIMUM_PHOTOS, cheapest.included_photos)
+
     currency = packages[0].currency if packages else "EUR"
 
     portfolio_photos = db.execute(
@@ -151,6 +164,8 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     index.styles = profile.styles if profile else []
     index.min_package_price = min_price
     index.max_package_price = max_price
+    index.min_entry_rate = min_entry_rate
+    index.min_entry_photos = min_entry_photos
     index.currency = currency
     index.is_accepting_bookings = profile.is_accepting_bookings if profile else False
     index.kyc_status = profile.kyc_status if profile else KYCStatus.unsubmitted

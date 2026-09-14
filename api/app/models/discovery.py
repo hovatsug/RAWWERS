@@ -23,6 +23,16 @@ class ProPublicIndex(Base):
     styles: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     min_package_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     max_package_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # The per-photo rate of whichever package is cheapest overall, so a card
+    # can lead with what the client is actually buying instead of a bare
+    # total. Deliberately the rate belonging to `min_package_price`, not the
+    # smallest rate found: those can be different packages, and pairing a rate
+    # from one with a total from another would print a card whose two numbers
+    # describe nothing that can be booked.
+    min_entry_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # How many photos that cheapest package's total covers - the third figure
+    # the price component needs, and meaningless without the other two.
+    min_entry_photos: Mapped[int | None] = mapped_column(nullable=True)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False, index=True)
     kyc_status: Mapped[KYCStatus] = mapped_column(

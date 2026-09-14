@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/tokens.dart';
 
 /// One photographer in the Discover list.
@@ -73,10 +74,25 @@ class DiscoverCard extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: RSpace.s12),
-                      Text(
-                        _priceLine(card),
-                        style: theme.textTheme.titleSmall?.copyWith(fontFeatures: RType.tabularFigures),
-                      ),
+                      // The rate leads, as it does on the profile card. The
+                      // total alone is a large bare number with no unit, and
+                      // this card is what a photographer previews their own
+                      // listing with - it must say the same thing a client
+                      // will read.
+                      if (card.minEntryRate != null && card.minPrice != null)
+                        RPackagePrice(
+                          entryRate: card.minEntryRate!,
+                          minimumPhotos: card.minEntryPhotos ?? 0,
+                          startingTotal: card.minPrice!,
+                          maxTotal: card.maxPrice,
+                          currency: card.currency,
+                          density: RPackagePriceDensity.card,
+                        )
+                      else
+                        Text(
+                          _priceLine(card),
+                          style: theme.textTheme.titleSmall?.copyWith(fontFeatures: RType.tabularFigures),
+                        ),
                       if ((card.topNiches ?? const []).isNotEmpty) ...[
                         const SizedBox(height: RSpace.s8),
                         Text(
@@ -121,6 +137,11 @@ class _Rating extends StatelessWidget {
 
 /// Money stays a decimal string end to end - never parsed to a double just
 /// to render it.
+///
+/// Only reached when the index row has no entry rate yet, in which case the
+/// total alone is what this card has always shown. With a rate present the
+/// card renders RPackagePrice instead, so the rate leads here exactly as it
+/// does on the profile.
 String _priceLine(ClientDiscoverCard card) {
   final min = card.minPrice;
   final max = card.maxPrice;

@@ -190,3 +190,75 @@ def test_analytics_endpoint_stores_and_rejects_invalid(client, db_session):
 
     invalid = client.post("/v1/analytics", json={"event_name": "spam.bad", "properties": {}})
     assert invalid.status_code == 422
+
+
+def test_the_card_rate_belongs_to_the_package_its_total_came_from(db_session):
+    """The cheapest package is not always the one with the cheapest rate.
+
+    A low rate over many photos beats a high rate over ten, so taking min()
+    over the rates and min() over the totals independently can pick two
+    different packages - and a card would then show a rate from one beside a
+    total from another, describing a package nobody can book.
+    """
+    import uuid as _uuid
+    from decimal import Decimal
+
+    from app.models.admin import ProProfile, UserAccount, UserRole, UserRoleType
+    from app.models.booking import ProPackage
+    from app.models.discovery import ProPublicIndex
+    from app.models.niche import Niche
+    from app.services.discovery_index import recompute_pro_public_index
+    from app.services.niche_catalog import ensure_initial_niches
+    from app.services.package_pricing import compute_minimum_amount
+    from sqlalchemy import select
+
+    ensure_initial_niches(db_session)
+    niche = db_session.execute(select(Niche).where(Niche.slug == "portraits")).scalar_one()
+
+    pro_id = _uuid.uuid4()
+    db_session.add(UserAccount(user_id=pro_id))
+    db_session.flush()
+    db_session.add(UserRole(user_id=pro_id, role=UserRoleType.pro))
+    db_session.add(ProProfile(user_id=pro_id, display_name="Two Packages", city="Lisbon", country="PT"))
+    db_session.flush()
+
+    def _package(price: str, photos: int) -> ProPackage:
+        return ProPackage(
+            pro_user_id=pro_id,
+            niche_id=niche.id,
+            title=f"{photos} photos",
+            duration_minutes=60,
+            price=Decimal(price),
+            currency="EUR",
+            included_photos=photos,
+            extra_photo_price=Decimal("5.00"),
+            proofs_sla_days=3,
+            finals_sla_days=7,
+            addons=[],
+            is_active=True,
+        )
+
+    # A cheap rate over a large shoot, and a dearer rate over the minimum.
+    big = _package("4.00", 60)
+    small = _package("9.00", 10)
+    db_session.add_all([big, small])
+    db_session.commit()
+
+    recompute_pro_public_index(db_session, pro_id)
+    db_session.commit()
+
+    index = db_session.get(ProPublicIndex, pro_id)
+    totals = {
+        p.id: compute_minimum_amount(
+            db_session, niche_id=p.niche_id, entry_rate=p.price, included_photos=p.included_photos
+        )
+        for p in (big, small)
+    }
+    cheapest = min(totals, key=lambda k: totals[k])
+    expected_rate = big.price if cheapest == big.id else small.price
+
+    assert index.min_package_price == totals[cheapest]
+    assert index.min_entry_rate == expected_rate, (
+        f"the card would show {index.min_entry_rate}/photo beside a total of "
+        f"{index.min_package_price}, which no package offers"
+    )

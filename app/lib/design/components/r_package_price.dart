@@ -27,13 +27,32 @@ import 'package:rawwers/design/tokens.dart';
 /// verbatim. Nothing here multiplies: photos past the tenth follow the
 /// niche's decay curve, so `entryRate * minimumPhotos` is right only on flat
 /// niches and overstates a portrait package by EUR 1,679.
+/// How much of the price story there is room to tell.
+///
+/// Replaces a `compact` flag that was declared and never passed anywhere - a
+/// mode nothing exercised, which is the same shape of dead path this codebase
+/// keeps finding. Both of these have call sites.
+enum RPackagePriceDensity {
+  /// A profile's package card: rate, the minimum and total it produces, and
+  /// the curve line. Everything a client needs before requesting a booking.
+  full,
+
+  /// A Discover card, 148pt wide. The rate leads and the total follows on one
+  /// short line. The minimum photo count and the curve line are dropped -
+  /// not because they stop being true, but because a card that wraps to five
+  /// lines stops being a card, and the profile is one tap away.
+  card,
+}
+
+
 class RPackagePrice extends StatelessWidget {
   const RPackagePrice({
     required this.entryRate,
     required this.minimumPhotos,
     required this.startingTotal,
     required this.currency,
-    this.compact = false,
+    this.density = RPackagePriceDensity.full,
+    this.maxTotal,
     super.key,
   });
 
@@ -47,10 +66,12 @@ class RPackagePrice extends StatelessWidget {
 
   final String currency;
 
-  /// Drops the curve line where vertical space is genuinely short. The three
-  /// figures always survive: they are the price, and a shorter version that
-  /// omits one of them is how this went wrong in the first place.
-  final bool compact;
+  final RPackagePriceDensity density;
+
+  /// The dearest package's total, when a photographer has more than one and
+  /// they differ. Shown only at card density, where this component stands in
+  /// for a whole price list rather than one package.
+  final String? maxTotal;
 
   String get _symbol => switch (currency.toUpperCase()) {
         'EUR' => '€',
@@ -62,6 +83,8 @@ class RPackagePrice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    if (density == RPackagePriceDensity.card) return _card(theme);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +119,7 @@ class RPackagePrice extends StatelessWidget {
             fontFeatures: RType.tabularFigures,
           ),
         ),
-        if (!compact) ...[
+        if (density == RPackagePriceDensity.full) ...[
           const SizedBox(height: RSpace.s4),
           // The accent carries this line because the decay curve is the one
           // fact most likely to change what a client books, and it should not
@@ -127,6 +150,47 @@ class RPackagePrice extends StatelessWidget {
             ],
           ),
         ],
+      ],
+    );
+  }
+
+  /// Rate first and larger, total second and smaller - the same hierarchy the
+  /// profile card uses, condensed. Built here rather than in the two card
+  /// widgets because the ordering is the fix: this bug existed in five
+  /// separate implementations before it had one.
+  Widget _card(ThemeData theme) {
+    final range = maxTotal != null && maxTotal != startingTotal;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$_symbol$entryRate',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontFeatures: RType.tabularFigures,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              TextSpan(text: ' /photo', style: theme.textTheme.bodySmall),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          range
+              ? 'from $_symbol$startingTotal to $_symbol$maxTotal'
+              : 'from $_symbol$startingTotal',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontFeatures: RType.tabularFigures,
+          ),
+        ),
       ],
     );
   }

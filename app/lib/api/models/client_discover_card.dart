@@ -97,6 +97,29 @@
 ///             ],
 ///             "title": "Max Price"
 ///         },
+///         "min_entry_rate": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Min Entry Rate"
+///         },
+///         "min_entry_photos": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Min Entry Photos"
+///         },
 ///         "currency": {
 ///             "type": "string",
 ///             "title": "Currency"
@@ -177,6 +200,12 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
     /// maxPrice
     @JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? maxPrice,
 
+    /// minEntryRate
+    @JsonKey(name: ClientDiscoverCard.minEntryRateKey_) String? minEntryRate,
+
+    /// minEntryPhotos
+    @JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_) int? minEntryPhotos,
+
     /// currency
     @JsonKey(name: ClientDiscoverCard.currencyKey_) required String currency,
 
@@ -219,6 +248,10 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
   static const String minPriceKey_ = r'min_price';
 
   static const String maxPriceKey_ = r'max_price';
+
+  static const String minEntryRateKey_ = r'min_entry_rate';
+
+  static const String minEntryPhotosKey_ = r'min_entry_photos';
 
   static const String currencyKey_ = r'currency';
 

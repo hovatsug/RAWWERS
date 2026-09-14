@@ -24,7 +24,9 @@ mixin _$ClientDiscoverCard {
 @JsonKey(name: ClientDiscoverCard.cityKey_) String? get city;/// country
 @JsonKey(name: ClientDiscoverCard.countryKey_) String? get country;/// minPrice
 @JsonKey(name: ClientDiscoverCard.minPriceKey_) String? get minPrice;/// maxPrice
-@JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? get maxPrice;/// currency
+@JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? get maxPrice;/// minEntryRate
+@JsonKey(name: ClientDiscoverCard.minEntryRateKey_) String? get minEntryRate;/// minEntryPhotos
+@JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_) int? get minEntryPhotos;/// currency
 @JsonKey(name: ClientDiscoverCard.currencyKey_) String get currency;/// avgRating
 @JsonKey(name: ClientDiscoverCard.avgRatingKey_) String get avgRating;/// reviewCount
 @JsonKey(name: ClientDiscoverCard.reviewCountKey_) int get reviewCount;/// topNiches
@@ -43,16 +45,16 @@ $ClientDiscoverCardCopyWith<ClientDiscoverCard> get copyWith => _$ClientDiscover
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientDiscoverCard&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&(identical(other.minPrice, minPrice) || other.minPrice == minPrice)&&(identical(other.maxPrice, maxPrice) || other.maxPrice == maxPrice)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&const DeepCollectionEquality().equals(other.topNiches, topNiches)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientDiscoverCard&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&(identical(other.minPrice, minPrice) || other.minPrice == minPrice)&&(identical(other.maxPrice, maxPrice) || other.maxPrice == maxPrice)&&(identical(other.minEntryRate, minEntryRate) || other.minEntryRate == minEntryRate)&&(identical(other.minEntryPhotos, minEntryPhotos) || other.minEntryPhotos == minEntryPhotos)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&const DeepCollectionEquality().equals(other.topNiches, topNiches)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,coverUrl,city,country,minPrice,maxPrice,currency,avgRating,reviewCount,const DeepCollectionEquality().hash(topNiches),portfolioPhotoCount,portfolioVideoCount);
+int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,coverUrl,city,country,minPrice,maxPrice,minEntryRate,minEntryPhotos,currency,avgRating,reviewCount,const DeepCollectionEquality().hash(topNiches),portfolioPhotoCount,portfolioVideoCount);
 
 @override
 String toString() {
-  return 'ClientDiscoverCard(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, coverUrl: $coverUrl, city: $city, country: $country, minPrice: $minPrice, maxPrice: $maxPrice, currency: $currency, avgRating: $avgRating, reviewCount: $reviewCount, topNiches: $topNiches, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount)';
+  return 'ClientDiscoverCard(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, coverUrl: $coverUrl, city: $city, country: $country, minPrice: $minPrice, maxPrice: $maxPrice, minEntryRate: $minEntryRate, minEntryPhotos: $minEntryPhotos, currency: $currency, avgRating: $avgRating, reviewCount: $reviewCount, topNiches: $topNiches, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount)';
 }
 
 
@@ -63,7 +65,7 @@ abstract mixin class $ClientDiscoverCardCopyWith<$Res>  {
   factory $ClientDiscoverCardCopyWith(ClientDiscoverCard value, $Res Function(ClientDiscoverCard) _then) = _$ClientDiscoverCardCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientDiscoverCard.proUserIdKey_) String proUserId,@JsonKey(name: ClientDiscoverCard.displayNameKey_) String? displayName,@JsonKey(name: ClientDiscoverCard.headlineKey_) String? headline,@JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientDiscoverCard.coverUrlKey_) String? coverUrl,@JsonKey(name: ClientDiscoverCard.cityKey_) String? city,@JsonKey(name: ClientDiscoverCard.countryKey_) String? country,@JsonKey(name: ClientDiscoverCard.minPriceKey_) String? minPrice,@JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? maxPrice,@JsonKey(name: ClientDiscoverCard.currencyKey_) String currency,@JsonKey(name: ClientDiscoverCard.avgRatingKey_) String avgRating,@JsonKey(name: ClientDiscoverCard.reviewCountKey_) int reviewCount,@JsonKey(name: ClientDiscoverCard.topNichesKey_) List<Map<String, dynamic>>? topNiches,@JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_) int portfolioVideoCount
+@JsonKey(name: ClientDiscoverCard.proUserIdKey_) String proUserId,@JsonKey(name: ClientDiscoverCard.displayNameKey_) String? displayName,@JsonKey(name: ClientDiscoverCard.headlineKey_) String? headline,@JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientDiscoverCard.coverUrlKey_) String? coverUrl,@JsonKey(name: ClientDiscoverCard.cityKey_) String? city,@JsonKey(name: ClientDiscoverCard.countryKey_) String? country,@JsonKey(name: ClientDiscoverCard.minPriceKey_) String? minPrice,@JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? maxPrice,@JsonKey(name: ClientDiscoverCard.minEntryRateKey_) String? minEntryRate,@JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_) int? minEntryPhotos,@JsonKey(name: ClientDiscoverCard.currencyKey_) String currency,@JsonKey(name: ClientDiscoverCard.avgRatingKey_) String avgRating,@JsonKey(name: ClientDiscoverCard.reviewCountKey_) int reviewCount,@JsonKey(name: ClientDiscoverCard.topNichesKey_) List<Map<String, dynamic>>? topNiches,@JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_) int portfolioVideoCount
 });
 
 
@@ -80,7 +82,7 @@ class _$ClientDiscoverCardCopyWithImpl<$Res>
 
 /// Create a copy of ClientDiscoverCard
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? coverUrl = freezed,Object? city = freezed,Object? country = freezed,Object? minPrice = freezed,Object? maxPrice = freezed,Object? currency = null,Object? avgRating = null,Object? reviewCount = null,Object? topNiches = freezed,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? coverUrl = freezed,Object? city = freezed,Object? country = freezed,Object? minPrice = freezed,Object? maxPrice = freezed,Object? minEntryRate = freezed,Object? minEntryPhotos = freezed,Object? currency = null,Object? avgRating = null,Object? reviewCount = null,Object? topNiches = freezed,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,}) {
   return _then(_self.copyWith(
 proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -91,7 +93,9 @@ as String?,city: freezed == city ? _self.city : city // ignore: cast_nullable_to
 as String?,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
 as String?,minPrice: freezed == minPrice ? _self.minPrice : minPrice // ignore: cast_nullable_to_non_nullable
 as String?,maxPrice: freezed == maxPrice ? _self.maxPrice : maxPrice // ignore: cast_nullable_to_non_nullable
-as String?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,minEntryRate: freezed == minEntryRate ? _self.minEntryRate : minEntryRate // ignore: cast_nullable_to_non_nullable
+as String?,minEntryPhotos: freezed == minEntryPhotos ? _self.minEntryPhotos : minEntryPhotos // ignore: cast_nullable_to_non_nullable
+as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,avgRating: null == avgRating ? _self.avgRating : avgRating // ignore: cast_nullable_to_non_nullable
 as String,reviewCount: null == reviewCount ? _self.reviewCount : reviewCount // ignore: cast_nullable_to_non_nullable
 as int,topNiches: freezed == topNiches ? _self.topNiches : topNiches // ignore: cast_nullable_to_non_nullable
@@ -182,10 +186,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientDiscoverCard.proUserIdKey_)  String proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_)  String? displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_)  String? headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_)  String? city, @JsonKey(name: ClientDiscoverCard.countryKey_)  String? country, @JsonKey(name: ClientDiscoverCard.minPriceKey_)  String? minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_)  String? maxPrice, @JsonKey(name: ClientDiscoverCard.currencyKey_)  String currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_)  String avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_)  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)  int portfolioVideoCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientDiscoverCard.proUserIdKey_)  String proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_)  String? displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_)  String? headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_)  String? city, @JsonKey(name: ClientDiscoverCard.countryKey_)  String? country, @JsonKey(name: ClientDiscoverCard.minPriceKey_)  String? minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_)  String? maxPrice, @JsonKey(name: ClientDiscoverCard.minEntryRateKey_)  String? minEntryRate, @JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_)  int? minEntryPhotos, @JsonKey(name: ClientDiscoverCard.currencyKey_)  String currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_)  String avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_)  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)  int portfolioVideoCount)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientDiscoverCard() when $default != null:
-return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.city,_that.country,_that.minPrice,_that.maxPrice,_that.currency,_that.avgRating,_that.reviewCount,_that.topNiches,_that.portfolioPhotoCount,_that.portfolioVideoCount);case _:
+return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.city,_that.country,_that.minPrice,_that.maxPrice,_that.minEntryRate,_that.minEntryPhotos,_that.currency,_that.avgRating,_that.reviewCount,_that.topNiches,_that.portfolioPhotoCount,_that.portfolioVideoCount);case _:
   return orElse();
 
 }
@@ -203,10 +207,10 @@ return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMedi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientDiscoverCard.proUserIdKey_)  String proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_)  String? displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_)  String? headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_)  String? city, @JsonKey(name: ClientDiscoverCard.countryKey_)  String? country, @JsonKey(name: ClientDiscoverCard.minPriceKey_)  String? minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_)  String? maxPrice, @JsonKey(name: ClientDiscoverCard.currencyKey_)  String currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_)  String avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_)  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)  int portfolioVideoCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientDiscoverCard.proUserIdKey_)  String proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_)  String? displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_)  String? headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_)  String? city, @JsonKey(name: ClientDiscoverCard.countryKey_)  String? country, @JsonKey(name: ClientDiscoverCard.minPriceKey_)  String? minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_)  String? maxPrice, @JsonKey(name: ClientDiscoverCard.minEntryRateKey_)  String? minEntryRate, @JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_)  int? minEntryPhotos, @JsonKey(name: ClientDiscoverCard.currencyKey_)  String currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_)  String avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_)  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)  int portfolioVideoCount)  $default,) {final _that = this;
 switch (_that) {
 case _ClientDiscoverCard():
-return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.city,_that.country,_that.minPrice,_that.maxPrice,_that.currency,_that.avgRating,_that.reviewCount,_that.topNiches,_that.portfolioPhotoCount,_that.portfolioVideoCount);case _:
+return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.city,_that.country,_that.minPrice,_that.maxPrice,_that.minEntryRate,_that.minEntryPhotos,_that.currency,_that.avgRating,_that.reviewCount,_that.topNiches,_that.portfolioPhotoCount,_that.portfolioVideoCount);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -223,10 +227,10 @@ return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMedi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientDiscoverCard.proUserIdKey_)  String proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_)  String? displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_)  String? headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_)  String? city, @JsonKey(name: ClientDiscoverCard.countryKey_)  String? country, @JsonKey(name: ClientDiscoverCard.minPriceKey_)  String? minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_)  String? maxPrice, @JsonKey(name: ClientDiscoverCard.currencyKey_)  String currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_)  String avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_)  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)  int portfolioVideoCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientDiscoverCard.proUserIdKey_)  String proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_)  String? displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_)  String? headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_)  String? coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_)  String? city, @JsonKey(name: ClientDiscoverCard.countryKey_)  String? country, @JsonKey(name: ClientDiscoverCard.minPriceKey_)  String? minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_)  String? maxPrice, @JsonKey(name: ClientDiscoverCard.minEntryRateKey_)  String? minEntryRate, @JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_)  int? minEntryPhotos, @JsonKey(name: ClientDiscoverCard.currencyKey_)  String currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_)  String avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_)  int reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_)  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_)  int portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)  int portfolioVideoCount)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientDiscoverCard() when $default != null:
-return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.city,_that.country,_that.minPrice,_that.maxPrice,_that.currency,_that.avgRating,_that.reviewCount,_that.topNiches,_that.portfolioPhotoCount,_that.portfolioVideoCount);case _:
+return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMediaAssetId,_that.coverUrl,_that.city,_that.country,_that.minPrice,_that.maxPrice,_that.minEntryRate,_that.minEntryPhotos,_that.currency,_that.avgRating,_that.reviewCount,_that.topNiches,_that.portfolioPhotoCount,_that.portfolioVideoCount);case _:
   return null;
 
 }
@@ -238,7 +242,7 @@ return $default(_that.proUserId,_that.displayName,_that.headline,_that.coverMedi
 
 @jsonSerializable
 class _ClientDiscoverCard extends ClientDiscoverCard {
-  const _ClientDiscoverCard({@JsonKey(name: ClientDiscoverCard.proUserIdKey_) required this.proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_) this.displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_) this.headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_) this.coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_) this.city, @JsonKey(name: ClientDiscoverCard.countryKey_) this.country, @JsonKey(name: ClientDiscoverCard.minPriceKey_) this.minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_) this.maxPrice, @JsonKey(name: ClientDiscoverCard.currencyKey_) required this.currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_) required this.avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_) required this.reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_) final  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_) required this.portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_) required this.portfolioVideoCount}): _topNiches = topNiches,super._();
+  const _ClientDiscoverCard({@JsonKey(name: ClientDiscoverCard.proUserIdKey_) required this.proUserId, @JsonKey(name: ClientDiscoverCard.displayNameKey_) this.displayName, @JsonKey(name: ClientDiscoverCard.headlineKey_) this.headline, @JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ClientDiscoverCard.coverUrlKey_) this.coverUrl, @JsonKey(name: ClientDiscoverCard.cityKey_) this.city, @JsonKey(name: ClientDiscoverCard.countryKey_) this.country, @JsonKey(name: ClientDiscoverCard.minPriceKey_) this.minPrice, @JsonKey(name: ClientDiscoverCard.maxPriceKey_) this.maxPrice, @JsonKey(name: ClientDiscoverCard.minEntryRateKey_) this.minEntryRate, @JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_) this.minEntryPhotos, @JsonKey(name: ClientDiscoverCard.currencyKey_) required this.currency, @JsonKey(name: ClientDiscoverCard.avgRatingKey_) required this.avgRating, @JsonKey(name: ClientDiscoverCard.reviewCountKey_) required this.reviewCount, @JsonKey(name: ClientDiscoverCard.topNichesKey_) final  List<Map<String, dynamic>>? topNiches, @JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_) required this.portfolioPhotoCount, @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_) required this.portfolioVideoCount}): _topNiches = topNiches,super._();
   factory _ClientDiscoverCard.fromJson(Map<String, dynamic> json) => _$ClientDiscoverCardFromJson(json);
 
 /// proUserId
@@ -259,6 +263,10 @@ class _ClientDiscoverCard extends ClientDiscoverCard {
 @override@JsonKey(name: ClientDiscoverCard.minPriceKey_) final  String? minPrice;
 /// maxPrice
 @override@JsonKey(name: ClientDiscoverCard.maxPriceKey_) final  String? maxPrice;
+/// minEntryRate
+@override@JsonKey(name: ClientDiscoverCard.minEntryRateKey_) final  String? minEntryRate;
+/// minEntryPhotos
+@override@JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_) final  int? minEntryPhotos;
 /// currency
 @override@JsonKey(name: ClientDiscoverCard.currencyKey_) final  String currency;
 /// avgRating
@@ -294,16 +302,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientDiscoverCard&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&(identical(other.minPrice, minPrice) || other.minPrice == minPrice)&&(identical(other.maxPrice, maxPrice) || other.maxPrice == maxPrice)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&const DeepCollectionEquality().equals(other._topNiches, _topNiches)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientDiscoverCard&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.city, city) || other.city == city)&&(identical(other.country, country) || other.country == country)&&(identical(other.minPrice, minPrice) || other.minPrice == minPrice)&&(identical(other.maxPrice, maxPrice) || other.maxPrice == maxPrice)&&(identical(other.minEntryRate, minEntryRate) || other.minEntryRate == minEntryRate)&&(identical(other.minEntryPhotos, minEntryPhotos) || other.minEntryPhotos == minEntryPhotos)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&const DeepCollectionEquality().equals(other._topNiches, _topNiches)&&(identical(other.portfolioPhotoCount, portfolioPhotoCount) || other.portfolioPhotoCount == portfolioPhotoCount)&&(identical(other.portfolioVideoCount, portfolioVideoCount) || other.portfolioVideoCount == portfolioVideoCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,coverUrl,city,country,minPrice,maxPrice,currency,avgRating,reviewCount,const DeepCollectionEquality().hash(_topNiches),portfolioPhotoCount,portfolioVideoCount);
+int get hashCode => Object.hash(runtimeType,proUserId,displayName,headline,coverMediaAssetId,coverUrl,city,country,minPrice,maxPrice,minEntryRate,minEntryPhotos,currency,avgRating,reviewCount,const DeepCollectionEquality().hash(_topNiches),portfolioPhotoCount,portfolioVideoCount);
 
 @override
 String toString() {
-  return 'ClientDiscoverCard(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, coverUrl: $coverUrl, city: $city, country: $country, minPrice: $minPrice, maxPrice: $maxPrice, currency: $currency, avgRating: $avgRating, reviewCount: $reviewCount, topNiches: $topNiches, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount)';
+  return 'ClientDiscoverCard(proUserId: $proUserId, displayName: $displayName, headline: $headline, coverMediaAssetId: $coverMediaAssetId, coverUrl: $coverUrl, city: $city, country: $country, minPrice: $minPrice, maxPrice: $maxPrice, minEntryRate: $minEntryRate, minEntryPhotos: $minEntryPhotos, currency: $currency, avgRating: $avgRating, reviewCount: $reviewCount, topNiches: $topNiches, portfolioPhotoCount: $portfolioPhotoCount, portfolioVideoCount: $portfolioVideoCount)';
 }
 
 
@@ -314,7 +322,7 @@ abstract mixin class _$ClientDiscoverCardCopyWith<$Res> implements $ClientDiscov
   factory _$ClientDiscoverCardCopyWith(_ClientDiscoverCard value, $Res Function(_ClientDiscoverCard) _then) = __$ClientDiscoverCardCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientDiscoverCard.proUserIdKey_) String proUserId,@JsonKey(name: ClientDiscoverCard.displayNameKey_) String? displayName,@JsonKey(name: ClientDiscoverCard.headlineKey_) String? headline,@JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientDiscoverCard.coverUrlKey_) String? coverUrl,@JsonKey(name: ClientDiscoverCard.cityKey_) String? city,@JsonKey(name: ClientDiscoverCard.countryKey_) String? country,@JsonKey(name: ClientDiscoverCard.minPriceKey_) String? minPrice,@JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? maxPrice,@JsonKey(name: ClientDiscoverCard.currencyKey_) String currency,@JsonKey(name: ClientDiscoverCard.avgRatingKey_) String avgRating,@JsonKey(name: ClientDiscoverCard.reviewCountKey_) int reviewCount,@JsonKey(name: ClientDiscoverCard.topNichesKey_) List<Map<String, dynamic>>? topNiches,@JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_) int portfolioVideoCount
+@JsonKey(name: ClientDiscoverCard.proUserIdKey_) String proUserId,@JsonKey(name: ClientDiscoverCard.displayNameKey_) String? displayName,@JsonKey(name: ClientDiscoverCard.headlineKey_) String? headline,@JsonKey(name: ClientDiscoverCard.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ClientDiscoverCard.coverUrlKey_) String? coverUrl,@JsonKey(name: ClientDiscoverCard.cityKey_) String? city,@JsonKey(name: ClientDiscoverCard.countryKey_) String? country,@JsonKey(name: ClientDiscoverCard.minPriceKey_) String? minPrice,@JsonKey(name: ClientDiscoverCard.maxPriceKey_) String? maxPrice,@JsonKey(name: ClientDiscoverCard.minEntryRateKey_) String? minEntryRate,@JsonKey(name: ClientDiscoverCard.minEntryPhotosKey_) int? minEntryPhotos,@JsonKey(name: ClientDiscoverCard.currencyKey_) String currency,@JsonKey(name: ClientDiscoverCard.avgRatingKey_) String avgRating,@JsonKey(name: ClientDiscoverCard.reviewCountKey_) int reviewCount,@JsonKey(name: ClientDiscoverCard.topNichesKey_) List<Map<String, dynamic>>? topNiches,@JsonKey(name: ClientDiscoverCard.portfolioPhotoCountKey_) int portfolioPhotoCount,@JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_) int portfolioVideoCount
 });
 
 
@@ -331,7 +339,7 @@ class __$ClientDiscoverCardCopyWithImpl<$Res>
 
 /// Create a copy of ClientDiscoverCard
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? coverUrl = freezed,Object? city = freezed,Object? country = freezed,Object? minPrice = freezed,Object? maxPrice = freezed,Object? currency = null,Object? avgRating = null,Object? reviewCount = null,Object? topNiches = freezed,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? proUserId = null,Object? displayName = freezed,Object? headline = freezed,Object? coverMediaAssetId = freezed,Object? coverUrl = freezed,Object? city = freezed,Object? country = freezed,Object? minPrice = freezed,Object? maxPrice = freezed,Object? minEntryRate = freezed,Object? minEntryPhotos = freezed,Object? currency = null,Object? avgRating = null,Object? reviewCount = null,Object? topNiches = freezed,Object? portfolioPhotoCount = null,Object? portfolioVideoCount = null,}) {
   return _then(_ClientDiscoverCard(
 proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -342,7 +350,9 @@ as String?,city: freezed == city ? _self.city : city // ignore: cast_nullable_to
 as String?,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
 as String?,minPrice: freezed == minPrice ? _self.minPrice : minPrice // ignore: cast_nullable_to_non_nullable
 as String?,maxPrice: freezed == maxPrice ? _self.maxPrice : maxPrice // ignore: cast_nullable_to_non_nullable
-as String?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,minEntryRate: freezed == minEntryRate ? _self.minEntryRate : minEntryRate // ignore: cast_nullable_to_non_nullable
+as String?,minEntryPhotos: freezed == minEntryPhotos ? _self.minEntryPhotos : minEntryPhotos // ignore: cast_nullable_to_non_nullable
+as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,avgRating: null == avgRating ? _self.avgRating : avgRating // ignore: cast_nullable_to_non_nullable
 as String,reviewCount: null == reviewCount ? _self.reviewCount : reviewCount // ignore: cast_nullable_to_non_nullable
 as int,topNiches: freezed == topNiches ? _self._topNiches : topNiches // ignore: cast_nullable_to_non_nullable

@@ -20,6 +20,11 @@ GigInvoiceView _invoice({
   String proCash = '1192.00',
   int? photosDelivered,
   bool ratesWereStamped = true,
+  String vatStatus = 'not_answered',
+  int? vatRatePercent,
+  String? vatNumber,
+  String? vatNetAmount,
+  String? vatAmount,
 }) =>
     GigInvoiceView(
       gigId: _gigId,
@@ -35,6 +40,11 @@ GigInvoiceView _invoice({
       clientCreditPercent: clientCreditPercent,
       photosDelivered: photosDelivered,
       ratesWereStamped: ratesWereStamped,
+      vatStatus: vatStatus,
+      vatRatePercent: vatRatePercent,
+      vatNumber: vatNumber,
+      vatNetAmount: vatNetAmount,
+      vatAmount: vatAmount,
     );
 
 Widget _wrap(GigInvoiceView invoice) => ProviderScope(
@@ -105,5 +115,75 @@ void main() {
     await tester.pumpWidget(_wrap(_invoice(ratesWereStamped: true)));
     await tester.pumpAndSettle();
     expect(find.textContaining('predates itemised rates'), findsNothing);
+  });
+
+  // -------------------------------------------------------------------------
+  // VAT.
+  // -------------------------------------------------------------------------
+
+  testWidgets('a registered photographer sees VAT broken out of the total', (tester) async {
+    await tester.pumpWidget(_wrap(_invoice(
+      vatStatus: 'registered',
+      vatRatePercent: 20,
+      vatNumber: 'GB123456789',
+      vatNetAmount: '1241.67',
+      vatAmount: '248.33',
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Before VAT'), findsOneWidget);
+    expect(find.textContaining('1241.67'), findsOneWidget);
+    expect(find.textContaining('248.33'), findsOneWidget);
+    expect(find.textContaining('GB123456789'), findsOneWidget);
+  });
+
+  testWidgets('an unregistered photographer is told why there is no VAT', (tester) async {
+    // Not a missing line. Silence reads as an oversight; this states a fact.
+    await tester.pumpWidget(_wrap(_invoice(vatStatus: 'not_registered')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('not VAT registered'), findsOneWidget);
+    expect(find.text('Before VAT'), findsNothing);
+  });
+
+  testWidgets('someone who has never been asked is not called unregistered', (tester) async {
+    await tester.pumpWidget(_wrap(_invoice(vatStatus: 'not_answered')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('have not told us'), findsOneWidget);
+    expect(
+      find.textContaining('not VAT registered'),
+      findsNothing,
+      reason: 'silence was rendered as a declaration',
+    );
+  });
+
+  testWidgets("RAWWERS' own VAT on its fee never shows a number", (tester) async {
+    // It depends on where the company incorporates, which is undecided. This
+    // fails the moment any figure appears in that line.
+    await tester.pumpWidget(_wrap(_invoice(
+      vatStatus: 'registered',
+      vatRatePercent: 20,
+      vatNumber: 'GB123456789',
+      vatNetAmount: '1241.67',
+      vatAmount: '248.33',
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not yet determined'), findsOneWidget);
+
+    final row = find.ancestor(
+      of: find.text("RAWWERS' VAT on its fee"),
+      matching: find.byType(Row),
+    );
+    final texts = tester
+        .widgetList<Text>(find.descendant(of: row.first, matching: find.byType(Text)))
+        .map((t) => t.data ?? '')
+        .toList();
+    expect(
+      texts.any((t) => RegExp(r'\d').hasMatch(t)),
+      isFalse,
+      reason: 'a number appeared in the platform commission VAT line: $texts',
+    );
   });
 }

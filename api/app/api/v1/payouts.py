@@ -24,6 +24,8 @@ from app.models.payouts import (
 )
 from app.schemas.media import CurrentUser
 from app.schemas.payouts import (
+    TaxProfileUpdateRequest,
+    TaxProfileView,
     InvoiceSummaryView,
     GigInvoiceListResponse,
     GigInvoiceView,
@@ -49,7 +51,9 @@ from app.schemas.payouts import (
     PayoutRequestCreateRequest,
     PayoutRequestView,
 )
+from app.models.payouts import TaxProfile, VatStatus
 from app.services.invoices import build_invoice, summarise_invoices
+from app.services.tax import DEFAULT_COUNTRY, ensure_uk_tax_rule, tax_profile_for, tax_rule_for
 from app.services.audit import add_admin_audit_log
 from app.services.stripe_connect import (
     connect_status,
@@ -105,7 +109,75 @@ def _invoice_view(invoice) -> GigInvoiceView:
         client_credit_percent=invoice.client_credit_percent,
         photos_delivered=invoice.photos_delivered,
         rates_were_stamped=invoice.rates_were_stamped,
+        vat_status=invoice.vat.status.value,
+        vat_rate_percent=invoice.vat.rate_percent,
+        vat_number=invoice.vat.vat_number,
+        vat_net_amount=invoice.vat.net_amount,
+        vat_amount=invoice.vat.vat_amount,
     )
+
+
+@router.get("/pro/tax-profile", response_model=TaxProfileView)
+def get_my_tax_profile(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> TaxProfileView:
+    _ensure_pro_user(db, user.user_id)
+    ensure_uk_tax_rule(db)
+    profile = tax_profile_for(db, user.user_id)
+    country = (profile.country if profile else None) or DEFAULT_COUNTRY
+    rule = tax_rule_for(db, country)
+    db.commit()
+    return TaxProfileView(
+        # not_answered, never not_registered. Being unregistered is something
+        # a photographer tells us, not something assumed on their behalf.
+        vat_status=(profile.vat_status.value if profile else VatStatus.not_answered.value),
+        vat_number=profile.vat_number if profile else None,
+        country=country,
+        tax_name=rule.tax_name if rule else None,
+        standard_rate_percent=rule.standard_rate_percent if rule else None,
+        registration_threshold=rule.registration_threshold if rule else None,
+        threshold_currency=rule.threshold_currency if rule else None,
+        vat_number_format=rule.vat_number_format if rule else None,
+    )
+
+
+@router.put("/pro/tax-profile", response_model=TaxProfileView)
+def update_my_tax_profile(
+    body: TaxProfileUpdateRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> TaxProfileView:
+    _ensure_pro_user(db, user.user_id)
+    try:
+        status = VatStatus(body.vat_status)
+    except ValueError:
+        raise APIError(
+            code="validation_error",
+            message="VAT status must be one of: not_answered, not_registered, registered",
+            status_code=422,
+        ) from None
+
+    number = (body.vat_number or "").strip() or None
+    if status == VatStatus.registered and not number:
+        raise APIError(
+            code="validation_error",
+            message="A VAT number is required when registered",
+            status_code=422,
+        )
+
+    profile = tax_profile_for(db, user.user_id)
+    if profile is None:
+        profile = TaxProfile(pro_user_id=user.user_id)
+        db.add(profile)
+    profile.vat_status = status
+    # Cleared when they are not registered, so a stale number cannot reappear
+    # on an invoice if they register again later.
+    profile.vat_number = number if status == VatStatus.registered else None
+    if body.country:
+        profile.country = body.country.upper()[:2]
+    db.commit()
+    return get_my_tax_profile(user=user, db=db)
 
 
 @router.get("/pro/earnings/summary", response_model=InvoiceSummaryView)

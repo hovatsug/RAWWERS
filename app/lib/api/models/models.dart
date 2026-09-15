@@ -251,6 +251,8 @@ export 'shared_media_item_view.dart';
 export 'signed_url_response.dart';
 export 'skill_tier.dart';
 export 'submit_selection_response.dart';
+export 'tax_profile_update_request.dart';
+export 'tax_profile_view.dart';
 export 'time_window_item.dart';
 export 'token_response.dart';
 export 'update_gig_consent_request.dart';

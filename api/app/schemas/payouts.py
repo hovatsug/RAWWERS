@@ -248,6 +248,24 @@ class GigInvoiceView(BaseModel):
     #: reconstructed from the current policy rather than read from the record.
     rates_were_stamped: bool = True
 
+    # --- Tax -------------------------------------------------------------
+    #: not_answered, not_registered or registered, as recorded when this
+    #: booking was made. Never inferred from whether a number is present.
+    vat_status: str = "not_answered"
+    #: All null unless the photographer was registered at the time. Null
+    #: rather than zero, so a renderer cannot print a breakdown of a tax that
+    #: was never charged.
+    vat_rate_percent: int | None = None
+    vat_number: str | None = None
+    vat_net_amount: Decimal | None = None
+    vat_amount: Decimal | None = None
+
+    #: RAWWERS' own VAT treatment of its commission. Always null, by design:
+    #: it depends on where the company incorporates, which is undecided. The
+    #: field exists so an invoice can render "pending" rather than say nothing
+    #: at all, and so a test can assert a number never appears here.
+    platform_commission_vat: None = None
+
 
 class GigInvoiceListResponse(BaseModel):
     items: list[GigInvoiceView] = Field(default_factory=list)
@@ -271,3 +289,26 @@ class InvoiceSummaryView(BaseModel):
     #: How many of these totals came from reconstructed rather than recorded
     #: rates, so a summary built mostly from reconstructions can say so.
     reconstructed: int = 0
+
+
+class TaxProfileView(BaseModel):
+    """What a photographer has told us about their own tax position."""
+
+    vat_status: str
+    vat_number: str | None = None
+    country: str | None = None
+
+    # Reference for the form, from the country's rule row. The threshold is
+    # shown so a photographer can judge for themselves; the platform sees only
+    # their RAWWERS bookings and cannot tell whether they have crossed it.
+    tax_name: str | None = None
+    standard_rate_percent: int | None = None
+    registration_threshold: Decimal | None = None
+    threshold_currency: str | None = None
+    vat_number_format: str | None = None
+
+
+class TaxProfileUpdateRequest(BaseModel):
+    vat_status: str
+    vat_number: str | None = None
+    country: str | None = None

@@ -108,6 +108,57 @@ class _Invoice extends StatelessWidget {
         ),
         const SizedBox(height: RSpace.s16),
 
+        // VAT, or an explicit statement that none applies. Never an absent
+        // line: a photographer needs to know which of the two an invoice is,
+        // and silence looks like an oversight rather than a fact.
+        RCard(
+          child: Column(
+            children: [
+              if (invoice.vatAmount != null && invoice.vatNetAmount != null) ...[
+                _Line(label: 'Before VAT', amount: '$_symbol${invoice.vatNetAmount}'),
+                const SizedBox(height: RSpace.s12),
+                _Line(
+                  label: 'VAT',
+                  detail: '${invoice.vatRatePercent}%'
+                      '${invoice.vatNumber == null ? '' : ' · ${invoice.vatNumber}'}',
+                  amount: '$_symbol${invoice.vatAmount}',
+                ),
+                const Divider(height: RSpace.s24),
+                _Line(
+                  label: 'Total paid',
+                  amount: '$_symbol${invoice.clientTotal}',
+                  emphasised: true,
+                ),
+              ] else
+                _Line(
+                  label: 'VAT',
+                  detail: switch (invoice.vatStatus) {
+                    'registered' => 'No rate is configured for your country yet.',
+                    'not_registered' => 'You are not VAT registered, so none was charged.',
+                    // Never "not registered". Being unregistered is something
+                    // a photographer tells us, not something inferred from
+                    // their silence.
+                    _ => 'You have not told us your VAT status yet.',
+                  },
+                  amount: 'None',
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: RSpace.s16),
+
+        RCard(
+          child: _Line(
+            label: "RAWWERS' VAT on its fee",
+            // Deliberately not a number. It depends on where RAWWERS
+            // incorporates, which is undecided, and a plausible figure here
+            // would be worse than an honest blank.
+            detail: 'Not yet determined',
+            amount: '—',
+          ),
+        ),
+        const SizedBox(height: RSpace.s16),
+
         RCard(
           child: _Line(
             label: 'Photos delivered',

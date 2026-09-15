@@ -82,6 +82,12 @@ class Gig(Base):
     retained_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     pro_raww_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     client_credit_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # VAT as it stood when this booking was made. The UK rate has changed
+    # three times this century, so an invoice recomputing it live would
+    # misrepresent its own history exactly as a commission-rate change would.
+    vat_rate_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    vat_status: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vat_number: Mapped[str | None] = mapped_column(Text, nullable=True)
     scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     scheduled_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     location_text: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -78,7 +78,7 @@ from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche
 from app.models.media_rights import MediaDerivativeKind
 from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
 from app.services.payouts import ensure_default_platform_fee_policy
-from app.services.commission import max_client_credit_percent, split_for_pro, validate_client_credit_percent
+from app.services.commission import max_client_credit_percent, split_for_pro, validate_client_credit_percent, vat_stamp_for
 from app.services.package_pricing import (
     PRICING_PREVIEW_PHOTO_COUNTS,
     compute_minimum_amount,
@@ -1215,6 +1215,7 @@ def accept_booking_request(
         retained_percent=split.retained_percent,
         pro_raww_percent=split.pro_raww_percent,
         client_credit_percent=split.client_credit_percent,
+        **vat_stamp_for(db, pro_user_id=request.pro_user_id),
         scheduled_start=request.requested_start,
         scheduled_end=request.requested_end,
         location_text=request.location_text,

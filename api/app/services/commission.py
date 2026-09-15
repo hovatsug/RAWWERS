@@ -208,3 +208,35 @@ def split_for_pro(
         credit = int(getattr(profile, "client_credit_percent", 0) or 0)
 
     return split_booking(gross=gross, policy=policy, client_credit_percent=credit)
+
+
+def vat_stamp_for(db, *, pro_user_id, country: str | None = None) -> dict:
+    """The VAT facts to record on a gig at the moment it is booked.
+
+    Stamped for the same reason the commission rates are: a photographer who
+    registers for VAT next year must not retroactively add VAT lines to this
+    year's invoices, and a rate change must not rewrite them either.
+
+    Defaults to not_answered with no rate, so a photographer who has never
+    been asked produces an invoice with no VAT breakdown rather than one
+    quietly asserting they are not registered.
+    """
+    from app.models.payouts import VatStatus
+    from app.services.tax import DEFAULT_COUNTRY, tax_profile_for, tax_rule_for
+
+    profile = tax_profile_for(db, pro_user_id)
+    if profile is None or profile.vat_status != VatStatus.registered:
+        return {
+            "vat_status": (profile.vat_status.value if profile else VatStatus.not_answered.value),
+            "vat_rate_percent": None,
+            "vat_number": None,
+        }
+
+    rule = tax_rule_for(db, country or profile.country or DEFAULT_COUNTRY)
+    return {
+        "vat_status": VatStatus.registered.value,
+        # No rule for their country means no rate to apply. Guessing one would
+        # put a number on an invoice that no tax authority asked for.
+        "vat_rate_percent": int(rule.standard_rate_percent) if rule else None,
+        "vat_number": profile.vat_number,
+    }

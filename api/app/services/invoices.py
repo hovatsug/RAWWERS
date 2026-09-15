@@ -21,7 +21,9 @@ from sqlalchemy.orm import Session
 
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, SelectionStatus
 from app.models.gig import Gig
+from app.models.payouts import VatStatus
 from app.services.commission import split_booking
+from app.services.tax import VatBreakdown, vat_breakdown
 from app.services.payouts import ensure_default_platform_fee_policy
 
 
@@ -56,6 +58,11 @@ class Invoice:
     #: False when this gig predates the stamped rates and the split above was
     #: reconstructed from the current policy rather than read from the record.
     rates_were_stamped: bool
+
+    #: How the client's total divides for tax, from the status and rate
+    #: stamped on the gig. Null parts where no VAT applies, so a renderer
+    #: cannot print a breakdown of a tax nobody charged.
+    vat: "VatBreakdown"
 
     def reconciles(self) -> bool:
         return (
@@ -161,6 +168,17 @@ def invoice_amounts(db: Session, gig: Gig) -> InvoiceAmounts:
 def build_invoice(db: Session, gig: Gig) -> Invoice:
     """One gig's invoice: its money, plus what it cost a query to know."""
     amounts = invoice_amounts(db, gig)
+    # Read from the gig, not looked up now. A photographer registering for VAT
+    # next year must not add VAT lines to this year's invoices.
+    stamped_status = gig.vat_status
+    status = VatStatus(stamped_status) if stamped_status else VatStatus.not_answered
+    vat = vat_breakdown(
+        total=amounts.gross,
+        status=status,
+        rate_percent=gig.vat_rate_percent,
+        vat_number=gig.vat_number,
+    )
+
     return Invoice(
         gig_id=gig.id,
         # The shoot's own date where it has one. `created_at` is when the
@@ -177,6 +195,7 @@ def build_invoice(db: Session, gig: Gig) -> Invoice:
         client_credit_percent=amounts.client_credit_percent,
         photos_delivered=photos_delivered_for(db, gig),
         rates_were_stamped=amounts.rates_were_stamped,
+        vat=vat,
     )
 
 

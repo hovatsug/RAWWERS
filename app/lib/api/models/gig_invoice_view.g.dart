@@ -21,6 +21,12 @@ _GigInvoiceView _$GigInvoiceViewFromJson(Map<String, dynamic> json) =>
       clientCreditPercent: (json['client_credit_percent'] as num).toInt(),
       photosDelivered: (json['photos_delivered'] as num?)?.toInt(),
       ratesWereStamped: json['rates_were_stamped'] as bool? ?? true,
+      vatStatus: json['vat_status'] as String? ?? 'not_answered',
+      vatRatePercent: (json['vat_rate_percent'] as num?)?.toInt(),
+      vatNumber: json['vat_number'] as String?,
+      vatNetAmount: json['vat_net_amount'] as String?,
+      vatAmount: json['vat_amount'] as String?,
+      platformCommissionVat: json['platform_commission_vat'],
     );
 
 Map<String, dynamic> _$GigInvoiceViewToJson(_GigInvoiceView instance) =>
@@ -38,4 +44,10 @@ Map<String, dynamic> _$GigInvoiceViewToJson(_GigInvoiceView instance) =>
       'client_credit_percent': instance.clientCreditPercent,
       'photos_delivered': instance.photosDelivered,
       'rates_were_stamped': instance.ratesWereStamped,
+      'vat_status': instance.vatStatus,
+      'vat_rate_percent': instance.vatRatePercent,
+      'vat_number': instance.vatNumber,
+      'vat_net_amount': instance.vatNetAmount,
+      'vat_amount': instance.vatAmount,
+      'platform_commission_vat': instance.platformCommissionVat,
     };

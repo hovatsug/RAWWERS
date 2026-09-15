@@ -54,7 +54,7 @@ from app.schemas.scheduling import (
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.notifications import enqueue_notification
-from app.services.commission import split_for_pro
+from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.package_pricing import compute_minimum_amount
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.availability_rules import validate_rule_times
@@ -568,6 +568,7 @@ def _find_or_create_gig_from_booking(db: Session, booking: BookingRequest) -> Gi
         retained_percent=split.retained_percent,
         pro_raww_percent=split.pro_raww_percent,
         client_credit_percent=split.client_credit_percent,
+        **vat_stamp_for(db, pro_user_id=booking.pro_user_id),
         scheduled_start=booking.requested_start,
         scheduled_end=booking.requested_end,
         location_text=booking.location_text,

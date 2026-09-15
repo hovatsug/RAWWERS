@@ -72,6 +72,131 @@ abstract class PayoutsClient {
       },
     },
   });
+  @GET("/v1/pro/tax-profile")
+  Future<HttpResponse<TaxProfileView>> getMyTaxProfileV1ProTaxProfileGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['payouts'],
+      'summary': 'Get My Tax Profile',
+      'operationId': 'get_my_tax_profile_v1_pro_tax_profile_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/TaxProfileView'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @PUT("/v1/pro/tax-profile")
+  Future<HttpResponse<TaxProfileView>> updateMyTaxProfileV1ProTaxProfilePut({
+    @Body() required TaxProfileUpdateRequest requestBody,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['payouts'],
+      'summary': 'Update My Tax Profile',
+      'operationId': 'update_my_tax_profile_v1_pro_tax_profile_put',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {'\$ref': '#/components/schemas/TaxProfileUpdateRequest'},
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/TaxProfileView'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/pro/earnings/summary")
   Future<HttpResponse<InvoiceSummaryView>>
   getMyEarningsSummaryV1ProEarningsSummaryGet({

@@ -27,7 +27,7 @@ from app.schemas.gig import (
     PaymentSummary,
 )
 from app.schemas.media import CurrentUser
-from app.services.commission import split_for_pro
+from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.authz import require_kyc_approved_for_pro
 from app.services.analytics import log_event
 from app.services.payment_intents import (
@@ -78,6 +78,7 @@ def create_gig(
         retained_percent=split.retained_percent,
         pro_raww_percent=split.pro_raww_percent,
         client_credit_percent=split.client_credit_percent,
+        **vat_stamp_for(db, pro_user_id=body.pro_user_id),
         location_text=body.location_text,
         scheduled_start=body.scheduled_start,
         scheduled_end=body.scheduled_end,

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import CHAR, DateTime, Enum, Index, Integer, Numeric, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -216,10 +216,69 @@ class PlatformFeePolicy(Base):
     )
 
 
+class VatStatus(str, enum.Enum):
+    """Whether a photographer is registered for VAT.
+
+    Three states, not a boolean. Someone who has never been asked is not the
+    same as someone who has told us they are not registered, and an invoice
+    should be able to say which. Inferring "not registered" from an absent VAT
+    number would be the zero-versus-unavailable mistake in a new field.
+    """
+
+    not_answered = "not_answered"
+    not_registered = "not_registered"
+    registered = "registered"
+
+
+class CountryTaxRule(Base):
+    """One country's consumption-tax rules.
+
+    Keyed by country, the same shape `niche_package_price_cap` uses for niche
+    and tier. Exactly one row is populated - the UK - so adding a second
+    country is a row rather than a rewrite.
+
+    The rate lives here so it can be changed, and is never read live by an
+    invoice: a settled invoice reproduces the rate stamped on its gig, for the
+    same reason it reproduces the commission rates. The UK rate has changed
+    three times this century.
+    """
+
+    __tablename__ = "country_tax_rule"
+
+    country: Mapped[str] = mapped_column(CHAR(2), primary_key=True)
+    tax_name: Mapped[str] = mapped_column(Text, nullable=False, default="VAT")
+    standard_rate_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    #: Turnover above which registration becomes compulsory, in minor units of
+    #: the country's own currency. Reference only - the platform sees a
+    #: photographer's RAWWERS bookings, which may be a fraction of their
+    #: income, so nothing here may infer anybody's status from it.
+    registration_threshold: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    threshold_currency: Mapped[str | None] = mapped_column(CHAR(3), nullable=True)
+
+    #: A human-readable example, for a form to show beside the input. Not a
+    #: validation pattern: rejecting a real number because a regex is out of
+    #: date is worse than accepting one that is wrong.
+    vat_number_format: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class TaxProfile(Base):
     __tablename__ = "tax_profile"
 
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    #: Defaults to not_answered, never to not_registered. Most photographers
+    #: will turn out not to be registered, but that is a thing they tell us
+    #: rather than a thing we assume on their behalf.
+    vat_status: Mapped[VatStatus] = mapped_column(
+        Enum(VatStatus, name="vat_status", native_enum=False, length=64),
+        nullable=False,
+        default=VatStatus.not_answered,
+        server_default=VatStatus.not_answered.value,
+    )
     vat_number: Mapped[str | None] = mapped_column(Text, nullable=True)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)
     legal_name: Mapped[str | None] = mapped_column(Text, nullable=True)

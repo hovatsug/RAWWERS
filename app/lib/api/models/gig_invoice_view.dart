@@ -67,6 +67,61 @@
 ///             "type": "boolean",
 ///             "default": true,
 ///             "title": "Rates Were Stamped"
+///         },
+///         "vat_status": {
+///             "type": "string",
+///             "default": "not_answered",
+///             "title": "Vat Status"
+///         },
+///         "vat_rate_percent": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Vat Rate Percent"
+///         },
+///         "vat_number": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Vat Number"
+///         },
+///         "vat_net_amount": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Vat Net Amount"
+///         },
+///         "vat_amount": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Vat Amount"
+///         },
+///         "platform_commission_vat": {
+///             "type": "null",
+///             "title": "Platform Commission Vat"
 ///         }
 ///     },
 ///     "type": "object",
@@ -142,6 +197,27 @@ abstract class GigInvoiceView with _$GigInvoiceView {
     @Default(true)
     @JsonKey(name: GigInvoiceView.ratesWereStampedKey_)
     bool ratesWereStamped,
+
+    /// vatStatus
+    @Default('not_answered')
+    @JsonKey(name: GigInvoiceView.vatStatusKey_)
+    String vatStatus,
+
+    /// vatRatePercent
+    @JsonKey(name: GigInvoiceView.vatRatePercentKey_) int? vatRatePercent,
+
+    /// vatNumber
+    @JsonKey(name: GigInvoiceView.vatNumberKey_) String? vatNumber,
+
+    /// vatNetAmount
+    @JsonKey(name: GigInvoiceView.vatNetAmountKey_) String? vatNetAmount,
+
+    /// vatAmount
+    @JsonKey(name: GigInvoiceView.vatAmountKey_) String? vatAmount,
+
+    /// platformCommissionVat
+    @JsonKey(name: GigInvoiceView.platformCommissionVatKey_)
+    dynamic? platformCommissionVat,
   }) = _GigInvoiceView;
 
   factory GigInvoiceView.fromJson(Map<String, dynamic> json) =>
@@ -172,4 +248,16 @@ abstract class GigInvoiceView with _$GigInvoiceView {
   static const String photosDeliveredKey_ = r'photos_delivered';
 
   static const String ratesWereStampedKey_ = r'rates_were_stamped';
+
+  static const String vatStatusKey_ = r'vat_status';
+
+  static const String vatRatePercentKey_ = r'vat_rate_percent';
+
+  static const String vatNumberKey_ = r'vat_number';
+
+  static const String vatNetAmountKey_ = r'vat_net_amount';
+
+  static const String vatAmountKey_ = r'vat_amount';
+
+  static const String platformCommissionVatKey_ = r'platform_commission_vat';
 }

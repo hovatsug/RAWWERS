@@ -169,6 +169,11 @@ from app.models.repair import (
     RepairPartnerScore,
     RepairTicket,
 )
+from app.models.gear_verification import (  # noqa: F401
+    CameraModelReference,
+    GearVerification,
+    LensModelReference,
+)
 from app.models.reward import (
     AttributionTouch,
     ConversionAttribution,

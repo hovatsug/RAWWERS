@@ -275,7 +275,24 @@ def onboarding_checks(db: Session, *, pro_user_id: uuid.UUID) -> dict:
     kyc_submitted = profile.kyc_status in {KYCStatus.pending, KYCStatus.approved}
     kyc_approved = (not require_identity) or profile.kyc_status == KYCStatus.approved
 
-    ready_for_review = profile_completed and portfolio_uploaded and packages_configured and niches_selected and kyc_approved
+    # Gear carries the same weight as KYC and packages. It was previously
+    # absent from every gate - 40 of 42 live photographers had none - so this
+    # is the check moving from intent into enforcement.
+    from app.services.gear_floor import evaluate_gear_floor, niche_slugs_for_pro
+
+    floor = evaluate_gear_floor(
+        db, pro_user_id, niche_slugs=niche_slugs_for_pro(db, pro_user_id)
+    )
+    gear_verified = floor.meets_floor
+
+    ready_for_review = (
+        profile_completed
+        and portfolio_uploaded
+        and packages_configured
+        and niches_selected
+        and kyc_approved
+        and gear_verified
+    )
     return {
         "profile_completed": profile_completed,
         "portfolio_uploaded": portfolio_uploaded,
@@ -283,11 +300,17 @@ def onboarding_checks(db: Session, *, pro_user_id: uuid.UUID) -> dict:
         "niches_selected": niches_selected,
         "kyc_submitted": kyc_submitted,
         "kyc_approved": kyc_approved,
+        "gear_verified": gear_verified,
         "ready_for_review": ready_for_review,
         "portfolio_count": int(portfolio_count),
         "portfolio_min_required": portfolio_min,
         "active_packages_count": len(active_packages),
         "niches_count": int(niches_count),
+        # What is still missing, so the app names the gap rather than saying
+        # "gear" and leaving a photographer to work out which part.
+        "gear_missing": floor.missing,
+        "gear_awaiting_review": floor.awaiting_review,
+        "gear_lighting_declared": floor.lighting_is_declared,
     }
 
 

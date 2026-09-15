@@ -25,6 +25,12 @@ python-json-logger = "^3.3.0"
 stripe = "^12.5.0"
 prometheus-client = "^0.23.1"
 argon2-cffi = "^23.1.0"
+# EXIF headers out of RAW files, for gear verification. Pure Python and no
+# system library: the only tags this needs are standard EXIF, and the one
+# hard question - fixed versus variable aperture - is answered by
+# LensSpecification rather than by maker notes, which is where exiftool's
+# extra depth would have been the argument for a subprocess dependency.
+exifread = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"

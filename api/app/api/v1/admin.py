@@ -161,6 +161,7 @@ from app.schemas.launch_ops import (
     RolloutOverrideResponse,
     RolloutOverrideUpsertRequest,
 )
+from app.services.gear_floor import evaluate_gear_floor, niche_slugs_for_pro
 from app.services.audit import add_admin_audit_log
 from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig, total_succeeded_amount_for_gig
 from app.services.discovery_index import recompute_pro_public_index
@@ -564,6 +565,32 @@ def approve_pro_onboarding(
     actor: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db_session),
 ) -> ProOnboardingStatusResponse:
+    # The first content check this gate has ever had. It previously validated
+    # only that the state transition was legal, so an admin could approve a
+    # photographer with no portfolio, no packages and no gear - and 40 of 42
+    # live photographers had none.
+    #
+    # Gear specifically, rather than every check, because gear is what this
+    # gate is being given teeth for. The others are enforced at activation and
+    # are visible in the review queue an admin is already reading.
+    floor = evaluate_gear_floor(
+        db, pro_user_id, niche_slugs=niche_slugs_for_pro(db, pro_user_id)
+    )
+    if not floor.meets_floor:
+        raise APIError(
+            code="validation_error",
+            message=(
+                "This photographer's gear does not meet the floor: "
+                + ", ".join(floor.missing)
+                + (
+                    f" ({floor.awaiting_review} awaiting review)"
+                    if floor.awaiting_review
+                    else ""
+                )
+            ),
+            status_code=409,
+        )
+
     row = set_pro_onboarding_status(
         db,
         pro_user_id=pro_user_id,

@@ -78,6 +78,7 @@ from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche
 from app.models.media_rights import MediaDerivativeKind
 from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
 from app.services.payouts import ensure_default_platform_fee_policy
+from app.services.gear_floor import evaluate_gear_floor, niche_slugs_for_pro
 from app.services.commission import max_client_credit_percent, split_for_pro, validate_client_credit_percent, vat_stamp_for
 from app.services.package_pricing import (
     PRICING_PREVIEW_PHOTO_COUNTS,
@@ -278,7 +279,7 @@ def get_onboarding_checks(
     _require_role(db, user.user_id, UserRoleType.pro)
     row = get_or_create_pro_onboarding(db, pro_user_id=user.user_id)
     checks = onboarding_checks(db, pro_user_id=user.user_id)
-    missing = [k for k in ["profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected", "kyc_submitted", "kyc_approved"] if not checks.get(k)]
+    missing = [k for k in ["profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected", "kyc_submitted", "kyc_approved", "gear_verified"] if not checks.get(k)]
     db.commit()
     return ProOnboardingChecksResponse(status=row.status, checks=checks, missing=missing)
 
@@ -338,6 +339,19 @@ def activate_pro(
         raise APIError(code="kyc_required", message="KYC must be approved to activate", status_code=409)
     if active_packages < 1:
         raise APIError(code="validation_error", message="At least one active package required", status_code=409)
+
+    # Gear, checked here as well as in the checks endpoint: this is the call
+    # that actually makes somebody bookable, and a requirement enforced only
+    # on the screen that reports it is not enforced.
+    floor = evaluate_gear_floor(db, user.user_id, niche_slugs=niche_slugs_for_pro(db, user.user_id))
+    if not floor.meets_floor:
+        raise APIError(
+            code="validation_error",
+            # Names the specific gap. "Gear required" leaves a photographer
+            # guessing which of three things they are missing.
+            message="Verified gear required: " + ", ".join(floor.missing),
+            status_code=409,
+        )
     if profile.completeness_score < 60:
         raise APIError(code="validation_error", message="Profile completeness must be >= 60", status_code=409)
 

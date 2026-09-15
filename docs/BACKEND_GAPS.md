@@ -1135,3 +1135,49 @@ than a null one.
 If it needs fixing later, the fix is on the generator side or by marking the
 body explicitly optional in the OpenAPI schema, not by making the field
 non-null in the app.
+
+## Tables built before anything reads them, and the five that remain
+
+A recurring habit, not an incident. Four times this session a feature's data
+model turned out to exist while nothing read or wrote it, and each was found
+by accident rather than by looking:
+
+- `niche_package_price_cap` was empty, so `enforce_entry_price_cap` returned
+  on its first line every time it was called. The ceiling had never existed.
+- the watermark pipeline wrote a mark nobody could see, at a size and
+  position nothing checked.
+- `ProNiche` rows were never created, so the per-niche description added on
+  top of them would have been null for every photographer.
+- `tax_profile` carries a `vat_number` and has no reader, no writer, no
+  endpoint, and zero rows.
+
+Each discovery cost more than looking would have, so here is the look.
+
+**The sweep.** Every mapped table, counted, then grepped for references
+outside `app/models/` and `app/db/base.py`:
+
+    218 tables      117 empty      5 empty with no reader or writer
+
+The five:
+
+| model | table | why it is still here |
+|---|---|---|
+| `TaxProfile` | `tax_profile` | being adopted now, for the UK VAT work |
+| `DisputeEvidence` | `dispute_evidence` | disputes exist; evidence was never built |
+| `PackagePricing` | `package_pricing` | superseded by `package_decay_curve` and `niche_package_price_cap` |
+| `StripeWebhookEvent` | `stripe_webhook_event` | superseded by `IdempotencyKey`, which is what actually dedupes Stripe events |
+| `WebhookEvent` | `webhook_event` | same, for the generic ingest path |
+
+Checked for raw-SQL access by table name as well as by class: all five have
+zero references of either kind.
+
+**What to do with them.** `TaxProfile` is being used. The other four are
+either unbuilt (`dispute_evidence`) or genuinely superseded, and superseded
+tables are worse than missing ones: a future reader can find
+`StripeWebhookEvent`, conclude that is where Stripe events are recorded, and
+be wrong. Dropping the three superseded ones is a migration nobody has asked
+for yet, so this is a record rather than a change.
+
+**Worth re-running.** The sweep is two greps and a row count. It belongs in
+whatever check runs before a release, because the cost of this pattern is not
+the empty table - it is building on top of one and finding out later.

@@ -1181,3 +1181,34 @@ for yet, so this is a record rather than a change.
 **Worth re-running.** The sweep is two greps and a row count. It belongs in
 whatever check runs before a release, because the cost of this pattern is not
 the empty table - it is building on top of one and finding out later.
+
+## Lighting is declared, not verified, and that gate is unevenly enforced
+
+Gear verification proves a camera body and a lens from EXIF: the model is
+looked up in a reference table for its sensor size, and `LensSpecification`
+states the maximum aperture at each end of the focal range, which
+distinguishes a prime and a constant-aperture zoom from a variable one.
+
+**Nothing in a photograph identifies the strobe that lit it.** There is no
+EXIF tag for a light. So the lighting requirement - which applies to
+weddings, product and food - rests on the photographer's own word.
+
+Recorded rather than hidden. Lighting lands in its own `declared` status,
+never `verified`, and the floor evaluation reports `lighting_is_declared` so
+no screen can present the two with equal weight. A test fails if a lighting
+claim is ever written as verified, and another fails if a `declared` row is
+ever allowed to satisfy the body or lens requirement.
+
+**Accepted, not solved.** The alternatives were considered and deliberately
+not built: requiring a photograph of the equipment itself would put a human
+in front of something real but proves ownership no better than a receipt
+does, and it adds a queue, an upload flow and a judgement call to a task that
+is already large.
+
+**What would close it**, if it ever matters enough: a photo of the unit with
+its serial visible, reviewed by hand, which is the same mechanism the
+missing-EXIF-serial case already needs. The two should be built together
+rather than separately, since they are the same queue and the same judgement.
+
+The honest framing for now is that this gate is uniform in what it requires
+and uneven in what it can prove, and it says so everywhere it appears.

@@ -61,6 +61,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.reminder_tasks.process_due_reminders",
         "schedule": timedelta(seconds=settings.reminders_interval_seconds),
     },
+    # Same cadence as request expiry: both release held time, and a
+    # photographer's calendar should open up within the same few minutes.
+    "expire-unpaid-gigs": {
+        "task": "app.tasks.scheduled.expire_unpaid_gigs",
+        "schedule": timedelta(seconds=settings.booking_request_expiry_sweep_interval_seconds),
+    },
     "expire-booking-requests": {
         "task": "app.tasks.scheduled.expire_booking_requests",
         "schedule": timedelta(seconds=settings.booking_request_expiry_sweep_interval_seconds),
@@ -104,6 +110,7 @@ celery_app.conf.task_routes = {
     "app.tasks.trust_safety_tasks.reconcile_risk_profiles": {"queue": "media"},
     "app.tasks.trust_safety_tasks.purge_risk_signals": {"queue": "media"},
     "app.tasks.scheduled.expire_booking_requests": {"queue": "media"},
+    "app.tasks.scheduled.expire_unpaid_gigs": {"queue": "media"},
     "app.tasks.scheduled.sweep_stuck_bookings": {"queue": "media"},
 }
 

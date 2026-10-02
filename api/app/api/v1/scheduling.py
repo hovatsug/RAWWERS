@@ -298,7 +298,20 @@ def confirm_booking_slot(
     if booking.pro_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only pro can confirm slot", status_code=403)
 
-    validate_slot_available(db, pro_user_id=booking.pro_user_id, start_at_utc=body.start_at_utc, end_at_utc=body.end_at_utc)
+    # The booking's own gig, if accepting has already made one, is the
+    # booking being placed - not a clash with it.
+    own_gig = _find_gig_by_booking_request(db, booking.id)
+    validate_slot_available(
+        db,
+        pro_user_id=booking.pro_user_id,
+        start_at_utc=body.start_at_utc,
+        end_at_utc=body.end_at_utc,
+        ignore_gig_id=own_gig.id if own_gig else None,
+        # The booking's own request, and any made after it, do not stand in
+        # its way - the same first-come rule as accepting.
+        ignore_booking_request_id=booking.id,
+        requests_made_before=booking.created_at,
+    )
     _validate_within_client_windows(db, booking_request_id=booking_request_id, start_at_utc=body.start_at_utc, end_at_utc=body.end_at_utc)
 
     gig = _find_or_create_gig_from_booking(db, booking)

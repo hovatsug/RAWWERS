@@ -1212,3 +1212,36 @@ rather than separately, since they are the same queue and the same judgement.
 
 The honest framing for now is that this gate is uniform in what it requires
 and uneven in what it can prove, and it says so everywhere it appears.
+
+## ~~Six places decided when a photographer could be booked, and no two agreed~~ — FIXED
+
+The client's booking request refused only a window wholly inside blocked time, so it accepted 3am on a Sunday from a photographer who does not work Sundays, and any time inside their notice period. Accepting a request used the same lenient check. The chat / pro-side request path skipped notice and existing bookings. The pro's slot list read only the newer exceptions table, skipped the per-day cap, and missed a night shift that began the day before its range. Confirming a slot also skipped the deprecated blackouts. And nothing counted a paid gig as taking its time: accepting writes the gig's time without a `ConfirmedSlot`, so a paid shoot left its hour open to a second booking.
+
+All six now go through `app/services/bookable_time.py`: notice, working hours (night shifts included), blocked time from both tables with any overlap, the per-day cap on the photographer's local day, and every existing booking - confirmed slots and paid gigs - with the policy's buffers. `tests/test_bookable_time.py` asks every entry point about the same time for each reason a time can be unbookable; removing the shared rule from any entry point, or any ingredient from the rule, fails it.
+
+Behaviour that changed on purpose, for anyone reading old requests:
+
+- A request is an exact time now, not a flexible window. `window_fully_blocked` and its "partial overlap is fine" premise are gone.
+- The per-day cap counts the photographer's local day. It used to count UTC days, which disagree near midnight.
+- A paid gig holds its time from payment, matching what the client app tells people.
+- Fixed dates in March 2026 in four older tests only passed because nothing compared a requested time with "now"; they now ask for a time a few weeks ahead.
+
+The public `GET /v1/pro/{id}/availability` is deleted. It needed no sign-in and returned every deprecated blackout's free-text `reason` - from the wrong table, in the wrong timezone - and nothing called it. Its replacement is `GET /v1/client/pros/{id}/availability`: signed in, live photographers only, open days and start times for one package, never why a day is closed.
+
+## The pro's "available N of the next 14 days" still has its own rule - LOGGED
+
+`_free_days_next_fortnight` (client_launch.py, behind the pro's listing preview) counts a day free unless blocked time covers it entirely. It ignores working hours, notice and existing bookings - the seventh copy of availability, found while unifying the other six and left alone because it is a display figure for the photographer, not a gate. It should become "days with at least one bookable start" from `bookable_starts`, so the number a photographer sees matches the calendar clients see.
+
+## ~~Two clients could book and pay for the same hour~~ — FIXED
+
+Reproduced, not theorised: two clients requested the same hour, the photographer accepted both, the calendar kept offering it, and both gigs were paid. Only paid gigs and confirmed slots held time; a pending request and an accepted-but-unpaid gig held nothing, nothing re-checked the hour when payment was taken, and unpaid gigs never expired.
+
+Now (all in `app/services/bookable_time.py`, so every path agrees):
+
+- A **pending request holds its hour** until it expires - first come, first served. It holds against requests made after it, not before: accepting a request is not blocked by later ones, so two overlapping requests left from before this change cannot deadlock each other.
+- An **accepted, unpaid gig holds its hour for 24 hours** (`PAYMENT_WINDOW`, matching the photographer's reply window). Past that it holds nothing even before it is swept; the client app now says "we are holding this time for you for 24 hours".
+- **Paying re-checks the hour** immediately before the PaymentIntent is created, ignoring the booking's own gig, and refuses after the 24 hours (`payment_window_closed`). Notice and working hours are not re-judged at payment - they were met when the booking was made.
+- A **sweep** (`expire_unpaid_gigs`, every 15 minutes beside request expiry) cancels gigs unpaid after 24 hours. It cancels the Stripe PaymentIntent first and cancels the gig only if Stripe agrees; a payment already succeeding or in flight leaves the gig for the webhook to mark paid, so nobody is charged for a cancelled booking.
+- The client calendar refetches after a request is sent or refused, on returning to the profile, and on pull-to-refresh.
+
+Known edge left as it is: the webhook still moves a gig to paid without checking the hour. With the checks above a clash should not reach it, and refusing money Stripe has already taken is a refund flow, not a check.

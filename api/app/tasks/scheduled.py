@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.services.bookable_time import expire_unpaid_gigs
 from app.services.gig_state import find_and_flag_stuck_gigs
 from app.services.scheduling import expire_pending_booking_requests
 from app.tasks.celery_app import celery_app
@@ -14,6 +15,18 @@ def expire_booking_requests_task(limit: int | None = None) -> int:
     db = SessionLocal()
     try:
         count = expire_pending_booking_requests(db, limit=limit or settings.scheduled_sweep_batch_size)
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.expire_unpaid_gigs")
+def expire_unpaid_gigs_task(limit: int | None = None) -> int:
+    """Release the time held by accepted gigs not paid within 24 hours."""
+    db = SessionLocal()
+    try:
+        count = expire_unpaid_gigs(db, limit=limit or settings.scheduled_sweep_batch_size)
         db.commit()
         return count
     finally:

@@ -8,6 +8,18 @@ from app.models.booking import BookingRequest, BookingRequestStatus, ProPackage
 from app.models.gig import Gig, StripePayment
 from app.models.niche import Niche
 
+def _ahead(weekday: int, hour: int) -> datetime:
+    """That weekday and hour a few weeks from now, in UTC.
+
+    These used fixed dates in March 2026, which only worked while no booking
+    path compared a requested time with "now". Every path now refuses a time
+    inside the photographer's notice period, and a past time is inside it.
+    """
+    base = datetime.now(timezone.utc).date() + timedelta(weeks=3)
+    day = base + timedelta(days=(weekday - base.weekday()) % 7)
+    return datetime(day.year, day.month, day.day, hour, 0, tzinfo=timezone.utc)
+
+
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
 
 
@@ -108,7 +120,7 @@ def test_booking_request_rejected_outside_availability_or_blackout(client, db_se
     client.post("/v1/pro/me/activate", headers={"X-User-Id": pro_id})
 
     # Sunday request (outside availability)
-    sunday_start = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+    sunday_start = _ahead(6, 10)
     sunday_end = sunday_start + timedelta(hours=1)
     outside = client.post(
         f"/v1/pros/{pro_id}/booking-requests",
@@ -122,7 +134,7 @@ def test_booking_request_rejected_outside_availability_or_blackout(client, db_se
     assert outside.status_code == 409
 
     # Monday valid slot, but blackout overlaps
-    monday_start = datetime(2026, 3, 2, 10, 0, tzinfo=timezone.utc)
+    monday_start = _ahead(0, 10)
     monday_end = monday_start + timedelta(hours=1)
     blackout = client.post(
         "/v1/pro/me/availability/blackouts",
@@ -158,7 +170,7 @@ def test_accept_creates_gig_and_payment_once(client, db_session, monkeypatch):
     pkg_id = _create_package(client, pro_id)
     client.post("/v1/pro/me/activate", headers={"X-User-Id": pro_id})
 
-    req_start = datetime(2026, 3, 2, 11, 0, tzinfo=timezone.utc)
+    req_start = _ahead(0, 11)
     req_end = req_start + timedelta(hours=1)
     br = client.post(
         f"/v1/pros/{pro_id}/booking-requests",
@@ -197,7 +209,7 @@ def test_client_cannot_accept_or_decline(client, db_session):
     pkg_id = _create_package(client, pro_id)
     client.post("/v1/pro/me/activate", headers={"X-User-Id": pro_id})
 
-    req_start = datetime(2026, 3, 2, 12, 0, tzinfo=timezone.utc)
+    req_start = _ahead(0, 12)
     req_end = req_start + timedelta(hours=1)
     br_id = client.post(
         f"/v1/pros/{pro_id}/booking-requests",

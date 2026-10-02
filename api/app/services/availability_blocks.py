@@ -57,22 +57,3 @@ def blocked_intervals(
         else:
             merged.append((block_start, block_end))
     return merged
-
-
-def window_fully_blocked(
-    db: Session, pro_user_id: uuid.UUID, *, start: datetime, end: datetime
-) -> bool:
-    """True when no part of [start, end) is bookable.
-
-    Deliberately "fully", not "at all". A booking request carries a window
-    the client is flexible within, and a week-long window that clips one
-    blocked afternoon is still a request the photographer can accept - the
-    exact time gets pinned later at confirm-slot, which checks the precise
-    slot. Rejecting on any overlap would make wide windows unusable, which
-    would push clients toward narrow ones and lose the flexibility that
-    makes the request worth sending.
-    """
-    for block_start, block_end in blocked_intervals(db, pro_user_id, start=start, end=end):
-        if block_start <= start and block_end >= end:
-            return True
-    return False

@@ -9,6 +9,18 @@ from app.models.launch_ops import ProOnboarding, ProOnboardingStatus, RolloutCit
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.ops import FeatureFlag, FeatureFlagScope
 
+def _ahead(weekday: int, hour: int) -> datetime:
+    """That weekday and hour a few weeks from now, in UTC.
+
+    These used fixed dates in March 2026, which only worked while no booking
+    path compared a requested time with "now". Every path now refuses a time
+    inside the photographer's notice period, and a past time is inside it.
+    """
+    base = datetime.now(timezone.utc).date() + timedelta(weeks=3)
+    day = base + timedelta(days=(weekday - base.weekday()) % 7)
+    return datetime(day.year, day.month, day.day, hour, 0, tzinfo=timezone.utc)
+
+
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
 
 
@@ -194,7 +206,10 @@ def test_booking_request_rate_limit_enforced(client, db_session):
     client_id = str(uuid.uuid4())
     _seed_user(db_session, client_id, [UserRoleType.client])
 
-    base = datetime(2026, 3, 2, 10, 0, tzinfo=timezone.utc)
+    # Two hours apart, 09:00 to 17:00: a pending request now holds its hour
+    # and its buffers, so back-to-back hours would clash before the rate
+    # limit was ever reached - and this test is about the rate limit.
+    base = _ahead(0, 9)
     for idx in range(5):
         resp = client.post(
             "/v1/client/bookings/request",
@@ -202,7 +217,7 @@ def test_booking_request_rate_limit_enforced(client, db_session):
             json={
                 "pro_user_id": pro_id,
                 "niche_slug": "portraits",
-                "date_window": {"start_at": (base + timedelta(hours=idx)).isoformat(), "end_at": (base + timedelta(hours=idx + 1)).isoformat()},
+                "date_window": {"start_at": (base + timedelta(hours=2 * idx)).isoformat(), "end_at": (base + timedelta(hours=2 * idx + 1)).isoformat()},
                 "location": "Lisbon",
                 "package_id": pkg_id,
                 "notes": "test",

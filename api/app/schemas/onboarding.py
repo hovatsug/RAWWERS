@@ -114,22 +114,6 @@ class ReplaceAvailabilityRulesRequest(BaseModel):
     rules: list[AvailabilityRuleInput]
 
 
-class PublicAvailabilityRuleView(BaseModel):
-    """A weekly rule as the public profile endpoint exposes it.
-
-    Named apart from scheduling.AvailabilityRuleView deliberately. The two
-    shared a name, and FastAPI's collision handling qualifies the schema
-    keys but leaves both titles identical - which collapsed them into one
-    class in the generated Dart client, silently keeping this shape for the
-    scheduling endpoint that returns the other one.
-    """
-
-    id: uuid.UUID
-    day_of_week: int
-    start_time: time
-    end_time: time
-
-
 class BlackoutCreateRequest(BaseModel):
     start_at: datetime
     end_at: datetime
@@ -144,12 +128,6 @@ class BlackoutView(BaseModel):
     # Populated by the deprecated create route, so a caller that reads only
     # the body still learns the route is going away. Null everywhere else.
     deprecation_notice: str | None = None
-
-
-class PublicAvailabilityResponse(BaseModel):
-    pro_user_id: uuid.UUID
-    rules: list[PublicAvailabilityRuleView]
-    blackouts: list[BlackoutView]
 
 
 class BookingRequestCreateRequest(BaseModel):

@@ -12,6 +12,18 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.niche_skills import recompute_pro_niche_skill
 
 
+def _ahead(weekday: int, hour: int) -> datetime:
+    """That weekday and hour a few weeks from now, in UTC.
+
+    These used fixed dates in March 2026, which only worked while no booking
+    path compared a requested time with "now". Every path now refuses a time
+    inside the photographer's notice period, and a past time is inside it.
+    """
+    base = datetime.now(timezone.utc).date() + timedelta(weeks=3)
+    day = base + timedelta(days=(weekday - base.weekday()) % 7)
+    return datetime(day.year, day.month, day.day, hour, 0, tzinfo=timezone.utc)
+
+
 class DummyStripePI:
     def __init__(self, pi_id="pi_br_1", client_secret="sec_br_1", status="requires_payment_method"):
         self.id = pi_id
@@ -117,7 +129,7 @@ def test_accept_booking_sets_gig_niche_snapshot(client, db_session, monkeypatch)
     assert pkg.status_code == 200
     pkg_id = pkg.json()["id"]
 
-    req_start = datetime(2026, 3, 2, 11, 0, tzinfo=timezone.utc)
+    req_start = _ahead(0, 11)
     req_end = req_start + timedelta(hours=1)
     br = client.post(
         f"/v1/pros/{pro_id}/booking-requests",

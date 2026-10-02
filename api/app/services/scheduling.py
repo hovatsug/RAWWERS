@@ -2,22 +2,18 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
-from app.services.availability_rules import any_rule_covers, rule_window
 from app.models.booking import (
     BookingRequest,
     BookingRequestStatus,
     BookingRequestTransition,
     BookingTimeRequest,
     ConfirmedSlot,
-    ProAvailabilityException,
-    ProAvailabilityRule,
     ProSchedulingPolicy,
 )
 from app.models.communication import FollowupChannel, FollowupJob, FollowupJobStatus, FollowupRule
@@ -49,65 +45,26 @@ def generate_candidate_slots(
     from_date: date,
     to_date: date,
 ) -> list[tuple[datetime, datetime, str]]:
+    """The pro's open slots between two local dates, one slot length each.
+
+    The same rule every booking path checks - see bookable_time. This used to
+    keep its own copy, which read one of the two blocked-time tables, skipped
+    the per-day cap, missed a night shift that began the day before, and did
+    not count a paid gig as taking its time.
+    """
+    from app.services.bookable_time import bookable_starts
+
     if to_date < from_date:
         raise APIError(code="validation_error", message="to must be >= from", status_code=422)
     policy = get_or_create_scheduling_policy(db, pro_user_id=pro_user_id)
-    rules = db.execute(
-        select(ProAvailabilityRule)
-        .where(ProAvailabilityRule.pro_user_id == pro_user_id)
-        .order_by(ProAvailabilityRule.day_of_week.asc(), ProAvailabilityRule.start_time.asc())
-    ).scalars().all()
-    if not rules:
-        return []
-    exceptions = db.execute(
-        select(ProAvailabilityException)
-        .where(
-            ProAvailabilityException.pro_user_id == pro_user_id,
-            ProAvailabilityException.end_at_utc > datetime.combine(from_date, time(0, 0), tzinfo=timezone.utc),
-            ProAvailabilityException.start_at_utc < datetime.combine(to_date + timedelta(days=1), time(0, 0), tzinfo=timezone.utc),
-        )
-    ).scalars().all()
-    confirmed = db.execute(
-        select(ConfirmedSlot).where(
-            ConfirmedSlot.pro_user_id == pro_user_id,
-            ConfirmedSlot.status.in_(["reserved", "confirmed"]),
-            ConfirmedSlot.end_at_utc > datetime.combine(from_date, time(0, 0), tzinfo=timezone.utc),
-            ConfirmedSlot.start_at_utc < datetime.combine(to_date + timedelta(days=1), time(0, 0), tzinfo=timezone.utc),
-        )
-    ).scalars().all()
-
-    out: list[tuple[datetime, datetime, str]] = []
-    current = from_date
-    while current <= to_date:
-        weekday = current.weekday()
-        for rule in [r for r in rules if r.day_of_week == weekday]:
-            # rule_window follows the rule past midnight when it wraps.
-            # Building the end from `current` alone produced an end before
-            # the start, so the loop below emitted nothing at all.
-            block_start_local, block_end_local = rule_window(rule, current)
-            slot_start_local = block_start_local
-            while slot_start_local + timedelta(minutes=policy.slot_length_minutes) <= block_end_local:
-                slot_end_local = slot_start_local + timedelta(minutes=policy.slot_length_minutes)
-                slot_start_utc = slot_start_local.astimezone(timezone.utc)
-                slot_end_utc = slot_end_local.astimezone(timezone.utc)
-
-                if slot_start_utc < datetime.now(timezone.utc) + timedelta(hours=policy.advance_notice_hours):
-                    slot_start_local += timedelta(minutes=policy.slot_length_minutes)
-                    continue
-                if _overlaps_exceptions(slot_start_utc, slot_end_utc, exceptions):
-                    slot_start_local += timedelta(minutes=policy.slot_length_minutes)
-                    continue
-                if _overlaps_confirmed(
-                    slot_start_utc - timedelta(minutes=policy.buffer_before_minutes),
-                    slot_end_utc + timedelta(minutes=policy.buffer_after_minutes),
-                    confirmed,
-                ):
-                    slot_start_local += timedelta(minutes=policy.slot_length_minutes)
-                    continue
-                out.append((slot_start_utc, slot_end_utc, rule.timezone))
-                slot_start_local += timedelta(minutes=policy.slot_length_minutes)
-        current += timedelta(days=1)
-    return out
+    cal, starts = bookable_starts(
+        db,
+        pro_user_id=pro_user_id,
+        duration=timedelta(minutes=policy.slot_length_minutes),
+        from_date=from_date,
+        to_date=to_date,
+    )
+    return [(start, end, cal.tz.key) for start, end in starts]
 
 
 def validate_slot_available(
@@ -116,60 +73,22 @@ def validate_slot_available(
     pro_user_id: uuid.UUID,
     start_at_utc: datetime,
     end_at_utc: datetime,
+    ignore_gig_id: uuid.UUID | None = None,
+    ignore_booking_request_id: uuid.UUID | None = None,
+    requests_made_before: datetime | None = None,
 ) -> None:
-    if end_at_utc <= start_at_utc:
-        raise APIError(code="validation_error", message="end_at_utc must be after start_at_utc", status_code=422)
-    policy = get_or_create_scheduling_policy(db, pro_user_id=pro_user_id)
-    if start_at_utc < datetime.now(timezone.utc) + timedelta(hours=policy.advance_notice_hours):
-        raise APIError(code="validation_error", message="advance notice not satisfied", status_code=409)
+    """Raise when [start, end) cannot be booked. See bookable_time."""
+    from app.services.bookable_time import check_bookable
 
-    rules = db.execute(select(ProAvailabilityRule).where(ProAvailabilityRule.pro_user_id == pro_user_id)).scalars().all()
-    if not rules:
-        raise APIError(code="validation_error", message="Pro has no availability rules", status_code=409)
-    # Compared as anchored datetimes rather than bare times: a rule that
-    # crosses midnight owns part of the following day, so a 01:00 slot has
-    # to be matched against the previous day's rule.
-    if not any_rule_covers(rules, start_at_utc, end_at_utc):
-        raise APIError(code="validation_error", message="Slot is outside pro availability rules", status_code=409)
-
-    exceptions = db.execute(
-        select(ProAvailabilityException).where(
-            ProAvailabilityException.pro_user_id == pro_user_id,
-            ProAvailabilityException.start_at_utc < end_at_utc,
-            ProAvailabilityException.end_at_utc > start_at_utc,
-        )
-    ).scalars().all()
-    if exceptions:
-        raise APIError(code="validation_error", message="Slot overlaps availability exception", status_code=409)
-
-    if policy.max_bookings_per_day:
-        day_start = datetime.combine(start_at_utc.date(), time(0, 0), tzinfo=timezone.utc)
-        day_end = day_start + timedelta(days=1)
-        count = db.execute(
-            select(func.count())
-            .select_from(ConfirmedSlot)
-            .where(
-                ConfirmedSlot.pro_user_id == pro_user_id,
-                ConfirmedSlot.status.in_(["reserved", "confirmed", "completed"]),
-                ConfirmedSlot.start_at_utc >= day_start,
-                ConfirmedSlot.start_at_utc < day_end,
-            )
-        ).scalar_one()
-        if count >= policy.max_bookings_per_day:
-            raise APIError(code="validation_error", message="max bookings per day reached", status_code=409)
-
-    buffered_start = start_at_utc - timedelta(minutes=policy.buffer_before_minutes)
-    buffered_end = end_at_utc + timedelta(minutes=policy.buffer_after_minutes)
-    conflict = db.execute(
-        select(ConfirmedSlot).where(
-            ConfirmedSlot.pro_user_id == pro_user_id,
-            ConfirmedSlot.status.in_(["reserved", "confirmed"]),
-            ConfirmedSlot.start_at_utc < buffered_end,
-            ConfirmedSlot.end_at_utc > buffered_start,
-        )
-    ).scalar_one_or_none()
-    if conflict:
-        raise APIError(code="slot_conflict", message="Slot conflicts with existing booking", status_code=409)
+    check_bookable(
+        db,
+        pro_user_id=pro_user_id,
+        start_at_utc=start_at_utc,
+        end_at_utc=end_at_utc,
+        ignore_gig_id=ignore_gig_id,
+        ignore_booking_request_id=ignore_booking_request_id,
+        requests_made_before=requests_made_before,
+    )
 
 
 def create_slot_reminders(
@@ -314,11 +233,3 @@ def _ensure_slot_followup_rule(db: Session, *, code: str, delay_minutes: int, ti
         )
     )
     db.flush()
-
-
-def _overlaps_exceptions(start_at_utc: datetime, end_at_utc: datetime, exceptions: list[ProAvailabilityException]) -> bool:
-    return any(item.start_at_utc < end_at_utc and item.end_at_utc > start_at_utc for item in exceptions)
-
-
-def _overlaps_confirmed(start_at_utc: datetime, end_at_utc: datetime, confirmed: list[ConfirmedSlot]) -> bool:
-    return any(item.start_at_utc < end_at_utc and item.end_at_utc > start_at_utc for item in confirmed)

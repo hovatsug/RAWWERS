@@ -168,12 +168,14 @@ def test_scheduling_exception_blocks_accepting_a_booking_inside_it(client, db_se
     assert resp.status_code == 409, resp.text
 
 
-def test_a_window_only_partly_blocked_can_still_be_accepted(client, db_session):
-    """A client asking for "sometime next fortnight" who clips one blocked
-    afternoon has still asked for something the pro can do. Refusing here
-    would push clients toward narrow windows, which is the opposite of what
-    a flexible request is for - the exact time is pinned at confirm-slot,
-    which checks the precise slot."""
+def test_a_request_that_clips_blocked_time_is_refused(client, db_session):
+    """This used to assert the opposite: a request was a flexible window
+    ("sometime next fortnight"), so clipping one blocked afternoon was
+    accepted and the exact time pinned later. The app has long sent an exact
+    package-length time instead, and that leniency is what accepted 3am on a
+    day the photographer does not work. Every path now applies one rule
+    (bookable_time), and a requested time that touches blocked time is not
+    bookable."""
     pro_id, client_id = str(uuid.uuid4()), str(uuid.uuid4())
     pro_uid = _seed_pro(db_session, pro_id)
     _ensure_user(db_session, client_id, UserRoleType.client)
@@ -181,7 +183,6 @@ def test_a_window_only_partly_blocked_can_still_be_accepted(client, db_session):
     package_id = _create_package(client, pro_id)
 
     window_start = datetime.now(timezone.utc) + timedelta(days=30)
-    window_end = window_start + timedelta(days=7)
     db_session.add(
         ProBlackoutDate(
             pro_user_id=pro_uid,
@@ -196,8 +197,9 @@ def test_a_window_only_partly_blocked_can_still_be_accepted(client, db_session):
         pro_user_id=pro_uid,
         client_user_id=uuid.UUID(client_id),
         package_id=uuid.UUID(package_id),
-        requested_start=window_start,
-        requested_end=window_end,
+        # One hour, its second half inside the blocked afternoon.
+        requested_start=window_start + timedelta(days=1) - timedelta(minutes=30),
+        requested_end=window_start + timedelta(days=1, minutes=30),
         status=BookingRequestStatus.pending,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
     )
@@ -205,13 +207,14 @@ def test_a_window_only_partly_blocked_can_still_be_accepted(client, db_session):
     db_session.commit()
 
     resp = client.post(f"/v1/booking-requests/{booking.id}/accept", headers={"X-User-Id": pro_id})
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 409, resp.text
+    assert "blocked off" in resp.json()["error"]["message"]
 
 
 def test_two_overlapping_blocks_refuse_rather_than_raise(client, db_session):
     """The previous query used scalar_one_or_none(), so two overlapping
     blocks produced a 500 instead of a refusal."""
-    from app.services.availability_blocks import blocked_intervals, window_fully_blocked
+    from app.services.availability_blocks import blocked_intervals
 
     pro_uid = _seed_pro(db_session, str(uuid.uuid4()))
     start, end = _honeymoon()
@@ -223,7 +226,7 @@ def test_two_overlapping_blocks_refuse_rather_than_raise(client, db_session):
 
     merged = blocked_intervals(db_session, pro_uid, start=start, end=end + timedelta(days=1))
     assert len(merged) == 1, "touching blocks should read as one continuous unavailability"
-    assert window_fully_blocked(db_session, pro_uid, start=start + timedelta(days=2), end=start + timedelta(days=3))
+    assert merged[0][0] <= start + timedelta(days=2) and merged[0][1] >= start + timedelta(days=3)
 
 
 # --- deprecation -------------------------------------------------------
@@ -276,11 +279,15 @@ def test_deprecated_blackouts_still_block_bookings(client, db_session):
         headers={"X-User-Id": pro_id},
         json={"start_at": start.isoformat(), "end_at": end.isoformat()},
     )
-    from app.services.availability_blocks import window_fully_blocked
+    import pytest
 
-    assert window_fully_blocked(
-        db_session, pro_uid, start=start + timedelta(days=1), end=start + timedelta(days=2)
-    )
+    from app.core.errors import APIError
+    from app.services.bookable_time import check_bookable
+
+    _add_weekly_rules(db_session, pro_uid)
+    inside = (start + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    with pytest.raises(APIError, match="blocked off"):
+        check_bookable(db_session, pro_user_id=pro_uid, start_at_utc=inside, end_at_utc=inside + timedelta(hours=1))
 
 
 # --- the six additions -------------------------------------------------

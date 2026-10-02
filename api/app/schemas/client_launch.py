@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -218,6 +218,45 @@ class ClientBookingRequestCreateRequest(BaseModel):
 class ClientBookingRequestCreateResponse(BaseModel):
     booking_id: uuid.UUID
     status: str
+
+
+class ClientAvailabilityStart(BaseModel):
+    """One time a shoot could start.
+
+    Both forms, because they answer different questions. `start_at` is the
+    instant, with the photographer's offset - what a booking request sends.
+    `local_time` is the wall-clock time where the photographer is, "10:00" -
+    what the client reads. An app that parses the instant gets it in UTC and
+    would show the time in the phone's zone, which is wrong for anyone
+    browsing from somewhere else.
+    """
+
+    start_at: datetime
+    local_time: str
+
+
+class ClientAvailabilityDay(BaseModel):
+    """One day of a photographer's calendar, as a client may see it.
+
+    Open or not, and when a shoot of the chosen package could start. Never
+    why a day is closed: blocked time, other clients' bookings and a full day
+    all read the same, because none of them is the client's business.
+    """
+
+    date: date
+    open: bool
+    # On the photographer's local date - the shoot happens where they are.
+    start_times: list[ClientAvailabilityStart] = Field(default_factory=list)
+
+
+class ClientAvailabilityResponse(BaseModel):
+    timezone: str
+    # False when the photographer has no working hours at all, so the app
+    # can say "not taking bookings through the calendar yet" rather than show
+    # a month of closed days that reads as fully booked.
+    has_schedule: bool
+    notice_hours: int
+    days: list[ClientAvailabilityDay] = Field(default_factory=list)
 
 
 class ClientBookingStatusResponse(BaseModel):

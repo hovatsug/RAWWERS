@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, func, or_, select
@@ -24,6 +24,9 @@ from app.models.media_rights import GigConsentLevel
 from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
 from app.schemas.client_launch import (
     ClientAccessResponse,
+    ClientAvailabilityDay,
+    ClientAvailabilityResponse,
+    ClientAvailabilityStart,
     ClientBookingListItem,
     ClientBookingListResponse,
     ClientBookingPayRequest,
@@ -50,7 +53,8 @@ from app.schemas.client_launch import (
 )
 from app.schemas.media import CurrentUser
 from app.services.analytics import log_event
-from app.services.availability_blocks import blocked_intervals, window_fully_blocked
+from app.services.availability_blocks import blocked_intervals
+from app.services.bookable_time import PAYMENT_WINDOW, bookable_starts, check_bookable
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
 from app.services.discovery_index import recompute_pro_public_index
@@ -462,6 +466,82 @@ def client_pro_profile(
     return response
 
 
+# How far ahead a client can look, and how much at once. Ninety days covers
+# how far ahead people book a shoot; one request is capped at about two months
+# so a calendar page costs a few queries, not a year of slot arithmetic.
+AVAILABILITY_HORIZON_DAYS = 90
+AVAILABILITY_MAX_SPAN_DAYS = 62
+
+
+@router.get("/client/pros/{pro_user_id}/availability", response_model=ClientAvailabilityResponse)
+def client_pro_availability(
+    pro_user_id: uuid.UUID,
+    package_id: uuid.UUID,
+    from_date: date = Query(alias="from"),
+    to_date: date = Query(alias="to"),
+    user: CurrentUser | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db_read_session),
+) -> ClientAvailabilityResponse:
+    """When a client could book this package with this photographer.
+
+    The same rule every booking path enforces (bookable_time), so a start time
+    offered here is one the booking request accepts. Gated like the profile:
+    signed in, a live photographer, the photographer's city open to clients.
+    """
+    if user is None:
+        raise APIError(code="unauthorized", message="Sign in to see when this photographer is available", status_code=401)
+    enforce_named_rate_limit("public_read", principal=str(user.user_id))
+
+    profile = db.get(ProProfile, pro_user_id)
+    onboarding = db.get(ProOnboarding, pro_user_id)
+    if not profile or not onboarding or onboarding.status != ProOnboardingStatus.approved_public:
+        raise APIError(code="not_found", message="Pro not found", status_code=404)
+    if profile.country and profile.city:
+        _enforce_city_gate(db, country=profile.country, city=profile.city, user=user)
+
+    package = db.get(ProPackage, package_id)
+    if not package or package.pro_user_id != pro_user_id or not package.is_active:
+        raise APIError(code="not_found", message="Package not found", status_code=404)
+
+    today = datetime.now(timezone.utc).date()
+    if to_date < from_date:
+        raise APIError(code="validation_error", message="to must not be before from", status_code=422)
+    if from_date < today:
+        raise APIError(code="validation_error", message="from must not be in the past", status_code=422)
+    if (to_date - from_date).days + 1 > AVAILABILITY_MAX_SPAN_DAYS:
+        raise APIError(code="validation_error", message=f"Ask for at most {AVAILABILITY_MAX_SPAN_DAYS} days at once", status_code=422)
+    if to_date > today + timedelta(days=AVAILABILITY_HORIZON_DAYS):
+        raise APIError(code="validation_error", message=f"Availability is shown up to {AVAILABILITY_HORIZON_DAYS} days ahead", status_code=422)
+
+    cal, starts = bookable_starts(
+        db,
+        pro_user_id=pro_user_id,
+        duration=timedelta(minutes=package.duration_minutes),
+        from_date=from_date,
+        to_date=to_date,
+    )
+    by_day: dict[date, list[ClientAvailabilityStart]] = {}
+    for start, _end in starts:
+        local = start.astimezone(cal.tz)
+        by_day.setdefault(local.date(), []).append(
+            ClientAvailabilityStart(start_at=local, local_time=local.strftime("%H:%M"))
+        )
+
+    days = []
+    current = from_date
+    while current <= to_date:
+        times = by_day.get(current, [])
+        days.append(ClientAvailabilityDay(date=current, open=bool(times), start_times=times))
+        current += timedelta(days=1)
+
+    return ClientAvailabilityResponse(
+        timezone=cal.tz.key,
+        has_schedule=cal.has_schedule,
+        notice_hours=cal.policy.advance_notice_hours,
+        days=days,
+    )
+
+
 @router.post("/client/bookings/request", response_model=ClientBookingRequestCreateResponse)
 def client_booking_request(
     body: ClientBookingRequestCreateRequest,
@@ -495,20 +575,21 @@ def client_booking_request(
     if not niche or niche.slug != body.niche_slug:
         raise APIError(code="validation_error", message="niche_slug does not match package", status_code=422)
 
-    has_availability = db.execute(select(ProAvailabilityRule.id).where(ProAvailabilityRule.pro_user_id == body.pro_user_id).limit(1)).scalar_one_or_none()
-    if not has_availability:
-        raise APIError(code="validation_error", message="Pro has no availability configured", status_code=409)
-
     # Told here rather than at accept: a request the pro can only decline
     # costs the client a day of waiting to learn what the server already
-    # knew. Only a window with no free time at all is refused - see
-    # window_fully_blocked on why partial overlap stays acceptable.
-    if window_fully_blocked(db, body.pro_user_id, start=body.date_window.start_at, end=body.date_window.end_at):
-        raise APIError(
-            code="validation_error",
-            message="This photographer is not available on those dates. Try a different window.",
-            status_code=409,
-        )
+    # knew. The same rule the calendar offers times from (bookable_time), so
+    # a time the calendar shows is accepted and one it does not is refused.
+    #
+    # This used to refuse only a window wholly inside blocked time, on the
+    # premise that a request was a flexible window pinned down later. The app
+    # has sent an exact package-length time for a long while, and that
+    # leniency took 3am on a day the photographer does not work.
+    check_bookable(
+        db,
+        pro_user_id=body.pro_user_id,
+        start_at_utc=body.date_window.start_at,
+        end_at_utc=body.date_window.end_at,
+    )
 
     booking = BookingRequest(
         pro_user_id=body.pro_user_id,
@@ -734,6 +815,27 @@ def client_booking_pay(
         raise APIError(code="invalid_state", message="Gig not created yet", status_code=409)
     if gig.status.value != "payment_pending":
         raise APIError(code="invalid_state", message="Gig is not awaiting payment", status_code=409)
+
+    # The last check before money moves. The hour was free when it was
+    # requested and when it was accepted; this is the moment that charges for
+    # it, so it does not trust either earlier answer. Notice and working hours
+    # are not re-judged (see refusal_for), only whether the hour is still
+    # theirs.
+    if gig.created_at <= datetime.now(timezone.utc) - PAYMENT_WINDOW:
+        raise APIError(
+            code="payment_window_closed",
+            message="The time held for this booking has been released. Request a new time.",
+            status_code=409,
+        )
+    if gig.scheduled_start and gig.scheduled_end:
+        check_bookable(
+            db,
+            pro_user_id=gig.pro_user_id,
+            start_at_utc=gig.scheduled_start,
+            end_at_utc=gig.scheduled_end,
+            ignore_gig_id=gig.id,
+            at_payment=True,
+        )
 
     mode = "full" if body.payment_mode not in {"full", "deposit"} else body.payment_mode
     _, intent = create_or_get_gig_payment_intent(

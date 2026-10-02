@@ -58,7 +58,6 @@ from app.schemas.onboarding import (
     ProPricingCurvePoint,
     ProProfileUpdateRequest,
     ProProfileView,
-    PublicAvailabilityResponse,
     ReplaceAvailabilityRulesRequest,
 )
 from app.schemas.launch_ops import (
@@ -67,8 +66,7 @@ from app.schemas.launch_ops import (
     ProOnboardingStatusResponse,
 )
 from app.services.audit import add_admin_audit_log
-from app.services.availability_blocks import blocked_intervals, window_fully_blocked
-from app.services.availability_rules import any_rule_covers
+from app.services.bookable_time import check_bookable
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
@@ -549,25 +547,6 @@ def create_blackout(
         end_at=blackout.end_at,
         reason=blackout.reason,
         deprecation_notice=notice,
-    )
-
-
-@router.get("/pro/{pro_user_id}/availability", response_model=PublicAvailabilityResponse)
-def get_public_availability(pro_user_id: uuid.UUID, db: Session = Depends(get_db_session)) -> PublicAvailabilityResponse:
-    rules = db.execute(
-        select(ProAvailabilityRule).where(ProAvailabilityRule.pro_user_id == pro_user_id).order_by(ProAvailabilityRule.day_of_week.asc())
-    ).scalars().all()
-    blackouts = db.execute(
-        select(ProBlackoutDate).where(ProBlackoutDate.pro_user_id == pro_user_id).order_by(ProBlackoutDate.start_at.asc())
-    ).scalars().all()
-
-    return PublicAvailabilityResponse(
-        pro_user_id=pro_user_id,
-        rules=[
-            {"id": r.id, "day_of_week": r.day_of_week, "start_time": r.start_time, "end_time": r.end_time}
-            for r in rules
-        ],
-        blackouts=[{"id": b.id, "start_at": b.start_at, "end_at": b.end_at, "reason": b.reason} for b in blackouts],
     )
 
 
@@ -1153,16 +1132,21 @@ def accept_booking_request(
         raise APIError(code="invalid_state", message="Request has expired", status_code=409)
 
     # Accepting is what creates the gig and writes scheduled_start/end, so
-    # this is the last point before a photographer is committed to a date.
-    # It used to check nothing: blocked time was enforced when the request
-    # was created on some paths and never on the client funnel, so a pro
-    # who blocked their honeymoon could still accept a request inside it.
-    if window_fully_blocked(db, request.pro_user_id, start=request.requested_start, end=request.requested_end):
-        raise APIError(
-            code="validation_error",
-            message="You have blocked off this time. Clear the block first if you want to take this booking.",
-            status_code=409,
-        )
+    # this is the last point before a photographer is committed to a date -
+    # and a request can go stale between being sent and being accepted
+    # (another booking lands, time gets blocked). The same rule as every
+    # other path; it used to refuse only a window wholly inside blocked time.
+    check_bookable(
+        db,
+        pro_user_id=request.pro_user_id,
+        start_at_utc=request.requested_start,
+        end_at_utc=request.requested_end,
+        # The request holds its own hour while pending; that is not a clash.
+        # And only requests made before it stand in its way - first come,
+        # first served.
+        ignore_booking_request_id=request.id,
+        requests_made_before=request.created_at,
+    )
 
     package = db.get(ProPackage, request.package_id)
     if not package:
@@ -1423,24 +1407,9 @@ def _compute_completeness(profile: ProProfile) -> int:
 
 
 def _validate_availability(db: Session, pro_user_id: uuid.UUID, start: datetime, end: datetime) -> None:
-    rules = db.execute(select(ProAvailabilityRule).where(ProAvailabilityRule.pro_user_id == pro_user_id)).scalars().all()
-    if not rules:
-        raise APIError(code="validation_error", message="Pro has no availability configured", status_code=409)
-
-    # Was comparing bare times against the requested day's rules, which
-    # meant a rule crossing midnight matched nothing - not even squarely
-    # mid-shift. The shared helper anchors each rule to the day it starts
-    # on and follows it into the next.
-    if not any_rule_covers(rules, start, end):
-        raise APIError(code="validation_error", message="Requested time is outside pro availability", status_code=409)
-
-    # Both families, via the shared reader: a pro who blocked time through
-    # /pro/scheduling/exceptions was previously invisible here, so the same
-    # request was refused or allowed depending on which endpoint had
-    # recorded the block. (The old query also used scalar_one_or_none(),
-    # which raised rather than refusing when two blocks overlapped.)
-    if blocked_intervals(db, pro_user_id, start=start, end=end):
-        raise APIError(code="validation_error", message="Requested time is blocked off", status_code=409)
+    """The chat and pro-side request paths. The same rule as every other -
+    see bookable_time; this one used to skip notice and existing bookings."""
+    check_bookable(db, pro_user_id=pro_user_id, start_at_utc=start, end_at_utc=end)
 
 
 def _booking_request_list_item(request: BookingRequest, *, now: datetime) -> BookingRequestListItem:

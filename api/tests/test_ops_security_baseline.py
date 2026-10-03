@@ -21,10 +21,15 @@ def _ensure_user_role(db, user_id: str, role: UserRoleType) -> None:
 
 
 @pytest.mark.parametrize("bucket", ["public_read", "auth_mutation"])
-def test_rate_limit_named_buckets_enforced(bucket):
+def test_rate_limit_named_buckets_enforced(bucket, monkeypatch):
     rate_limit_service._BUCKETS.clear()
-    rate_limit_service.RATE_LIMIT_RULES[bucket] = (2, 3600)
-    principal = "test-principal"
+    # setitem, not assignment: RATE_LIMIT_RULES is module state, and a plain
+    # assignment left public_read at 2 an hour for every later test in the
+    # run - which failed test_scheduling_presets with a 429 in full runs only.
+    monkeypatch.setitem(rate_limit_service.RATE_LIMIT_RULES, bucket, (2, 3600))
+    # Fresh each run: the counter lives in the real Redis for an hour, so a
+    # fixed principal started the second run inside the hour already over.
+    principal = f"test-principal-{uuid.uuid4()}"
 
     rate_limit_service.enforce_named_rate_limit(bucket, principal=principal)
     rate_limit_service.enforce_named_rate_limit(bucket, principal=principal)

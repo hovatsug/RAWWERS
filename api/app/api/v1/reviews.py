@@ -10,6 +10,7 @@ from app.api.deps import get_db_read_session, get_db_session, get_optional_curre
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.gig import Gig, GigStatus
+from app.models.niche import Niche
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose
 from app.models.review import Review, ReviewReply, ReviewStatus
 from app.models.admin import UserRole, UserRoleType
@@ -20,6 +21,8 @@ from app.schemas.review import (
     CreateReviewRequest,
     ModerateReviewActionRequest,
     ProReviewsResponse,
+    PublicReviewView,
+    ReviewNicheView,
     ReviewReplyView,
     ReviewView,
 )
@@ -110,7 +113,7 @@ def create_review_for_gig(
     db.refresh(review)
 
     rebuild_pro_index.delay(str(gig.pro_user_id))
-    return _to_review_view(db, review, None)
+    return build_review_view(db, review, None)
 
 
 @router.get("/pros/{pro_user_id}/reviews", response_model=ProReviewsResponse)
@@ -133,8 +136,19 @@ def list_pro_reviews(
         db.execute(select(ReviewReply).where(ReviewReply.review_id.in_(review_ids))).scalars().all() if review_ids else []
     )
     reply_by_review_id = {reply.review_id: reply for reply in replies}
+    niches = (
+        {
+            niche.id: niche
+            for niche in db.execute(select(Niche).where(Niche.id.in_({r.niche_id for r in reviews}))).scalars().all()
+        }
+        if reviews
+        else {}
+    )
 
-    items = [_to_review_view(db, review, reply_by_review_id.get(review.id)) for review in reviews]
+    items = [
+        _to_public_review_view(db, review, niches[review.niche_id], reply_by_review_id.get(review.id))
+        for review in reviews
+    ]
     return ProReviewsResponse(total=total, items=items)
 
 
@@ -214,7 +228,7 @@ def moderate_review(
     rebuild_pro_index.delay(str(review.pro_user_id))
 
     reply = db.execute(select(ReviewReply).where(ReviewReply.review_id == review.id)).scalar_one_or_none()
-    return _to_review_view(db, review, reply)
+    return build_review_view(db, review, reply)
 
 
 def _is_reviewable_gig(gig: Gig) -> bool:
@@ -256,7 +270,7 @@ def _normalize_tags(tags: list[str]) -> list[str]:
     return normalized
 
 
-def _to_review_view(db: Session, review: Review, reply: ReviewReply | None) -> ReviewView:
+def build_review_view(db: Session, review: Review, reply: ReviewReply | None) -> ReviewView:
     playback_id = None
     if review.video_media_asset_id:
         asset = db.get(MediaAsset, review.video_media_asset_id)
@@ -279,6 +293,21 @@ def _to_review_view(db: Session, review: Review, reply: ReviewReply | None) -> R
         created_at=review.created_at,
         updated_at=review.updated_at,
         reply=ReviewReplyView.model_validate(reply, from_attributes=True) if reply else None,
+    )
+
+
+def _to_public_review_view(db: Session, review: Review, niche: Niche, reply: ReviewReply | None) -> PublicReviewView:
+    """What anyone may see: no client, no booking. See PublicReviewView."""
+    private = build_review_view(db, review, reply)
+    return PublicReviewView(
+        id=private.id,
+        rating=private.rating,
+        text=private.text,
+        would_book_again=private.would_book_again,
+        niche=ReviewNicheView(slug=niche.slug, name=niche.name),
+        video_playback_id=private.video_playback_id,
+        created_at=private.created_at,
+        reply=private.reply,
     )
 
 

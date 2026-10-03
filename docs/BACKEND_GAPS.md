@@ -1420,6 +1420,20 @@ reference data itself wants to be seed data loaded as part of a deploy (a data
 migration, or a deploy-time script that is allowed to run in production), not a
 developer command.
 
+## Review tags exist in the model with no vocabulary, and nothing sends them - LOGGED
+
+`Review.tags` is a JSONB list of free strings. `CreateReviewRequest` accepts any strings, `_normalize_tags` lowercases and dedupes them, and `recompute_pro_reputation` counts them into `ProReputation.tag_counts`. Nothing defines which tags exist, and no screen shows the counts.
+
+The review form built for the client app sends no tags. Offering free text would fill `tag_counts` with one-off spellings; offering a fixed list would be inventing the vocabulary inside a UI task. Deciding the list (and whether clients or photographers ever see the counts) is a product decision that should come first; the form can then offer it as chips.
+
+`video_media_asset_id` is in the same position: the model and create endpoint accept a Mux `video_review` asset, and there is no upload flow in either app to produce one.
+
+## ~~The public review list said who wrote each review~~ — FIXED
+
+`GET /v1/pros/{id}/reviews` needs no sign-in, and returned `client_user_id` and `gig_id` on every review, so anyone could link a client's account to a booking with a named photographer. It now returns `PublicReviewView`: rating, text, would-book-again, niche, date and reply, with no client and no booking. The app shows each review as a "Verified booking". Whether a reviewer's first name should ever be shown is a separate privacy decision, deliberately not made in the fix.
+
+Alongside it, `GET /v1/client/bookings/{id}` now carries the client's own `review` (any status, including one a moderator hid; always null for the photographer), so the app can say "you reviewed this" without paging the public list.
+
 ## ~~Six places decided when a photographer could be booked, and no two agreed~~ — FIXED
 
 The client's booking request refused only a window wholly inside blocked time, so it accepted 3am on a Sunday from a photographer who does not work Sundays, and any time inside their notice period. Accepting a request used the same lenient check. The chat / pro-side request path skipped notice and existing bookings. The pro's slot list read only the newer exceptions table, skipped the per-day cap, and missed a night shift that began the day before its range. Confirming a slot also skipped the deprecated blackouts. And nothing counted a paid gig as taking its time: accepting writes the gig's time without a `ConfirmedSlot`, so a paid shoot left its hour open to a second booking.

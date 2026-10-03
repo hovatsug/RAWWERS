@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.models.niche import SkillTier
 
 from app.models.media_rights import GigConsentLevel
+from app.schemas.review import ReviewView
 
 
 class ClientAccessResponse(BaseModel):
@@ -286,6 +287,12 @@ class ClientBookingStatusResponse(BaseModel):
     proof_gallery_status: str | None = None
     timeline: list[dict] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
+    # The client's own review of this booking, whatever its status - so the
+    # app can say "you reviewed this" rather than offer a form the server
+    # would refuse. Includes a review a moderator hid, which the public list
+    # no longer shows. Null for no review yet, and always null for the
+    # photographer, who reads reviews from the public list.
+    review: ReviewView | None = None
 
 
 class ClientBookingListItem(BaseModel):

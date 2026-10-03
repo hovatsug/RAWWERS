@@ -43,9 +43,34 @@ class ReviewView(BaseModel):
     reply: ReviewReplyView | None = None
 
 
+class ReviewNicheView(BaseModel):
+    slug: str
+    name: str
+
+
+class PublicReviewView(BaseModel):
+    """A review as anyone may see it, signed in or not.
+
+    Deliberately without client_user_id and gig_id. Those let any visitor link
+    a client's account to a booking with a named photographer, which no client
+    agreed to. What proves the review is real is that it came from a booking;
+    the niche and date say which kind and when. Whether a reviewer's name
+    should ever appear is a separate privacy decision, not made here.
+    """
+
+    id: uuid.UUID
+    rating: int
+    text: str | None = None
+    would_book_again: bool
+    niche: ReviewNicheView
+    video_playback_id: str | None = None
+    created_at: datetime
+    reply: ReviewReplyView | None = None
+
+
 class ProReviewsResponse(BaseModel):
     total: int
-    items: list[ReviewView]
+    items: list[PublicReviewView]
 
 
 class CreateReviewReplyRequest(BaseModel):

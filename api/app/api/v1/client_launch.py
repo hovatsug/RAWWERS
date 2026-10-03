@@ -22,6 +22,7 @@ from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.media_rights import GigConsentLevel
 from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
+from app.models.review import Review, ReviewReply
 from app.schemas.client_launch import (
     ClientAccessResponse,
     ClientAvailabilityDay,
@@ -52,6 +53,7 @@ from app.schemas.client_launch import (
     ProListingPreviewResponse,
 )
 from app.schemas.media import CurrentUser
+from app.api.v1.reviews import build_review_view
 from app.services.analytics import log_event
 from app.services.availability_blocks import blocked_intervals
 from app.services.bookable_time import (
@@ -780,6 +782,15 @@ def client_booking_status(
         else None
     )
 
+    # The client's own record. The photographer is also allowed this
+    # response, and gets no review through it.
+    review_view = None
+    if gig and user.user_id == booking.client_user_id:
+        review = db.execute(select(Review).where(Review.gig_id == gig.id)).scalar_one_or_none()
+        if review:
+            reply = db.execute(select(ReviewReply).where(ReviewReply.review_id == review.id)).scalar_one_or_none()
+            review_view = build_review_view(db, review, reply)
+
     next_actions: list[str] = []
     if booking.status == BookingRequestStatus.pending:
         next_actions.append("await_pro_response")
@@ -813,6 +824,7 @@ def client_booking_status(
             for item in transitions
         ],
         next_actions=next_actions,
+        review=review_view,
     )
 
 

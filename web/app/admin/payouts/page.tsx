@@ -1,125 +1,151 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Card, EmptyState, Skeleton } from "@/design-system/primitives";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { admin, type PayoutQueueRow } from "@/lib/api/admin";
+import {
+  AdminButton,
+  ConfirmDialog,
+  DataTable,
+  PageHeader,
+  StatusBadge,
+  money,
+  type Column
+} from "@/app/admin/_components/ui";
 
 /**
  * Payout requests awaiting a decision.
  *
- * Everything needed to approve is on the row: who, how much, where the
- * money would actually go, and what their ledger says. A payout approved
- * to an account that cannot receive it is a failure you find out about
- * from the photographer.
+ * Everything needed to approve is on the row: who, how much, where the money
+ * would actually go, and what their ledger says. A payout approved to an
+ * account that cannot receive it is a failure you find out about from the
+ * photographer. Both steps - approving, and recording that the money was
+ * sent - go through a confirmation that names the amount and the person.
  */
 export default function AdminPayoutsPage() {
   const queryClient = useQueryClient();
-  const [note, setNote] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<{ row: PayoutQueueRow; action: "approve" | "paid" } | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin", "payout-queue"],
-    queryFn: () => admin.payoutQueue()
-  });
+  const query = useQuery({ queryKey: ["admin", "payout-queue"], queryFn: () => admin.payoutQueue() });
+  const items = query.data?.ok ? query.data.data.items : undefined;
+  const waiting = items?.filter((row) => row.status === "requested").length ?? 0;
 
-  const act = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: "approve" | "paid" }) =>
-      action === "approve"
-        ? admin.approvePayout(id)
-        : admin.markPayoutPaid(id, { method: "manual", note: "paid from admin panel" }),
-    onSuccess: (res) => {
-      setNote(res.ok ? null : res.error.message);
-      queryClient.invalidateQueries({ queryKey: ["admin", "payout-queue"] });
+  const columns: Column<PayoutQueueRow>[] = [
+    {
+      header: "Photographer",
+      cell: (row) => (
+        <div>
+          <p className="font-medium text-slate-50">{row.display_name || row.email || "Unnamed"}</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {row.lifetime_payouts === 0 ? <StatusBadge label="First payout" tone="info" /> : null}
+            {row.exceeds_withdrawable ? <StatusBadge label="More than they can withdraw" tone="attention" /> : null}
+          </div>
+        </div>
+      )
+    },
+    { header: "Amount", className: "tabular-nums", cell: (row) => <span className="font-semibold">{money(row.amount_eur)}</span> },
+    { header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
+    {
+      // Manual bank transfer is a real route and currently the only one that
+      // works end to end, so it is not presented as a problem.
+      header: "Goes to",
+      cell: (row) => (
+        <div className="text-xs">
+          <p className="text-slate-300">{destination(row)}</p>
+          {row.approval_blocked ? <p className="mt-1 text-amber-200">{row.blocked_reason}</p> : null}
+        </div>
+      )
+    },
+    {
+      header: "Ledger",
+      cell: (row) => (
+        <p className="text-xs tabular-nums text-slate-400">
+          Withdrawable {money(row.withdrawable_eur)} · available {money(row.available_eur)} · settling {money(row.pending_eur)}
+        </p>
+      )
+    },
+    {
+      header: "",
+      className: "w-px whitespace-nowrap text-right",
+      cell: (row) => (
+        <div className="flex justify-end gap-2">
+          <AdminButton
+            disabled={row.approval_blocked || row.status !== "requested"}
+            title={row.approval_blocked ? "The money could not actually be sent - see the reason on the row." : undefined}
+            onClick={() => setDialog({ row, action: "approve" })}
+          >
+            Approve…
+          </AdminButton>
+          <AdminButton
+            tone="secondary"
+            disabled={!["approved", "processing"].includes(row.status)}
+            onClick={() => setDialog({ row, action: "paid" })}
+          >
+            Mark paid…
+          </AdminButton>
+        </div>
+      )
     }
-  });
+  ];
 
-  if (isLoading) return <Skeleton className="h-40 w-full" />;
-  if (!data?.ok) {
-    return (
-      <Card>
-        <p className="text-sm">Could not load the payout queue.</p>
-        <p className="mt-1 text-xs text-neutral-500">{data && !data.ok ? data.error.message : ""}</p>
-      </Card>
-    );
-  }
-
-  const items = data.data.items;
+  const row = dialog?.row;
+  const who = row ? row.display_name || row.email || "this photographer" : "";
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Payouts</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          {items.length === 0 ? "Nothing waiting." : `${items.length} waiting on a decision.`}
-        </p>
-      </div>
+    <>
+      <PageHeader
+        title="Payouts"
+        description={items === undefined ? "Withdrawal requests from photographers." : waiting === 0 ? "Nothing waiting." : `${waiting} waiting on a decision.`}
+      />
+      <DataTable
+        columns={columns}
+        rows={items}
+        rowKey={(r) => r.payout_request_id}
+        loading={query.isLoading}
+        error={query.data && !query.data.ok ? query.data.error.message : query.error ? "Check that the API is reachable." : null}
+        onRetry={() => query.refetch()}
+        empty={{ title: "No payout requests", body: "Requests appear here when a photographer withdraws." }}
+      />
 
-      {note ? <Card><p className="text-sm text-amber-400">{note}</p></Card> : null}
+      <ConfirmDialog
+        open={dialog?.action === "approve"}
+        title={`Approve ${money(row?.amount_eur)} to ${who}?`}
+        confirmLabel={`Approve ${money(row?.amount_eur)}`}
+        onClose={() => setDialog(null)}
+        onConfirm={async () => {
+          if (!row) return null;
+          const res = await admin.approvePayout(row.payout_request_id);
+          if (!res.ok) return res.error.message;
+          queryClient.invalidateQueries({ queryKey: ["admin", "payout-queue"] });
+          return null;
+        }}
+      >
+        <p>{row ? destination(row) : ""}.</p>
+        <p>This commits {money(row?.amount_eur)} of their earnings to this payout.</p>
+      </ConfirmDialog>
 
-      {items.length === 0 ? (
-        <EmptyState title="No payout requests" body="Requests appear here when a photographer withdraws." />
-      ) : (
-        items.map((row) => <PayoutRow key={row.payout_request_id} row={row} onAct={act.mutate} busy={act.isPending} />)
-      )}
-    </div>
+      <ConfirmDialog
+        open={dialog?.action === "paid"}
+        title={`Record ${money(row?.amount_eur)} as sent to ${who}?`}
+        confirmLabel="Mark paid"
+        onClose={() => setDialog(null)}
+        onConfirm={async () => {
+          if (!row) return null;
+          const res = await admin.markPayoutPaid(row.payout_request_id, { method: "manual", note: "paid from admin panel" });
+          if (!res.ok) return res.error.message;
+          queryClient.invalidateQueries({ queryKey: ["admin", "payout-queue"] });
+          return null;
+        }}
+      >
+        <p>Only once the money has actually left the account. The photographer sees this payout as paid.</p>
+      </ConfirmDialog>
+    </>
   );
 }
 
-function PayoutRow({
-  row,
-  onAct,
-  busy
-}: {
-  row: PayoutQueueRow;
-  onAct: (v: { id: string; action: "approve" | "paid" }) => void;
-  busy: boolean;
-}) {
-  return (
-    <Card>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{row.display_name || row.email || "Unnamed"}</span>
-        <span className="text-lg font-semibold">€{row.amount_eur}</span>
-        <Badge>{row.status}</Badge>
-        {row.lifetime_payouts === 0 ? <Badge variant="violet">First payout</Badge> : null}
-        {row.exceeds_withdrawable ? <Badge variant="amber">More than they can withdraw</Badge> : null}
-      </div>
-
-      {/* Method and status stated plainly. Manual bank transfer is a real
-          route and currently the only one that works end to end, so it is
-          not presented as a problem. */}
-      <p className="mt-2 text-sm text-neutral-400">
-        {row.payout_method === "bank_manual"
-          ? `Manual bank transfer — Stripe Connect ${row.payout_account_status.replace(/_/g, " ")}`
-          : `Stripe Connect — ${row.payout_account_status.replace(/_/g, " ")}`}
-      </p>
-      <p className="mt-1 text-xs text-neutral-500">
-        Withdrawable €{row.withdrawable_eur} · available €{row.available_eur} · settling €{row.pending_eur}
-      </p>
-
-      {row.approval_blocked ? (
-        <p className="mt-2 text-sm text-amber-400">{row.blocked_reason}</p>
-      ) : null}
-
-      <div className="mt-3 flex gap-2">
-        <Button
-          onClick={() => onAct({ id: row.payout_request_id, action: "approve" })}
-          disabled={busy || row.approval_blocked || row.status !== "requested"}
-        >
-          Approve
-        </Button>
-        <Button
-          variant="glass"
-          onClick={() => onAct({ id: row.payout_request_id, action: "paid" })}
-          disabled={busy || !["approved", "processing"].includes(row.status)}
-        >
-          Mark paid
-        </Button>
-      </div>
-      {row.approval_blocked ? (
-        <p className="mt-2 text-xs text-neutral-500">
-          Approving is disabled because the money could not actually be sent — not because the panel is stuck.
-        </p>
-      ) : null}
-    </Card>
-  );
+function destination(row: PayoutQueueRow): string {
+  const status = row.payout_account_status.replace(/_/g, " ");
+  return row.payout_method === "bank_manual"
+    ? `Manual bank transfer — Stripe Connect ${status}`
+    : `Stripe Connect — ${status}`;
 }

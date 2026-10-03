@@ -1,6 +1,5 @@
 # Node.js dependencies
 node_modules/
-apps/web-admin/node_modules
 
 # Package manager caches
 .pnpm-store/

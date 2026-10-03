@@ -11,6 +11,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isLanding = pathname === "/";
   const { roles, accessToken, refreshToken, clearSession } = useAuth();
+
+  // The admin desk has its own wide layout and sidebar (app/admin/layout.tsx).
+  // Inside this shell it was squeezed into the phone column, under a client
+  // tab bar.
+  if (pathname.startsWith("/admin")) return <>{children}</>;
   const links = [
     { href: "/discover", label: "Discover", show: true },
     { href: "/client/bookings", label: "Bookings", show: roles.includes("client") },

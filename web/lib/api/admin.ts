@@ -24,8 +24,42 @@ export type ProReviewRow = {
   cover_url: string | null;
   ready_to_approve: boolean;
   missing: string[];
+  /** Whether their gear meets the floor, and how many pieces are waiting on a person. */
+  gear_verified: boolean;
+  gear_awaiting_review: number;
   payout_blocked: boolean;
   submitted_at: string;
+};
+
+/** One piece of gear waiting for, or past, a reviewer's decision. */
+export type GearQueueRow = {
+  id: string;
+  pro_user_id: string;
+  pro_display_name: string | null;
+  category: "camera_body" | "lens" | "lighting";
+  status: "verified" | "rejected" | "pending_review" | "declared";
+  make: string | null;
+  model: string | null;
+  /** Whole, unlike the photographer's own view: what a reviewer compares. */
+  serial_number: string | null;
+  sensor_size: "full_frame" | "crop" | "medium_format" | null;
+  aperture_type: "prime" | "fixed_zoom" | "variable_zoom" | null;
+  min_focal_mm: string | null;
+  max_focal_mm: string | null;
+  max_aperture: string | null;
+  review_reason: string | null;
+  exif_snapshot: Record<string, unknown>;
+  evidence_url: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  review_note: string | null;
+};
+
+export type GearApproveBody = {
+  sensor_size?: "full_frame" | "crop" | "medium_format";
+  aperture_type?: "prime" | "fixed_zoom" | "variable_zoom";
+  note?: string;
+  add_to_reference?: boolean;
 };
 
 export type ProReviewDetail = {
@@ -158,6 +192,11 @@ export const admin = {
       method: "POST",
       body: JSON.stringify({ note: note || null })
     }),
+  gearQueue: () => adminFetch<{ items: GearQueueRow[] }>("gear-verifications?status=pending_review"),
+  approveGear: (id: string, body: GearApproveBody) =>
+    adminFetch<GearQueueRow>(`gear-verifications/${id}/approve`, { method: "POST", body: JSON.stringify(body) }),
+  rejectGear: (id: string, reason: string) =>
+    adminFetch<GearQueueRow>(`gear-verifications/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   payoutQueue: () => adminFetch<{ items: PayoutQueueRow[] }>("payouts/queue"),
   approvePayout: (id: string) => adminFetch<unknown>(`payouts/${id}/approve`, { method: "POST" }),
   markPayoutPaid: (id: string, reference: Record<string, string>) =>

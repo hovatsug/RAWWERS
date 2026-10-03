@@ -1391,10 +1391,17 @@ running a script that the seed guard refuses to run in production.
 - **`camera_model_reference`** (98 bodies in dev). With it empty, **every**
   submission routes to review, so gear verification technically works and
   automatically verifies nobody - the review queue becomes the whole intake.
+  **Now loadable without the seed script:** admin → Catalog & pricing →
+  Camera reference. "Download CSV" on a database that has the list, "Import
+  CSV" on the one that does not; the import is checked row by row before
+  anything is written and applies all or nothing. The page warns while no
+  body is listed as full-frame. Importing does not re-decide submissions
+  already waiting in the gear queue; those still need a person.
 - **`niche_package_price_cap`** (40 of a possible 60 rows in dev). With it empty
   the entry-price ceiling enforces nothing (category item 1 above).
 - **`lens_model_reference`** (13 in dev) is the fallback for lenses whose file
-  states no aperture; empty, those go to review.
+  states no aperture; empty, those go to review. Still no admin page: only the
+  seed script and the gear queue's "add to the reference list" box.
 
 Neither is a migration, and `assert_environment_is_seedable` refuses production
 by design, so a fresh production database starts with both empty and nothing

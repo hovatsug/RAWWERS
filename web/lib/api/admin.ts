@@ -219,5 +219,63 @@ export const admin = {
     adminFetch<unknown>(`onboarding/pros/${proUserId}/reject`, {
       method: "POST",
       body: JSON.stringify({ note })
+    }),
+
+  cameraModels: () => adminFetch<CameraModelList>("camera-models"),
+  addCameraModel: (body: { model: string; make: string | null; display_name: string | null; sensor_size: SensorSize }) =>
+    adminFetch<CameraModelRow>("camera-models", { method: "POST", body: JSON.stringify(body) }),
+  editCameraModel: (
+    normalisedModel: string,
+    body: { make: string | null; display_name: string; sensor_size: SensorSize; reason: string | null }
+  ) =>
+    adminFetch<CameraModelRow>(`camera-models/${encodeURIComponent(normalisedModel)}`, {
+      method: "PUT",
+      body: JSON.stringify(body)
+    }),
+  importCameraModels: (csv: string, apply: boolean, reason?: string | null) =>
+    adminFetch<CameraImportResult>("camera-models/import", {
+      method: "POST",
+      body: JSON.stringify({ csv, apply, reason: reason ?? null })
     })
+};
+
+export type SensorSize = "full_frame" | "crop" | "medium_format";
+
+/** One row of the table the upload check reads to decide a body's sensor size. */
+export type CameraModelRow = {
+  /** The lookup key: lowercased, separators dropped. */
+  normalised_model: string;
+  make: string | null;
+  display_name: string;
+  sensor_size: SensorSize;
+  updated_at: string;
+};
+
+export type CameraModelList = {
+  items: CameraModelRow[];
+  /** Across the whole table, whatever is being shown. */
+  total: number;
+  full_frame: number;
+};
+
+export type CameraImportLine = {
+  line: number;
+  model: string;
+  normalised_model: string;
+  make: string | null;
+  display_name: string;
+  sensor_size: string | null;
+  outcome: "create" | "update" | "unchanged" | "error";
+  error: string | null;
+  before: { make: string | null; display_name: string; sensor_size: SensorSize } | null;
+};
+
+export type CameraImportResult = {
+  lines: CameraImportLine[];
+  create: number;
+  update: number;
+  unchanged: number;
+  errors: number;
+  changes_sensor_size: boolean;
+  applied: boolean;
 };

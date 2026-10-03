@@ -68,6 +68,19 @@ class Settings(BaseSettings):
     max_chat_message_length: int = Field(default=2000, alias="MAX_CHAT_MESSAGE_LENGTH")
     max_review_text_length: int = Field(default=2000, alias="MAX_REVIEW_TEXT_LENGTH")
     max_upload_bytes: int = Field(default=25_000_000, alias="MAX_UPLOAD_BYTES")
+    # Gear evidence is a camera file, not a photo. Real ones are 16-58 MB, so the
+    # 25 MB photo cap would refuse a Sony A7 III's (25.6 MB) outright.
+    gear_evidence_max_bytes: int = Field(default=150_000_000, alias="GEAR_EVIDENCE_MAX_BYTES")
+    gear_evidence_mime_types: str = Field(
+        default="application/octet-stream,image/jpeg,image/heic,image/tiff",
+        alias="GEAR_EVIDENCE_MIME_TYPES",
+    )
+    # Checked on the file name as well as the MIME type: RAW files have no
+    # agreed type, and most arrive as application/octet-stream.
+    gear_evidence_extensions: str = Field(
+        default="cr3,cr2,arw,nef,nrw,raf,rw2,orf,dng,pef,srw,3fr,jpg,jpeg,heic,tif,tiff",
+        alias="GEAR_EVIDENCE_EXTENSIONS",
+    )
     allowed_upload_mime_types: str = Field(
         default="image/jpeg,image/png,image/webp,video/mp4",
         alias="ALLOWED_UPLOAD_MIME_TYPES",
@@ -149,6 +162,12 @@ class Settings(BaseSettings):
 
     def admin_api_key_set(self) -> set[str]:
         return {item.strip() for item in self.admin_api_keys.split(",") if item.strip()}
+
+    def gear_evidence_mime_type_set(self) -> set[str]:
+        return {item.strip().lower() for item in self.gear_evidence_mime_types.split(",") if item.strip()}
+
+    def gear_evidence_extension_set(self) -> set[str]:
+        return {item.strip().lower().lstrip(".") for item in self.gear_evidence_extensions.split(",") if item.strip()}
 
     def allowed_upload_mime_type_set(self) -> set[str]:
         return {item.strip().lower() for item in self.allowed_upload_mime_types.split(",") if item.strip()}

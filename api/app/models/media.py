@@ -21,6 +21,10 @@ class MediaPurpose(str, enum.Enum):
     video_review = "video_review"
     proof = "proof"
     final_delivery = "final_delivery"
+    #: A camera file sent to prove what a photographer shoots on. Never a
+    #: portfolio or gallery asset: it is a RAW, so it has no variants and the
+    #: photo pipeline cannot decode it.
+    gear_evidence = "gear_evidence"
     other = "other"
 
 

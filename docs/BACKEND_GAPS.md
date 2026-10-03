@@ -1213,6 +1213,206 @@ rather than separately, since they are the same queue and the same judgement.
 The honest framing for now is that this gate is uniform in what it requires
 and uneven in what it can prove, and it says so everywhere it appears.
 
+## ~~Nobody could pass the gear gate, and the reader had never seen a real RAW~~ — FIXED
+
+`activate_pro` had refused every photographer without verified gear since the
+floor was added, and there was no way to become verified: `verify_from_raw` was
+called only by tests and a seed script. Building the path turned up more than
+the missing endpoint, because the reader behind it had only ever been tested
+against JPEGs that Pillow made up. Run against **eight real camera files**
+(CC0 samples from raw.pixls.us: Canon R5 and R, Sony A7 IV and A7 III, Nikon
+Z6 and D850, Panasonic S5, Fujifilm X-T4) it failed in ways no synthetic test
+could show:
+
+| Found on real files | Effect |
+| --- | --- |
+| Canon **CR3** and Fujifilm **RAF** unreadable | 422 for every Canon body since 2018 and every Fuji |
+| `details=False` turned maker notes off | the maker-note serial fallback could never fire; a Nikon D850's serial exists nowhere else |
+| Nikon keeps the lens range in the maker note | a D850 reported no lens at all |
+| Canon writes `0` for a lens's maximum aperture | `0 == 0` read a variable-aperture zoom as **fixed** and would have let it qualify |
+| lighting ran through the EXIF reader | recorded the *camera's* lens model as the lighting's model; a wedding photographer could not satisfy the requirement |
+| `MAX_UPLOAD_BYTES` is 25 MB | real RAWs are 16-58 MB; even a Sony A7 III file (25.6 MB) was over |
+| the combined `/admin/pros/{id}/approve` checked no gear | see the category below |
+
+**Fixed.** The reader unwraps CR3 (a Canon `uuid` box in `moov` holding three
+TIFF streams) and RAF (a JPEG at the offset stored at byte 84), reads maker
+notes, takes Nikon's maker-note range when the standard tag is absent, and
+treats a maximum aperture of zero as *unknown*. Every one of these is pinned by
+a test that uses header slices of the real files
+(`tests/fixtures/raw/`, with provenance in its README), and each was broken
+once to confirm the tests go red. Metadata fits in **under 64 KB** in every
+format tried (a CR3's `moov` ends by 35 KB), so the server reads one megabyte
+by ranged GET and never the other fifty.
+
+**Intake.** A camera file goes up through the ordinary media flow with a new
+`gear_evidence` purpose (no variants are made - a RAW cannot be decoded), and
+`POST /v1/pro/me/gear-verifications` reads it. One file proves the body *and*
+the lens it was shot on. Lighting is declared, as its own call, and stored as
+`declared`. The reviewer's queue is `/admin/gear-verifications`; approving
+provides what the machine could not (a body's sensor size, a lens's aperture
+type), can add the model to the reference table so the next photographer with
+that camera needs no review, and refuses to approve anything that would still
+leave the floor unmet.
+
+### Sony bodies publish no serial number, so every one goes to review
+
+Read off the real files: neither Sony sample carries a body serial in any tag
+exifread can read. Sony keeps it in encrypted maker-note data. Under the
+existing (and deliberate) rule that a body with no serial cannot be claimed
+exclusively and so needs a person, **every Sony body will be a queue item** -
+and Sony is a large share of professional full-frame. Approving needs nothing
+beyond a click (the model is in the reference table), so the cost is queue
+volume, not photographer effort, and the photographer is told nothing is left
+for them to do. The alternatives - decrypting Sony maker notes, or auto-verifying
+serial-less known bodies and giving up exclusivity for them - are decisions, not
+fixes, and are left as decisions.
+
+Also worth knowing: exclusivity only proves a *serial* is unique, not that the
+photographer owns the camera. EXIF is as easy to write into a RAW as into a
+JPEG, so RAW raises the effort of faking, not the certainty. That is why
+camera-original JPEGs are accepted too.
+
+**Not done, and not to be assumed done:**
+
+- **Not run on a device.** `file_picker` resolves and the flow is tested against
+  a fake picker, but no iOS or Android build has picked a real file. The picker
+  is unverified where it matters most.
+- **Evidence is kept indefinitely.** Each verification leaves a 16-58 MB object
+  in the bucket for as long as the row exists. That is deliberate (a decision
+  can be re-examined) and has a storage cost that grows with photographers.
+  No retention policy exists.
+- **Other makers are untried.** Olympus/OM (ORF), Pentax, Leica DNG, Hasselblad
+  and medium-format bodies were not sampled. TIFF-based ones should read;
+  none is confirmed.
+
+**Decision (2026-09-19): leave as is.** Approval is one click, the photographer is
+told there is nothing for them to do, and routing a missing serial to review
+rather than rejecting was already the design. Sony makes it visible, it does not
+change the trade-off, and the rule is not worth weakening for a feature that has
+not shipped. **If the review queue becomes a bottleneck at volume, this is why:**
+each Sony body is one queue item. The levers, in the order to try them, are
+batching approvals in the panel, then auto-verifying a known full-frame model
+that publishes no serial (giving up exclusivity for those bodies only), and only
+then decrypting Sony maker notes.
+
+### The app threw away every deliberate 422 message
+
+Found because an "unreadable file" reply showed the generic fallback. The
+Flutter error mapper treated every HTTP 422 as FastAPI's own validation failure
+(a `detail` array), so the backend's *deliberate* 422s - written with a message
+for the person: unreadable file, unsupported type, oversize upload, blank
+lighting model, and others across the API - all arrived as an empty validation
+error with the message gone. Fixed in `error_mapper.dart` (an envelope-shaped
+422 is now a `BusinessError`) with a test that fails without it. Every other
+screen that surfaces a business error benefits.
+
+**The fix caused two regressions, found by auditing every consumer.** Changing
+what a deliberate 422 maps to is a behaviour change for anything that branched on
+`Validation`, and nine places do. Reading each: six (auth, wallet, portfolio,
+availability, pricing, profile) already handle `BusinessError(:message)` and now
+show the specific sentence instead of a generic one - a real improvement. Two
+had been relying on the old mapping and broke:
+
+- **`cursor_page`**: the backend raises its bad-cursor error as a deliberate
+  422, which used to hit the `Validation` branch ("drop the cursor, stop
+  paging"). It stopped matching, so a bad cursor produced a retry button that
+  resent the same value forever - the exact loop that branch exists to prevent.
+- **`booking_request_controller`**: a deliberate 422 ("Invalid date window",
+  "Invalid package") fell into the branch written for the 409, and told the
+  client *"This photographer has not opened their calendar yet."*
+
+Neither was caught by the existing tests. `cursor_page_test` builds
+`Validation({})` by hand, so it never saw what the real mapper produces - a fake
+standing where the real thing should be. Fixed by keeping the HTTP status on
+`BusinessError` and adding `ApiFailure.isInvalidRequest` (FastAPI's own 422 *or*
+a deliberate one), used at exactly the two sites that meant "the request was
+invalid". The new tests feed the real backend response body through the real
+mapper, and each piece of the fix was broken once to confirm they go red.
+
+**Coverage, stated precisely.** The mapper test is general (it exercises
+`mapDioException`, the one place every call passes through). What is verified
+end to end is the two sites above plus the gear flow. The six improved consumers
+are covered by the mapper test, not by a test of their own wording.
+
+## CATEGORY: gates that say they enforce something and do not
+
+Five instances now, found by different routes, all the same shape - a gate
+whose documentation, commit message or name says it protects something, and
+which does not, or cannot be passed. Worth treating as a category to look for,
+not a run of bad luck.
+
+1. **The tier price cap** enforced nothing: `niche_package_price_cap` had zero
+   rows, so `enforce_entry_price_cap` returned on its first line.
+2. **KYC approval** raised `NameError` on every call. The only gate between a
+   photographer and going live had never worked.
+3. **Finals downloads** for curve-priced bookings checked no payment. The commit
+   that removed the upsell requirement said it would not strand photos, and
+   never added the difference-payment requirement in its place.
+4. **The gear floor on admin approval.** The commit introducing it said every
+   approval enforced it. Only the older `/onboarding/pros/{id}/approve` did; the
+   combined `/pros/{id}/approve` the review panel calls checked none of it, and
+   the only approval tests were for the older route.
+5. **The gear floor at activation** was enforced perfectly and could not be
+   passed: nothing called the code that grants it.
+
+The first four are gates that do not hold. The fifth is the mirror image, and
+just as broken: a gate nobody can get through is enforced by nobody in practice,
+because the first person who needs to go live gets it deleted.
+
+**How to look for it.** For every gate: (a) a test that fails when the check is
+deleted - written against the route the *product* calls, not a sibling that
+happens to share a name; and (b) one journey that gets through it by the real
+path, with no seed script and no hand-built row. Both were missing in every
+case above.
+
+## Photographers who went live before the gear gate — GRANDFATHERED, list on demand
+
+The floor is enforced at activation and approval, so nothing already public was
+re-checked. They stay live: they were listed before the requirement existed, and
+making them re-verify would penalise them for a gap that was not theirs.
+
+The cohort is derivable at any moment and needs no table: because nobody new can
+be approved without gear, "publicly listed and gear floor not met" can only
+contain people who were live when the gate arrived, and it shrinks as they
+verify. `api/scripts/list_gear_grandfathered.py` prints it (read-only). **Dev,
+2026-09-19: 44 listed, 44 without verified gear.**
+
+Run it whenever the requirement changes - a new niche that needs lighting, a
+stricter lens rule - to see who is affected before deciding whether to ask them
+to verify. Deliberately not a table: that would be one more thing nothing reads,
+and it would drift from the truth the moment someone verified.
+
+## DEPLOY READINESS: production has no way to get the camera reference table or the price caps
+
+Recorded with the same weight as the paid-gigs check, not folded into the gear
+build. Both are *data* that behaviour depends on, and both arrive only by
+running a script that the seed guard refuses to run in production.
+
+- **`camera_model_reference`** (98 bodies in dev). With it empty, **every**
+  submission routes to review, so gear verification technically works and
+  automatically verifies nobody - the review queue becomes the whole intake.
+- **`niche_package_price_cap`** (40 of a possible 60 rows in dev). With it empty
+  the entry-price ceiling enforces nothing (category item 1 above).
+- **`lens_model_reference`** (13 in dev) is the fallback for lenses whose file
+  states no aperture; empty, those go to review.
+
+Neither is a migration, and `assert_environment_is_seedable` refuses production
+by design, so a fresh production database starts with both empty and nothing
+says so.
+
+**Check before deploying**, against the target database:
+
+    SELECT (SELECT count(*) FROM camera_model_reference) AS cameras,
+           (SELECT count(*) FROM lens_model_reference)   AS lenses,
+           (SELECT count(*) FROM niche_package_price_cap) AS price_caps;
+
+**Proposed, not built:** a startup / health warning that names any of these
+tables when it is empty, so the state is visible rather than discovered as
+"why is everyone in the queue" or "why can a rookie price at master rates". The
+reference data itself wants to be seed data loaded as part of a deploy (a data
+migration, or a deploy-time script that is allowed to run in production), not a
+developer command.
+
 ## ~~Six places decided when a photographer could be booked, and no two agreed~~ — FIXED
 
 The client's booking request refused only a window wholly inside blocked time, so it accepted 3am on a Sunday from a photographer who does not work Sundays, and any time inside their notice period. Accepting a request used the same lenient check. The chat / pro-side request path skipped notice and existing bookings. The pro's slot list read only the newer exceptions table, skipped the per-day cap, and missed a night shift that began the day before its range. Confirming a slot also skipped the deprecated blackouts. And nothing counted a paid gig as taking its time: accepting writes the gig's time without a `ConfirmedSlot`, so a paid shoot left its hour open to a second booking.

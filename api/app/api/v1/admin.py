@@ -629,6 +629,11 @@ def _review_row(db: Session, onboarding: ProOnboarding) -> AdminProReviewRow:
         key for key in ("profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected")
         if not checks.get(key)
     ]
+    # Gear is listed as missing too, unlike KYC: the reviewer decides KYC here,
+    # but unmet gear is either the photographer's to do or a queue item to
+    # clear, and either way approving now would be refused.
+    if not checks.get("gear_verified"):
+        missing.append("gear_verified")
 
     return AdminProReviewRow(
         pro_user_id=pro_user_id,
@@ -646,6 +651,8 @@ def _review_row(db: Session, onboarding: ProOnboarding) -> AdminProReviewRow:
         cover_url=cover_url,
         ready_to_approve=not missing,
         missing=missing,
+        gear_verified=bool(checks.get("gear_verified")),
+        gear_awaiting_review=int(checks.get("gear_awaiting_review") or 0),
         payout_blocked=(account is None or account.status != PayoutAccountStatus.active),
         submitted_at=onboarding.updated_at,
     )
@@ -779,6 +786,11 @@ def approve_pro(
         for key in ("profile_completed", "portfolio_uploaded", "packages_configured", "niches_selected")
         if not checks.get(key)
     ]
+    # This is the approval the review panel calls, and it checked none of the
+    # gear floor: the commit that introduced the floor said every approval
+    # enforced it, but only the older /onboarding/pros/{id}/approve did.
+    if not checks.get("gear_verified"):
+        blocking.append("gear_verified")
     if blocking:
         raise APIError(
             code="validation_error",

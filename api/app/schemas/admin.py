@@ -463,6 +463,10 @@ class AdminProReviewRow(BaseModel):
     cover_url: str | None = None
     ready_to_approve: bool
     missing: list[str] = Field(default_factory=list)
+    #: Whether the photographer's gear meets the floor, and how many pieces are
+    #: waiting on a person. A reviewer can act on the second in the gear queue.
+    gear_verified: bool = False
+    gear_awaiting_review: int = 0
     payout_blocked: bool
     submitted_at: datetime
 

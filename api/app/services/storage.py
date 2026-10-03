@@ -92,6 +92,39 @@ def download_object_bytes(storage_key: str, max_bytes: int = 25 * 1024 * 1024) -
     return stream.getvalue()
 
 
+def object_size(storage_key: str) -> int | None:
+    """The size of what is actually in the bucket, or None if nothing is.
+
+    Used where a client-reported size cannot be trusted: a presigned PUT does
+    not bound what gets uploaded, so the only real number is the object's own.
+    """
+    client = get_s3_client()
+    try:
+        return int(client.head_object(Bucket=settings.r2_bucket, Key=storage_key)["ContentLength"])
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+            return None
+        raise
+
+
+def download_object_range(storage_key: str, start: int, length: int) -> bytes:
+    """A slice of an object, without reading the rest.
+
+    A RAW's metadata is in its first few dozen kilobytes; fetching the other
+    fifty megabytes to read it would be the whole cost of the request.
+    """
+    client = get_s3_client()
+    response = client.get_object(
+        Bucket=settings.r2_bucket, Key=storage_key, Range=f"bytes={start}-{start + length - 1}"
+    )
+    return response["Body"].read()
+
+
+def delete_object(storage_key: str) -> None:
+    client = get_s3_client()
+    client.delete_object(Bucket=settings.r2_bucket, Key=storage_key)
+
+
 def upload_object_bytes(storage_key: str, payload: bytes, content_type: str = "image/jpeg") -> None:
     client = get_s3_client()
     client.put_object(Bucket=settings.r2_bucket, Key=storage_key, Body=payload, ContentType=content_type)

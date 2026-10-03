@@ -10,6 +10,8 @@ from app.api.v1.courses import router as courses_router
 from app.api.v1.discovery import router as discovery_router
 from app.api.v1.disputes import router as disputes_router
 from app.api.v1.gamification import router as gamification_router
+from app.api.v1.gear_verification import admin_router as gear_verification_admin_router
+from app.api.v1.gear_verification import router as gear_verification_router
 from app.api.v1.gigs import router as gigs_router
 from app.api.v1.media import router as media_router
 from app.api.v1.media_rights import router as media_rights_router
@@ -41,6 +43,8 @@ api_router.include_router(courses_router)
 api_router.include_router(discovery_router)
 api_router.include_router(disputes_router)
 api_router.include_router(gamification_router)
+api_router.include_router(gear_verification_router)
+api_router.include_router(gear_verification_admin_router)
 api_router.include_router(gigs_router)
 api_router.include_router(media_router)
 api_router.include_router(media_rights_router)

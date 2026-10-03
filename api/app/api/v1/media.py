@@ -40,7 +40,13 @@ from app.services.feature_flags import is_feature_enabled
 from app.services.mux import MuxClient
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.security import create_mux_playback_token
-from app.services.storage import create_presigned_get, create_presigned_put, generate_photo_storage_key
+from app.services.storage import (
+    create_presigned_get,
+    create_presigned_put,
+    delete_object,
+    generate_photo_storage_key,
+    object_size,
+)
 from app.tasks.media_tasks import process_photo_variants
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -61,6 +67,52 @@ def _default_visibility(purpose: MediaPurpose, requested: MediaVisibility | None
     return MediaVisibility.public if purpose == MediaPurpose.portfolio_reel else MediaVisibility.owner_only
 
 
+def _check_gear_evidence_upload(content_type: str, file_name: str | None) -> None:
+    """A camera file: any RAW extension, or a camera-original JPEG.
+
+    RAW files have no agreed MIME type - most arrive as
+    application/octet-stream - so the file name's extension carries as much of
+    the decision as the content type does. Neither is proof of anything; what
+    the file actually is gets decided when its header is read.
+    """
+    if content_type.lower() not in settings.gear_evidence_mime_type_set():
+        raise APIError(code="validation_error", message="Unsupported content_type", status_code=422)
+    extension = (file_name or "").rsplit(".", 1)[-1].lower() if file_name and "." in file_name else ""
+    if extension not in settings.gear_evidence_extension_set():
+        raise APIError(
+            code="validation_error",
+            message="That does not look like a camera file. Send the RAW file or the original JPEG from the camera.",
+            status_code=422,
+        )
+
+
+def _complete_gear_evidence(db: Session, asset: MediaAsset) -> CompletePhotoUploadResponse:
+    """Evidence has nothing to process: no thumbnail, no watermark, no variants.
+
+    Its size is read from the object itself. The client-reported `byte_size` is
+    whatever the client says, and a presigned PUT does not bound what is sent,
+    so an oversized upload is deleted rather than kept.
+    """
+    original = db.execute(
+        select(MediaObject).where(MediaObject.media_asset_id == asset.id, MediaObject.variant == MediaVariant.original)
+    ).scalar_one_or_none()
+    size = object_size(original.storage_key) if original else None
+    if size is None:
+        raise APIError(code="validation_error", message="The file has not been uploaded", status_code=422)
+    if size > settings.gear_evidence_max_bytes:
+        delete_object(original.storage_key)
+        asset.status = MediaStatus.failed
+        asset.meta = {**asset.meta, "failure_reason": "Upload exceeds size limit"}
+        db.commit()
+        raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
+
+    original.status = ObjectStatus.ready
+    asset.byte_size = size
+    asset.status = MediaStatus.ready
+    db.commit()
+    return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
+
+
 @router.post("/photos/uploads", response_model=PhotoUploadCreateResponse)
 def create_photo_upload(
     body: PhotoUploadCreateRequest,
@@ -69,9 +121,17 @@ def create_photo_upload(
 ) -> PhotoUploadCreateResponse:
     enforce_named_rate_limit("uploads", principal=str(user.user_id))
     enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
-    if body.purpose not in {MediaPurpose.proof, MediaPurpose.other, MediaPurpose.portfolio_reel, MediaPurpose.video_review}:
+    if body.purpose not in {
+        MediaPurpose.proof,
+        MediaPurpose.other,
+        MediaPurpose.portfolio_reel,
+        MediaPurpose.video_review,
+        MediaPurpose.gear_evidence,
+    }:
         raise APIError(code="validation_error", message="Unsupported purpose", status_code=422)
-    if body.content_type.lower() not in settings.allowed_upload_mime_type_set():
+    if body.purpose == MediaPurpose.gear_evidence:
+        _check_gear_evidence_upload(body.content_type, body.file_name)
+    elif body.content_type.lower() not in settings.allowed_upload_mime_type_set():
         raise APIError(code="validation_error", message="Unsupported content_type", status_code=422)
 
     storage_key = generate_photo_storage_key(str(user.user_id), body.file_name)
@@ -126,6 +186,8 @@ def complete_photo_upload(
 
     if asset.status not in {MediaStatus.uploading, MediaStatus.created}:
         raise APIError(code="invalid_state", message="Photo upload cannot be completed from current state", status_code=409)
+    if asset.purpose == MediaPurpose.gear_evidence:
+        return _complete_gear_evidence(db, asset)
     if body.byte_size and body.byte_size > settings.max_upload_bytes:
         raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
 

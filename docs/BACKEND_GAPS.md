@@ -1261,3 +1261,20 @@ A request must be one of the windows its package offers (`check_offered`), on th
 Not covered here: the pro's own slot list (`/pro/scheduling/slots`) is per photographer, not per package, and stays on their slot length. A package's duration for a block or full-day preset is the shoot length shown to the client; the booking occupies the block or the date.
 
 **Next:** the pro package editor needs a preset picker - nothing more for 4-hour or full day; three optional start/end pairs for blocks, with a warning when a block falls outside the photographer's working hours (it can never be offered). The client calendar needs to present blocks by name ("Morning · 06:00-11:00") and a full day as "Book this day", and to send each window exactly as offered (`start_at` / `end_at` from the calendar response).
+
+## The calendar's offset test cannot tell Lisbon from UTC in winter - LOGGED
+
+`test_a_night_shift_opens_the_small_hours_of_the_next_day` (`tests/test_bookable_time.py`)
+checks that a calendar start carries the photographer's own offset. It picks its date
+relative to today, three weeks out. It used to compare the string suffix against
+`+00:00` / `+01:00`, which passed all summer and failed from the first date after the
+clocks went back: Lisbon is UTC+0 in winter and pydantic writes a zero offset as `Z`.
+It now compares the parsed offset with Lisbon's offset on that date.
+
+The gap that remains: **from late October to late March the test is run with Lisbon
+and UTC at the same offset, so it cannot catch a calendar that drops the
+photographer's zone and answers in UTC.** It passes either way in those months. Only
+a summer run proves the offset is carried. Anyone changing timezone handling in
+`bookable_time.py` or the calendar serialiser during winter should not read a green
+run as coverage of this. Fix is to pin the test to a fixed summer date (or add a
+second case for one) instead of a date relative to today.

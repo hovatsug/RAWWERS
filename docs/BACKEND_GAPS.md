@@ -1499,3 +1499,21 @@ a summer run proves the offset is carried. Anyone changing timezone handling in
 `bookable_time.py` or the calendar serialiser during winter should not read a green
 run as coverage of this. Fix is to pin the test to a fixed summer date (or add a
 second case for one) instead of a date relative to today.
+
+## Review moderation: "hidden" and "removed" are the same thing, and nobody is told - LOGGED
+
+Found while building the admin Reviews page. Every reader of `review.status`
+(public list, reputation, niche skills, proof of gigs) checks `== published`,
+so `hidden` and `removed` have identical effects: off the profile, out of the
+rating. The page says so in its dialogs rather than implying a difference. If
+the two are meant to differ (e.g. hidden = pending a decision, removed = final
+and not restorable), that is a product decision nobody has made.
+
+Moderating sends no notification. The photographer's rating changes without
+explanation, and a client whose review disappears is not told why - they find
+out only if they look at their booking, which still shows it. Both need a
+decision on wording before anything is sent.
+
+Fixed alongside: `POST /admin/reviews/{id}/moderate` accepted no reason, and a
+repeat of the same decision was logged and recomputed again. It now requires a
+reason and answers a repeat with 409.

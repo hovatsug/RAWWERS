@@ -50,6 +50,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       ]
     },
     {
+      title: "Moderation",
+      items: [{ href: "/admin/reviews", label: "Reviews" }]
+    },
+    {
       title: "Money",
       items: [
         { href: "/admin/payouts", label: "Payouts", count: counts.payouts },

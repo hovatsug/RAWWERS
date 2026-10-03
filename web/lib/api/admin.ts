@@ -236,7 +236,47 @@ export const admin = {
     adminFetch<CameraImportResult>("camera-models/import", {
       method: "POST",
       body: JSON.stringify({ csv, apply, reason: reason ?? null })
-    })
+    }),
+
+  reviews: (params: { status?: ReviewStatus | ""; ratingMax?: number | null; q?: string; offset?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.ratingMax) query.set("rating_max", String(params.ratingMax));
+    if (params.q?.trim()) query.set("q", params.q.trim());
+    query.set("limit", String(params.limit ?? 50));
+    query.set("offset", String(params.offset ?? 0));
+    return adminFetch<AdminReviewList>(`reviews?${query.toString()}`);
+  },
+  moderateReview: (id: string, action: ReviewStatus, reason: string) =>
+    adminFetch<unknown>(`reviews/${id}/moderate`, { method: "POST", body: JSON.stringify({ action, reason }) })
+};
+
+export type ReviewStatus = "published" | "hidden" | "removed";
+
+/** A review as a moderator sees it: unlike the public list, it names the client. */
+export type AdminReviewRow = {
+  id: string;
+  status: ReviewStatus;
+  rating: number;
+  text: string | null;
+  tags: string[];
+  would_book_again: boolean;
+  has_video: boolean;
+  niche_name: string | null;
+  gig_id: string;
+  pro_user_id: string;
+  pro_display_name: string | null;
+  client_user_id: string;
+  client_email: string | null;
+  reply_text: string | null;
+  created_at: string;
+  last_moderation: { action: string; reason: string | null; at: string; actor_user_id: string } | null;
+};
+
+export type AdminReviewList = {
+  items: AdminReviewRow[];
+  total: number;
+  counts: Record<ReviewStatus, number>;
 };
 
 export type SensorSize = "full_frame" | "crop" | "medium_format";

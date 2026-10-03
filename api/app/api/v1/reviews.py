@@ -198,6 +198,19 @@ def moderate_review(
     review = db.get(Review, review_id)
     if not review:
         raise APIError(code="not_found", message="Review not found", status_code=404)
+    # Hiding, removing and restoring all change what a photographer's profile
+    # and rating say, so each records why.
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise APIError(code="validation_error", message="Moderating a review needs a reason", status_code=422)
+    # A second click on the same decision is not a second decision: it would
+    # log one, and recompute the reputation, for nothing.
+    if review.status == body.action:
+        raise APIError(
+            code="invalid_state",
+            message=f"This review is already {body.action.value}",
+            status_code=409,
+        )
 
     review.status = body.action
     db.flush()
@@ -208,7 +221,7 @@ def moderate_review(
         target_type="review",
         target_id=str(review.id),
         action=f"review_{body.action.value}",
-        reason=body.reason,
+        reason=reason,
         metadata={"pro_user_id": str(review.pro_user_id), "client_user_id": str(review.client_user_id)},
     )
     recompute_pro_reputation(db, review.pro_user_id)

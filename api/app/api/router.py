@@ -6,6 +6,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.chats import router as chats_router
 from app.api.v1.client_launch import router as client_launch_router
 from app.api.v1.communications import router as communications_router
+from app.api.v1.admin_reviews import router as admin_reviews_router
 from app.api.v1.camera_reference import router as camera_reference_router
 from app.api.v1.courses import router as courses_router
 from app.api.v1.discovery import router as discovery_router
@@ -40,6 +41,7 @@ api_router.include_router(ai_concierge_router)
 api_router.include_router(chats_router)
 api_router.include_router(client_launch_router)
 api_router.include_router(communications_router)
+api_router.include_router(admin_reviews_router)
 api_router.include_router(camera_reference_router)
 api_router.include_router(courses_router)
 api_router.include_router(discovery_router)

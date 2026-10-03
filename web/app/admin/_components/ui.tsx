@@ -129,6 +129,10 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   resolved_partial_refund: { label: "Partly refunded", tone: "positive" },
   resolved_no_refund: { label: "No refund", tone: "neutral" },
   closed: { label: "Closed", tone: "neutral" },
+  // reviews
+  published: { label: "Published", tone: "positive" },
+  hidden: { label: "Hidden", tone: "attention" },
+  removed: { label: "Removed", tone: "negative" },
   // photographers
   approved_public: { label: "Live", tone: "positive" },
   ready_for_review: { label: "Ready for review", tone: "attention" },

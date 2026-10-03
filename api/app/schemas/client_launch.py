@@ -233,6 +233,13 @@ class ClientAvailabilityStart(BaseModel):
 
     start_at: datetime
     local_time: str
+    # Where the window ends. For an hourly or 4-hour package that is the
+    # shoot's length later; for a block it is the block's end, and for a full
+    # day, midnight - the window the client is asking for.
+    end_at: datetime
+    local_end_time: str
+    # "morning" / "afternoon" / "evening" for a block package, else None.
+    label: str | None = None
 
 
 class ClientAvailabilityDay(BaseModel):
@@ -256,6 +263,8 @@ class ClientAvailabilityResponse(BaseModel):
     # a month of closed days that reads as fully booked.
     has_schedule: bool
     notice_hours: int
+    # interval / blocks / full_day - how the app should present the windows.
+    scheduling_preset: str = "interval"
     days: list[ClientAvailabilityDay] = Field(default_factory=list)
 
 

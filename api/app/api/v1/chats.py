@@ -12,7 +12,7 @@ from app.api.v1.pro_onboarding import _booking_request_view, _ensure_pro_profile
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import UserRoleType
-from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProPackage
+from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProPackage, SchedulingPreset
 from app.models.chat import ChatHandoff, ChatMessage, ChatSenderType, ChatThread, ChatThreadStatus
 from app.schemas.chat import (
     ChatCloseRequest,
@@ -357,7 +357,7 @@ def _create_booking_request_from_body(
     if not package or package.pro_user_id != pro_user_id or not package.is_active:
         raise APIError(code="validation_error", message="Invalid package", status_code=422)
 
-    _validate_availability(db, pro_user_id, body.requested_start, body.requested_end)
+    _validate_availability(db, pro_user_id, body.requested_start, body.requested_end, package=package)
 
     request = BookingRequest(
         pro_user_id=pro_user_id,
@@ -369,6 +369,7 @@ def _create_booking_request_from_body(
         notes=body.notes,
         status=BookingRequestStatus.pending,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        scheduling_preset=SchedulingPreset(package.scheduling_preset),
     )
     db.add(request)
     db.flush()

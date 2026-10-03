@@ -54,7 +54,14 @@ from app.schemas.client_launch import (
 from app.schemas.media import CurrentUser
 from app.services.analytics import log_event
 from app.services.availability_blocks import blocked_intervals
-from app.services.bookable_time import PAYMENT_WINDOW, bookable_starts, check_bookable
+from app.services.bookable_time import (
+    PAYMENT_WINDOW,
+    bookable_windows,
+    check_bookable,
+    check_offered,
+    gig_preset,
+    shape_for_package,
+)
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
 from app.services.discovery_index import recompute_pro_public_index
@@ -513,18 +520,22 @@ def client_pro_availability(
     if to_date > today + timedelta(days=AVAILABILITY_HORIZON_DAYS):
         raise APIError(code="validation_error", message=f"Availability is shown up to {AVAILABILITY_HORIZON_DAYS} days ahead", status_code=422)
 
-    cal, starts = bookable_starts(
-        db,
-        pro_user_id=pro_user_id,
-        duration=timedelta(minutes=package.duration_minutes),
-        from_date=from_date,
-        to_date=to_date,
-    )
+    # The package's own layout - hourly, 4-hour, its named blocks, or the
+    # whole day - through the same rule every booking path applies.
+    shape = shape_for_package(db, package)
+    cal, windows = bookable_windows(db, pro_user_id=pro_user_id, shape=shape, from_date=from_date, to_date=to_date)
     by_day: dict[date, list[ClientAvailabilityStart]] = {}
-    for start, _end in starts:
-        local = start.astimezone(cal.tz)
+    for window in windows:
+        local = window.start.astimezone(cal.tz)
+        local_end = window.end.astimezone(cal.tz)
         by_day.setdefault(local.date(), []).append(
-            ClientAvailabilityStart(start_at=local, local_time=local.strftime("%H:%M"))
+            ClientAvailabilityStart(
+                start_at=local,
+                local_time=local.strftime("%H:%M"),
+                end_at=local_end,
+                local_end_time=local_end.strftime("%H:%M"),
+                label=window.label.value if window.label else None,
+            )
         )
 
     days = []
@@ -538,6 +549,7 @@ def client_pro_availability(
         timezone=cal.tz.key,
         has_schedule=cal.has_schedule,
         notice_hours=cal.policy.advance_notice_hours,
+        scheduling_preset=shape.preset.value,
         days=days,
     )
 
@@ -584,9 +596,21 @@ def client_booking_request(
     # premise that a request was a flexible window pinned down later. The app
     # has sent an exact package-length time for a long while, and that
     # leniency took 3am on a day the photographer does not work.
+    shape = shape_for_package(db, package)
     check_bookable(
         db,
         pro_user_id=body.pro_user_id,
+        start_at_utc=body.date_window.start_at,
+        end_at_utc=body.date_window.end_at,
+        preset=shape.preset,
+    )
+    # And it must be a window this package offers at all - free time is not
+    # enough. Without this the package's preset would only shape what the
+    # calendar shows, not what can be requested.
+    check_offered(
+        db,
+        pro_user_id=body.pro_user_id,
+        shape=shape,
         start_at_utc=body.date_window.start_at,
         end_at_utc=body.date_window.end_at,
     )
@@ -601,6 +625,7 @@ def client_booking_request(
         notes=body.notes,
         status=BookingRequestStatus.pending,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        scheduling_preset=shape.preset,
     )
     db.add(booking)
     db.flush()
@@ -835,6 +860,7 @@ def client_booking_pay(
             end_at_utc=gig.scheduled_end,
             ignore_gig_id=gig.id,
             at_payment=True,
+            preset=gig_preset(gig),
         )
 
     mode = "full" if body.payment_mode not in {"full", "deposit"} else body.payment_mode

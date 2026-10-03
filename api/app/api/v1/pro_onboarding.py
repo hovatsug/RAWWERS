@@ -20,6 +20,8 @@ from app.models.booking import (
     ProAvailabilityRule,
     ProBlackoutDate,
     ProPackage,
+    SchedulingPreset,
+    SessionBlockLabel,
 )
 from app.models.gig import Gig, GigStatus
 from app.models.client_rewards_pricing import ExtraImagePricingPolicy, ProExtraImagePrice
@@ -59,6 +61,7 @@ from app.schemas.onboarding import (
     ProProfileUpdateRequest,
     ProProfileView,
     ReplaceAvailabilityRulesRequest,
+    SessionBlockInput,
 )
 from app.schemas.launch_ops import (
     ProOnboardingChecksResponse,
@@ -66,7 +69,8 @@ from app.schemas.launch_ops import (
     ProOnboardingStatusResponse,
 )
 from app.services.audit import add_admin_audit_log
-from app.services.bookable_time import check_bookable
+from app.services.bookable_time import check_bookable, check_offered, request_preset, shape_for_package
+from app.services.package_schedule import apply_schedule, current_blocks, validate_schedule
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.discovery_index import recompute_pro_public_index
@@ -391,11 +395,13 @@ def create_package(
         is_active=True,
     )
     db.add(package)
+    db.flush()
+    apply_schedule(db, package, body.scheduling_preset, body.interval_minutes, body.session_blocks)
     recompute_pro_niche_skills(db, user.user_id, niche.id)
     recompute_pro_public_index(db, user.user_id)
     db.commit()
     db.refresh(package)
-    return _package_view(package)
+    return _package_view(package, db)
 
 
 @router.get("/pro/{pro_user_id}/packages", response_model=list[ProPackageView])
@@ -405,7 +411,7 @@ def list_pro_packages(pro_user_id: uuid.UUID, db: Session = Depends(get_db_sessi
         .where(ProPackage.pro_user_id == pro_user_id, ProPackage.is_active.is_(True))
         .order_by(ProPackage.created_at.desc())
     ).scalars().all()
-    return [_package_view(item) for item in packages]
+    return [_package_view(item, db) for item in packages]
 
 
 @router.put("/pro/me/packages/{package_id}", response_model=ProPackageView)
@@ -451,11 +457,23 @@ def update_package(
                 value = value.upper()
             setattr(package, field, value)
 
+    # Validated against the package as it now stands, so a longer duration
+    # cannot slip past a block it no longer fits.
+    if body.scheduling_preset is not None:
+        apply_schedule(db, package, body.scheduling_preset, body.interval_minutes, body.session_blocks or [])
+    else:
+        validate_schedule(
+            SchedulingPreset(package.scheduling_preset),
+            package.interval_minutes,
+            current_blocks(db, package),
+            package.duration_minutes,
+        )
+
     recompute_pro_public_index(db, user.user_id)
     recompute_pro_niche_skills(db, user.user_id, niche.id)
     db.commit()
     db.refresh(package)
-    return _package_view(package)
+    return _package_view(package, db)
 
 
 @router.post("/pro/me/packages/{package_id}/disable", response_model=ProPackageView)
@@ -473,7 +491,7 @@ def disable_package(
     recompute_pro_public_index(db, user.user_id)
     db.commit()
     db.refresh(package)
-    return _package_view(package)
+    return _package_view(package, db)
 
 
 @router.post("/pro/me/availability/rules", deprecated=True)
@@ -997,7 +1015,7 @@ def create_booking_request(
     if not package or package.pro_user_id != pro_user_id or not package.is_active:
         raise APIError(code="validation_error", message="Invalid package", status_code=422)
 
-    _validate_availability(db, pro_user_id, body.requested_start, body.requested_end)
+    _validate_availability(db, pro_user_id, body.requested_start, body.requested_end, package=package)
 
     request = BookingRequest(
         pro_user_id=pro_user_id,
@@ -1009,6 +1027,7 @@ def create_booking_request(
         notes=body.notes,
         status=BookingRequestStatus.pending,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.booking_response_deadline_hours),
+        scheduling_preset=SchedulingPreset(package.scheduling_preset),
     )
     db.add(request)
     db.flush()
@@ -1146,6 +1165,8 @@ def accept_booking_request(
         # first served.
         ignore_booking_request_id=request.id,
         requests_made_before=request.created_at,
+        # Judged by the preset it was requested under, not the package's now.
+        preset=request_preset(request),
     )
 
     package = db.get(ProPackage, request.package_id)
@@ -1220,6 +1241,9 @@ def accept_booking_request(
         meta={
             "pricing_snapshot": snapshot,
             "booking_request_id": str(request.id),
+            # Carried from the request: every later check on this booking
+            # (confirming a slot, paying, others' buffers) reads it from here.
+            "scheduling_preset": request_preset(request).value,
             "niche_slug": snapshot["niche_slug"],
             "niche_name": snapshot["niche_name"],
         },
@@ -1406,10 +1430,25 @@ def _compute_completeness(profile: ProProfile) -> int:
     return min(score, 100)
 
 
-def _validate_availability(db: Session, pro_user_id: uuid.UUID, start: datetime, end: datetime) -> None:
+def _validate_availability(
+    db: Session, pro_user_id: uuid.UUID, start: datetime, end: datetime, *, package: ProPackage | None = None
+) -> None:
     """The chat and pro-side request paths. The same rule as every other -
-    see bookable_time; this one used to skip notice and existing bookings."""
-    check_bookable(db, pro_user_id=pro_user_id, start_at_utc=start, end_at_utc=end)
+    see bookable_time; this one used to skip notice and existing bookings.
+
+    With the package, also that the window is one the package offers at all,
+    exactly as the client's request path checks.
+    """
+    shape = shape_for_package(db, package) if package is not None else None
+    check_bookable(
+        db,
+        pro_user_id=pro_user_id,
+        start_at_utc=start,
+        end_at_utc=end,
+        preset=shape.preset if shape else SchedulingPreset.interval,
+    )
+    if shape is not None:
+        check_offered(db, pro_user_id=pro_user_id, shape=shape, start_at_utc=start, end_at_utc=end)
 
 
 def _booking_request_list_item(request: BookingRequest, *, now: datetime) -> BookingRequestListItem:
@@ -1454,7 +1493,9 @@ def _booking_request_view(request: BookingRequest) -> BookingRequestView:
     )
 
 
-def _package_view(package: ProPackage) -> ProPackageView:
+def _package_view(package: ProPackage, db: Session) -> ProPackageView:
+    order = list(SessionBlockLabel)
+    blocks = sorted(current_blocks(db, package), key=lambda b: order.index(SessionBlockLabel(b.label)))
     return ProPackageView(
         id=package.id,
         pro_user_id=package.pro_user_id,
@@ -1470,6 +1511,12 @@ def _package_view(package: ProPackage) -> ProPackageView:
         finals_sla_days=package.finals_sla_days,
         addons=package.addons,
         is_active=package.is_active,
+        scheduling_preset=SchedulingPreset(package.scheduling_preset),
+        interval_minutes=package.interval_minutes,
+        session_blocks=[
+            SessionBlockInput(label=SessionBlockLabel(b.label), start_time=b.start_time, end_time=b.end_time)
+            for b in blocks
+        ],
     )
 
 

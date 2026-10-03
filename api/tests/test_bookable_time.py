@@ -417,7 +417,12 @@ def test_a_night_shift_opens_the_small_hours_of_the_next_day(client, db_session)
     assert [datetime.fromisoformat(t["start_at"]) for t in starts] == [_utc(saturday, 0), _utc(saturday, 1)]
     # Read in the photographer's own time, not UTC and not the viewer's.
     assert [t["local_time"] for t in starts] == ["00:00", "01:00"]
-    assert starts[0]["start_at"].endswith(("+00:00", "+01:00")), "the instant carries the photographer's offset"
+    # Compared as an offset, not a string suffix: Lisbon is UTC+0 in winter,
+    # which serialises as "Z", so a suffix check fails every winter.
+    from zoneinfo import ZoneInfo
+
+    lisbon_offset = datetime.combine(saturday, time(0), tzinfo=ZoneInfo(TZ)).utcoffset()
+    assert datetime.fromisoformat(starts[0]["start_at"]).utcoffset() == lisbon_offset, "the instant carries the photographer's offset"
 
 
 def test_a_long_package_only_starts_where_the_whole_shoot_fits(client, db_session):
@@ -452,7 +457,9 @@ def test_the_calendar_says_what_it_needs_to_and_nothing_more(client, db_session)
     assert [d["date"] for d in body["days"]] == [(monday + timedelta(days=i)).isoformat() for i in range(7)]
     assert all(set(d) == {"date", "open", "start_times"} for d in body["days"])
     assert "PRIVATE" not in resp.text, "a blocked-time reason reached a client"
-    for forbidden in ("reason", "exception", "blackout", "gig", "client_user_id", "end_at"):
+    # The window's own end_at is the client's; the intervals of blocked time
+    # and other bookings (start_at_utc / end_at_utc) are not.
+    for forbidden in ("reason", "exception", "blackout", "gig", "client_user_id", "start_at_utc", "end_at_utc"):
         assert forbidden not in resp.text, f"{forbidden} leaked into the calendar"
 
 

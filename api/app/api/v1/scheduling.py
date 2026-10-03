@@ -58,6 +58,7 @@ from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.package_pricing import compute_minimum_amount
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.availability_rules import validate_rule_times
+from app.services.bookable_time import request_preset
 from app.services.scheduling import (
     create_booking_time_request,
     create_slot_reminders,
@@ -311,6 +312,7 @@ def confirm_booking_slot(
         # its way - the same first-come rule as accepting.
         ignore_booking_request_id=booking.id,
         requests_made_before=booking.created_at,
+        preset=request_preset(booking),
     )
     _validate_within_client_windows(db, booking_request_id=booking_request_id, start_at_utc=body.start_at_utc, end_at_utc=body.end_at_utc)
 

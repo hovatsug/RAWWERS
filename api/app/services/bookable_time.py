@@ -36,9 +36,23 @@ photographer accept both, and both pay. That was reproduced before this
 changed; tests/test_bookable_time.py covers it end to end.
 
 `refusal_for` is the rule; `check_bookable` raises it for one time;
-`bookable_starts` lists every start time in a date range. The last two are
-the same loop over the same rule, so a start the calendar offers is one the
-request accepts, and the reverse.
+`bookable_windows` lists every bookable window in a date range. The last two
+apply the same rule, so a window the calendar offers is one the request
+accepts, and the reverse. `check_offered` closes the other half: a request
+must be one of the windows the package offers at all, not merely free time.
+
+Scheduling presets (per package) decide only which windows are candidates
+and what a booking occupies - see `Shape`. The rule above is the same for
+every preset, with two differences a preset genuinely changes:
+
+  - full day: "within working hours" means the photographer works that
+    weekday (a whole date never fits inside 09:00-18:00), and notice counts
+    from that day's first working hour. It occupies the whole local date, so
+    the ordinary overlap check is what closes the date to everything else,
+    and what keeps it from being booked on a date with anything on it.
+  - buffers: owed between two bookings if either was made under an interval
+    preset. Two block bookings need none: the photographer drew that
+    boundary deliberately, and it is the separation.
 """
 from __future__ import annotations
 
@@ -59,8 +73,12 @@ from app.models.booking import (
     BookingRequest,
     BookingRequestStatus,
     ConfirmedSlot,
+    PackageSessionBlock,
     ProAvailabilityRule,
+    ProPackage,
     ProSchedulingPolicy,
+    SchedulingPreset,
+    SessionBlockLabel,
 )
 from app.models.gig import Gig, GigStatus, PaymentStatus, StripePayment
 from app.services.availability_blocks import blocked_intervals
@@ -106,6 +124,68 @@ class Booking:
     start: datetime
     end: datetime
     gig_id: uuid.UUID | None
+    # Made under an interval preset - or before presets existed. Such a
+    # booking keeps its buffers whatever is booked next to it.
+    buffered: bool = True
+
+
+def _buffered(preset) -> bool:
+    return preset in (None, SchedulingPreset.interval, SchedulingPreset.interval.value)
+
+
+@dataclass(frozen=True)
+class Shape:
+    """How one package's bookable windows are laid out.
+
+    interval: starts every `interval` (None: the photographer's slot length)
+    through each working-hours window, each `duration` long.
+    blocks: each (label, local start, local end), every date.
+    full_day: the whole local date, every date.
+    """
+
+    preset: SchedulingPreset
+    duration: timedelta
+    interval: timedelta | None = None
+    blocks: tuple[tuple[SessionBlockLabel, time, time], ...] = ()
+
+
+@dataclass(frozen=True)
+class Window:
+    start: datetime
+    end: datetime
+    label: SessionBlockLabel | None = None
+
+
+def request_preset(request: BookingRequest) -> SchedulingPreset:
+    """The preset a request was made under. Before presets: interval."""
+    return SchedulingPreset(request.scheduling_preset or SchedulingPreset.interval)
+
+
+def gig_preset(gig: Gig) -> SchedulingPreset:
+    """The preset a gig's booking was made under, carried from its request."""
+    return SchedulingPreset((gig.meta or {}).get("scheduling_preset") or SchedulingPreset.interval)
+
+
+def shape_for_package(db: Session, package: ProPackage) -> Shape:
+    preset = SchedulingPreset(package.scheduling_preset or SchedulingPreset.interval)
+    blocks: tuple = ()
+    if preset == SchedulingPreset.blocks:
+        rows = db.execute(
+            select(PackageSessionBlock).where(PackageSessionBlock.package_id == package.id)
+        ).scalars().all()
+        order = list(SessionBlockLabel)
+        blocks = tuple(
+            sorted(
+                ((SessionBlockLabel(r.label), r.start_time, r.end_time) for r in rows),
+                key=lambda b: order.index(b[0]),
+            )
+        )
+    return Shape(
+        preset=preset,
+        duration=timedelta(minutes=package.duration_minutes),
+        interval=timedelta(minutes=package.interval_minutes) if package.interval_minutes else None,
+        blocks=blocks,
+    )
 
 
 @dataclass(frozen=True)
@@ -188,21 +268,27 @@ def load_calendar(
         )
     ).scalars().all()
 
-    # A gig with a confirmed slot is one booking, timed by the slot.
+    # A gig with a confirmed slot is one booking, timed by the slot. Its
+    # preset lives on the gig.
     slotted_gigs = {slot.gig_id for slot in slots}
+    gig_preset = {gig.id: (gig.meta or {}).get("scheduling_preset") for gig in gigs}
+    missing = slotted_gigs - set(gig_preset)
+    if missing:
+        for gig_id, meta in db.execute(select(Gig.id, Gig.meta).where(Gig.id.in_(missing))).all():
+            gig_preset[gig_id] = (meta or {}).get("scheduling_preset")
     busy: list[Booking] = []
     counted: list[Booking] = []
     for slot in slots:
         if slot.gig_id == ignore_gig_id:
             continue
-        booking = Booking(slot.start_at_utc, slot.end_at_utc, slot.gig_id)
+        booking = Booking(slot.start_at_utc, slot.end_at_utc, slot.gig_id, _buffered(gig_preset.get(slot.gig_id)))
         counted.append(booking)
         if str(getattr(slot.status, "value", slot.status)) in _BUSY_SLOT_STATUSES:
             busy.append(booking)
     for gig in gigs:
         if gig.id == ignore_gig_id or gig.id in slotted_gigs:
             continue
-        booking = Booking(gig.scheduled_start, gig.scheduled_end, gig.id)
+        booking = Booking(gig.scheduled_start, gig.scheduled_end, gig.id, _buffered(gig_preset.get(gig.id)))
         busy.append(booking)
         counted.append(booking)
     # A pending request has no gig yet; accepting turns it into one and its
@@ -210,7 +296,7 @@ def load_calendar(
     for request in requests:
         if request.id == ignore_booking_request_id:
             continue
-        booking = Booking(request.requested_start, request.requested_end, None)
+        booking = Booking(request.requested_start, request.requested_end, None, _buffered(request.scheduling_preset))
         busy.append(booking)
         counted.append(booking)
 
@@ -233,8 +319,12 @@ def refusal_for(
     *,
     now: datetime | None = None,
     at_payment: bool = False,
+    preset: SchedulingPreset = SchedulingPreset.interval,
 ) -> Refusal | None:
     """Why [start, end) cannot be booked, or None when it can.
+
+    `preset` is the preset the window is being booked under; see the module
+    docstring for the two places it changes the answer.
 
     `at_payment` is the check for an hour the photographer already agreed
     to. Notice and working hours were judged when the booking was made - a
@@ -246,16 +336,26 @@ def refusal_for(
     policy = cal.policy
     if end <= start:
         return Refusal("validation_error", "The end of a booking must be after its start.")
+    notice = Refusal(
+        "validation_error",
+        f"This photographer needs at least {policy.advance_notice_hours} hours' notice.",
+    )
     if not at_payment:
         if not cal.rules:
             return Refusal("validation_error", NO_SCHEDULE_MESSAGE)
-        if start < now + timedelta(hours=policy.advance_notice_hours):
-            return Refusal(
-                "validation_error",
-                f"This photographer needs at least {policy.advance_notice_hours} hours' notice.",
-            )
-        if not any_rule_covers(cal.rules, start, end):
-            return Refusal("validation_error", "That time is outside this photographer's working hours.")
+        if preset == SchedulingPreset.full_day:
+            local_day = start.astimezone(cal.tz).date()
+            day_rules = [rule for rule in cal.rules if rule.day_of_week == local_day.weekday()]
+            if not day_rules:
+                return Refusal("validation_error", "This photographer does not work that day.")
+            first_hour = min(rule_window(rule, local_day)[0] for rule in day_rules)
+            if first_hour < now + timedelta(hours=policy.advance_notice_hours):
+                return notice
+        else:
+            if start < now + timedelta(hours=policy.advance_notice_hours):
+                return notice
+            if not any_rule_covers(cal.rules, start, end):
+                return Refusal("validation_error", "That time is outside this photographer's working hours.")
     if any(b_start < end and b_end > start for b_start, b_end in cal.blocks):
         return Refusal("validation_error", "That time is blocked off in this photographer's calendar.")
     if policy.max_bookings_per_day:
@@ -263,10 +363,15 @@ def refusal_for(
         on_day = sum(1 for b in cal.counted if b.start.astimezone(cal.tz).date() == local_day)
         if on_day >= policy.max_bookings_per_day:
             return Refusal("validation_error", "This photographer is fully booked that day.")
-    padded_start = start - timedelta(minutes=policy.buffer_before_minutes)
-    padded_end = end + timedelta(minutes=policy.buffer_after_minutes)
-    if any(b.start < padded_end and b.end > padded_start for b in cal.bookings):
-        return Refusal("slot_conflict", "That time clashes with another booking.")
+    before = timedelta(minutes=policy.buffer_before_minutes)
+    after = timedelta(minutes=policy.buffer_after_minutes)
+    candidate_buffered = _buffered(preset)
+    for b in cal.bookings:
+        # Buffers are owed if either side was booked by the hour; two blocks
+        # the photographer defined sit against each other as drawn.
+        pad = candidate_buffered or b.buffered
+        if b.start < end + (after if pad else timedelta(0)) and b.end > start - (before if pad else timedelta(0)):
+            return Refusal("slot_conflict", "That time clashes with another booking.")
     return None
 
 
@@ -280,6 +385,7 @@ def check_bookable(
     ignore_booking_request_id: uuid.UUID | None = None,
     requests_made_before: datetime | None = None,
     at_payment: bool = False,
+    preset: SchedulingPreset = SchedulingPreset.interval,
 ) -> None:
     """Raise a 409 naming the reason [start, end) cannot be booked.
 
@@ -296,9 +402,86 @@ def check_bookable(
         ignore_booking_request_id=ignore_booking_request_id,
         requests_made_before=requests_made_before,
     )
-    refusal = refusal_for(cal, start_at_utc, end_at_utc, at_payment=at_payment)
+    refusal = refusal_for(cal, start_at_utc, end_at_utc, at_payment=at_payment, preset=preset)
     if refusal is not None:
         raise APIError(code=refusal.code, message=refusal.message, status_code=409)
+
+
+def _local(day: date, at: time, tz: ZoneInfo) -> datetime:
+    # The same construction as rule_window, so a block and a working-hours
+    # window built for the same local time are the same instant.
+    return datetime.combine(day, at).replace(tzinfo=tz)
+
+
+def _candidates(cal: Calendar, shape: Shape, from_date: date, to_date: date) -> list[Window]:
+    """Every window `shape` lays out whose start falls on a local date in
+    [from_date, to_date] - before any of them is checked against the rule."""
+    found: dict[datetime, Window] = {}
+
+    def keep(window: Window) -> None:
+        if from_date <= window.start.astimezone(cal.tz).date() <= to_date:
+            utc = Window(window.start.astimezone(timezone.utc), window.end.astimezone(timezone.utc), window.label)
+            found.setdefault(utc.start, utc)
+
+    if shape.preset == SchedulingPreset.interval:
+        step = shape.interval or timedelta(minutes=cal.policy.slot_length_minutes)
+        # From the day *before*: a night shift that starts then owns the first
+        # hours of from_date. Anchored to each window's own start, so the
+        # photographer's hours decide where the grid falls.
+        anchor = from_date - timedelta(days=1)
+        while anchor <= to_date:
+            for rule in cal.rules:
+                if rule.day_of_week != anchor.weekday():
+                    continue
+                window_start, window_end = rule_window(rule, anchor)
+                start = window_start
+                while start + shape.duration <= window_end:
+                    keep(Window(start, start + shape.duration))
+                    start += step
+            anchor += timedelta(days=1)
+    elif shape.preset == SchedulingPreset.blocks:
+        day = from_date
+        while day <= to_date:
+            for label, block_start, block_end in shape.blocks:
+                end_day = day + timedelta(days=1) if block_end <= block_start else day
+                keep(Window(_local(day, block_start, cal.tz), _local(end_day, block_end, cal.tz), label))
+            day += timedelta(days=1)
+    else:  # full_day
+        day = from_date
+        while day <= to_date:
+            keep(Window(_local(day, time(0), cal.tz), _local(day + timedelta(days=1), time(0), cal.tz)))
+            day += timedelta(days=1)
+    return sorted(found.values(), key=lambda w: w.start)
+
+
+def _range_calendar(db: Session, pro_user_id: uuid.UUID, from_date: date, to_date: date) -> Calendar:
+    return load_calendar(
+        db,
+        pro_user_id=pro_user_id,
+        start=datetime.combine(from_date, time(0), tzinfo=timezone.utc),
+        end=datetime.combine(to_date + timedelta(days=1), time(0), tzinfo=timezone.utc),
+    )
+
+
+def bookable_windows(
+    db: Session,
+    *,
+    pro_user_id: uuid.UUID,
+    shape: Shape,
+    from_date: date,
+    to_date: date,
+) -> tuple[Calendar, list[Window]]:
+    """Every window `shape` lays out in [from_date, to_date] that the rule
+    allows, earliest first. What the client calendar offers."""
+    cal = _range_calendar(db, pro_user_id, from_date, to_date)
+    if not cal.rules:
+        return cal, []
+    now = datetime.now(timezone.utc)
+    return cal, [
+        w
+        for w in _candidates(cal, shape, from_date, to_date)
+        if refusal_for(cal, w.start, w.end, now=now, preset=shape.preset) is None
+    ]
 
 
 def bookable_starts(
@@ -310,43 +493,34 @@ def bookable_starts(
     to_date: date,
     step: timedelta | None = None,
 ) -> tuple[Calendar, list[tuple[datetime, datetime]]]:
-    """Every bookable [start, end) of `duration` whose start falls on a local
-    date in [from_date, to_date], earliest first.
-
-    Candidates step through each rule's window by the policy's slot length -
-    the grid the photographer has chosen - and keep only those `refusal_for`
-    passes. Rules are anchored from the day *before* from_date, because a
-    night shift that starts then owns the first hours of from_date.
-    """
-    probe = datetime.combine(from_date, time(0), tzinfo=timezone.utc)
-    cal = load_calendar(
+    """The interval preset as (start, end) pairs - the pro's own slot list,
+    which is per photographer rather than per package."""
+    cal, windows = bookable_windows(
         db,
         pro_user_id=pro_user_id,
-        start=probe,
-        end=datetime.combine(to_date + timedelta(days=1), time(0), tzinfo=timezone.utc),
+        shape=Shape(preset=SchedulingPreset.interval, duration=duration, interval=step),
+        from_date=from_date,
+        to_date=to_date,
     )
-    if not cal.rules:
-        return cal, []
-    step = step or timedelta(minutes=cal.policy.slot_length_minutes)
-    now = datetime.now(timezone.utc)
+    return cal, [(w.start, w.end) for w in windows]
 
-    found: dict[datetime, datetime] = {}
-    anchor = from_date - timedelta(days=1)
-    while anchor <= to_date:
-        for rule in cal.rules:
-            if rule.day_of_week != anchor.weekday():
-                continue
-            window_start, window_end = rule_window(rule, anchor)
-            start = window_start
-            while start + duration <= window_end:
-                local_day = start.astimezone(cal.tz).date()
-                start_utc = start.astimezone(timezone.utc)
-                end_utc = (start + duration).astimezone(timezone.utc)
-                if from_date <= local_day <= to_date and refusal_for(cal, start_utc, end_utc, now=now) is None:
-                    found[start_utc] = end_utc
-                start += step
-        anchor += timedelta(days=1)
-    return cal, sorted(found.items())
+
+NOT_OFFERED_MESSAGE = "That time isn't one this package offers. Pick one of the times on the calendar."
+
+
+def check_offered(db: Session, *, pro_user_id: uuid.UUID, shape: Shape, start_at_utc: datetime, end_at_utc: datetime) -> None:
+    """Raise unless [start, end) is exactly one of the windows `shape` lays out.
+
+    Whether it is free is check_bookable's question. This one is whether it
+    is a window this package offers at all: without it a client could ask for
+    10:17, or two hours inside a Morning block, or part of a full day, and
+    the presets would only ever shape what the calendar shows.
+    """
+    cal = _range_calendar(db, pro_user_id, start_at_utc.date() - timedelta(days=2), end_at_utc.date() + timedelta(days=1))
+    local_day = start_at_utc.astimezone(cal.tz).date()
+    offered = {(w.start, w.end) for w in _candidates(cal, shape, local_day - timedelta(days=1), local_day + timedelta(days=1))}
+    if (start_at_utc.astimezone(timezone.utc), end_at_utc.astimezone(timezone.utc)) not in offered:
+        raise APIError(code="not_offered", message=NOT_OFFERED_MESSAGE, status_code=409)
 
 
 def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int | None = 100) -> int:

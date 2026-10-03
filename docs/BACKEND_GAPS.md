@@ -1245,3 +1245,19 @@ Now (all in `app/services/bookable_time.py`, so every path agrees):
 - The client calendar refetches after a request is sent or refused, on returning to the profile, and on pull-to-refresh.
 
 Known edge left as it is: the webhook still moves a gig to paid without checking the hour. With the checks above a clash should not reach it, and refusing money Stripe has already taken is a refund flow, not a check.
+
+## Scheduling presets: per-package layout of bookable times - BACKEND DONE, UI PENDING
+
+Each package now has a `scheduling_preset` (`app/services/bookable_time.py`, `Shape`):
+
+- `interval` - starts every `interval_minutes` through each working-hours window, anchored to the window's own start. No interval is the photographer's slot length: every existing package, unchanged (verified against the live calendar before and after the migration). 240 is the 4-hour preset; no other value is accepted.
+- `blocks` - Morning / Afternoon / Evening at times the photographer sets per package (`package_session_block`). A block is offered only on a date whose working hours cover all of it. Booking one occupies the whole block.
+- `full_day` - the whole local date. It occupies midnight to midnight, so the ordinary overlap check closes the date to every other booking and keeps a full day off any date with anything on it - including a night shift running past midnight. "Within working hours" means the photographer works that weekday; notice counts from that day's first working hour.
+
+Buffers are owed between two bookings if either was made by the interval preset; two blocks sit against each other as the photographer drew them.
+
+A request must be one of the windows its package offers (`check_offered`), on the client path and the chat / pro-side path - free time is not enough. A request records the preset it was made under (`booking_request.scheduling_preset`, carried into `gig.metadata`), and every later check judges it by that, not by the package's current setting.
+
+Not covered here: the pro's own slot list (`/pro/scheduling/slots`) is per photographer, not per package, and stays on their slot length. A package's duration for a block or full-day preset is the shoot length shown to the client; the booking occupies the block or the date.
+
+**Next:** the pro package editor needs a preset picker - nothing more for 4-hour or full day; three optional start/end pairs for blocks, with a warning when a block falls outside the photographer's working hours (it can never be offered). The client calendar needs to present blocks by name ("Morning · 06:00-11:00") and a full day as "Book this day", and to send each window exactly as offered (`start_at` / `end_at` from the calendar response).

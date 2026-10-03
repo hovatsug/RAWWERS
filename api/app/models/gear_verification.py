@@ -100,6 +100,13 @@ class GearVerification(Base):
     exif_snapshot: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    #: Who decided a `pending_review` row, when, and why. Empty for anything a
+    #: machine decided, which is itself worth being able to see.
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )

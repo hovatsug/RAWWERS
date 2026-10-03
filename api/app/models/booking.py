@@ -18,6 +18,30 @@ class BookingRequestStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class SchedulingPreset(str, enum.Enum):
+    """How a package's bookable times are laid out - see bookable_time."""
+
+    # Step through working hours. With no interval, the photographer's own
+    # slot length: the behaviour every package had before presets.
+    interval = "interval"
+    # Morning / Afternoon / Evening, at times the photographer sets per package.
+    blocks = "blocks"
+    # The whole date, and nothing else on it.
+    full_day = "full_day"
+
+
+class SessionBlockLabel(str, enum.Enum):
+    morning = "morning"
+    afternoon = "afternoon"
+    evening = "evening"
+
+
+# Interval lengths a package may choose. Not free-form: each is a preset the
+# client calendar presents in its own way, and None (the photographer's slot
+# length) is the hourly default.
+ALLOWED_INTERVAL_MINUTES = frozenset({240})
+
+
 class AvailabilityLocationMode(str, enum.Enum):
     on_site = "on_site"
     studio = "studio"
@@ -48,8 +72,37 @@ class ProPackage(Base):
     finals_sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     addons: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    scheduling_preset: Mapped[SchedulingPreset] = mapped_column(
+        Enum(SchedulingPreset, name="scheduling_preset", native_enum=False, length=32),
+        nullable=False,
+        default=SchedulingPreset.interval,
+        server_default=SchedulingPreset.interval.value,
+    )
+    # Only for the interval preset; None is the photographer's slot length.
+    interval_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class PackageSessionBlock(Base):
+    """One named block of a blocks-preset package, at the photographer's times.
+
+    Local times in the photographer's timezone, like their working hours. An
+    end at or before the start runs past midnight, as a night shift does.
+    """
+
+    __tablename__ = "package_session_block"
+    __table_args__ = (UniqueConstraint("package_id", "label", name="uq_package_session_block_label"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    package_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pro_package.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    label: Mapped[SessionBlockLabel] = mapped_column(
+        Enum(SessionBlockLabel, name="session_block_label", native_enum=False, length=32), nullable=False
+    )
+    start_time: Mapped[datetime.time] = mapped_column(Time(timezone=False), nullable=False)
+    end_time: Mapped[datetime.time] = mapped_column(Time(timezone=False), nullable=False)
 
 
 class ProAvailabilityRule(Base):
@@ -131,6 +184,12 @@ class BookingRequest(Base):
         default=BookingRequestStatus.pending,
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # The package's preset when this was requested. A booking is judged by
+    # the rules it was made under, not by whatever the package says later.
+    # None for requests made before presets existed: interval.
+    scheduling_preset: Mapped[SchedulingPreset | None] = mapped_column(
+        Enum(SchedulingPreset, name="scheduling_preset", native_enum=False, length=32), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

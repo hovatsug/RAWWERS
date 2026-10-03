@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.models.booking import BookingRequestStatus
+from app.models.booking import BookingRequestStatus, SchedulingPreset, SessionBlockLabel
 
 
 class ProProfileView(BaseModel):
@@ -56,6 +56,15 @@ class ProActivateResponse(BaseModel):
     kyc_status: str
 
 
+class SessionBlockInput(BaseModel):
+    """One named block of a blocks-preset package, in the photographer's
+    local time. An end at or before the start runs past midnight."""
+
+    label: SessionBlockLabel
+    start_time: time
+    end_time: time
+
+
 class ProPackageCreateRequest(BaseModel):
     title: str
     niche_id: uuid.UUID | None = None
@@ -69,6 +78,11 @@ class ProPackageCreateRequest(BaseModel):
     proofs_sla_days: int = 3
     finals_sla_days: int = 7
     addons: list[dict] = Field(default_factory=list)
+    # How the package's bookable times are laid out. The default is today's
+    # hourly behaviour.
+    scheduling_preset: SchedulingPreset = SchedulingPreset.interval
+    interval_minutes: int | None = None
+    session_blocks: list[SessionBlockInput] = Field(default_factory=list)
 
 
 class ProPackageUpdateRequest(BaseModel):
@@ -85,6 +99,12 @@ class ProPackageUpdateRequest(BaseModel):
     finals_sla_days: int | None = None
     addons: list[dict] | None = None
     is_active: bool | None = None
+    # Sent together: when scheduling_preset is given, interval_minutes and
+    # session_blocks are taken as the whole new configuration (absent means
+    # none). When it is not given, the scheduling configuration is untouched.
+    scheduling_preset: SchedulingPreset | None = None
+    interval_minutes: int | None = None
+    session_blocks: list[SessionBlockInput] | None = None
 
 
 class ProPackageView(BaseModel):
@@ -102,6 +122,9 @@ class ProPackageView(BaseModel):
     finals_sla_days: int
     addons: list[dict]
     is_active: bool
+    scheduling_preset: SchedulingPreset = SchedulingPreset.interval
+    interval_minutes: int | None = None
+    session_blocks: list[SessionBlockInput] = Field(default_factory=list)
 
 
 class AvailabilityRuleInput(BaseModel):

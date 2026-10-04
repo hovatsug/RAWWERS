@@ -169,7 +169,10 @@ export type PriceCapRow = {
   updated_at: string;
 };
 
+export type AdminNiche = { id: string; slug: string; name: string; is_active: boolean };
+
 export const admin = {
+  niches: () => adminFetch<AdminNiche[]>("niches"),
   priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
   savePriceCaps: (
     items: Array<{

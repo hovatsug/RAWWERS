@@ -1398,7 +1398,12 @@ running a script that the seed guard refuses to run in production.
   body is listed as full-frame. Importing does not re-decide submissions
   already waiting in the gear queue; those still need a person.
 - **`niche_package_price_cap`** (40 of a possible 60 rows in dev). With it empty
-  the entry-price ceiling enforces nothing (category item 1 above).
+  the entry-price ceiling enforces nothing (category item 1 above). **Now
+  fillable from the admin:** the caps grid used to list only niches that
+  already had a cap row, so on an empty table it listed nothing; it now shows
+  every active niche, says when nothing is capped, imports and downloads a
+  CSV, and the save endpoint refuses negative caps, a cap below its minimum
+  and duplicates before writing anything.
 - **`lens_model_reference`** (13 in dev) is the fallback for lenses whose file
   states no aperture; empty, those go to review. Still no admin page: only the
   seed script and the gear queue's "add to the reference list" box.

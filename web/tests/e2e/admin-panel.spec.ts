@@ -124,6 +124,7 @@ async function fakeAdmin(page: Page, opts: { refuse?: { path: string; status: nu
       if (path === "payouts/queue") return json({ items: [PAYOUT] });
       if (path === "disputes") return json([DISPUTE]);
       if (path === "pricing/niche-package-price-caps") return json(CAPS);
+      if (path === "niches") return json([{ id: "n-weddings", slug: "weddings", name: "Weddings", is_active: true }]);
       return json({ error: { code: "not_found", message: `no fake for ${path}` } }, 404);
     }
 
@@ -331,10 +332,12 @@ test("saving caps lists each change, old to new, and flags one that breaks tier 
   expect(api.writes).toEqual([]);
   await dialog(page).getByRole("button", { name: "Save caps" }).click();
 
-  expect(api.writes).toHaveLength(1);
-  const sent = api.writes[0];
-  expect(sent.method).toBe("PUT");
-  const pro = sent.body.items.find((i: any) => i.tier === "pro");
-  expect(pro.entry_price_max).toBe("2.50");
-  expect(sent.body.items.find((i: any) => i.tier === "master").entry_price_max).toBeNull();
+  // Only the cap that changed - untouched cells are not re-sent as decisions.
+  expect(api.writes).toEqual([
+    {
+      method: "PUT",
+      path: "pricing/niche-package-price-caps",
+      body: { items: [{ niche_slug: "weddings", tier: "pro", entry_price_min: "0.00", entry_price_max: "2.50", currency: "EUR" }] }
+    }
+  ]);
 });

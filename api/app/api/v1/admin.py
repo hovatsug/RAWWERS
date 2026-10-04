@@ -2390,6 +2390,26 @@ def upsert_niche_package_price_caps(
     niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
     by_slug = {row.slug: row for row in niches}
 
+    # Checked whole before anything is written. This is how an empty table is
+    # first filled - possibly sixty caps at once from a file - so a typo has
+    # to stop the save, not land as the cap every photographer is held to.
+    seen: set[tuple[str, SkillTier]] = set()
+    for item in body.items:
+        where = f"{item.niche_slug} · {item.tier.value}"
+        if item.niche_slug not in by_slug:
+            raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        if (item.niche_slug, item.tier) in seen:
+            raise APIError(code="validation_error", message=f"{where} appears twice", status_code=422)
+        seen.add((item.niche_slug, item.tier))
+        if item.entry_price_min < 0 or (item.entry_price_max is not None and item.entry_price_max < 0):
+            raise APIError(code="validation_error", message=f"{where}: a price cannot be negative", status_code=422)
+        if item.entry_price_max is not None and item.entry_price_max < item.entry_price_min:
+            raise APIError(
+                code="validation_error",
+                message=f"{where}: the cap ({item.entry_price_max}) is below the minimum ({item.entry_price_min})",
+                status_code=422,
+            )
+
     for item in body.items:
         niche = by_slug.get(item.niche_slug)
         if not niche:

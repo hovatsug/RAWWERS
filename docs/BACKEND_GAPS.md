@@ -1514,6 +1514,11 @@ rating. The page says so in its dialogs rather than implying a difference. If
 the two are meant to differ (e.g. hidden = pending a decision, removed = final
 and not restorable), that is a product decision nobody has made.
 
+Recommendation when deciding (product owner, 2026-10-04): "hidden" should mean
+reversible / under review and "removed" final. Decide before it is
+load-bearing - the first time a photographer disputes a moderation decision,
+the distinction will matter and the system cannot currently express it.
+
 Moderating sends no notification. The photographer's rating changes without
 explanation, and a client whose review disappears is not told why - they find
 out only if they look at their booking, which still shows it. Both need a
@@ -1522,3 +1527,22 @@ decision on wording before anything is sent.
 Fixed alongside: `POST /admin/reviews/{id}/moderate` accepted no reason, and a
 repeat of the same decision was logged and recomputed again. It now requires a
 reason and answers a repeat with 409.
+
+## CATEGORY: a decision is made and the person it affects is never told
+
+The same gap, logged separately at least four times, wearing different hats:
+
+1. **A booking request arrives** and the photographer learns of it only by
+   opening the app - against a 48-hour auto-decline (the notification delivery
+   entry above: no mail provider, push not built at all).
+2. **A short payment** leaves the booking open and nothing tells the client
+   (PRIORITY entry above).
+3. **A selection difference** is quoted, and nothing tells the client.
+4. **A review is moderated**: the photographer's rating changes and the client's
+   review disappears, and neither is told (review moderation entry above).
+
+Treat it as the signal, not four features. Notification delivery is the thing
+underneath all of them; when it is built it should be built **once,
+generically** - an outward channel (email, push) behind `enqueue_notification`,
+with per-event wording - and then plugged into each of these, rather than
+solved per feature. Until then, each new "nobody is told" belongs on this list.

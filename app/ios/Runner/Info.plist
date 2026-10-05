@@ -64,6 +64,16 @@
 	<!-- Add-only access, for a client saving photographs they have bought.
 	     Separate from the read access above, and iOS terminates the app if
 	     a save is attempted without this string. -->
+	<!-- Plain HTTP to the dev API by the Mac's Bonjour name (env/*.json).
+	     iOS exempts raw IP addresses from the HTTPS rule but not .local
+	     names, and the name is what survives the router handing the Mac a
+	     new address. Local hosts only: HTTPS is still required everywhere
+	     on the internet. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>RAWWERS saves the photos you've bought to your library.</string>
 	<key>UISupportedInterfaceOrientations</key>

@@ -71,6 +71,37 @@ make migrate
 make test
 ```
 
+## Local Stripe payments need `stripe listen` running in its own terminal
+
+`make up` does not start anything that delivers Stripe webhooks to this API.
+Without a forwarder, a real test payment completes on Stripe's side (the
+payment sheet closes, the money moves) and the API never finds out: no
+`payment_intent.succeeded` event ever arrives, so the gig sits in
+`payment_pending` forever and the client app shows no success state. This
+produced a genuinely stuck test payment once already - confirmed via
+`webhook_security_log` having no recent rows and the outbox having no event
+for that PaymentIntent at all, i.e. the webhook was never even attempted,
+not merely failing.
+
+Run, in a terminal you leave open for the whole local session:
+```bash
+stripe listen --forward-to http://<api-host>:8000/v1/webhooks/stripe
+```
+Use the LAN IP the client/pro apps are pointed at (`app/env/*.json`'s
+`API_BASE_URL`), not `localhost`, when testing from a simulator or a real
+device rather than curl.
+
+The forwarder only forwards while that process is running. Closing the
+terminal, restarting the machine, or letting the shell die silently stops
+webhook delivery with no error anywhere in this stack - the API, worker and
+Stripe dashboard all look completely normal. If a local payment ever again
+shows no success feedback or a stuck Pay button, check whether `stripe
+listen` is actually still running before assuming it's a code regression.
+The signing secret it prints on startup (`whsec_...`) must match
+`STRIPE_WEBHOOK_SECRET` in `.env`; it changes each time `stripe listen`
+starts, so restarting it after an interruption means updating `.env` and
+restarting the `api` container too.
+
 ## Key Environment Variables
 - `DATABASE_URL`, `REDIS_URL`
 - `PRIMARY_DATABASE_URL`, `REPLICA_DATABASE_URL`, `MAX_REPLICA_LAG_SECONDS`

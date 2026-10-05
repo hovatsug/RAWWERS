@@ -1302,6 +1302,23 @@ points-redemption discount changes between creating and paying, not on every
 reselection. Only non-curve bookings (created through `POST /v1/gigs`) reach it.
 Not fixed: much smaller exposure, and it would widen the change above.
 
+## ~~`test_rate_limit_named_buckets_enforced` can only pass once an hour~~ — FIXED
+
+It uses a fixed principal (`test-principal`) against the real Redis with a
+3600-second window, and nothing clears the key afterwards, so the second run
+inside the hour starts already over the limit and fails - at HEAD as well as
+with any change. It looks like a regression in whichever change was made just
+before the second run, which is how it surfaced during the download-gate work:
+two failures that were absent from one full run and present in the next, with
+no code path in common. Fix is a unique principal per run (a `uuid4()`), which
+is what the neighbouring tests already do.
+
+**Fixed (with a worse twin).** It also assigned its 2-an-hour limit into the
+module's `RATE_LIMIT_RULES` and never restored it, so every later test in a full
+run inherited `public_read` at 2 an hour; `test_a_full_day_booking_closes_the_date_to_every_other_preset`
+failed with a 429 in full runs only. Now `monkeypatch.setitem` and a `uuid4()` principal.
+**Expect fewer "known" failures in full runs from here** - some of the baseline may have been this leak.
+
 ## DEPLOY CHECK: paid gigs without a settled base payment now release nothing
 
 The download gate checks that the deposit was actually collected - a succeeded
@@ -1613,6 +1630,50 @@ snapshot.
 succeed (the "Active" filter includes unpaid gigs, whose cards used to lead to an
 error screen). The classification is an exhaustive `switch`, so a status added on
 the server has to be decided on rather than defaulting to openable.
+
+## PRIORITY: two code paths build the same gig and have drifted apart
+
+Found while reading the removal, deliberately not fixed in that change.
+`accept_booking_request` (`pro_onboarding.py`) and
+`_find_or_create_gig_from_booking` (`scheduling.py`) each construct a `Gig` from a
+booking request and package, with the same derivation copied between them - and
+they have already diverged: **the confirm-slot path writes no `pricing_snapshot`**
+into the gig's metadata.
+
+The consequences are concrete. The pro app builds a gallery's terms from that
+snapshot and, finding none, falls back to `included_photos = 10` and
+`extra_photo_price = "0.00"`. Until now the server also trusted whatever the
+client sent; it now reads the snapshot when there is one, so for confirm-slot gigs
+the fallback to the request body is what stands in. A booking created by
+confirm-slot therefore records the amount and the entry rate but not the package
+terms it was sold on (included photos, extras price, turnaround) - the record an
+invoice or a dispute would reach for.
+
+This is the same shape as the two pricing systems that double-billed extras and
+the two chat route families: one thing built in two places, quietly drifting.
+The fix is one shared builder that both call (and the legacy shoot's, which is a
+third copy), with the snapshot written by the builder so no caller can forget it.
+Worth doing as its own task with a test that builds a gig both ways and compares.
+
+## `test_followups_calls.py` fails between 22:00 and 08:00 Lisbon
+
+Three tests (`test_calling_blocked_without_consent_except_call_me_button`,
+`test_mock_telephony_flow_updates_status_and_outcome`, `test_rate_limits_enforced`)
+grant a call to a contact whose quiet hours are 22:00-08:00 Europe/Lisbon and
+never pin the clock, so they pass all day and fail at night with a 409
+(`quiet_hours`). Found because a 32-minute full-suite run crossed midnight: the
+same suite had passed in the afternoon, and three tests appeared as regressions
+in a change that never touched call code.
+
+Confirmed rather than assumed: on the real clock (00:08 Lisbon) four tests in the
+file fail; with `is_quiet_hours_now` pinned to noon only the one known failure
+(`test_transcript_not_stored_without_explicit_consent`) remains.
+
+This is the second time-of-day test in this log (the scheduling fixture failed after
+18:00 UTC). The practical consequence is for whoever compares runs: **a baseline
+and a comparison taken either side of a quiet-hours boundary will show phantom
+regressions in exactly this file.** Fix is to pin the clock in the tests, as the
+notifications tests already do for their quiet-hours window.
 
 ## The search screen is unreachable, and the router says otherwise - LOGGED
 

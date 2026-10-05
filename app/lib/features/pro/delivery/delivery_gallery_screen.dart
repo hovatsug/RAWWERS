@@ -9,12 +9,12 @@ import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_overlay_badge.dart';
 import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_controller.dart';
-import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 
 /// Delivering a shoot.
 ///
@@ -34,12 +34,10 @@ class DeliveryGalleryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Deliver photos')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final error = await ref.read(deliveryUploadControllerProvider(gig).notifier).pickAndUpload();
-          if (error != null && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-          }
-        },
+        // Each photo now tracks and shows its own fate in the list below,
+        // uploading, processing or failed - there is no longer one outcome
+        // for the whole batch to report here.
+        onPressed: () => ref.read(deliveryUploadControllerProvider(gig).notifier).pickAndUpload(),
         icon: const Icon(Icons.add_photo_alternate_outlined),
         label: const Text('Add photos'),
       ),
@@ -194,11 +192,13 @@ class _Uploads extends ConsumerWidget {
   const _Uploads({required this.gig, required this.uploads});
 
   final GigResponse gig;
-  final Map<String, UploadProgress> uploads;
+  final Map<String, DeliveryUploadItem> uploads;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final notifier = ref.read(deliveryUploadControllerProvider(gig).notifier);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(RSpace.s16, 0, RSpace.s16, RSpace.s16),
       child: RCard(
@@ -209,18 +209,43 @@ class _Uploads extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(child: Text(entry.value.fileName, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis)),
-                  if (entry.value.error != null)
-                    IconButton(
-                      onPressed: () => ref.read(deliveryUploadControllerProvider(gig).notifier).dismiss(entry.key),
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Dismiss',
-                    ),
+                  switch (entry.value) {
+                    DeliveryUploadFailed(:final mediaAssetId) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Only a photo whose upload already succeeded has
+                          // anything to retry - a raw upload failure needs
+                          // the file re-picked, which this screen cannot do
+                          // on its own.
+                          if (mediaAssetId != null)
+                            TextButton(
+                              onPressed: () => notifier.retryAttach(entry.key),
+                              child: const Text('Retry'),
+                            ),
+                          IconButton(
+                            onPressed: () => notifier.dismiss(entry.key),
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Dismiss',
+                          ),
+                        ],
+                      ),
+                    _ => const SizedBox.shrink(),
+                  },
                 ],
               ),
-              if (entry.value.error != null)
-                Text(entry.value.error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error))
-              else
-                RProgressBar(value: entry.value.fraction),
+              switch (entry.value) {
+                DeliveryUploadUploading(:final fraction) => RProgressBar(value: fraction),
+                // Not an error state and not styled like one: the photo is
+                // uploaded and this is the server doing real, expected work
+                // before it can appear below - the same "Processing" a
+                // portfolio tile shows while its own preview is generating.
+                DeliveryUploadProcessing() => const Align(
+                    alignment: Alignment.centerLeft,
+                    child: ROverlayBadge(label: 'Processing'),
+                  ),
+                DeliveryUploadFailed(:final message) =>
+                  Text(message, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+              },
               const SizedBox(height: RSpace.s8),
             ],
           ],

@@ -12,7 +12,6 @@ import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_controller.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
-import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 
 /// Publishing is the moment a client is told their photos are ready, and
 /// there is no unsend. These cover that it never happens by accident.
@@ -40,10 +39,18 @@ class _FailingGallery extends DeliveryGalleryController {
 class _FakeUploads extends DeliveryUploadController {
   _FakeUploads(this._state);
 
-  final Map<String, UploadProgress> _state;
+  final Map<String, DeliveryUploadItem> _state;
+  var retriedKeys = <String>[];
+  var dismissedKeys = <String>[];
 
   @override
-  Map<String, UploadProgress> build(GigResponse gig) => _state;
+  Map<String, DeliveryUploadItem> build(GigResponse gig) => _state;
+
+  @override
+  Future<void> retryAttach(String key) async => retriedKeys = [...retriedKeys, key];
+
+  @override
+  void dismiss(String key) => dismissedKeys = [...dismissedKeys, key];
 }
 
 final _gig = GigResponse(
@@ -91,12 +98,13 @@ GalleryDetailResponse _detail({
 
 Widget _wrap({
   DeliveryGalleryController Function()? gallery,
-  Map<String, UploadProgress> uploads = const {},
+  Map<String, DeliveryUploadItem> uploads = const {},
+  _FakeUploads? uploadsController,
 }) =>
     ProviderScope(
       overrides: [
         deliveryGalleryControllerProvider(_gig).overrideWith(gallery ?? () => _FakeGallery(_detail())),
-        deliveryUploadControllerProvider(_gig).overrideWith(() => _FakeUploads(uploads)),
+        deliveryUploadControllerProvider(_gig).overrideWith(() => uploadsController ?? _FakeUploads(uploads)),
       ],
       child: MaterialApp(theme: buildProTheme(), home: DeliveryGalleryScreen(gig: _gig)),
     );
@@ -157,14 +165,74 @@ void main() {
     expect(find.textContaining('choosing their 25'), findsOneWidget);
   });
 
-  testWidgets('a failed upload names the file', (tester) async {
+  testWidgets('a raw upload failure names the file and offers no retry', (tester) async {
+    // No mediaAssetId: the raw upload itself never succeeded, so there is
+    // nothing on the server to retry attaching - only re-picking the file
+    // would do anything, which this screen cannot trigger on its own.
     await tester.pumpWidget(_wrap(uploads: const {
-      'k1': UploadProgress(fileName: 'DSC_9001.jpg', sent: 5, total: 100, error: 'Upload failed - check your connection.'),
+      'k1': DeliveryUploadFailed(fileName: 'DSC_9001.jpg', message: 'Upload failed - check your connection.'),
     }));
     await tester.pump();
 
     expect(find.text('DSC_9001.jpg'), findsOneWidget);
     expect(find.textContaining('check your connection'), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
+    expect(find.byTooltip('Dismiss'), findsOneWidget);
+  });
+
+  testWidgets('a photo still uploading shows real send progress', (tester) async {
+    await tester.pumpWidget(_wrap(uploads: const {
+      'k1': DeliveryUploadUploading(fileName: 'DSC_9002.jpg', sent: 40, total: 100),
+    }));
+    await tester.pump();
+
+    final bar = tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator));
+    expect(bar.value, 0.4);
+  });
+
+  testWidgets('a photo waiting on its watermark reads as processing, not as an error', (tester) async {
+    await tester.pumpWidget(_wrap(uploads: const {
+      'k1': DeliveryUploadProcessing(fileName: 'DSC_9003.jpg', mediaAssetId: 'asset-1'),
+    }));
+    await tester.pump();
+
+    expect(find.text('Processing'), findsOneWidget);
+    // Not shown in the error colour, and no dismiss control - this is not
+    // yet a failure to act on.
+    final text = tester.widget<Text>(find.text('Processing'));
+    expect(text.style?.color, isNot(Theme.of(tester.element(find.byType(MaterialApp))).colorScheme.error));
+    expect(find.byTooltip('Dismiss'), findsNothing);
+  });
+
+  testWidgets('a photo that failed to attach after retrying offers Retry, and it retries that asset', (tester) async {
+    final uploads = _FakeUploads(const {
+      'k1': DeliveryUploadFailed(
+        fileName: 'DSC_9004.jpg',
+        message: 'Still processing after several tries. Try again in a moment.',
+        mediaAssetId: 'asset-1',
+      ),
+    });
+    await tester.pumpWidget(_wrap(uploadsController: uploads));
+    await tester.pump();
+
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+
+    expect(uploads.retriedKeys, ['k1']);
+  });
+
+  testWidgets('dismiss removes the row for any state, not only a failed one', (tester) async {
+    final uploads = _FakeUploads(const {
+      'k1': DeliveryUploadFailed(fileName: 'DSC_9005.jpg', message: 'Upload failed.', mediaAssetId: 'asset-1'),
+    });
+    await tester.pumpWidget(_wrap(uploadsController: uploads));
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Dismiss'));
+    await tester.pump();
+
+    expect(uploads.dismissedKeys, ['k1']);
   });
 
   testWidgets('a failed load offers a retry', (tester) async {

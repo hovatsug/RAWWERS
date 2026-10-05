@@ -6,6 +6,24 @@ part of 'delivery_gallery_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$galleryAttachBackoffHash() =>
+    r'50e4f1ceeb94d435af0c32d648f0e926730e6245';
+
+/// See also [galleryAttachBackoff].
+@ProviderFor(galleryAttachBackoff)
+final galleryAttachBackoffProvider = Provider<GalleryAttachBackoff>.internal(
+  galleryAttachBackoff,
+  name: r'galleryAttachBackoffProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$galleryAttachBackoffHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GalleryAttachBackoffRef = ProviderRef<GalleryAttachBackoff>;
 String _$deliveryGalleryControllerHash() =>
     r'a5dfc8968178ad33572057f5d547ac9e89682a37';
 
@@ -230,13 +248,13 @@ class _DeliveryGalleryControllerProviderElement
 }
 
 String _$deliveryUploadControllerHash() =>
-    r'd00627906e41a55b9f5a3960923bfa16f08bb3a6';
+    r'3ca23b4e444131e98ab3a1adf780b1c756f53371';
 
 abstract class _$DeliveryUploadController
-    extends BuildlessAutoDisposeNotifier<Map<String, UploadProgress>> {
+    extends BuildlessAutoDisposeNotifier<Map<String, DeliveryUploadItem>> {
   late final GigResponse gig;
 
-  Map<String, UploadProgress> build(GigResponse gig);
+  Map<String, DeliveryUploadItem> build(GigResponse gig);
 }
 
 /// Uploads proofs into one gig's gallery.
@@ -244,6 +262,16 @@ abstract class _$DeliveryUploadController
 /// Separate from the portfolio uploader because the purpose and visibility
 /// differ: these are `proof` assets for one client, not public portfolio
 /// work, and getting that backwards would publish a client's shoot.
+///
+/// Each photo is attached to the gallery on its own, as soon as its own
+/// watermark preview is ready - not as one call at the end of the batch for
+/// every photo together. A single all-or-nothing call was the original
+/// design, and it failed every time a real photo was still processing:
+/// `add_gallery_items` refuses the *whole* request if even one of the ids in
+/// it lacks a ready watermark preview, so a batch of twelve photos where the
+/// twelfth was still generating dropped all twelve, silently as far as the
+/// gallery grid was concerned - the individual uploads had genuinely
+/// succeeded, so nothing about the per-file progress looked wrong.
 ///
 /// Copied from [DeliveryUploadController].
 @ProviderFor(DeliveryUploadController)
@@ -255,14 +283,34 @@ const deliveryUploadControllerProvider = DeliveryUploadControllerFamily();
 /// differ: these are `proof` assets for one client, not public portfolio
 /// work, and getting that backwards would publish a client's shoot.
 ///
+/// Each photo is attached to the gallery on its own, as soon as its own
+/// watermark preview is ready - not as one call at the end of the batch for
+/// every photo together. A single all-or-nothing call was the original
+/// design, and it failed every time a real photo was still processing:
+/// `add_gallery_items` refuses the *whole* request if even one of the ids in
+/// it lacks a ready watermark preview, so a batch of twelve photos where the
+/// twelfth was still generating dropped all twelve, silently as far as the
+/// gallery grid was concerned - the individual uploads had genuinely
+/// succeeded, so nothing about the per-file progress looked wrong.
+///
 /// Copied from [DeliveryUploadController].
 class DeliveryUploadControllerFamily
-    extends Family<Map<String, UploadProgress>> {
+    extends Family<Map<String, DeliveryUploadItem>> {
   /// Uploads proofs into one gig's gallery.
   ///
   /// Separate from the portfolio uploader because the purpose and visibility
   /// differ: these are `proof` assets for one client, not public portfolio
   /// work, and getting that backwards would publish a client's shoot.
+  ///
+  /// Each photo is attached to the gallery on its own, as soon as its own
+  /// watermark preview is ready - not as one call at the end of the batch for
+  /// every photo together. A single all-or-nothing call was the original
+  /// design, and it failed every time a real photo was still processing:
+  /// `add_gallery_items` refuses the *whole* request if even one of the ids in
+  /// it lacks a ready watermark preview, so a batch of twelve photos where the
+  /// twelfth was still generating dropped all twelve, silently as far as the
+  /// gallery grid was concerned - the individual uploads had genuinely
+  /// succeeded, so nothing about the per-file progress looked wrong.
   ///
   /// Copied from [DeliveryUploadController].
   const DeliveryUploadControllerFamily();
@@ -272,6 +320,16 @@ class DeliveryUploadControllerFamily
   /// Separate from the portfolio uploader because the purpose and visibility
   /// differ: these are `proof` assets for one client, not public portfolio
   /// work, and getting that backwards would publish a client's shoot.
+  ///
+  /// Each photo is attached to the gallery on its own, as soon as its own
+  /// watermark preview is ready - not as one call at the end of the batch for
+  /// every photo together. A single all-or-nothing call was the original
+  /// design, and it failed every time a real photo was still processing:
+  /// `add_gallery_items` refuses the *whole* request if even one of the ids in
+  /// it lacks a ready watermark preview, so a batch of twelve photos where the
+  /// twelfth was still generating dropped all twelve, silently as far as the
+  /// gallery grid was concerned - the individual uploads had genuinely
+  /// succeeded, so nothing about the per-file progress looked wrong.
   ///
   /// Copied from [DeliveryUploadController].
   DeliveryUploadControllerProvider call(GigResponse gig) {
@@ -306,18 +364,38 @@ class DeliveryUploadControllerFamily
 /// differ: these are `proof` assets for one client, not public portfolio
 /// work, and getting that backwards would publish a client's shoot.
 ///
+/// Each photo is attached to the gallery on its own, as soon as its own
+/// watermark preview is ready - not as one call at the end of the batch for
+/// every photo together. A single all-or-nothing call was the original
+/// design, and it failed every time a real photo was still processing:
+/// `add_gallery_items` refuses the *whole* request if even one of the ids in
+/// it lacks a ready watermark preview, so a batch of twelve photos where the
+/// twelfth was still generating dropped all twelve, silently as far as the
+/// gallery grid was concerned - the individual uploads had genuinely
+/// succeeded, so nothing about the per-file progress looked wrong.
+///
 /// Copied from [DeliveryUploadController].
 class DeliveryUploadControllerProvider
     extends
         AutoDisposeNotifierProviderImpl<
           DeliveryUploadController,
-          Map<String, UploadProgress>
+          Map<String, DeliveryUploadItem>
         > {
   /// Uploads proofs into one gig's gallery.
   ///
   /// Separate from the portfolio uploader because the purpose and visibility
   /// differ: these are `proof` assets for one client, not public portfolio
   /// work, and getting that backwards would publish a client's shoot.
+  ///
+  /// Each photo is attached to the gallery on its own, as soon as its own
+  /// watermark preview is ready - not as one call at the end of the batch for
+  /// every photo together. A single all-or-nothing call was the original
+  /// design, and it failed every time a real photo was still processing:
+  /// `add_gallery_items` refuses the *whole* request if even one of the ids in
+  /// it lacks a ready watermark preview, so a batch of twelve photos where the
+  /// twelfth was still generating dropped all twelve, silently as far as the
+  /// gallery grid was concerned - the individual uploads had genuinely
+  /// succeeded, so nothing about the per-file progress looked wrong.
   ///
   /// Copied from [DeliveryUploadController].
   DeliveryUploadControllerProvider(GigResponse gig)
@@ -347,7 +425,7 @@ class DeliveryUploadControllerProvider
   final GigResponse gig;
 
   @override
-  Map<String, UploadProgress> runNotifierBuild(
+  Map<String, DeliveryUploadItem> runNotifierBuild(
     covariant DeliveryUploadController notifier,
   ) {
     return notifier.build(gig);
@@ -372,7 +450,7 @@ class DeliveryUploadControllerProvider
   @override
   AutoDisposeNotifierProviderElement<
     DeliveryUploadController,
-    Map<String, UploadProgress>
+    Map<String, DeliveryUploadItem>
   >
   createElement() {
     return _DeliveryUploadControllerProviderElement(this);
@@ -395,7 +473,7 @@ class DeliveryUploadControllerProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin DeliveryUploadControllerRef
-    on AutoDisposeNotifierProviderRef<Map<String, UploadProgress>> {
+    on AutoDisposeNotifierProviderRef<Map<String, DeliveryUploadItem>> {
   /// The parameter `gig` of this provider.
   GigResponse get gig;
 }
@@ -404,7 +482,7 @@ class _DeliveryUploadControllerProviderElement
     extends
         AutoDisposeNotifierProviderElement<
           DeliveryUploadController,
-          Map<String, UploadProgress>
+          Map<String, DeliveryUploadItem>
         >
     with DeliveryUploadControllerRef {
   _DeliveryUploadControllerProviderElement(super.provider);

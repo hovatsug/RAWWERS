@@ -7,6 +7,7 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_overlay_badge.dart';
 import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
@@ -254,37 +255,15 @@ class _Tile extends StatelessWidget {
         children: [
           RNetworkPhoto(url: item.thumbnailUrl),
           if (item.isCover)
-            const Positioned(left: 4, top: 4, child: _Badge(label: 'Cover')),
+            const Positioned(left: 4, top: 4, child: ROverlayBadge(label: 'Cover')),
           // An untagged photo is invisible to niche filtering, which is how
           // most clients arrive - worth showing on the tile rather than
           // making someone open each one to find out.
           if (item.status != 'ready')
-            const Positioned(right: 4, bottom: 4, child: _Badge(label: 'Processing'))
+            const Positioned(right: 4, bottom: 4, child: ROverlayBadge(label: 'Processing'))
           else if (!tagged)
-            const Positioned(right: 4, bottom: 4, child: _Badge(label: 'Untagged')),
+            const Positioned(right: 4, bottom: 4, child: ROverlayBadge(label: 'Untagged')),
         ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: RSpace.s8, vertical: 2),
-      decoration: BoxDecoration(
-        color: scheme.inverseSurface.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(RRadius.control),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onInverseSurface),
       ),
     );
   }

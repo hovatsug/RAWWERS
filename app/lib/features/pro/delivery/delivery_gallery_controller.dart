@@ -1,7 +1,6 @@
-import 'dart:io';
+import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/models/add_gallery_items_request.dart';
 import 'package:rawwers/api/models/create_proof_gallery_request.dart';
@@ -13,7 +12,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
-import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
+import 'package:rawwers/features/pro/delivery/delivery_photo_picker.dart';
 
 part 'delivery_gallery_controller.g.dart';
 
@@ -114,31 +113,120 @@ class DeliveryGalleryController extends _$DeliveryGalleryController {
   }
 }
 
+/// One photo, somewhere between "picked" and "visible in the gallery below".
+///
+/// Uploading and appearing in the gallery are not the same moment: the
+/// server will not add a photo to a gallery until it has generated the
+/// watermark preview the client is shown, and that generation is real,
+/// measured work - 26 to 50 seconds per photo against this backend, not a
+/// formality. A photo sits as [DeliveryUploadProcessing] for exactly that
+/// long, on its own clock, independent of every other photo in the batch.
+sealed class DeliveryUploadItem {
+  const DeliveryUploadItem({required this.fileName});
+
+  final String fileName;
+}
+
+final class DeliveryUploadUploading extends DeliveryUploadItem {
+  const DeliveryUploadUploading({required super.fileName, required this.sent, required this.total});
+
+  final int sent;
+  final int total;
+
+  double get fraction => total <= 0 ? 0 : (sent / total).clamp(0, 1).toDouble();
+}
+
+/// The file is in storage and has a `MediaAsset`, but the server has not yet
+/// confirmed the watermark preview it requires before this can join the
+/// gallery. Retried automatically in the background; this is progress, not
+/// a problem, and must never be shown the way an error is.
+final class DeliveryUploadProcessing extends DeliveryUploadItem {
+  const DeliveryUploadProcessing({required super.fileName, required this.mediaAssetId});
+
+  final String mediaAssetId;
+}
+
+final class DeliveryUploadFailed extends DeliveryUploadItem {
+  const DeliveryUploadFailed({required super.fileName, required this.message, this.mediaAssetId});
+
+  final String message;
+
+  /// Set when the raw upload itself succeeded and only attaching it to the
+  /// gallery gave up - retrying then needs no re-upload, just another attempt
+  /// at the one call that failed.
+  final String? mediaAssetId;
+}
+
+/// How long to wait before checking again whether a just-uploaded photo's
+/// watermark preview is ready.
+///
+/// A seam, the same shape as [PaymentSheetLauncher] and `GearFilePicker`:
+/// the real delay is real wall-clock time, which a test cannot spend without
+/// either becoming slow or reaching for `fake_async` machinery this codebase
+/// does not otherwise use. Tests override this to return immediately and
+/// assert on the retry *count* and *condition*, not on the clock.
+typedef GalleryAttachBackoff = Future<void> Function(int attempt);
+
+@Riverpod(keepAlive: true)
+GalleryAttachBackoff galleryAttachBackoff(Ref ref) => (attempt) => Future.delayed(_backoffDelay(attempt));
+
+/// 3s, 5s, 8s, 13s, then 15s - about a minute of waiting across the five
+/// retries [DeliveryUploadController] allows, long enough for one slow
+/// photo, not long enough to look permanently stuck.
+Duration _backoffDelay(int attempt) {
+  const delaysSeconds = [3, 5, 8, 13, 15];
+  final seconds = attempt < delaysSeconds.length ? delaysSeconds[attempt] : delaysSeconds.last;
+  return Duration(seconds: seconds);
+}
+
 /// Uploads proofs into one gig's gallery.
 ///
 /// Separate from the portfolio uploader because the purpose and visibility
 /// differ: these are `proof` assets for one client, not public portfolio
 /// work, and getting that backwards would publish a client's shoot.
+///
+/// Each photo is attached to the gallery on its own, as soon as its own
+/// watermark preview is ready - not as one call at the end of the batch for
+/// every photo together. A single all-or-nothing call was the original
+/// design, and it failed every time a real photo was still processing:
+/// `add_gallery_items` refuses the *whole* request if even one of the ids in
+/// it lacks a ready watermark preview, so a batch of twelve photos where the
+/// twelfth was still generating dropped all twelve, silently as far as the
+/// gallery grid was concerned - the individual uploads had genuinely
+/// succeeded, so nothing about the per-file progress looked wrong.
 @riverpod
 class DeliveryUploadController extends _$DeliveryUploadController {
-  @override
-  Map<String, UploadProgress> build(GigResponse gig) => const {};
+  static const _maxAttachAttempts = 6;
 
-  Future<String?> pickAndUpload() async {
-    final files = await ImagePicker().pickMultiImage();
-    if (files.isEmpty) return null;
+  /// Set by [build]'s own `ref.onDispose`, which every provider lifecycle
+  /// guarantees - unlike `ref.mounted`, which the `Ref` type this generates
+  /// does not expose in the riverpod version pinned here. A background retry
+  /// loop
+  /// outlives any single `pickAndUpload` call and is never awaited by it, so
+  /// the screen (and this auto-dispose provider) can be gone before a retry
+  /// completes; writing to `state` after that throws.
+  bool _disposed = false;
+
+  @override
+  Map<String, DeliveryUploadItem> build(GigResponse gig) {
+    _disposed = false;
+    ref.onDispose(() => _disposed = true);
+    return const {};
+  }
+
+  Future<void> pickAndUpload() async {
+    final files = await ref.read(deliveryPhotoPickerProvider).pickMultiple();
+    if (files.isEmpty) return;
 
     final service = ref.read(photoUploadServiceProvider);
-    final uploaded = <String>[];
 
     for (final file in files) {
       final key = '${DateTime.now().microsecondsSinceEpoch}-${file.name}';
-      final length = await file.length();
-      state = {...state, key: UploadProgress(fileName: file.name, sent: 0, total: length)};
+      state = {...state, key: DeliveryUploadUploading(fileName: file.name, sent: 0, total: file.size)};
 
       final result = await service.uploadPhoto(
-        openFile: () => File(file.path).openRead().map(Uint8List.fromList),
-        fileSize: length,
+        openFile: file.open,
+        fileSize: file.size,
         purpose: MediaPurpose.proof,
         // client_only, not public: these are one client's photos, and the
         // gallery decides who sees them.
@@ -147,63 +235,108 @@ class DeliveryUploadController extends _$DeliveryUploadController {
         fileName: file.name,
         onSendProgress: (sent, total) {
           final current = state[key];
-          if (current == null) return;
-          state = {...state, key: current.copyWith(sent: sent)};
+          if (current is! DeliveryUploadUploading) return;
+          state = {...state, key: DeliveryUploadUploading(fileName: file.name, sent: sent, total: current.total)};
         },
       );
 
       switch (result) {
         case Ok(:final value):
-          uploaded.add(value);
-          final current = state[key];
-          if (current != null) state = {...state, key: current.copyWith(sent: current.total)};
+          state = {...state, key: DeliveryUploadProcessing(fileName: file.name, mediaAssetId: value)};
+          // Deliberately not awaited. This file's attach-and-retry runs on
+          // its own clock from here; waiting for it would block the next
+          // file's upload, which is the one thing in this loop that still
+          // has to happen in order.
+          unawaited(_attachWhenReady(key: key, fileName: file.name, mediaAssetId: value));
         case Err(:final failure):
-          final current = state[key];
-          if (current != null) {
-            state = {...state, key: current.copyWith(error: _explain(failure))};
-          }
+          state = {...state, key: DeliveryUploadFailed(fileName: file.name, message: _explain(failure))};
       }
     }
-
-    state = {
-      for (final entry in state.entries)
-        if (entry.value.error != null) entry.key: entry.value,
-    };
-
-    if (uploaded.isEmpty) return 'Nothing uploaded.';
-    return _attach(uploaded);
   }
 
-  /// Uploading a proof does not put it in the gallery - that is a second
-  /// call, and skipping it would leave the pro looking at photos the
-  /// client will never receive.
-  Future<String?> _attach(List<String> mediaAssetIds) async {
-    final gallery = ref.read(deliveryGalleryControllerProvider(gig)).valueOrNull?.gallery;
-    if (gallery == null) return 'The gallery is not ready yet.';
-
+  /// Attaches one photo to the gallery, retrying only the failure the server
+  /// can recover from on its own.
+  ///
+  /// `add_gallery_items` (api/app/api/v1/proof_galleries.py) has exactly one
+  /// validation check: the watermark preview must be `ready`. That is the
+  /// only 422 this call can produce, so a 422 here is retried - it means
+  /// "not yet", not "wrong". Everything else (403 wrong owner, 404 gone,
+  /// network) is a real failure: retrying those would repeat them forever
+  /// while the UI claimed to be making progress.
+  Future<void> _attachWhenReady({required String key, required String fileName, required String mediaAssetId}) async {
     final galleries = ref.read(proofGalleriesClientProvider);
-    final result = await apiCall(
-      () => galleries.addGalleryItemsV1ProofGalleriesGalleryIdItemsPost(
-        galleryId: gallery.id,
-        requestBody: AddGalleryItemsRequest(mediaAssetIds: mediaAssetIds),
-        authorization: null,
-        xMinusUserMinusId: null,
+    final backoff = ref.read(galleryAttachBackoffProvider);
+
+    for (var attempt = 0; attempt < _maxAttachAttempts; attempt++) {
+      // Dismissed while waiting: nothing left to update, and nothing left to
+      // retry for.
+      if (!state.containsKey(key)) return;
+
+      final gallery = ref.read(deliveryGalleryControllerProvider(gig)).valueOrNull?.gallery;
+      if (gallery == null) {
+        _set(key, DeliveryUploadFailed(fileName: fileName, message: 'The gallery is not ready yet.', mediaAssetId: mediaAssetId));
+        return;
+      }
+
+      final result = await apiCall(
+        () => galleries.addGalleryItemsV1ProofGalleriesGalleryIdItemsPost(
+          galleryId: gallery.id,
+          requestBody: AddGalleryItemsRequest(mediaAssetIds: [mediaAssetId]),
+          authorization: null,
+          xMinusUserMinusId: null,
+        ),
+      );
+
+      switch (result) {
+        case Ok():
+          if (_disposed) return;
+          state = {...state}..remove(key);
+          await ref.read(deliveryGalleryControllerProvider(gig).notifier).refresh();
+          return;
+        case Err(:final failure):
+          if (failure is! BusinessError || failure.status != 422) {
+            _set(key, DeliveryUploadFailed(fileName: fileName, message: _explain(failure), mediaAssetId: mediaAssetId));
+            return;
+          }
+      }
+
+      if (!state.containsKey(key)) return;
+      _set(key, DeliveryUploadProcessing(fileName: fileName, mediaAssetId: mediaAssetId));
+      await backoff(attempt);
+    }
+
+    _set(
+      key,
+      DeliveryUploadFailed(
+        fileName: fileName,
+        message: 'Still processing after several tries. Try again in a moment.',
+        mediaAssetId: mediaAssetId,
       ),
     );
-    switch (result) {
-      case Ok():
-        await ref.read(deliveryGalleryControllerProvider(gig).notifier).refresh();
-        return null;
-      case Err(:final failure):
-        return switch (failure) {
-          NetworkError() || Timeout() => 'Photos uploaded, but adding them to the gallery failed. Pull to refresh.',
-          BusinessError(:final message) => message,
-          _ => 'Photos uploaded, but adding them to the gallery failed.',
-        };
-    }
+  }
+
+  /// Retries attaching a photo whose upload already succeeded, without
+  /// asking for the file again - the point of keeping [mediaAssetId] on a
+  /// failed attach rather than dropping it with the error.
+  Future<void> retryAttach(String key) async {
+    final item = state[key];
+    if (item is! DeliveryUploadFailed || item.mediaAssetId == null) return;
+    _set(key, DeliveryUploadProcessing(fileName: item.fileName, mediaAssetId: item.mediaAssetId!));
+    await _attachWhenReady(key: key, fileName: item.fileName, mediaAssetId: item.mediaAssetId!);
   }
 
   void dismiss(String key) => state = {...state}..remove(key);
+
+  /// `_disposed` matters here specifically: this runs at the end of a
+  /// background retry loop that outlives any single `pickAndUpload` call and
+  /// is never awaited by its caller, so the screen (and this provider, which
+  /// is auto-dispose) can be gone before a retry completes. Writing to
+  /// `state` after that throws; every write in this class that follows an
+  /// `await` goes through here rather than assigning `state` directly.
+  void _set(String key, DeliveryUploadItem value) {
+    if (_disposed) return;
+    state = {...state, key: value};
+  }
 
   String _explain(ApiFailure failure) => switch (failure) {
         NetworkError() || Timeout() => 'Upload failed - check your connection.',

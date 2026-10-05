@@ -16,10 +16,17 @@ class RSkeleton extends StatefulWidget {
 }
 
 class _RSkeletonState extends State<RSkeleton> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  )..repeat(reverse: true);
+  // Created in initState, not as a lazy `late final` initialiser - the same
+  // fault HeroCarousel had. Under reduced motion build never reads it, so
+  // dispose() was its first read, and creating a ticker while the element is
+  // deactivating throws.
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+  }
 
   @override
   void dispose() {
@@ -44,9 +51,11 @@ class _RSkeletonState extends State<RSkeleton> with SingleTickerProviderStateMix
     }
 
     if (reduceMotion) {
+      if (_controller.isAnimating) _controller.stop();
       return shape(0.5);
     }
 
+    if (!_controller.isAnimating) _controller.repeat(reverse: true);
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) => shape(0.3 + (_controller.value * 0.3)),

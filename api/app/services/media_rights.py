@@ -210,6 +210,14 @@ def has_valid_entitlement(db: Session, *, gig_id: uuid.UUID, user_id: uuid.UUID,
     return row is not None
 
 
+def latest_submitted_selection(db: Session, *, gallery_id: uuid.UUID) -> ClientSelection | None:
+    return db.execute(
+        select(ClientSelection)
+        .where(ClientSelection.gallery_id == gallery_id, ClientSelection.status.in_([SelectionStatus.submitted, SelectionStatus.locked]))
+        .order_by(ClientSelection.version.desc())
+    ).scalars().first()
+
+
 def selected_asset_ids(db: Session, *, gallery_id: uuid.UUID, submitted_only: bool = True) -> list[uuid.UUID]:
     statuses = [SelectionStatus.submitted, SelectionStatus.locked] if submitted_only else [SelectionStatus.draft, SelectionStatus.submitted, SelectionStatus.locked]
     selection = db.execute(
@@ -223,14 +231,44 @@ def selected_asset_ids(db: Session, *, gallery_id: uuid.UUID, submitted_only: bo
 
 
 def unlocked_final_asset_ids(db: Session, *, gallery: ProofGallery) -> list[uuid.UUID]:
-    selected_ids = selected_asset_ids(db, gallery_id=gallery.id, submitted_only=True)
+    """The photographs this client may download at full resolution, right now.
+
+    The single boundary for releasing finals: the downloads endpoint, the
+    signed-URL path and share-link scoping all answer through it, so a rule
+    added here cannot be missed by one of them.
+
+    A curve-priced booking charges for every selected photograph, so it
+    releases all of them or none, and "all" means the booking is fully paid.
+    Submitting a selection is not paying for it: this used to return the whole
+    selection the moment it was submitted, before the difference charge had
+    been confirmed.
+    """
+    selection = latest_submitted_selection(db, gallery_id=gallery.id)
+    if not selection:
+        return []
+    selected_ids = db.execute(
+        select(ClientSelectionItem.media_asset_id).where(ClientSelectionItem.selection_id == selection.id)
+    ).scalars().all()
     if not selected_ids:
         return []
 
-    # A curve-priced gig charged for every selected photo through
-    # amount_final, so there is no upsell to wait on and nothing to truncate.
-    if is_curve_priced(db.get(Gig, gallery.gig_id)):
-        return selected_ids
+    # Imported here: gallery_completion grants entitlements through this
+    # module, so the reverse import at module level would be a cycle.
+    from app.services.gallery_completion import is_selection_fully_paid
+    from app.services.payment_intents import base_payment_succeeded
+
+    gig = db.get(Gig, gallery.gig_id)
+    if gig is None:
+        return []
+
+    if is_curve_priced(gig):
+        return selected_ids if is_selection_fully_paid(db, gig=gig, gallery=gallery, selection=selection) else []
+
+    # Flat-priced bookings: the photographs the deposit covers unlock at
+    # submit; extras unlock when their own purchase succeeds. Either way the
+    # deposit has to have been collected.
+    if not base_payment_succeeded(db, gig):
+        return []
 
     extras_needed = max(0, len(selected_ids) - gallery.included_photos)
     if extras_needed <= 0:

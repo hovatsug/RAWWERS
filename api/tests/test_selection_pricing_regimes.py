@@ -199,6 +199,16 @@ def test_a_curve_gig_unlocks_every_photo_it_charged_for(client, db_session, monk
     _select_photos(db_session, gallery, pro_id, client_id, count=30)
     _submit(client, gallery, client_id, monkeypatch)
 
+    # "Paid the curve" has to be true. This test used to submit and assert the
+    # unlock without ever settling the difference charge, which is the bug
+    # written down as the expectation: nothing unlocks for an unpaid selection
+    # (tests/test_download_payment_gate.py). What this test is for is the other
+    # half - once the curve is paid, no upsell stands between the client and
+    # the photographs.
+    for payment in db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalars():
+        payment.status = PaymentStatus.succeeded
+    db_session.commit()
+
     db_session.refresh(gallery)
     unlocked = unlocked_final_asset_ids(db_session, gallery=gallery)
     assert len(unlocked) == 30, f"paid the curve for 30 photos, unlocked {len(unlocked)}"

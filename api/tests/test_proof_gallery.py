@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 
 from app.models.gallery import ProofGallery, ProofGalleryItem, UpsellPurchase, UpsellPurchaseStatus
-from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType
+from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.models.media import (
     MediaAsset,
     MediaKind,
@@ -240,6 +240,21 @@ def test_download_endpoint_only_returns_unlocked_originals(client, db_session, m
     pro_id = str(uuid.uuid4())
     client_id = str(uuid.uuid4())
     gig = _create_gig(db_session, client_id, pro_id)
+    # The deposit was collected: a `paid` gig has a settled base payment behind
+    # it, and the download gate checks for it rather than trusting the status.
+    db_session.add(
+        StripePayment(
+            gig_id=gig.id,
+            kind=StripePaymentKind.base,
+            client_user_id=gig.client_user_id,
+            status=PaymentStatus.succeeded,
+            stripe_payment_intent_id=f"pi_base_{gig.id}",
+            amount=gig.amount_minimum,
+            currency="EUR",
+            meta={},
+        )
+    )
+    db_session.commit()
     # 11 gallery photos; client selects exactly the platform-wide minimum
     # of 10, leaving one unselected to prove it's excluded from downloads.
     assets = [_create_photo_asset(db_session, pro_id, with_wm=True) for _ in range(11)]

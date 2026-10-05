@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.models.gallery import ProofGallery
 from app.models.gig import Gig
 from app.services.package_pricing import MINIMUM_PHOTOS, compute_package_total, is_curve_priced
+from app.services.payment_intents import difference_paid
 
 _CENTS = Decimal("0.01")
 
@@ -75,8 +76,16 @@ def _extra_unit_price(db: Session, *, gig: Gig, gallery: ProofGallery) -> Decima
     return applied
 
 
-def _amount_due_for(db: Session, *, gig: Gig, gallery: ProofGallery, photo_count: int) -> tuple[Decimal, Decimal, int]:
+def _amount_due_for(
+    db: Session, *, gig: Gig, gallery: ProofGallery, photo_count: int, already_paid: Decimal = Decimal("0.00")
+) -> tuple[Decimal, Decimal, int]:
     """(total, due, extras_count) for a hypothetical selection of `photo_count`.
+
+    `already_paid` is difference money already collected. It is normally zero
+    - a completed booking no longer accepts a new selection - but a payment
+    that arrived for less than was owed leaves the gallery open with a
+    shortfall, and the quote has to name the shortfall, not the whole
+    difference, or it would show one price while submit charges another.
 
     Evaluating this at n and at n+1 is what makes the marginal price exact by
     construction rather than by a second formula that has to be kept in step.
@@ -88,7 +97,9 @@ def _amount_due_for(db: Session, *, gig: Gig, gallery: ProofGallery, photo_count
         total = compute_package_total(
             db, niche_id=gig.niche_id, entry_rate=gig.entry_rate, photo_count=photo_count
         )
-        due = max(Decimal("0.00"), (total - gig.amount_minimum).quantize(_CENTS, rounding=ROUND_HALF_UP))
+        due = max(
+            Decimal("0.00"), (total - gig.amount_minimum - already_paid).quantize(_CENTS, rounding=ROUND_HALF_UP)
+        )
         return total, due, 0
 
     extras = max(0, photo_count - gallery.included_photos)
@@ -111,12 +122,15 @@ def quote_selection(
     next photo to price, so `next_photo_price` is None rather than a number
     for a photo that does not exist.
     """
-    total, due, extras = _amount_due_for(db, gig=gig, gallery=gallery, photo_count=selected_count)
+    already_paid = difference_paid(db, gig) if is_curve_priced(gig) else Decimal("0.00")
+    total, due, extras = _amount_due_for(
+        db, gig=gig, gallery=gallery, photo_count=selected_count, already_paid=already_paid
+    )
 
     next_price: Decimal | None = None
     if max_photos is None or selected_count < max_photos:
         _next_total, next_due, _next_extras = _amount_due_for(
-            db, gig=gig, gallery=gallery, photo_count=selected_count + 1
+            db, gig=gig, gallery=gallery, photo_count=selected_count + 1, already_paid=already_paid
         )
         next_price = (next_due - due).quantize(_CENTS, rounding=ROUND_HALF_UP)
 
@@ -126,7 +140,7 @@ def quote_selection(
         minimum_photos=MINIMUM_PHOTOS,
         currency=gallery.currency or gig.currency or "EUR",
         amount_total=total,
-        amount_paid=gig.amount_minimum,
+        amount_paid=(gig.amount_minimum + already_paid).quantize(_CENTS, rounding=ROUND_HALF_UP),
         amount_due=due,
         next_photo_price=next_price,
         extras_count=extras,

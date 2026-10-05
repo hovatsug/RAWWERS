@@ -57,7 +57,7 @@ from app.services.client_rewards_pricing import (
     increment_share_link_conversion,
     upsert_extra_image_purchase_snapshot,
 )
-from app.services.media_rights import upsert_gig_entitlement
+from app.services.media_rights import unlocked_final_asset_ids, upsert_gig_entitlement
 from app.services.media_urls import (
     FINALS_DOWNLOAD_URL_TTL_SECONDS,
     GALLERY_PREVIEW_URL_TTL_SECONDS,
@@ -318,7 +318,13 @@ def save_selection(
         raise APIError(code="not_found", message="Gallery not found", status_code=404)
     if gallery.client_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only client can save selection", status_code=403)
-    if gallery.status not in {ProofGalleryStatus.published, ProofGalleryStatus.selection_submitted}:
+    # Published only. A gallery that has moved to selection_submitted has a
+    # completed, paid-for booking behind it; accepting a new selection there
+    # let a client submit a larger one, be handed the already-succeeded
+    # intent, and download photographs nobody had been charged for. A gallery
+    # still awaiting its payment is still `published`, so re-entering after a
+    # decline or a killed app keeps working.
+    if gallery.status != ProofGalleryStatus.published:
         raise APIError(code="invalid_state", message="Gallery is not open for selection", status_code=409)
 
     _validate_selected_items_belong_to_gallery(db, gallery.id, body.media_asset_ids)
@@ -432,6 +438,8 @@ def submit_selection(
         raise APIError(code="not_found", message="Gallery not found", status_code=404)
     if gallery.client_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only client can submit selection", status_code=403)
+    if gallery.status != ProofGalleryStatus.published:
+        raise APIError(code="invalid_state", message="Gallery is not open for selection", status_code=409)
 
     selection = _latest_selection(db, gallery_id)
     if not selection or selection.status != SelectionStatus.draft:
@@ -465,15 +473,19 @@ def submit_selection(
     difference_required = difference_amount > 0
 
     selection.status = SelectionStatus.submitted
-    included_unlock_count = selected_count if curve_priced else min(gallery.included_photos, selected_count)
-    upsert_gig_entitlement(
-        db,
-        gig_id=gallery.gig_id,
-        user_id=gallery.client_user_id,
-        entitlement_type=GigEntitlementType.download_finals,
-        quantity_limit=included_unlock_count,
-        metadata={"source": "selection_submit", "selection_id": str(selection.id)},
-    )
+    if not curve_priced:
+        # The photographs the deposit already paid for. A curve-priced booking
+        # is not granted here: every selected photograph is charged through
+        # amount_final, and the finals are released when that is paid, in
+        # finalize_gallery_and_complete_gig.
+        upsert_gig_entitlement(
+            db,
+            gig_id=gallery.gig_id,
+            user_id=gallery.client_user_id,
+            entitlement_type=GigEntitlementType.download_finals,
+            quantity_limit=min(gallery.included_photos, selected_count),
+            metadata={"source": "selection_submit", "selection_id": str(selection.id)},
+        )
 
     add_admin_audit_log(
         db,
@@ -646,24 +658,14 @@ def get_download_links(
     if is_admin:
         unlocked_ids = list(selected_item_ids)
     else:
-        extras_needed = 0 if is_curve_priced(db.get(Gig, gallery.gig_id)) else max(
-            0, len(selected_item_ids) - gallery.included_photos
-        )
-        purchase = db.execute(
-            select(UpsellPurchase)
-            .where(UpsellPurchase.gallery_id == gallery_id, UpsellPurchase.selection_id == latest_submitted.id)
-            .order_by(UpsellPurchase.created_at.desc())
-        ).scalars().first()
-
-        if extras_needed > 0 and (not purchase or purchase.status != UpsellPurchaseStatus.succeeded):
-            raise APIError(code="payment_required", message="Upsell purchase not completed", status_code=402)
-
-        if extras_needed > 0 or is_curve_priced(db.get(Gig, gallery.gig_id)):
-            unlocked_ids = list(selected_item_ids)
-        else:
-            ordered_ids = _ordered_gallery_asset_ids(db, gallery.id)
-            selected_set = set(selected_item_ids)
-            unlocked_ids = [asset_id for asset_id in ordered_ids if asset_id in selected_set][: gallery.included_photos]
+        # Ask the one function every path releases finals through, once. If it
+        # releases fewer photographs than were selected, something selected is
+        # not paid for: nothing unpaid, or for a flat-priced booking the extras
+        # still owed. This branch used to carry its own copy of the unlock
+        # rules, which for a curve-priced booking asked for no payment at all.
+        unlocked_ids = unlocked_final_asset_ids(db, gallery=gallery)
+        if len(unlocked_ids) < len(selected_item_ids):
+            raise APIError(code="payment_required", message="Payment for this selection is not complete", status_code=402)
 
     # One query for the page, like the gallery and portfolio endpoints. This
     # was the last per-item presign loop left, and it sat on the path a client
@@ -962,14 +964,6 @@ def _validate_selected_items_belong_to_gallery(db: Session, gallery_id: uuid.UUI
     missing = [str(mid) for mid in media_asset_ids if mid not in gallery_item_ids]
     if missing:
         raise APIError(code="validation_error", message="Selection includes assets not in gallery", status_code=422, details={"missing": missing})
-
-
-def _ordered_gallery_asset_ids(db: Session, gallery_id: uuid.UUID) -> list[uuid.UUID]:
-    return db.execute(
-        select(ProofGalleryItem.media_asset_id)
-        .where(ProofGalleryItem.gallery_id == gallery_id)
-        .order_by(ProofGalleryItem.sort_order.asc(), ProofGalleryItem.created_at.asc())
-    ).scalars().all()
 
 
 def _is_admin(db: Session, user_id: uuid.UUID) -> bool:

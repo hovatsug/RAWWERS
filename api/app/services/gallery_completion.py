@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.core.constants import SYSTEM_USER_ID
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, ProofGalleryStatus, UpsellPurchase, UpsellPurchaseStatus
-from app.models.gig import Gig, GigStatus, PaymentStatus, StripePayment, StripePaymentKind
+from app.models.gig import Gig, GigStatus, StripePaymentKind
+from app.models.media_rights import GigEntitlementType
 from app.models.payouts import EarningsSourceType
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.services.disputes import upsert_delivery_sla_snapshot
@@ -25,14 +26,33 @@ from app.services.gamification import queue_evaluate_user_milestones
 from app.services.gig_state import transition_gig
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.package_pricing import is_curve_priced
-from app.services.payment_intents import list_succeeded_payments_for_gig
+from app.services.media_rights import upsert_gig_entitlement
+from app.services.payment_intents import (
+    base_payment_succeeded,
+    difference_owed,
+    difference_paid,
+    list_succeeded_payments_for_gig,
+)
 from app.services.payouts import create_earnings_entry
 from app.services.proof_of_gigs import enqueue_raww_mint
 from app.services.reminders import cancel_proof_selection_reminders
 
 
 def is_selection_fully_paid(db: Session, *, gig: Gig, gallery: ProofGallery, selection: ClientSelection) -> bool:
-    """True once every payment required to unlock this selection has succeeded."""
+    """True once every payment required to unlock this selection has succeeded.
+
+    The one definition of "paid" for a selection: the webhook closes the
+    booking on it and the download paths release finals on it.
+
+    Amounts, not existence. It used to ask whether *a* difference payment had
+    succeeded, so a payment of any size - or one made for an earlier, smaller
+    selection - satisfied it. It now compares what was collected with what the
+    curve says is owed, and confirms the deposit itself was collected rather
+    than assuming it, as the quote's `amount_paid` does.
+    """
+    if not base_payment_succeeded(db, gig):
+        return False
+
     selected_count = db.execute(
         select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
     ).scalar_one()
@@ -46,16 +66,9 @@ def is_selection_fully_paid(db: Session, *, gig: Gig, gallery: ProofGallery, sel
         if not latest_upsell or latest_upsell.status != UpsellPurchaseStatus.succeeded:
             return False
 
-    if gig.amount_final is not None and gig.amount_final > gig.amount_minimum:
-        has_succeeded_difference = db.execute(
-            select(StripePayment.id).where(
-                StripePayment.gig_id == gig.id,
-                StripePayment.kind == StripePaymentKind.difference,
-                StripePayment.status == PaymentStatus.succeeded,
-            )
-        ).first()
-        if not has_succeeded_difference:
-            return False
+    owed = difference_owed(gig)
+    if owed > 0 and difference_paid(db, gig) < owed:
+        return False
 
     return True
 
@@ -72,6 +85,24 @@ def finalize_gallery_and_complete_gig(
     already applied."""
     if gallery.status != ProofGalleryStatus.selection_submitted:
         gallery.status = ProofGalleryStatus.selection_submitted
+
+    # A curve-priced booking charges for every selected photograph through
+    # amount_final, so this is the moment it is known to have been paid for and
+    # the moment the finals are released - not submit, which runs before the
+    # difference charge has been confirmed. (A flat-priced booking's included
+    # photographs were paid at booking, and are unlocked at submit as before.)
+    if is_curve_priced(gig):
+        selected = db.execute(
+            select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
+        ).scalar_one()
+        upsert_gig_entitlement(
+            db,
+            gig_id=gallery.gig_id,
+            user_id=gallery.client_user_id,
+            entitlement_type=GigEntitlementType.download_finals,
+            quantity_limit=selected,
+            metadata={"source": "booking_close", "selection_id": str(selection.id)},
+        )
     upsert_delivery_sla_snapshot(db, gig=gig, finals_delivered_at=datetime.now(timezone.utc))
     enqueue_raww_mint(
         db,

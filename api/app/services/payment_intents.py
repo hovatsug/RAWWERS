@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 import stripe
 from sqlalchemy import select
@@ -10,10 +10,62 @@ from sqlalchemy.orm import Session
 import uuid
 
 from app.core.config import get_settings
+from app.core.errors import APIError
 from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.services.stripe_service import map_intent_status, to_cents
 
 settings = get_settings()
+
+
+_CENTS = Decimal("0.01")
+
+#: A difference payment that has been created but not settled either way.
+#: `failed` is here on purpose: a declined card leaves the PaymentIntent in
+#: `requires_payment_method`, which is exactly the state a retry reuses.
+_OPEN_PAYMENT_STATUSES = (PaymentStatus.pending, PaymentStatus.requires_action, PaymentStatus.failed)
+
+
+def difference_owed(gig: Gig) -> Decimal:
+    """What the curve says this booking owes beyond the deposit.
+
+    Zero until a selection has been submitted, since `amount_final` is only
+    set then, and zero when the selection is cheaper than the deposit - that
+    does not refund, it just owes nothing.
+    """
+    if gig.amount_final is None:
+        return Decimal("0.00")
+    return max(Decimal("0.00"), (gig.amount_final - gig.amount_minimum).quantize(_CENTS, rounding=ROUND_HALF_UP))
+
+
+def difference_paid(db: Session, gig: Gig) -> Decimal:
+    """What has actually been collected against that, from settled payments.
+
+    A sum, not an existence check. "A difference payment succeeded" and "the
+    difference was paid" are different statements, and treating them as one
+    is how a payment for 25 photographs came to unlock 30.
+    """
+    return sum(
+        (p.amount for p in list_succeeded_payments_for_gig(db, gig.id, kinds=[StripePaymentKind.difference])),
+        Decimal("0.00"),
+    )
+
+
+def base_payment_succeeded(db: Session, gig: Gig) -> bool:
+    """Whether the deposit was actually collected.
+
+    The selection quote's `amount_paid` is the gig's minimum, which assumes
+    it was. Anything that releases work has to check rather than assume.
+    """
+    return bool(
+        db.execute(
+            select(StripePayment.id).where(
+                StripePayment.gig_id == gig.id,
+                StripePayment.kind == StripePaymentKind.base,
+                StripePayment.status == PaymentStatus.succeeded,
+            )
+        ).first()
+    )
+
 
 
 def list_succeeded_payments_for_gig(
@@ -57,6 +109,11 @@ def create_or_get_gig_payment_intent(
     extra_metadata: dict | None = None,
     kind: StripePaymentKind = StripePaymentKind.base,
 ):
+    if kind == StripePaymentKind.difference:
+        return _reconcile_difference_intent(
+            db, gig, amount=amount_override, return_url=return_url, extra_metadata=extra_metadata
+        )
+
     existing = db.execute(
         select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == kind)
     ).scalar_one_or_none()
@@ -64,7 +121,22 @@ def create_or_get_gig_payment_intent(
         pi = stripe.PaymentIntent.retrieve(existing.stripe_payment_intent_id)
         return existing, pi
 
-    payable_amount = amount_override if amount_override is not None else gig.amount_minimum
+    return _create_intent(
+        db, gig, kind=kind, payable_amount=amount_override if amount_override is not None else gig.amount_minimum,
+        return_url=return_url, extra_metadata=extra_metadata, idempotency_key=f"gig:{gig.id}:pi:{kind.value}",
+    )
+
+
+def _create_intent(
+    db: Session,
+    gig: Gig,
+    *,
+    kind: StripePaymentKind,
+    payable_amount: Decimal,
+    return_url: str | None,
+    extra_metadata: dict | None,
+    idempotency_key: str,
+):
     return_url_value = return_url or f"{settings.app_public_url.rstrip('/')}/pay/return"
     metadata = {
         "gig_id": str(gig.id),
@@ -91,7 +163,7 @@ def create_or_get_gig_payment_intent(
         currency=gig.currency.lower(),
         metadata=metadata,
         automatic_payment_methods={"enabled": True},
-        idempotency_key=f"gig:{gig.id}:pi:{kind.value}",
+        idempotency_key=idempotency_key,
     )
 
     payment = StripePayment(
@@ -120,3 +192,91 @@ def create_or_get_gig_payment_intent(
     )
     db.flush()
     return payment, pi
+
+
+def _reconcile_difference_intent(
+    db: Session,
+    gig: Gig,
+    *,
+    amount: Decimal | None,
+    return_url: str | None,
+    extra_metadata: dict | None,
+):
+    """The difference intent for what is owed *now*, never a stale one.
+
+    This used to return whatever difference payment already existed for the
+    gig, without looking at its amount. A client who submitted 25 photographs,
+    left, and came back to submit 30 was handed the 25-photograph intent: the
+    app quoted one price and Stripe charged another, and the booking then
+    closed on a payment of the wrong size.
+
+    What Stripe allows decides what is done with an unsettled intent. The
+    rules below were verified against test mode rather than assumed:
+
+      - `requires_payment_method` (fresh, or after a decline): the amount can
+        be changed in place, and the client secret survives, so an app already
+        holding it keeps a valid one.
+      - `requires_action` / `requires_confirmation`: an amount change moves
+        the intent to `requires_confirmation`, a state the payment sheet is not
+        known to handle. It is cancelled and replaced instead.
+      - `processing` / `succeeded`: not changeable, and not replaceable either
+        - the money is moving. Refused, rather than starting a second charge.
+
+    A replacement needs its own idempotency key: Stripe rejects a reused key
+    with different parameters outright.
+    """
+    payable = (amount if amount is not None else difference_owed(gig) - difference_paid(db, gig)).quantize(
+        _CENTS, rounding=ROUND_HALF_UP
+    )
+    if payable <= 0:
+        raise APIError(code="invalid_state", message="Nothing is owed on this selection", status_code=409)
+    target_cents = to_cents(payable)
+
+    rows = db.execute(
+        select(StripePayment)
+        .where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.difference)
+        .order_by(StripePayment.created_at.desc())
+    ).scalars().all()
+    open_row = next((r for r in rows if r.status in _OPEN_PAYMENT_STATUSES), None)
+
+    if open_row is not None:
+        pi = stripe.PaymentIntent.retrieve(open_row.stripe_payment_intent_id)
+        status = getattr(pi, "status", None)
+
+        if status in ("processing", "succeeded"):
+            raise APIError(
+                code="invalid_state",
+                message="A payment for this selection is already being processed. Wait for it to clear.",
+                status_code=409,
+            )
+
+        if status != "canceled":
+            if getattr(pi, "amount", None) == target_cents:
+                return open_row, pi
+
+            if status == "requires_payment_method":
+                pi = stripe.PaymentIntent.modify(
+                    pi.id, amount=target_cents, **({"metadata": extra_metadata} if extra_metadata else {})
+                )
+                open_row.amount = payable
+                open_row.last_error = None
+                open_row.meta = {**open_row.meta, "reconciled_at": datetime.now(timezone.utc).isoformat()}
+                db.flush()
+                return open_row, pi
+
+            stripe.PaymentIntent.cancel(pi.id)
+
+        open_row.status = PaymentStatus.cancelled
+        db.flush()
+
+    key = f"gig:{gig.id}:pi:{StripePaymentKind.difference.value}"
+    attempt = len(rows)
+    return _create_intent(
+        db,
+        gig,
+        kind=StripePaymentKind.difference,
+        payable_amount=payable,
+        return_url=return_url,
+        extra_metadata=extra_metadata,
+        idempotency_key=key if attempt == 0 else f"{key}:{attempt}",
+    )

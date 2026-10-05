@@ -1213,6 +1213,152 @@ rather than separately, since they are the same queue and the same judgement.
 The honest framing for now is that this gate is uniform in what it requires
 and uneven in what it can prove, and it says so everywhere it appears.
 
+## ~~Finals were released before they were paid for, and a selection could be enlarged after the fact~~ — FIXED
+
+Three defects with one root, found by tracing what happens when a client
+*comes back* to a selection rather than the first pass through it. None of it
+was visible from the happy path, and the existing
+`test_declined_difference_charge_leaves_gig_open` asserted gig and gallery
+status only - it never asked whether a download was refused, so it passed with
+the gate wide open.
+
+1. **Curve-priced downloads never checked payment.** `98ead30` removed the
+   "succeeded UpsellPurchase" requirement from the unlock paths to stop photos
+   being billed twice, and never added the difference-payment requirement in
+   its place. `submit_selection` also granted `download_finals` and marked the
+   selection submitted *before* the difference PaymentIntent was confirmed.
+2. **The difference intent went stale.** `create_or_get_gig_payment_intent`
+   returned any existing difference payment without looking at its amount, on a
+   fixed idempotency key. Submit 25, abandon, come back and submit 30, and the
+   client got the 25-photograph intent: the app quoted one price, Stripe took
+   another, and `payment.amount` (which the ledger reads) recorded a third.
+3. **A completed booking accepted a new selection.** `save_selection` allowed
+   `selection_submitted` galleries. Reproduced: pay for 25, save 30, resubmit,
+   get the already-succeeded intent's dead secret, and `/downloads` returns 30.
+
+**Fixed.**
+
+- `unlocked_final_asset_ids` is the single boundary for releasing finals; the
+  downloads endpoint, the signed-URL path and share-link scoping all go through
+  it, and `/downloads` no longer carries its own copy of the rules.
+- `is_selection_fully_paid` compares *amounts*: succeeded difference payments
+  must sum to `amount_final - amount_minimum`, and the base payment must have
+  succeeded (the quote's `amount_paid` assumed it).
+- A curve-priced booking's `download_finals` entitlement is granted in
+  `finalize_gallery_and_complete_gig`, when it is paid, not at submit, so
+  `list_gig_media` does not advertise files the download paths would refuse.
+- The difference intent is reconciled to the balance owed now. Rules verified
+  against Stripe test mode, not assumed: `PaymentIntent.modify(amount)` works
+  from `requires_payment_method` (fresh or after a decline) and keeps the client
+  secret; from `requires_action` it silently moves the intent to
+  `requires_confirmation`, so those are cancelled and replaced; `processing` and
+  `succeeded` are refused with a 409. A replacement needs its own idempotency
+  key, because Stripe rejects a reused key with different parameters.
+- `save_selection` and `submit_selection` require `published`. A gallery still
+  awaiting its payment is still `published`, so re-entry after a decline or a
+  killed app keeps working.
+- The selection quote subtracts difference money already collected, so the
+  quote and the charge stay one number when a payment arrived short.
+- `payment_intent.succeeded` compares `amount_received` with the stored amount.
+  On a mismatch it records `meta.amount_mismatch`, writes an `admin_audit_log`
+  row (`stripe_amount_mismatch`), logs a warning, and stores what Stripe
+  actually collected. This is the observability the stale-intent bug lacked.
+
+Tests: `tests/test_download_payment_gate.py`. Ten of the first fourteen failed
+against unchanged code; four controls (paying unlocks, nothing-owed downloads,
+summing payments, matching amounts) passed, guarding against an over-strict fix.
+Each of fourteen deliberate breakages of the fix turns at least one test red.
+
+**Still open, and worth knowing:**
+
+- **A short payment has no surface in the app.** The ledger now records what
+  Stripe took, so an underpayment leaves the booking open with a real shortfall
+  and the quote names it - but nothing tells the client, and the selection
+  screen starts empty on re-entry (the server has no read for the current
+  selection). Recoverable by re-selecting and submitting; not discoverable.
+- **A payment stuck in `processing`** blocks a re-submit with a 409 until it
+  clears. Correct, and a candidate for the Multibanco work already recorded
+  above, where `payment_intent.processing` is not handled at all.
+
+## Platform fee is re-booked on every payment, including the difference - NOT VERIFIED
+
+Noticed while reading the success webhook, outside the scope of the change
+above and deliberately not touched. `payment_intent.succeeded` writes
+`platform_fee = min(gig.amount_platform_fee, payment.amount)` to the ledger for
+*every* base and difference payment. `gig.amount_platform_fee` is the fee on the
+deposit, so a difference payment appears to recognise it a second time. The
+earnings entry (`create_earnings_entry`, from the split on the whole gross) is a
+separate path and may be right; this is the `LedgerEntryType.platform_fee` line
+only. Needs its own discovery: run a curve booking with a difference charge and
+compare the ledger's fee total with `amount_platform_fee` and with the earnings
+split.
+
+## The legacy upsell intent has the same shape, at lower exposure - LOGGED
+
+`_ensure_upsell_intent` returns an existing intent for the *same selection* and
+updates our row's amount without ever modifying the Stripe intent. It is keyed
+per selection, so it only goes stale when pricing configuration or a
+points-redemption discount changes between creating and paying, not on every
+reselection. Only non-curve bookings (created through `POST /v1/gigs`) reach it.
+Not fixed: much smaller exposure, and it would widen the change above.
+
+## DEPLOY CHECK: paid gigs without a settled base payment now release nothing
+
+The download gate checks that the deposit was actually collected - a succeeded
+`StripePayment` of `kind = base` - instead of trusting `gig.status`. Any gig
+that is `paid`/`completed` with no such row will refuse to release finals.
+That is correct for a real booking, and wrong for historical or seeded data
+that was written without going through Stripe.
+
+**Run before deploying**, against the target database. Gigs that have a
+submitted selection are the only ones a client can be locked out of:
+
+    SELECT g.id, g.status, g.created_at
+    FROM gig g
+    JOIN proof_gallery pg ON pg.gig_id = g.id
+    JOIN client_selection cs ON cs.gallery_id = pg.id AND cs.status IN ('submitted', 'locked')
+    WHERE NOT EXISTS (
+        SELECT 1 FROM stripe_payment p
+        WHERE p.gig_id = g.id AND p.kind = 'base' AND p.status = 'succeeded'
+    );
+
+Any row returned is a client who has chosen photos and would be refused them.
+Fix those by writing the missing payment row (if money genuinely moved) or by
+deciding the gig is fixture data. Not a code change.
+
+**Local dev, 2026-09-19:** zero such rows. The 707 `completed` gigs are seeded
+history (707 distinct clients, no payment rows, none with a gallery or a
+submitted selection). Of the three gigs that have galleries, the end-to-end
+one has a settled base payment; the other two are seed fixtures with nothing
+submitted. One consequence: the fixed-id fixture `...0211` (`proofs_delivered`,
+no payment) can no longer download finals, so a demo built on it needs a base
+payment in the seed.
+
+## PRIORITY: a short payment leaves the booking open and nothing tells the client
+
+Same tier as the notification gaps above - a near-term product problem, not a
+nice-to-have.
+
+After the amount-received reconciliation, an underpayment leaves the booking
+open with a real shortfall, and the selection quote correctly names it. But:
+
+- nothing tells the client. There is no notification, no booking-status change
+  and no banner; the booking simply does not complete;
+- the selection screen starts empty on re-entry, because the server has no read
+  for the current selection, so a client returning to finish paying is looking
+  at a blank selection and the full quoted total, not "you owe EUR 1.00 more";
+- the photographer sees an open booking with no explanation either.
+
+Reaching this state needs a payment Stripe collected for less than we asked,
+which the intent reconciliation is designed to prevent - so it should be rare,
+and when it happens it will be silent. That combination (rare, money, silent)
+is why it is in this tier rather than the backlog.
+
+**What closes it:** a `payment_shortfall` next action on `GET
+/v1/client/bookings/{id}` carrying the amount, a notification to the client on
+the mismatch (the webhook already has both numbers), and a read for the current
+draft selection so the screen can restore it. The first two are small.
+
 ## ~~Nobody could pass the gear gate, and the reader had never seen a real RAW~~ — FIXED
 
 `activate_pro` had refused every photographer without verified gear since the

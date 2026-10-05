@@ -45,7 +45,7 @@ from app.services.growth_engine import maybe_issue_referral_conversion_reward
 from app.services.store import finalize_order_payment_success, handle_order_payment_failure
 from app.services.security import verify_mux_webhook_signature
 from app.services.stripe_connect import status_from_account
-from app.services.stripe_service import construct_stripe_event
+from app.services.stripe_service import construct_stripe_event, to_cents
 from app.models.reward import RedemptionContextType
 from app.models.reward import ReferralConversionType
 from app.models.ops import WebhookSecurityLog
@@ -392,6 +392,41 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         payment.status = PaymentStatus.succeeded
         payment.last_error = None
         payment.meta = {**payment.meta, "paid_at": datetime.now(timezone.utc).isoformat()}
+
+        # Trust what Stripe collected over what we meant to ask for. The row's
+        # amount is our intention; `amount_received` is the fact, and the
+        # ledger and every "is this paid" comparison read the row. They
+        # diverged once already - a stale intent charged the old amount while
+        # the row said the new one - and nothing noticed, because nothing ever
+        # compared them. Absent on some event shapes, in which case there is
+        # nothing to compare.
+        received_cents = obj.get("amount_received")
+        if received_cents is not None and int(received_cents) != to_cents(payment.amount):
+            received_amount = (Decimal(int(received_cents)) / Decimal("100")).quantize(Decimal("0.01"))
+            logger.warning(
+                "stripe_amount_mismatch",
+                extra={
+                    "payment_intent_id": payment_intent_id,
+                    "gig_id": str(gig.id),
+                    "kind": payment.kind.value,
+                    "expected": str(payment.amount),
+                    "received": str(received_amount),
+                },
+            )
+            payment.meta = {
+                **payment.meta,
+                "amount_mismatch": {"expected": str(payment.amount), "received": str(received_amount)},
+            }
+            add_admin_audit_log(
+                db,
+                actor_user_id=SYSTEM_USER_ID,
+                target_type="gig",
+                target_id=str(gig.id),
+                action="stripe_amount_mismatch",
+                reason=f"{payment.kind.value} payment {payment_intent_id}: expected {payment.amount}, Stripe received {received_amount}",
+                metadata={"payment_intent_id": payment_intent_id, "expected": str(payment.amount), "received": str(received_amount)},
+            )
+            payment.amount = received_amount
 
         if gig.status != GigStatus.paid:
             transition = transition_gig(gig, GigStatus.paid, SYSTEM_USER_ID, reason="Stripe payment_intent.succeeded")

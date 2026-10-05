@@ -17,7 +17,7 @@ from app.models.admin import KYCStatus, ProProfile, UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProAvailabilityRule, ProPackage
 from app.models.client_launch import ClientPreference, ClientWaitlist, MatchRequest as MatchRequestLog, MatchResult as MatchResultLog
 from app.models.discovery import ProPublicIndex
-from app.models.gig import Gig, StripePayment, StripePaymentKind
+from app.models.gig import Gig, GigStatus, StripePayment, StripePaymentKind
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.media_rights import GigConsentLevel
@@ -828,6 +828,21 @@ def client_booking_status(
     )
 
 
+# Every status a gig reaches only by way of `payment_pending` succeeding.
+# Cancelled and refunded gigs also fail the `payment_pending` check below but
+# are not "already paid" - conflating them would tell a client whose booking
+# fell through that everything is fine.
+_GIG_STATUSES_AFTER_PAYMENT = {
+    GigStatus.paid,
+    GigStatus.scheduled,
+    GigStatus.shoot_done,
+    GigStatus.proofs_delivered,
+    GigStatus.selection_pending,
+    GigStatus.final_delivered,
+    GigStatus.completed,
+}
+
+
 @router.post("/client/bookings/{booking_id}/pay", response_model=ClientBookingPayResponse)
 def client_booking_pay(
     booking_id: uuid.UUID,
@@ -850,7 +865,16 @@ def client_booking_pay(
     gig = _find_gig_by_booking_request(db, booking_id=booking.id)
     if not gig:
         raise APIError(code="invalid_state", message="Gig not created yet", status_code=409)
-    if gig.status.value != "payment_pending":
+    if gig.status != GigStatus.payment_pending:
+        if gig.status in _GIG_STATUSES_AFTER_PAYMENT:
+            # A client can land here after paying for reasons that have
+            # nothing to do with trying to pay twice: reopening the booking
+            # screen before the success webhook has updated local state, a
+            # stale Pay button that survived a backgrounded app, a retried
+            # request after a flaky connection. Telling this apart from a
+            # genuinely invalid booking lets the client show reassurance and
+            # refresh, instead of the same dead-end error a real failure gets.
+            raise APIError(code="already_paid", message="This booking has already been paid for.", status_code=409)
         raise APIError(code="invalid_state", message="Gig is not awaiting payment", status_code=409)
 
     # The last check before money moves. The hour was free when it was

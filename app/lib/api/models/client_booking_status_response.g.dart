@@ -22,6 +22,9 @@ _ClientBookingStatusResponse _$ClientBookingStatusResponseFromJson(
   nextActions: (json['next_actions'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
+  review: json['review'] == null
+      ? null
+      : ReviewView.fromJson(json['review'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$ClientBookingStatusResponseToJson(
@@ -36,4 +39,5 @@ Map<String, dynamic> _$ClientBookingStatusResponseToJson(
   'proof_gallery_status': instance.proofGalleryStatus,
   'timeline': instance.timeline,
   'next_actions': instance.nextActions,
+  'review': instance.review,
 };

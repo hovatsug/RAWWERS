@@ -32,6 +32,7 @@ class ProSettingsScreen extends ConsumerWidget {
     this.listingPath,
     this.payoutsPath,
     this.availabilityPath,
+    this.reviewsPath,
     super.key,
   });
 
@@ -45,6 +46,7 @@ class ProSettingsScreen extends ConsumerWidget {
   final String? listingPath;
   final String? payoutsPath;
   final String? availabilityPath;
+  final String? reviewsPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -112,6 +114,14 @@ class ProSettingsScreen extends ConsumerWidget {
                         label: 'Your listing',
                         detail: 'See your card exactly as a client does',
                         onTap: () => context.push(listingPath!),
+                      ),
+                      const Divider(height: RSpace.s24),
+                    ],
+                    if (reviewsPath != null) ...[
+                      _NavRow(
+                        label: 'Your reviews',
+                        detail: 'What clients said, and your reply',
+                        onTap: () => context.push(reviewsPath!),
                       ),
                       const Divider(height: RSpace.s24),
                     ],

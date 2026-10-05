@@ -288,5 +288,22 @@ final proofGalleriesClientProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProofGalleriesClientRef = AutoDisposeProviderRef<ProofGalleriesClient>;
+String _$reviewsClientHash() => r'2e8ee1328b851174adef962ee36722bc7fc37db3';
+
+/// See also [reviewsClient].
+@ProviderFor(reviewsClient)
+final reviewsClientProvider = AutoDisposeProvider<ReviewsClient>.internal(
+  reviewsClient,
+  name: r'reviewsClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$reviewsClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ReviewsClientRef = AutoDisposeProviderRef<ReviewsClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

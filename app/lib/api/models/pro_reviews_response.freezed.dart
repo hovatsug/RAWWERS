@@ -17,7 +17,7 @@ mixin _$ProReviewsResponse {
 
 /// total
 @JsonKey(name: ProReviewsResponse.totalKey_) int get total;/// items
-@JsonKey(name: ProReviewsResponse.itemsKey_) List<ReviewView> get items;
+@JsonKey(name: ProReviewsResponse.itemsKey_) List<PublicReviewView> get items;
 /// Create a copy of ProReviewsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -50,7 +50,7 @@ abstract mixin class $ProReviewsResponseCopyWith<$Res>  {
   factory $ProReviewsResponseCopyWith(ProReviewsResponse value, $Res Function(ProReviewsResponse) _then) = _$ProReviewsResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProReviewsResponse.totalKey_) int total,@JsonKey(name: ProReviewsResponse.itemsKey_) List<ReviewView> items
+@JsonKey(name: ProReviewsResponse.totalKey_) int total,@JsonKey(name: ProReviewsResponse.itemsKey_) List<PublicReviewView> items
 });
 
 
@@ -71,7 +71,7 @@ class _$ProReviewsResponseCopyWithImpl<$Res>
   return _then(_self.copyWith(
 total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
 as int,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
-as List<ReviewView>,
+as List<PublicReviewView>,
   ));
 }
 
@@ -156,7 +156,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProReviewsResponse.totalKey_)  int total, @JsonKey(name: ProReviewsResponse.itemsKey_)  List<ReviewView> items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProReviewsResponse.totalKey_)  int total, @JsonKey(name: ProReviewsResponse.itemsKey_)  List<PublicReviewView> items)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProReviewsResponse() when $default != null:
 return $default(_that.total,_that.items);case _:
@@ -177,7 +177,7 @@ return $default(_that.total,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProReviewsResponse.totalKey_)  int total, @JsonKey(name: ProReviewsResponse.itemsKey_)  List<ReviewView> items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProReviewsResponse.totalKey_)  int total, @JsonKey(name: ProReviewsResponse.itemsKey_)  List<PublicReviewView> items)  $default,) {final _that = this;
 switch (_that) {
 case _ProReviewsResponse():
 return $default(_that.total,_that.items);case _:
@@ -197,7 +197,7 @@ return $default(_that.total,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProReviewsResponse.totalKey_)  int total, @JsonKey(name: ProReviewsResponse.itemsKey_)  List<ReviewView> items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProReviewsResponse.totalKey_)  int total, @JsonKey(name: ProReviewsResponse.itemsKey_)  List<PublicReviewView> items)?  $default,) {final _that = this;
 switch (_that) {
 case _ProReviewsResponse() when $default != null:
 return $default(_that.total,_that.items);case _:
@@ -212,15 +212,15 @@ return $default(_that.total,_that.items);case _:
 
 @jsonSerializable
 class _ProReviewsResponse extends ProReviewsResponse {
-  const _ProReviewsResponse({@JsonKey(name: ProReviewsResponse.totalKey_) required this.total, @JsonKey(name: ProReviewsResponse.itemsKey_) required final  List<ReviewView> items}): _items = items,super._();
+  const _ProReviewsResponse({@JsonKey(name: ProReviewsResponse.totalKey_) required this.total, @JsonKey(name: ProReviewsResponse.itemsKey_) required final  List<PublicReviewView> items}): _items = items,super._();
   factory _ProReviewsResponse.fromJson(Map<String, dynamic> json) => _$ProReviewsResponseFromJson(json);
 
 /// total
 @override@JsonKey(name: ProReviewsResponse.totalKey_) final  int total;
 /// items
- final  List<ReviewView> _items;
+ final  List<PublicReviewView> _items;
 /// items
-@override@JsonKey(name: ProReviewsResponse.itemsKey_) List<ReviewView> get items {
+@override@JsonKey(name: ProReviewsResponse.itemsKey_) List<PublicReviewView> get items {
   if (_items is EqualUnmodifiableListView) return _items;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_items);
@@ -260,7 +260,7 @@ abstract mixin class _$ProReviewsResponseCopyWith<$Res> implements $ProReviewsRe
   factory _$ProReviewsResponseCopyWith(_ProReviewsResponse value, $Res Function(_ProReviewsResponse) _then) = __$ProReviewsResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProReviewsResponse.totalKey_) int total,@JsonKey(name: ProReviewsResponse.itemsKey_) List<ReviewView> items
+@JsonKey(name: ProReviewsResponse.totalKey_) int total,@JsonKey(name: ProReviewsResponse.itemsKey_) List<PublicReviewView> items
 });
 
 
@@ -281,7 +281,7 @@ class __$ProReviewsResponseCopyWithImpl<$Res>
   return _then(_ProReviewsResponse(
 total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
 as int,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
-as List<ReviewView>,
+as List<PublicReviewView>,
   ));
 }
 

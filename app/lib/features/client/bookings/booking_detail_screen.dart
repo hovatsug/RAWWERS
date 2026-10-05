@@ -12,6 +12,7 @@ import 'package:rawwers/features/client/bookings/booking_detail_controller.dart'
 import 'package:rawwers/features/client/bookings/booking_payment_controller.dart';
 import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/features/client/bookings/booking_status_display.dart';
+import 'package:rawwers/features/client/bookings/review_panel.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({required this.bookingId, super.key});
@@ -73,6 +74,10 @@ class _Detail extends ConsumerWidget {
           if (booking.proofGalleryId != null) ...[
             const SizedBox(height: RSpace.s16),
             _PhotosPanel(bookingId: bookingId, booking: booking),
+          ],
+          if (reviewPanelFor(bookingId, booking) case final review?) ...[
+            const SizedBox(height: RSpace.s16),
+            review,
           ],
           const SizedBox(height: RSpace.s24),
           Text('History', style: theme.textTheme.titleMedium),

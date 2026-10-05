@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/api/models/pro_reviews_response.dart';
+import 'package:rawwers/features/shared/reviews/pro_reviews_controller.dart';
 import 'package:rawwers/api/models/client_portfolio_item.dart';
 import 'package:rawwers/api/models/client_pro_profile_response.dart';
 import 'package:rawwers/api/models/client_profile_niche.dart';
@@ -76,6 +78,9 @@ ClientProProfileResponse _profile({
 Widget _wrap(Override override) => ProviderScope(
       overrides: [
         override,
+        // The profile's reviews section loads its own list; these tests are
+        // about the rest of the profile, so it has nothing to show.
+        proReviewsProvider(_proId).overrideWith((ref) async => const ProReviewsResponse(total: 0, items: [])),
         // Likewise the calendar, answered directly: these tests pump once
         // and are about the rest of the profile. The calendar's own
         // behaviour is in availability_calendar_test.dart.

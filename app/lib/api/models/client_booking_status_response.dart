@@ -80,6 +80,16 @@
 ///                 "type": "string"
 ///             },
 ///             "title": "Next Actions"
+///         },
+///         "review": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/ReviewView"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -134,6 +144,9 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
     /// nextActions
     @JsonKey(name: ClientBookingStatusResponse.nextActionsKey_)
     List<String>? nextActions,
+
+    /// review
+    @JsonKey(name: ClientBookingStatusResponse.reviewKey_) ReviewView? review,
   }) = _ClientBookingStatusResponse;
 
   factory ClientBookingStatusResponse.fromJson(Map<String, dynamic> json) =>
@@ -156,4 +169,6 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
   static const String timelineKey_ = r'timeline';
 
   static const String nextActionsKey_ = r'next_actions';
+
+  static const String reviewKey_ = r'review';
 }

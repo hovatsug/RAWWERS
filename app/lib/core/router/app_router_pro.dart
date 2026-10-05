@@ -8,6 +8,7 @@ import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
 import 'package:rawwers/core/launch/launch_screen.dart';
 import 'package:rawwers/features/pro/availability/availability_screen.dart';
+import 'package:rawwers/features/pro/reviews/reviews_screen.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
 import 'package:rawwers/features/pro/gear/gear_screen.dart';
 import 'package:rawwers/features/pro/gear_verification/gear_verification_screen.dart';
@@ -84,6 +85,7 @@ abstract final class ProRoute {
   static const payouts = '$dashboard/payouts';
   static const availability = '$dashboard/availability';
   static const listing = '$dashboard/listing';
+  static const reviews = '$dashboard/reviews';
   static const onboarding = '$dashboard/getting-set-up';
   static const verifyEmail = '$dashboard/verify-email';
 
@@ -179,6 +181,7 @@ GoRouter proRouter(Ref ref) {
                         listingPath: ProRoute.listing,
                         payoutsPath: ProRoute.payouts,
                         availabilityPath: ProRoute.availability,
+                        reviewsPath: ProRoute.reviews,
                       )),
                   _editor('profile', (context, state) => const ProProfileEditScreen()),
                   _editor('gear', (context, state) => const GearScreen()),
@@ -188,6 +191,7 @@ GoRouter proRouter(Ref ref) {
                   _editor('payouts', (context, state) => const PayoutsScreen()),
                   _editor('availability', (context, state) => const AvailabilityScreen()),
                   _editor('verify-email', (context, state) => const VerifyEmailScreen()),
+                  _editor('reviews', (context, state) => const ProReviewsScreen()),
                   _editor('listing', (context, state) => const ListingPreviewScreen(
                         onboardingPath: ProRoute.onboarding,
                         pricingPath: ProRoute.pricing,

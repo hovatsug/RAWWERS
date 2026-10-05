@@ -10,7 +10,7 @@ _ProReviewsResponse _$ProReviewsResponseFromJson(Map<String, dynamic> json) =>
     _ProReviewsResponse(
       total: (json['total'] as num).toInt(),
       items: (json['items'] as List<dynamic>)
-          .map((e) => ReviewView.fromJson(e as Map<String, dynamic>))
+          .map((e) => PublicReviewView.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 

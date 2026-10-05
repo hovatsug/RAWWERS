@@ -8,7 +8,7 @@
 ///         "items": {
 ///             "type": "array",
 ///             "items": {
-///                 "$ref": "#/components/schemas/ReviewView"
+///                 "$ref": "#/components/schemas/PublicReviewView"
 ///             },
 ///             "title": "Items"
 ///         }
@@ -37,7 +37,7 @@ abstract class ProReviewsResponse with _$ProReviewsResponse {
 
     /// items
     @JsonKey(name: ProReviewsResponse.itemsKey_)
-    required List<ReviewView> items,
+    required List<PublicReviewView> items,
   }) = _ProReviewsResponse;
 
   factory ProReviewsResponse.fromJson(Map<String, dynamic> json) =>

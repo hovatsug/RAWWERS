@@ -8,12 +8,15 @@ import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/api/models/client_profile_niche.dart';
 import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/shared/reviews/review_display.dart';
+import 'package:rawwers/features/shared/reviews/pro_reviews_controller.dart';
 import 'package:rawwers/features/client/discover/discover_controller.dart';
 import 'package:rawwers/features/client/booking_request/booking_request_sheet.dart';
 import 'package:rawwers/features/client/discover/widgets/location_prompt.dart';
@@ -102,6 +105,7 @@ class _ProfileState extends State<_Profile> {
       onRefresh: () async {
         final container = ProviderScope.containerOf(context);
         container.invalidate(proProfileProvider(profile.proUserId));
+        container.invalidate(proReviewsProvider(profile.proUserId));
         container.invalidate(proAvailabilityProvider);
       },
       child: CustomScrollView(
@@ -291,6 +295,21 @@ class _ProfileState extends State<_Profile> {
                 ),
               ),
             ),
+          // Only once the profile says there are reviews. With none, the
+          // "No reviews yet" line under the name already says so, and an empty
+          // heading here would read as a list that failed to load.
+          if (profile.reviewCount > 0)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                RSpace.s16,
+                0,
+                RSpace.s16,
+                RSpace.s32,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: _Reviews(proUserId: profile.proUserId),
+              ),
+            ),
         ],
       ),
     );
@@ -362,6 +381,56 @@ class _WhenTheyAreFreeState extends State<_WhenTheyAreFree> {
         ),
       ],
     );
+  }
+}
+
+/// What clients who booked this photographer said.
+class _Reviews extends ConsumerWidget {
+  const _Reviews({required this.proUserId});
+
+  final String proUserId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final reviews = ref.watch(proReviewsProvider(proUserId));
+
+    return switch (reviews) {
+      // The count on the profile can run ahead of the list - a review hidden
+      // since the index was built. Nothing to show is then nothing, not an
+      // empty section.
+      AsyncData(:final value) when value.items.isEmpty =>
+        const SizedBox.shrink(),
+      AsyncData(:final value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Reviews', style: theme.textTheme.titleMedium),
+          const SizedBox(height: RSpace.s12),
+          for (final review in value.items) ...[
+            RCard(child: ReviewContent.public(review)),
+            const SizedBox(height: RSpace.s12),
+          ],
+          if (value.total > value.items.length)
+            Text(
+              'Showing the ${value.items.length} most recent of ${value.total} reviews.',
+              style: theme.textTheme.bodySmall,
+            ),
+        ],
+      ),
+      AsyncError() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Reviews', style: theme.textTheme.titleMedium),
+          const SizedBox(height: RSpace.s8),
+          Text('Could not load reviews.', style: theme.textTheme.bodyMedium),
+          RTextLink(
+            label: 'Try again',
+            onPressed: () => ref.invalidate(proReviewsProvider(proUserId)),
+          ),
+        ],
+      ),
+      _ => const RSkeleton(height: 96),
+    };
   }
 }
 

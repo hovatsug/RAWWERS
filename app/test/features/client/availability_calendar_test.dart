@@ -18,11 +18,13 @@ import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/api_client/client_launch_client.dart';
 import 'package:rawwers/api/models/client_pro_profile_response.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
+import 'package:rawwers/api/models/pro_reviews_response.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
+import 'package:rawwers/features/shared/reviews/pro_reviews_controller.dart';
 
 import '../../support/fake_http_client_adapter.dart';
 
@@ -146,6 +148,7 @@ Future<void> _pump(WidgetTester tester, _Backend backend) async {
         clientLaunchClientProvider.overrideWithValue(ClientLaunchClient(dio)),
         availabilityTodayProvider.overrideWithValue(_todayUtc),
         proProfileProvider(_proId).overrideWith((ref) async => _profile()),
+        proReviewsProvider(_proId).overrideWith((ref) async => const ProReviewsResponse(total: 0, items: [])),
       ],
       // A router, because sending a request opens the booking it created.
       child: MaterialApp.router(

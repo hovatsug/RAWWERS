@@ -6,7 +6,7 @@ part of 'home_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$homeControllerHash() => r'ca127273dab3a3e99602638e961d10e57aa7a1b7';
+String _$homeControllerHash() => r'34959e1f359240eb8366f30427e8a5749e0a1e8b';
 
 /// The browsing home screen.
 ///

@@ -11,6 +11,7 @@ import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
 import 'package:rawwers/features/client/gallery/selection_gallery_screen.dart';
 import 'package:rawwers/features/client/client_shell.dart';
 import 'package:rawwers/features/client/discover/home_screen.dart';
+import 'package:rawwers/features/client/discover/niche_screen.dart';
 import 'package:rawwers/features/client/messages/messages_screen.dart';
 import 'package:rawwers/features/client/messages/thread_screen.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
@@ -53,6 +54,10 @@ abstract final class ClientRoute {
   /// Nested under Discover so the bottom nav stays put and back returns to
   /// the results the client was browsing, at the scroll position they left.
   static String proProfile(String proUserId) => '$discover/pro/$proUserId';
+
+  /// One niche's page. Where its tile, its row heading and its hero slide all
+  /// lead - one destination, however someone got there.
+  static String niche(String nicheSlug) => '$discover/niche/$nicheSlug';
 
   static String bookingDetail(String bookingId) => '$bookings/$bookingId';
 
@@ -111,12 +116,20 @@ GoRouter clientRouter(Ref ref) {
                 // as the primary way in. Search still exists and is reachable
                 // from here; it is no longer the first thing anyone meets.
                 builder: (context, state) => ClientHomeScreen(
-                  onOpenPro: (proUserId) => context.push('${ClientRoute.discover}/pro/$proUserId'),
+                  onOpenPro: (proUserId) => context.push(ClientRoute.proProfile(proUserId)),
+                  onOpenNiche: (nicheSlug) => context.push(ClientRoute.niche(nicheSlug)),
                 ),
                 routes: [
                   GoRoute(
                     path: 'pro/:proUserId',
                     builder: (context, state) => ProProfileScreen(proUserId: state.pathParameters['proUserId']!),
+                  ),
+                  GoRoute(
+                    path: 'niche/:nicheSlug',
+                    builder: (context, state) => NicheScreen(
+                      nicheSlug: state.pathParameters['nicheSlug']!,
+                      onOpenPro: (proUserId) => context.push(ClientRoute.proProfile(proUserId)),
+                    ),
                   ),
                 ],
               ),

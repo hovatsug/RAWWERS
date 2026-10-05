@@ -5,8 +5,7 @@ import 'package:rawwers/api/models/client_home_row.dart';
 class HeroSlide {
   const HeroSlide({required this.nicheSlug, required this.title, required this.card});
 
-  /// The niche this slide is about. Kept so the tap target can become the
-  /// niche's own page once that exists, without changing what a slide is.
+  /// The niche this slide is about, and the page a home-screen slide opens.
   final String nicheSlug;
 
   /// The row's own title, server-composed - "Weddings in Lisbon". Not rebuilt
@@ -61,6 +60,32 @@ List<HeroSlide> heroSlidesFrom(List<ClientHomeRow> rows) {
       );
       break;
     }
+  }
+  return slides;
+}
+
+/// How many photographers lead a niche's own page. Enough to show the niche's
+/// range; past it the carousel stops being a showcase and becomes the row
+/// underneath it again.
+const nicheHeroSize = 5;
+
+/// The hero for one niche's page: its top photographers, from the ranked row
+/// the server sent.
+///
+/// The home screen's rules, applied to one niche instead of across several:
+/// ranked order untouched, each photographer once, and nobody without a cover.
+/// A thin niche gets fewer slides - one, or none - rather than padding.
+List<HeroSlide> nicheHeroSlidesFrom(List<ClientHomeRow> rows, {required String nicheSlug}) {
+  final ranked = rows.where((row) => row.key == 'niche_ranked').firstOrNull;
+  if (ranked == null) return const [];
+
+  final slides = <HeroSlide>[];
+  final used = <String>{};
+  for (final card in ranked.items ?? const <ClientDiscoverCard>[]) {
+    if (slides.length == nicheHeroSize) break;
+    final cover = card.coverUrl;
+    if (cover == null || cover.isEmpty || !used.add(card.proUserId)) continue;
+    slides.add(HeroSlide(nicheSlug: nicheSlug, title: ranked.title, card: card));
   }
   return slides;
 }

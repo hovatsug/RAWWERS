@@ -408,3 +408,184 @@ def test_an_untagged_photographer_keeps_their_profile_cover(client, db_session, 
     rows = _home(client, viewer)
     card = next(i for i in rows["niche:weddings"]["items"] if i["display_name"] == "Untagged")
     assert card["display_name"] == "Untagged"  # present, not dropped
+
+
+# ---------------------------------------------------------------------------
+# One niche's page: the same rows, narrowed to a niche.
+#
+# Same request, same rules, one extra parameter. Everything above has to stay
+# true inside a niche - the fairness split, absent-not-empty, the gates - and
+# the niche's own membership rule has to hold in every row, not just the one
+# the home screen already had.
+# ---------------------------------------------------------------------------
+
+
+def _niche_page(client, user_id, niche_slug, *, city="Lisbon", country="PT", expect=200):
+    resp = client.get(
+        f"/v1/client/home?city={city}&country={country}&niche_slug={niche_slug}",
+        headers={"X-User-Id": str(user_id)},
+    )
+    assert resp.status_code == expect, resp.text
+    return resp.json()
+
+
+def _rows_of(body):
+    return {row["key"]: row for row in body["rows"]}
+
+
+def _names(row):
+    return [i["display_name"] for i in row["items"]]
+
+
+def test_the_niche_page_names_its_niche(client, db_session, viewer):
+    """The page's title comes from the server, like every row title does."""
+    _city(db_session)
+    pro = _pro(db_session, name="Wed", gigs=3, niche_slug="weddings")
+    _skill(db_session, pro, "weddings", SkillTier.pro)
+
+    body = _niche_page(client, viewer, "weddings")
+    assert body["niche"]["slug"] == "weddings"
+    assert body["niche"]["name"] == "Weddings"
+
+
+def test_the_home_screen_has_no_niche(client, db_session, viewer):
+    _city(db_session)
+    _pro(db_session, name="Wed", gigs=3)
+    resp = client.get("/v1/client/home?city=Lisbon&country=PT", headers={"X-User-Id": str(viewer)})
+    assert resp.json()["niche"] is None
+
+
+def test_every_row_on_a_niche_page_holds_only_that_niche(client, db_session, viewer):
+    """Membership is the home row's rule - primary, or genuinely skilled -
+    applied to every row, including new and experienced. A food photographer
+    with a rookie filler wedding skill is in none of them."""
+    _city(db_session)
+    new_wed = _pro(db_session, name="New Wed", gigs=0, niche_slug="weddings")
+    _skill(db_session, new_wed, "weddings", SkillTier.rookie)
+    old_wed = _pro(db_session, name="Old Wed", gigs=30, niche_slug="weddings")
+    _skill(db_session, old_wed, "weddings", SkillTier.pro)
+    second = _pro(db_session, name="Portraits Too", gigs=12, niche_slug="portraits")
+    _skill(db_session, second, "weddings", SkillTier.elite)
+
+    for name, gigs in (("New Food", 0), ("Old Food", 30)):
+        food = _pro(db_session, name=name, gigs=gigs, niche_slug="food")
+        _skill(db_session, food, "food", SkillTier.pro)
+        _skill(db_session, food, "weddings", SkillTier.rookie)
+
+    rows = _rows_of(_niche_page(client, viewer, "weddings"))
+    everyone = {n for row in rows.values() for n in _names(row)}
+    assert everyone == {"New Wed", "Old Wed", "Portraits Too"}, everyone
+
+
+def test_the_fairness_split_holds_inside_a_niche(client, db_session, viewer):
+    """New and experienced stay separate on a niche page exactly as on the
+    home screen: a zero-gig photographer is never in the experience row, and
+    the two rows never share anyone."""
+    _city(db_session)
+    for name, gigs in (("New A", 0), ("New B", 0), ("Vet A", 40), ("Vet B", 5)):
+        pro = _pro(db_session, name=name, gigs=gigs, niche_slug="weddings")
+        _skill(db_session, pro, "weddings", SkillTier.pro if gigs else SkillTier.rookie)
+    # Outside the niche, one on each side of the split. Without them this test
+    # passed against an endpoint that ignored the niche entirely.
+    for name, gigs in (("New Food", 0), ("Vet Food", 90)):
+        pro = _pro(db_session, name=name, gigs=gigs, niche_slug="food")
+        _skill(db_session, pro, "food", SkillTier.pro)
+
+    rows = _rows_of(_niche_page(client, viewer, "weddings"))
+    newcomers = _names(rows["new_photographers"])
+    experienced = _names(rows["most_experienced"])
+
+    assert sorted(newcomers) == ["New A", "New B"]
+    assert experienced == ["Vet A", "Vet B"], "experience row not ordered by completed work"
+    assert set(newcomers).isdisjoint(experienced), "the two rows overlap"
+
+
+def test_a_niche_page_offers_only_rows_it_can_name_honestly(client, db_session, viewer):
+    """No "top rated" (ranking_score is a composite, so the name would be
+    false) and no "available this week" (the index has no availability to
+    sort on). The same rule the home screen's docstring states."""
+    _city(db_session)
+    for name, gigs in (("New", 0), ("Vet", 20)):
+        pro = _pro(db_session, name=name, gigs=gigs, niche_slug="weddings")
+        _skill(db_session, pro, "weddings", SkillTier.pro)
+
+    body = _niche_page(client, viewer, "weddings")
+    assert [row["key"] for row in body["rows"]] == ["new_photographers", "most_experienced", "niche_ranked"]
+    titles = [row["title"] for row in body["rows"]]
+    assert titles == ["New in Weddings", "Most experienced in Weddings", "Weddings in Lisbon"]
+    for title in titles:
+        assert "rated" not in title.lower() and "available" not in title.lower()
+
+
+def test_no_row_on_a_niche_page_is_itself_a_niche_row(client, db_session, viewer):
+    """A `niche:` key renders as a tile that opens the niche's page. On that
+    page it would be a tile linking to where you already are."""
+    _city(db_session)
+    pro = _pro(db_session, name="Wed", gigs=3)
+    _skill(db_session, pro, "weddings", SkillTier.pro)
+
+    keys = [row["key"] for row in _niche_page(client, viewer, "weddings")["rows"]]
+    assert not any(key.startswith("niche:") for key in keys), keys
+
+
+def test_a_thin_niche_leaves_rows_out_rather_than_empty(client, db_session, viewer):
+    """One brand-new wedding photographer: a new row and the ranked row, and
+    no experience row at all - not an empty one."""
+    _city(db_session)
+    pro = _pro(db_session, name="Only One", gigs=0, niche_slug="weddings")
+    _skill(db_session, pro, "weddings", SkillTier.rookie)
+
+    rows = _rows_of(_niche_page(client, viewer, "weddings"))
+    assert set(rows) == {"new_photographers", "niche_ranked"}
+    assert all(row["items"] for row in rows.values()), "an empty row was returned"
+
+
+def test_a_niche_nobody_here_works_in_is_empty_not_missing(client, db_session, viewer):
+    """A real niche with nobody in this city: no rows, and still the niche -
+    so the page can say "no wedding photographers here yet" instead of
+    treating a real category as a broken link."""
+    _city(db_session)
+    pro = _pro(db_session, name="Food", gigs=3, niche_slug="food")
+    _skill(db_session, pro, "food", SkillTier.pro)
+
+    body = _niche_page(client, viewer, "weddings")
+    assert body["rows"] == []
+    assert body["niche"]["slug"] == "weddings"
+
+
+def test_an_unknown_niche_is_not_found(client, db_session, viewer):
+    _city(db_session)
+    _niche_page(client, viewer, "no-such-niche", expect=404)
+
+
+def test_every_row_on_a_niche_page_shows_that_niche_s_work(client, db_session, viewer):
+    """The home screen swaps in niche covers for its niche rows only. On a
+    niche page every row is about the niche, so the newcomer row showing a
+    portrait on the wedding page would be the same visible wrongness."""
+    _city(db_session)
+    pro = _pro(db_session, name="Both", gigs=0, niche_slug="weddings")
+    _skill(db_session, pro, "weddings", SkillTier.rookie)
+    _tagged_photo(db_session, pro, "portraits", "a-portrait")
+    _tagged_photo(db_session, pro, "weddings", "a-wedding")
+
+    rows = _rows_of(_niche_page(client, viewer, "weddings"))
+    for key in ("new_photographers", "niche_ranked"):
+        card = next(i for i in rows[key]["items"] if i["display_name"] == "Both")
+        assert "a-wedding" in card["cover_url"], f"{key} is not showing wedding work"
+
+
+def test_a_niche_page_is_not_served_the_home_screen_from_cache(client, db_session, viewer):
+    """Same endpoint, same city: if the cache key ignored the niche, whichever
+    was asked for first would be served for both."""
+    _city(db_session)
+    wed = _pro(db_session, name="Wed", gigs=3, niche_slug="weddings")
+    _skill(db_session, wed, "weddings", SkillTier.pro)
+    food = _pro(db_session, name="Food", gigs=3, niche_slug="food")
+    _skill(db_session, food, "food", SkillTier.pro)
+
+    home = _home(client, viewer)
+    assert "niche:food" in home
+
+    page = _niche_page(client, viewer, "weddings")
+    assert "Food" not in {n for row in page["rows"] for n in _names(row)}
+    assert _niche_page(client, viewer, "food")["niche"]["slug"] == "food"

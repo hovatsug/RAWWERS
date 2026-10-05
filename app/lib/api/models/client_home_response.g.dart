@@ -12,10 +12,14 @@ _ClientHomeResponse _$ClientHomeResponseFromJson(Map<String, dynamic> json) =>
           ?.map((e) => ClientHomeRow.fromJson(e as Map<String, dynamic>))
           .toList(),
       guestLimited: json['guest_limited'] as bool? ?? false,
+      niche: json['niche'] == null
+          ? null
+          : ClientHomeNiche.fromJson(json['niche'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$ClientHomeResponseToJson(_ClientHomeResponse instance) =>
     <String, dynamic>{
       'rows': instance.rows,
       'guest_limited': instance.guestLimited,
+      'niche': instance.niche,
     };

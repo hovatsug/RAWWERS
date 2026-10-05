@@ -54,6 +54,7 @@ class HomeController extends _$HomeController {
       () => client.clientHomeV1ClientHomeGet(
         country: location.country,
         city: location.city,
+        nicheSlug: null,
         authorization: null,
         xMinusUserMinusId: null,
       ),

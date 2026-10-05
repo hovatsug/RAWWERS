@@ -398,8 +398,19 @@ class ClientHomeRow(BaseModel):
     items: list[ClientDiscoverCard] = Field(default_factory=list)
 
 
+class ClientHomeNiche(BaseModel):
+    """The niche a home response is narrowed to."""
+
+    slug: str
+    name: str
+
+
 class ClientHomeResponse(BaseModel):
     rows: list[ClientHomeRow] = Field(default_factory=list)
     # True when the caller is a guest, so the app can show the sign-in prompt
     # the deeper-browsing limit will eventually enforce.
     guest_limited: bool = False
+    # Set when the request asked for one niche's page, even when `rows` is
+    # empty: a real niche with nobody in this city is an honest absence, and
+    # the app needs the name to say so rather than treat it as a dead link.
+    niche: ClientHomeNiche | None = None

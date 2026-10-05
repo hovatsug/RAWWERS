@@ -26,11 +26,9 @@ class HeroCarousel extends StatefulWidget {
 
   final List<HeroSlide> slides;
 
-  /// Opens the slide. Currently the photographer's profile: the niche's own
-  /// page does not exist yet, and sending someone to a route that is not
-  /// built is worse than sending them to the photographer the slide is
-  /// actually showing. When that page lands this is where it hooks in - the
-  /// slide already carries its `nicheSlug` for exactly that.
+  /// Opens the slide. The caller decides where: on the home screen a slide
+  /// stands for its niche and opens the niche's page; on that page every
+  /// slide is the same niche, so there it opens the photographer.
   final void Function(HeroSlide slide) onOpen;
 
   final double height;

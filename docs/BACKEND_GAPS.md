@@ -1614,6 +1614,22 @@ succeed (the "Active" filter includes unpaid gigs, whose cards used to lead to a
 error screen). The classification is an exhaustive `switch`, so a status added on
 the server has to be decided on rather than defaulting to openable.
 
+## The search screen is unreachable, and the router says otherwise - LOGGED
+
+`DiscoverScreen` (`app/lib/features/client/discover/discover_screen.dart`) - the plain search-and-filter list, backed by `GET /v1/client/discover` - is not mounted on any route. Nothing constructs it outside its own file. The comment on the `/discover` route in `app_router_client.dart` says "Search still exists and is reachable from here"; it is not reachable from anywhere.
+
+So a client has no way to search by name, filter by price, or see more than a row's twelve photographers. The niche pages cover browsing one niche; they do not replace search.
+
+**Not fixed here.** Found while building the niche pages and kept out of that change. The fix is an entry point from the home screen (and correcting the comment), plus a decision on whether `/client/discover`'s niche filter should move off `top_niches` onto the membership rule the home rows use - it still has the top-three bug the home rows were fixed for.
+
+## Niche tiles exist only on the home screen - LOGGED
+
+`RNicheTile` has one caller: the heading of a niche row on the home screen. The niche-page design names three ways in - a tile, a row heading, a hero slide - and assumed tiles on a filter screen as well. There is no such screen with tiles (see above: the search screen has none and is not reachable).
+
+The tiles that do exist are already live: a tile shows the first card's niche cover, which is the top-ranked photographer in that niche in the city. The app bundles no niche imagery at all (`assets/` holds only fonts), so there is nothing static to replace.
+
+**Not fixed here.** Adding a row of niche tiles to search, when search gets an entry point, is its own small task. The niche page route (`ClientRoute.niche`) is what any new tile should open.
+
 ## Review tags exist in the model with no vocabulary, and nothing sends them - LOGGED
 
 `Review.tags` is a JSONB list of free strings. `CreateReviewRequest` accepts any strings, `_normalize_tags` lowercases and dedupes them, and `recompute_pro_reputation` counts them into `ProReputation.tag_counts`. Nothing defines which tags exist, and no screen shows the counts.

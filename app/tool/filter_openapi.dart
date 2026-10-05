@@ -24,7 +24,7 @@ const _excludedPathPrefixes = ['/v1/admin/'];
 // without pulling in repair tickets, partners and loaner requests. An
 // allowlist entry here beats re-tagging the backend, which would rename
 // every generated method for the sake of a client-side concern.
-const _includedPathPrefixes = ['/v1/pro/me/gear-items'];
+const _includedPathPrefixes = ['/v1/pro/me/gear-items', '/v1/pro/me/gear-verifications'];
 
 const _httpMethods = {'get', 'post', 'put', 'patch', 'delete', 'head', 'options'};
 

@@ -37,6 +37,7 @@ from app.schemas.client_launch import (
     ClientBookingStatusResponse,
     ClientDiscoverCard,
     ClientDiscoverResponse,
+    ClientHomeNiche,
     ClientHomeResponse,
     ClientHomeRow,
     ClientMatchCard,
@@ -1009,6 +1010,7 @@ def _row_base_query(country: str, city: str):
 def client_home(
     country: str,
     city: str,
+    niche_slug: str | None = None,
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_read_session),
     db_write: Session = Depends(get_db_write_session),
@@ -1028,20 +1030,39 @@ def client_home(
     inventing one - "top rated" is not here, because ranking_score is a
     composite of completeness, portfolio size, gigs, rating and tier, and a row
     named for rating that sorts by a composite is a row with a false name.
+
+    With `niche_slug`, the same rows narrowed to one niche: its page, rather
+    than a second endpoint with a second copy of these rules. Every row takes
+    the niche's membership rule and shows that niche's work, and the ranked
+    niche row the home screen shows becomes `niche_ranked` - a `niche:` key
+    there would render as a tile linking to the page it is already on.
     """
     _enforce_city_gate(db, country=country, city=city, user=user)
     _enforce_guest_mode(db, user=user)
     enforce_named_rate_limit("public_read", principal=str(user.user_id) if user else "guest")
 
+    scope: Niche | None = None
+    if niche_slug is not None:
+        scope = db.execute(
+            select(Niche).where(Niche.slug == niche_slug, Niche.is_active.is_(True))
+        ).scalar_one_or_none()
+        if scope is None:
+            raise APIError(code="not_found", message="Niche not found", status_code=404)
+
     cache_key = (
         f"client:home:v{get_public_index_version()}:country={country.upper()}:"
-        f"city={city.lower()}:guest={not bool(user)}"
+        f"city={city.lower()}:guest={not bool(user)}:niche={scope.slug if scope else ''}"
     )
     cached = cache_get_json(cache_key)
     if cached:
         return ClientHomeResponse.model_validate(cached)
 
     base = _row_base_query(country, city)
+    if scope is not None:
+        base = _in_niche(base, scope.id)
+    # "New photographers" on the home screen, "New in Weddings" on its page.
+    new_title = f"New in {scope.name}" if scope else "New photographers"
+    experienced_title = f"Most experienced in {scope.name}" if scope else "Most experienced"
     plans: list[tuple[str, str, str | None, list[ProPublicIndex]]] = []
 
     # Deliberately its own row rather than a weighting hidden inside another
@@ -1057,7 +1078,7 @@ def client_home(
     plans.append(
         (
             "new_photographers",
-            "New photographers",
+            new_title,
             "Just joined, and looking for their first booking",
             list(newcomers),
         )
@@ -1071,49 +1092,28 @@ def client_home(
         .order_by(ProPublicIndex.gigs_completed.desc(), ProPublicIndex.ranking_score.desc())
         .limit(_ROW_SIZE)
     ).scalars().all()
-    plans.append(("most_experienced", "Most experienced", "Photographers with the most completed shoots", list(experienced)))
+    plans.append(("most_experienced", experienced_title, "Photographers with the most completed shoots", list(experienced)))
 
-    niche_rows: dict[str, list[ProPublicIndex]] = {}
-    for slug, name in _niches_present(db, country=country, city=city):
-        niche = db.execute(select(Niche).where(Niche.slug == slug)).scalar_one_or_none()
-        if niche is None:
-            continue
-        rows = db.execute(
-            base.join(
-                ProNicheSkill,
-                and_(
-                    ProNicheSkill.pro_user_id == ProPublicIndex.pro_user_id,
-                    ProNicheSkill.niche_id == niche.id,
-                ),
-            )
-            .where(
-                # Their own niche, or one they are genuinely skilled in.
-                #
-                # This used to filter on top_niches.contains(slug), and
-                # top_niches is a photographer's top *three* - so a food
-                # photographer with weddings in third place ranked into
-                # "Weddings in Lisbon". Worse, recompute_pro_niche_skills
-                # creates a skill row for every active niche, 619 of them at
-                # zero score, so third place was routinely filler nobody had
-                # ever worked in. A row that names its contents and is wrong
-                # about them is the same failure as a row named "top rated"
-                # that sorts by something else.
-                #
-                # Primary always qualifies, so a brand-new wedding
-                # photographer still appears in the wedding row - they are a
-                # wedding photographer, they simply have no history yet.
-                or_(
-                    ProPublicIndex.primary_niche_id == niche.id,
-                    ProNicheSkill.tier.in_(
-                        [SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
-                    ),
-                )
-            )
-            .order_by(ProPublicIndex.ranking_score.desc())
-            .limit(_ROW_SIZE)
+    # Which niche's work each row shows, by row key.
+    row_niche: dict[str, str] = {}
+    if scope is not None:
+        ranked = db.execute(
+            base.order_by(ProPublicIndex.ranking_score.desc()).limit(_ROW_SIZE)
         ).scalars().all()
-        niche_rows[slug] = list(rows)
-        plans.append((f"niche:{slug}", f"{name} in {city.strip()}", None, list(rows)))
+        plans.append(("niche_ranked", f"{scope.name} in {city.strip()}", None, list(ranked)))
+        row_niche = {key: scope.slug for key, _title, _subtitle, _rows in plans}
+    else:
+        for slug, name in _niches_present(db, country=country, city=city):
+            niche = db.execute(select(Niche).where(Niche.slug == slug)).scalar_one_or_none()
+            if niche is None:
+                continue
+            rows = db.execute(
+                _in_niche(base, niche.id)
+                .order_by(ProPublicIndex.ranking_score.desc())
+                .limit(_ROW_SIZE)
+            ).scalars().all()
+            row_niche[f"niche:{slug}"] = slug
+            plans.append((f"niche:{slug}", f"{name} in {city.strip()}", None, list(rows)))
 
     # Cards are built once across every row rather than per row. The same
     # photographer appears in several rows, and building per row would resolve
@@ -1128,16 +1128,16 @@ def client_home(
     # the whole photographer, so a wedding row built from covers shows a
     # portrait for anyone whose best overall frame is a portrait - the row
     # would be correctly populated and still visibly wrong. One batched
-    # resolve per row, not per card.
+    # resolve per niche, not per card - on a niche page every row is that
+    # niche, so its photographers are resolved once across all of them.
+    pros_by_niche: dict[str, set[uuid.UUID]] = {}
+    for key, _title, _subtitle, rows in plans:
+        if key in row_niche:
+            pros_by_niche.setdefault(row_niche[key], set()).update(row.pro_user_id for row in rows)
     niche_covers: dict[str, dict[uuid.UUID, str]] = {
-        slug: resolve_niche_cover_urls(
-            db,
-            [row.pro_user_id for row in rows],
-            niche_slug=slug,
-            expires_in=_media_url_ttl(),
-        )
-        for slug, rows in niche_rows.items()
-        if rows
+        slug: resolve_niche_cover_urls(db, list(pro_ids), niche_slug=slug, expires_in=_media_url_ttl())
+        for slug, pro_ids in pros_by_niche.items()
+        if pro_ids
     }
 
     response = ClientHomeResponse(
@@ -1147,7 +1147,7 @@ def client_home(
                 title=title,
                 subtitle=subtitle,
                 items=[
-                    _with_niche_cover(cards[row.pro_user_id], niche_covers.get(key.removeprefix("niche:")))
+                    _with_niche_cover(cards[row.pro_user_id], niche_covers.get(row_niche.get(key, "")))
                     for row in rows
                     if row.pro_user_id in cards
                 ],
@@ -1158,6 +1158,7 @@ def client_home(
             if any(row.pro_user_id in cards for row in rows)
         ],
         guest_limited=user is None,
+        niche=ClientHomeNiche(slug=scope.slug, name=scope.name) if scope else None,
     )
 
     cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=max(10, settings.discover_cache_ttl_seconds))
@@ -1165,10 +1166,55 @@ def client_home(
         db_write,
         event_name="client.home_view",
         user_id=user.user_id if user else None,
-        properties={"country": country.upper(), "city": city, "rows": [r.key for r in response.rows]},
+        properties={
+            "country": country.upper(),
+            "city": city,
+            "niche_slug": scope.slug if scope else None,
+            "rows": [r.key for r in response.rows],
+        },
     )
     db_write.commit()
     return response
+
+
+# Tiers that count as genuinely working in a niche that is not someone's
+# primary. Rookie is excluded: recompute creates a rookie skill row for every
+# active niche, so rookie means nothing beyond "exists".
+_NICHE_MEMBER_TIERS = [SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
+
+
+def _in_niche(query, niche_id: uuid.UUID):
+    """Narrow a row query to one niche's photographers.
+
+    Their own niche, or one they are genuinely skilled in.
+
+    This used to filter on top_niches.contains(slug), and top_niches is a
+    photographer's top *three* - so a food photographer with weddings in third
+    place ranked into "Weddings in Lisbon". Worse, recompute_pro_niche_skills
+    creates a skill row for every active niche, 619 of them at zero score, so
+    third place was routinely filler nobody had ever worked in. A row that
+    names its contents and is wrong about them is the same failure as a row
+    named "top rated" that sorts by something else.
+
+    Primary always qualifies, so a brand-new wedding photographer still
+    appears in the wedding row - they are a wedding photographer, they simply
+    have no history yet.
+
+    One function for the home screen's niche rows and every row on a niche's
+    own page, so the two cannot disagree about who is a wedding photographer.
+    """
+    return query.join(
+        ProNicheSkill,
+        and_(
+            ProNicheSkill.pro_user_id == ProPublicIndex.pro_user_id,
+            ProNicheSkill.niche_id == niche_id,
+        ),
+    ).where(
+        or_(
+            ProPublicIndex.primary_niche_id == niche_id,
+            ProNicheSkill.tier.in_(_NICHE_MEMBER_TIERS),
+        )
+    )
 
 
 def _with_niche_cover(card: ClientDiscoverCard, covers: dict[uuid.UUID, str] | None) -> ClientDiscoverCard:
@@ -1220,9 +1266,7 @@ def _niches_present(db: Session, *, country: str, city: str) -> list[tuple[str, 
             ProPublicIndex.is_accepting_bookings.is_(True),
             or_(
                 ProPublicIndex.primary_niche_id == ProNicheSkill.niche_id,
-                ProNicheSkill.tier.in_(
-                    [SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master]
-                ),
+                ProNicheSkill.tier.in_(_NICHE_MEMBER_TIERS),
             ),
         )
         .group_by(Niche.slug, Niche.name)

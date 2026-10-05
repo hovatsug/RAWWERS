@@ -17,7 +17,8 @@ mixin _$ClientHomeResponse {
 
 /// rows
 @JsonKey(name: ClientHomeResponse.rowsKey_) List<ClientHomeRow>? get rows;/// guestLimited
-@JsonKey(name: ClientHomeResponse.guestLimitedKey_) bool get guestLimited;
+@JsonKey(name: ClientHomeResponse.guestLimitedKey_) bool get guestLimited;/// niche
+@JsonKey(name: ClientHomeResponse.nicheKey_) ClientHomeNiche? get niche;
 /// Create a copy of ClientHomeResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $ClientHomeResponseCopyWith<ClientHomeResponse> get copyWith => _$ClientHomeResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientHomeResponse&&const DeepCollectionEquality().equals(other.rows, rows)&&(identical(other.guestLimited, guestLimited) || other.guestLimited == guestLimited));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientHomeResponse&&const DeepCollectionEquality().equals(other.rows, rows)&&(identical(other.guestLimited, guestLimited) || other.guestLimited == guestLimited)&&(identical(other.niche, niche) || other.niche == niche));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(rows),guestLimited);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(rows),guestLimited,niche);
 
 @override
 String toString() {
-  return 'ClientHomeResponse(rows: $rows, guestLimited: $guestLimited)';
+  return 'ClientHomeResponse(rows: $rows, guestLimited: $guestLimited, niche: $niche)';
 }
 
 
@@ -50,11 +51,11 @@ abstract mixin class $ClientHomeResponseCopyWith<$Res>  {
   factory $ClientHomeResponseCopyWith(ClientHomeResponse value, $Res Function(ClientHomeResponse) _then) = _$ClientHomeResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientHomeResponse.rowsKey_) List<ClientHomeRow>? rows,@JsonKey(name: ClientHomeResponse.guestLimitedKey_) bool guestLimited
+@JsonKey(name: ClientHomeResponse.rowsKey_) List<ClientHomeRow>? rows,@JsonKey(name: ClientHomeResponse.guestLimitedKey_) bool guestLimited,@JsonKey(name: ClientHomeResponse.nicheKey_) ClientHomeNiche? niche
 });
 
 
-
+$ClientHomeNicheCopyWith<$Res>? get niche;
 
 }
 /// @nodoc
@@ -67,14 +68,27 @@ class _$ClientHomeResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientHomeResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? rows = freezed,Object? guestLimited = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? rows = freezed,Object? guestLimited = null,Object? niche = freezed,}) {
   return _then(_self.copyWith(
 rows: freezed == rows ? _self.rows : rows // ignore: cast_nullable_to_non_nullable
 as List<ClientHomeRow>?,guestLimited: null == guestLimited ? _self.guestLimited : guestLimited // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,niche: freezed == niche ? _self.niche : niche // ignore: cast_nullable_to_non_nullable
+as ClientHomeNiche?,
   ));
 }
+/// Create a copy of ClientHomeResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClientHomeNicheCopyWith<$Res>? get niche {
+    if (_self.niche == null) {
+    return null;
+  }
 
+  return $ClientHomeNicheCopyWith<$Res>(_self.niche!, (value) {
+    return _then(_self.copyWith(niche: value));
+  });
+}
 }
 
 
@@ -156,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeResponse.rowsKey_)  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_)  bool guestLimited)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeResponse.rowsKey_)  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_)  bool guestLimited, @JsonKey(name: ClientHomeResponse.nicheKey_)  ClientHomeNiche? niche)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientHomeResponse() when $default != null:
-return $default(_that.rows,_that.guestLimited);case _:
+return $default(_that.rows,_that.guestLimited,_that.niche);case _:
   return orElse();
 
 }
@@ -177,10 +191,10 @@ return $default(_that.rows,_that.guestLimited);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeResponse.rowsKey_)  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_)  bool guestLimited)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeResponse.rowsKey_)  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_)  bool guestLimited, @JsonKey(name: ClientHomeResponse.nicheKey_)  ClientHomeNiche? niche)  $default,) {final _that = this;
 switch (_that) {
 case _ClientHomeResponse():
-return $default(_that.rows,_that.guestLimited);case _:
+return $default(_that.rows,_that.guestLimited,_that.niche);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +211,10 @@ return $default(_that.rows,_that.guestLimited);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientHomeResponse.rowsKey_)  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_)  bool guestLimited)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientHomeResponse.rowsKey_)  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_)  bool guestLimited, @JsonKey(name: ClientHomeResponse.nicheKey_)  ClientHomeNiche? niche)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientHomeResponse() when $default != null:
-return $default(_that.rows,_that.guestLimited);case _:
+return $default(_that.rows,_that.guestLimited,_that.niche);case _:
   return null;
 
 }
@@ -212,7 +226,7 @@ return $default(_that.rows,_that.guestLimited);case _:
 
 @jsonSerializable
 class _ClientHomeResponse extends ClientHomeResponse {
-  const _ClientHomeResponse({@JsonKey(name: ClientHomeResponse.rowsKey_) final  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_) this.guestLimited = false}): _rows = rows,super._();
+  const _ClientHomeResponse({@JsonKey(name: ClientHomeResponse.rowsKey_) final  List<ClientHomeRow>? rows, @JsonKey(name: ClientHomeResponse.guestLimitedKey_) this.guestLimited = false, @JsonKey(name: ClientHomeResponse.nicheKey_) this.niche}): _rows = rows,super._();
   factory _ClientHomeResponse.fromJson(Map<String, dynamic> json) => _$ClientHomeResponseFromJson(json);
 
 /// rows
@@ -228,6 +242,8 @@ class _ClientHomeResponse extends ClientHomeResponse {
 
 /// guestLimited
 @override@JsonKey(name: ClientHomeResponse.guestLimitedKey_) final  bool guestLimited;
+/// niche
+@override@JsonKey(name: ClientHomeResponse.nicheKey_) final  ClientHomeNiche? niche;
 
 /// Create a copy of ClientHomeResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -242,16 +258,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientHomeResponse&&const DeepCollectionEquality().equals(other._rows, _rows)&&(identical(other.guestLimited, guestLimited) || other.guestLimited == guestLimited));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientHomeResponse&&const DeepCollectionEquality().equals(other._rows, _rows)&&(identical(other.guestLimited, guestLimited) || other.guestLimited == guestLimited)&&(identical(other.niche, niche) || other.niche == niche));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_rows),guestLimited);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_rows),guestLimited,niche);
 
 @override
 String toString() {
-  return 'ClientHomeResponse(rows: $rows, guestLimited: $guestLimited)';
+  return 'ClientHomeResponse(rows: $rows, guestLimited: $guestLimited, niche: $niche)';
 }
 
 
@@ -262,11 +278,11 @@ abstract mixin class _$ClientHomeResponseCopyWith<$Res> implements $ClientHomeRe
   factory _$ClientHomeResponseCopyWith(_ClientHomeResponse value, $Res Function(_ClientHomeResponse) _then) = __$ClientHomeResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientHomeResponse.rowsKey_) List<ClientHomeRow>? rows,@JsonKey(name: ClientHomeResponse.guestLimitedKey_) bool guestLimited
+@JsonKey(name: ClientHomeResponse.rowsKey_) List<ClientHomeRow>? rows,@JsonKey(name: ClientHomeResponse.guestLimitedKey_) bool guestLimited,@JsonKey(name: ClientHomeResponse.nicheKey_) ClientHomeNiche? niche
 });
 
 
-
+@override $ClientHomeNicheCopyWith<$Res>? get niche;
 
 }
 /// @nodoc
@@ -279,15 +295,28 @@ class __$ClientHomeResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientHomeResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? rows = freezed,Object? guestLimited = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? rows = freezed,Object? guestLimited = null,Object? niche = freezed,}) {
   return _then(_ClientHomeResponse(
 rows: freezed == rows ? _self._rows : rows // ignore: cast_nullable_to_non_nullable
 as List<ClientHomeRow>?,guestLimited: null == guestLimited ? _self.guestLimited : guestLimited // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,niche: freezed == niche ? _self.niche : niche // ignore: cast_nullable_to_non_nullable
+as ClientHomeNiche?,
   ));
 }
 
+/// Create a copy of ClientHomeResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClientHomeNicheCopyWith<$Res>? get niche {
+    if (_self.niche == null) {
+    return null;
+  }
 
+  return $ClientHomeNicheCopyWith<$Res>(_self.niche!, (value) {
+    return _then(_self.copyWith(niche: value));
+  });
+}
 }
 
 // dart format on

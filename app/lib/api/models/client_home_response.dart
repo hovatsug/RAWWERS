@@ -12,6 +12,16 @@
 ///             "type": "boolean",
 ///             "default": false,
 ///             "title": "Guest Limited"
+///         },
+///         "niche": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/ClientHomeNiche"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -36,6 +46,9 @@ abstract class ClientHomeResponse with _$ClientHomeResponse {
     @Default(false)
     @JsonKey(name: ClientHomeResponse.guestLimitedKey_)
     bool guestLimited,
+
+    /// niche
+    @JsonKey(name: ClientHomeResponse.nicheKey_) ClientHomeNiche? niche,
   }) = _ClientHomeResponse;
 
   factory ClientHomeResponse.fromJson(Map<String, dynamic> json) =>
@@ -44,4 +57,6 @@ abstract class ClientHomeResponse with _$ClientHomeResponse {
   static const String rowsKey_ = r'rows';
 
   static const String guestLimitedKey_ = r'guest_limited';
+
+  static const String nicheKey_ = r'niche';
 }

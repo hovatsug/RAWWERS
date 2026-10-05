@@ -53,6 +53,7 @@ const _clientRoots = <String, String>{
 /// matched. The value is irrelevant; only the shape of the match matters.
 const _paramSamples = <String, String>{
   'proUserId': 'p1',
+  'nicheSlug': 'weddings',
   'bookingId': 'b1',
   'threadId': 't1',
 };

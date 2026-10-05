@@ -6,6 +6,7 @@ import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/booking_request/booking_request_controller.dart';
+import 'package:rawwers/features/client/pro_profile/availability_calendar.dart';
 
 /// Asks for the one thing the client actually has to decide: when.
 ///
@@ -15,12 +16,17 @@ import 'package:rawwers/features/client/booking_request/booking_request_controll
 /// package's `duration_minutes` rather than picked, because a client choosing
 /// an end time that contradicts the package they just chose is a
 /// contradiction the form should not allow in the first place.
+///
+/// "When" is chosen from the photographer's real availability, never a bare
+/// date picker: the server refuses any time it did not offer. A time already
+/// picked on the profile arrives as [initialPick] and is not asked again.
 Future<String?> showBookingRequestSheet(
   BuildContext context, {
   required String proUserId,
   required String proName,
   required ClientProfilePackage package,
   String? defaultLocation,
+  PickedStart? initialPick,
 }) {
   return showModalBottomSheet<String>(
     context: context,
@@ -32,6 +38,7 @@ Future<String?> showBookingRequestSheet(
         proName: proName,
         package: package,
         defaultLocation: defaultLocation,
+        initialPick: initialPick,
       ),
     ),
   );
@@ -43,12 +50,14 @@ class _BookingRequestForm extends ConsumerStatefulWidget {
     required this.proName,
     required this.package,
     this.defaultLocation,
+    this.initialPick,
   });
 
   final String proUserId;
   final String proName;
   final ClientProfilePackage package;
   final String? defaultLocation;
+  final PickedStart? initialPick;
 
   @override
   ConsumerState<_BookingRequestForm> createState() => _BookingRequestFormState();
@@ -58,8 +67,7 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
   late final TextEditingController _location = TextEditingController(text: widget.defaultLocation ?? '');
   final _notes = TextEditingController();
 
-  DateTime? _date;
-  TimeOfDay? _time;
+  late PickedStart? _pick = widget.initialPick;
   bool _sending = false;
   String? _error;
 
@@ -70,48 +78,17 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
     super.dispose();
   }
 
-  DateTime? get _startAt {
-    final date = _date;
-    final time = _time;
-    if (date == null || time == null) return null;
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
-  }
+  /// The instant the server offered - parsed, not rebuilt from a local date
+  /// and time, so it cannot drift by the phone's time zone.
+  DateTime? get _startAt => _pick?.start.startAt;
 
-  DateTime? get _endAt {
-    final start = _startAt;
-    if (start == null) return null;
-    return start.add(Duration(minutes: widget.package.durationMinutes));
-  }
-
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date ?? now.add(const Duration(days: 7)),
-      // A shoot in the past is not a request anyone means to send.
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-    );
-    if (picked != null) setState(() => _date = picked);
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _time ?? const TimeOfDay(hour: 14, minute: 0),
-    );
-    if (picked != null) setState(() => _time = picked);
-  }
+  DateTime? get _endAt => _startAt?.add(Duration(minutes: widget.package.durationMinutes));
 
   Future<void> _submit() async {
     final start = _startAt;
     final end = _endAt;
     if (start == null || end == null) {
-      setState(() => _error = 'Pick a date and a start time.');
-      return;
-    }
-    if (start.isBefore(DateTime.now())) {
-      setState(() => _error = 'That time has already passed. Pick a later one.');
+      setState(() => _error = 'Pick a start time.');
       return;
     }
 
@@ -146,8 +123,7 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final start = _startAt;
-    final end = _endAt;
+    final pick = _pick;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(RSpace.s24),
@@ -171,23 +147,25 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
             currency: widget.package.currency,
           ),
           const SizedBox(height: RSpace.s24),
-          _PickerRow(
-            label: 'Date',
-            value: _date == null ? 'Choose a date' : _formatDate(_date!),
-            onTap: _pickDate,
-          ),
-          const SizedBox(height: RSpace.s12),
-          _PickerRow(
-            label: 'Start time',
-            value: _time == null ? 'Choose a time' : _time!.format(context),
-            onTap: _pickTime,
-          ),
-          if (start != null && end != null) ...[
-            const SizedBox(height: RSpace.s8),
+          if (pick == null)
+            AvailabilityCalendar(
+              proUserId: widget.proUserId,
+              proName: widget.proName,
+              packageId: widget.package.id,
+              onPick: (picked) => setState(() {
+                _pick = picked;
+                _error = null;
+              }),
+            )
+          else ...[
+            Text(pick.label, style: theme.textTheme.titleMedium),
+            const SizedBox(height: RSpace.s4),
             Text(
-              'Ends around ${_formatTime(end)}, based on the package length.',
+              '${timezoneCity(pick.timezone)} time · ends around '
+              '${_endsAround(pick.start.localTime, widget.package.durationMinutes)}, based on the package length.',
               style: theme.textTheme.bodySmall,
             ),
+            RTextLink(label: 'Change time', onPressed: () => setState(() => _pick = null)),
           ],
           const SizedBox(height: RSpace.s16),
           RInput(label: 'Where is the shoot?', controller: _location),
@@ -210,33 +188,6 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
   }
 }
 
-class _PickerRow extends StatelessWidget {
-  const _PickerRow({required this.label, required this.value, required this.onTap});
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: RSpace.s12),
-        child: Row(
-          children: [
-            Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-            Text(value, style: theme.textTheme.bodyMedium),
-            const SizedBox(width: RSpace.s8),
-            const Icon(Icons.chevron_right, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 String _duration(int minutes) {
   if (minutes < 60) return '$minutes min';
   final hours = minutes ~/ 60;
@@ -245,10 +196,11 @@ String _duration(int minutes) {
   return rest == 0 ? hourLabel : '$hourLabel $rest min';
 }
 
-String _formatDate(DateTime date) => '${_weekdays[date.weekday - 1]} ${date.day} ${_months[date.month - 1]}';
-
-String _formatTime(DateTime at) =>
-    '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
-
-const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/// The local end time, from the local start: "10:00" + 90 min -> "11:30".
+/// Wall-clock arithmetic in the photographer's day, which is what they and
+/// the client both read.
+String _endsAround(String localStart, int minutes) {
+  final parts = localStart.split(':');
+  final total = (int.parse(parts[0]) * 60 + int.parse(parts[1]) + minutes) % (24 * 60);
+  return '${(total ~/ 60).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
+}

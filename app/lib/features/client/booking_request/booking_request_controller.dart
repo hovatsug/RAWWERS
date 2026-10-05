@@ -5,6 +5,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
+import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/bookings/bookings_controller.dart';
 
 part 'booking_request_controller.g.dart';
@@ -49,6 +50,12 @@ class BookingRequestController extends _$BookingRequestController {
       ),
     );
 
+    // Whatever the answer, the photographer's calendar has news: a sent
+    // request now holds its hour, and a refused one was refused because the
+    // hour was taken since the calendar loaded. Every month of it, for every
+    // package - the cached answer is out of date either way.
+    ref.invalidate(proAvailabilityProvider);
+
     switch (result) {
       case Ok(:final value):
         // Invalidated rather than awaited: the booking is already created, so
@@ -88,9 +95,17 @@ String _message(ApiFailure failure) {
     Unauthorized() => 'Please sign in again.',
     Forbidden() => 'We are not taking bookings in this city yet.',
     NotFound() => 'That photographer is no longer available.',
-    // 409 here is specifically "pro has no availability configured", which
-    // is the photographer's setup problem, not the client's request.
-    BusinessError() => 'This photographer has not opened their calendar yet.',
+    // A 422 - FastAPI's own, or one of the backend's deliberate ones ("Invalid
+    // date window", "Invalid package") - is about the request, not the
+    // photographer. Must come before the general case below, or a bad date is
+    // reported as their calendar being closed.
+    BusinessError(status: 422) => 'Check the date and try again.',
+    // A 409 is the server's own reason the time cannot be booked - notice,
+    // working hours, blocked time, a clash, a full day, or no working hours
+    // at all - worded for the person asking (api/app/services/bookable_time.py).
+    // It used to be read as "no working hours" whatever it said, which became
+    // wrong the day every booking path started applying the full rule.
+    BusinessError(:final message) => message,
     Validation() => 'Check the date and try again.',
     ServerError() => 'Something went wrong on our end. Try again in a moment.',
   };

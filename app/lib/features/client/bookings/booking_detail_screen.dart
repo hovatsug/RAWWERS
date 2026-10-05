@@ -108,7 +108,9 @@ class _PayPanel extends ConsumerWidget {
           Text('Pay to confirm', style: theme.textTheme.titleSmall),
           const SizedBox(height: RSpace.s4),
           Text(
-            'Your photographer accepted. The date is not held until this is paid.',
+            // Accepted bookings hold their time for 24 hours while the client
+            // pays (bookable_time.PAYMENT_WINDOW); after that it is released.
+            'Your photographer accepted. We are holding this time for you for 24 hours - pay to confirm it.',
             style: theme.textTheme.bodyMedium,
           ),
           if (progress case PaymentFailed(:final message)) ...[

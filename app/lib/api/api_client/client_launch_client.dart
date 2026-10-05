@@ -443,6 +443,102 @@ abstract class ClientLaunchClient {
       },
     },
   });
+  @GET("/v1/client/pros/{pro_user_id}/availability")
+  Future<HttpResponse<ClientAvailabilityResponse>>
+  clientProAvailabilityV1ClientProsProUserIdAvailabilityGet({
+    @Path("pro_user_id") required String proUserId,
+    @Query("package_id") required String packageId,
+    @Query("from") required DateTime from,
+    @Query("to") required DateTime to,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'Client Pro Availability',
+      'description':
+          'When a client could book this package with this photographer.\n\nThe same rule every booking path enforces (bookable_time), so a start time\noffered here is one the booking request accepts. Gated like the profile:\nsigned in, a live photographer, the photographer\'s city open to clients.',
+      'operationId':
+          'client_pro_availability_v1_client_pros__pro_user_id__availability_get',
+      'parameters': [
+        {
+          'name': 'pro_user_id',
+          'in': 'path',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'format': 'uuid',
+            'title': 'Pro User Id',
+          },
+        },
+        {
+          'name': 'package_id',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Package Id'},
+        },
+        {
+          'name': 'from',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'date', 'title': 'From'},
+        },
+        {
+          'name': 'to',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'date', 'title': 'To'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ClientAvailabilityResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @POST("/v1/client/bookings/request")
   Future<HttpResponse<ClientBookingRequestCreateResponse>>
   clientBookingRequestV1ClientBookingsRequestPost({

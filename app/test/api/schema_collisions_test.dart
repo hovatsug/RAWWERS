@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/availability_location_mode.dart';
 import 'package:rawwers/api/models/availability_rules_response.dart';
-import 'package:rawwers/api/models/public_availability_response.dart';
+import 'package:rawwers/api/models/client_availability_response.dart';
 
 /// onboarding.py and scheduling.py both defined `AvailabilityRuleView`.
 /// FastAPI qualified the schema keys but left both `title`s identical, and
@@ -16,8 +16,9 @@ import 'package:rawwers/api/models/public_availability_response.dart';
 /// plausible, `flutter analyze` was clean, and the OpenAPI contract check
 /// passed because the client genuinely matched the schema it was handed.
 ///
-/// The backend class is now `PublicAvailabilityRuleView`, so the collision
-/// is gone at source. These stay because they assert the thing that
+/// The backend class became `PublicAvailabilityRuleView`, and later went
+/// with the public endpoint that returned it - it leaked blackout reasons to
+/// anyone, signed in or not. The client calendar's payload replaced it. These stay because they assert the thing that
 /// actually matters - that each endpoint's real payload decodes - which no
 /// amount of renaming guarantees on its own.
 void main() {
@@ -43,18 +44,22 @@ void main() {
     expect(rule.locationMode, AvailabilityLocationMode.both);
   });
 
-  test('the public availability view keeps its own, different shape', () {
+  test('the client calendar decodes, keeping the instant and the local time apart', () {
     const raw = '''
-{"pro_user_id":"927dc016-735f-40f7-a54b-97451f26d5af",
-"rules":[{"id":"bcd83bcf-4d46-40e6-8311-638b4fbfc370","day_of_week":1,
-"start_time":"09:00:00","end_time":"17:00:00"}],
-"blackouts":[]}
+{"timezone":"Europe/Lisbon","has_schedule":true,"notice_hours":24,
+"days":[{"date":"2026-10-12","open":true,
+"start_times":[{"start_at":"2026-10-12T10:00:00+01:00","local_time":"10:00"}]},
+{"date":"2026-10-13","open":false,"start_times":[]}]}
 ''';
 
-    final response = PublicAvailabilityResponse.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    final rule = response.rules.single;
+    final response = ClientAvailabilityResponse.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    final open = response.days!.first;
+    final start = open.startTimes!.single;
 
-    expect(rule.dayOfWeek, 1);
-    expect(rule.startTime, '09:00:00');
+    expect(open.open, isTrue);
+    expect(start.localTime, '10:00', reason: 'what the client reads');
+    // The instant survives as the instant: 10:00 in Lisbon is 09:00Z.
+    expect(start.startAt.toUtc(), DateTime.utc(2026, 10, 12, 9));
+    expect(response.days!.last.open, isFalse);
   });
 }

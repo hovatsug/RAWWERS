@@ -1108,53 +1108,6 @@ abstract class ProOnboardingClient {
       },
     },
   });
-  @GET("/v1/pro/{pro_user_id}/availability")
-  Future<HttpResponse<PublicAvailabilityResponse>>
-  getPublicAvailabilityV1ProProUserIdAvailabilityGet({
-    @Path("pro_user_id") required String proUserId,
-    @CancelRequest() CancelToken? cancelToken,
-    @SendProgress() ProgressCallback? onSendProgress,
-    @ReceiveProgress() ProgressCallback? onReceiveProgress,
-    @Extras()
-    Map<String, dynamic>? extras = const {
-      'tags': ['pro_onboarding'],
-      'summary': 'Get Public Availability',
-      'operationId':
-          'get_public_availability_v1_pro__pro_user_id__availability_get',
-      'parameters': [
-        {
-          'name': 'pro_user_id',
-          'in': 'path',
-          'required': true,
-          'schema': {
-            'type': 'string',
-            'format': 'uuid',
-            'title': 'Pro User Id',
-          },
-        },
-      ],
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {
-                '\$ref': '#/components/schemas/PublicAvailabilityResponse',
-              },
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  });
   @GET("/v1/niches")
   Future<HttpResponse<List<Map<String, dynamic>>>> listNichesV1NichesGet({
     @CancelRequest() CancelToken? cancelToken,

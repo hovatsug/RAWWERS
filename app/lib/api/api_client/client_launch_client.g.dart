@@ -632,6 +632,140 @@ class _ClientLaunchClient implements ClientLaunchClient {
   }
 
   @override
+  Future<HttpResponse<ClientAvailabilityResponse>>
+  clientProAvailabilityV1ClientProsProUserIdAvailabilityGet({
+    required String proUserId,
+    required String packageId,
+    required DateTime from,
+    required DateTime to,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['client_launch'],
+      'summary': 'Client Pro Availability',
+      'description':
+          'When a client could book this package with this photographer.\n\nThe same rule every booking path enforces (bookable_time), so a start time\noffered here is one the booking request accepts. Gated like the profile:\nsigned in, a live photographer, the photographer\'s city open to clients.',
+      'operationId':
+          'client_pro_availability_v1_client_pros__pro_user_id__availability_get',
+      'parameters': [
+        {
+          'name': 'pro_user_id',
+          'in': 'path',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'format': 'uuid',
+            'title': 'Pro User Id',
+          },
+        },
+        {
+          'name': 'package_id',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Package Id'},
+        },
+        {
+          'name': 'from',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'date', 'title': 'From'},
+        },
+        {
+          'name': 'to',
+          'in': 'query',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'date', 'title': 'To'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ClientAvailabilityResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{
+      r'package_id': packageId,
+      r'from': from.toIso8601String(),
+      r'to': to.toIso8601String(),
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ClientAvailabilityResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/client/pros/${proUserId}/availability',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ClientAvailabilityResponse _value;
+    try {
+      _value = ClientAvailabilityResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<ClientBookingRequestCreateResponse>>
   clientBookingRequestV1ClientBookingsRequestPost({
     required ClientBookingRequestCreateRequest requestBody,

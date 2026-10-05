@@ -9,8 +9,10 @@ import 'package:rawwers/api/models/skill_tier.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
+import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
+
 
 /// Renders the real ProProfileScreen against fixture data.
 ///
@@ -72,7 +74,14 @@ ClientProProfileResponse _profile({
     );
 
 Widget _wrap(Override override) => ProviderScope(
-      overrides: [override],
+      overrides: [
+        override,
+        // Likewise the calendar, answered directly: these tests pump once
+        // and are about the rest of the profile. The calendar's own
+        // behaviour is in availability_calendar_test.dart.
+        availabilityTodayProvider.overrideWithValue(DateTime.utc(2030, 6, 12)),
+        proAvailabilityProvider(_proId, 'pkg-1', DateTime.utc(2030, 6)).overrideWith((ref) async => null),
+      ],
       child: MaterialApp(
         theme: buildClientTheme(),
         home: const ProProfileScreen(proUserId: _proId),

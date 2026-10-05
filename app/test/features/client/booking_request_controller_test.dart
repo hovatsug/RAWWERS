@@ -87,13 +87,48 @@ void main() {
     expect(body!['consent_level'], isNull);
   });
 
-  test('a 409 explains it is the photographer who is not ready', () async {
+  for (final reason in [
+    'This photographer has not set their working hours yet.',
+    'That time is outside this photographer\'s working hours.',
+    'That time clashes with another booking.',
+  ]) {
+    test('a 409 is shown in the server\'s words: $reason', () async {
+      // The server names why a time cannot be booked (bookable_time). This
+      // used to read every 409 as "has not opened their calendar", which was
+      // wrong as soon as every booking path applied the full rule.
+      final container = _container((options) async {
+        return jsonResponseBody(
+          jsonEncode({
+            'error': {'code': 'validation_error', 'message': reason},
+          }),
+          409,
+        );
+      });
+
+      final outcome = await container.read(bookingRequestControllerProvider.notifier).submit(
+            proUserId: 'pro-1',
+            packageId: 'pkg-1',
+            nicheSlug: 'portraits',
+            startAt: DateTime(2026, 9, 20, 14),
+            endAt: DateTime(2026, 9, 20, 15),
+          );
+
+      expect(outcome, isA<BookingRequestFailed>());
+      expect((outcome as BookingRequestFailed).message, reason);
+    });
+  }
+
+  test('a deliberate 422 about the request is not blamed on the photographer', () async {
+    // "Invalid date window", "Invalid package" and the like are raised through
+    // the backend's error envelope with status 422. They used to map to
+    // Validation and read "Check the date"; an earlier mapper change sent them
+    // to the branch written for the 409 above.
     final container = _container((options) async {
       return jsonResponseBody(
         jsonEncode({
-          'error': {'code': 'invalid_state', 'message': 'Pro has no availability configured'},
+          'error': {'code': 'validation_error', 'message': 'Invalid date window'},
         }),
-        409,
+        422,
       );
     });
 
@@ -102,14 +137,12 @@ void main() {
           packageId: 'pkg-1',
           nicheSlug: 'portraits',
           startAt: DateTime(2026, 9, 20, 14),
-          endAt: DateTime(2026, 9, 20, 15),
+          endAt: DateTime(2026, 9, 20, 13),
         );
 
-    expect(outcome, isA<BookingRequestFailed>());
-    expect(
-      (outcome as BookingRequestFailed).message,
-      'This photographer has not opened their calendar yet.',
-    );
+    final message = (outcome as BookingRequestFailed).message;
+    expect(message, isNot(contains('calendar')), reason: 'a bad date window was blamed on the photographer');
+    expect(message, 'Check the date and try again.');
   });
 
   test('the daily cap reads as a cap, not a fault', () async {

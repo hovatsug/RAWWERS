@@ -17,6 +17,8 @@ import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/discover/discover_controller.dart';
 import 'package:rawwers/features/client/booking_request/booking_request_sheet.dart';
 import 'package:rawwers/features/client/discover/widgets/location_prompt.dart';
+import 'package:rawwers/features/client/pro_profile/availability_calendar.dart';
+import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
 
 /// One photographer, in enough depth to decide whether to book them.
@@ -95,155 +97,267 @@ class _ProfileState extends State<_Profile> {
     // nothing reads as a loading failure.
     final about = selected?.description?.isNotEmpty == true ? selected!.description! : profile.bio;
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 280,
-          pinned: true,
-          flexibleSpace: FlexibleSpaceBar(
-            background: RNetworkPhoto(url: profile.coverUrl, semanticLabel: '$name cover photo'),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.all(RSpace.s16),
-          sliver: SliverList.list(
-            children: [
-              Text(name, style: theme.textTheme.headlineSmall),
-              if (profile.headline != null) ...[
-                const SizedBox(height: RSpace.s4),
-                Text(profile.headline!, style: theme.textTheme.bodyLarge),
-              ],
-              const SizedBox(height: RSpace.s8),
-              _Meta(profile: profile),
-              if (about != null && about.isNotEmpty) ...[
-                const SizedBox(height: RSpace.s16),
-                Text(about, style: theme.textTheme.bodyMedium),
-              ],
-              if ((profile.styles ?? const []).isNotEmpty) ...[
-                const SizedBox(height: RSpace.s16),
-                // A text line, not chips: these are descriptive labels, and
-                // the design system's chips are either status (RStatusChip)
-                // or interactive filters (RFilterChip). Dressing a plain
-                // label as either would misread as something you can act on.
-                Text(
-                  profile.styles!.map(_humanise).join(' · '),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (niches.length > 1)
-          SliverPadding(
-            padding: const EdgeInsets.only(top: RSpace.s8),
-            sliver: SliverToBoxAdapter(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: RSpace.s16),
-                child: Row(
-                  children: [
-                    RFilterChip(
-                      label: 'All',
-                      selected: _niche == null,
-                      onPressed: () => setState(() => _niche = null),
-                    ),
-                    for (final niche in niches) ...[
-                      const SizedBox(width: RSpace.s8),
-                      RFilterChip(
-                        label: niche.name,
-                        selected: _niche == niche.slug,
-                        onPressed: () => setState(() => _niche = niche.slug),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        if (portfolio.isNotEmpty) ...[
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      selected == null ? 'Recent work' : '${selected.name} work',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
-                  // Tier is per-niche, so it appears only when a niche is
-                  // being viewed. Shown on the whole-portfolio view it would
-                  // have to pick one niche's tier and present it as the
-                  // photographer's, which is the flat claim the per-niche
-                  // model exists to replace.
-                  // Always something, never nothing. Tier is the signal the
-                  // whole pricing-cap and ranking system rests on, and it was
-                  // invisible on every profile: withheld entirely for
-                  // single-niche photographers, and shown for the rest only
-                  // after a tab was tapped, which the default view never is.
-                  //
-                  // On the whole-portfolio view it names its niche, because a
-                  // bare tier there would be the flat claim the per-niche
-                  // model exists to replace.
-                  if (selected == null && niches.isNotEmpty)
-                    Text(
-                      '${rTierName(niches.first.tier)} in ${niches.first.name}',
-                      style: theme.textTheme.labelMedium
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  if (selected != null)
-                    Text(
-                      rTierName(selected.tier),
-                      // Not `outline`: that is the card's border colour and
-                      // renders at 1.11:1 on the fill. Same mistake as the
-                      // starting-total line, made again hours later, which is
-                      // why the contrast suite now covers text on a card.
-                      style: theme.textTheme.labelMedium
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                ],
+    return RefreshIndicator(
+      // Everything on the profile that changes as people book and review.
+      onRefresh: () async {
+        final container = ProviderScope.containerOf(context);
+        container.invalidate(proProfileProvider(profile.proUserId));
+        container.invalidate(proAvailabilityProvider);
+      },
+      child: CustomScrollView(
+        // A short profile still pulls to refresh.
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 280,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: RNetworkPhoto(
+                url: profile.coverUrl,
+                semanticLabel: '$name cover photo',
               ),
             ),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(RSpace.s16),
-            sliver: SliverGrid.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: RSpace.s4,
-                crossAxisSpacing: RSpace.s4,
-              ),
-              itemCount: portfolio.length,
-              itemBuilder: (context, index) => RNetworkPhoto(
-                url: portfolio[index].thumbnailUrl,
-                semanticLabel: 'Portfolio photo ${index + 1} by $name',
-              ),
+            sliver: SliverList.list(
+              children: [
+                Text(name, style: theme.textTheme.headlineSmall),
+                if (profile.headline != null) ...[
+                  const SizedBox(height: RSpace.s4),
+                  Text(profile.headline!, style: theme.textTheme.bodyLarge),
+                ],
+                const SizedBox(height: RSpace.s8),
+                _Meta(profile: profile),
+                if (about != null && about.isNotEmpty) ...[
+                  const SizedBox(height: RSpace.s16),
+                  Text(about, style: theme.textTheme.bodyMedium),
+                ],
+                if ((profile.styles ?? const []).isNotEmpty) ...[
+                  const SizedBox(height: RSpace.s16),
+                  // A text line, not chips: these are descriptive labels, and
+                  // the design system's chips are either status (RStatusChip)
+                  // or interactive filters (RFilterChip). Dressing a plain
+                  // label as either would misread as something you can act on.
+                  Text(
+                    profile.styles!.map(_humanise).join(' · '),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ],
             ),
           ),
-        ],
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(RSpace.s16, 0, RSpace.s16, RSpace.s32),
-          sliver: SliverList.list(
-            children: [
-              Text('Packages', style: theme.textTheme.titleMedium),
-              const SizedBox(height: RSpace.s12),
-              if (packages.isEmpty)
-                Text(
-                  '$name has no packages listed right now.',
-                  style: theme.textTheme.bodyMedium,
-                )
-              else
-                for (final package in packages) ...[
-                  _PackageCard(
-                    package: package,
-                    proUserId: profile.proUserId,
-                    proName: name,
-                    defaultLocation: profile.city,
+          if (niches.length > 1)
+            SliverPadding(
+              padding: const EdgeInsets.only(top: RSpace.s8),
+              sliver: SliverToBoxAdapter(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: RSpace.s16),
+                  child: Row(
+                    children: [
+                      RFilterChip(
+                        label: 'All',
+                        selected: _niche == null,
+                        onPressed: () => setState(() => _niche = null),
+                      ),
+                      for (final niche in niches) ...[
+                        const SizedBox(width: RSpace.s8),
+                        RFilterChip(
+                          label: niche.name,
+                          selected: _niche == niche.slug,
+                          onPressed: () => setState(() => _niche = niche.slug),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: RSpace.s12),
-                ],
+                ),
+              ),
+            ),
+          if (portfolio.isNotEmpty) ...[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                RSpace.s16,
+                RSpace.s16,
+                RSpace.s16,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selected == null
+                            ? 'Recent work'
+                            : '${selected.name} work',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    // Tier is per-niche, so it appears only when a niche is
+                    // being viewed. Shown on the whole-portfolio view it would
+                    // have to pick one niche's tier and present it as the
+                    // photographer's, which is the flat claim the per-niche
+                    // model exists to replace.
+                    // Always something, never nothing. Tier is the signal the
+                    // whole pricing-cap and ranking system rests on, and it was
+                    // invisible on every profile: withheld entirely for
+                    // single-niche photographers, and shown for the rest only
+                    // after a tab was tapped, which the default view never is.
+                    //
+                    // On the whole-portfolio view it names its niche, because a
+                    // bare tier there would be the flat claim the per-niche
+                    // model exists to replace.
+                    if (selected == null && niches.isNotEmpty)
+                      Text(
+                        '${rTierName(niches.first.tier)} in ${niches.first.name}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    if (selected != null)
+                      Text(
+                        rTierName(selected.tier),
+                        // Not `outline`: that is the card's border colour and
+                        // renders at 1.11:1 on the fill. Same mistake as the
+                        // starting-total line, made again hours later, which is
+                        // why the contrast suite now covers text on a card.
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(RSpace.s16),
+              sliver: SliverGrid.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: RSpace.s4,
+                  crossAxisSpacing: RSpace.s4,
+                ),
+                itemCount: portfolio.length,
+                itemBuilder: (context, index) => RNetworkPhoto(
+                  url: portfolio[index].thumbnailUrl,
+                  semanticLabel: 'Portfolio photo ${index + 1} by $name',
+                ),
+              ),
+            ),
+          ],
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              RSpace.s16,
+              0,
+              RSpace.s16,
+              RSpace.s32,
+            ),
+            sliver: SliverList.list(
+              children: [
+                Text('Packages', style: theme.textTheme.titleMedium),
+                const SizedBox(height: RSpace.s12),
+                if (packages.isEmpty)
+                  Text(
+                    '$name has no packages listed right now.',
+                    style: theme.textTheme.bodyMedium,
+                  )
+                else
+                  for (final package in packages) ...[
+                    _PackageCard(
+                      package: package,
+                      proUserId: profile.proUserId,
+                      proName: name,
+                      defaultLocation: profile.city,
+                    ),
+                    const SizedBox(height: RSpace.s12),
+                  ],
+              ],
+            ),
+          ),
+          if (packages.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                RSpace.s16,
+                0,
+                RSpace.s16,
+                RSpace.s32,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: _WhenTheyAreFree(
+                  proUserId: profile.proUserId,
+                  proName: name,
+                  packages: packages,
+                  defaultLocation: profile.city,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The photographer's real availability, for one package at a time.
+///
+/// Per package because a start time depends on how long the shoot is: a
+/// three-hour package cannot start where only an hour is free. Picking a time
+/// opens the request with that time already in it.
+class _WhenTheyAreFree extends StatefulWidget {
+  const _WhenTheyAreFree({
+    required this.proUserId,
+    required this.proName,
+    required this.packages,
+    this.defaultLocation,
+  });
+
+  final String proUserId;
+  final String proName;
+  final List<ClientProfilePackage> packages;
+  final String? defaultLocation;
+
+  @override
+  State<_WhenTheyAreFree> createState() => _WhenTheyAreFreeState();
+}
+
+class _WhenTheyAreFreeState extends State<_WhenTheyAreFree> {
+  late ClientProfilePackage _package = widget.packages.first;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("When they're free", style: theme.textTheme.titleMedium),
+        if (widget.packages.length > 1) ...[
+          const SizedBox(height: RSpace.s8),
+          Wrap(
+            spacing: RSpace.s8,
+            runSpacing: RSpace.s8,
+            children: [
+              for (final package in widget.packages)
+                RFilterChip(
+                  label: package.title,
+                  selected: package.id == _package.id,
+                  onPressed: () => setState(() => _package = package),
+                ),
             ],
+          ),
+        ],
+        const SizedBox(height: RSpace.s12),
+        AvailabilityCalendar(
+          // A different package is a different calendar - start it fresh.
+          key: ValueKey(_package.id),
+          proUserId: widget.proUserId,
+          proName: widget.proName,
+          packageId: _package.id,
+          onPick: (pick) => _openBookingRequest(
+            context,
+            proUserId: widget.proUserId,
+            proName: widget.proName,
+            package: _package,
+            defaultLocation: widget.defaultLocation,
+            initialPick: pick,
           ),
         ),
       ],
@@ -342,22 +456,44 @@ class _PackageCard extends StatelessWidget {
     );
   }
 
-  Future<void> _requestBooking(BuildContext context) async {
-    final bookingId = await showBookingRequestSheet(
-      context,
-      proUserId: proUserId,
-      proName: proName,
-      package: package,
-      defaultLocation: defaultLocation,
-    );
-    if (bookingId == null || !context.mounted) return;
+  Future<void> _requestBooking(BuildContext context) => _openBookingRequest(
+    context,
+    proUserId: proUserId,
+    proName: proName,
+    package: package,
+    defaultLocation: defaultLocation,
+  );
+}
 
-    // Straight to the booking rather than a toast: the client's next question
-    // is "did that work, and what happens now", which the booking answers and
-    // a snackbar does not. Pushed onto Discover's stack, so back returns to
-    // the profile they were reading.
-    context.push(ClientRoute.bookingDetail(bookingId));
-  }
+/// The booking sheet, from a package card or from a time picked on the
+/// calendar - then the booking it created.
+Future<void> _openBookingRequest(
+  BuildContext context, {
+  required String proUserId,
+  required String proName,
+  required ClientProfilePackage package,
+  String? defaultLocation,
+  PickedStart? initialPick,
+}) async {
+  final bookingId = await showBookingRequestSheet(
+    context,
+    proUserId: proUserId,
+    proName: proName,
+    package: package,
+    defaultLocation: defaultLocation,
+    initialPick: initialPick,
+  );
+  if (bookingId == null || !context.mounted) return;
+
+  // Straight to the booking rather than a toast: the client's next question
+  // is "did that work, and what happens now", which the booking answers and
+  // a snackbar does not. Pushed onto Discover's stack, so back returns to
+  // the profile they were reading.
+  final container = ProviderScope.containerOf(context);
+  await context.push(ClientRoute.bookingDetail(bookingId));
+  // Back on the profile, the calendar asks again: other clients may have
+  // booked while this one looked at their booking.
+  container.invalidate(proAvailabilityProvider);
 }
 
 String _duration(int minutes) {

@@ -1,10 +1,19 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/api/api_client/client_launch_client.dart';
+import 'package:rawwers/api/models/client_availability_start.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
+import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/booking_request/booking_request_controller.dart';
 import 'package:rawwers/features/client/booking_request/booking_request_sheet.dart';
+import 'package:rawwers/features/client/pro_profile/availability_calendar.dart';
+
+import '../../support/fake_http_client_adapter.dart';
 
 /// The booking request form is the highest-intent action in the client app,
 /// so what it must not do is lose someone's request or send a nonsensical one.
@@ -56,9 +65,30 @@ const _package = ClientProfilePackage(
   finalsSlaDays: 7,
 );
 
-/// Opens the sheet from a host screen, the way the profile does.
-Widget _host(_FakeRequests fake, {void Function(String?)? onClosed}) => ProviderScope(
-      overrides: [bookingRequestControllerProvider.overrideWith(() => fake)],
+/// A time picked on the profile's calendar: 10:00 in Lisbon, 09:00Z.
+final _pick = PickedStart(
+  day: DateTime.utc(2030, 6, 12),
+  start: ClientAvailabilityStart(startAt: DateTime.parse('2030-06-12T10:00:00+01:00'), localTime: '10:00'),
+  timezone: 'Europe/Lisbon',
+);
+
+/// Availability with nothing open, for a sheet opened without a time - its
+/// calendar has to load from somewhere.
+Dio _emptyCalendar() => Dio(BaseOptions(baseUrl: 'https://example.invalid'))
+  ..httpClientAdapter = FakeHttpClientAdapter(
+    (o) async => jsonResponseBody(
+      jsonEncode({'timezone': 'Europe/Lisbon', 'has_schedule': true, 'notice_hours': 24, 'days': <Object>[]}),
+      200,
+    ),
+  );
+
+/// Opens the sheet from a host screen, the way the profile does - with a time
+/// already picked on its calendar unless [pick] is null.
+Widget _host(_FakeRequests fake, {void Function(String?)? onClosed, PickedStart? pick}) => ProviderScope(
+      overrides: [
+        bookingRequestControllerProvider.overrideWith(() => fake),
+        clientLaunchClientProvider.overrideWithValue(ClientLaunchClient(_emptyCalendar())),
+      ],
       child: MaterialApp(
         theme: buildClientTheme(),
         home: Scaffold(
@@ -72,6 +102,7 @@ Widget _host(_FakeRequests fake, {void Function(String?)? onClosed}) => Provider
                     proName: 'Alex Lens',
                     package: _package,
                     defaultLocation: 'New York',
+                    initialPick: pick,
                   );
                   onClosed?.call(result);
                 },
@@ -88,33 +119,28 @@ Future<void> _openSheet(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Drives the Material date picker to the given day of the current month.
-Future<void> _pickDay(WidgetTester tester, String day) async {
-  await tester.tap(find.text('Date'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text(day).last);
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('OK'));
-  await tester.pumpAndSettle();
-}
-
 void main() {
-  testWidgets('will not send without a date and time', (tester) async {
+  testWidgets('opened without a time, it asks through the calendar and will not send without one', (tester) async {
     final fake = _FakeRequests(const BookingRequestSent('booking-1'));
     await tester.pumpWidget(_host(fake));
     await _openSheet(tester);
 
+    // The real availability, not a bare date picker the server would refuse.
+    expect(find.byType(AvailabilityCalendar), findsOneWidget);
+    expect(find.byType(DatePickerDialog), findsNothing);
+
+    await tester.ensureVisible(find.text('Send request'));
     await tester.tap(find.text('Send request'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pick a date and a start time.'), findsOneWidget);
+    expect(find.text('Pick a start time.'), findsOneWidget);
     // Nothing reached the API - an incomplete request is caught here, not by
     // a 422 the person has to interpret.
     expect(fake.sentStart, isNull);
   });
 
   testWidgets('states the package, price and who it is for', (tester) async {
-    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b'))));
+    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b')), pick: _pick));
     await _openSheet(tester);
 
     expect(find.text('Request Portrait session'), findsOneWidget);
@@ -124,7 +150,7 @@ void main() {
   });
 
   testWidgets('sets the expectation before the request goes out', (tester) async {
-    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b'))));
+    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b')), pick: _pick));
     await _openSheet(tester);
 
     // 24, matching the backend's expires_at. Saying 48 would cost someone
@@ -134,7 +160,7 @@ void main() {
   });
 
   testWidgets('prefills where the photographer works', (tester) async {
-    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b'))));
+    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b')), pick: _pick));
     await _openSheet(tester);
 
     expect(find.text('New York'), findsOneWidget);
@@ -143,22 +169,18 @@ void main() {
   testWidgets('derives the end time from the package rather than asking', (tester) async {
     final fake = _FakeRequests(const BookingRequestSent('booking-1'));
     String? closedWith;
-    await tester.pumpWidget(_host(fake, onClosed: (id) => closedWith = id));
+    await tester.pumpWidget(_host(fake, onClosed: (id) => closedWith = id, pick: _pick));
     await _openSheet(tester);
 
-    await _pickDay(tester, '15');
-    // The time picker defaults to 14:00 and its dial is not drivable here, so
-    // the assertion is on the relationship between start and end, which is
-    // the part the form is responsible for.
-    await tester.tap(find.text('Start time'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
+    // The picked time, stated in the photographer's own time - not asked again.
+    expect(find.text('Wed 12 Jun at 10:00'), findsOneWidget);
+    expect(find.textContaining('Lisbon time · ends around 11:30'), findsOneWidget);
 
     await tester.tap(find.text('Send request'));
     await tester.pumpAndSettle();
 
-    expect(fake.sentStart, isNotNull);
+    // The instant the server offered, unchanged by the phone's time zone.
+    expect(fake.sentStart, DateTime.utc(2030, 6, 12, 9));
     expect(fake.sentEnd!.difference(fake.sentStart!), const Duration(minutes: 90));
     // The niche the booking endpoint validates against the package comes from
     // the package itself, so the two can never disagree.
@@ -169,24 +191,30 @@ void main() {
   });
 
   testWidgets('a rejected request keeps the sheet and the form open', (tester) async {
-    final fake = _FakeRequests(const BookingRequestFailed('This photographer has not opened their calendar yet.'));
+    final fake = _FakeRequests(const BookingRequestFailed('That time clashes with another booking.'));
     String? closedWith = 'not-called';
-    await tester.pumpWidget(_host(fake, onClosed: (id) => closedWith = id));
+    await tester.pumpWidget(_host(fake, onClosed: (id) => closedWith = id, pick: _pick));
     await _openSheet(tester);
-
-    await _pickDay(tester, '15');
-    await tester.tap(find.text('Start time'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Send request'));
     await tester.pumpAndSettle();
 
-    expect(find.text('This photographer has not opened their calendar yet.'), findsOneWidget);
-    // Still open, with the date still chosen - a failed send must not throw
+    expect(find.text('That time clashes with another booking.'), findsOneWidget);
+    // Still open, with the time still chosen - a failed send must not throw
     // away what the person already entered.
     expect(find.text('Send request'), findsOneWidget);
+    expect(find.text('Wed 12 Jun at 10:00'), findsOneWidget);
     expect(closedWith, 'not-called');
+  });
+
+  testWidgets('"Change time" goes back to the calendar rather than a date picker', (tester) async {
+    await tester.pumpWidget(_host(_FakeRequests(const BookingRequestSent('b')), pick: _pick));
+    await _openSheet(tester);
+
+    await tester.tap(find.text('Change time'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AvailabilityCalendar), findsOneWidget);
+    expect(find.text('Wed 12 Jun at 10:00'), findsNothing);
   });
 }

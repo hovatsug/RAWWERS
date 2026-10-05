@@ -9,6 +9,7 @@ export 'communications_client.dart';
 export 'discovery_client.dart';
 export 'disputes_client.dart';
 export 'gamification_client.dart';
+export 'gear_verification_client.dart';
 export 'gigs_client.dart';
 export 'media_client.dart';
 export 'media_rights_client.dart';

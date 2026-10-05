@@ -23,12 +23,18 @@ class OnboardingScreen extends ConsumerStatefulWidget {
     required this.profilePath,
     required this.portfolioPath,
     required this.pricingPath,
+    required this.gearPath,
     super.key,
   });
 
   final String profilePath;
   final String portfolioPath;
   final String pricingPath;
+
+  /// Required, not optional: gear was enforced by the server for a long time
+  /// while this checklist never mentioned it, so a photographer could see
+  /// every step done and be unable to go live without being told why.
+  final String gearPath;
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -71,6 +77,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 profilePath: widget.profilePath,
                 portfolioPath: widget.portfolioPath,
                 pricingPath: widget.pricingPath,
+                gearPath: widget.gearPath,
               ),
             ),
           AsyncError() => RErrorState(
@@ -97,6 +104,7 @@ class _Checklist extends ConsumerWidget {
     required this.profilePath,
     required this.portfolioPath,
     required this.pricingPath,
+    required this.gearPath,
   });
 
   final Map<String, dynamic>? checks;
@@ -104,6 +112,7 @@ class _Checklist extends ConsumerWidget {
   final String profilePath;
   final String portfolioPath;
   final String pricingPath;
+  final String gearPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -139,6 +148,12 @@ class _Checklist extends ConsumerWidget {
         detail: 'The niches you want to be found under.',
         done: checkDone(checks, 'niches_selected'),
         onTap: () => context.push(profilePath),
+      ),
+      _Step(
+        title: 'Your gear',
+        detail: gearStepDetail(checks),
+        done: checkDone(checks, 'gear_verified'),
+        onTap: () => context.push(gearPath),
       ),
     ];
 
@@ -297,4 +312,32 @@ class _IdentityStep extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// What the gear step says, from what the server reports.
+///
+/// "Waiting on us" and "still to do" are different situations and read
+/// differently: someone whose camera is in the review queue has nothing left
+/// to do, and a checklist that said "still needed" would send them round again.
+String gearStepDetail(Map<String, dynamic>? checks) {
+  if (checkDone(checks, 'gear_verified')) return 'A full-frame body and a lens that qualify, verified.';
+
+  final awaiting = checkCount(checks, 'gear_awaiting_review');
+  if (awaiting > 0) {
+    return 'Waiting on us: ${awaiting == 1 ? 'one item is' : '$awaiting items are'} being checked by hand.';
+  }
+
+  final missing = checks?['gear_missing'];
+  final gaps = <String>[
+    if (missing is List)
+      for (final gap in missing)
+        switch (gap) {
+          'full_frame_body' => 'a full-frame camera body',
+          'qualifying_lens' => 'a prime or fixed-aperture lens',
+          'lighting' => 'your lighting',
+          _ => '$gap',
+        },
+  ];
+  if (gaps.isEmpty) return 'Send a file from your camera to prove your kit.';
+  return 'Still needed: ${gaps.join(', ')}.';
 }

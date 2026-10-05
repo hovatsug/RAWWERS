@@ -85,6 +85,7 @@ Widget _wrap({
   ProProfileController Function()? profile,
   NotificationPreferencesController Function()? prefs,
   PayoutAccountView? payout,
+  String? gearVerificationPath,
 }) =>
     ProviderScope(
       overrides: [
@@ -94,7 +95,7 @@ Widget _wrap({
       ],
       child: MaterialApp(
         theme: buildProTheme(),
-        home: const ProSettingsScreen(verifyEmailPath: '/verify'),
+        home: ProSettingsScreen(verifyEmailPath: '/verify', gearVerificationPath: gearVerificationPath),
       ),
     );
 
@@ -177,5 +178,21 @@ void main() {
     expect(find.text('Not set up'), findsOneWidget);
     await _scrollTo(tester, find.text('Log out'));
     expect(find.text('Log out'), findsOneWidget);
+  });
+
+  testWidgets('offers gear verification when the app wires it, described as what it unlocks', (tester) async {
+    await tester.pumpWidget(_wrap(gearVerificationPath: '/gear-verification'));
+    await tester.pump();
+
+    await _scrollTo(tester, find.text('Verify your gear'));
+    expect(find.text('Verify your gear'), findsOneWidget);
+    expect(find.text('Prove your camera and lens to go live'), findsOneWidget);
+  });
+
+  testWidgets('no gear verification row when nothing is wired to it', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    expect(find.text('Verify your gear'), findsNothing);
   });
 }

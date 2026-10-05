@@ -25,6 +25,7 @@ class ProSettingsScreen extends ConsumerWidget {
     required this.verifyEmailPath,
     this.profileEditPath,
     this.gearPath,
+    this.gearVerificationPath,
     this.portfolioPath,
     this.pricingPath,
     this.onboardingPath,
@@ -37,6 +38,7 @@ class ProSettingsScreen extends ConsumerWidget {
   final String verifyEmailPath;
   final String? profileEditPath;
   final String? gearPath;
+  final String? gearVerificationPath;
   final String? portfolioPath;
   final String? pricingPath;
   final String? onboardingPath;
@@ -141,6 +143,14 @@ class ProSettingsScreen extends ConsumerWidget {
                         label: 'Availability',
                         detail: 'Working hours, time off, how much notice you need',
                         onTap: () => context.push(availabilityPath!),
+                      ),
+                    ],
+                    if (gearVerificationPath != null) ...[
+                      const Divider(height: RSpace.s24),
+                      _NavRow(
+                        label: 'Verify your gear',
+                        detail: 'Prove your camera and lens to go live',
+                        onTap: () => context.push(gearVerificationPath!),
                       ),
                     ],
                     if (gearPath != null) ...[

@@ -59,6 +59,7 @@ dependencies:
   # Portfolio uploads (P-4). Gallery only - no camera capture path, so no
   # camera permission is requested.
   image_picker: ^1.2.0
+  file_picker: ^13.1.0
 
 dev_dependencies:
   flutter_test:

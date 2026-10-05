@@ -53,6 +53,14 @@ class BaseApiClient {
     return GamificationClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
+  GearVerificationClient get gearVerificationClient {
+    return GearVerificationClient(
+      dio,
+      baseUrl: baseUrl,
+      errorLogger: errorLogger,
+    );
+  }
+
   GigsClient get gigsClient {
     return GigsClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

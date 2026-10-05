@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/api_client/ai_concierge_client.dart';
 import 'package:rawwers/api/api_client/auth_client.dart';
 import 'package:rawwers/api/api_client/client_launch_client.dart';
+import 'package:rawwers/api/api_client/gear_verification_client.dart';
 import 'package:rawwers/api/api_client/gigs_client.dart';
 import 'package:rawwers/api/api_client/media_client.dart';
 import 'package:rawwers/api/api_client/notifications_client.dart';
@@ -50,6 +51,11 @@ NotificationsClient notificationsClient(Ref ref) => NotificationsClient(ref.watc
 
 @riverpod
 SchedulingClient schedulingClient(Ref ref) => SchedulingClient(ref.watch(dioProvider));
+
+/// Proving what a photographer shoots on. Separate from [repairsClient] on
+/// purpose: that one records what they *own*, this one what qualifies them.
+@riverpod
+GearVerificationClient gearVerificationClient(Ref ref) => GearVerificationClient(ref.watch(dioProvider));
 
 /// Gear lives under the repairs tag because the repairs marketplace
 /// consumes it; to a photographer it is just the kit they own.

@@ -70,6 +70,9 @@ ProOnboardingChecksResponse _checks({
   bool kycApproved = false,
   bool ready = false,
   int photos = 7,
+  bool gear = false,
+  int gearAwaiting = 0,
+  List<String> gearMissing = const ['full_frame_body', 'qualifying_lens'],
 }) =>
     ProOnboardingChecksResponse(
       status: ProOnboardingStatus.started,
@@ -83,6 +86,9 @@ ProOnboardingChecksResponse _checks({
         'ready_for_review': ready,
         'portfolio_count': photos,
         'portfolio_min_required': 12,
+        'gear_verified': gear,
+        'gear_awaiting_review': gearAwaiting,
+        'gear_missing': gear ? <String>[] : gearMissing,
       },
       missing: const [],
     );
@@ -102,6 +108,7 @@ Widget _wrap({
           profilePath: '/profile',
           portfolioPath: '/portfolio',
           pricingPath: '/pricing',
+          gearPath: '/gear',
         ),
       ),
     );
@@ -234,5 +241,84 @@ void main() {
     await tester.pump();
 
     expect(find.text('Could not load your progress.'), findsOneWidget);
+  });
+
+  // -------------------------------------------------------------------------
+  // Gear. The server refused every photographer without verified gear while this
+  // checklist never mentioned it: someone could see every step done, and be
+  // unable to go live without being told why.
+  // -------------------------------------------------------------------------
+
+  testWidgets('gear is a step on the checklist, not something discovered at the end', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    expect(find.text('Your gear'), findsOneWidget);
+  });
+
+  testWidgets('finishing every other step is not "done" while gear is outstanding', (tester) async {
+    await tester.pumpWidget(_wrap(
+      onboarding: () => _FakeOnboarding(_checks(portfolio: true, packages: true, niches: true, photos: 12)),
+    ));
+    await tester.pump();
+
+    // Five steps now, and four of them done: the old checklist read "4 of 4".
+    expect(find.text('4 of 5 done'), findsOneWidget);
+    expect(find.text('Put my listing live'), findsNothing);
+  });
+
+  testWidgets('outstanding gear names what is missing in words', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    expect(find.text('Still needed: a full-frame camera body, a prime or fixed-aperture lens.'), findsOneWidget);
+  });
+
+  testWidgets('gear waiting on a person reads as waiting on us, not as work to do', (tester) async {
+    await tester.pumpWidget(_wrap(
+      onboarding: () => _FakeOnboarding(_checks(gearAwaiting: 1)),
+    ));
+    await tester.pump();
+
+    expect(find.text('Waiting on us: one item is being checked by hand.'), findsOneWidget);
+    expect(find.textContaining('Still needed'), findsNothing);
+  });
+
+  testWidgets('verified gear closes the step', (tester) async {
+    await tester.pumpWidget(_wrap(onboarding: () => _FakeOnboarding(_checks(gear: true))));
+    await tester.pump();
+
+    expect(find.text('A full-frame body and a lens that qualify, verified.'), findsOneWidget);
+  });
+
+  group('gearStepDetail', () {
+    test('lists a missing lens on its own', () {
+      expect(
+        gearStepDetail({'gear_verified': false, 'gear_missing': ['qualifying_lens']}),
+        'Still needed: a prime or fixed-aperture lens.',
+      );
+    });
+
+    test('lists lighting when the niches call for it', () {
+      expect(
+        gearStepDetail({'gear_verified': false, 'gear_missing': ['lighting']}),
+        'Still needed: your lighting.',
+      );
+    });
+
+    test('pluralises the wait', () {
+      expect(
+        gearStepDetail({'gear_verified': false, 'gear_awaiting_review': 2}),
+        'Waiting on us: 2 items are being checked by hand.',
+      );
+    });
+
+    test('a requirement it has no words for is still shown, not dropped', () {
+      expect(gearStepDetail({'gear_verified': false, 'gear_missing': ['tripod']}), 'Still needed: tripod.');
+    });
+
+    test('an older server that reports nothing about gear gives a prompt, not a blank', () {
+      expect(gearStepDetail(<String, dynamic>{}), 'Send a file from your camera to prove your kit.');
+    });
   });
 }

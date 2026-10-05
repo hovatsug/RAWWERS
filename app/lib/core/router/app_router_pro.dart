@@ -10,6 +10,7 @@ import 'package:rawwers/core/launch/launch_screen.dart';
 import 'package:rawwers/features/pro/availability/availability_screen.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
 import 'package:rawwers/features/pro/gear/gear_screen.dart';
+import 'package:rawwers/features/pro/gear_verification/gear_verification_screen.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_screen.dart';
 import 'package:rawwers/features/pro/onboarding/onboarding_screen.dart';
 import 'package:rawwers/features/pro/payouts/payouts_screen.dart';
@@ -77,6 +78,7 @@ abstract final class ProRoute {
   static const settings = '$dashboard/settings';
   static const profileEdit = '$dashboard/profile';
   static const gear = '$dashboard/gear';
+  static const gearVerification = '$dashboard/gear-verification';
   static const portfolio = '$dashboard/portfolio';
   static const pricing = '$dashboard/pricing';
   static const payouts = '$dashboard/payouts';
@@ -170,6 +172,7 @@ GoRouter proRouter(Ref ref) {
                         verifyEmailPath: ProRoute.verifyEmail,
                         profileEditPath: ProRoute.profileEdit,
                         gearPath: ProRoute.gear,
+                        gearVerificationPath: ProRoute.gearVerification,
                         portfolioPath: ProRoute.portfolio,
                         pricingPath: ProRoute.pricing,
                         onboardingPath: ProRoute.onboarding,
@@ -179,6 +182,7 @@ GoRouter proRouter(Ref ref) {
                       )),
                   _editor('profile', (context, state) => const ProProfileEditScreen()),
                   _editor('gear', (context, state) => const GearScreen()),
+                  _editor('gear-verification', (context, state) => const GearVerificationScreen()),
                   _editor('portfolio', (context, state) => const PortfolioScreen()),
                   _editor('pricing', (context, state) => const PricingScreen()),
                   _editor('payouts', (context, state) => const PayoutsScreen()),
@@ -194,6 +198,7 @@ GoRouter proRouter(Ref ref) {
                         profilePath: ProRoute.profileEdit,
                         portfolioPath: ProRoute.portfolio,
                         pricingPath: ProRoute.pricing,
+                        gearPath: ProRoute.gearVerification,
                       )),
                 ],
               ),

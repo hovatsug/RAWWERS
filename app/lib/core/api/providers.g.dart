@@ -183,6 +183,29 @@ final schedulingClientProvider = AutoDisposeProvider<SchedulingClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SchedulingClientRef = AutoDisposeProviderRef<SchedulingClient>;
+String _$gearVerificationClientHash() =>
+    r'154370255c84f6fd6316ad92429d4f5702a9df02';
+
+/// Proving what a photographer shoots on. Separate from [repairsClient] on
+/// purpose: that one records what they *own*, this one what qualifies them.
+///
+/// Copied from [gearVerificationClient].
+@ProviderFor(gearVerificationClient)
+final gearVerificationClientProvider =
+    AutoDisposeProvider<GearVerificationClient>.internal(
+      gearVerificationClient,
+      name: r'gearVerificationClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$gearVerificationClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GearVerificationClientRef =
+    AutoDisposeProviderRef<GearVerificationClient>;
 String _$repairsClientHash() => r'3dc416830e26cf8cba06f27cf5dc1f6996e34d12';
 
 /// Gear lives under the repairs tag because the repairs marketplace

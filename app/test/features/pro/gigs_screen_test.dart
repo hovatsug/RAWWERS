@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/booking_request_list_item.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/api/models/gig_status.dart';
 import 'package:rawwers/core/paging/cursor_page.dart';
+import 'package:rawwers/core/router/app_router_pro.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
+import 'package:rawwers/features/pro/gigs/gig_status_display.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/requests/requests_controller.dart';
 import 'package:rawwers/features/pro/today/today_section.dart';
@@ -65,7 +68,95 @@ Widget _wrapGigs(CursorPage<GigResponse> page) => ProviderScope(
       child: MaterialApp(theme: buildProTheme(), home: const GigsScreen()),
     );
 
+/// Real routing, so a tap on a card has somewhere to go and the test can tell
+/// whether it went.
+Widget _wrapRouted(CursorPage<GigResponse> page) => ProviderScope(
+      overrides: [gigsControllerProvider.overrideWith(() => _FakeGigs(page))],
+      child: MaterialApp.router(
+        theme: buildProTheme(),
+        routerConfig: GoRouter(
+          routes: [
+            GoRoute(path: '/', builder: (context, state) => const GigsScreen()),
+            GoRoute(
+              path: ProRoute.gigDelivery,
+              builder: (context, state) => const Scaffold(body: Text('DELIVERY OPENED')),
+            ),
+          ],
+        ),
+      ),
+    );
+
 void main() {
+  // ---------------------------------------------------------------------------
+  // Delivery is offered where it can succeed. The server refuses to start a
+  // gallery for a booking that is unpaid or cancelled, and a card that opened
+  // the delivery screen anyway would lead to an error screen instead.
+  // ---------------------------------------------------------------------------
+
+  testWidgets('a paid booking opens delivery', (tester) async {
+    await tester.pumpWidget(_wrapRouted(CursorPage(items: [_gig(id: 'g1', status: GigStatus.paid)])));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Porto, Ribeira'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DELIVERY OPENED'), findsOneWidget);
+  });
+
+  testWidgets('a booking still awaiting payment does not open delivery, and says why', (tester) async {
+    await tester.pumpWidget(
+      _wrapRouted(CursorPage(items: [_gig(id: 'g1', status: GigStatus.paymentPending)])),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delivery opens once your client has paid.'), findsOneWidget);
+    await tester.tap(find.text('Porto, Ribeira'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DELIVERY OPENED'), findsNothing, reason: 'opened a screen that can only show an error');
+  });
+
+  testWidgets('a cancelled booking does not open delivery', (tester) async {
+    await tester.pumpWidget(
+      _wrapRouted(CursorPage(items: [_gig(id: 'g1', status: GigStatus.cancelledByClient)])),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancelled'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Porto, Ribeira'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DELIVERY OPENED'), findsNothing);
+  });
+
+  testWidgets('a finished booking still opens, so delivered work can be looked at', (tester) async {
+    await tester.pumpWidget(_wrapRouted(CursorPage(items: [_gig(id: 'g1', status: GigStatus.completed)])));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delivered'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Porto, Ribeira'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DELIVERY OPENED'), findsOneWidget);
+  });
+
+  test('every status has been decided on, so a new one cannot default to openable', () {
+    const opens = {
+      GigStatus.paid,
+      GigStatus.scheduled,
+      GigStatus.shootDone,
+      GigStatus.proofsDelivered,
+      GigStatus.selectionPending,
+      GigStatus.finalDelivered,
+      GigStatus.completed,
+    };
+    for (final status in GigStatus.values) {
+      expect(status.canOpenDelivery, opens.contains(status), reason: '${status.name} is classified wrongly');
+    }
+  });
+
   testWidgets('renders a gig with its status label and what the pro earns', (tester) async {
     await tester.pumpWidget(_wrapGigs(CursorPage(items: [_gig(id: 'g1')])));
     await tester.pump();

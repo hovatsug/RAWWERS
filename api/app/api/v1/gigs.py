@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 import stripe
 from fastapi import APIRouter, Depends, Query
@@ -15,7 +15,6 @@ from app.core.errors import APIError
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gig import (
-    CreateGigRequest,
     CreatePaymentIntentRequest,
     CreatePaymentIntentResponse,
     CreateRefundRequest,
@@ -27,7 +26,6 @@ from app.schemas.gig import (
     PaymentSummary,
 )
 from app.schemas.media import CurrentUser
-from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.authz import require_kyc_approved_for_pro
 from app.services.analytics import log_event
 from app.services.payment_intents import (
@@ -35,78 +33,14 @@ from app.services.payment_intents import (
     create_or_get_gig_payment_intent,
     list_succeeded_payments_for_gig,
 )
-from app.services.followups import schedule_followups
 from app.services.feature_flags import is_feature_enabled
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.rewards import reserve_points_for_discount
 from app.services.stripe_service import is_within_hours
-from app.services.media_rights import ensure_gig_consent_snapshot
-from app.services.disputes import capture_gig_contract_snapshot
 
 settings = get_settings()
 router = APIRouter(prefix="/gigs", tags=["gigs"])
-
-
-@router.post("", response_model=GigResponse)
-def create_gig(
-    body: CreateGigRequest,
-    user: CurrentUser = Depends(require_not_banned),
-    db: Session = Depends(get_db_session),
-) -> GigResponse:
-    amount_minimum = body.amount_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    if amount_minimum <= 0:
-        raise APIError(code="validation_error", message="amount_total must be > 0", status_code=422)
-
-    split = split_for_pro(db, gross=amount_minimum, pro_user_id=body.pro_user_id)
-    fee = split.platform_total
-    pro_gross = split.pro_total
-
-    gig = Gig(
-        client_user_id=user.user_id,
-        pro_user_id=body.pro_user_id,
-        niche_id=body.niche_id,
-        status=GigStatus.payment_pending,
-        currency=body.currency.upper(),
-        amount_minimum=amount_minimum,
-        amount_platform_fee=fee,
-        amount_pro_gross=pro_gross,
-        # Recorded, not looked up later. An invoice a year from now must show
-        # the split this booking was actually created under, whatever the
-        # policy says by then.
-        fee_percent=split.fee_percent,
-        retained_percent=split.retained_percent,
-        pro_raww_percent=split.pro_raww_percent,
-        client_credit_percent=split.client_credit_percent,
-        **vat_stamp_for(db, pro_user_id=body.pro_user_id),
-        location_text=body.location_text,
-        scheduled_start=body.scheduled_start,
-        scheduled_end=body.scheduled_end,
-        meta={},
-    )
-    db.add(gig)
-    db.flush()
-
-    db.add(
-        transition_gig_seed(
-            gig_id=gig.id,
-            actor_user_id=user.user_id,
-            to_status=GigStatus.payment_pending,
-            reason="Gig created and moved to payment pending",
-        )
-    )
-    schedule_followups(
-        db,
-        trigger="payment_pending.client",
-        user_id=gig.client_user_id,
-        target_type="gig",
-        target_id=gig.id,
-    )
-    ensure_gig_consent_snapshot(db, gig, actor_user_id=user.user_id)
-    capture_gig_contract_snapshot(db, gig)
-    db.commit()
-    db.refresh(gig)
-    return _gig_response(gig)
 
 
 @router.get("", response_model=GigListResponse)
@@ -333,16 +267,6 @@ def create_refund(
     return CreateRefundResponse(refund_id=refund_ids[0], status=last_refund.status, refund_ids=refund_ids)
 
 
-def transition_gig_seed(gig_id: uuid.UUID, actor_user_id: uuid.UUID, to_status: GigStatus, reason: str):
-    from app.models.gig import GigTransition
-
-    return GigTransition(
-        gig_id=gig_id,
-        from_status=GigStatus.draft,
-        to_status=to_status,
-        actor_user_id=actor_user_id,
-        reason=reason,
-    )
 
 
 def _ensure_gig_access(gig: Gig, user_id: uuid.UUID) -> None:

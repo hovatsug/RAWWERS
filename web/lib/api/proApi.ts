@@ -98,7 +98,6 @@ export const proApi = {
   confirmSlot: (bookingRequestId: string, payload: Record<string, unknown>, accessToken?: string | null) => wrap(() => post<any>(`/pro/bookings/${bookingRequestId}/confirm-slot`, payload, accessToken)),
 
   getGig: (gigId: string, accessToken?: string | null) => wrap(() => get<any>(`/gigs/${gigId}`, accessToken)),
-  createGig: (payload: Record<string, unknown>, accessToken?: string | null) => wrap(() => post<any>("/gigs", payload, accessToken)),
   cancelGigSlot: (gigId: string, payload: Record<string, unknown>, accessToken?: string | null) => wrap(() => post<any>(`/gigs/${gigId}/cancel-slot`, payload, accessToken)),
   requestReschedule: (gigId: string, payload: Record<string, unknown>, accessToken?: string | null) => wrap(() => post<any>(`/gigs/${gigId}/reschedule-request`, payload, accessToken)),
   getGigConsent: (gigId: string, accessToken?: string | null) => wrap(() => get<any>(`/gigs/${gigId}/consent`, accessToken)),

@@ -45,4 +45,44 @@ extension GigStatusDisplay on GigStatus {
         GigStatus.refunded => 'Refunded',
         GigStatus.disputed => 'Disputed',
       };
+
+  /// Whether tapping this booking should open delivery.
+  ///
+  /// The server refuses to start a gallery for a booking that is unpaid or
+  /// cancelled, so a card that opened the delivery screen anyway led to an
+  /// error screen. Finished bookings stay openable because their gallery
+  /// already exists and delivered work has to be viewable.
+  ///
+  /// Exhaustive on purpose, no default: a status added on the server has to be
+  /// classified here rather than quietly becoming a card that opens.
+  bool get canOpenDelivery => switch (this) {
+        GigStatus.paid ||
+        GigStatus.scheduled ||
+        GigStatus.shootDone ||
+        GigStatus.proofsDelivered ||
+        GigStatus.selectionPending ||
+        GigStatus.finalDelivered ||
+        GigStatus.completed =>
+          true,
+        GigStatus.draft ||
+        GigStatus.requested ||
+        GigStatus.accepted ||
+        GigStatus.paymentPending ||
+        GigStatus.cancelledByClient ||
+        GigStatus.cancelledByPro ||
+        GigStatus.refunded ||
+        GigStatus.disputed =>
+          false,
+      };
+
+  /// Why a card does not open, for the ones where the reason is "not yet"
+  /// rather than "never". Cancelled and refunded say so in their status chip.
+  String? get deliveryNote => switch (this) {
+        GigStatus.draft ||
+        GigStatus.requested ||
+        GigStatus.accepted ||
+        GigStatus.paymentPending =>
+          'Delivery opens once your client has paid.',
+        _ => null,
+      };
 }

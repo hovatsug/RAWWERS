@@ -9,7 +9,6 @@ import { apiGet, apiPost, apiPut } from "@/lib/api/client";
 
 export const gigs = {
   getGig: (gigId: string, accessToken?: string | null) => apiGet<any>(`/gigs/${gigId}`, accessToken),
-  createGig: (payload: Record<string, unknown>, accessToken?: string | null) => apiPost<any>("/gigs", payload, accessToken),
   cancelGigSlot: (gigId: string, payload: Record<string, unknown>, accessToken?: string | null) => apiPost<any>(`/gigs/${gigId}/cancel-slot`, payload, accessToken),
   requestReschedule: (gigId: string, payload: Record<string, unknown>, accessToken?: string | null) => apiPost<any>(`/gigs/${gigId}/reschedule-request`, payload, accessToken),
 

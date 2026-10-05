@@ -622,7 +622,7 @@ The real gaps: MVP-scope endpoints nothing in `web/` calls (excludes the "Broken
 20. `POST /v1/pros/{pro_user_id}/chats` — no caller. No chat-thread creation from a pro's profile page.
 21. `GET /v1/pros/{pro_user_id}/reviews` — no caller. MVP spec C4 requires "Reviews (star breakdown, text, video reviews)" on the profile screen; nothing fetches them.
 22. `GET /v1/pros/{pro_user_id}/skills` — no caller.
-23. `POST /v1/gigs` — no caller. `proApi.createGig` (`web/lib/api/proApi.ts:101`) unused; there is no UI path that creates a gig record.
+23. ~~`POST /v1/gigs` — no caller.~~ **Removed** (any user could create a gig for any photographer at any price, without the photographer's consent). Original note: `proApi.createGig` (`web/lib/api/proApi.ts:101`) unused; there is no UI path that creates a gig record.
 24. `POST /v1/gigs/{gig_id}/cancel-slot` — no caller. `proApi.cancelGigSlot` (`web/lib/api/proApi.ts:102`) unused.
 25. `GET /v1/gigs/{gig_id}/consent` — no caller. `clientApi.getGigConsent`/`proApi.getGigConsent` unused.
 26. `PUT /v1/gigs/{gig_id}/consent` — no caller. `clientApi.putGigConsent`/`proApi.putGigConsent` unused (C11 Step 3 consent toggle has no backend wiring).

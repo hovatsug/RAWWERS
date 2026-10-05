@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 import stripe
 from fastapi import APIRouter, Depends, Query
@@ -66,12 +66,39 @@ from app.services.media_urls import (
 from app.services.storage import create_presigned_get
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
+from app.services.gig_state import require_gig_deliverable
 from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count, is_curve_priced
 from app.services.selection_quote import gallery_photo_count, quote_selection
 from app.services.payment_intents import create_or_get_gig_payment_intent
 
 settings = get_settings()
 router = APIRouter(tags=["proof_galleries"])
+
+
+def _agreed_gallery_terms(gig: Gig, body: CreateProofGalleryRequest) -> tuple[int, Decimal]:
+    """The included-photo count and extras price this booking was sold with.
+
+    From the pricing snapshot written when the booking was accepted, not from
+    the request: the body is the caller's input, and letting the photographer
+    type their own extras price into a gallery is a price the client never
+    agreed to. The request only fills in where there is no snapshot to read -
+    gigs built by confirm-slot carry none - and where the snapshot is unusable.
+    """
+    snapshot = (gig.meta or {}).get("pricing_snapshot")
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
+
+    included = snapshot.get("included_photos")
+    if isinstance(included, bool) or not isinstance(included, int) or included < 1:
+        included = body.included_photos
+
+    try:
+        extra = Decimal(str(snapshot["extra_photo_price"]))
+        if extra < 0:
+            raise ValueError("negative")
+    except (KeyError, InvalidOperation, ValueError, TypeError):
+        extra = body.extra_photo_price
+
+    return int(included), extra.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 @router.post("/gigs/{gig_id}/proof-gallery", response_model=ProofGalleryResponse)
@@ -87,16 +114,21 @@ def create_proof_gallery(
     if gig.pro_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only gig pro can create proof gallery", status_code=403)
 
+    # Returning the one that exists is unguarded on purpose: the pro app calls
+    # this to *look at* a gallery, so a finished booking's must stay viewable.
+    # What is refused is starting a new one for a booking that cannot take it.
     existing = db.execute(select(ProofGallery).where(ProofGallery.gig_id == gig_id)).scalar_one_or_none()
     if existing:
         return _gallery_to_response(existing)
+    require_gig_deliverable(gig)
 
+    included_photos, extra_photo_price = _agreed_gallery_terms(gig, body)
     gallery = ProofGallery(
         gig_id=gig.id,
         pro_user_id=gig.pro_user_id,
         client_user_id=gig.client_user_id,
-        included_photos=body.included_photos,
-        extra_photo_price=body.extra_photo_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        included_photos=included_photos,
+        extra_photo_price=extra_photo_price,
         currency=gig.currency,
         status=ProofGalleryStatus.draft,
     )
@@ -118,6 +150,12 @@ def add_gallery_items(
         raise APIError(code="not_found", message="Gallery not found", status_code=404)
     if gallery.pro_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only pro can add gallery items", status_code=403)
+    # Photos go into a gallery that is still being put together or is open for
+    # selection, on a booking that can still take them. Not after the selection is
+    # made, and not for a booking that has been cancelled, refunded or disputed.
+    if gallery.status not in {ProofGalleryStatus.draft, ProofGalleryStatus.published}:
+        raise APIError(code="invalid_state", message="This gallery is closed to new photos", status_code=409)
+    require_gig_deliverable(db.get(Gig, gallery.gig_id))
 
     next_sort_order = body.sort_order_optional
     if next_sort_order is None:
@@ -175,6 +213,18 @@ def publish_gallery(
         raise APIError(code="not_found", message="Gallery not found", status_code=404)
     if gallery.pro_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only pro can publish gallery", status_code=403)
+
+    # Sending twice is a tap, not a second event: nothing is redone. Before this
+    # a second publish reset `published_at` (which the dispute SLA is measured
+    # from) and re-scheduled every reminder to the client.
+    if gallery.status == ProofGalleryStatus.published:
+        return PublishGalleryResponse(ok=True, status=gallery.status)
+    # Only a draft can be sent. This used to set `published` unconditionally, so
+    # re-publishing a completed booking's gallery flipped `selection_submitted`
+    # back open and the client could save a new selection on a paid booking.
+    if gallery.status != ProofGalleryStatus.draft:
+        raise APIError(code="invalid_state", message="This gallery has already been sent", status_code=409)
+    require_gig_deliverable(db.get(Gig, gallery.gig_id))
 
     count = db.execute(select(func.count()).select_from(ProofGalleryItem).where(ProofGalleryItem.gallery_id == gallery_id)).scalar_one()
     if count < 1:

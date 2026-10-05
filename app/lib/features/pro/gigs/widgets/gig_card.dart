@@ -15,8 +15,12 @@ class GigCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final note = gig.status.deliveryNote;
+
     return InkWell(
-      onTap: onTap,
+      // Null for a booking that cannot take delivery: the card is then not a
+      // button at all, rather than one that leads to an error.
+      onTap: gig.status.canOpenDelivery ? onTap : null,
       child: RCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,6 +56,10 @@ class GigCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (note != null) ...[
+              const SizedBox(height: RSpace.s8),
+              Text(note, style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
       ),

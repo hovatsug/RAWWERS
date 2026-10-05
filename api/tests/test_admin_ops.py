@@ -68,12 +68,20 @@ def test_ban_enforcement_blocks_gig_and_media_create(client, db_session, user_id
     )
     db_session.commit()
 
-    gig_resp = client.post(
-        "/v1/gigs",
+    # A banned user is refused on the path a client actually books through. (This
+    # used to be `POST /v1/gigs`, which no longer exists: it let any user create
+    # a gig for any photographer without their consent.)
+    booking_resp = client.post(
+        "/v1/client/bookings/request",
         headers={"X-User-Id": user_id},
-        json={"pro_user_id": str(uuid.uuid4()), "amount_total": "100.00", "currency": "EUR"},
+        json={
+            "pro_user_id": str(uuid.uuid4()),
+            "niche_slug": "portraits",
+            "package_id": str(uuid.uuid4()),
+            "date_window": {"start_at": "2026-10-01T10:00:00Z", "end_at": "2026-10-01T12:00:00Z"},
+        },
     )
-    assert gig_resp.status_code == 403
+    assert booking_resp.status_code == 403
 
     monkeypatch.setattr("app.api.v1.media.create_presigned_put", lambda storage_key, content_type: "https://signed")
     media_resp = client.post(

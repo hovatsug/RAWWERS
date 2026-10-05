@@ -39,7 +39,6 @@ Used by `web/lib/api/proApi.ts` and `flutter/lib/core/api/pro_api.dart`:
 - `POST /v1/booking-requests/{request_id}/decline`
 - `POST /v1/booking-requests/{request_id}/cancel`
 - `POST /v1/pro/bookings/{booking_request_id}/confirm-slot`
-- `POST /v1/gigs`
 - `GET /v1/gigs/{gig_id}`
 - `POST /v1/gigs/{gig_id}/cancel-slot`
 - `POST /v1/gigs/{gig_id}/reschedule-request`

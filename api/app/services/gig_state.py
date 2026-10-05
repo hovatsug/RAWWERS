@@ -128,3 +128,27 @@ def find_and_flag_stuck_gigs(
         extra={"scanned": len(rows), "flagged": flagged_count, "failed": failed_count},
     )
     return flagged_count
+
+
+#: Where photographs can be delivered.
+#:
+#: Payment settled and the booking not yet finished: `paid` is the only one the
+#: booking flow ever reaches. `scheduled` and `shoot_done` are set only by the
+#: legacy shoot; they cost nothing to allow and excluding them would invent an
+#: edge case in a path the main flow cannot reach.
+#:
+#: Everything else is refused, and for different reasons: `payment_pending` and
+#: earlier are not paid for, `cancelled_*`, `refunded` and `disputed` are not
+#: something to deliver into, and `completed` is finished - its gallery
+#: already exists, and re-opening it is exactly what must not happen.
+GALLERY_DELIVERABLE_STATUSES = frozenset({GigStatus.paid, GigStatus.scheduled, GigStatus.shoot_done})
+
+
+def require_gig_deliverable(gig) -> None:
+    """Refuse to create, fill or send a gallery for a booking that cannot take one."""
+    if gig is None or gig.status not in GALLERY_DELIVERABLE_STATUSES:
+        raise APIError(
+            code="invalid_state",
+            message="Photos can only be delivered for a booking that has been paid and is still open",
+            status_code=409,
+        )

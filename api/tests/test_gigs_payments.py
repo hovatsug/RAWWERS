@@ -11,19 +11,28 @@ class DummyStripeObject:
             setattr(self, key, value)
 
 
-def _create_gig(client, user_id, pro_user_id):
-    response = client.post(
-        "/v1/gigs",
-        headers={"X-User-Id": user_id},
-        json={
-            "pro_user_id": pro_user_id,
-            "amount_total": "100.00",
-            "currency": "EUR",
-            "location_text": "Lisbon",
-        },
+def _create_gig(db_session, user_id, pro_user_id):
+    """A booking waiting for payment, built the way the accept path builds one.
+
+    This used to go through `POST /v1/gigs`, which let any user create a gig for
+    any photographer at any price. Nothing but these tests called it.
+    """
+    from decimal import Decimal
+
+    gig = Gig(
+        client_user_id=uuid.UUID(user_id),
+        pro_user_id=uuid.UUID(pro_user_id),
+        status=GigStatus.payment_pending,
+        currency="EUR",
+        amount_minimum=Decimal("100.00"),
+        amount_platform_fee=Decimal("20.00"),
+        amount_pro_gross=Decimal("80.00"),
+        location_text="Lisbon",
+        meta={},
     )
-    assert response.status_code == 200
-    return response.json()["id"]
+    db_session.add(gig)
+    db_session.commit()
+    return str(gig.id)
 
 
 def _ensure_pro_kyc_approved(db_session, pro_user_id: str):
@@ -43,9 +52,9 @@ def _ensure_pro_kyc_approved(db_session, pro_user_id: str):
     db_session.commit()
 
 
-def test_gig_access_control(client, user_id):
+def test_gig_access_control(client, db_session, user_id):
     pro_user_id = str(uuid.uuid4())
-    gig_id = _create_gig(client, user_id, pro_user_id)
+    gig_id = _create_gig(db_session, user_id, pro_user_id)
 
     outsider = str(uuid.uuid4())
     denied = client.get(f"/v1/gigs/{gig_id}", headers={"X-User-Id": outsider})
@@ -58,7 +67,7 @@ def test_gig_access_control(client, user_id):
 def test_state_transition_enforced_paid_only_via_webhook(client, db_session, user_id, monkeypatch):
     pro_user_id = str(uuid.uuid4())
     _ensure_pro_kyc_approved(db_session, pro_user_id)
-    gig_id = _create_gig(client, user_id, pro_user_id)
+    gig_id = _create_gig(db_session, user_id, pro_user_id)
 
     monkeypatch.setattr(
         "app.api.v1.gigs.stripe.PaymentIntent.create",
@@ -79,7 +88,7 @@ def test_state_transition_enforced_paid_only_via_webhook(client, db_session, use
 def test_stripe_webhook_idempotency_and_ledger_totals(client, db_session, user_id, monkeypatch):
     pro_user_id = str(uuid.uuid4())
     _ensure_pro_kyc_approved(db_session, pro_user_id)
-    gig_id = _create_gig(client, user_id, pro_user_id)
+    gig_id = _create_gig(db_session, user_id, pro_user_id)
 
     monkeypatch.setattr(
         "app.api.v1.gigs.stripe.PaymentIntent.create",

@@ -87,7 +87,6 @@ export 'consent_view.dart';
 export 'course_level.dart';
 export 'create_booking_from_chat_request.dart';
 export 'create_booking_from_chat_response.dart';
-export 'create_gig_request.dart';
 export 'create_payment_intent_request.dart';
 export 'create_payment_intent_response.dart';
 export 'create_proof_gallery_request.dart';

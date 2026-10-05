@@ -7,16 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.gig import GigStatus, PaymentStatus
 
 
-class CreateGigRequest(BaseModel):
-    pro_user_id: uuid.UUID
-    niche_id: uuid.UUID | None = None
-    amount_total: Decimal
-    currency: str = "EUR"
-    location_text: str | None = None
-    scheduled_start: datetime | None = None
-    scheduled_end: datetime | None = None
-
-
 class GigResponse(BaseModel):
     id: uuid.UUID
     client_user_id: uuid.UUID

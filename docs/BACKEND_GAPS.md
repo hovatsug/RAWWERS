@@ -1571,6 +1571,49 @@ reference data itself wants to be seed data loaded as part of a deploy (a data
 migration, or a deploy-time script that is allowed to run in production), not a
 developer command.
 
+## ~~Any user could create a gig for any photographer, and a completed gallery could be re-opened~~ — FIXED
+
+Four holes, all reproduced before anything was changed (the first row is worse
+than the audit described it):
+
+| Probe | Before |
+| --- | --- |
+| a user creates a gig for a photographer who **does not exist**, at EUR 0.01 | 200, `payment_pending` |
+| the photographer creates a gallery for a **cancelled** gig, `included_photos: 999` | 200 |
+| the photographer re-publishes a `selection_submitted` gallery | 200, gallery is `published` again |
+| ...and the client then saves a new selection | 200 |
+| a second publish | resets `published_at` |
+
+**`POST /v1/gigs` was removed, not validated.** It had no caller anywhere
+(`ENDPOINT_COVERAGE_AUDIT.md` recorded that, the web wrappers were unused, and
+the Flutter helper was used only by its own test). Validating it would not have
+been enough: even a correctly priced gig created through it commits a
+photographer to a booking they never accepted. The three legitimate creators -
+accept, confirm-slot, the legacy shoot - all carry the photographer's consent and
+derive price from the package, so there was nothing to keep it for. The four
+tests that used it as a fixture now build a gig row directly.
+
+**The re-publish hole is Part 2's reselection lock reopened through the
+photographer.** `save_selection` and `submit_selection` had been made to require
+`published`, and `publish_gallery` set `published` unconditionally - so
+re-publishing a completed booking's gallery undid it. Publish now works only from
+`draft`; an already-published gallery is an idempotent no-op with none of the side
+effects; anything else is a 409.
+
+**Galleries.** A new gallery needs a deliverable booking (`paid`, or the legacy
+`scheduled` / `shoot_done`; the rule lives in `gig_state.py` beside the state
+machine). Returning an *existing* gallery stays unguarded, because the pro app
+calls `create` to look at one. Adding photos needs a draft or published gallery on
+a deliverable booking. The included-photo count and extras price come from the
+gig's pricing snapshot, not the request body, so a photographer cannot type their
+own extras price into a gallery; the body is used only where there is no usable
+snapshot.
+
+**The app.** The pro's gig card opens delivery only for statuses where it can
+succeed (the "Active" filter includes unpaid gigs, whose cards used to lead to an
+error screen). The classification is an exhaustive `switch`, so a status added on
+the server has to be decided on rather than defaulting to openable.
+
 ## Review tags exist in the model with no vocabulary, and nothing sends them - LOGGED
 
 `Review.tags` is a JSONB list of free strings. `CreateReviewRequest` accepts any strings, `_normalize_tags` lowercases and dedupes them, and `recompute_pro_reputation` counts them into `ProReputation.tag_counts`. Nothing defines which tags exist, and no screen shows the counts.

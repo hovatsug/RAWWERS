@@ -269,6 +269,26 @@ final photoUploadServiceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PhotoUploadServiceRef = AutoDisposeProviderRef<PhotoUploadService>;
+String _$photoSaverHash() => r'236966f6e025d308880af6e957a4e0cbf95b2d34';
+
+/// Saves delivered photos into the device's photo library. Bare storage Dio
+/// for the same reason as [photoUploadService].
+///
+/// Copied from [photoSaver].
+@ProviderFor(photoSaver)
+final photoSaverProvider = AutoDisposeProvider<PhotoSaver>.internal(
+  photoSaver,
+  name: r'photoSaverProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$photoSaverHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PhotoSaverRef = AutoDisposeProviderRef<PhotoSaver>;
 String _$proofGalleriesClientHash() =>
     r'ac0a52f113b5470ab8889a8f5598399be11d8c07';
 

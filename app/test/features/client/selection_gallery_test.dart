@@ -113,7 +113,7 @@ Future<_FakeSelection> _pump(
       overrides: [selectionControllerProvider('g1').overrideWith(() => fake)],
       child: MaterialApp(
         theme: buildClientTheme(),
-        home: const SelectionGalleryScreen(galleryId: 'g1'),
+        home: const SelectionGalleryScreen(galleryId: 'g1', bookingId: 'b1'),
       ),
     ),
   );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/api/providers.dart';
+import 'package:rawwers/core/download/photo_saver.dart';
+import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_empty_state.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_image_tile.dart';
@@ -20,13 +23,9 @@ import 'package:rawwers/features/client/gallery/delivered_controller.dart';
 ///     listing only carries a thumbnail and a watermarked preview, so the
 ///     real files come from the downloads endpoint.
 ///
-/// There is no save control yet, deliberately. Putting the file on someone's
-/// device needs a package this project cannot currently take - every
-/// share_plus 13.x pulls an interface declaring Dart >=3.10, and code
-/// generation here runs through an analyzer capped at 3.9 by source_gen 2.x
-/// and riverpod_generator 2.x, so adding it does not degrade the app, it
-/// stops the app building. A button that cannot work is worse than no
-/// button, so the seam is left open and named rather than faked.
+/// Saving is one photo at a time, from full screen only. The grid's tiles are
+/// small enough that a save icon on each would be a mis-tap waiting to happen
+/// next to the tap that opens the photo.
 class DeliveredGalleryScreen extends ConsumerWidget {
   const DeliveredGalleryScreen({required this.galleryId, super.key});
 
@@ -96,6 +95,87 @@ class DeliveredGalleryScreen extends ConsumerWidget {
       // device. A brief spinner on the photo someone actually asked for is
       // the better trade.
       prefetchNeighbours: false,
+      // Keyed per photo: swiping mid-save must not show one photo's progress
+      // under the next.
+      actionsBuilder: (viewerContext, current) => Align(
+        alignment: Alignment.centerLeft,
+        child: SavePhotoButton(
+          key: ValueKey(value.photos[current].assetId),
+          galleryId: galleryId,
+          assetId: value.photos[current].assetId,
+        ),
+      ),
+    );
+  }
+}
+
+/// Saves one delivered photo to the device, showing how far along it is.
+class SavePhotoButton extends ConsumerStatefulWidget {
+  const SavePhotoButton({required this.galleryId, required this.assetId, super.key});
+
+  final String galleryId;
+  final String assetId;
+
+  @override
+  ConsumerState<SavePhotoButton> createState() => _SavePhotoButtonState();
+}
+
+class _SavePhotoButtonState extends ConsumerState<SavePhotoButton> {
+  bool _saving = false;
+  double? _progress;
+
+  Future<void> _save() async {
+    // Captured now: the button can be gone by the time the save finishes -
+    // swiped past, or hidden with the chrome - and the result still has to
+    // reach the person.
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _saving = true;
+      _progress = null;
+    });
+
+    // A fresh link, not the one from page load: it may have expired while
+    // they browsed.
+    final url = await ref
+        .read(deliveredControllerProvider(widget.galleryId).notifier)
+        .freshLinkFor(widget.assetId);
+
+    final outcome = url == null
+        ? const SaveFailed(SaveFailure.linkUnavailable)
+        : await ref.read(photoSaverProvider).save(
+              url,
+              name: 'RAWWERS-${widget.assetId}',
+              onProgress: (fraction) {
+                if (mounted) setState(() => _progress = fraction);
+              },
+            );
+
+    if (mounted) setState(() => _saving = false);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(switch (outcome) {
+          Saved() => 'Saved to your photos.',
+          SaveFailed(:final reason) => reason.message,
+        }),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _progress;
+    return ConstrainedBox(
+      // RButton takes an infinite minimum width from the theme; see the
+      // selection gallery's viewer.
+      constraints: const BoxConstraints(maxWidth: 200),
+      child: RButton(
+        label: switch ((_saving, progress)) {
+          (false, _) => 'Save to Photos',
+          (true, null) => 'Saving…',
+          (true, final p?) => 'Saving… ${(p * 100).round()}%',
+        },
+        onPressed: _saving ? null : _save,
+      ),
     );
   }
 }

@@ -149,6 +149,7 @@ GoRouter clientRouter(Ref ref) {
                         path: 'gallery/:galleryId',
                         builder: (context, state) => SelectionGalleryScreen(
                           galleryId: state.pathParameters['galleryId']!,
+                          bookingId: state.pathParameters['bookingId']!,
                         ),
                       ),
                       GoRoute(

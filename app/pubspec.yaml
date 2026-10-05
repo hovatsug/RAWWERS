@@ -60,6 +60,7 @@ dependencies:
   # camera permission is requested.
   image_picker: ^1.2.0
   file_picker: ^13.1.0
+  gal: ^2.3.3
 
 dev_dependencies:
   flutter_test:

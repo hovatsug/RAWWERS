@@ -61,6 +61,11 @@
 	     reads in the prompt. -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>RAWWERS needs access to your photos so you can add work to your portfolio.</string>
+	<!-- Add-only access, for a client saving photographs they have bought.
+	     Separate from the read access above, and iOS terminates the app if
+	     a save is attempted without this string. -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>RAWWERS saves the photos you've bought to your library.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

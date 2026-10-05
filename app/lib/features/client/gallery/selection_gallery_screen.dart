@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/selection_quote_response.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_empty_state.dart';
@@ -23,9 +24,13 @@ import 'package:rawwers/features/client/gallery/selection_controller.dart';
 ///     backend rules, and an app that approximates them eventually shows a
 ///     number nobody is charged.
 class SelectionGalleryScreen extends ConsumerWidget {
-  const SelectionGalleryScreen({required this.galleryId, super.key});
+  const SelectionGalleryScreen({required this.galleryId, required this.bookingId, super.key});
 
   final String galleryId;
+
+  /// The booking this gallery belongs to. Confirming can end in a payment,
+  /// and a payment is recorded against the booking, not the gallery.
+  final String bookingId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,12 +62,12 @@ class SelectionGalleryScreen extends ConsumerWidget {
                     return RImageTile(
                       image: NetworkImage(item.thumbnailUrl ?? item.watermarkPreviewUrl ?? ''),
                       selected: value.isSelected(id),
-                      onTap: value.locked ? null : () => _openViewer(context, ref, index),
+                      onTap: value.frozen ? null : () => _openViewer(context, ref, index),
                     );
                   },
                 ),
               ),
-              _PriceBar(galleryId: galleryId),
+              _PriceBar(galleryId: galleryId, bookingId: bookingId),
             ],
           ),
           AsyncError() => RErrorState(
@@ -113,7 +118,7 @@ class SelectionGalleryScreen extends ConsumerWidget {
                 constraints: const BoxConstraints(maxWidth: 150),
                 child: RButton(
                   label: chosen ? 'Chosen' : 'Choose',
-                  onPressed: live.locked
+                  onPressed: live.frozen
                       ? null
                       : () => viewerRef.read(selectionControllerProvider(galleryId).notifier).toggle(id),
                 ),
@@ -158,9 +163,10 @@ class _ViewerPrice extends ConsumerWidget {
 /// The marginal price is the number that changes a decision, so it is stated
 /// outright rather than left to be worked out from the total.
 class _PriceBar extends ConsumerWidget {
-  const _PriceBar({required this.galleryId});
+  const _PriceBar({required this.galleryId, required this.bookingId});
 
   final String galleryId;
+  final String bookingId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -171,6 +177,7 @@ class _PriceBar extends ConsumerWidget {
     final quote = value.quote;
     final needed = quote?.photosStillNeeded ?? 0;
     final ready = quote?.canSubmit ?? false;
+    final awaiting = value.phase is ConfirmAwaitingPayment;
 
     return Material(
       elevation: 8,
@@ -192,26 +199,44 @@ class _PriceBar extends ConsumerWidget {
                         // The gate, phrased as the step left rather than as
                         // a failure: below the minimum this is the only
                         // thing the screen should be asking for.
-                        ready ? '${value.selectedCount} chosen' : '$needed more to continue',
+                        awaiting
+                            ? 'Your selection is locked in'
+                            : (ready ? '${value.selectedCount} chosen' : '$needed more to continue'),
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: RSpace.s4),
-                      if (quote != null)
+                      if (awaiting)
+                        Text(
+                          'Complete the payment to finish. It cannot be changed here.',
+                          style: theme.textTheme.bodySmall,
+                        )
+                      else if (quote != null)
                         Text(
                           _totalLabel(quote, value.quoteFailed),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: value.quoteStale ? theme.colorScheme.onSurfaceVariant : null,
                           ),
                         ),
-                      if (quote != null && quote.nextPhotoPrice != null && !value.quoteFailed)
+                      if (!awaiting && quote != null && quote.nextPhotoPrice != null && !value.quoteFailed)
                         Text(
                           _marginalLabel(quote),
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
+                      if (value.confirmError != null) ...[
+                        const SizedBox(height: RSpace.s8),
+                        Text(
+                          value.confirmError!,
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: RSpace.s12),
-                  RButton(label: 'Continue', onPressed: (ready && !value.locked) ? () {} : null),
+                  RButton(
+                    label: _confirmLabel(value),
+                    loading: value.busy,
+                    onPressed: value.canConfirm ? () => _confirm(context, ref, value) : null,
+                  ),
                 ],
               ),
               if (value.locked) ...[
@@ -227,6 +252,72 @@ class _PriceBar extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref, SelectionState value) async {
+    final controller = ref.read(selectionControllerProvider(galleryId).notifier);
+
+    // Already submitted, so already agreed to: retrying a payment is not a
+    // second decision and does not ask again.
+    if (value.phase is! ConfirmAwaitingPayment) {
+      final agreed = await _askToConfirm(context, value);
+      if (agreed != true) return;
+    }
+
+    final outcome = await controller.confirm(bookingId: bookingId);
+    if (outcome is! ConfirmCompleted || !context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          outcome.paid ? 'Payment sent. This updates as soon as it clears.' : 'Your selection is confirmed.',
+        ),
+      ),
+    );
+    if (context.canPop()) context.pop();
+  }
+
+  /// The last point at which this can be undone, so it says what it commits
+  /// to: how many photographs, what it costs, and that there is no going back.
+  /// The figure is the server's `amount_due`, the same one on the button.
+  Future<bool?> _askToConfirm(BuildContext context, SelectionState value) {
+    final quote = value.quote!;
+    final owed = !_nothingDue(quote);
+    final count = value.selectedCount;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm your selection?'),
+        content: Text(
+          '${count == 1 ? '1 photo' : '$count photos'} chosen. '
+          '${owed ? 'You will be charged ${_money(quote.amountDue, quote.currency)}.' : 'No charge - this is covered by what you have already paid.'} '
+          'You cannot change your selection after this.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Not yet')),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(owed ? 'Pay ${_money(quote.amountDue, quote.currency)}' : 'Confirm selection'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+bool _nothingDue(SelectionQuoteResponse quote) => quote.amountDue == '0.00';
+
+/// The button says what it will do and what it will cost, so the number being
+/// committed to is on screen before the tap rather than discovered after it.
+String _confirmLabel(SelectionState value) {
+  final phase = value.phase;
+  if (phase is ConfirmAwaitingPayment) {
+    final amount = phase.amount;
+    return amount == null ? 'Pay now' : 'Pay ${_money(amount, phase.currency)}';
+  }
+  final quote = value.quote;
+  if (quote == null || _nothingDue(quote)) return 'Confirm selection';
+  return 'Pay ${_money(quote.amountDue, quote.currency)}';
 }
 
 /// Money is a decimal string end to end; it is displayed, never arithmetic.

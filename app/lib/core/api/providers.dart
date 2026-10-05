@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/api_client/ai_concierge_client.dart';
 import 'package:rawwers/api/api_client/auth_client.dart';
@@ -12,6 +13,7 @@ import 'package:rawwers/api/api_client/repairs_client.dart';
 import 'package:rawwers/api/api_client/proof_galleries_client.dart';
 import 'package:rawwers/api/api_client/reviews_client.dart';
 import 'package:rawwers/api/api_client/scheduling_client.dart';
+import 'package:rawwers/core/download/photo_saver.dart';
 import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
@@ -77,6 +79,15 @@ MediaClient mediaClient(Ref ref) => MediaClient(ref.watch(dioProvider));
 PhotoUploadService photoUploadService(Ref ref) => PhotoUploadService(
       mediaClient: ref.watch(mediaClientProvider),
       storageDio: Dio(),
+    );
+
+/// Saves delivered photos into the device's photo library. Bare storage Dio
+/// for the same reason as [photoUploadService].
+@riverpod
+PhotoSaver photoSaver(Ref ref) => PhotoSaver(
+      storageDio: Dio(),
+      library: const GalPhotoLibrary(),
+      tempDirectory: getTemporaryDirectory,
     );
 
 @riverpod

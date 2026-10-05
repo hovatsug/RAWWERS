@@ -70,8 +70,8 @@ typedef CursorFetcher<T> = Future<Result<CursorFetchResult<T>>> Function(String?
 /// the bottom cannot stack duplicate requests, which would both waste calls
 /// and append the same rows twice.
 ///
-/// A `Validation` failure here is special-cased. The backend rejects an
-/// unparseable cursor with a 422 rather than silently restarting (see
+/// An invalid-request failure (HTTP 422) here is special-cased. The backend
+/// rejects an unparseable cursor with a 422 rather than silently restarting (see
 /// api/app/services/pagination.py, decode_cursor), so a cursor this client
 /// can no longer use - stale across a deploy, or truncated - must drop the
 /// cursor and stop, not retry the same bad value forever.
@@ -92,7 +92,7 @@ Future<CursorPage<T>> appendNextPage<T>(
         isLoadingMore: false,
       );
     case Err(:final failure):
-      if (failure is Validation) {
+      if (failure.isInvalidRequest) {
         // The cursor itself is bad. Keep the rows already loaded, but stop
         // offering to load more with a value the server will keep rejecting.
         return loading.copyWith(isLoadingMore: false, clearNextCursor: true);

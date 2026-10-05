@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/core/api/error_mapper.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/result.dart';
 import 'package:rawwers/core/paging/cursor_page.dart';
@@ -85,6 +87,60 @@ void main() {
       expect(next.items, ['a']);
       expect(next.hasMore, isFalse, reason: 'must stop offering to load more with a cursor the server rejects');
       expect(next.loadMoreFailure, isNull, reason: 'this is not a retryable error, so it must not offer a retry');
+    });
+
+    test('the rejection the backend actually sends stops paging, not just a hand-built one', () async {
+      // The test above builds `Validation({})` by hand, which is not what the
+      // mapper produces for this response: the backend raises this through its
+      // own error envelope (services/pagination.py, decode_cursor), and an
+      // earlier change to the mapper quietly stopped this branch from ever
+      // matching. This feeds the real body through the real mapper.
+      final options = RequestOptions(path: '/v1/gigs');
+      final rejection = mapDioException(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: options,
+            statusCode: 422,
+            data: {
+              'error': {
+                'code': 'validation_error',
+                'message': 'Invalid pagination cursor. Omit the cursor to start from the first page.',
+              },
+            },
+          ),
+        ),
+      );
+      const current = CursorPage<String>(items: ['a'], nextCursor: 'stale-cursor');
+
+      final next = await appendNextPage<String>(current, (_) async => Err(rejection));
+
+      expect(next.hasMore, isFalse, reason: 'kept offering to load more with a cursor the server keeps rejecting');
+      expect(next.loadMoreFailure, isNull, reason: 'offered a retry that can only fail the same way');
+    });
+
+    test('a different deliberate refusal is still retryable, not mistaken for a bad cursor', () async {
+      final options = RequestOptions(path: '/v1/gigs');
+      final refusal = mapDioException(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: options,
+            statusCode: 403,
+            data: {
+              'error': {'code': 'forbidden', 'message': 'Role pro required'},
+            },
+          ),
+        ),
+      );
+      const current = CursorPage<String>(items: ['a'], nextCursor: 'good-cursor');
+
+      final next = await appendNextPage<String>(current, (_) async => Err(refusal));
+
+      expect(next.hasMore, isTrue);
+      expect(next.loadMoreFailure, isNotNull);
     });
   });
 }

@@ -4,10 +4,10 @@ import 'package:rawwers/core/api/api_failure.dart';
 /// Maps a real DioException to a typed ApiFailure. Verified against the
 /// live backend's two actual error shapes, not assumed:
 ///
-/// - FastAPI/Pydantic's own 422s (no custom handler intercepts these):
+/// - FastAPI/Pydantic's own 422s:
 ///   `{"detail": [{"loc": ["body","email"], "msg": "Field required", ...}]}`
-/// - Everything else (401/403/404/409/500), from the app's `APIError`:
-///   `{"error": {"code": "...", "message": "...", "details": {...}}}`
+/// - Everything raised deliberately, including some 422s, from the app's
+///   `APIError`: `{"error": {"code": "...", "message": "...", "details": {...}}}`
 ApiFailure mapDioException(DioException exception) {
   switch (exception.type) {
     case DioExceptionType.connectionTimeout:
@@ -30,6 +30,14 @@ ApiFailure _mapBadResponse(DioException exception) {
   final data = exception.response?.data;
 
   if (status == 422) {
+    // Two things arrive as a 422. FastAPI's own validation failure carries a
+    // `detail` array; the backend's deliberate refusals ("could not read camera
+    // data", "unsupported file type") come through its own error envelope with
+    // a message written for the person. Treating both as the first kind threw
+    // every deliberate message away.
+    if (_envelopeMessage(data) != null) {
+      return BusinessError(_envelopeCode(data) ?? 'validation_error', _envelopeMessage(data)!, status: 422);
+    }
     return Validation(_parseValidationErrors(data));
   }
   if (status == 401) return const Unauthorized();
@@ -42,6 +50,7 @@ ApiFailure _mapBadResponse(DioException exception) {
   return BusinessError(
     _envelopeCode(data) ?? 'unknown_error',
     _envelopeMessage(data) ?? 'Something went wrong.',
+    status: status,
   );
 }
 

@@ -166,6 +166,7 @@ class GearSubmitController extends _$GearSubmitController {
 
     final uploaded = await ref.read(photoUploadServiceProvider).uploadPhoto(
           openFile: picked.open,
+          openRange: picked.openRange,
           fileSize: picked.size,
           purpose: MediaPurpose.gearEvidence,
           contentType: gearContentTypeFor(picked.extension),

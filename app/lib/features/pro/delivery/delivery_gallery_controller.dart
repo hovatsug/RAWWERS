@@ -12,6 +12,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
+import 'package:rawwers/core/upload/upload_pool.dart';
 import 'package:rawwers/features/pro/delivery/delivery_photo_picker.dart';
 
 part 'delivery_gallery_controller.g.dart';
@@ -117,23 +118,38 @@ class DeliveryGalleryController extends _$DeliveryGalleryController {
 ///
 /// Uploading and appearing in the gallery are not the same moment: the
 /// server will not add a photo to a gallery until it has generated the
-/// watermark preview the client is shown, and that generation is real,
-/// measured work - 26 to 50 seconds per photo against this backend, not a
-/// formality. A photo sits as [DeliveryUploadProcessing] for exactly that
+/// watermark preview the client is shown. Measured on real R2 (2026-10-05),
+/// the image work itself is about a second a photo; the wait is moving the
+/// original to the worker and the preview back, so it follows the network -
+/// 30 seconds to two minutes on a slow link. A photo sits as [DeliveryUploadProcessing] for exactly that
 /// long, on its own clock, independent of every other photo in the batch.
 sealed class DeliveryUploadItem {
-  const DeliveryUploadItem({required this.fileName});
+  const DeliveryUploadItem({required this.fileName, this.localPath});
 
   final String fileName;
+
+  /// The picked file on this phone, shown as the row's preview from the
+  /// first moment - the photographer sees their photo while it uploads and
+  /// processes, not a filename. Carried through every state rather than being
+  /// a state of its own: it is what the row looks like, not where the upload
+  /// has got to.
+  final String? localPath;
+
+  /// The same item, showing [path] as its preview.
+  DeliveryUploadItem withLocalPath(String? path);
 }
 
 final class DeliveryUploadUploading extends DeliveryUploadItem {
-  const DeliveryUploadUploading({required super.fileName, required this.sent, required this.total});
+  const DeliveryUploadUploading({required super.fileName, required this.sent, required this.total, super.localPath});
 
   final int sent;
   final int total;
 
   double get fraction => total <= 0 ? 0 : (sent / total).clamp(0, 1).toDouble();
+
+  @override
+  DeliveryUploadUploading withLocalPath(String? path) =>
+      DeliveryUploadUploading(fileName: fileName, sent: sent, total: total, localPath: path);
 }
 
 /// The file is in storage and has a `MediaAsset`, but the server has not yet
@@ -141,13 +157,17 @@ final class DeliveryUploadUploading extends DeliveryUploadItem {
 /// gallery. Retried automatically in the background; this is progress, not
 /// a problem, and must never be shown the way an error is.
 final class DeliveryUploadProcessing extends DeliveryUploadItem {
-  const DeliveryUploadProcessing({required super.fileName, required this.mediaAssetId});
+  const DeliveryUploadProcessing({required super.fileName, required this.mediaAssetId, super.localPath});
 
   final String mediaAssetId;
+
+  @override
+  DeliveryUploadProcessing withLocalPath(String? path) =>
+      DeliveryUploadProcessing(fileName: fileName, mediaAssetId: mediaAssetId, localPath: path);
 }
 
 final class DeliveryUploadFailed extends DeliveryUploadItem {
-  const DeliveryUploadFailed({required super.fileName, required this.message, this.mediaAssetId});
+  const DeliveryUploadFailed({required super.fileName, required this.message, this.mediaAssetId, super.localPath});
 
   final String message;
 
@@ -155,6 +175,10 @@ final class DeliveryUploadFailed extends DeliveryUploadItem {
   /// gallery gave up - retrying then needs no re-upload, just another attempt
   /// at the one call that failed.
   final String? mediaAssetId;
+
+  @override
+  DeliveryUploadFailed withLocalPath(String? path) =>
+      DeliveryUploadFailed(fileName: fileName, message: message, mediaAssetId: mediaAssetId, localPath: path);
 }
 
 /// How long to wait before checking again whether a just-uploaded photo's
@@ -170,13 +194,32 @@ typedef GalleryAttachBackoff = Future<void> Function(int attempt);
 @Riverpod(keepAlive: true)
 GalleryAttachBackoff galleryAttachBackoff(Ref ref) => (attempt) => Future.delayed(_backoffDelay(attempt));
 
-/// 3s, 5s, 8s, 13s, then 15s - about a minute of waiting across the five
-/// retries [DeliveryUploadController] allows, long enough for one slow
-/// photo, not long enough to look permanently stuck.
+/// 3s, 5s, 8s, 13s, then every 15s.
 Duration _backoffDelay(int attempt) {
   const delaysSeconds = [3, 5, 8, 13, 15];
   final seconds = attempt < delaysSeconds.length ? delaysSeconds[attempt] : delaysSeconds.last;
   return Duration(seconds: seconds);
+}
+
+/// How long a photo may stay "still processing" before the attach gives up.
+///
+/// This used to be a fixed six attempts - about 44 seconds of waiting - while
+/// real processing took 44 seconds at the median and 98 at the 90th
+/// percentile, so photos that were processing perfectly well were marked
+/// failed. The wait is now bounded by time, generously, and ends early the
+/// moment the server says processing actually failed.
+const attachWaitBudget = Duration(minutes: 10);
+
+/// How many attach attempts fit in [attachWaitBudget]: the first, plus one
+/// after each backoff delay until the delays add up to the budget.
+int attachAttemptsWithinBudget() {
+  var attempts = 1;
+  var waited = Duration.zero;
+  while (waited < attachWaitBudget) {
+    waited += _backoffDelay(attempts - 1);
+    attempts++;
+  }
+  return attempts;
 }
 
 /// Uploads proofs into one gig's gallery.
@@ -196,7 +239,6 @@ Duration _backoffDelay(int attempt) {
 /// succeeded, so nothing about the per-file progress looked wrong.
 @riverpod
 class DeliveryUploadController extends _$DeliveryUploadController {
-  static const _maxAttachAttempts = 6;
 
   /// Set by [build]'s own `ref.onDispose`, which every provider lifecycle
   /// guarantees - unlike `ref.mounted`, which the `Ref` type this generates
@@ -220,12 +262,13 @@ class DeliveryUploadController extends _$DeliveryUploadController {
 
     final service = ref.read(photoUploadServiceProvider);
 
-    for (final file in files) {
+    await forEachConcurrently(files, (file) async {
       final key = '${DateTime.now().microsecondsSinceEpoch}-${file.name}';
-      state = {...state, key: DeliveryUploadUploading(fileName: file.name, sent: 0, total: file.size)};
+      state = {...state, key: DeliveryUploadUploading(fileName: file.name, sent: 0, total: file.size, localPath: file.path)};
 
       final result = await service.uploadPhoto(
         openFile: file.open,
+        openRange: file.openRange,
         fileSize: file.size,
         purpose: MediaPurpose.proof,
         // client_only, not public: these are one client's photos, and the
@@ -236,22 +279,22 @@ class DeliveryUploadController extends _$DeliveryUploadController {
         onSendProgress: (sent, total) {
           final current = state[key];
           if (current is! DeliveryUploadUploading) return;
-          state = {...state, key: DeliveryUploadUploading(fileName: file.name, sent: sent, total: current.total)};
+          state = {...state, key: DeliveryUploadUploading(fileName: file.name, sent: sent, total: current.total, localPath: file.path)};
         },
       );
 
       switch (result) {
         case Ok(:final value):
-          state = {...state, key: DeliveryUploadProcessing(fileName: file.name, mediaAssetId: value)};
+          state = {...state, key: DeliveryUploadProcessing(fileName: file.name, mediaAssetId: value, localPath: file.path)};
           // Deliberately not awaited. This file's attach-and-retry runs on
-          // its own clock from here; waiting for it would block the next
-          // file's upload, which is the one thing in this loop that still
-          // has to happen in order.
+          // its own clock from here; waiting for it would hold this upload
+          // slot while the photo processes, instead of starting the next
+          // file.
           unawaited(_attachWhenReady(key: key, fileName: file.name, mediaAssetId: value));
         case Err(:final failure):
-          state = {...state, key: DeliveryUploadFailed(fileName: file.name, message: _explain(failure))};
+          state = {...state, key: DeliveryUploadFailed(fileName: file.name, message: _explain(failure), localPath: file.path)};
       }
-    }
+    });
   }
 
   /// Attaches one photo to the gallery, retrying only the failure the server
@@ -267,7 +310,8 @@ class DeliveryUploadController extends _$DeliveryUploadController {
     final galleries = ref.read(proofGalleriesClientProvider);
     final backoff = ref.read(galleryAttachBackoffProvider);
 
-    for (var attempt = 0; attempt < _maxAttachAttempts; attempt++) {
+    final maxAttempts = attachAttemptsWithinBudget();
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
       // Dismissed while waiting: nothing left to update, and nothing left to
       // retry for.
       if (!state.containsKey(key)) return;
@@ -294,8 +338,27 @@ class DeliveryUploadController extends _$DeliveryUploadController {
           await ref.read(deliveryGalleryControllerProvider(gig).notifier).refresh();
           return;
         case Err(:final failure):
+          if (failure is BusinessError && failure.code == 'invalid_state') {
+            // The server refused the photo itself (its processing failed):
+            // retrying the attach would only be refused again, so no
+            // mediaAssetId - and no Retry button - only "upload it again".
+            _set(key, DeliveryUploadFailed(fileName: fileName, message: failure.message));
+            return;
+          }
           if (failure is! BusinessError || failure.status != 422) {
             _set(key, DeliveryUploadFailed(fileName: fileName, message: _explain(failure), mediaAssetId: mediaAssetId));
+            return;
+          }
+          // "Not ready yet" - unless processing has actually failed, in which
+          // case waiting longer cannot help and the photo has to be sent again.
+          if (await _processingFailed(mediaAssetId)) {
+            _set(
+              key,
+              DeliveryUploadFailed(
+                fileName: fileName,
+                message: 'This photo could not be processed. Remove it and upload it again.',
+              ),
+            );
             return;
           }
       }
@@ -309,10 +372,27 @@ class DeliveryUploadController extends _$DeliveryUploadController {
       key,
       DeliveryUploadFailed(
         fileName: fileName,
-        message: 'Still processing after several tries. Try again in a moment.',
+        message: 'Still processing after ten minutes. Try again in a moment.',
         mediaAssetId: mediaAssetId,
       ),
     );
+  }
+
+  /// Whether the server gave up on processing this photo. A failed check is
+  /// treated as "no": the attach keeps trying rather than failing a photo on
+  /// the strength of a lost status request.
+  Future<bool> _processingFailed(String mediaAssetId) async {
+    final result = await apiCall(
+      () => ref.read(mediaClientProvider).getMediaAssetV1MediaMediaAssetIdGet(
+            mediaAssetId: mediaAssetId,
+            authorization: null,
+            xMinusUserMinusId: null,
+          ),
+    );
+    return switch (result) {
+      Ok(:final value) => value.status == 'failed',
+      Err() => false,
+    };
   }
 
   /// Retries attaching a photo whose upload already succeeded, without
@@ -335,7 +415,9 @@ class DeliveryUploadController extends _$DeliveryUploadController {
   /// `await` goes through here rather than assigning `state` directly.
   void _set(String key, DeliveryUploadItem value) {
     if (_disposed) return;
-    state = {...state, key: value};
+    // A row keeps the preview it started with, whatever state it moves to.
+    final preview = value.localPath ?? state[key]?.localPath;
+    state = {...state, key: value.localPath == preview ? value : value.withLocalPath(preview)};
   }
 
   String _explain(ApiFailure failure) => switch (failure) {

@@ -204,6 +204,24 @@ void main() {
     expect(find.byTooltip('Dismiss'), findsNothing);
   });
 
+  testWidgets('each upload row shows the photo itself, from the phone, while it uploads and processes', (tester) async {
+    await tester.pumpWidget(_wrap(uploads: const {
+      'k1': DeliveryUploadUploading(fileName: 'DSC_9006.jpg', sent: 10, total: 100, localPath: '/photos/DSC_9006.jpg'),
+      'k2': DeliveryUploadProcessing(fileName: 'DSC_9007.jpg', mediaAssetId: 'asset-7', localPath: '/photos/DSC_9007.jpg'),
+      'k3': DeliveryUploadProcessing(fileName: 'no_path.jpg', mediaAssetId: 'asset-8'),
+    }));
+    await tester.pump();
+
+    final previews = tester
+        .widgetList<Image>(find.byType(Image))
+        .map((image) => image.image)
+        .whereType<ResizeImage>()
+        .map((resized) => (resized.imageProvider as FileImage).file.path)
+        .toList();
+    expect(previews, ['/photos/DSC_9006.jpg', '/photos/DSC_9007.jpg'],
+        reason: 'a preview from the local file for each row that has one - none invented for one that does not');
+  });
+
   testWidgets('a photo that failed to attach after retrying offers Retry, and it retries that asset', (tester) async {
     final uploads = _FakeUploads(const {
       'k1': DeliveryUploadFailed(

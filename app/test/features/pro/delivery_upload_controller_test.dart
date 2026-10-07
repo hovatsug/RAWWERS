@@ -95,6 +95,9 @@ class _Backend {
   /// "not ready yet".
   final Map<String, int> failStatusFor = {};
 
+  /// Assets whose processing the server gave up on.
+  final Set<String> failedAssets = {};
+
   Future<ResponseBody> api(RequestOptions o) async {
     calls.add('${o.method} ${o.path}');
 
@@ -113,6 +116,10 @@ class _Backend {
         }),
         200,
       );
+    }
+    if (o.method == 'GET' && o.path.startsWith('/v1/media/asset-')) {
+      final assetId = o.path.split('/').last;
+      return jsonResponseBody(jsonEncode(_assetJson(assetId)), 200);
     }
     if (o.path.endsWith('/complete')) {
       return jsonResponseBody(jsonEncode({'ok': true, 'current_status': 'processing'}), 200);
@@ -150,6 +157,22 @@ class _Backend {
     }
     throw StateError('unexpected call: ${o.method} ${o.path}');
   }
+
+  Map<String, dynamic> _assetJson(String assetId) => {
+        'id': assetId,
+        'owner_user_id': 'pro-1',
+        'kind': 'photo',
+        'purpose': 'proof',
+        'provider': 'r2',
+        'status': failedAssets.contains(assetId) ? 'failed' : (readyAssets.contains(assetId) ? 'ready' : 'processing'),
+        'visibility': 'client_only',
+        'content_type': 'image/jpeg',
+        'byte_size': 8,
+        'metadata': <String, dynamic>{},
+        'created_at': '2026-09-23T10:00:00Z',
+        'updated_at': '2026-09-23T10:00:00Z',
+        'objects': <dynamic>[],
+      };
 
   Map<String, dynamic> _galleryJson() => {
         'id': 'gal-1',
@@ -210,6 +233,7 @@ Future<({ProviderContainer container, _Backend backend, _ControllableBackoff bac
   final container = ProviderContainer(
     overrides: [
       proofGalleriesClientProvider.overrideWithValue(ProofGalleriesClient(apiDio)),
+      mediaClientProvider.overrideWithValue(MediaClient(apiDio)),
       photoUploadServiceProvider.overrideWithValue(
         PhotoUploadService(mediaClient: MediaClient(apiDio), storageDio: storageDio),
       ),
@@ -286,14 +310,15 @@ void main() {
     await t.container.read(deliveryUploadControllerProvider(_gig).notifier).pickAndUpload();
     await _settle();
 
-    // One attempt already happened (paused on the backoff after it); six
-    // total attempts is the bound `DeliveryUploadController` allows, so six
-    // more releases exhaust it and let the final "give up" state land.
-    for (var i = 0; i < 6; i++) {
+    // One attempt already happened (paused on the backoff after it). The
+    // bound is the ten-minute budget, not a count - releasing every backoff
+    // in it exhausts it and lets the final "give up" state land.
+    final bound = attachAttemptsWithinBudget();
+    for (var i = 0; i < bound; i++) {
       await t.backoff.releaseAll();
     }
 
-    expect(t.backend.attachAttempts['asset-1'], 6, reason: 'bounded, not retried forever');
+    expect(t.backend.attachAttempts['asset-1'], bound, reason: 'bounded, not retried forever');
     final state = t.container.read(deliveryUploadControllerProvider(_gig));
     final failed = state.values.single as DeliveryUploadFailed;
     expect(failed.message, contains('Still processing'));
@@ -306,18 +331,19 @@ void main() {
     final notifier = t.container.read(deliveryUploadControllerProvider(_gig).notifier);
     await notifier.pickAndUpload();
     await _settle();
-    for (var i = 0; i < 6; i++) {
+    final bound = attachAttemptsWithinBudget();
+    for (var i = 0; i < bound; i++) {
       await t.backoff.releaseAll();
     }
     final key = t.container.read(deliveryUploadControllerProvider(_gig)).keys.single;
-    expect(t.backend.attachAttempts['asset-1'], 6);
+    expect(t.backend.attachAttempts['asset-1'], bound);
 
     t.backend.readyAssets.add('asset-1');
     await notifier.retryAttach(key);
     await _settle();
 
     expect(t.backend.attachedAssetIds, ['asset-1']);
-    expect(t.backend.attachAttempts['asset-1'], 7);
+    expect(t.backend.attachAttempts['asset-1'], bound + 1);
     expect(t.container.read(deliveryUploadControllerProvider(_gig)), isEmpty);
   });
 
@@ -342,7 +368,7 @@ void main() {
     );
   });
 
-  test('two photos upload one after another, but attach independently once each is ready', () async {
+  test('two photos upload and attach independently once each is ready', () async {
     final t = await _setup([_file('a.jpg'), _file('b.jpg')]);
     t.backend.readyAssets.addAll(['asset-1', 'asset-2']);
 
@@ -352,5 +378,59 @@ void main() {
     final uploadCalls = t.backend.calls.where((c) => c == 'POST /v1/media/photos/uploads').toList();
     expect(uploadCalls, hasLength(2), reason: 'both files were uploaded');
     expect(t.backend.attachedAssetIds, containsAll(['asset-1', 'asset-2']));
+  });
+
+  test('a photo is not given up on while it is still processing - the wait outlasts real processing times', () async {
+    // Real processing took 44 s at the median and 98 s at the 90th
+    // percentile; the old bound of six attempts gave up after about 44 s of
+    // waiting, marking perfectly good photos failed.
+    expect(attachAttemptsWithinBudget(), greaterThan(20));
+    final t = await _setup([_file('a.jpg')]);
+    await t.container.read(deliveryUploadControllerProvider(_gig).notifier).pickAndUpload();
+    await _settle();
+    // Past where the old bound gave up...
+    for (var i = 0; i < 10; i++) {
+      await t.backoff.releaseAll();
+    }
+    expect(t.container.read(deliveryUploadControllerProvider(_gig)).values.single, isA<DeliveryUploadProcessing>());
+    // ...and then it finishes processing, and attaches.
+    t.backend.readyAssets.add('asset-1');
+    await t.backoff.releaseAll();
+    expect(t.backend.attachedAssetIds, ['asset-1']);
+  });
+
+  test('a photo whose processing failed stops waiting at once, and says to upload it again', () async {
+    final t = await _setup([_file('a.jpg')]);
+    t.backend.failedAssets.add('asset-1');
+
+    await t.container.read(deliveryUploadControllerProvider(_gig).notifier).pickAndUpload();
+    // Attach, its 422, then the status check: one more round trip than the
+    // other tests wait for.
+    await _settle();
+    await _settle();
+
+    final item = t.container.read(deliveryUploadControllerProvider(_gig)).values.single;
+    expect(item, isA<DeliveryUploadFailed>());
+    expect((item as DeliveryUploadFailed).message, contains('upload it again'));
+    expect(item.mediaAssetId, isNull, reason: 'retrying the attach cannot help - the photo itself has to be sent again');
+    expect(t.backend.attachAttempts['asset-1'], 1, reason: 'no waiting out the budget on a photo that will never be ready');
+  });
+
+  test('a row keeps its local preview from upload through processing to a failure', () async {
+    final t = await _setup([
+      DeliveryPickedFile(name: 'a.jpg', size: 2048, open: () => Stream.value(Uint8List(8)), path: '/photos/a.jpg'),
+    ]);
+    t.backend.failStatusFor['asset-1'] = 403;
+
+    final notifier = t.container.read(deliveryUploadControllerProvider(_gig).notifier);
+    final seen = <DeliveryUploadItem>[];
+    t.container.listen(deliveryUploadControllerProvider(_gig), (_, next) => seen.addAll(next.values));
+    await notifier.pickAndUpload();
+    await _settle();
+
+    expect(seen.map((item) => item.runtimeType).toSet(),
+        containsAll([DeliveryUploadUploading, DeliveryUploadProcessing, DeliveryUploadFailed]));
+    expect(seen.map((item) => item.localPath).toSet(), {'/photos/a.jpg'},
+        reason: 'every state the row passed through showed the same photo');
   });
 }

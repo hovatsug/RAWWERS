@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -8,7 +9,7 @@ part 'gear_file_picker.g.dart';
 
 /// A camera file the photographer chose, ready to be streamed.
 class PickedGearFile {
-  const PickedGearFile({required this.name, required this.size, required this.open});
+  const PickedGearFile({required this.name, required this.size, required this.open, this.openRange});
 
   final String name;
   final int size;
@@ -16,6 +17,10 @@ class PickedGearFile {
   /// A fresh stream each call: an upload that retries has to start from the
   /// beginning of the file, not from wherever the last attempt got to.
   final Stream<Uint8List> Function() open;
+
+  /// Bytes [start, end), so a 16-58 MB RAW can be sent a part at a time and
+  /// resumed. Null when the platform gave no file path.
+  final Stream<Uint8List> Function(int start, int end)? openRange;
 
   String get extension {
     final dot = name.lastIndexOf('.');
@@ -45,7 +50,13 @@ class SystemGearFilePicker implements GearFilePicker {
     final file = await FilePicker.pickFile(type: FileType.any);
     if (file == null) return null;
     final size = file.lengthSync() ?? await file.length() ?? 0;
-    return PickedGearFile(name: file.name, size: size, open: file.readAsByteStream);
+    final path = file.path;
+    return PickedGearFile(
+      name: file.name,
+      size: size,
+      open: file.readAsByteStream,
+      openRange: path == null ? null : (start, end) => File(path).openRead(start, end).map(Uint8List.fromList),
+    );
   }
 }
 

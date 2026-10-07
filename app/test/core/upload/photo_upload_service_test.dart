@@ -11,29 +11,28 @@ import 'package:rawwers/core/upload/photo_upload_service.dart';
 import '../../support/fake_http_client_adapter.dart';
 
 void main() {
-  test('a failed PUT never retries the same presigned URL - retry goes back to step 1 for a fresh one', () async {
+  test('a failed PUT retries with a fresh URL for the same asset - no orphan per attempt', () async {
     var createCallCount = 0;
+    var refreshCallCount = 0;
     var completeCallCount = 0;
     final putUrlsAttempted = <String>[];
 
     final apiDio = Dio(BaseOptions(baseUrl: 'https://example.invalid'));
     apiDio.httpClientAdapter = FakeHttpClientAdapter((options) async {
+      UploadPayloadJson payload(int n) => {
+            'method': 'PUT',
+            'url': 'https://storage.invalid/upload?sig=$n',
+            'headers': {'Content-Type': 'image/jpeg'},
+            'storage_key': 'the-one-key',
+            'expires_in': 900,
+          };
       if (options.path == '/v1/media/photos/uploads') {
         createCallCount++;
-        final url = 'https://storage.invalid/upload-$createCallCount';
-        return jsonResponseBody(
-          jsonEncode({
-            'media_asset_id': 'asset-$createCallCount',
-            'upload': {
-              'method': 'PUT',
-              'url': url,
-              'headers': {'Content-Type': 'image/jpeg'},
-              'storage_key': 'key-$createCallCount',
-              'expires_in': 900,
-            },
-          }),
-          200,
-        );
+        return jsonResponseBody(jsonEncode({'media_asset_id': 'asset-1', 'upload': payload(0)}), 200);
+      }
+      if (options.path == '/v1/media/photos/asset-1/upload-url') {
+        refreshCallCount++;
+        return jsonResponseBody(jsonEncode(payload(refreshCallCount)), 200);
       }
       if (options.path.contains('/complete')) {
         completeCallCount++;
@@ -62,9 +61,9 @@ void main() {
     );
 
     expect(result, isA<Ok<String>>());
-    expect((result as Ok<String>).value, 'asset-3', reason: 'the asset from the attempt whose PUT actually succeeded');
-
-    expect(createCallCount, 3, reason: 'each retry must request a fresh presigned URL, not reuse the failed one');
+    expect((result as Ok<String>).value, 'asset-1');
+    expect(createCallCount, 1, reason: 'one asset per photo: a retry used to create a new one each time, orphaning the rest');
+    expect(refreshCallCount, 2, reason: 'each retry asks for a fresh URL for that asset');
     expect(completeCallCount, 1, reason: 'complete is only ever called once, for the attempt that succeeded');
     expect(
       putUrlsAttempted.toSet().length,
@@ -73,3 +72,5 @@ void main() {
     );
   });
 }
+
+typedef UploadPayloadJson = Map<String, Object>;

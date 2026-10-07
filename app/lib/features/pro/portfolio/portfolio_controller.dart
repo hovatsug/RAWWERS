@@ -11,6 +11,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
+import 'package:rawwers/core/upload/upload_pool.dart';
 
 part 'portfolio_controller.g.dart';
 
@@ -84,13 +85,13 @@ class PortfolioUploadController extends _$PortfolioUploadController {
   @override
   Map<String, UploadProgress> build() => const {};
 
-  /// Picks photos and uploads them one at a time.
+  /// Picks photos and uploads them, [uploadConcurrency] at a time.
   ///
-  /// Sequential rather than parallel: a photographer picking twenty
-  /// full-resolution frames on a phone connection would otherwise open
-  /// twenty concurrent PUTs, and the first thing to fail would be all of
-  /// them. Each file's outcome is independent - one failure does not
-  /// abandon the rest.
+  /// Not all at once: a photographer picking twenty full-resolution frames
+  /// on a phone connection would otherwise open twenty concurrent PUTs, and
+  /// the first thing to fail would be all of them. Not one at a time either,
+  /// which left a fast connection idle between files. Each file's outcome is
+  /// independent - one failure does not abandon the rest.
   Future<void> pickAndUpload() async {
     final picker = ImagePicker();
     final files = await picker.pickMultiImage();
@@ -98,7 +99,7 @@ class PortfolioUploadController extends _$PortfolioUploadController {
 
     final service = ref.read(photoUploadServiceProvider);
 
-    for (final file in files) {
+    await forEachConcurrently(files, (file) async {
       final key = '${DateTime.now().microsecondsSinceEpoch}-${file.name}';
       final length = await file.length();
       state = {
@@ -108,6 +109,7 @@ class PortfolioUploadController extends _$PortfolioUploadController {
 
       final result = await service.uploadPhoto(
         openFile: () => File(file.path).openRead().map(Uint8List.fromList),
+        openRange: (start, end) => File(file.path).openRead(start, end).map(Uint8List.fromList),
         fileSize: length,
         purpose: MediaPurpose.portfolioReel,
         // Explicit rather than relying on the server default. A portfolio
@@ -135,7 +137,7 @@ class PortfolioUploadController extends _$PortfolioUploadController {
             state = {...state, key: current.copyWith(error: _explain(failure))};
           }
       }
-    }
+    });
 
     await ref.read(portfolioControllerProvider.notifier).refresh();
     // Finished rows are cleared, failures stay: a photographer needs to

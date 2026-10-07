@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/gallery_detail_response.dart';
@@ -208,6 +210,24 @@ class _Uploads extends ConsumerWidget {
             for (final entry in uploads.entries) ...[
               Row(
                 children: [
+                  if (entry.value.localPath case final path?) ...[
+                    // The photo itself, from the phone, the moment it is
+                    // picked - not a filename while the server works. Decoded
+                    // at thumbnail size so a batch of camera files does not
+                    // hold full-resolution bitmaps in memory.
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(RRadius.photo),
+                      child: Image.file(
+                        File(path),
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        cacheWidth: 120,
+                        errorBuilder: (_, _, _) => const SizedBox(width: 40, height: 40),
+                      ),
+                    ),
+                    const SizedBox(width: RSpace.s8),
+                  ],
                   Expanded(child: Text(entry.value.fileName, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis)),
                   switch (entry.value) {
                     DeliveryUploadFailed(:final mediaAssetId) => Row(

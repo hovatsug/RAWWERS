@@ -24,6 +24,13 @@ _ProPackageUpdateRequest _$ProPackageUpdateRequestFromJson(
       ?.map((e) => e as Map<String, dynamic>)
       .toList(),
   isActive: json['is_active'] as bool?,
+  schedulingPreset: json['scheduling_preset'] == null
+      ? null
+      : SchedulingPreset.fromJson(json['scheduling_preset'] as String),
+  intervalMinutes: (json['interval_minutes'] as num?)?.toInt(),
+  sessionBlocks: (json['session_blocks'] as List<dynamic>?)
+      ?.map((e) => SessionBlockInput.fromJson(e as Map<String, dynamic>))
+      .toList(),
 );
 
 Map<String, dynamic> _$ProPackageUpdateRequestToJson(
@@ -42,4 +49,7 @@ Map<String, dynamic> _$ProPackageUpdateRequestToJson(
   'finals_sla_days': instance.finalsSlaDays,
   'addons': instance.addons,
   'is_active': instance.isActive,
+  'scheduling_preset': instance.schedulingPreset,
+  'interval_minutes': instance.intervalMinutes,
+  'session_blocks': instance.sessionBlocks,
 };

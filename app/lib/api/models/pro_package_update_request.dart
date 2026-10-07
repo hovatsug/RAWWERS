@@ -155,6 +155,41 @@
 ///                 }
 ///             ],
 ///             "title": "Is Active"
+///         },
+///         "scheduling_preset": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/SchedulingPreset"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
+///         },
+///         "interval_minutes": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Interval Minutes"
+///         },
+///         "session_blocks": {
+///             "anyOf": [
+///                 {
+///                     "type": "array",
+///                     "items": {
+///                         "$ref": "#/components/schemas/SessionBlockInput"
+///                     }
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Session Blocks"
 ///         }
 ///     },
 ///     "type": "object",
@@ -216,6 +251,18 @@ abstract class ProPackageUpdateRequest with _$ProPackageUpdateRequest {
 
     /// isActive
     @JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? isActive,
+
+    /// schedulingPreset
+    @JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_)
+    SchedulingPreset? schedulingPreset,
+
+    /// intervalMinutes
+    @JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_)
+    int? intervalMinutes,
+
+    /// sessionBlocks
+    @JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_)
+    List<SessionBlockInput>? sessionBlocks,
   }) = _ProPackageUpdateRequest;
 
   factory ProPackageUpdateRequest.fromJson(Map<String, dynamic> json) =>
@@ -246,4 +293,10 @@ abstract class ProPackageUpdateRequest with _$ProPackageUpdateRequest {
   static const String addonsKey_ = r'addons';
 
   static const String isActiveKey_ = r'is_active';
+
+  static const String schedulingPresetKey_ = r'scheduling_preset';
+
+  static const String intervalMinutesKey_ = r'interval_minutes';
+
+  static const String sessionBlocksKey_ = r'session_blocks';
 }

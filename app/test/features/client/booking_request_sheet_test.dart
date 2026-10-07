@@ -68,7 +68,12 @@ const _package = ClientProfilePackage(
 /// A time picked on the profile's calendar: 10:00 in Lisbon, 09:00Z.
 final _pick = PickedStart(
   day: DateTime.utc(2030, 6, 12),
-  start: ClientAvailabilityStart(startAt: DateTime.parse('2030-06-12T10:00:00+01:00'), localTime: '10:00'),
+  start: ClientAvailabilityStart(
+    startAt: DateTime.parse('2030-06-12T10:00:00+01:00'),
+    localTime: '10:00',
+    endAt: DateTime.parse('2030-06-12T11:00:00+01:00'),
+    localEndTime: '11:00',
+  ),
   timezone: 'Europe/Lisbon',
 );
 

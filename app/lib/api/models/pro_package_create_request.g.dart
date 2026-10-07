@@ -23,6 +23,13 @@ _ProPackageCreateRequest _$ProPackageCreateRequestFromJson(
   addons: (json['addons'] as List<dynamic>?)
       ?.map((e) => e as Map<String, dynamic>)
       .toList(),
+  schedulingPreset: json['scheduling_preset'] == null
+      ? SchedulingPreset.interval
+      : SchedulingPreset.fromJson(json['scheduling_preset'] as String),
+  intervalMinutes: (json['interval_minutes'] as num?)?.toInt(),
+  sessionBlocks: (json['session_blocks'] as List<dynamic>?)
+      ?.map((e) => SessionBlockInput.fromJson(e as Map<String, dynamic>))
+      .toList(),
 );
 
 Map<String, dynamic> _$ProPackageCreateRequestToJson(
@@ -40,4 +47,7 @@ Map<String, dynamic> _$ProPackageCreateRequestToJson(
   'proofs_sla_days': instance.proofsSlaDays,
   'finals_sla_days': instance.finalsSlaDays,
   'addons': instance.addons,
+  'scheduling_preset': instance.schedulingPreset,
+  'interval_minutes': instance.intervalMinutes,
+  'session_blocks': instance.sessionBlocks,
 };

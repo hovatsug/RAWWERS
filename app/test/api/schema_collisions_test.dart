@@ -48,7 +48,8 @@ void main() {
     const raw = '''
 {"timezone":"Europe/Lisbon","has_schedule":true,"notice_hours":24,
 "days":[{"date":"2026-10-12","open":true,
-"start_times":[{"start_at":"2026-10-12T10:00:00+01:00","local_time":"10:00"}]},
+"start_times":[{"start_at":"2026-10-12T10:00:00+01:00","local_time":"10:00",
+"end_at":"2026-10-12T11:00:00+01:00","local_end_time":"11:00"}]},
 {"date":"2026-10-13","open":false,"start_times":[]}]}
 ''';
 

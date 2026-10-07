@@ -71,6 +71,28 @@
 ///         "is_active": {
 ///             "type": "boolean",
 ///             "title": "Is Active"
+///         },
+///         "scheduling_preset": {
+///             "$ref": "#/components/schemas/SchedulingPreset",
+///             "default": "interval"
+///         },
+///         "interval_minutes": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Interval Minutes"
+///         },
+///         "session_blocks": {
+///             "type": "array",
+///             "items": {
+///                 "$ref": "#/components/schemas/SessionBlockInput"
+///             },
+///             "title": "Session Blocks"
 ///         }
 ///     },
 ///     "type": "object",
@@ -148,6 +170,18 @@ abstract class ProPackageView with _$ProPackageView {
 
     /// isActive
     @JsonKey(name: ProPackageView.isActiveKey_) required bool isActive,
+
+    /// schedulingPreset
+    @Default(SchedulingPreset.interval)
+    @JsonKey(name: ProPackageView.schedulingPresetKey_)
+    SchedulingPreset schedulingPreset,
+
+    /// intervalMinutes
+    @JsonKey(name: ProPackageView.intervalMinutesKey_) int? intervalMinutes,
+
+    /// sessionBlocks
+    @JsonKey(name: ProPackageView.sessionBlocksKey_)
+    List<SessionBlockInput>? sessionBlocks,
   }) = _ProPackageView;
 
   factory ProPackageView.fromJson(Map<String, dynamic> json) =>
@@ -180,4 +214,10 @@ abstract class ProPackageView with _$ProPackageView {
   static const String addonsKey_ = r'addons';
 
   static const String isActiveKey_ = r'is_active';
+
+  static const String schedulingPresetKey_ = r'scheduling_preset';
+
+  static const String intervalMinutesKey_ = r'interval_minutes';
+
+  static const String sessionBlocksKey_ = r'session_blocks';
 }

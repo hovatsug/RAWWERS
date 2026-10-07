@@ -28,7 +28,10 @@ mixin _$ProPackageUpdateRequest {
 @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) int? get proofsSlaDays;/// finalsSlaDays
 @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) int? get finalsSlaDays;/// addons
 @JsonKey(name: ProPackageUpdateRequest.addonsKey_) List<Map<String, dynamic>>? get addons;/// isActive
-@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? get isActive;
+@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? get isActive;/// schedulingPreset
+@JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_) SchedulingPreset? get schedulingPreset;/// intervalMinutes
+@JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_) int? get intervalMinutes;/// sessionBlocks
+@JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_) List<SessionBlockInput>? get sessionBlocks;
 /// Create a copy of ProPackageUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -41,16 +44,16 @@ $ProPackageUpdateRequestCopyWith<ProPackageUpdateRequest> get copyWith => _$ProP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProPackageUpdateRequest&&(identical(other.title, title) || other.title == title)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&const DeepCollectionEquality().equals(other.price, price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&const DeepCollectionEquality().equals(other.extraPhotoPrice, extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other.addons, addons)&&(identical(other.isActive, isActive) || other.isActive == isActive));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProPackageUpdateRequest&&(identical(other.title, title) || other.title == title)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&const DeepCollectionEquality().equals(other.price, price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&const DeepCollectionEquality().equals(other.extraPhotoPrice, extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other.addons, addons)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.schedulingPreset, schedulingPreset) || other.schedulingPreset == schedulingPreset)&&(identical(other.intervalMinutes, intervalMinutes) || other.intervalMinutes == intervalMinutes)&&const DeepCollectionEquality().equals(other.sessionBlocks, sessionBlocks));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,nicheId,nicheSlug,description,durationMinutes,const DeepCollectionEquality().hash(price),currency,includedPhotos,const DeepCollectionEquality().hash(extraPhotoPrice),proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(addons),isActive);
+int get hashCode => Object.hash(runtimeType,title,nicheId,nicheSlug,description,durationMinutes,const DeepCollectionEquality().hash(price),currency,includedPhotos,const DeepCollectionEquality().hash(extraPhotoPrice),proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(addons),isActive,schedulingPreset,intervalMinutes,const DeepCollectionEquality().hash(sessionBlocks));
 
 @override
 String toString() {
-  return 'ProPackageUpdateRequest(title: $title, nicheId: $nicheId, nicheSlug: $nicheSlug, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive)';
+  return 'ProPackageUpdateRequest(title: $title, nicheId: $nicheId, nicheSlug: $nicheSlug, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive, schedulingPreset: $schedulingPreset, intervalMinutes: $intervalMinutes, sessionBlocks: $sessionBlocks)';
 }
 
 
@@ -61,7 +64,7 @@ abstract mixin class $ProPackageUpdateRequestCopyWith<$Res>  {
   factory $ProPackageUpdateRequestCopyWith(ProPackageUpdateRequest value, $Res Function(ProPackageUpdateRequest) _then) = _$ProPackageUpdateRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProPackageUpdateRequest.titleKey_) String? title,@JsonKey(name: ProPackageUpdateRequest.nicheIdKey_) String? nicheId,@JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_) String? nicheSlug,@JsonKey(name: ProPackageUpdateRequest.descriptionKey_) String? description,@JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_) int? durationMinutes,@JsonKey(name: ProPackageUpdateRequest.priceKey_) dynamic? price,@JsonKey(name: ProPackageUpdateRequest.currencyKey_) String? currency,@JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_) int? includedPhotos,@JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_) dynamic? extraPhotoPrice,@JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) int? proofsSlaDays,@JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) int? finalsSlaDays,@JsonKey(name: ProPackageUpdateRequest.addonsKey_) List<Map<String, dynamic>>? addons,@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? isActive
+@JsonKey(name: ProPackageUpdateRequest.titleKey_) String? title,@JsonKey(name: ProPackageUpdateRequest.nicheIdKey_) String? nicheId,@JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_) String? nicheSlug,@JsonKey(name: ProPackageUpdateRequest.descriptionKey_) String? description,@JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_) int? durationMinutes,@JsonKey(name: ProPackageUpdateRequest.priceKey_) dynamic? price,@JsonKey(name: ProPackageUpdateRequest.currencyKey_) String? currency,@JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_) int? includedPhotos,@JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_) dynamic? extraPhotoPrice,@JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) int? proofsSlaDays,@JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) int? finalsSlaDays,@JsonKey(name: ProPackageUpdateRequest.addonsKey_) List<Map<String, dynamic>>? addons,@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? isActive,@JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_) SchedulingPreset? schedulingPreset,@JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_) int? intervalMinutes,@JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_) List<SessionBlockInput>? sessionBlocks
 });
 
 
@@ -78,7 +81,7 @@ class _$ProPackageUpdateRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProPackageUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? title = freezed,Object? nicheId = freezed,Object? nicheSlug = freezed,Object? description = freezed,Object? durationMinutes = freezed,Object? price = freezed,Object? currency = freezed,Object? includedPhotos = freezed,Object? extraPhotoPrice = freezed,Object? proofsSlaDays = freezed,Object? finalsSlaDays = freezed,Object? addons = freezed,Object? isActive = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? title = freezed,Object? nicheId = freezed,Object? nicheSlug = freezed,Object? description = freezed,Object? durationMinutes = freezed,Object? price = freezed,Object? currency = freezed,Object? includedPhotos = freezed,Object? extraPhotoPrice = freezed,Object? proofsSlaDays = freezed,Object? finalsSlaDays = freezed,Object? addons = freezed,Object? isActive = freezed,Object? schedulingPreset = freezed,Object? intervalMinutes = freezed,Object? sessionBlocks = freezed,}) {
   return _then(_self.copyWith(
 title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,nicheId: freezed == nicheId ? _self.nicheId : nicheId // ignore: cast_nullable_to_non_nullable
@@ -93,7 +96,10 @@ as dynamic?,proofsSlaDays: freezed == proofsSlaDays ? _self.proofsSlaDays : proo
 as int?,finalsSlaDays: freezed == finalsSlaDays ? _self.finalsSlaDays : finalsSlaDays // ignore: cast_nullable_to_non_nullable
 as int?,addons: freezed == addons ? _self.addons : addons // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>?,isActive: freezed == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,schedulingPreset: freezed == schedulingPreset ? _self.schedulingPreset : schedulingPreset // ignore: cast_nullable_to_non_nullable
+as SchedulingPreset?,intervalMinutes: freezed == intervalMinutes ? _self.intervalMinutes : intervalMinutes // ignore: cast_nullable_to_non_nullable
+as int?,sessionBlocks: freezed == sessionBlocks ? _self.sessionBlocks : sessionBlocks // ignore: cast_nullable_to_non_nullable
+as List<SessionBlockInput>?,
   ));
 }
 
@@ -178,10 +184,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageUpdateRequest.titleKey_)  String? title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_)  String? nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_)  String? description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_)  int? durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_)  dynamic? price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_)  String? currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_)  int? includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_)  dynamic? extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_)  int? proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_)  int? finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_)  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_)  bool? isActive)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageUpdateRequest.titleKey_)  String? title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_)  String? nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_)  String? description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_)  int? durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_)  dynamic? price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_)  String? currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_)  int? includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_)  dynamic? extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_)  int? proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_)  int? finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_)  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_)  bool? isActive, @JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_)  SchedulingPreset? schedulingPreset, @JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_)  int? intervalMinutes, @JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_)  List<SessionBlockInput>? sessionBlocks)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProPackageUpdateRequest() when $default != null:
-return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive);case _:
+return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive,_that.schedulingPreset,_that.intervalMinutes,_that.sessionBlocks);case _:
   return orElse();
 
 }
@@ -199,10 +205,10 @@ return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageUpdateRequest.titleKey_)  String? title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_)  String? nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_)  String? description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_)  int? durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_)  dynamic? price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_)  String? currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_)  int? includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_)  dynamic? extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_)  int? proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_)  int? finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_)  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_)  bool? isActive)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageUpdateRequest.titleKey_)  String? title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_)  String? nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_)  String? description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_)  int? durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_)  dynamic? price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_)  String? currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_)  int? includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_)  dynamic? extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_)  int? proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_)  int? finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_)  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_)  bool? isActive, @JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_)  SchedulingPreset? schedulingPreset, @JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_)  int? intervalMinutes, @JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_)  List<SessionBlockInput>? sessionBlocks)  $default,) {final _that = this;
 switch (_that) {
 case _ProPackageUpdateRequest():
-return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive);case _:
+return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive,_that.schedulingPreset,_that.intervalMinutes,_that.sessionBlocks);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -219,10 +225,10 @@ return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProPackageUpdateRequest.titleKey_)  String? title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_)  String? nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_)  String? description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_)  int? durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_)  dynamic? price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_)  String? currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_)  int? includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_)  dynamic? extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_)  int? proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_)  int? finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_)  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_)  bool? isActive)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProPackageUpdateRequest.titleKey_)  String? title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_)  String? nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_)  String? nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_)  String? description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_)  int? durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_)  dynamic? price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_)  String? currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_)  int? includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_)  dynamic? extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_)  int? proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_)  int? finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_)  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_)  bool? isActive, @JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_)  SchedulingPreset? schedulingPreset, @JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_)  int? intervalMinutes, @JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_)  List<SessionBlockInput>? sessionBlocks)?  $default,) {final _that = this;
 switch (_that) {
 case _ProPackageUpdateRequest() when $default != null:
-return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive);case _:
+return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive,_that.schedulingPreset,_that.intervalMinutes,_that.sessionBlocks);case _:
   return null;
 
 }
@@ -234,7 +240,7 @@ return $default(_that.title,_that.nicheId,_that.nicheSlug,_that.description,_tha
 
 @jsonSerializable
 class _ProPackageUpdateRequest extends ProPackageUpdateRequest {
-  const _ProPackageUpdateRequest({@JsonKey(name: ProPackageUpdateRequest.titleKey_) this.title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_) this.nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_) this.nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_) this.description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_) this.durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_) this.price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_) this.currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_) this.includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_) this.extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) this.proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) this.finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_) final  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_) this.isActive}): _addons = addons,super._();
+  const _ProPackageUpdateRequest({@JsonKey(name: ProPackageUpdateRequest.titleKey_) this.title, @JsonKey(name: ProPackageUpdateRequest.nicheIdKey_) this.nicheId, @JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_) this.nicheSlug, @JsonKey(name: ProPackageUpdateRequest.descriptionKey_) this.description, @JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_) this.durationMinutes, @JsonKey(name: ProPackageUpdateRequest.priceKey_) this.price, @JsonKey(name: ProPackageUpdateRequest.currencyKey_) this.currency, @JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_) this.includedPhotos, @JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_) this.extraPhotoPrice, @JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) this.proofsSlaDays, @JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) this.finalsSlaDays, @JsonKey(name: ProPackageUpdateRequest.addonsKey_) final  List<Map<String, dynamic>>? addons, @JsonKey(name: ProPackageUpdateRequest.isActiveKey_) this.isActive, @JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_) this.schedulingPreset, @JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_) this.intervalMinutes, @JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_) final  List<SessionBlockInput>? sessionBlocks}): _addons = addons,_sessionBlocks = sessionBlocks,super._();
   factory _ProPackageUpdateRequest.fromJson(Map<String, dynamic> json) => _$ProPackageUpdateRequestFromJson(json);
 
 /// title
@@ -272,6 +278,21 @@ class _ProPackageUpdateRequest extends ProPackageUpdateRequest {
 
 /// isActive
 @override@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) final  bool? isActive;
+/// schedulingPreset
+@override@JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_) final  SchedulingPreset? schedulingPreset;
+/// intervalMinutes
+@override@JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_) final  int? intervalMinutes;
+/// sessionBlocks
+ final  List<SessionBlockInput>? _sessionBlocks;
+/// sessionBlocks
+@override@JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_) List<SessionBlockInput>? get sessionBlocks {
+  final value = _sessionBlocks;
+  if (value == null) return null;
+  if (_sessionBlocks is EqualUnmodifiableListView) return _sessionBlocks;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of ProPackageUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -286,16 +307,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProPackageUpdateRequest&&(identical(other.title, title) || other.title == title)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&const DeepCollectionEquality().equals(other.price, price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&const DeepCollectionEquality().equals(other.extraPhotoPrice, extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other._addons, _addons)&&(identical(other.isActive, isActive) || other.isActive == isActive));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProPackageUpdateRequest&&(identical(other.title, title) || other.title == title)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&const DeepCollectionEquality().equals(other.price, price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&const DeepCollectionEquality().equals(other.extraPhotoPrice, extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other._addons, _addons)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.schedulingPreset, schedulingPreset) || other.schedulingPreset == schedulingPreset)&&(identical(other.intervalMinutes, intervalMinutes) || other.intervalMinutes == intervalMinutes)&&const DeepCollectionEquality().equals(other._sessionBlocks, _sessionBlocks));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,nicheId,nicheSlug,description,durationMinutes,const DeepCollectionEquality().hash(price),currency,includedPhotos,const DeepCollectionEquality().hash(extraPhotoPrice),proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(_addons),isActive);
+int get hashCode => Object.hash(runtimeType,title,nicheId,nicheSlug,description,durationMinutes,const DeepCollectionEquality().hash(price),currency,includedPhotos,const DeepCollectionEquality().hash(extraPhotoPrice),proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(_addons),isActive,schedulingPreset,intervalMinutes,const DeepCollectionEquality().hash(_sessionBlocks));
 
 @override
 String toString() {
-  return 'ProPackageUpdateRequest(title: $title, nicheId: $nicheId, nicheSlug: $nicheSlug, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive)';
+  return 'ProPackageUpdateRequest(title: $title, nicheId: $nicheId, nicheSlug: $nicheSlug, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive, schedulingPreset: $schedulingPreset, intervalMinutes: $intervalMinutes, sessionBlocks: $sessionBlocks)';
 }
 
 
@@ -306,7 +327,7 @@ abstract mixin class _$ProPackageUpdateRequestCopyWith<$Res> implements $ProPack
   factory _$ProPackageUpdateRequestCopyWith(_ProPackageUpdateRequest value, $Res Function(_ProPackageUpdateRequest) _then) = __$ProPackageUpdateRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProPackageUpdateRequest.titleKey_) String? title,@JsonKey(name: ProPackageUpdateRequest.nicheIdKey_) String? nicheId,@JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_) String? nicheSlug,@JsonKey(name: ProPackageUpdateRequest.descriptionKey_) String? description,@JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_) int? durationMinutes,@JsonKey(name: ProPackageUpdateRequest.priceKey_) dynamic? price,@JsonKey(name: ProPackageUpdateRequest.currencyKey_) String? currency,@JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_) int? includedPhotos,@JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_) dynamic? extraPhotoPrice,@JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) int? proofsSlaDays,@JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) int? finalsSlaDays,@JsonKey(name: ProPackageUpdateRequest.addonsKey_) List<Map<String, dynamic>>? addons,@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? isActive
+@JsonKey(name: ProPackageUpdateRequest.titleKey_) String? title,@JsonKey(name: ProPackageUpdateRequest.nicheIdKey_) String? nicheId,@JsonKey(name: ProPackageUpdateRequest.nicheSlugKey_) String? nicheSlug,@JsonKey(name: ProPackageUpdateRequest.descriptionKey_) String? description,@JsonKey(name: ProPackageUpdateRequest.durationMinutesKey_) int? durationMinutes,@JsonKey(name: ProPackageUpdateRequest.priceKey_) dynamic? price,@JsonKey(name: ProPackageUpdateRequest.currencyKey_) String? currency,@JsonKey(name: ProPackageUpdateRequest.includedPhotosKey_) int? includedPhotos,@JsonKey(name: ProPackageUpdateRequest.extraPhotoPriceKey_) dynamic? extraPhotoPrice,@JsonKey(name: ProPackageUpdateRequest.proofsSlaDaysKey_) int? proofsSlaDays,@JsonKey(name: ProPackageUpdateRequest.finalsSlaDaysKey_) int? finalsSlaDays,@JsonKey(name: ProPackageUpdateRequest.addonsKey_) List<Map<String, dynamic>>? addons,@JsonKey(name: ProPackageUpdateRequest.isActiveKey_) bool? isActive,@JsonKey(name: ProPackageUpdateRequest.schedulingPresetKey_) SchedulingPreset? schedulingPreset,@JsonKey(name: ProPackageUpdateRequest.intervalMinutesKey_) int? intervalMinutes,@JsonKey(name: ProPackageUpdateRequest.sessionBlocksKey_) List<SessionBlockInput>? sessionBlocks
 });
 
 
@@ -323,7 +344,7 @@ class __$ProPackageUpdateRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProPackageUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? title = freezed,Object? nicheId = freezed,Object? nicheSlug = freezed,Object? description = freezed,Object? durationMinutes = freezed,Object? price = freezed,Object? currency = freezed,Object? includedPhotos = freezed,Object? extraPhotoPrice = freezed,Object? proofsSlaDays = freezed,Object? finalsSlaDays = freezed,Object? addons = freezed,Object? isActive = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? title = freezed,Object? nicheId = freezed,Object? nicheSlug = freezed,Object? description = freezed,Object? durationMinutes = freezed,Object? price = freezed,Object? currency = freezed,Object? includedPhotos = freezed,Object? extraPhotoPrice = freezed,Object? proofsSlaDays = freezed,Object? finalsSlaDays = freezed,Object? addons = freezed,Object? isActive = freezed,Object? schedulingPreset = freezed,Object? intervalMinutes = freezed,Object? sessionBlocks = freezed,}) {
   return _then(_ProPackageUpdateRequest(
 title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,nicheId: freezed == nicheId ? _self.nicheId : nicheId // ignore: cast_nullable_to_non_nullable
@@ -338,7 +359,10 @@ as dynamic?,proofsSlaDays: freezed == proofsSlaDays ? _self.proofsSlaDays : proo
 as int?,finalsSlaDays: freezed == finalsSlaDays ? _self.finalsSlaDays : finalsSlaDays // ignore: cast_nullable_to_non_nullable
 as int?,addons: freezed == addons ? _self._addons : addons // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>?,isActive: freezed == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,schedulingPreset: freezed == schedulingPreset ? _self.schedulingPreset : schedulingPreset // ignore: cast_nullable_to_non_nullable
+as SchedulingPreset?,intervalMinutes: freezed == intervalMinutes ? _self.intervalMinutes : intervalMinutes // ignore: cast_nullable_to_non_nullable
+as int?,sessionBlocks: freezed == sessionBlocks ? _self._sessionBlocks : sessionBlocks // ignore: cast_nullable_to_non_nullable
+as List<SessionBlockInput>?,
   ));
 }
 

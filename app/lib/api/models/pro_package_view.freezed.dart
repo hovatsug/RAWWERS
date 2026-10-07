@@ -29,7 +29,10 @@ mixin _$ProPackageView {
 @JsonKey(name: ProPackageView.proofsSlaDaysKey_) int get proofsSlaDays;/// finalsSlaDays
 @JsonKey(name: ProPackageView.finalsSlaDaysKey_) int get finalsSlaDays;/// addons
 @JsonKey(name: ProPackageView.addonsKey_) List<Map<String, dynamic>> get addons;/// isActive
-@JsonKey(name: ProPackageView.isActiveKey_) bool get isActive;
+@JsonKey(name: ProPackageView.isActiveKey_) bool get isActive;/// schedulingPreset
+@JsonKey(name: ProPackageView.schedulingPresetKey_) SchedulingPreset get schedulingPreset;/// intervalMinutes
+@JsonKey(name: ProPackageView.intervalMinutesKey_) int? get intervalMinutes;/// sessionBlocks
+@JsonKey(name: ProPackageView.sessionBlocksKey_) List<SessionBlockInput>? get sessionBlocks;
 /// Create a copy of ProPackageView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -42,16 +45,16 @@ $ProPackageViewCopyWith<ProPackageView> get copyWith => _$ProPackageViewCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProPackageView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other.addons, addons)&&(identical(other.isActive, isActive) || other.isActive == isActive));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProPackageView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other.addons, addons)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.schedulingPreset, schedulingPreset) || other.schedulingPreset == schedulingPreset)&&(identical(other.intervalMinutes, intervalMinutes) || other.intervalMinutes == intervalMinutes)&&const DeepCollectionEquality().equals(other.sessionBlocks, sessionBlocks));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,nicheId,title,description,durationMinutes,price,currency,includedPhotos,extraPhotoPrice,proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(addons),isActive);
+int get hashCode => Object.hash(runtimeType,id,proUserId,nicheId,title,description,durationMinutes,price,currency,includedPhotos,extraPhotoPrice,proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(addons),isActive,schedulingPreset,intervalMinutes,const DeepCollectionEquality().hash(sessionBlocks));
 
 @override
 String toString() {
-  return 'ProPackageView(id: $id, proUserId: $proUserId, nicheId: $nicheId, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive)';
+  return 'ProPackageView(id: $id, proUserId: $proUserId, nicheId: $nicheId, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive, schedulingPreset: $schedulingPreset, intervalMinutes: $intervalMinutes, sessionBlocks: $sessionBlocks)';
 }
 
 
@@ -62,7 +65,7 @@ abstract mixin class $ProPackageViewCopyWith<$Res>  {
   factory $ProPackageViewCopyWith(ProPackageView value, $Res Function(ProPackageView) _then) = _$ProPackageViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProPackageView.idKey_) String id,@JsonKey(name: ProPackageView.proUserIdKey_) String proUserId,@JsonKey(name: ProPackageView.nicheIdKey_) String nicheId,@JsonKey(name: ProPackageView.titleKey_) String title,@JsonKey(name: ProPackageView.descriptionKey_) String? description,@JsonKey(name: ProPackageView.durationMinutesKey_) int durationMinutes,@JsonKey(name: ProPackageView.priceKey_) String price,@JsonKey(name: ProPackageView.currencyKey_) String currency,@JsonKey(name: ProPackageView.includedPhotosKey_) int includedPhotos,@JsonKey(name: ProPackageView.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ProPackageView.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ProPackageView.finalsSlaDaysKey_) int finalsSlaDays,@JsonKey(name: ProPackageView.addonsKey_) List<Map<String, dynamic>> addons,@JsonKey(name: ProPackageView.isActiveKey_) bool isActive
+@JsonKey(name: ProPackageView.idKey_) String id,@JsonKey(name: ProPackageView.proUserIdKey_) String proUserId,@JsonKey(name: ProPackageView.nicheIdKey_) String nicheId,@JsonKey(name: ProPackageView.titleKey_) String title,@JsonKey(name: ProPackageView.descriptionKey_) String? description,@JsonKey(name: ProPackageView.durationMinutesKey_) int durationMinutes,@JsonKey(name: ProPackageView.priceKey_) String price,@JsonKey(name: ProPackageView.currencyKey_) String currency,@JsonKey(name: ProPackageView.includedPhotosKey_) int includedPhotos,@JsonKey(name: ProPackageView.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ProPackageView.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ProPackageView.finalsSlaDaysKey_) int finalsSlaDays,@JsonKey(name: ProPackageView.addonsKey_) List<Map<String, dynamic>> addons,@JsonKey(name: ProPackageView.isActiveKey_) bool isActive,@JsonKey(name: ProPackageView.schedulingPresetKey_) SchedulingPreset schedulingPreset,@JsonKey(name: ProPackageView.intervalMinutesKey_) int? intervalMinutes,@JsonKey(name: ProPackageView.sessionBlocksKey_) List<SessionBlockInput>? sessionBlocks
 });
 
 
@@ -79,7 +82,7 @@ class _$ProPackageViewCopyWithImpl<$Res>
 
 /// Create a copy of ProPackageView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? nicheId = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,Object? addons = null,Object? isActive = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? nicheId = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,Object? addons = null,Object? isActive = null,Object? schedulingPreset = null,Object? intervalMinutes = freezed,Object? sessionBlocks = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
@@ -95,7 +98,10 @@ as String,proofsSlaDays: null == proofsSlaDays ? _self.proofsSlaDays : proofsSla
 as int,finalsSlaDays: null == finalsSlaDays ? _self.finalsSlaDays : finalsSlaDays // ignore: cast_nullable_to_non_nullable
 as int,addons: null == addons ? _self.addons : addons // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>,isActive: null == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,schedulingPreset: null == schedulingPreset ? _self.schedulingPreset : schedulingPreset // ignore: cast_nullable_to_non_nullable
+as SchedulingPreset,intervalMinutes: freezed == intervalMinutes ? _self.intervalMinutes : intervalMinutes // ignore: cast_nullable_to_non_nullable
+as int?,sessionBlocks: freezed == sessionBlocks ? _self.sessionBlocks : sessionBlocks // ignore: cast_nullable_to_non_nullable
+as List<SessionBlockInput>?,
   ));
 }
 
@@ -180,10 +186,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageView.idKey_)  String id, @JsonKey(name: ProPackageView.proUserIdKey_)  String proUserId, @JsonKey(name: ProPackageView.nicheIdKey_)  String nicheId, @JsonKey(name: ProPackageView.titleKey_)  String title, @JsonKey(name: ProPackageView.descriptionKey_)  String? description, @JsonKey(name: ProPackageView.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ProPackageView.priceKey_)  String price, @JsonKey(name: ProPackageView.currencyKey_)  String currency, @JsonKey(name: ProPackageView.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_)  int finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_)  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_)  bool isActive)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageView.idKey_)  String id, @JsonKey(name: ProPackageView.proUserIdKey_)  String proUserId, @JsonKey(name: ProPackageView.nicheIdKey_)  String nicheId, @JsonKey(name: ProPackageView.titleKey_)  String title, @JsonKey(name: ProPackageView.descriptionKey_)  String? description, @JsonKey(name: ProPackageView.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ProPackageView.priceKey_)  String price, @JsonKey(name: ProPackageView.currencyKey_)  String currency, @JsonKey(name: ProPackageView.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_)  int finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_)  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_)  bool isActive, @JsonKey(name: ProPackageView.schedulingPresetKey_)  SchedulingPreset schedulingPreset, @JsonKey(name: ProPackageView.intervalMinutesKey_)  int? intervalMinutes, @JsonKey(name: ProPackageView.sessionBlocksKey_)  List<SessionBlockInput>? sessionBlocks)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProPackageView() when $default != null:
-return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive);case _:
+return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive,_that.schedulingPreset,_that.intervalMinutes,_that.sessionBlocks);case _:
   return orElse();
 
 }
@@ -201,10 +207,10 @@ return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.descrip
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageView.idKey_)  String id, @JsonKey(name: ProPackageView.proUserIdKey_)  String proUserId, @JsonKey(name: ProPackageView.nicheIdKey_)  String nicheId, @JsonKey(name: ProPackageView.titleKey_)  String title, @JsonKey(name: ProPackageView.descriptionKey_)  String? description, @JsonKey(name: ProPackageView.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ProPackageView.priceKey_)  String price, @JsonKey(name: ProPackageView.currencyKey_)  String currency, @JsonKey(name: ProPackageView.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_)  int finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_)  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_)  bool isActive)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProPackageView.idKey_)  String id, @JsonKey(name: ProPackageView.proUserIdKey_)  String proUserId, @JsonKey(name: ProPackageView.nicheIdKey_)  String nicheId, @JsonKey(name: ProPackageView.titleKey_)  String title, @JsonKey(name: ProPackageView.descriptionKey_)  String? description, @JsonKey(name: ProPackageView.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ProPackageView.priceKey_)  String price, @JsonKey(name: ProPackageView.currencyKey_)  String currency, @JsonKey(name: ProPackageView.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_)  int finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_)  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_)  bool isActive, @JsonKey(name: ProPackageView.schedulingPresetKey_)  SchedulingPreset schedulingPreset, @JsonKey(name: ProPackageView.intervalMinutesKey_)  int? intervalMinutes, @JsonKey(name: ProPackageView.sessionBlocksKey_)  List<SessionBlockInput>? sessionBlocks)  $default,) {final _that = this;
 switch (_that) {
 case _ProPackageView():
-return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive);case _:
+return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive,_that.schedulingPreset,_that.intervalMinutes,_that.sessionBlocks);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -221,10 +227,10 @@ return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.descrip
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProPackageView.idKey_)  String id, @JsonKey(name: ProPackageView.proUserIdKey_)  String proUserId, @JsonKey(name: ProPackageView.nicheIdKey_)  String nicheId, @JsonKey(name: ProPackageView.titleKey_)  String title, @JsonKey(name: ProPackageView.descriptionKey_)  String? description, @JsonKey(name: ProPackageView.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ProPackageView.priceKey_)  String price, @JsonKey(name: ProPackageView.currencyKey_)  String currency, @JsonKey(name: ProPackageView.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_)  int finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_)  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_)  bool isActive)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProPackageView.idKey_)  String id, @JsonKey(name: ProPackageView.proUserIdKey_)  String proUserId, @JsonKey(name: ProPackageView.nicheIdKey_)  String nicheId, @JsonKey(name: ProPackageView.titleKey_)  String title, @JsonKey(name: ProPackageView.descriptionKey_)  String? description, @JsonKey(name: ProPackageView.durationMinutesKey_)  int durationMinutes, @JsonKey(name: ProPackageView.priceKey_)  String price, @JsonKey(name: ProPackageView.currencyKey_)  String currency, @JsonKey(name: ProPackageView.includedPhotosKey_)  int includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_)  String extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_)  int proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_)  int finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_)  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_)  bool isActive, @JsonKey(name: ProPackageView.schedulingPresetKey_)  SchedulingPreset schedulingPreset, @JsonKey(name: ProPackageView.intervalMinutesKey_)  int? intervalMinutes, @JsonKey(name: ProPackageView.sessionBlocksKey_)  List<SessionBlockInput>? sessionBlocks)?  $default,) {final _that = this;
 switch (_that) {
 case _ProPackageView() when $default != null:
-return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive);case _:
+return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.description,_that.durationMinutes,_that.price,_that.currency,_that.includedPhotos,_that.extraPhotoPrice,_that.proofsSlaDays,_that.finalsSlaDays,_that.addons,_that.isActive,_that.schedulingPreset,_that.intervalMinutes,_that.sessionBlocks);case _:
   return null;
 
 }
@@ -236,7 +242,7 @@ return $default(_that.id,_that.proUserId,_that.nicheId,_that.title,_that.descrip
 
 @jsonSerializable
 class _ProPackageView extends ProPackageView {
-  const _ProPackageView({@JsonKey(name: ProPackageView.idKey_) required this.id, @JsonKey(name: ProPackageView.proUserIdKey_) required this.proUserId, @JsonKey(name: ProPackageView.nicheIdKey_) required this.nicheId, @JsonKey(name: ProPackageView.titleKey_) required this.title, @JsonKey(name: ProPackageView.descriptionKey_) this.description, @JsonKey(name: ProPackageView.durationMinutesKey_) required this.durationMinutes, @JsonKey(name: ProPackageView.priceKey_) required this.price, @JsonKey(name: ProPackageView.currencyKey_) required this.currency, @JsonKey(name: ProPackageView.includedPhotosKey_) required this.includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_) required this.extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_) required this.proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_) required this.finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_) required final  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_) required this.isActive}): _addons = addons,super._();
+  const _ProPackageView({@JsonKey(name: ProPackageView.idKey_) required this.id, @JsonKey(name: ProPackageView.proUserIdKey_) required this.proUserId, @JsonKey(name: ProPackageView.nicheIdKey_) required this.nicheId, @JsonKey(name: ProPackageView.titleKey_) required this.title, @JsonKey(name: ProPackageView.descriptionKey_) this.description, @JsonKey(name: ProPackageView.durationMinutesKey_) required this.durationMinutes, @JsonKey(name: ProPackageView.priceKey_) required this.price, @JsonKey(name: ProPackageView.currencyKey_) required this.currency, @JsonKey(name: ProPackageView.includedPhotosKey_) required this.includedPhotos, @JsonKey(name: ProPackageView.extraPhotoPriceKey_) required this.extraPhotoPrice, @JsonKey(name: ProPackageView.proofsSlaDaysKey_) required this.proofsSlaDays, @JsonKey(name: ProPackageView.finalsSlaDaysKey_) required this.finalsSlaDays, @JsonKey(name: ProPackageView.addonsKey_) required final  List<Map<String, dynamic>> addons, @JsonKey(name: ProPackageView.isActiveKey_) required this.isActive, @JsonKey(name: ProPackageView.schedulingPresetKey_) this.schedulingPreset = SchedulingPreset.interval, @JsonKey(name: ProPackageView.intervalMinutesKey_) this.intervalMinutes, @JsonKey(name: ProPackageView.sessionBlocksKey_) final  List<SessionBlockInput>? sessionBlocks}): _addons = addons,_sessionBlocks = sessionBlocks,super._();
   factory _ProPackageView.fromJson(Map<String, dynamic> json) => _$ProPackageViewFromJson(json);
 
 /// id
@@ -274,6 +280,21 @@ class _ProPackageView extends ProPackageView {
 
 /// isActive
 @override@JsonKey(name: ProPackageView.isActiveKey_) final  bool isActive;
+/// schedulingPreset
+@override@JsonKey(name: ProPackageView.schedulingPresetKey_) final  SchedulingPreset schedulingPreset;
+/// intervalMinutes
+@override@JsonKey(name: ProPackageView.intervalMinutesKey_) final  int? intervalMinutes;
+/// sessionBlocks
+ final  List<SessionBlockInput>? _sessionBlocks;
+/// sessionBlocks
+@override@JsonKey(name: ProPackageView.sessionBlocksKey_) List<SessionBlockInput>? get sessionBlocks {
+  final value = _sessionBlocks;
+  if (value == null) return null;
+  if (_sessionBlocks is EqualUnmodifiableListView) return _sessionBlocks;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of ProPackageView
 /// with the given fields replaced by the non-null parameter values.
@@ -288,16 +309,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProPackageView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other._addons, _addons)&&(identical(other.isActive, isActive) || other.isActive == isActive));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProPackageView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.durationMinutes, durationMinutes) || other.durationMinutes == durationMinutes)&&(identical(other.price, price) || other.price == price)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.includedPhotos, includedPhotos) || other.includedPhotos == includedPhotos)&&(identical(other.extraPhotoPrice, extraPhotoPrice) || other.extraPhotoPrice == extraPhotoPrice)&&(identical(other.proofsSlaDays, proofsSlaDays) || other.proofsSlaDays == proofsSlaDays)&&(identical(other.finalsSlaDays, finalsSlaDays) || other.finalsSlaDays == finalsSlaDays)&&const DeepCollectionEquality().equals(other._addons, _addons)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.schedulingPreset, schedulingPreset) || other.schedulingPreset == schedulingPreset)&&(identical(other.intervalMinutes, intervalMinutes) || other.intervalMinutes == intervalMinutes)&&const DeepCollectionEquality().equals(other._sessionBlocks, _sessionBlocks));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,nicheId,title,description,durationMinutes,price,currency,includedPhotos,extraPhotoPrice,proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(_addons),isActive);
+int get hashCode => Object.hash(runtimeType,id,proUserId,nicheId,title,description,durationMinutes,price,currency,includedPhotos,extraPhotoPrice,proofsSlaDays,finalsSlaDays,const DeepCollectionEquality().hash(_addons),isActive,schedulingPreset,intervalMinutes,const DeepCollectionEquality().hash(_sessionBlocks));
 
 @override
 String toString() {
-  return 'ProPackageView(id: $id, proUserId: $proUserId, nicheId: $nicheId, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive)';
+  return 'ProPackageView(id: $id, proUserId: $proUserId, nicheId: $nicheId, title: $title, description: $description, durationMinutes: $durationMinutes, price: $price, currency: $currency, includedPhotos: $includedPhotos, extraPhotoPrice: $extraPhotoPrice, proofsSlaDays: $proofsSlaDays, finalsSlaDays: $finalsSlaDays, addons: $addons, isActive: $isActive, schedulingPreset: $schedulingPreset, intervalMinutes: $intervalMinutes, sessionBlocks: $sessionBlocks)';
 }
 
 
@@ -308,7 +329,7 @@ abstract mixin class _$ProPackageViewCopyWith<$Res> implements $ProPackageViewCo
   factory _$ProPackageViewCopyWith(_ProPackageView value, $Res Function(_ProPackageView) _then) = __$ProPackageViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProPackageView.idKey_) String id,@JsonKey(name: ProPackageView.proUserIdKey_) String proUserId,@JsonKey(name: ProPackageView.nicheIdKey_) String nicheId,@JsonKey(name: ProPackageView.titleKey_) String title,@JsonKey(name: ProPackageView.descriptionKey_) String? description,@JsonKey(name: ProPackageView.durationMinutesKey_) int durationMinutes,@JsonKey(name: ProPackageView.priceKey_) String price,@JsonKey(name: ProPackageView.currencyKey_) String currency,@JsonKey(name: ProPackageView.includedPhotosKey_) int includedPhotos,@JsonKey(name: ProPackageView.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ProPackageView.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ProPackageView.finalsSlaDaysKey_) int finalsSlaDays,@JsonKey(name: ProPackageView.addonsKey_) List<Map<String, dynamic>> addons,@JsonKey(name: ProPackageView.isActiveKey_) bool isActive
+@JsonKey(name: ProPackageView.idKey_) String id,@JsonKey(name: ProPackageView.proUserIdKey_) String proUserId,@JsonKey(name: ProPackageView.nicheIdKey_) String nicheId,@JsonKey(name: ProPackageView.titleKey_) String title,@JsonKey(name: ProPackageView.descriptionKey_) String? description,@JsonKey(name: ProPackageView.durationMinutesKey_) int durationMinutes,@JsonKey(name: ProPackageView.priceKey_) String price,@JsonKey(name: ProPackageView.currencyKey_) String currency,@JsonKey(name: ProPackageView.includedPhotosKey_) int includedPhotos,@JsonKey(name: ProPackageView.extraPhotoPriceKey_) String extraPhotoPrice,@JsonKey(name: ProPackageView.proofsSlaDaysKey_) int proofsSlaDays,@JsonKey(name: ProPackageView.finalsSlaDaysKey_) int finalsSlaDays,@JsonKey(name: ProPackageView.addonsKey_) List<Map<String, dynamic>> addons,@JsonKey(name: ProPackageView.isActiveKey_) bool isActive,@JsonKey(name: ProPackageView.schedulingPresetKey_) SchedulingPreset schedulingPreset,@JsonKey(name: ProPackageView.intervalMinutesKey_) int? intervalMinutes,@JsonKey(name: ProPackageView.sessionBlocksKey_) List<SessionBlockInput>? sessionBlocks
 });
 
 
@@ -325,7 +346,7 @@ class __$ProPackageViewCopyWithImpl<$Res>
 
 /// Create a copy of ProPackageView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? nicheId = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,Object? addons = null,Object? isActive = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? nicheId = null,Object? title = null,Object? description = freezed,Object? durationMinutes = null,Object? price = null,Object? currency = null,Object? includedPhotos = null,Object? extraPhotoPrice = null,Object? proofsSlaDays = null,Object? finalsSlaDays = null,Object? addons = null,Object? isActive = null,Object? schedulingPreset = null,Object? intervalMinutes = freezed,Object? sessionBlocks = freezed,}) {
   return _then(_ProPackageView(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
@@ -341,7 +362,10 @@ as String,proofsSlaDays: null == proofsSlaDays ? _self.proofsSlaDays : proofsSla
 as int,finalsSlaDays: null == finalsSlaDays ? _self.finalsSlaDays : finalsSlaDays // ignore: cast_nullable_to_non_nullable
 as int,addons: null == addons ? _self._addons : addons // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>,isActive: null == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,schedulingPreset: null == schedulingPreset ? _self.schedulingPreset : schedulingPreset // ignore: cast_nullable_to_non_nullable
+as SchedulingPreset,intervalMinutes: freezed == intervalMinutes ? _self.intervalMinutes : intervalMinutes // ignore: cast_nullable_to_non_nullable
+as int?,sessionBlocks: freezed == sessionBlocks ? _self._sessionBlocks : sessionBlocks // ignore: cast_nullable_to_non_nullable
+as List<SessionBlockInput>?,
   ));
 }
 

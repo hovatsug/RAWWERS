@@ -18,7 +18,8 @@ mixin _$ClientAvailabilityResponse {
 /// timezone
 @JsonKey(name: ClientAvailabilityResponse.timezoneKey_) String get timezone;/// hasSchedule
 @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) bool get hasSchedule;/// noticeHours
-@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) int get noticeHours;/// days
+@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) int get noticeHours;/// schedulingPreset
+@JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_) String get schedulingPreset;/// days
 @JsonKey(name: ClientAvailabilityResponse.daysKey_) List<ClientAvailabilityDay>? get days;
 /// Create a copy of ClientAvailabilityResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -32,16 +33,16 @@ $ClientAvailabilityResponseCopyWith<ClientAvailabilityResponse> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientAvailabilityResponse&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.hasSchedule, hasSchedule) || other.hasSchedule == hasSchedule)&&(identical(other.noticeHours, noticeHours) || other.noticeHours == noticeHours)&&const DeepCollectionEquality().equals(other.days, days));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientAvailabilityResponse&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.hasSchedule, hasSchedule) || other.hasSchedule == hasSchedule)&&(identical(other.noticeHours, noticeHours) || other.noticeHours == noticeHours)&&(identical(other.schedulingPreset, schedulingPreset) || other.schedulingPreset == schedulingPreset)&&const DeepCollectionEquality().equals(other.days, days));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timezone,hasSchedule,noticeHours,const DeepCollectionEquality().hash(days));
+int get hashCode => Object.hash(runtimeType,timezone,hasSchedule,noticeHours,schedulingPreset,const DeepCollectionEquality().hash(days));
 
 @override
 String toString() {
-  return 'ClientAvailabilityResponse(timezone: $timezone, hasSchedule: $hasSchedule, noticeHours: $noticeHours, days: $days)';
+  return 'ClientAvailabilityResponse(timezone: $timezone, hasSchedule: $hasSchedule, noticeHours: $noticeHours, schedulingPreset: $schedulingPreset, days: $days)';
 }
 
 
@@ -52,7 +53,7 @@ abstract mixin class $ClientAvailabilityResponseCopyWith<$Res>  {
   factory $ClientAvailabilityResponseCopyWith(ClientAvailabilityResponse value, $Res Function(ClientAvailabilityResponse) _then) = _$ClientAvailabilityResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientAvailabilityResponse.timezoneKey_) String timezone,@JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) bool hasSchedule,@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) int noticeHours,@JsonKey(name: ClientAvailabilityResponse.daysKey_) List<ClientAvailabilityDay>? days
+@JsonKey(name: ClientAvailabilityResponse.timezoneKey_) String timezone,@JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) bool hasSchedule,@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) int noticeHours,@JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_) String schedulingPreset,@JsonKey(name: ClientAvailabilityResponse.daysKey_) List<ClientAvailabilityDay>? days
 });
 
 
@@ -69,12 +70,13 @@ class _$ClientAvailabilityResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientAvailabilityResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? timezone = null,Object? hasSchedule = null,Object? noticeHours = null,Object? days = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? timezone = null,Object? hasSchedule = null,Object? noticeHours = null,Object? schedulingPreset = null,Object? days = freezed,}) {
   return _then(_self.copyWith(
 timezone: null == timezone ? _self.timezone : timezone // ignore: cast_nullable_to_non_nullable
 as String,hasSchedule: null == hasSchedule ? _self.hasSchedule : hasSchedule // ignore: cast_nullable_to_non_nullable
 as bool,noticeHours: null == noticeHours ? _self.noticeHours : noticeHours // ignore: cast_nullable_to_non_nullable
-as int,days: freezed == days ? _self.days : days // ignore: cast_nullable_to_non_nullable
+as int,schedulingPreset: null == schedulingPreset ? _self.schedulingPreset : schedulingPreset // ignore: cast_nullable_to_non_nullable
+as String,days: freezed == days ? _self.days : days // ignore: cast_nullable_to_non_nullable
 as List<ClientAvailabilityDay>?,
   ));
 }
@@ -160,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityResponse.timezoneKey_)  String timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_)  bool hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)  int noticeHours, @JsonKey(name: ClientAvailabilityResponse.daysKey_)  List<ClientAvailabilityDay>? days)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityResponse.timezoneKey_)  String timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_)  bool hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)  int noticeHours, @JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_)  String schedulingPreset, @JsonKey(name: ClientAvailabilityResponse.daysKey_)  List<ClientAvailabilityDay>? days)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientAvailabilityResponse() when $default != null:
-return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.days);case _:
+return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.schedulingPreset,_that.days);case _:
   return orElse();
 
 }
@@ -181,10 +183,10 @@ return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.days);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityResponse.timezoneKey_)  String timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_)  bool hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)  int noticeHours, @JsonKey(name: ClientAvailabilityResponse.daysKey_)  List<ClientAvailabilityDay>? days)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityResponse.timezoneKey_)  String timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_)  bool hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)  int noticeHours, @JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_)  String schedulingPreset, @JsonKey(name: ClientAvailabilityResponse.daysKey_)  List<ClientAvailabilityDay>? days)  $default,) {final _that = this;
 switch (_that) {
 case _ClientAvailabilityResponse():
-return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.days);case _:
+return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.schedulingPreset,_that.days);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +203,10 @@ return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.days);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientAvailabilityResponse.timezoneKey_)  String timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_)  bool hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)  int noticeHours, @JsonKey(name: ClientAvailabilityResponse.daysKey_)  List<ClientAvailabilityDay>? days)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientAvailabilityResponse.timezoneKey_)  String timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_)  bool hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)  int noticeHours, @JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_)  String schedulingPreset, @JsonKey(name: ClientAvailabilityResponse.daysKey_)  List<ClientAvailabilityDay>? days)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientAvailabilityResponse() when $default != null:
-return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.days);case _:
+return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.schedulingPreset,_that.days);case _:
   return null;
 
 }
@@ -216,7 +218,7 @@ return $default(_that.timezone,_that.hasSchedule,_that.noticeHours,_that.days);c
 
 @jsonSerializable
 class _ClientAvailabilityResponse extends ClientAvailabilityResponse {
-  const _ClientAvailabilityResponse({@JsonKey(name: ClientAvailabilityResponse.timezoneKey_) required this.timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) required this.hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) required this.noticeHours, @JsonKey(name: ClientAvailabilityResponse.daysKey_) final  List<ClientAvailabilityDay>? days}): _days = days,super._();
+  const _ClientAvailabilityResponse({@JsonKey(name: ClientAvailabilityResponse.timezoneKey_) required this.timezone, @JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) required this.hasSchedule, @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) required this.noticeHours, @JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_) this.schedulingPreset = 'interval', @JsonKey(name: ClientAvailabilityResponse.daysKey_) final  List<ClientAvailabilityDay>? days}): _days = days,super._();
   factory _ClientAvailabilityResponse.fromJson(Map<String, dynamic> json) => _$ClientAvailabilityResponseFromJson(json);
 
 /// timezone
@@ -225,6 +227,8 @@ class _ClientAvailabilityResponse extends ClientAvailabilityResponse {
 @override@JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) final  bool hasSchedule;
 /// noticeHours
 @override@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) final  int noticeHours;
+/// schedulingPreset
+@override@JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_) final  String schedulingPreset;
 /// days
  final  List<ClientAvailabilityDay>? _days;
 /// days
@@ -250,16 +254,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientAvailabilityResponse&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.hasSchedule, hasSchedule) || other.hasSchedule == hasSchedule)&&(identical(other.noticeHours, noticeHours) || other.noticeHours == noticeHours)&&const DeepCollectionEquality().equals(other._days, _days));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientAvailabilityResponse&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.hasSchedule, hasSchedule) || other.hasSchedule == hasSchedule)&&(identical(other.noticeHours, noticeHours) || other.noticeHours == noticeHours)&&(identical(other.schedulingPreset, schedulingPreset) || other.schedulingPreset == schedulingPreset)&&const DeepCollectionEquality().equals(other._days, _days));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timezone,hasSchedule,noticeHours,const DeepCollectionEquality().hash(_days));
+int get hashCode => Object.hash(runtimeType,timezone,hasSchedule,noticeHours,schedulingPreset,const DeepCollectionEquality().hash(_days));
 
 @override
 String toString() {
-  return 'ClientAvailabilityResponse(timezone: $timezone, hasSchedule: $hasSchedule, noticeHours: $noticeHours, days: $days)';
+  return 'ClientAvailabilityResponse(timezone: $timezone, hasSchedule: $hasSchedule, noticeHours: $noticeHours, schedulingPreset: $schedulingPreset, days: $days)';
 }
 
 
@@ -270,7 +274,7 @@ abstract mixin class _$ClientAvailabilityResponseCopyWith<$Res> implements $Clie
   factory _$ClientAvailabilityResponseCopyWith(_ClientAvailabilityResponse value, $Res Function(_ClientAvailabilityResponse) _then) = __$ClientAvailabilityResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientAvailabilityResponse.timezoneKey_) String timezone,@JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) bool hasSchedule,@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) int noticeHours,@JsonKey(name: ClientAvailabilityResponse.daysKey_) List<ClientAvailabilityDay>? days
+@JsonKey(name: ClientAvailabilityResponse.timezoneKey_) String timezone,@JsonKey(name: ClientAvailabilityResponse.hasScheduleKey_) bool hasSchedule,@JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_) int noticeHours,@JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_) String schedulingPreset,@JsonKey(name: ClientAvailabilityResponse.daysKey_) List<ClientAvailabilityDay>? days
 });
 
 
@@ -287,12 +291,13 @@ class __$ClientAvailabilityResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientAvailabilityResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? timezone = null,Object? hasSchedule = null,Object? noticeHours = null,Object? days = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? timezone = null,Object? hasSchedule = null,Object? noticeHours = null,Object? schedulingPreset = null,Object? days = freezed,}) {
   return _then(_ClientAvailabilityResponse(
 timezone: null == timezone ? _self.timezone : timezone // ignore: cast_nullable_to_non_nullable
 as String,hasSchedule: null == hasSchedule ? _self.hasSchedule : hasSchedule // ignore: cast_nullable_to_non_nullable
 as bool,noticeHours: null == noticeHours ? _self.noticeHours : noticeHours // ignore: cast_nullable_to_non_nullable
-as int,days: freezed == days ? _self._days : days // ignore: cast_nullable_to_non_nullable
+as int,schedulingPreset: null == schedulingPreset ? _self.schedulingPreset : schedulingPreset // ignore: cast_nullable_to_non_nullable
+as String,days: freezed == days ? _self._days : days // ignore: cast_nullable_to_non_nullable
 as List<ClientAvailabilityDay>?,
   ));
 }

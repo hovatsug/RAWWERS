@@ -17,7 +17,10 @@ mixin _$ClientAvailabilityStart {
 
 /// startAt
 @JsonKey(name: ClientAvailabilityStart.startAtKey_) DateTime get startAt;/// localTime
-@JsonKey(name: ClientAvailabilityStart.localTimeKey_) String get localTime;
+@JsonKey(name: ClientAvailabilityStart.localTimeKey_) String get localTime;/// endAt
+@JsonKey(name: ClientAvailabilityStart.endAtKey_) DateTime get endAt;/// localEndTime
+@JsonKey(name: ClientAvailabilityStart.localEndTimeKey_) String get localEndTime;/// label
+@JsonKey(name: ClientAvailabilityStart.labelKey_) String? get label;
 /// Create a copy of ClientAvailabilityStart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +33,16 @@ $ClientAvailabilityStartCopyWith<ClientAvailabilityStart> get copyWith => _$Clie
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientAvailabilityStart&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.localTime, localTime) || other.localTime == localTime));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientAvailabilityStart&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.localTime, localTime) || other.localTime == localTime)&&(identical(other.endAt, endAt) || other.endAt == endAt)&&(identical(other.localEndTime, localEndTime) || other.localEndTime == localEndTime)&&(identical(other.label, label) || other.label == label));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,startAt,localTime);
+int get hashCode => Object.hash(runtimeType,startAt,localTime,endAt,localEndTime,label);
 
 @override
 String toString() {
-  return 'ClientAvailabilityStart(startAt: $startAt, localTime: $localTime)';
+  return 'ClientAvailabilityStart(startAt: $startAt, localTime: $localTime, endAt: $endAt, localEndTime: $localEndTime, label: $label)';
 }
 
 
@@ -50,7 +53,7 @@ abstract mixin class $ClientAvailabilityStartCopyWith<$Res>  {
   factory $ClientAvailabilityStartCopyWith(ClientAvailabilityStart value, $Res Function(ClientAvailabilityStart) _then) = _$ClientAvailabilityStartCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientAvailabilityStart.startAtKey_) DateTime startAt,@JsonKey(name: ClientAvailabilityStart.localTimeKey_) String localTime
+@JsonKey(name: ClientAvailabilityStart.startAtKey_) DateTime startAt,@JsonKey(name: ClientAvailabilityStart.localTimeKey_) String localTime,@JsonKey(name: ClientAvailabilityStart.endAtKey_) DateTime endAt,@JsonKey(name: ClientAvailabilityStart.localEndTimeKey_) String localEndTime,@JsonKey(name: ClientAvailabilityStart.labelKey_) String? label
 });
 
 
@@ -67,11 +70,14 @@ class _$ClientAvailabilityStartCopyWithImpl<$Res>
 
 /// Create a copy of ClientAvailabilityStart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? startAt = null,Object? localTime = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? startAt = null,Object? localTime = null,Object? endAt = null,Object? localEndTime = null,Object? label = freezed,}) {
   return _then(_self.copyWith(
 startAt: null == startAt ? _self.startAt : startAt // ignore: cast_nullable_to_non_nullable
 as DateTime,localTime: null == localTime ? _self.localTime : localTime // ignore: cast_nullable_to_non_nullable
-as String,
+as String,endAt: null == endAt ? _self.endAt : endAt // ignore: cast_nullable_to_non_nullable
+as DateTime,localEndTime: null == localEndTime ? _self.localEndTime : localEndTime // ignore: cast_nullable_to_non_nullable
+as String,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -156,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityStart.startAtKey_)  DateTime startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_)  String localTime)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityStart.startAtKey_)  DateTime startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_)  String localTime, @JsonKey(name: ClientAvailabilityStart.endAtKey_)  DateTime endAt, @JsonKey(name: ClientAvailabilityStart.localEndTimeKey_)  String localEndTime, @JsonKey(name: ClientAvailabilityStart.labelKey_)  String? label)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientAvailabilityStart() when $default != null:
-return $default(_that.startAt,_that.localTime);case _:
+return $default(_that.startAt,_that.localTime,_that.endAt,_that.localEndTime,_that.label);case _:
   return orElse();
 
 }
@@ -177,10 +183,10 @@ return $default(_that.startAt,_that.localTime);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityStart.startAtKey_)  DateTime startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_)  String localTime)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientAvailabilityStart.startAtKey_)  DateTime startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_)  String localTime, @JsonKey(name: ClientAvailabilityStart.endAtKey_)  DateTime endAt, @JsonKey(name: ClientAvailabilityStart.localEndTimeKey_)  String localEndTime, @JsonKey(name: ClientAvailabilityStart.labelKey_)  String? label)  $default,) {final _that = this;
 switch (_that) {
 case _ClientAvailabilityStart():
-return $default(_that.startAt,_that.localTime);case _:
+return $default(_that.startAt,_that.localTime,_that.endAt,_that.localEndTime,_that.label);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +203,10 @@ return $default(_that.startAt,_that.localTime);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientAvailabilityStart.startAtKey_)  DateTime startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_)  String localTime)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientAvailabilityStart.startAtKey_)  DateTime startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_)  String localTime, @JsonKey(name: ClientAvailabilityStart.endAtKey_)  DateTime endAt, @JsonKey(name: ClientAvailabilityStart.localEndTimeKey_)  String localEndTime, @JsonKey(name: ClientAvailabilityStart.labelKey_)  String? label)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientAvailabilityStart() when $default != null:
-return $default(_that.startAt,_that.localTime);case _:
+return $default(_that.startAt,_that.localTime,_that.endAt,_that.localEndTime,_that.label);case _:
   return null;
 
 }
@@ -212,13 +218,19 @@ return $default(_that.startAt,_that.localTime);case _:
 
 @jsonSerializable
 class _ClientAvailabilityStart extends ClientAvailabilityStart {
-  const _ClientAvailabilityStart({@JsonKey(name: ClientAvailabilityStart.startAtKey_) required this.startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_) required this.localTime}): super._();
+  const _ClientAvailabilityStart({@JsonKey(name: ClientAvailabilityStart.startAtKey_) required this.startAt, @JsonKey(name: ClientAvailabilityStart.localTimeKey_) required this.localTime, @JsonKey(name: ClientAvailabilityStart.endAtKey_) required this.endAt, @JsonKey(name: ClientAvailabilityStart.localEndTimeKey_) required this.localEndTime, @JsonKey(name: ClientAvailabilityStart.labelKey_) this.label}): super._();
   factory _ClientAvailabilityStart.fromJson(Map<String, dynamic> json) => _$ClientAvailabilityStartFromJson(json);
 
 /// startAt
 @override@JsonKey(name: ClientAvailabilityStart.startAtKey_) final  DateTime startAt;
 /// localTime
 @override@JsonKey(name: ClientAvailabilityStart.localTimeKey_) final  String localTime;
+/// endAt
+@override@JsonKey(name: ClientAvailabilityStart.endAtKey_) final  DateTime endAt;
+/// localEndTime
+@override@JsonKey(name: ClientAvailabilityStart.localEndTimeKey_) final  String localEndTime;
+/// label
+@override@JsonKey(name: ClientAvailabilityStart.labelKey_) final  String? label;
 
 /// Create a copy of ClientAvailabilityStart
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientAvailabilityStart&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.localTime, localTime) || other.localTime == localTime));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientAvailabilityStart&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.localTime, localTime) || other.localTime == localTime)&&(identical(other.endAt, endAt) || other.endAt == endAt)&&(identical(other.localEndTime, localEndTime) || other.localEndTime == localEndTime)&&(identical(other.label, label) || other.label == label));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,startAt,localTime);
+int get hashCode => Object.hash(runtimeType,startAt,localTime,endAt,localEndTime,label);
 
 @override
 String toString() {
-  return 'ClientAvailabilityStart(startAt: $startAt, localTime: $localTime)';
+  return 'ClientAvailabilityStart(startAt: $startAt, localTime: $localTime, endAt: $endAt, localEndTime: $localEndTime, label: $label)';
 }
 
 
@@ -253,7 +265,7 @@ abstract mixin class _$ClientAvailabilityStartCopyWith<$Res> implements $ClientA
   factory _$ClientAvailabilityStartCopyWith(_ClientAvailabilityStart value, $Res Function(_ClientAvailabilityStart) _then) = __$ClientAvailabilityStartCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientAvailabilityStart.startAtKey_) DateTime startAt,@JsonKey(name: ClientAvailabilityStart.localTimeKey_) String localTime
+@JsonKey(name: ClientAvailabilityStart.startAtKey_) DateTime startAt,@JsonKey(name: ClientAvailabilityStart.localTimeKey_) String localTime,@JsonKey(name: ClientAvailabilityStart.endAtKey_) DateTime endAt,@JsonKey(name: ClientAvailabilityStart.localEndTimeKey_) String localEndTime,@JsonKey(name: ClientAvailabilityStart.labelKey_) String? label
 });
 
 
@@ -270,11 +282,14 @@ class __$ClientAvailabilityStartCopyWithImpl<$Res>
 
 /// Create a copy of ClientAvailabilityStart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? startAt = null,Object? localTime = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? startAt = null,Object? localTime = null,Object? endAt = null,Object? localEndTime = null,Object? label = freezed,}) {
   return _then(_ClientAvailabilityStart(
 startAt: null == startAt ? _self.startAt : startAt // ignore: cast_nullable_to_non_nullable
 as DateTime,localTime: null == localTime ? _self.localTime : localTime // ignore: cast_nullable_to_non_nullable
-as String,
+as String,endAt: null == endAt ? _self.endAt : endAt // ignore: cast_nullable_to_non_nullable
+as DateTime,localEndTime: null == localEndTime ? _self.localEndTime : localEndTime // ignore: cast_nullable_to_non_nullable
+as String,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

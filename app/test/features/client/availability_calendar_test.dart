@@ -85,7 +85,7 @@ class _Backend {
             // The instant in the photographer's zone, and the wall-clock
             // reading of it there - which the phone, elsewhere, would read
             // differently.
-            for (final t in times) {'start_at': '${_iso(d)}T$t:00$_offset', 'local_time': t},
+            for (final t in times) _window(_iso(d), t),
           ],
         });
       }
@@ -134,6 +134,23 @@ ClientProProfileResponse _profile() => ClientProProfileResponse(
         ),
       ],
     );
+
+/// One offered window as the server sends it: since scheduling presets
+/// (api 056dcf9) every start carries its end - the 90-minute package's
+/// length here - so the request sends exactly what was offered.
+Map<String, dynamic> _window(String date, String time) {
+  final start = DateTime.parse('${date}T$time:00$_offset');
+  final end = start.add(const Duration(minutes: 90));
+  final parts = time.split(':').map(int.parse).toList();
+  final endMinutes = (parts[0] * 60 + parts[1] + 90) % (24 * 60);
+  String two(int n) => n.toString().padLeft(2, '0');
+  return {
+    'start_at': '${date}T$time:00$_offset',
+    'local_time': time,
+    'end_at': end.toUtc().toIso8601String(),
+    'local_end_time': '${two(endMinutes ~/ 60)}:${two(endMinutes % 60)}',
+  };
+}
 
 Future<void> _pump(WidgetTester tester, _Backend backend) async {
   // Semantics are on by default in testWidgets, which the "not only in

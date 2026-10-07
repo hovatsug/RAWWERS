@@ -7,7 +7,7 @@ part of 'booking_request_controller.dart';
 // **************************************************************************
 
 String _$bookingRequestControllerHash() =>
-    r'fd0469d2645f0b791fe92ff79820597c6b2971b5';
+    r'17356d420f9bbc13feb0fcfff283b3517a813cb2';
 
 /// Sends a booking request for one package.
 ///

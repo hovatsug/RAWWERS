@@ -24,6 +24,13 @@ _ProPackageView _$ProPackageViewFromJson(Map<String, dynamic> json) =>
           .map((e) => e as Map<String, dynamic>)
           .toList(),
       isActive: json['is_active'] as bool,
+      schedulingPreset: json['scheduling_preset'] == null
+          ? SchedulingPreset.interval
+          : SchedulingPreset.fromJson(json['scheduling_preset'] as String),
+      intervalMinutes: (json['interval_minutes'] as num?)?.toInt(),
+      sessionBlocks: (json['session_blocks'] as List<dynamic>?)
+          ?.map((e) => SessionBlockInput.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
 
 Map<String, dynamic> _$ProPackageViewToJson(_ProPackageView instance) =>
@@ -42,4 +49,7 @@ Map<String, dynamic> _$ProPackageViewToJson(_ProPackageView instance) =>
       'finals_sla_days': instance.finalsSlaDays,
       'addons': instance.addons,
       'is_active': instance.isActive,
+      'scheduling_preset': instance.schedulingPreset,
+      'interval_minutes': instance.intervalMinutes,
+      'session_blocks': instance.sessionBlocks,
     };

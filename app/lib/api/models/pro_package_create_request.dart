@@ -92,6 +92,28 @@
 ///                 "type": "object"
 ///             },
 ///             "title": "Addons"
+///         },
+///         "scheduling_preset": {
+///             "$ref": "#/components/schemas/SchedulingPreset",
+///             "default": "interval"
+///         },
+///         "interval_minutes": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Interval Minutes"
+///         },
+///         "session_blocks": {
+///             "type": "array",
+///             "items": {
+///                 "$ref": "#/components/schemas/SessionBlockInput"
+///             },
+///             "title": "Session Blocks"
 ///         }
 ///     },
 ///     "type": "object",
@@ -161,6 +183,19 @@ abstract class ProPackageCreateRequest with _$ProPackageCreateRequest {
     /// addons
     @JsonKey(name: ProPackageCreateRequest.addonsKey_)
     List<Map<String, dynamic>>? addons,
+
+    /// schedulingPreset
+    @Default(SchedulingPreset.interval)
+    @JsonKey(name: ProPackageCreateRequest.schedulingPresetKey_)
+    SchedulingPreset schedulingPreset,
+
+    /// intervalMinutes
+    @JsonKey(name: ProPackageCreateRequest.intervalMinutesKey_)
+    int? intervalMinutes,
+
+    /// sessionBlocks
+    @JsonKey(name: ProPackageCreateRequest.sessionBlocksKey_)
+    List<SessionBlockInput>? sessionBlocks,
   }) = _ProPackageCreateRequest;
 
   factory ProPackageCreateRequest.fromJson(Map<String, dynamic> json) =>
@@ -189,4 +224,10 @@ abstract class ProPackageCreateRequest with _$ProPackageCreateRequest {
   static const String finalsSlaDaysKey_ = r'finals_sla_days';
 
   static const String addonsKey_ = r'addons';
+
+  static const String schedulingPresetKey_ = r'scheduling_preset';
+
+  static const String intervalMinutesKey_ = r'interval_minutes';
+
+  static const String sessionBlocksKey_ = r'session_blocks';
 }

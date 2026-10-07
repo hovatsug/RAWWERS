@@ -13,6 +13,11 @@
 ///             "type": "integer",
 ///             "title": "Notice Hours"
 ///         },
+///         "scheduling_preset": {
+///             "type": "string",
+///             "default": "interval",
+///             "title": "Scheduling Preset"
+///         },
 ///         "days": {
 ///             "type": "array",
 ///             "items": {
@@ -53,6 +58,11 @@ abstract class ClientAvailabilityResponse with _$ClientAvailabilityResponse {
     @JsonKey(name: ClientAvailabilityResponse.noticeHoursKey_)
     required int noticeHours,
 
+    /// schedulingPreset
+    @Default('interval')
+    @JsonKey(name: ClientAvailabilityResponse.schedulingPresetKey_)
+    String schedulingPreset,
+
     /// days
     @JsonKey(name: ClientAvailabilityResponse.daysKey_)
     List<ClientAvailabilityDay>? days,
@@ -66,6 +76,8 @@ abstract class ClientAvailabilityResponse with _$ClientAvailabilityResponse {
   static const String hasScheduleKey_ = r'has_schedule';
 
   static const String noticeHoursKey_ = r'notice_hours';
+
+  static const String schedulingPresetKey_ = r'scheduling_preset';
 
   static const String daysKey_ = r'days';
 }

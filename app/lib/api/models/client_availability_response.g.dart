@@ -12,6 +12,7 @@ _ClientAvailabilityResponse _$ClientAvailabilityResponseFromJson(
   timezone: json['timezone'] as String,
   hasSchedule: json['has_schedule'] as bool,
   noticeHours: (json['notice_hours'] as num).toInt(),
+  schedulingPreset: json['scheduling_preset'] as String? ?? 'interval',
   days: (json['days'] as List<dynamic>?)
       ?.map((e) => ClientAvailabilityDay.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -23,5 +24,6 @@ Map<String, dynamic> _$ClientAvailabilityResponseToJson(
   'timezone': instance.timezone,
   'has_schedule': instance.hasSchedule,
   'notice_hours': instance.noticeHours,
+  'scheduling_preset': instance.schedulingPreset,
   'days': instance.days,
 };

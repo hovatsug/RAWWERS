@@ -10,6 +10,7 @@ import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/gallery/selection_controller.dart';
+import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// Choosing which photographs to keep.
 ///
@@ -60,7 +61,7 @@ class SelectionGalleryScreen extends ConsumerWidget {
                     final item = value.items[index];
                     final id = item.mediaAssetId;
                     return RImageTile(
-                      image: NetworkImage(item.thumbnailUrl ?? item.watermarkPreviewUrl ?? ''),
+                      image: DiskCachedImage(item.thumbnailUrl ?? item.watermarkPreviewUrl ?? ''),
                       selected: value.isSelected(id),
                       onTap: value.frozen ? null : () => _openViewer(context, ref, index),
                     );

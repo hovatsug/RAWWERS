@@ -10,6 +10,7 @@ import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/gallery/delivered_controller.dart';
+import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// The photographs a client has paid for.
 ///
@@ -59,7 +60,7 @@ class DeliveredGalleryScreen extends ConsumerWidget {
                   return RImageTile(
                     // The grid stays on thumbnails: a wall of originals would
                     // decode hundreds of megabytes to show 100px squares.
-                    image: NetworkImage(photo.item.thumbnailUrl ?? photo.finalUrl),
+                    image: DiskCachedImage(photo.item.thumbnailUrl ?? photo.finalUrl),
                     onTap: () => _openViewer(context, ref, index),
                   );
                 },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// A photograph fetched over the network, with all three states handled.
 ///
@@ -33,8 +34,8 @@ class RNetworkPhoto extends StatelessWidget {
       return const _PhotoFallback();
     }
 
-    return Image.network(
-      source,
+    return Image(
+      image: DiskCachedImage(source),
       fit: fit,
       semanticLabel: semanticLabel,
       loadingBuilder: (context, child, progress) {

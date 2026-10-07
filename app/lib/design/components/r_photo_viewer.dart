@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// A photograph, full screen, with the gestures people already expect.
 ///
@@ -108,7 +109,7 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
       if (neighbour < 0 || neighbour >= widget.urls.length) continue;
       final url = widget.urls[neighbour];
       if (url == null || url.isEmpty) continue;
-      precacheImage(NetworkImage(url), context, onError: (_, _) {});
+      precacheImage(DiskCachedImage(url), context, onError: (_, _) {});
     }
   }
 
@@ -226,8 +227,8 @@ class _Photo extends StatelessWidget {
   Widget build(BuildContext context) {
     final source = url;
     if (source == null || source.isEmpty) return const _ViewerFallback();
-    return Image.network(
-      source,
+    return Image(
+      image: DiskCachedImage(source),
       fit: BoxFit.contain,
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import logging
+from collections.abc import Iterable
 from datetime import datetime
 from functools import lru_cache
 from uuid import uuid4
@@ -10,8 +12,10 @@ from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 
 from app.core.config import get_settings
+from app.services.cache import get_redis_client
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -215,3 +219,56 @@ def complete_multipart_upload(storage_key: str, upload_id: str, parts: list[tupl
 def abort_multipart_upload(storage_key: str, upload_id: str) -> None:
     client = get_s3_client()
     client.abort_multipart_upload(Bucket=settings.r2_bucket, Key=storage_key, UploadId=upload_id)
+
+
+# ---------------------------------------------------------------------------
+# Stable signed URLs for browsing.
+#
+# Every API response used to sign every image afresh, so the same photo came
+# back with a new signature each time: nothing downstream - the phone's image
+# cache, an HTTP cache - could ever see it as the same image, and every list
+# load downloaded every picture again. A URL signed for this object is now
+# reused while at least half its lifetime remains.
+#
+# This does not lengthen any URL's life: each is valid for exactly the TTL it
+# was signed with, from when it was signed. Callers still decide per request,
+# before asking, whether the caller may see the object at all. Only browsing
+# previews use this; downloads of finals keep a fresh, short-lived signature
+# per request (media_rights).
+# ---------------------------------------------------------------------------
+
+
+def _stable_url_cache_key(storage_key: str, expires_in: int) -> str:
+    return f"presigned:v1:{expires_in}:{storage_key}"
+
+
+def stable_presigned_gets(storage_keys: Iterable[str], expires_in: int) -> dict[str, str]:
+    """Signed GET URLs for many objects, reusing recent ones. One Redis round
+    trip each way for the whole batch; signs fresh if Redis is unavailable."""
+    keys = list(dict.fromkeys(storage_keys))
+    if not keys:
+        return {}
+    reuse_for = max(1, expires_in // 2)
+    try:
+        client = get_redis_client()
+        cached = client.mget([_stable_url_cache_key(k, expires_in) for k in keys])
+    except Exception:
+        logger.warning("stable_presigned_gets_cache_unavailable", exc_info=True)
+        return {k: create_presigned_get(k, expires_in=expires_in) for k in keys}
+
+    urls: dict[str, str] = {}
+    fresh: dict[str, str] = {}
+    for key, value in zip(keys, cached):
+        if value:
+            urls[key] = value.decode() if isinstance(value, bytes) else value
+        else:
+            urls[key] = fresh[key] = create_presigned_get(key, expires_in=expires_in)
+    if fresh:
+        try:
+            pipe = client.pipeline(transaction=False)
+            for key, url in fresh.items():
+                pipe.set(_stable_url_cache_key(key, expires_in), url, ex=reuse_for)
+            pipe.execute()
+        except Exception:
+            logger.warning("stable_presigned_gets_cache_write_failed", exc_info=True)
+    return urls

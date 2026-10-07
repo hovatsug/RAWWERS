@@ -4,6 +4,7 @@ import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/shared/discover/discover_card.dart';
+import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// Discover is the first screen a client sees, so the cover photo reaching the
 /// screen is the thing worth pinning down. `Image.network` cannot actually
@@ -57,7 +58,7 @@ void main() {
     await tester.pumpWidget(_wrap(_card(coverUrl: 'https://media.example/cover.jpg')));
 
     final image = tester.widget<Image>(find.byType(Image));
-    expect((image.image as NetworkImage).url, 'https://media.example/cover.jpg');
+    expect((image.image as DiskCachedImage).url, 'https://media.example/cover.jpg');
   });
 
   testWidgets('a pro with no cover falls back rather than showing a broken frame', (tester) async {

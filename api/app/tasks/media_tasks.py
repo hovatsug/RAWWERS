@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import io
 import logging
+import functools
 import math
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import select
@@ -13,15 +15,25 @@ from app.db.session import SessionLocal
 from app.models.admin import ProProfile
 from app.models.media import MediaAsset, MediaObject, MediaStatus, MediaVariant, ObjectStatus
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind
-from app.services.storage import download_object_bytes, generate_variant_key, upload_object_bytes
+from app.services.storage import (
+    derivative_cache_control,
+    download_object_bytes,
+    generate_variant_key,
+    upload_object_bytes,
+)
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-@celery_app.task(name="app.tasks.media_tasks.process_photo_variants")
-def process_photo_variants(media_asset_id: str) -> None:
+#: Waits before each retry of a photo whose processing failed: almost always a
+#: dropped connection to R2, which a minute later is usually back.
+_RETRY_DELAYS_SECONDS = (10, 30, 90)
+
+
+@celery_app.task(name="app.tasks.media_tasks.process_photo_variants", bind=True, max_retries=len(_RETRY_DELAYS_SECONDS))
+def process_photo_variants(self, media_asset_id: str) -> None:
     db = SessionLocal()
     try:
         asset = db.get(MediaAsset, uuid.UUID(media_asset_id))
@@ -45,24 +57,44 @@ def process_photo_variants(media_asset_id: str) -> None:
         blob = download_object_bytes(original_obj.storage_key)
         image = Image.open(io.BytesIO(blob)).convert("RGB")
 
+        # The watermarked preview first, and on its own: it is the one variant
+        # delivery waits for (a gallery item needs a ready watermark_preview),
+        # and it used to become usable only after all four derivatives had
+        # been made and uploaded one after another. Committing its row now
+        # lets the photo attach while the rest are still being made.
+        wm = watermarked_preview(db, asset, image, include_powered_by=False)
+        wm_key = generate_variant_key(original_obj.storage_key, "watermark_preview")
+        wm_bytes = io.BytesIO()
+        wm.save(wm_bytes, format="JPEG", quality=85)
+        upload_object_bytes(wm_key, wm_bytes.getvalue(), content_type="image/jpeg", cache_control=derivative_cache_control(asset.visibility))
+        _upsert_variant(db, asset.id, MediaVariant.watermark_preview, wm_key, wm.width, wm.height)
+        # In the same commit, the full_res row: once a photo can join a
+        # gallery its final must be downloadable, and this row is only a
+        # pointer to the original, already in R2 - nothing to upload. Written
+        # at the end instead, a failure in between left a photo a client
+        # could select and pay for, with no final to download.
+        _upsert_derivative(
+            db,
+            media_asset_id=asset.id,
+            kind=MediaDerivativeKind.full_res,
+            storage_key=original_obj.storage_key,
+            content_type=asset.content_type or "image/jpeg",
+            width=image.width,
+            height=image.height,
+            bytes_size=asset.byte_size,
+        )
+        db.commit()
+
         thumb = image.copy()
         thumb.thumbnail((512, 512))
         thumb_key = generate_variant_key(original_obj.storage_key, "thumbnail")
         thumb_bytes = io.BytesIO()
         thumb.save(thumb_bytes, format="JPEG", quality=85)
-        upload_object_bytes(thumb_key, thumb_bytes.getvalue(), content_type="image/jpeg")
-
-        wm = watermarked_preview(db, asset, image, include_powered_by=False)
-        wm_key = generate_variant_key(original_obj.storage_key, "watermark_preview")
-        wm_bytes = io.BytesIO()
-        wm.save(wm_bytes, format="JPEG", quality=85)
-        upload_object_bytes(wm_key, wm_bytes.getvalue(), content_type="image/jpeg")
 
         wm_share = watermarked_preview(db, asset, image, include_powered_by=True)
         wm_share_key = generate_variant_key(original_obj.storage_key, "preview_watermarked")
         wm_share_bytes = io.BytesIO()
         wm_share.save(wm_share_bytes, format="JPEG", quality=85)
-        upload_object_bytes(wm_share_key, wm_share_bytes.getvalue(), content_type="image/jpeg")
 
         web = image.copy()
         if web.width > 2048:
@@ -70,10 +102,19 @@ def process_photo_variants(media_asset_id: str) -> None:
         web_key = generate_variant_key(original_obj.storage_key, "web_res")
         web_bytes = io.BytesIO()
         web.save(web_bytes, format="JPEG", quality=88)
-        upload_object_bytes(web_key, web_bytes.getvalue(), content_type="image/jpeg")
+
+        # The other three go up together rather than one after another: each
+        # is a separate round trip to R2, and none depends on another.
+        _upload_all(
+            [
+                (thumb_key, thumb_bytes.getvalue()),
+                (wm_share_key, wm_share_bytes.getvalue()),
+                (web_key, web_bytes.getvalue()),
+            ],
+            cache_control=derivative_cache_control(asset.visibility),
+        )
 
         _upsert_variant(db, asset.id, MediaVariant.thumbnail, thumb_key, thumb.width, thumb.height)
-        _upsert_variant(db, asset.id, MediaVariant.watermark_preview, wm_key, wm.width, wm.height)
 
         _upsert_derivative(
             db,
@@ -105,22 +146,17 @@ def process_photo_variants(media_asset_id: str) -> None:
             height=web.height,
             bytes_size=len(web_bytes.getvalue()),
         )
-        _upsert_derivative(
-            db,
-            media_asset_id=asset.id,
-            kind=MediaDerivativeKind.full_res,
-            storage_key=original_obj.storage_key,
-            content_type=asset.content_type or "image/jpeg",
-            width=image.width,
-            height=image.height,
-            bytes_size=asset.byte_size,
-        )
-
         original_obj.status = ObjectStatus.ready
         asset.status = MediaStatus.ready
         db.commit()
     except Exception as exc:
         db.rollback()
+        if self.request.retries < self.max_retries:
+            logger.warning(
+                "process_photo_variants_retrying",
+                extra={"media_asset_id": media_asset_id, "attempt": self.request.retries + 1, "error": str(exc)},
+            )
+            raise self.retry(exc=exc, countdown=_RETRY_DELAYS_SECONDS[self.request.retries])
         asset = db.get(MediaAsset, uuid.UUID(media_asset_id))
         if asset:
             asset.status = MediaStatus.failed
@@ -129,6 +165,13 @@ def process_photo_variants(media_asset_id: str) -> None:
         logger.exception("process_photo_variants_failed", extra={"media_asset_id": media_asset_id})
     finally:
         db.close()
+
+
+def _upload_all(objects: list[tuple[str, bytes]], cache_control: str) -> None:
+    """Upload several derivatives at once; raises if any upload failed."""
+    with ThreadPoolExecutor(max_workers=len(objects)) as pool:
+        for future in [pool.submit(upload_object_bytes, key, payload, "image/jpeg", cache_control) for key, payload in objects]:
+            future.result()
 
 
 @celery_app.task(name="app.tasks.media_tasks.generate_media_derivative")
@@ -166,7 +209,7 @@ def generate_watermarked_preview(media_asset_id: str) -> None:
         wm_bytes = io.BytesIO()
         wm.save(wm_bytes, format="JPEG", quality=85)
         payload = wm_bytes.getvalue()
-        upload_object_bytes(wm_key, payload, content_type="image/jpeg")
+        upload_object_bytes(wm_key, payload, content_type="image/jpeg", cache_control=derivative_cache_control(asset.visibility))
 
         _upsert_derivative(
             db,
@@ -200,7 +243,7 @@ def generate_web_res(media_asset_id: str) -> None:
         web_bytes = io.BytesIO()
         web.save(web_bytes, format="JPEG", quality=88)
         payload = web_bytes.getvalue()
-        upload_object_bytes(web_key, payload, content_type="image/jpeg")
+        upload_object_bytes(web_key, payload, content_type="image/jpeg", cache_control=derivative_cache_control(asset.visibility))
 
         _upsert_derivative(
             db,
@@ -233,7 +276,7 @@ def generate_thumbnail(media_asset_id: str) -> None:
         thumb_bytes = io.BytesIO()
         thumb.save(thumb_bytes, format="JPEG", quality=85)
         payload = thumb_bytes.getvalue()
-        upload_object_bytes(thumb_key, payload, content_type="image/jpeg")
+        upload_object_bytes(thumb_key, payload, content_type="image/jpeg", cache_control=derivative_cache_control(asset.visibility))
 
         _upsert_derivative(
             db,
@@ -359,33 +402,31 @@ def downscale_for_preview(image: Image.Image) -> Image.Image:
     return preview
 
 
-def _draw_watermark(db, asset: MediaAsset, image: Image.Image, *, include_powered_by: bool) -> Image.Image:
-    """Return `image` with the repeating mark composited over it.
+@functools.lru_cache(maxsize=4)
+def _watermark_layer(text: str, width: int, height: int) -> Image.Image:
+    """The repeating mark for one text at one image size, ready to composite.
 
-    Returns a new image rather than mutating in place: compositing a
-    translucent layer is not a draw operation on the original pixels.
+    Cached because it depends on nothing else: drawing the tiles and rotating
+    a layer the size of the image's diagonal was most of the CPU a photo
+    cost, and it was done twice per photo (the plain preview and the
+    "Powered by" one) and again for every photo of the same size from the
+    same photographer. Callers composite onto it and never modify it.
+    Four entries is a few photographers or orientations at once, about 7 MB
+    each at preview size.
     """
-    text = _watermark_text(db, asset)
-    base = image.convert("RGBA")
-    width, height = base.size
-
     font_size = max(16, width // 30)
     font = _load_font(_FONT_BOLD, font_size)
-
     measure = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     bbox = measure.textbbox((0, 0), text, font=font)
     text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-
     step_x = text_w + int(text_w * 0.6)
     step_y = text_h + int(text_h * 3.5)
-
     # The layer is squared off at the image's diagonal so that rotating it and
     # cropping back to size never exposes an unmarked corner.
     span = int(math.hypot(width, height)) + step_x + step_y
     layer = Image.new("RGBA", (span, span), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     stroke = max(1, font_size // 24)
-
     for row, y in enumerate(range(0, span, step_y)):
         offset = (row % 2) * (step_x // 2)
         for x in range(-step_x, span, step_x):
@@ -397,11 +438,21 @@ def _draw_watermark(db, asset: MediaAsset, image: Image.Image, *, include_powere
                 stroke_width=stroke,
                 stroke_fill=(0, 0, 0, _WATERMARK_STROKE_ALPHA),
             )
-
     layer = layer.rotate(_WATERMARK_ANGLE, resample=Image.BICUBIC)
     left, top = (span - width) // 2, (span - height) // 2
-    layer = layer.crop((left, top, left + width, top + height))
+    return layer.crop((left, top, left + width, top + height))
 
+
+def _draw_watermark(db, asset: MediaAsset, image: Image.Image, *, include_powered_by: bool) -> Image.Image:
+    """Return `image` with the repeating mark composited over it.
+
+    Returns a new image rather than mutating in place: compositing a
+    translucent layer is not a draw operation on the original pixels.
+    """
+    text = _watermark_text(db, asset)
+    base = image.convert("RGBA")
+    width, height = base.size
+    layer = _watermark_layer(text, width, height)
     marked = Image.alpha_composite(base, layer)
 
     if include_powered_by:

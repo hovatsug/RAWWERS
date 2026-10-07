@@ -56,7 +56,28 @@ services:
       # unreproduced webhook anomaly lives here, and instrumentation you
       # cannot read is not instrumentation.
       PYTHONUNBUFFERED: "1"
-    command: celery -A app.tasks.celery_app.celery_app worker -l info
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q media --concurrency ${WORKER_CONCURRENCY:-4}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # Photo derivatives on their own processes (see deploy/compose.prod.yml).
+  worker-photos:
+    build:
+      context: .
+      target: ${BUILD_TARGET:-runtime}
+    env_file:
+      - .env
+    environment:
+      # Without this the worker buffers stdout and produces nothing at all
+      # after a restart - not even Celery's startup banner - while still
+      # consuming tasks. The outbox and money-path logging added for the
+      # unreproduced webhook anomaly lives here, and instrumentation you
+      # cannot read is not instrumentation.
+      PYTHONUNBUFFERED: "1"
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q photos --concurrency ${PHOTO_WORKER_CONCURRENCY:-4} -n photos@%h
     depends_on:
       redis:
         condition: service_healthy

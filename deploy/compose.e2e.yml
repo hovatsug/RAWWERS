@@ -78,7 +78,9 @@ services:
       APP_PUBLIC_URL: http://localhost:3000
       STRIPE_SECRET_KEY: sk_test_dummy
       STRIPE_WEBHOOK_SECRET: whsec_dummy
-    command: celery -A app.tasks.celery_app.celery_app worker -l info
+    # Both queues on one worker: photo processing has its own queue now
+    # (see compose.prod.yml), and an e2e run needs it served too.
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q media,photos
     depends_on:
       postgres:
         condition: service_healthy

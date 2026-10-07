@@ -46,10 +46,26 @@ services:
     ports:
       - "8000:8000"
 
+  # Everything except photo processing. Concurrency is set, not left to
+  # Celery's default of one process per CPU on whatever host this lands on.
   worker:
     image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: celery -A app.tasks.celery_app.celery_app worker -l info
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q media --concurrency ${WORKER_CONCURRENCY:-4}
+    env_file:
+      - ./deploy/.env.staging
+    depends_on:
+      - postgres
+      - redis
+
+  # Photo derivatives on their own processes, so reminders, index rebuilds
+  # and outbound calls never queue in front of a photographer's upload.
+  # Each process holds a decoded original (about 135 MB for a 45 MP frame,
+  # ~300 MB at peak with its derivatives), so this is capped deliberately.
+  worker-photos:
+    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q photos --concurrency ${PHOTO_WORKER_CONCURRENCY:-4} -n photos@%h
     env_file:
       - ./deploy/.env.staging
     depends_on:

@@ -85,7 +85,10 @@ celery_app.conf.beat_schedule = {
     },
 }
 celery_app.conf.task_routes = {
-    "app.tasks.media_tasks.process_photo_variants": {"queue": "media"},
+    # Its own queue, served by the worker-photos processes: a photographer's
+    # upload never waits behind reminders, index rebuilds or calls.
+    "app.tasks.media_tasks.process_photo_variants": {"queue": "photos"},
+    "app.tasks.media_tasks.generate_media_derivative": {"queue": "photos"},
     "app.tasks.discovery_tasks.rebuild_pro_index": {"queue": "media"},
     "app.tasks.discovery_tasks.rebuild_all_pro_indexes": {"queue": "media"},
     "app.tasks.niche_tasks.recompute_pro_niche_skills": {"queue": "media"},

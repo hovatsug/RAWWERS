@@ -24,7 +24,7 @@ from app.models.gallery import (
     UpsellPurchaseStatus,
 )
 from app.models.gig import Gig, GigStatus, StripePaymentKind
-from app.models.media import MediaAsset, MediaKind, MediaObject, MediaVariant, ObjectStatus
+from app.models.media import MediaAsset, MediaKind, MediaObject, MediaStatus, MediaVariant, ObjectStatus
 from app.models.media_rights import GigEntitlementType, MediaDerivativeKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gallery import (
@@ -168,6 +168,15 @@ def add_gallery_items(
             raise APIError(code="not_found", message=f"Media asset {media_asset_id} not found", status_code=404)
         if asset.kind != MediaKind.photo or asset.owner_user_id != user.user_id:
             raise APIError(code="forbidden", message="Gallery items must be pro-owned photos", status_code=403)
+        # Processing that gave up can still have left a ready watermark
+        # preview behind (it is made first); such a photo is incomplete and
+        # must be uploaded again, not delivered.
+        if asset.status == MediaStatus.failed:
+            raise APIError(
+                code="invalid_state",
+                message="This photo could not be processed. Upload it again.",
+                status_code=409,
+            )
 
         wm_obj = db.execute(
             select(MediaObject).where(

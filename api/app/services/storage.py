@@ -125,9 +125,31 @@ def delete_object(storage_key: str) -> None:
     client.delete_object(Bucket=settings.r2_bucket, Key=storage_key)
 
 
-def upload_object_bytes(storage_key: str, payload: bytes, content_type: str = "image/jpeg") -> None:
+#: Derivatives do not change once made, so whoever holds one may keep it for
+#: 30 days. Not `immutable`: re-running derivative generation writes the same
+#: key, rarely.
+_DERIVATIVE_MAX_AGE = 2592000
+
+
+def derivative_cache_control(visibility) -> str:
+    """`public` only for a photo anyone may see (portfolio work); `private`
+    for everything else - a client's proofs, and above all `web_res`, the
+    unwatermarked copy released only once paid for. `private` still lets the
+    viewer's own device keep it; it forbids any shared cache from doing so.
+    Decided from the photo, not the derivative kind, so a new derivative
+    cannot be made public by default."""
+    from app.models.media import MediaVisibility
+
+    scope = "public" if visibility == MediaVisibility.public else "private"
+    return f"{scope}, max-age={_DERIVATIVE_MAX_AGE}"
+
+
+def upload_object_bytes(
+    storage_key: str, payload: bytes, content_type: str = "image/jpeg", cache_control: str | None = None
+) -> None:
     client = get_s3_client()
-    client.put_object(Bucket=settings.r2_bucket, Key=storage_key, Body=payload, ContentType=content_type)
+    extra = {"CacheControl": cache_control} if cache_control else {}
+    client.put_object(Bucket=settings.r2_bucket, Key=storage_key, Body=payload, ContentType=content_type, **extra)
 
 
 # ---------------------------------------------------------------------------

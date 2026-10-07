@@ -39,6 +39,43 @@ class PhotoUploadCreateResponse(BaseModel):
     upload: UploadPayload
 
 
+class MultipartStartRequest(BaseModel):
+    #: The whole file's size, so the parts can be laid out and checked.
+    byte_size: int = Field(gt=0)
+
+
+class MultipartStartResponse(BaseModel):
+    part_size: int
+    part_count: int
+
+
+class MultipartPartUrlsRequest(BaseModel):
+    part_numbers: list[int] = Field(min_length=1, max_length=100)
+
+
+class MultipartPartUrl(BaseModel):
+    part_number: int
+    url: str
+
+
+class MultipartPartUrlsResponse(BaseModel):
+    parts: list[MultipartPartUrl]
+    expires_in: int
+
+
+class MultipartPartView(BaseModel):
+    part_number: int
+    size: int
+
+
+class MultipartPartsResponse(BaseModel):
+    """What R2 already holds: the parts a resumed upload can skip."""
+
+    part_size: int
+    part_count: int
+    parts: list[MultipartPartView]
+
+
 class CompletePhotoUploadRequest(BaseModel):
     byte_size: int | None = None
 

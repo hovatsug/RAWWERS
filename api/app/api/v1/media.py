@@ -29,6 +29,13 @@ from app.schemas.media import (
     MuxPayload,
     MuxUploadCreateRequest,
     MuxUploadCreateResponse,
+    MultipartPartsResponse,
+    MultipartPartUrl,
+    MultipartPartUrlsRequest,
+    MultipartPartUrlsResponse,
+    MultipartPartView,
+    MultipartStartRequest,
+    MultipartStartResponse,
     PhotoUploadCreateRequest,
     PhotoUploadCreateResponse,
     PlaybackTokenRequest,
@@ -41,10 +48,16 @@ from app.services.mux import MuxClient
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.security import create_mux_playback_token
 from app.services.storage import (
+    MULTIPART_PART_SIZE,
+    abort_multipart_upload,
+    complete_multipart_upload,
+    create_multipart_upload,
     create_presigned_get,
     create_presigned_put,
+    create_presigned_upload_part,
     delete_object,
     generate_photo_storage_key,
+    list_uploaded_parts,
     object_size,
 )
 from app.tasks.media_tasks import process_photo_variants
@@ -198,6 +211,192 @@ def complete_photo_upload(
 
     process_photo_variants.delay(str(asset.id))
 
+    return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
+
+
+def _uploading_original(db: Session, media_asset_id: uuid.UUID, user: CurrentUser) -> tuple[MediaAsset, MediaObject]:
+    """The caller's own photo, still waiting for its bytes, and its original object."""
+    asset = db.get(MediaAsset, media_asset_id)
+    if not asset or asset.kind != MediaKind.photo:
+        raise APIError(code="not_found", message="Photo media asset not found", status_code=404)
+    _ensure_owner(user.user_id, asset.owner_user_id)
+    if asset.status not in {MediaStatus.uploading, MediaStatus.created}:
+        raise APIError(code="invalid_state", message="This upload has already been completed", status_code=409)
+    original = db.execute(
+        select(MediaObject).where(MediaObject.media_asset_id == asset.id, MediaObject.variant == MediaVariant.original)
+    ).scalar_one()
+    return asset, original
+
+
+@router.post("/photos/{media_asset_id}/upload-url", response_model=UploadPayload)
+def refresh_photo_upload_url(
+    media_asset_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> UploadPayload:
+    """A fresh presigned PUT for the same asset, for a retry.
+
+    A retry used to create a new asset every time, leaving each failed
+    attempt behind as an orphan stuck in `uploading`. A presigned URL still
+    must not be reused after a failed PUT, so this signs a new one - for the
+    same key.
+    """
+    enforce_named_rate_limit("uploads", principal=str(user.user_id))
+    asset, original = _uploading_original(db, media_asset_id, user)
+    return UploadPayload(
+        method="PUT",
+        url=create_presigned_put(storage_key=original.storage_key, content_type=asset.content_type),
+        headers={"Content-Type": asset.content_type},
+        storage_key=original.storage_key,
+        expires_in=900,
+    )
+
+
+def _max_bytes_for(asset: MediaAsset) -> int:
+    return settings.gear_evidence_max_bytes if asset.purpose == MediaPurpose.gear_evidence else settings.max_upload_bytes
+
+
+def _multipart_state(asset: MediaAsset) -> dict:
+    state = (asset.meta or {}).get("multipart")
+    if not state:
+        raise APIError(code="invalid_state", message="No multipart upload in progress", status_code=409)
+    return state
+
+
+@router.post("/photos/{media_asset_id}/multipart", response_model=MultipartStartResponse)
+def start_multipart_upload(
+    media_asset_id: uuid.UUID,
+    body: MultipartStartRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> MultipartStartResponse:
+    """Start - or, called again, resume - sending a large original in parts.
+
+    Calling it again for an upload already in progress returns the same
+    layout rather than starting over: that is how an interrupted upload picks
+    up where it stopped.
+    """
+    enforce_named_rate_limit("uploads", principal=str(user.user_id))
+    asset, original = _uploading_original(db, media_asset_id, user)
+    if body.byte_size > _max_bytes_for(asset):
+        raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
+    existing = (asset.meta or {}).get("multipart")
+    if existing and existing["byte_size"] == body.byte_size:
+        return MultipartStartResponse(part_size=existing["part_size"], part_count=existing["part_count"])
+    if existing:
+        # The same asset with a different file behind it: the old parts are no use.
+        abort_multipart_upload(original.storage_key, existing["upload_id"])
+    upload_id = create_multipart_upload(original.storage_key, asset.content_type)
+    part_count = -(-body.byte_size // MULTIPART_PART_SIZE)
+    asset.meta = {
+        **(asset.meta or {}),
+        "multipart": {
+            "upload_id": upload_id,
+            "byte_size": body.byte_size,
+            "part_size": MULTIPART_PART_SIZE,
+            "part_count": part_count,
+        },
+    }
+    db.commit()
+    return MultipartStartResponse(part_size=MULTIPART_PART_SIZE, part_count=part_count)
+
+
+@router.post("/photos/{media_asset_id}/multipart/part-urls", response_model=MultipartPartUrlsResponse)
+def multipart_part_urls(
+    media_asset_id: uuid.UUID,
+    body: MultipartPartUrlsRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> MultipartPartUrlsResponse:
+    asset, original = _uploading_original(db, media_asset_id, user)
+    state = _multipart_state(asset)
+    if any(n < 1 or n > state["part_count"] for n in body.part_numbers):
+        raise APIError(code="validation_error", message="Part number out of range", status_code=422)
+    return MultipartPartUrlsResponse(
+        parts=[
+            MultipartPartUrl(
+                part_number=n, url=create_presigned_upload_part(original.storage_key, state["upload_id"], n)
+            )
+            for n in sorted(set(body.part_numbers))
+        ],
+        expires_in=900,
+    )
+
+
+@router.get("/photos/{media_asset_id}/multipart/parts", response_model=MultipartPartsResponse)
+def multipart_parts(
+    media_asset_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> MultipartPartsResponse:
+    """The parts R2 already holds - what a resumed upload can skip."""
+    asset, original = _uploading_original(db, media_asset_id, user)
+    state = _multipart_state(asset)
+    return MultipartPartsResponse(
+        part_size=state["part_size"],
+        part_count=state["part_count"],
+        parts=[
+            MultipartPartView(part_number=p["part_number"], size=p["size"])
+            for p in list_uploaded_parts(original.storage_key, state["upload_id"])
+        ],
+    )
+
+
+@router.post("/photos/{media_asset_id}/multipart/complete", response_model=CompletePhotoUploadResponse)
+def complete_multipart(
+    media_asset_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> CompletePhotoUploadResponse:
+    """Assemble the parts into the original. The client then calls
+    `/complete` as for any upload, so every check that runs there still runs.
+
+    What is assembled comes from R2's own list of parts, checked against the
+    layout agreed at start - every part present, each the right size, adding
+    up to the declared file - not from anything the client says it sent.
+    """
+    asset, original = _uploading_original(db, media_asset_id, user)
+    state = _multipart_state(asset)
+    held = {p["part_number"]: p for p in list_uploaded_parts(original.storage_key, state["upload_id"])}
+    missing = [n for n in range(1, state["part_count"] + 1) if n not in held]
+    if missing:
+        raise APIError(
+            code="validation_error",
+            message=f"{len(missing)} part(s) have not arrived yet",
+            status_code=422,
+            details={"missing_parts": missing},
+        )
+    last = state["part_count"]
+    expected_last = state["byte_size"] - state["part_size"] * (last - 1)
+    wrong = [
+        n for n, p in held.items()
+        if n > last or p["size"] != (expected_last if n == last else state["part_size"])
+    ]
+    if wrong:
+        raise APIError(
+            code="validation_error",
+            message="Some parts are not the size this upload was started with",
+            status_code=422,
+            details={"wrong_parts": sorted(wrong)},
+        )
+    complete_multipart_upload(original.storage_key, state["upload_id"], [(n, held[n]["etag"]) for n in range(1, last + 1)])
+    asset.meta = {k: v for k, v in (asset.meta or {}).items() if k != "multipart"}
+    db.commit()
+    return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
+
+
+@router.post("/photos/{media_asset_id}/multipart/abort", response_model=CompletePhotoUploadResponse)
+def abort_multipart(
+    media_asset_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> CompletePhotoUploadResponse:
+    """Give up on the parts sent so far, so R2 does not keep them."""
+    asset, original = _uploading_original(db, media_asset_id, user)
+    state = _multipart_state(asset)
+    abort_multipart_upload(original.storage_key, state["upload_id"])
+    asset.meta = {k: v for k, v in (asset.meta or {}).items() if k != "multipart"}
+    db.commit()
     return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
 
 

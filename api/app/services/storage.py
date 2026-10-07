@@ -128,3 +128,68 @@ def delete_object(storage_key: str) -> None:
 def upload_object_bytes(storage_key: str, payload: bytes, content_type: str = "image/jpeg") -> None:
     client = get_s3_client()
     client.put_object(Bucket=settings.r2_bucket, Key=storage_key, Body=payload, ContentType=content_type)
+
+
+# ---------------------------------------------------------------------------
+# Multipart upload, for large originals.
+#
+# The client sends a large file in parts, each to its own presigned URL, and
+# can ask which parts arrived - so a dropped connection resumes from the last
+# part instead of byte zero. R2 implements this part of the S3 API natively
+# (create, presigned upload_part, list_parts, complete all verified against
+# the real bucket), so no upload server sits in the path: bytes still go
+# straight from the phone to R2.
+# ---------------------------------------------------------------------------
+
+#: 5 MiB, R2's minimum for every part but the last. A part cannot be resumed
+#: partway, so a failure costs the whole part, and on a slow link a big part
+#: may never finish: against real R2 at ~10 KB/s up, 8 MiB parts took 14
+#: minutes each and the connection was reset before one completed. A 58 MB
+#: RAW is 12 parts.
+MULTIPART_PART_SIZE = 5 * 1024 * 1024
+
+
+def create_multipart_upload(storage_key: str, content_type: str) -> str:
+    client = get_s3_client()
+    return client.create_multipart_upload(Bucket=settings.r2_bucket, Key=storage_key, ContentType=content_type)["UploadId"]
+
+
+def create_presigned_upload_part(storage_key: str, upload_id: str, part_number: int, expires_in: int = 900) -> str:
+    client = get_s3_client()
+    return client.generate_presigned_url(
+        "upload_part",
+        Params={"Bucket": settings.r2_bucket, "Key": storage_key, "UploadId": upload_id, "PartNumber": part_number},
+        ExpiresIn=expires_in,
+    )
+
+
+def list_uploaded_parts(storage_key: str, upload_id: str) -> list[dict]:
+    """Every part R2 holds for this upload: number, size and ETag."""
+    client = get_s3_client()
+    parts: list[dict] = []
+    marker = 0
+    while True:
+        page = client.list_parts(
+            Bucket=settings.r2_bucket, Key=storage_key, UploadId=upload_id, PartNumberMarker=marker
+        )
+        parts.extend(
+            {"part_number": p["PartNumber"], "size": p["Size"], "etag": p["ETag"]} for p in page.get("Parts", [])
+        )
+        if not page.get("IsTruncated"):
+            return parts
+        marker = page["NextPartNumberMarker"]
+
+
+def complete_multipart_upload(storage_key: str, upload_id: str, parts: list[tuple[int, str]]) -> None:
+    client = get_s3_client()
+    client.complete_multipart_upload(
+        Bucket=settings.r2_bucket,
+        Key=storage_key,
+        UploadId=upload_id,
+        MultipartUpload={"Parts": [{"PartNumber": n, "ETag": etag} for n, etag in sorted(parts)]},
+    )
+
+
+def abort_multipart_upload(storage_key: str, upload_id: str) -> None:
+    client = get_s3_client()
+    client.abort_multipart_upload(Bucket=settings.r2_bucket, Key=storage_key, UploadId=upload_id)

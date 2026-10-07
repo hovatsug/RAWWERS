@@ -1812,3 +1812,57 @@ underneath all of them; when it is built it should be built **once,
 generically** - an outward channel (email, push) behind `enqueue_notification`,
 with per-event wording - and then plugged into each of these, rather than
 solved per feature. Until then, each new "nobody is told" belongs on this list.
+
+## Edge caching for portfolio images: blocked on a bucket decision - NOT BUILT
+
+Approved in principle (public portfolio derivatives only), stopped on discovery.
+An R2 custom domain - the only way Cloudflare's edge caches R2 objects - exposes
+the **whole bucket**, not chosen objects. Every presigned URL the apps have ever
+been handed carries the object key in its path, including finals (10-minute
+links), proofs and gear RAWs. With a custom domain on this bucket, anyone who
+ever held such a link could fetch the same object from the custom domain
+forever, unsigned - which would quietly undo the payment gate.
+
+Safe ways to do it, both configuration rather than code, and both a product
+call: (a) a separate public bucket holding only portfolio thumbnails, written
+there by the derivative task; or (b) a Cloudflare rule on the custom domain that
+refuses every path outside a dedicated `public/` prefix, with portfolio
+thumbnails written under it. Either way, originals and anything gated stay on
+signed URLs. Until then, repeat views are served from the phone's disk cache
+(stable URLs + `DiskCachedImage`), which needs no exposure at all.
+
+## Upload resume survives a dropped connection, not a killed app - LOGGED
+
+Large uploads go to R2 in 5 MiB parts and resume from the last finished part
+(verified on real R2: a 25.6 MB Sony RAW, three connection failures, arrived
+byte-identical). The resume state lives in the upload call, so it covers a
+dropped or flaky connection during one app session. If the app is killed
+mid-upload the next attempt starts a new asset; the abandoned multipart upload
+is aborted only if the app gave up cleanly. Persisting resume state on the
+device (asset id, which parts arrived) is a separate task, as agreed. R2 also
+needs a lifecycle rule to expire incomplete multipart uploads - configuration,
+worth adding with that task.
+
+## deploy/docker-compose.{prod,staging}.yml are stale duplicates - LOGGED
+
+The deploy workflow uses `deploy/compose.prod.yml` and `compose.staging.yml`.
+The `docker-compose.*` pair beside them are older copies (the prod one has no
+beat service at all). Not changed with the worker split, so they are now further
+out of date; deleting them is the clean fix.
+
+## Transfer timings in this repo's speed work describe one slow link - NOTE
+
+The 2026-10-05 measurements ran over a connection doing ~165 KB/s down and
+10-80 KB/s up (measured against Cloudflare's own speed test at the time). CPU
+numbers and request counts are environment-independent; transfer times are not,
+and production's worker-to-R2 link was not measurable from here.
+
+## `test_blackout_blocks_accepting_a_booking_inside_it` fails late in the evening - LOGGED
+
+The test gives its photographer working hours of 00:00-23:59 every day and asks
+for a 3-hour booking starting `now + 32 days`. Run after about 21:00, that
+window runs past midnight, crosses the 23:59 end of the rule, and is refused as
+"outside working hours" before the blackout check it exists to test is ever
+reached. Found in a 2026-10-06 overnight run; the same test on the same tree
+passed at 06:34. Fix is to pin the requested start to midday, as the quiet-hours
+entry above recommends for its tests. Not changed here.

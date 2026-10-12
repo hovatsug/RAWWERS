@@ -484,6 +484,135 @@ abstract class AIConciergeClient {
       },
     },
   });
+  @GET("/v1/pro/chat/unread")
+  Future<HttpResponse<ChatUnreadResponse>> proUnreadMessagesV1ProChatUnreadGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['ai_concierge'],
+      'summary': 'Pro Unread Messages',
+      'description':
+          'For the Messages badge: conversations with something unread, and how\nmany messages. Cheap enough to poll.',
+      'operationId': 'pro_unread_messages_v1_pro_chat_unread_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ChatUnreadResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @POST("/v1/chat/threads/{thread_id}/read")
+  Future<HttpResponse<ChatThreadSummary>>
+  markChatThreadReadV1ChatThreadsThreadIdReadPost({
+    @Path("thread_id") required String threadId,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['ai_concierge'],
+      'summary': 'Mark Chat Thread Read',
+      'description':
+          'Everything in the conversation so far has been read by the caller\'s\nside. Either participant; nobody else, admins included - they have no\nside to have read it from.',
+      'operationId':
+          'mark_chat_thread_read_v1_chat_threads__thread_id__read_post',
+      'parameters': [
+        {
+          'name': 'thread_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Thread Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ChatThreadSummary'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/pro/chat/threads/{thread_id}")
   Future<HttpResponse<ChatThreadDetailResponse>>
   getProThreadV1ProChatThreadsThreadIdGet({

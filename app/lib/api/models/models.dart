@@ -51,6 +51,7 @@ export 'chat_thread_list_response.dart';
 export 'chat_thread_status.dart';
 export 'chat_thread_summary.dart';
 export 'chat_thread_view.dart';
+export 'chat_unread_response.dart';
 export 'client_access_response.dart';
 export 'client_availability_day.dart';
 export 'client_availability_response.dart';

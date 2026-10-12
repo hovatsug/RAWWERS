@@ -17,6 +17,11 @@ _ChatThreadSummary _$ChatThreadSummaryFromJson(Map<String, dynamic> json) =>
       updatedAt: DateTime.parse(json['updated_at'] as String),
       proDisplayName: json['pro_display_name'] as String?,
       clientDisplayName: json['client_display_name'] as String?,
+      unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
+      lastMessageAt: json['last_message_at'] == null
+          ? null
+          : DateTime.parse(json['last_message_at'] as String),
+      lastMessagePreview: json['last_message_preview'] as String?,
     );
 
 Map<String, dynamic> _$ChatThreadSummaryToJson(_ChatThreadSummary instance) =>
@@ -30,4 +35,7 @@ Map<String, dynamic> _$ChatThreadSummaryToJson(_ChatThreadSummary instance) =>
       'updated_at': instance.updatedAt.toIso8601String(),
       'pro_display_name': instance.proDisplayName,
       'client_display_name': instance.clientDisplayName,
+      'unread_count': instance.unreadCount,
+      'last_message_at': instance.lastMessageAt?.toIso8601String(),
+      'last_message_preview': instance.lastMessagePreview,
     };

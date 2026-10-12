@@ -24,7 +24,10 @@ mixin _$ChatThreadSummary {
 @JsonKey(name: ChatThreadSummary.createdAtKey_) DateTime get createdAt;/// updatedAt
 @JsonKey(name: ChatThreadSummary.updatedAtKey_) DateTime get updatedAt;/// proDisplayName
 @JsonKey(name: ChatThreadSummary.proDisplayNameKey_) String? get proDisplayName;/// clientDisplayName
-@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) String? get clientDisplayName;
+@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) String? get clientDisplayName;/// unreadCount
+@JsonKey(name: ChatThreadSummary.unreadCountKey_) int get unreadCount;/// lastMessageAt
+@JsonKey(name: ChatThreadSummary.lastMessageAtKey_) DateTime? get lastMessageAt;/// lastMessagePreview
+@JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_) String? get lastMessagePreview;
 /// Create a copy of ChatThreadSummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -37,16 +40,16 @@ $ChatThreadSummaryCopyWith<ChatThreadSummary> get copyWith => _$ChatThreadSummar
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatThreadSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.clientUserId, clientUserId) || other.clientUserId == clientUserId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.proDisplayName, proDisplayName) || other.proDisplayName == proDisplayName)&&(identical(other.clientDisplayName, clientDisplayName) || other.clientDisplayName == clientDisplayName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatThreadSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.clientUserId, clientUserId) || other.clientUserId == clientUserId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.proDisplayName, proDisplayName) || other.proDisplayName == proDisplayName)&&(identical(other.clientDisplayName, clientDisplayName) || other.clientDisplayName == clientDisplayName)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.lastMessageAt, lastMessageAt) || other.lastMessageAt == lastMessageAt)&&(identical(other.lastMessagePreview, lastMessagePreview) || other.lastMessagePreview == lastMessagePreview));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,clientUserId,sessionId,status,createdAt,updatedAt,proDisplayName,clientDisplayName);
+int get hashCode => Object.hash(runtimeType,id,proUserId,clientUserId,sessionId,status,createdAt,updatedAt,proDisplayName,clientDisplayName,unreadCount,lastMessageAt,lastMessagePreview);
 
 @override
 String toString() {
-  return 'ChatThreadSummary(id: $id, proUserId: $proUserId, clientUserId: $clientUserId, sessionId: $sessionId, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, proDisplayName: $proDisplayName, clientDisplayName: $clientDisplayName)';
+  return 'ChatThreadSummary(id: $id, proUserId: $proUserId, clientUserId: $clientUserId, sessionId: $sessionId, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, proDisplayName: $proDisplayName, clientDisplayName: $clientDisplayName, unreadCount: $unreadCount, lastMessageAt: $lastMessageAt, lastMessagePreview: $lastMessagePreview)';
 }
 
 
@@ -57,7 +60,7 @@ abstract mixin class $ChatThreadSummaryCopyWith<$Res>  {
   factory $ChatThreadSummaryCopyWith(ChatThreadSummary value, $Res Function(ChatThreadSummary) _then) = _$ChatThreadSummaryCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ChatThreadSummary.idKey_) String id,@JsonKey(name: ChatThreadSummary.proUserIdKey_) String proUserId,@JsonKey(name: ChatThreadSummary.clientUserIdKey_) String? clientUserId,@JsonKey(name: ChatThreadSummary.sessionIdKey_) String? sessionId,@JsonKey(name: ChatThreadSummary.statusKey_) ChatThreadStatus status,@JsonKey(name: ChatThreadSummary.createdAtKey_) DateTime createdAt,@JsonKey(name: ChatThreadSummary.updatedAtKey_) DateTime updatedAt,@JsonKey(name: ChatThreadSummary.proDisplayNameKey_) String? proDisplayName,@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) String? clientDisplayName
+@JsonKey(name: ChatThreadSummary.idKey_) String id,@JsonKey(name: ChatThreadSummary.proUserIdKey_) String proUserId,@JsonKey(name: ChatThreadSummary.clientUserIdKey_) String? clientUserId,@JsonKey(name: ChatThreadSummary.sessionIdKey_) String? sessionId,@JsonKey(name: ChatThreadSummary.statusKey_) ChatThreadStatus status,@JsonKey(name: ChatThreadSummary.createdAtKey_) DateTime createdAt,@JsonKey(name: ChatThreadSummary.updatedAtKey_) DateTime updatedAt,@JsonKey(name: ChatThreadSummary.proDisplayNameKey_) String? proDisplayName,@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) String? clientDisplayName,@JsonKey(name: ChatThreadSummary.unreadCountKey_) int unreadCount,@JsonKey(name: ChatThreadSummary.lastMessageAtKey_) DateTime? lastMessageAt,@JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_) String? lastMessagePreview
 });
 
 
@@ -74,7 +77,7 @@ class _$ChatThreadSummaryCopyWithImpl<$Res>
 
 /// Create a copy of ChatThreadSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? clientUserId = freezed,Object? sessionId = freezed,Object? status = null,Object? createdAt = null,Object? updatedAt = null,Object? proDisplayName = freezed,Object? clientDisplayName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? clientUserId = freezed,Object? sessionId = freezed,Object? status = null,Object? createdAt = null,Object? updatedAt = null,Object? proDisplayName = freezed,Object? clientDisplayName = freezed,Object? unreadCount = null,Object? lastMessageAt = freezed,Object? lastMessagePreview = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
@@ -85,6 +88,9 @@ as ChatThreadStatus,createdAt: null == createdAt ? _self.createdAt : createdAt /
 as DateTime,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,proDisplayName: freezed == proDisplayName ? _self.proDisplayName : proDisplayName // ignore: cast_nullable_to_non_nullable
 as String?,clientDisplayName: freezed == clientDisplayName ? _self.clientDisplayName : clientDisplayName // ignore: cast_nullable_to_non_nullable
+as String?,unreadCount: null == unreadCount ? _self.unreadCount : unreadCount // ignore: cast_nullable_to_non_nullable
+as int,lastMessageAt: freezed == lastMessageAt ? _self.lastMessageAt : lastMessageAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,lastMessagePreview: freezed == lastMessagePreview ? _self.lastMessagePreview : lastMessagePreview // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -170,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ChatThreadSummary.idKey_)  String id, @JsonKey(name: ChatThreadSummary.proUserIdKey_)  String proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_)  String? clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_)  String? sessionId, @JsonKey(name: ChatThreadSummary.statusKey_)  ChatThreadStatus status, @JsonKey(name: ChatThreadSummary.createdAtKey_)  DateTime createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_)  String? proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)  String? clientDisplayName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ChatThreadSummary.idKey_)  String id, @JsonKey(name: ChatThreadSummary.proUserIdKey_)  String proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_)  String? clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_)  String? sessionId, @JsonKey(name: ChatThreadSummary.statusKey_)  ChatThreadStatus status, @JsonKey(name: ChatThreadSummary.createdAtKey_)  DateTime createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_)  String? proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)  String? clientDisplayName, @JsonKey(name: ChatThreadSummary.unreadCountKey_)  int unreadCount, @JsonKey(name: ChatThreadSummary.lastMessageAtKey_)  DateTime? lastMessageAt, @JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_)  String? lastMessagePreview)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatThreadSummary() when $default != null:
-return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_that.status,_that.createdAt,_that.updatedAt,_that.proDisplayName,_that.clientDisplayName);case _:
+return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_that.status,_that.createdAt,_that.updatedAt,_that.proDisplayName,_that.clientDisplayName,_that.unreadCount,_that.lastMessageAt,_that.lastMessagePreview);case _:
   return orElse();
 
 }
@@ -191,10 +197,10 @@ return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ChatThreadSummary.idKey_)  String id, @JsonKey(name: ChatThreadSummary.proUserIdKey_)  String proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_)  String? clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_)  String? sessionId, @JsonKey(name: ChatThreadSummary.statusKey_)  ChatThreadStatus status, @JsonKey(name: ChatThreadSummary.createdAtKey_)  DateTime createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_)  String? proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)  String? clientDisplayName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ChatThreadSummary.idKey_)  String id, @JsonKey(name: ChatThreadSummary.proUserIdKey_)  String proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_)  String? clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_)  String? sessionId, @JsonKey(name: ChatThreadSummary.statusKey_)  ChatThreadStatus status, @JsonKey(name: ChatThreadSummary.createdAtKey_)  DateTime createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_)  String? proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)  String? clientDisplayName, @JsonKey(name: ChatThreadSummary.unreadCountKey_)  int unreadCount, @JsonKey(name: ChatThreadSummary.lastMessageAtKey_)  DateTime? lastMessageAt, @JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_)  String? lastMessagePreview)  $default,) {final _that = this;
 switch (_that) {
 case _ChatThreadSummary():
-return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_that.status,_that.createdAt,_that.updatedAt,_that.proDisplayName,_that.clientDisplayName);case _:
+return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_that.status,_that.createdAt,_that.updatedAt,_that.proDisplayName,_that.clientDisplayName,_that.unreadCount,_that.lastMessageAt,_that.lastMessagePreview);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +217,10 @@ return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ChatThreadSummary.idKey_)  String id, @JsonKey(name: ChatThreadSummary.proUserIdKey_)  String proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_)  String? clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_)  String? sessionId, @JsonKey(name: ChatThreadSummary.statusKey_)  ChatThreadStatus status, @JsonKey(name: ChatThreadSummary.createdAtKey_)  DateTime createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_)  String? proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)  String? clientDisplayName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ChatThreadSummary.idKey_)  String id, @JsonKey(name: ChatThreadSummary.proUserIdKey_)  String proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_)  String? clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_)  String? sessionId, @JsonKey(name: ChatThreadSummary.statusKey_)  ChatThreadStatus status, @JsonKey(name: ChatThreadSummary.createdAtKey_)  DateTime createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_)  String? proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)  String? clientDisplayName, @JsonKey(name: ChatThreadSummary.unreadCountKey_)  int unreadCount, @JsonKey(name: ChatThreadSummary.lastMessageAtKey_)  DateTime? lastMessageAt, @JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_)  String? lastMessagePreview)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatThreadSummary() when $default != null:
-return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_that.status,_that.createdAt,_that.updatedAt,_that.proDisplayName,_that.clientDisplayName);case _:
+return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_that.status,_that.createdAt,_that.updatedAt,_that.proDisplayName,_that.clientDisplayName,_that.unreadCount,_that.lastMessageAt,_that.lastMessagePreview);case _:
   return null;
 
 }
@@ -226,7 +232,7 @@ return $default(_that.id,_that.proUserId,_that.clientUserId,_that.sessionId,_tha
 
 @jsonSerializable
 class _ChatThreadSummary extends ChatThreadSummary {
-  const _ChatThreadSummary({@JsonKey(name: ChatThreadSummary.idKey_) required this.id, @JsonKey(name: ChatThreadSummary.proUserIdKey_) required this.proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_) this.clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_) this.sessionId, @JsonKey(name: ChatThreadSummary.statusKey_) required this.status, @JsonKey(name: ChatThreadSummary.createdAtKey_) required this.createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_) required this.updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_) this.proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) this.clientDisplayName}): super._();
+  const _ChatThreadSummary({@JsonKey(name: ChatThreadSummary.idKey_) required this.id, @JsonKey(name: ChatThreadSummary.proUserIdKey_) required this.proUserId, @JsonKey(name: ChatThreadSummary.clientUserIdKey_) this.clientUserId, @JsonKey(name: ChatThreadSummary.sessionIdKey_) this.sessionId, @JsonKey(name: ChatThreadSummary.statusKey_) required this.status, @JsonKey(name: ChatThreadSummary.createdAtKey_) required this.createdAt, @JsonKey(name: ChatThreadSummary.updatedAtKey_) required this.updatedAt, @JsonKey(name: ChatThreadSummary.proDisplayNameKey_) this.proDisplayName, @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) this.clientDisplayName, @JsonKey(name: ChatThreadSummary.unreadCountKey_) this.unreadCount = 0, @JsonKey(name: ChatThreadSummary.lastMessageAtKey_) this.lastMessageAt, @JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_) this.lastMessagePreview}): super._();
   factory _ChatThreadSummary.fromJson(Map<String, dynamic> json) => _$ChatThreadSummaryFromJson(json);
 
 /// id
@@ -247,6 +253,12 @@ class _ChatThreadSummary extends ChatThreadSummary {
 @override@JsonKey(name: ChatThreadSummary.proDisplayNameKey_) final  String? proDisplayName;
 /// clientDisplayName
 @override@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) final  String? clientDisplayName;
+/// unreadCount
+@override@JsonKey(name: ChatThreadSummary.unreadCountKey_) final  int unreadCount;
+/// lastMessageAt
+@override@JsonKey(name: ChatThreadSummary.lastMessageAtKey_) final  DateTime? lastMessageAt;
+/// lastMessagePreview
+@override@JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_) final  String? lastMessagePreview;
 
 /// Create a copy of ChatThreadSummary
 /// with the given fields replaced by the non-null parameter values.
@@ -261,16 +273,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatThreadSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.clientUserId, clientUserId) || other.clientUserId == clientUserId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.proDisplayName, proDisplayName) || other.proDisplayName == proDisplayName)&&(identical(other.clientDisplayName, clientDisplayName) || other.clientDisplayName == clientDisplayName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatThreadSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.clientUserId, clientUserId) || other.clientUserId == clientUserId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.proDisplayName, proDisplayName) || other.proDisplayName == proDisplayName)&&(identical(other.clientDisplayName, clientDisplayName) || other.clientDisplayName == clientDisplayName)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.lastMessageAt, lastMessageAt) || other.lastMessageAt == lastMessageAt)&&(identical(other.lastMessagePreview, lastMessagePreview) || other.lastMessagePreview == lastMessagePreview));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,clientUserId,sessionId,status,createdAt,updatedAt,proDisplayName,clientDisplayName);
+int get hashCode => Object.hash(runtimeType,id,proUserId,clientUserId,sessionId,status,createdAt,updatedAt,proDisplayName,clientDisplayName,unreadCount,lastMessageAt,lastMessagePreview);
 
 @override
 String toString() {
-  return 'ChatThreadSummary(id: $id, proUserId: $proUserId, clientUserId: $clientUserId, sessionId: $sessionId, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, proDisplayName: $proDisplayName, clientDisplayName: $clientDisplayName)';
+  return 'ChatThreadSummary(id: $id, proUserId: $proUserId, clientUserId: $clientUserId, sessionId: $sessionId, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, proDisplayName: $proDisplayName, clientDisplayName: $clientDisplayName, unreadCount: $unreadCount, lastMessageAt: $lastMessageAt, lastMessagePreview: $lastMessagePreview)';
 }
 
 
@@ -281,7 +293,7 @@ abstract mixin class _$ChatThreadSummaryCopyWith<$Res> implements $ChatThreadSum
   factory _$ChatThreadSummaryCopyWith(_ChatThreadSummary value, $Res Function(_ChatThreadSummary) _then) = __$ChatThreadSummaryCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ChatThreadSummary.idKey_) String id,@JsonKey(name: ChatThreadSummary.proUserIdKey_) String proUserId,@JsonKey(name: ChatThreadSummary.clientUserIdKey_) String? clientUserId,@JsonKey(name: ChatThreadSummary.sessionIdKey_) String? sessionId,@JsonKey(name: ChatThreadSummary.statusKey_) ChatThreadStatus status,@JsonKey(name: ChatThreadSummary.createdAtKey_) DateTime createdAt,@JsonKey(name: ChatThreadSummary.updatedAtKey_) DateTime updatedAt,@JsonKey(name: ChatThreadSummary.proDisplayNameKey_) String? proDisplayName,@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) String? clientDisplayName
+@JsonKey(name: ChatThreadSummary.idKey_) String id,@JsonKey(name: ChatThreadSummary.proUserIdKey_) String proUserId,@JsonKey(name: ChatThreadSummary.clientUserIdKey_) String? clientUserId,@JsonKey(name: ChatThreadSummary.sessionIdKey_) String? sessionId,@JsonKey(name: ChatThreadSummary.statusKey_) ChatThreadStatus status,@JsonKey(name: ChatThreadSummary.createdAtKey_) DateTime createdAt,@JsonKey(name: ChatThreadSummary.updatedAtKey_) DateTime updatedAt,@JsonKey(name: ChatThreadSummary.proDisplayNameKey_) String? proDisplayName,@JsonKey(name: ChatThreadSummary.clientDisplayNameKey_) String? clientDisplayName,@JsonKey(name: ChatThreadSummary.unreadCountKey_) int unreadCount,@JsonKey(name: ChatThreadSummary.lastMessageAtKey_) DateTime? lastMessageAt,@JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_) String? lastMessagePreview
 });
 
 
@@ -298,7 +310,7 @@ class __$ChatThreadSummaryCopyWithImpl<$Res>
 
 /// Create a copy of ChatThreadSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? clientUserId = freezed,Object? sessionId = freezed,Object? status = null,Object? createdAt = null,Object? updatedAt = null,Object? proDisplayName = freezed,Object? clientDisplayName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? clientUserId = freezed,Object? sessionId = freezed,Object? status = null,Object? createdAt = null,Object? updatedAt = null,Object? proDisplayName = freezed,Object? clientDisplayName = freezed,Object? unreadCount = null,Object? lastMessageAt = freezed,Object? lastMessagePreview = freezed,}) {
   return _then(_ChatThreadSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
@@ -309,6 +321,9 @@ as ChatThreadStatus,createdAt: null == createdAt ? _self.createdAt : createdAt /
 as DateTime,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,proDisplayName: freezed == proDisplayName ? _self.proDisplayName : proDisplayName // ignore: cast_nullable_to_non_nullable
 as String?,clientDisplayName: freezed == clientDisplayName ? _self.clientDisplayName : clientDisplayName // ignore: cast_nullable_to_non_nullable
+as String?,unreadCount: null == unreadCount ? _self.unreadCount : unreadCount // ignore: cast_nullable_to_non_nullable
+as int,lastMessageAt: freezed == lastMessageAt ? _self.lastMessageAt : lastMessageAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,lastMessagePreview: freezed == lastMessagePreview ? _self.lastMessagePreview : lastMessagePreview // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

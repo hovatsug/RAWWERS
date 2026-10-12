@@ -68,6 +68,34 @@
 ///                 }
 ///             ],
 ///             "title": "Client Display Name"
+///         },
+///         "unread_count": {
+///             "type": "integer",
+///             "default": 0,
+///             "title": "Unread Count"
+///         },
+///         "last_message_at": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "date-time"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Last Message At"
+///         },
+///         "last_message_preview": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Last Message Preview"
 ///         }
 ///     },
 ///     "type": "object",
@@ -120,6 +148,18 @@ abstract class ChatThreadSummary with _$ChatThreadSummary {
     /// clientDisplayName
     @JsonKey(name: ChatThreadSummary.clientDisplayNameKey_)
     String? clientDisplayName,
+
+    /// unreadCount
+    @Default(0)
+    @JsonKey(name: ChatThreadSummary.unreadCountKey_)
+    int unreadCount,
+
+    /// lastMessageAt
+    @JsonKey(name: ChatThreadSummary.lastMessageAtKey_) DateTime? lastMessageAt,
+
+    /// lastMessagePreview
+    @JsonKey(name: ChatThreadSummary.lastMessagePreviewKey_)
+    String? lastMessagePreview,
   }) = _ChatThreadSummary;
 
   factory ChatThreadSummary.fromJson(Map<String, dynamic> json) =>
@@ -142,4 +182,10 @@ abstract class ChatThreadSummary with _$ChatThreadSummary {
   static const String proDisplayNameKey_ = r'pro_display_name';
 
   static const String clientDisplayNameKey_ = r'client_display_name';
+
+  static const String unreadCountKey_ = r'unread_count';
+
+  static const String lastMessageAtKey_ = r'last_message_at';
+
+  static const String lastMessagePreviewKey_ = r'last_message_preview';
 }

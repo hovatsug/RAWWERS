@@ -71,7 +71,7 @@ Listed so a successful deploy is not mistaken for launch readiness.
 | Item | dev | staging | production |
 |---|---|---|---|
 | Recompute index (`min_package_price`) | done | | |
-| Recompute index (`ranking_score`) | | | |
+| Recompute index (`ranking_score`, and `0056`'s labels under the current rule) | done 2026-10-12 | | |
 | Watermark backfill | done | | |
 | Camera reference loaded | 98 cameras | | |
 | Price cap row for every active niche and tier | 40 of 60 - none for architecture, automotive, maternity, sports | | |

@@ -9,6 +9,7 @@ import 'package:rawwers/api/models/chat_thread_summary.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/messages/thread_controller.dart';
 import 'package:rawwers/features/client/messages/thread_screen.dart';
+import 'package:rawwers/features/shared/chat/chat_side.dart';
 
 const _threadId = 'thread-1';
 
@@ -24,6 +25,9 @@ class _FakeThread extends ThreadController {
 
   @override
   Future<ChatThreadDetailResponse> build(String threadId) async => _detail;
+
+  @override
+  Future<void> markRead() async {}
 
   @override
   Future<String?> send(String content) async {
@@ -123,5 +127,31 @@ void main() {
 
     expect(fake.lastSent, 'See you then.');
     expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, isEmpty);
+  });
+
+  testWidgets('the composer stops at the longest message the server accepts', (tester) async {
+    final fake = _FakeThread(_detail());
+    await tester.pumpWidget(_wrap(fake));
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'x' * (chatMessageMaxLength + 50));
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text.length, chatMessageMaxLength);
+    expect(find.text('$chatMessageMaxLength/$chatMessageMaxLength'), findsOneWidget, reason: 'the count shows near the limit');
+  });
+
+  testWidgets('a send refused as too long keeps the draft and says why', (tester) async {
+    const refusal = 'Too long - messages can be at most $chatMessageMaxLength characters.';
+    final fake = _FakeThread(_detail(), sendError: refusal);
+    await tester.pumpWidget(_wrap(fake));
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'A long question about the shoot');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+
+    expect(find.text(refusal), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, 'A long question about the shoot');
   });
 }

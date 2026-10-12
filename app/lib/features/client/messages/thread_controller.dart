@@ -5,6 +5,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
+import 'package:rawwers/features/shared/chat/chat_side.dart' show chatMessageMaxLength;
 
 part 'thread_controller.g.dart';
 
@@ -25,6 +26,26 @@ class ThreadController extends _$ThreadController {
       Ok(:final value) => value,
       Err(:final failure) => throw failure,
     };
+  }
+
+  /// Tells the server this side has read the conversation so far. A failed
+  /// save leaves a stale unread count that the next open corrects - never
+  /// worth an error in front of someone reading their messages.
+  Future<void> markRead() async {
+    final client = ref.read(aiConciergeClientProvider);
+    await apiCall(
+      () => client.markChatThreadReadV1ChatThreadsThreadIdReadPost(threadId: threadId, authorization: null, xMinusUserMinusId: null),
+    );
+  }
+
+  /// Picks up new messages without a loading flash; a failed poll keeps
+  /// what is on screen.
+  Future<void> refreshQuietly() async {
+    final client = ref.read(aiConciergeClientProvider);
+    final result = await apiCall(
+      () => client.getChatThreadV1V1ChatThreadsThreadIdGet(threadId: threadId, authorization: null, xMinusUserMinusId: null),
+    );
+    if (result case Ok(:final value)) state = AsyncData(value);
   }
 
   /// Sends a message and folds the server's own copy of it into the thread.
@@ -53,6 +74,7 @@ class ThreadController extends _$ThreadController {
         return switch (failure) {
           NetworkError() || Timeout() => 'Not sent - check your connection.',
           RateLimited() => 'Slow down a moment, then send again.',
+          Validation() => 'Too long - messages can be at most $chatMessageMaxLength characters.',
           Forbidden() || Unauthorized() => 'You can no longer post in this conversation.',
           BusinessError() => 'This conversation is closed.',
           _ => 'That message could not be sent.',

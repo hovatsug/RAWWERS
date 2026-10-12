@@ -67,9 +67,13 @@ class _ThreadCard extends StatelessWidget {
                     style: theme.textTheme.titleSmall,
                   ),
                   const SizedBox(height: RSpace.s4),
+                  // The latest line, as in any message list; the start date
+                  // only until someone has said something.
                   Text(
-                    'Started ${_relative(thread.createdAt)}',
+                    thread.lastMessagePreview ?? 'Started ${_relative(thread.createdAt)}',
                     style: theme.textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -77,6 +81,10 @@ class _ThreadCard extends StatelessWidget {
             if (status != null) ...[
               const SizedBox(width: RSpace.s8),
               RStatusChip(label: status.$1, kind: status.$2),
+            ],
+            if (thread.unreadCount > 0) ...[
+              const SizedBox(width: RSpace.s8),
+              Semantics(label: '${thread.unreadCount} unread', child: Badge(label: Text('${thread.unreadCount}'))),
             ],
           ],
         ),

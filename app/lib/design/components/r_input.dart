@@ -13,6 +13,7 @@ class RInput extends StatelessWidget {
     this.textInputAction,
     this.onSubmitted,
     this.maxLines = 1,
+    this.maxLength,
     super.key,
   });
 
@@ -43,6 +44,11 @@ class RInput extends StatelessWidget {
   /// existing single-line field is unaffected.
   final int maxLines;
 
+  /// Typing stops at this many characters. The count is shown only in the
+  /// last tenth, where it is news; a permanent "12/2000" under a chat box is
+  /// noise.
+  final int? maxLength;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
@@ -53,6 +59,11 @@ class RInput extends StatelessWidget {
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
       maxLines: maxLines,
+      maxLength: maxLength,
+      buildCounter: maxLength == null
+          ? null
+          : (context, {required currentLength, required isFocused, required maxLength}) =>
+              maxLength != null && currentLength >= maxLength * 0.9 ? Text('$currentLength/$maxLength') : null,
       style: TextStyle(
         fontFeatures: tabularFigures ? RType.tabularFigures : null,
       ),

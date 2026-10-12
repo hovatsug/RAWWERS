@@ -22,6 +22,7 @@ import 'package:rawwers/features/client/booking_request/booking_request_sheet.da
 import 'package:rawwers/features/client/discover/widgets/location_prompt.dart';
 import 'package:rawwers/features/client/pro_profile/availability_calendar.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
+import 'package:rawwers/features/client/pro_profile/message_button.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
 
 /// One photographer, in enough depth to decide whether to book them.
@@ -133,6 +134,8 @@ class _ProfileState extends State<_Profile> {
                 ],
                 const SizedBox(height: RSpace.s8),
                 _Meta(profile: profile),
+                const SizedBox(height: RSpace.s16),
+                MessageButton(proUserId: profile.proUserId, proName: name),
                 if (about != null && about.isNotEmpty) ...[
                   const SizedBox(height: RSpace.s16),
                   Text(about, style: theme.textTheme.bodyMedium),

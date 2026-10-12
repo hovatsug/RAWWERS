@@ -20,13 +20,16 @@ import 'package:rawwers/features/pro/profile/pro_profile_edit_screen.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
 import 'package:rawwers/features/pro/pricing/pricing_screen.dart';
 import 'package:rawwers/features/pro/pro_shell.dart';
+import 'package:rawwers/features/pro/messages/pro_messages_screen.dart';
 import 'package:rawwers/features/pro/requests/requests_screen.dart';
 import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
 import 'package:rawwers/features/pro/dashboard/dashboard_screen.dart';
 import 'package:rawwers/features/pro/upgrade/upgrade_to_pro_screen.dart';
 import 'package:rawwers/features/pro/wallet/invoice_screen.dart';
 import 'package:rawwers/features/pro/wallet/wallet_screen.dart';
+import 'package:rawwers/features/client/messages/thread_screen.dart';
 import 'package:rawwers/features/shared/auth/forgot_password_screen.dart';
+import 'package:rawwers/features/shared/chat/chat_side.dart';
 import 'package:rawwers/features/shared/auth/login_screen.dart';
 import 'package:rawwers/features/shared/auth/register_screen.dart';
 import 'package:rawwers/features/shared/auth/reset_password_screen.dart';
@@ -71,6 +74,8 @@ abstract final class ProRoute {
 
   static const dashboard = '/dashboard';
   static const requests = '/requests';
+  static const messages = '/messages';
+  static String thread(String threadId) => '$messages/$threadId';
   static const gigs = '/gigs';
   static const wallet = '/wallet';
 
@@ -210,6 +215,21 @@ GoRouter proRouter(Ref ref) {
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: ProRoute.requests, builder: (context, state) => const RequestsScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: ProRoute.messages,
+                builder: (context, state) => const ProMessagesScreen(threadPath: ProRoute.thread),
+                routes: [
+                  GoRoute(
+                    path: ':threadId',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) => ThreadScreen(threadId: state.pathParameters['threadId']!, side: ChatSide.pro),
+                  ),
+                ],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [

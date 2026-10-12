@@ -13,6 +13,7 @@ import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
+import 'package:rawwers/features/client/pro_profile/message_button.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
 
 
@@ -116,6 +117,17 @@ void main() {
     expect(urls, contains('https://media.example/cover.jpg'));
     expect(urls, contains('https://media.example/1.jpg'));
     expect(urls, contains('https://media.example/2.jpg'));
+  });
+
+  testWidgets('a client can message the photographer before booking', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+
+    // Asking a question first is how most people decide; the button is there
+    // whether or not the photographer's assistant is switched on.
+    expect(find.byType(MessageButton), findsOneWidget);
+    expect(find.textContaining('Message '), findsOneWidget);
   });
 
   testWidgets('a video with no poster frame still occupies its grid cell', (tester) async {

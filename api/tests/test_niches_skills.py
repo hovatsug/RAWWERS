@@ -10,6 +10,7 @@ from app.models.niche import CertificationRecord, Niche, ProNicheSkill, SkillTie
 from app.models.review import Review, ReviewStatus
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.niche_skills import recompute_pro_niche_skill
+from tests.live_pro import make_live
 
 
 def _ahead(weekday: int, hour: int) -> datetime:
@@ -145,6 +146,7 @@ def test_accept_booking_sets_gig_niche_snapshot(client, db_session, monkeypatch)
     )
     monkeypatch.setattr("app.services.payment_intents.stripe.PaymentIntent.retrieve", lambda pi_id: DummyStripePI(pi_id, "sec_accept_1"))
 
+    make_live(db_session, pro_id)
     accept = client.post(f"/v1/booking-requests/{br_id}/accept", headers={"X-User-Id": pro_id})
     assert accept.status_code == 200
     gig_id = accept.json()["gig_id"]

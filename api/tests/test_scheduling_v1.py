@@ -16,6 +16,7 @@ from app.models.booking import (
 from app.models.niche import Niche
 from app.models.gig import Gig
 from app.models.communication import FollowupJob
+from tests.live_pro import make_live
 
 
 def _seed_user(db_session, user_id: str, role: UserRoleType):
@@ -41,6 +42,7 @@ def _seed_pro_and_booking(db_session, pro_id: str, client_id: str):
     profile.is_accepting_bookings = True
     profile.completeness_score = 90
     db_session.add(profile)
+    make_live(db_session, pro_uuid)
 
     niche = db_session.query(Niche).filter_by(slug="portraits").first()
     pkg = ProPackage(

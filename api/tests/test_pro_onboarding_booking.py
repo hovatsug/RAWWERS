@@ -7,6 +7,7 @@ from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserR
 from app.models.booking import BookingRequest, BookingRequestStatus, ProPackage
 from app.models.gig import Gig, StripePayment
 from app.models.niche import Niche
+from tests.live_pro import make_live
 
 def _ahead(weekday: int, hour: int) -> datetime:
     """That weekday and hour a few weeks from now, in UTC.
@@ -183,6 +184,7 @@ def test_accept_creates_gig_and_payment_once(client, db_session, monkeypatch):
     monkeypatch.setattr("app.services.payment_intents.stripe.PaymentIntent.create", lambda **kwargs: DummyStripePI("pi_accept_1", "sec_accept_1"))
     monkeypatch.setattr("app.services.payment_intents.stripe.PaymentIntent.retrieve", lambda pi_id: DummyStripePI(pi_id, "sec_accept_1"))
 
+    make_live(db_session, pro_id)
     first = client.post(f"/v1/booking-requests/{br_id}/accept", headers={"X-User-Id": pro_id})
     assert first.status_code == 200
     second = client.post(f"/v1/booking-requests/{br_id}/accept", headers={"X-User-Id": pro_id})

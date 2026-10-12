@@ -22,6 +22,16 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 - [ ] **Run the integration tests against a live backend.** With the release candidate's `api/` up (`docker compose up`), run `flutter test --tags=integration` in `app/` and confirm they *ran* - the summary must show them passing, not skipped. They skip whenever no backend answers `localhost:8000/healthz`, which is every ordinary `flutter test` and CI, so nothing else runs them: the real transport stack and the register-login-upgrade-logout flow are proven only here.
 
+- [ ] **Gigs made from requests that could not be booked.** Until confirm-slot checked the request it was answering, a photographer could make an unpaid gig from a request that had expired, that they had declined, or that the client had withdrawn. Count them:
+
+      SELECT r.status AS request_status, g.status AS gig_status, count(*)
+      FROM gig g
+      JOIN booking_request r ON r.id::text = g.metadata->>'booking_request_id'
+      WHERE r.status IN ('declined', 'cancelled', 'expired')
+      GROUP BY r.status, g.status;
+
+  Any row is a booking the client did not agree to, or no longer wanted. **Nothing deletes these automatically** - a paid one involves money and a person - so each is a decision: cancel and refund, or contact the client. Dev, 2026-10-12: none.
+
 ## 2. Deploying
 
 - [ ] **Build `api` and `worker` together** - `docker compose build api worker`. They are separate images from one Dockerfile; building only `api` leaves webhooks, outbox effects and photo processing on the old code with nothing failing. See [Rebuilding `api` does not rebuild `worker`](BACKEND_GAPS.md#rebuilding-api-does-not-rebuild-worker).

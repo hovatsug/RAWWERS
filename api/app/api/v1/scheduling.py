@@ -53,6 +53,7 @@ from app.schemas.scheduling import (
 )
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
+from app.services.booking_answer import ensure_request_can_be_booked
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.notifications import enqueue_notification
 from app.services.commission import split_for_pro, vat_stamp_for
@@ -299,6 +300,11 @@ def confirm_booking_slot(
         raise APIError(code="not_found", message="Booking request not found", status_code=404)
     if booking.pro_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only pro can confirm slot", status_code=403)
+    # Confirming a slot books the request, so it asks what accept asks: it
+    # used to ask nothing, and made unpaid bookings out of requests the
+    # client had withdrawn, the photographer had declined, or that had
+    # expired.
+    ensure_request_can_be_booked(db, booking)
 
     # The booking's own gig, if accepting has already made one, is the
     # booking being placed - not a clash with it.

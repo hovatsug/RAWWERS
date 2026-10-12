@@ -73,6 +73,7 @@ from app.services.bookable_time import check_bookable, check_offered, request_pr
 from app.services.package_schedule import apply_schedule, current_blocks, validate_schedule
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
+from app.services.booking_answer import ensure_request_can_be_booked
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
@@ -1126,10 +1127,10 @@ def accept_booking_request(
     if request.pro_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only pro can accept", status_code=403)
 
-    profile = _ensure_pro_profile(db, request.pro_user_id)
-    is_dev_override = settings.app_env.lower() in {"dev", "development"} and settings.allow_unverified_pro
-    if profile.kyc_status != KYCStatus.approved and not is_dev_override:
-        raise APIError(code="kyc_required", message="Pro KYC must be approved", status_code=409)
+    _ensure_pro_profile(db, request.pro_user_id)
+    # The same checks confirm-slot makes: KYC, a live profile, and a request
+    # still pending inside its deadline or already accepted.
+    ensure_request_can_be_booked(db, request)
 
     existing_gig = _find_gig_by_booking_request(db, request.id)
 
@@ -1146,9 +1147,8 @@ def accept_booking_request(
         )
 
     if request.status != BookingRequestStatus.pending:
+        # Accepted, yet no gig: nothing here can repair that safely.
         raise APIError(code="invalid_state", message="Only pending requests can be accepted", status_code=409)
-    if request.expires_at < datetime.now(timezone.utc):
-        raise APIError(code="invalid_state", message="Request has expired", status_code=409)
 
     # Accepting is what creates the gig and writes scheduled_start/end, so
     # this is the last point before a photographer is committed to a date -

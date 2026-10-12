@@ -20,6 +20,7 @@ from app.models.booking import (
 )
 from app.models.niche import Niche
 from app.models.repair import GearCategory, GearItem, RepairTicket
+from tests.live_pro import make_live
 
 
 def _ensure_user(db_session, user_id: str, role: UserRoleType) -> uuid.UUID:
@@ -140,6 +141,7 @@ def test_blackout_blocks_accepting_a_booking_inside_it(client, db_session):
     db_session.add(booking)
     db_session.commit()
 
+    make_live(db_session, pro_id)
     resp = client.post(f"/v1/booking-requests/{booking.id}/accept", headers={"X-User-Id": pro_id})
     assert resp.status_code == 409, resp.text
     assert "blocked off" in resp.json()["error"]["message"]
@@ -175,6 +177,7 @@ def test_scheduling_exception_blocks_accepting_a_booking_inside_it(client, db_se
     db_session.add(booking)
     db_session.commit()
 
+    make_live(db_session, pro_id)
     resp = client.post(f"/v1/booking-requests/{booking.id}/accept", headers={"X-User-Id": pro_id})
     assert resp.status_code == 409, resp.text
 
@@ -217,6 +220,7 @@ def test_a_request_that_clips_blocked_time_is_refused(client, db_session):
     db_session.add(booking)
     db_session.commit()
 
+    make_live(db_session, pro_id)
     resp = client.post(f"/v1/booking-requests/{booking.id}/accept", headers={"X-User-Id": pro_id})
     assert resp.status_code == 409, resp.text
     assert "blocked off" in resp.json()["error"]["message"]

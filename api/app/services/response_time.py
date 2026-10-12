@@ -8,9 +8,12 @@ a client needs to know. This one:
   - takes the photographer's last RESPONSE_SAMPLE_SIZE *resolved* requests:
     accepted, declined, or expired unanswered. A client withdrawing a request
     before any reply is not the photographer's response, and is left out.
-  - counts an expired request as the whole wait the client sat through (its
-    expiry window), so ignoring requests reads as slow, never as missing.
-  - uses the median, so one outlier does not decide the label.
+  - counts an expired request as just over its window (one minute past it),
+    so ignoring a request reads as slower than any answer inside the window,
+    never as missing - and never as "within a day" when the window is a day.
+  - uses the median, so one outlier does not decide the label; an even
+    sample takes the higher of the two middle values, so a history split
+    between answering and ignoring leans slow rather than fast.
   - says nothing until MIN_RESOLVED requests have resolved - expired ones
     included, so ignoring everyone cannot hide behind "no history yet".
 
@@ -31,6 +34,9 @@ from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequ
 
 RESPONSE_SAMPLE_SIZE = 10
 MIN_RESOLVED = 3
+#: How far past its window an expired request counts. Any amount over makes
+#: it slower than every answer that arrived in time.
+EXPIRED_PAST_WINDOW_MINUTES = 1
 
 _RESOLVED = (BookingRequestStatus.accepted, BookingRequestStatus.declined, BookingRequestStatus.expired)
 
@@ -64,13 +70,13 @@ def response_median_minutes(db: Session, pro_user_id: uuid.UUID) -> tuple[int | 
     minutes: list[float] = []
     for to_status, resolved_at, asked_at, expires_at in rows:
         if to_status == BookingRequestStatus.expired:
-            # Never answered: the client waited the whole window.
-            minutes.append(max(0.0, (expires_at - asked_at).total_seconds() / 60))
+            # Never answered: the client waited the whole window, and more.
+            minutes.append(max(0.0, (expires_at - asked_at).total_seconds() / 60) + EXPIRED_PAST_WINDOW_MINUTES)
         else:
             minutes.append(max(0.0, (resolved_at - asked_at).total_seconds() / 60))
     if len(minutes) < MIN_RESOLVED:
         return None, len(minutes)
-    return int(statistics.median(minutes)), len(minutes)
+    return int(statistics.median_high(minutes)), len(minutes)
 
 
 def bucket_for(median_minutes: int | None) -> ResponseBucket:

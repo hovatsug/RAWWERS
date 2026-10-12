@@ -3,8 +3,9 @@
 `avg_response_minutes` was the mean time to accept or decline, and it left
 out requests that expired unanswered: ignoring most requests and answering a
 few quickly read as fast. It is replaced by the median over the last 10
-resolved requests, with an expired request counted as its whole window, and
-the bucket clients are shown (see app/services/response_time.py).
+resolved requests, with an expired request counted as just over its window
+and an even sample taking the higher middle value, and the bucket clients are
+shown (see app/services/response_time.py).
 
 Existing rows are backfilled here with the same rule, in SQL, so a label is
 right from the first request after deploy rather than after each
@@ -27,20 +28,28 @@ depends_on = None
 BACKFILL_SQL = """
 WITH resolved AS (
     SELECT r.pro_user_id,
-           GREATEST(0, EXTRACT(EPOCH FROM (
-               CASE WHEN t.to_status = 'expired' THEN r.expires_at ELSE t.created_at END - r.created_at
-           )) / 60) AS minutes,
+           CASE WHEN t.to_status = 'expired'
+                -- Never answered: the whole window, and one minute more.
+                THEN GREATEST(0, EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) / 60) + 1
+                ELSE GREATEST(0, EXTRACT(EPOCH FROM (t.created_at - r.created_at)) / 60)
+           END AS minutes,
            ROW_NUMBER() OVER (PARTITION BY r.pro_user_id ORDER BY t.created_at DESC) AS recency
     FROM booking_request_transition t
     JOIN booking_request r ON r.id = t.booking_request_id
     WHERE t.from_status = 'pending' AND t.to_status IN ('accepted', 'declined', 'expired')
 ),
-medians AS (
-    SELECT pro_user_id, FLOOR(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY minutes))::int AS median
+ranked AS (
+    SELECT pro_user_id, minutes,
+           ROW_NUMBER() OVER (PARTITION BY pro_user_id ORDER BY minutes) AS position,
+           COUNT(*) OVER (PARTITION BY pro_user_id) AS sample
     FROM resolved
     WHERE recency <= 10
-    GROUP BY pro_user_id
-    HAVING COUNT(*) >= 3
+),
+medians AS (
+    -- The middle value; of an even sample, the higher of the two middle ones.
+    SELECT pro_user_id, FLOOR(minutes)::int AS median
+    FROM ranked
+    WHERE sample >= 3 AND position = sample / 2 + 1
 )
 UPDATE pro_public_index i
 SET response_median_minutes = m.median,

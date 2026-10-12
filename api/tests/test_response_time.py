@@ -99,7 +99,8 @@ def test_two_resolved_requests_are_not_a_history_yet(db_session):
 
 def test_ignored_requests_count_as_slow_not_as_missing(db_session):
     """Two quick answers and three ignored requests. The old mean read only the
-    two answers: 'within an hour'."""
+    two answers: 'within an hour'. An expiry counts as just past its window,
+    so this is slower than a day - and clients are shown nothing."""
     pro, package = _pro_with_package(db_session)
     for _ in range(2):
         _request(db_session, pro, package, answered_after=timedelta(minutes=10))
@@ -108,8 +109,9 @@ def test_ignored_requests_count_as_slow_not_as_missing(db_session):
 
     index = _index(db_session, pro)
 
-    assert index.response_median_minutes == 24 * 60
-    assert index.response_bucket == ResponseBucket.within_day
+    assert index.response_median_minutes == 24 * 60 + 1
+    assert index.response_bucket == ResponseBucket.over_day
+    assert client_label(index.response_bucket) is None
 
 
 def test_a_client_withdrawing_before_any_reply_is_not_the_photographers_response(db_session):
@@ -182,8 +184,9 @@ def test_an_expiry_refreshes_the_label_and_invalidates_cached_cards(db_session):
     db_session.commit()
 
     db_session.expire_all()
-    # Six resolved: three in 5 minutes, three expired after 24h. Median 12h.
-    assert db_session.get(ProPublicIndex, pro).response_bucket == ResponseBucket.within_day
+    # Six resolved: three in 5 minutes, three expired. An even sample takes
+    # the higher middle value - an expiry - so the label goes.
+    assert db_session.get(ProPublicIndex, pro).response_bucket == ResponseBucket.over_day
     assert get_public_index_version() > version
 
 
@@ -264,10 +267,14 @@ def test_the_migration_backfill_agrees_with_the_python_rule_on_every_edge(db_ses
         "old quick, recent slow": [dict(answered_after=m(3), ago=timedelta(days=40))] * 5
         + [dict(answered_after=None, outcome=S.expired, ago=timedelta(days=2))] * 10,
         # Ten recent split evenly, so the eleventh-newest - if it were read -
-        # would move the median from 721 minutes to 1440.
-        "the eleventh does not count": [dict(answered_after=None, outcome=S.expired, ago=timedelta(days=40))]
+        # would move the median from 100 minutes to 3.
+        "the eleventh does not count": [dict(answered_after=m(3), ago=timedelta(days=40))]
         + [dict(answered_after=m(3), ago=timedelta(days=2))] * 5
-        + [dict(answered_after=None, outcome=S.expired, ago=timedelta(days=2))] * 5,
+        + [dict(answered_after=m(100), ago=timedelta(days=2))] * 5,
+        "median exactly on an expired request": [dict(answered_after=m(30))] * 2
+        + [dict(answered_after=None, outcome=S.expired)] * 3,
+        # The lower middle value would be a reply in 20 minutes.
+        "5 replied, 5 expired": [dict(answered_after=m(20))] * 5 + [dict(answered_after=None, outcome=S.expired)] * 5,
         "cancellations between": [dict(answered_after=m(20), outcome=S.cancelled)] * 4 + [dict(answered_after=m(40))] * 3,
         "answered before it was asked": [dict(answered_after=m(-5))] * 3,
         "none at all": [],
@@ -300,8 +307,15 @@ def test_the_migration_backfill_agrees_with_the_python_rule_on_every_edge(db_ses
     # The fixtures do reach the edges they are named for.
     assert bucket("exactly an hour") == "within_hour" and bucket("a minute over an hour") == "few_hours"
     assert bucket("exactly a day") == "within_day" and bucket("a minute over a day") == "over_day"
-    assert db_session.get(ProPublicIndex, pros["even count, median between minutes"]).response_median_minutes == 10
-    assert bucket("even count, fractional midpoint") == "within_hour"  # (60 + 61) / 2 = 60.5, read as 60 by both
-    assert bucket("old slow, recent quick") == "within_hour" and bucket("old quick, recent slow") == "within_day"
+    median = lambda name: db_session.get(ProPublicIndex, pros[name]).response_median_minutes  # noqa: E731
+    # An even sample takes the higher middle value.
+    assert median("even count, median between minutes") == 11
+    assert bucket("even count, fractional midpoint") == "few_hours"  # 1, 60, 61, 500: the higher middle is 61
+    assert median("5 replied, 5 expired") == 24 * 60 + 1 and bucket("5 replied, 5 expired") == "over_day"
+    # An expiry is just past its window, however late the sweep ran.
+    assert median("median exactly on an expired request") == 24 * 60 + 1
+    assert median("swept late, still its window") == 24 * 60 + 1
+    assert median("expired on a 48h window") == 48 * 60 + 1
+    assert bucket("old slow, recent quick") == "within_hour" and bucket("old quick, recent slow") == "over_day"
     assert bucket("two only") == bucket("none at all") == "no_history"
-    assert db_session.get(ProPublicIndex, pros["the eleventh does not count"]).response_median_minutes == 721
+    assert median("the eleventh does not count") == 100

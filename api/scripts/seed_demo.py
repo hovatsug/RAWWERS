@@ -6,7 +6,9 @@ feature is visible in the app rather than present only in tests:
 
   response_time   seven Lisbon photographers whose request history puts them
                   in every label state (this step)
-  chat            seeded conversations with unread messages (next step)
+  chat            conversations with Alex Lens (pro1@rawwers.dev): two with
+                  unread messages, one with the assistant's labelled replies,
+                  one already read
   presence /      a refresher that re-heartbeats a few seeded photographers
   available now   every minute - freshness is never relaxed for the demo
 
@@ -351,7 +353,169 @@ def seed_response_time(db, *, dry_run: bool) -> list[str]:
     return report
 
 
-STEPS = {"response_time": seed_response_time}
+# --- chat --------------------------------------------------------------------
+
+CHAT_PRO_EMAIL = "pro1@rawwers.dev"  # Alex Lens - the login the demo is seen from
+
+# Seed-only clients with real-looking names: the photographer's inbox shows
+# who wrote, and "Seed requester 3" would make the demo read as a test.
+CHAT_CLIENTS = [
+    SeedUser(
+        user_id=uuid.UUID(f"00000000-0000-0000-0000-0000000c{n:04d}"),
+        email=f"seed.chat{n}@rawwers.dev",
+        password="Passw0rd!",
+        display_name=name,
+        roles=(UserRoleType.client,),
+    )
+    for n, name in enumerate(("Marta Ribeiro", "Joao Pereira", "Sofia Almeida"), start=1)
+]
+
+
+@dataclass(frozen=True)
+class Line:
+    by: str  # "client" or "pro"
+    text: str
+    hours_ago: float
+
+
+# Per client: the conversation, oldest first, and whether the photographer
+# has read it. The assistant's replies are not scripted - they come from the
+# real handler, as they would in the app.
+CONVERSATIONS: dict[str, tuple[list[Line], bool]] = {
+    "seed.chat1@rawwers.dev": (
+        [
+            Line("client", "Hi Alex! Are you free for a family shoot on a Saturday morning in May?", 5),
+            Line("client", "We're four - two kids, 3 and 6. Somewhere outdoors if possible.", 4.5),
+        ],
+        False,
+    ),
+    "seed.chat2@rawwers.dev": (
+        [Line("client", "Do you do LinkedIn headshots? It would be for five people at our office.", 2)],
+        False,
+    ),
+    "seed.chat3@rawwers.dev": (
+        [
+            Line("client", "Hello! How long does a portrait session usually take?", 30),
+            Line("pro", "Hi Sofia - about an hour, and you get the proofs within three days.", 29),
+            Line("client", "Perfect, thank you!", 28.5),
+        ],
+        True,
+    ),
+}
+
+
+def _run_queued_assistant_replies(db, thread_id: uuid.UUID) -> None:
+    """What the worker would do with this conversation's queued assistant
+    replies, done now so the demo does not change the next time a worker
+    runs."""
+    from app.models.outbox import OutboxEvent, OutboxEventStatus
+    from app.services.outbox import mark_outbox_delivered
+    from app.tasks.outbox_tasks import _dispatch_event
+
+    events = db.execute(
+        select(OutboxEvent).where(
+            OutboxEvent.topic == "ai.reply.generate",
+            OutboxEvent.status == OutboxEventStatus.pending,
+            OutboxEvent.payload["thread_id"].astext == str(thread_id),
+        )
+    ).scalars().all()
+    for event in events:
+        _dispatch_event(db, event.topic, event.payload)
+        mark_outbox_delivered(db, event)
+    db.commit()
+
+
+def _delete_thread(db, thread_id: uuid.UUID) -> None:
+    from sqlalchemy import delete
+
+    from app.models.chat import AIInteractionLog, ChatHandoff, ChatMessage, ChatThread, LeadProfile
+
+    for model in (ChatMessage, ChatHandoff, LeadProfile, AIInteractionLog):
+        db.execute(delete(model).where(model.thread_id == thread_id))
+    db.execute(delete(ChatThread).where(ChatThread.id == thread_id))
+    db.commit()
+
+
+def _people_lines(db, thread_id: uuid.UUID) -> list[tuple[str, str]]:
+    from app.models.chat import ChatMessage, ChatSenderType
+
+    rows = db.execute(
+        select(ChatMessage.sender_type, ChatMessage.content)
+        .where(ChatMessage.thread_id == thread_id, ChatMessage.sender_type.in_([ChatSenderType.client, ChatSenderType.pro]))
+        .order_by(ChatMessage.created_at)
+    ).all()
+    return [(sender.value, content) for sender, content in rows]
+
+
+def seed_chat(db, *, dry_run: bool) -> list[str]:
+    from app.models.chat import ChatMessage, ChatSenderType, ChatThread
+
+    pro = db.execute(select(UserAccount).where(UserAccount.email == CHAT_PRO_EMAIL)).scalar_one_or_none()
+    if pro is None:
+        return [f"{CHAT_PRO_EMAIL}: missing - run seed_dev.py first"]
+    if dry_run:
+        return [f"{CHAT_PRO_EMAIL}: would hold {len(CONVERSATIONS)} conversations"]
+    for person in CHAT_CLIENTS:
+        _upsert_user(db, person)
+    db.commit()
+    api = _api()
+    keys_before = _limiter_keys([pro.user_id])
+    by_email = {p.email: p for p in CHAT_CLIENTS}
+    now = datetime.now(timezone.utc)
+    report = []
+    for email, (script, read) in CONVERSATIONS.items():
+        person = by_email[email]
+        thread = db.execute(
+            select(ChatThread).where(ChatThread.pro_user_id == pro.user_id, ChatThread.client_user_id == person.user_id)
+        ).scalar_one_or_none()
+        wanted = [(line.by, line.text) for line in script]
+        if thread is not None and _people_lines(db, thread.id) != wanted:
+            # Not the scripted conversation: start it again rather than patch
+            # a history message by message.
+            _delete_thread(db, thread.id)
+            thread = None
+        if thread is None:
+            resp = api.post("/v1/chat/threads", headers=_headers(db, person.user_id), json={"pro_user_id": str(pro.user_id)})
+            if resp.status_code != 200:
+                raise RuntimeError(f"{email}: opening the conversation refused ({resp.status_code}): {resp.text}")
+            thread_id = uuid.UUID(resp.json()["id"])
+            _run_queued_assistant_replies(db, thread_id)
+            for line in script:
+                user_id, path = (
+                    (person.user_id, f"/v1/chat/threads/{thread_id}/messages")
+                    if line.by == "client"
+                    else (pro.user_id, f"/v1/pro/chat/threads/{thread_id}/messages")
+                )
+                resp = api.post(path, headers=_headers(db, user_id), json={"content": line.text})
+                if resp.status_code != 200:
+                    raise RuntimeError(f"{email}: message refused ({resp.status_code}): {resp.text}")
+                _run_queued_assistant_replies(db, thread_id)
+            db.expire_all()
+            thread = db.get(ChatThread, thread_id)
+        # Into the past, keeping each message in its turn: a scripted line at
+        # its time, anything between (the assistant) just after the line
+        # before it.
+        messages = db.execute(select(ChatMessage).where(ChatMessage.thread_id == thread.id).order_by(ChatMessage.created_at)).scalars().all()
+        lines = iter(script)
+        at = now - timedelta(hours=script[0].hours_ago, minutes=1)
+        for message in messages:
+            if message.sender_type in (ChatSenderType.client, ChatSenderType.pro):
+                at = now - timedelta(hours=next(lines).hours_ago)
+            else:
+                at = at + timedelta(seconds=40)
+            message.created_at = at
+        thread.created_at = now - timedelta(hours=script[0].hours_ago, minutes=2)
+        thread.pro_last_read_at = (at + timedelta(minutes=5)) if read else None
+        db.commit()
+        unread = sum(1 for m in messages if m.sender_type == ChatSenderType.client and (thread.pro_last_read_at is None or m.created_at > thread.pro_last_read_at))
+        assistant = sum(1 for m in messages if m.sender_type == ChatSenderType.ai)
+        report.append(f"{person.display_name}: {len(messages)} messages, {assistant} from the assistant, {unread} unread for Alex")
+    created = (_limiter_keys([p.user_id for p in CHAT_CLIENTS]) | _limiter_keys([pro.user_id])) - keys_before
+    report.append(f"rate-limiter keys created by this run, removed: {_clear_limiter_keys(created)}")
+    return report
+
+
+STEPS = {"response_time": seed_response_time, "chat": seed_chat}
 
 
 def main() -> int:

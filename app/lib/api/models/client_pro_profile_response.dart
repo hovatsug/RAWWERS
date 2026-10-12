@@ -100,6 +100,17 @@
 ///             "type": "integer",
 ///             "title": "Review Count"
 ///         },
+///         "response_label": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Response Label"
+///         },
 ///         "portfolio_photo_count": {
 ///             "type": "integer",
 ///             "title": "Portfolio Photo Count"
@@ -203,6 +214,10 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     @JsonKey(name: ClientProProfileResponse.reviewCountKey_)
     required int reviewCount,
 
+    /// responseLabel
+    @JsonKey(name: ClientProProfileResponse.responseLabelKey_)
+    String? responseLabel,
+
     /// portfolioPhotoCount
     @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)
     required int portfolioPhotoCount,
@@ -257,6 +272,8 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
   static const String avgRatingKey_ = r'avg_rating';
 
   static const String reviewCountKey_ = r'review_count';
+
+  static const String responseLabelKey_ = r'response_label';
 
   static const String portfolioPhotoCountKey_ = r'portfolio_photo_count';
 

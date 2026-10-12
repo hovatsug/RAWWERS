@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.admin import Dispute, KYCStatus, ProProfile
-from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProPackage
+from app.models.booking import ProPackage
 from app.models.discovery import ProPublicIndex
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
@@ -20,6 +20,7 @@ from app.services.gamification import queue_evaluate_user_milestones
 from app.services.cache import bump_public_index_version
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import get_niche_tier_map_for_index, get_verified_niches_for_index
+from app.services.response_time import bucket_for, response_median_minutes
 from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.search_indexing import enqueue_pro_index_upsert
@@ -119,25 +120,10 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
         .where(Gig.pro_user_id == pro_user_id)
     ).scalar_one()
 
-    decision_transitions = db.execute(
-        select(BookingRequestTransition.created_at, BookingRequest.created_at)
-        .join(BookingRequest, BookingRequest.id == BookingRequestTransition.booking_request_id)
-        .where(
-            BookingRequest.pro_user_id == pro_user_id,
-            BookingRequestTransition.from_status == BookingRequestStatus.pending,
-            BookingRequestTransition.to_status.in_([BookingRequestStatus.accepted, BookingRequestStatus.declined]),
-        )
-    ).all()
-
-    avg_response_minutes = None
-    if decision_transitions:
-        deltas = []
-        for transition_time, request_time in decision_transitions:
-            delta = int((transition_time - request_time).total_seconds() // 60)
-            if delta >= 0:
-                deltas.append(delta)
-        if deltas:
-            avg_response_minutes = int(sum(deltas) / len(deltas))
+    # A label for clients, never an input to ranking: ordering photographers
+    # by how fast they reply would bury anyone whose app was closed when a
+    # request came in - and until alerts exist, nothing tells them it did.
+    response_median, _ = response_median_minutes(db, pro_user_id)
 
     completeness = profile.completeness_score if profile else 0
     reputation = db.get(ProReputation, pro_user_id)
@@ -149,7 +135,6 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
         gigs_completed=gigs_completed,
         gigs_cancelled=gigs_cancelled,
         disputes_count=disputes_count,
-        avg_response_minutes=avg_response_minutes,
         avg_rating=float(avg_rating),
         review_count=review_count,
     )
@@ -175,7 +160,8 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     index.gigs_completed = gigs_completed
     index.gigs_cancelled = gigs_cancelled
     index.disputes_count = disputes_count
-    index.avg_response_minutes = avg_response_minutes
+    index.response_median_minutes = response_median
+    index.response_bucket = bucket_for(response_median).value
     index.avg_rating = avg_rating
     index.review_count = review_count
     top_niches = get_top_niches_for_index(db, pro_user_id, limit=3)
@@ -214,7 +200,6 @@ def _compute_ranking_score(
     gigs_completed: int,
     gigs_cancelled: int,
     disputes_count: int,
-    avg_response_minutes: int | None,
     avg_rating: float = 0.0,
     review_count: int = 0,
 ) -> Decimal:
@@ -224,12 +209,6 @@ def _compute_ranking_score(
     score += gigs_completed * 1.0
     score -= gigs_cancelled * 2.0
     score -= disputes_count * 5.0
-
-    if avg_response_minutes is not None:
-        if avg_response_minutes < 60:
-            score += 10.0
-        elif avg_response_minutes < 180:
-            score += 5.0
 
     # Keep reputation impact modest for new pros and scale confidence gradually until 5 reviews.
     if review_count > 0:

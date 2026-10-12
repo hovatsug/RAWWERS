@@ -105,10 +105,9 @@ def test_ranking_score_deterministic():
         gigs_completed=5,
         gigs_cancelled=1,
         disputes_count=0,
-        avg_response_minutes=50,
     )
     # deterministic numeric(10,4) value
-    assert str(score) == "176.9790"
+    assert str(score) == "166.9790"
 
 
 def test_reindex_updates_price_and_portfolio_counts(db_session):

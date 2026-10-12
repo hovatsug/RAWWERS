@@ -444,7 +444,7 @@ class _Meta extends StatelessWidget {
     final theme = Theme.of(context);
     final place = [profile.city, profile.country].whereType<String>().where((part) => part.isNotEmpty).join(', ');
 
-    return Row(
+    final meta = Row(
       children: [
         if (profile.reviewCount > 0) ...[
           const Icon(Icons.star, size: 16),
@@ -463,6 +463,17 @@ class _Meta extends StatelessWidget {
           const SizedBox(width: RSpace.s12),
           Flexible(child: Text(place, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis)),
         ],
+      ],
+    );
+    // Shown exactly as the server words it; null means say nothing.
+    final response = profile.responseLabel;
+    if (response == null) return meta;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        meta,
+        const SizedBox(height: RSpace.s4),
+        Text(response, style: theme.textTheme.bodySmall),
       ],
     );
   }

@@ -1061,6 +1061,14 @@ Caught locally exactly this way: three photographers had been recomputed and the
 
 The general shape is the one already recorded for the discovery cache: a derived value that does not update itself when the thing deriving it changes. The code change and the data migration are separate events, and nothing in the system makes them happen together.
 
+## DEPLOY REQUIREMENT: recompute every `ranking_score` after the response-time change
+
+The response bonus is gone from `ranking_score` (+10 for an average reply under an hour, +5 under three). How fast someone replies is now a label on cards and profiles, never an input to ordering - see `app/services/response_time.py`. Migration `20261007_0056` backfills the new `response_bucket` and `response_median_minutes` in SQL, so the **labels** are right from the first request after deploy. It does **not** touch `ranking_score`: every stored score keeps its old bonus until that photographer's row is next recomputed, and that happens only when something about them changes.
+
+**What it looks like if skipped:** photographers who once replied quickly stay up to 10 points ahead of identical ones indefinitely, and a later recompute - triggered by an unrelated edit, a review, a request resolving - drops them several places with no visible cause. On dev data that is one photographer, who falls from 10th to 14th in Lisbon's ranking-ordered row and so out of its top 12. No niche row changes order.
+
+**What closes it:** the same bulk recompute as the `min_package_price` entry above - `POST /v1/admin/index/pro/rebuild-all` (queues `rebuild_all_pro_indexes`), or `recompute_pro_public_index` over every row - run as part of this deploy. One run covers both entries. It also bumps the public index version, so cached home and discover responses stop serving the old order.
+
 ## Eleven test failures that predate the price-cap work
 
 Recorded so they are not mistaken for fallout from the cap enforcement, the

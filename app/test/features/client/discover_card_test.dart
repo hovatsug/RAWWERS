@@ -12,7 +12,7 @@ import 'package:rawwers/core/images/disk_cached_image.dart';
 /// the widget tree rather than pixels: that the server's `cover_url` becomes
 /// the image's URL, and that its absence degrades to a placeholder instead of
 /// a broken frame.
-ClientDiscoverCard _card({String? coverUrl}) => ClientDiscoverCard(
+ClientDiscoverCard _card({String? coverUrl, String? responseLabel}) => ClientDiscoverCard(
       proUserId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
@@ -30,6 +30,7 @@ ClientDiscoverCard _card({String? coverUrl}) => ClientDiscoverCard(
       ],
       portfolioPhotoCount: 3,
       portfolioVideoCount: 0,
+      responseLabel: responseLabel,
     );
 
 Widget _wrap(ClientDiscoverCard card) => MaterialApp(
@@ -88,5 +89,14 @@ void main() {
     final photo = tester.getTopLeft(find.byType(RNetworkPhoto));
     final name = tester.getTopLeft(find.text('Alex Lens'));
     expect(photo.dy, lessThan(name.dy));
+  });
+
+  testWidgets('says how quickly they reply, in the server\'s words, and nothing when told nothing', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_card(responseLabel: 'Usually replies within an hour')));
+    expect(find.text('Usually replies within an hour'), findsOneWidget);
+
+    await tester.pumpWidget(_wrap(_card()));
+    expect(find.textContaining('replies'), findsNothing);
   });
 }

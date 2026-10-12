@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, Integer, Numeric, Text
+from sqlalchemy import CHAR, DateTime, Enum, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -47,7 +47,9 @@ class ProPublicIndex(Base):
     gigs_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     gigs_cancelled: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     disputes_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    avg_response_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Internal only: clients see `response_bucket`, through response_time.client_label.
+    response_median_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_bucket: Mapped[str] = mapped_column(String(16), nullable=False, default="no_history")
     avg_rating: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False, default=Decimal("0.00"))
     review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ranking_score: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=Decimal("0.0000"))

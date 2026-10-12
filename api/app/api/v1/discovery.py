@@ -38,6 +38,7 @@ from app.services.cache import cache_get_json, cache_set_json, get_public_index_
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.package_pricing import PRICING_PREVIEW_PHOTO_COUNTS, compute_package_total
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
+from app.services.response_time import ResponseBucket, client_label
 from app.services.storage import create_presigned_get
 from app.services.launch_ops import is_pro_publicly_discoverable
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
@@ -339,7 +340,7 @@ def get_public_pro_profile(
         gigs_completed=index.gigs_completed,
         gigs_cancelled=index.gigs_cancelled,
         disputes_count=index.disputes_count,
-        avg_response_minutes=index.avg_response_minutes,
+        response_label=client_label(index.response_bucket),
         avg_rating=index.avg_rating,
         review_count=index.review_count,
         ranking_score=index.ranking_score,
@@ -414,7 +415,7 @@ def discover_match(
             reasons.append("within_budget")
         if candidate.disputes_count == 0 and candidate.gigs_cancelled == 0:
             reasons.append("high_reliability")
-        if candidate.avg_response_minutes is not None and candidate.avg_response_minutes < 180:
+        if candidate.response_bucket in (ResponseBucket.within_hour, ResponseBucket.few_hours):
             reasons.append("fast_response")
 
         results.append(MatchCandidate(pro_user_id=candidate.pro_user_id, ranking_score=candidate.ranking_score, reasons=reasons))

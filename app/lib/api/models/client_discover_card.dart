@@ -133,6 +133,17 @@
 ///             "type": "integer",
 ///             "title": "Review Count"
 ///         },
+///         "response_label": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Response Label"
+///         },
 ///         "top_niches": {
 ///             "type": "array",
 ///             "items": {
@@ -215,6 +226,9 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
     /// reviewCount
     @JsonKey(name: ClientDiscoverCard.reviewCountKey_) required int reviewCount,
 
+    /// responseLabel
+    @JsonKey(name: ClientDiscoverCard.responseLabelKey_) String? responseLabel,
+
     /// topNiches
     @JsonKey(name: ClientDiscoverCard.topNichesKey_)
     List<Map<String, dynamic>>? topNiches,
@@ -258,6 +272,8 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
   static const String avgRatingKey_ = r'avg_rating';
 
   static const String reviewCountKey_ = r'review_count';
+
+  static const String responseLabelKey_ = r'response_label';
 
   static const String topNichesKey_ = r'top_niches';
 

@@ -113,16 +113,16 @@
 ///             "type": "integer",
 ///             "title": "Disputes Count"
 ///         },
-///         "avg_response_minutes": {
+///         "response_label": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "integer"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
 ///                 }
 ///             ],
-///             "title": "Avg Response Minutes"
+///             "title": "Response Label"
 ///         },
 ///         "avg_rating": {
 ///             "type": "string",
@@ -217,9 +217,9 @@ abstract class ProPublicProfileResponse with _$ProPublicProfileResponse {
     @JsonKey(name: ProPublicProfileResponse.disputesCountKey_)
     required int disputesCount,
 
-    /// avgResponseMinutes
-    @JsonKey(name: ProPublicProfileResponse.avgResponseMinutesKey_)
-    int? avgResponseMinutes,
+    /// responseLabel
+    @JsonKey(name: ProPublicProfileResponse.responseLabelKey_)
+    String? responseLabel,
 
     /// avgRating
     @JsonKey(name: ProPublicProfileResponse.avgRatingKey_)
@@ -265,7 +265,7 @@ abstract class ProPublicProfileResponse with _$ProPublicProfileResponse {
 
   static const String disputesCountKey_ = r'disputes_count';
 
-  static const String avgResponseMinutesKey_ = r'avg_response_minutes';
+  static const String responseLabelKey_ = r'response_label';
 
   static const String avgRatingKey_ = r'avg_rating';
 

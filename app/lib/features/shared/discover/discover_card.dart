@@ -102,6 +102,17 @@ class DiscoverCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      // Shown exactly as the server words it; null means say
+                      // nothing (no history yet, or a slow one).
+                      if (card.responseLabel != null) ...[
+                        const SizedBox(height: RSpace.s4),
+                        Text(
+                          card.responseLabel!,
+                          style: theme.textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),

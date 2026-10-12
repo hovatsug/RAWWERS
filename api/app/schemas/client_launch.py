@@ -73,6 +73,9 @@ class ClientDiscoverCard(BaseModel):
     currency: str
     avg_rating: Decimal
     review_count: int
+    # How quickly they usually reply, as a sentence to show as is - only when
+    # it is a positive one. Null means show nothing - see response_time.card_label.
+    response_label: str | None = None
     top_niches: list[dict] = Field(default_factory=list)
     portfolio_photo_count: int
     portfolio_video_count: int
@@ -190,6 +193,9 @@ class ClientProProfileResponse(BaseModel):
     styles: list[str] = Field(default_factory=list)
     avg_rating: Decimal
     review_count: int
+    # How quickly they usually reply to a request, as a sentence to show as
+    # is. Null means show nothing - see response_time.client_label.
+    response_label: str | None = None
     portfolio_photo_count: int
     portfolio_video_count: int
     packages: list[ClientProfilePackage] = Field(default_factory=list)

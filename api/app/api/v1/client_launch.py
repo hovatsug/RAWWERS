@@ -77,6 +77,7 @@ from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
+from app.services.response_time import card_label, client_label
 from app.models.risk import RiskActionType
 from app.services.trust_safety import (
     enforce_require_verification_if_flagged,
@@ -417,6 +418,7 @@ def client_pro_profile(
         styles=profile.styles or [],
         avg_rating=idx.avg_rating,
         review_count=idx.review_count,
+        response_label=client_label(idx.response_bucket),
         portfolio_photo_count=idx.portfolio_photo_count,
         portfolio_video_count=idx.portfolio_video_count,
         packages=[
@@ -1490,6 +1492,7 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
                 currency=idx.currency,
                 avg_rating=idx.avg_rating,
                 review_count=idx.review_count,
+                response_label=card_label(idx.response_bucket),
                 top_niches=idx.top_niches or [],
                 portfolio_photo_count=idx.portfolio_photo_count,
                 portfolio_video_count=idx.portfolio_video_count,

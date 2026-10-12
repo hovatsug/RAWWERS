@@ -665,7 +665,7 @@ def _eval_dispute_free_streak(db: Session, user_id: uuid.UUID, milestone: Milest
 def _eval_response_time_avg(db: Session, user_id: uuid.UUID, criteria: dict[str, Any]) -> dict[str, Any]:
     max_minutes = int(criteria.get("max_minutes", 60))
     index = db.get(ProPublicIndex, user_id)
-    current = index.avg_response_minutes if index and index.avg_response_minutes is not None else None
+    current = index.response_median_minutes if index else None
     achieved = current is not None and current <= max_minutes
     return {
         "achieved": achieved,

@@ -195,6 +195,7 @@ def expire_pending_booking_requests(db: Session, *, now: datetime | None = None,
 
     expired_count = 0
     failed_count = 0
+    expired_for: set = set()
     for request in rows:
         try:
             with db.begin_nested():
@@ -209,9 +210,22 @@ def expire_pending_booking_requests(db: Session, *, now: datetime | None = None,
                     )
                 )
             expired_count += 1
+            expired_for.add(request.pro_user_id)
         except Exception:
             failed_count += 1
             logger.exception("expire_booking_request_failed", extra={"booking_request_id": str(request.id)})
+
+    # An expired request is a slow response: each photographer's label is
+    # recomputed (once, however many of theirs expired), which also bumps the
+    # public index version so cached cards stop showing the old one.
+    from app.services.discovery_index import recompute_pro_public_index
+
+    for pro_user_id in expired_for:
+        try:
+            with db.begin_nested():
+                recompute_pro_public_index(db, pro_user_id)
+        except Exception:
+            logger.exception("expire_booking_request_reindex_failed", extra={"pro_user_id": str(pro_user_id)})
 
     logger.info(
         "expire_booking_requests_sweep",

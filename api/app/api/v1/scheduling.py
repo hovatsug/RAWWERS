@@ -53,6 +53,7 @@ from app.schemas.scheduling import (
 )
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
+from app.services.discovery_index import recompute_pro_public_index
 from app.services.notifications import enqueue_notification
 from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.package_pricing import compute_minimum_amount
@@ -353,6 +354,8 @@ def confirm_booking_slot(
                 reason="Slot confirmed by pro",
             )
         )
+        db.flush()
+        recompute_pro_public_index(db, booking.pro_user_id)  # an answer: refreshes their response label
 
     snapshot = db.get(CancellationPolicySnapshot, gig.id)
     if not snapshot:

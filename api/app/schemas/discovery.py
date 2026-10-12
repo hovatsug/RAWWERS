@@ -65,7 +65,8 @@ class ProPublicProfileResponse(BaseModel):
     gigs_completed: int
     gigs_cancelled: int
     disputes_count: int
-    avg_response_minutes: int | None = None
+    # A display label (response_time.client_label), never raw minutes.
+    response_label: str | None = None
     avg_rating: Decimal
     review_count: int
     ranking_score: Decimal

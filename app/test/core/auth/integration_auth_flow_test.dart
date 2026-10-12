@@ -9,6 +9,7 @@ import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
 
 import '../../support/in_memory_session_storage.dart';
+import '../../support/local_backend.dart';
 
 /// F-5's deliverable, verified against the real backend rather than a fake:
 /// register -> auto-login -> authenticated -> role gate -> upgrade -> logout.
@@ -17,8 +18,9 @@ import '../../support/in_memory_session_storage.dart';
 /// that were actual backend findings (register returns no tokens, and every
 /// new account is client-only until it explicitly upgrades).
 ///
-/// Requires `docker compose up` in api/ to be running.
-void main() {
+/// Requires `docker compose up` in api/ to be running; skipped otherwise.
+Future<void> main() async {
+  final skip = await localBackendSkipReason(tests: 2);
   late ProviderContainer container;
   late InMemorySessionStorage storage;
 
@@ -70,7 +72,7 @@ void main() {
     await container.read(authControllerProvider.notifier).logout();
     expect(container.read(authControllerProvider).valueOrNull, isA<AuthUnauthenticated>());
     expect(await storage.read(), isNull, reason: 'logout must clear the stored session, not just the in-memory state');
-  });
+  }, skip: skip);
 
   test('login with a wrong password surfaces a readable message and stores nothing', () async {
     final error = await container.read(authControllerProvider.notifier).login(
@@ -81,5 +83,5 @@ void main() {
     expect(error, isNotNull);
     expect(error, isNot(contains('Exception')), reason: 'users see this string - it must not be a raw error');
     expect(storage.writeCallCount, 0);
-  });
+  }, skip: skip);
 }

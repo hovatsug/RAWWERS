@@ -3,7 +3,7 @@ REMOTE_API_DIR ?= /opt/rawwers/api
 APP_HEALTH_URL ?= https://app.rawwers.com/healthz
 RSYNC_EXCLUDES = --exclude ".env" --exclude ".DS_Store" --exclude "._*" --exclude "__pycache__/" --exclude ".pytest_cache/" --exclude ".mypy_cache/"
 
-.PHONY: up down migrate test deploy deploy-sync deploy-up deploy-migrate deploy-health
+.PHONY: up down migrate test test-isolated deploy deploy-sync deploy-up deploy-migrate deploy-health
 
 up:
 	docker-compose up --build
@@ -17,6 +17,11 @@ migrate:
 test:
 	poetry install --no-interaction --no-ansi
 	poetry run pytest -q
+
+# The suite in Docker on its own database and Redis index, so runs can go
+# side by side - see scripts/test_isolated.sh. REPO=<checkout> ARGS="<pytest args>"
+test-isolated:
+	REPO="$(REPO)" ARGS="$(ARGS)" scripts/test_isolated.sh
 
 deploy: deploy-sync deploy-up deploy-migrate deploy-health
 

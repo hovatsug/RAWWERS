@@ -8,13 +8,15 @@ import 'package:rawwers/core/api/dio_client.dart';
 import 'package:rawwers/core/api/result.dart';
 
 import '../../support/in_memory_session_storage.dart';
+import '../../support/local_backend.dart';
 
 /// F-3's deliverable: one real call, through the full transport stack
 /// (interceptors included), against the actual local backend - not a fake.
-/// Requires `docker compose up` in api/ to be running.
-void main() {
+/// Requires `docker compose up` in api/ to be running; skipped otherwise.
+Future<void> main() async {
+  final skip = await localBackendSkipReason(tests: 1);
   test('GET /v1/i18n/bundles round-trips through the real transport stack against the local backend', () async {
-    final dio = createDio(baseUrl: 'http://localhost:8000', sessionStorage: InMemorySessionStorage());
+    final dio = createDio(baseUrl: localBackendUrl, sessionStorage: InMemorySessionStorage());
     final client = I18nClient(dio);
 
     final result = await apiCall(
@@ -29,5 +31,5 @@ void main() {
       case Err(:final failure):
         fail('expected the local backend to be reachable and return 200, got $failure');
     }
-  });
+  }, skip: skip);
 }

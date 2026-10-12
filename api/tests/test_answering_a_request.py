@@ -147,3 +147,59 @@ def test_a_photographer_who_is_not_live_cannot_take_a_booking(client, db_session
     assert resp.json()["error"]["code"] == "pro_not_live"
     assert _gigs(db_session, request) == 0
 
+
+# --- one booking, whichever route made it ------------------------------------
+
+
+_NOT_COMPARED = {"id", "created_at", "updated_at"}
+
+
+def _gig_for(db_session, request) -> Gig:
+    db_session.expire_all()
+    return db_session.execute(
+        select(Gig).where(Gig.meta["booking_request_id"].astext == str(request.id))
+    ).scalar_one()
+
+
+def _comparable(gig: Gig) -> dict:
+    from sqlalchemy import inspect
+
+    row = {a.key: getattr(gig, a.key) for a in inspect(Gig).column_attrs if a.key not in _NOT_COMPARED}
+    meta = dict(row.pop("meta", None) or {})
+    meta.pop("booking_request_id", None)
+    snapshot = dict(meta.get("pricing_snapshot") or {})
+    snapshot.pop("booking_request_id", None)
+    if snapshot:
+        meta["pricing_snapshot"] = snapshot
+    row["meta"] = meta
+    return row
+
+
+def test_accept_and_confirm_slot_make_the_same_booking(client, db_session):
+    """The same request answered by either route is the same gig: price,
+    split, VAT, schedule, and the pricing snapshot every later step reads.
+    Confirm-slot used to write none of the snapshot."""
+    pro = _weekly_pro(db_session)
+    accepted, start, end = _request(db_session, pro)
+    confirmed = BookingRequest(
+        pro_user_id=accepted.pro_user_id,
+        client_user_id=accepted.client_user_id,
+        package_id=accepted.package_id,
+        requested_start=start + timedelta(hours=2),
+        requested_end=end + timedelta(hours=2),
+        status=S.pending,
+        created_at=accepted.created_at,
+        expires_at=accepted.expires_at,
+    )
+    db_session.add(confirmed)
+    db_session.commit()
+
+    assert _accept(client, pro, accepted, start, end).status_code == 200
+    assert _confirm(client, pro, confirmed, start + timedelta(hours=2), end + timedelta(hours=2)).status_code == 200
+
+    via_accept, via_confirm = _comparable(_gig_for(db_session, accepted)), _comparable(_gig_for(db_session, confirmed))
+    for row in (via_accept, via_confirm):
+        row.pop("scheduled_start"), row.pop("scheduled_end")  # two hours apart by construction
+    differing = {k: (via_accept.get(k), via_confirm.get(k)) for k in via_accept.keys() | via_confirm.keys() if via_accept.get(k) != via_confirm.get(k)}
+    assert not differing, differing
+    assert via_confirm["meta"]["pricing_snapshot"]["package_id"] == str(confirmed.package_id)

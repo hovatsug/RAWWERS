@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
@@ -25,11 +24,9 @@ from app.models.booking import (
     ConfirmedSlotStatus,
     ProAvailabilityException,
     ProAvailabilityRule,
-    ProPackage,
 )
-from app.models.gig import Gig, GigStatus
+from app.models.gig import Gig
 from app.models.legacy_shoot import LegacyBooking, LegacyBookingStatus
-from app.models.niche import Niche
 from app.schemas.media import CurrentUser
 from app.schemas.scheduling import (
     AdminSchedulingConflictResponse,
@@ -54,10 +51,9 @@ from app.schemas.scheduling import (
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.booking_answer import ensure_request_can_be_booked
+from app.services.gig_builder import build_gig_for_request, find_gig_for_request
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.notifications import enqueue_notification
-from app.services.commission import split_for_pro, vat_stamp_for
-from app.services.package_pricing import compute_minimum_amount
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.availability_rules import validate_rule_times
 from app.services.bookable_time import request_preset
@@ -563,52 +559,19 @@ def _validate_within_client_windows(
 
 
 def _find_or_create_gig_from_booking(db: Session, booking: BookingRequest) -> Gig:
-    existing = _find_gig_by_booking_request(db, booking.id)
+    existing = find_gig_for_request(db, booking.id)
     if existing:
         return existing
-
-    package = db.get(ProPackage, booking.package_id)
-    if not package:
-        raise APIError(code="validation_error", message="Package not found", status_code=409)
-    entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate, included_photos=package.included_photos)
-    split = split_for_pro(db, gross=amount_minimum, pro_user_id=booking.pro_user_id)
-    fee = split.platform_total
-    pro_gross = split.pro_total
-    gig = Gig(
-        client_user_id=booking.client_user_id,
-        pro_user_id=booking.pro_user_id,
-        niche_id=package.niche_id,
-        status=GigStatus.payment_pending,
-        currency=package.currency,
-        amount_minimum=amount_minimum,
-        entry_rate=entry_rate,
-        amount_platform_fee=fee,
-        amount_pro_gross=pro_gross,
-        # Recorded, not looked up later. An invoice a year from now must show
-        # the split this booking was actually created under, whatever the
-        # policy says by then.
-        fee_percent=split.fee_percent,
-        retained_percent=split.retained_percent,
-        pro_raww_percent=split.pro_raww_percent,
-        client_credit_percent=split.client_credit_percent,
-        **vat_stamp_for(db, pro_user_id=booking.pro_user_id),
-        scheduled_start=booking.requested_start,
-        scheduled_end=booking.requested_end,
-        location_text=booking.location_text,
-        meta={"booking_request_id": str(booking.id)},
-    )
+    # The same gig accept builds - pricing snapshot, preset and niche
+    # included. This built its own, and left all three out.
+    gig = build_gig_for_request(db, booking)
     db.add(gig)
     db.flush()
     return gig
 
 
 def _find_gig_by_booking_request(db: Session, booking_request_id: uuid.UUID) -> Gig | None:
-    gigs = db.execute(select(Gig)).scalars().all()
-    for gig in gigs:
-        if (gig.meta or {}).get("booking_request_id") == str(booking_request_id):
-            return gig
-    return None
+    return find_gig_for_request(db, booking_request_id)
 
 
 def _find_booking_request_by_gig(db: Session, gig_id: uuid.UUID) -> BookingRequest | None:

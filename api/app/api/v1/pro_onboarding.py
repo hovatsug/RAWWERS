@@ -74,6 +74,7 @@ from app.services.package_schedule import apply_schedule, current_blocks, valida
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.booking_answer import ensure_request_can_be_booked
+from app.services.gig_builder import build_gig_for_request, find_gig_for_request
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
@@ -82,10 +83,9 @@ from app.models.media_rights import MediaDerivativeKind
 from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
 from app.services.payouts import ensure_default_platform_fee_policy
 from app.services.gear_floor import evaluate_gear_floor, niche_slugs_for_pro
-from app.services.commission import max_client_credit_percent, split_for_pro, validate_client_credit_percent, vat_stamp_for
+from app.services.commission import max_client_credit_percent, validate_client_credit_percent
 from app.services.package_pricing import (
     PRICING_PREVIEW_PHOTO_COUNTS,
-    compute_minimum_amount,
     compute_package_total,
     enforce_entry_price_cap,
     get_price_cap,
@@ -1184,70 +1184,9 @@ def accept_booking_request(
         )
     )
 
-    entry_rate = package.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    amount_minimum = compute_minimum_amount(db, niche_id=package.niche_id, entry_rate=entry_rate, included_photos=package.included_photos)
-    # One source for the rate. This read settings.platform_fee_bps while
-    # earnings were computed from the admin-editable policy row - two
-    # definitions of one number, agreeing only because nobody had changed
-    # either of them.
-    split = split_for_pro(
-        db,
-        gross=amount_minimum,
-        pro_user_id=request.pro_user_id,
-        client_credit_percent_override=body.client_credit_percent if body else None,
-    )
-    fee = split.platform_total
-    pro_gross = split.pro_total
-
-    snapshot = {
-        "package_id": str(package.id),
-        "niche_slug": None,
-        "niche_name": None,
-        "package_title": package.title,
-        "duration_minutes": package.duration_minutes,
-        "included_photos": package.included_photos,
-        "extra_photo_price": str(package.extra_photo_price),
-        "proofs_sla_days": package.proofs_sla_days,
-        "finals_sla_days": package.finals_sla_days,
-        "addons": package.addons,
-        "booking_request_id": str(request.id),
-    }
-    niche = db.get(Niche, package.niche_id)
-    if niche:
-        snapshot["niche_slug"] = niche.slug
-        snapshot["niche_name"] = niche.name
-
-    gig = existing_gig or Gig(
-        client_user_id=request.client_user_id,
-        pro_user_id=request.pro_user_id,
-        status=GigStatus.payment_pending,
-        niche_id=package.niche_id,
-        currency=package.currency,
-        amount_minimum=amount_minimum,
-        entry_rate=entry_rate,
-        amount_platform_fee=fee,
-        amount_pro_gross=pro_gross,
-        # Recorded, not looked up later. An invoice a year from now must show
-        # the split this booking was actually created under, whatever the
-        # policy says by then.
-        fee_percent=split.fee_percent,
-        retained_percent=split.retained_percent,
-        pro_raww_percent=split.pro_raww_percent,
-        client_credit_percent=split.client_credit_percent,
-        **vat_stamp_for(db, pro_user_id=request.pro_user_id),
-        scheduled_start=request.requested_start,
-        scheduled_end=request.requested_end,
-        location_text=request.location_text,
-        meta={
-            "pricing_snapshot": snapshot,
-            "booking_request_id": str(request.id),
-            # Carried from the request: every later check on this booking
-            # (confirming a slot, paying, others' buffers) reads it from here.
-            "scheduling_preset": request_preset(request).value,
-            "niche_slug": snapshot["niche_slug"],
-            "niche_name": snapshot["niche_name"],
-        },
-    )
+    built = build_gig_for_request(db, request, client_credit_percent_override=body.client_credit_percent if body else None)
+    snapshot = built.meta["pricing_snapshot"]
+    gig = existing_gig or built
     if existing_gig:
         gig.niche_id = package.niche_id
         existing_meta = gig.meta or {}
@@ -1596,11 +1535,7 @@ def _profile_view(profile: ProProfile, db: Session | None = None) -> ProProfileV
 
 
 def _find_gig_by_booking_request(db: Session, booking_request_id: uuid.UUID) -> Gig | None:
-    gigs = db.execute(select(Gig)).scalars().all()
-    for gig in gigs:
-        if (gig.meta or {}).get("booking_request_id") == str(booking_request_id):
-            return gig
-    return None
+    return find_gig_for_request(db, booking_request_id)
 
 
 def _resolve_package_niche(db: Session, niche_id: uuid.UUID | None, niche_slug: str | None) -> Niche:

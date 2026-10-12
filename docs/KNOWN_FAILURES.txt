@@ -1,0 +1,42 @@
+# Backend tests known to fail - 29, as of commit c8e6853 (2026-10-12).
+#
+# Every one also fails at plain HEAD before that work (ec0e00a), compared by
+# test id, not by count. None is time-of-day dependent any more: the call
+# quiet-hours tests and the blackout tests were fixed in 3492337.
+#
+# Use: a run's failures, minus this list, is what that change broke.
+#   make test-isolated ARGS="tests -q -p no:cacheprovider" 2>&1 \
+#     | grep '^FAILED' | sed 's/ - .*//;s/^FAILED //' | sort \
+#     | comm -23 - <(grep -v '^#' docs/KNOWN_FAILURES.txt)
+#
+# When a change fixes one, remove its line in the same commit; when a change
+# makes one fail, fix it - never add a line here to make a run look clean.
+tests/test_admin_ops.py::test_kyc_gating_blocks_payment_intent_in_production
+tests/test_ai_concierge_v1.py::test_booking_created_from_chat
+tests/test_chat_concierge.py::test_ai_reply_is_grounded_to_snapshot_packages
+tests/test_chat_concierge.py::test_create_booking_request_requires_draft_and_client_owner
+tests/test_chat_concierge.py::test_token_budget_limit_stops_ai_and_handoffs
+tests/test_client_rewards_pricing.py::test_tier_based_price_clamp_and_master_no_cap
+tests/test_followups_calls.py::test_transcript_not_stored_without_explicit_consent
+tests/test_gigs_payments.py::test_stripe_webhook_idempotency_and_ledger_totals
+tests/test_launch_ops.py::test_onboarding_transitions_requirements_and_approve_triggers_events
+tests/test_learning_v0.py::test_certification_completion_triggers_niche_skill_recompute
+tests/test_learning_v0.py::test_completion_issues_certificate_and_certification_record
+tests/test_media_rights.py::test_share_link_expiry_max_views_and_revoke
+tests/test_mux_webhooks.py::test_webhook_idempotency
+tests/test_niche_skill_matrix_v2.py::test_badge_award_and_revoke_current_only
+tests/test_niche_skill_matrix_v2.py::test_extra_image_price_cap_uses_niche_tier
+tests/test_niche_skill_matrix_v2.py::test_hysteresis_blocks_rapid_promotion_flip
+tests/test_niche_skill_matrix_v2.py::test_tier_assignment_respects_verified_requirement
+tests/test_niches_skills.py::test_discovery_niche_filter_orders_by_tier_before_rank
+tests/test_notifications_v1.py::test_outbox_notification_retry_is_durable
+tests/test_ops_security_baseline.py::test_chat_spam_creates_abuse_signal
+tests/test_ops_security_baseline.py::test_sensitive_errors_are_safe_and_include_request_id
+tests/test_payouts_v1.py::test_approval_allocates_and_prevents_double_spending
+tests/test_payouts_v1.py::test_manual_mark_paid_flow
+tests/test_pro_availability_and_listing.py::test_listing_preview_reflects_a_pricing_edit
+tests/test_pro_onboarding_booking.py::test_pro_cannot_activate_without_kyc_in_production
+tests/test_proof_gallery.py::test_upsell_webhook_idempotency
+tests/test_proof_of_gigs_v1.py::test_raww_caps_clamp_then_block
+tests/test_referrals_rewards.py::test_payment_succeeded_finalizes_gig_redemption
+tests/test_store_v0.py::test_payment_success_finalizes_redemption_and_advances_order

@@ -32,6 +32,14 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   Any row is a booking the client did not agree to, or no longer wanted. **Nothing deletes these automatically** - a paid one involves money and a person - so each is a decision: cancel and refund, or contact the client. Dev, 2026-10-12: none.
 
+- [ ] **BLOCKING until admin tier overrides are persisted: no rebuild-all on a database with admin overrides.** A recompute of niche skills - which rebuild-all, and every per-photographer index recompute, runs - currently undoes an admin's tier override once the hysteresis window has passed: the override is written to a key the recompute never reads, and the recompute then replaces the record. Proven on 2026-10-12 (elite back to rookie). Count what is at stake:
+
+      SELECT count(DISTINCT (pro_user_id, niche_id))
+      FROM pro_niche_skill_event
+      WHERE event_type = 'admin_override';
+
+  Zero: the recompute below is safe. Anything else: do not run it, and do not deploy changes that require it, until the fix that persists overrides (tier, admin, time, reason) has landed. Dev: zero.
+
 ## 2. Deploying
 
 - [ ] **Build `api` and `worker` together** - `docker compose build api worker`. They are separate images from one Dockerfile; building only `api` leaves webhooks, outbox effects and photo processing on the old code with nothing failing. See [Rebuilding `api` does not rebuild `worker`](BACKEND_GAPS.md#rebuilding-api-does-not-rebuild-worker).
@@ -42,7 +50,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 ## 3. After deploying - data steps
 
-- [ ] **Recompute every public index row** - `POST /v1/admin/index/pro/rebuild-all`, or `recompute_pro_public_index` over every `ProPublicIndex` row. **Once per environment** for each of:
+- [ ] **Recompute every public index row** - first check the blocking item in section 1 about admin tier overrides - `POST /v1/admin/index/pro/rebuild-all`, or `recompute_pro_public_index` over every `ProPublicIndex` row. **Once per environment** for each of:
   - `min_package_price` changed unit (per-photo rate to starting total). Until recomputed, the budget filter and price sort mix units. See [DEPLOY REQUIREMENT: recompute every `min_package_price`](BACKEND_GAPS.md#deploy-requirement-recompute-every-min_package_price-before-trusting-the-budget-filter).
   - `ranking_score` lost the response bonus. Until recomputed, photographers who once replied quickly keep up to 10 points they no longer earn. See [DEPLOY REQUIREMENT: recompute every `ranking_score`](BACKEND_GAPS.md#deploy-requirement-recompute-every-ranking_score-after-the-response-time-change).
 

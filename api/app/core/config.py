@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     call_rate_limit_per_pro_per_day: int = Field(default=20, alias="CALL_RATE_LIMIT_PER_PRO_PER_DAY")
     max_json_body_bytes: int = Field(default=1_048_576, alias="MAX_JSON_BODY_BYTES")
     max_chat_message_length: int = Field(default=2000, alias="MAX_CHAT_MESSAGE_LENGTH")
+    # While the photographer is online, how long the assistant waits for them
+    # to answer before it does (app/services/chat_assistant.py).
+    chat_assistant_hold_seconds: int = Field(default=120, alias="CHAT_ASSISTANT_HOLD_SECONDS")
     max_review_text_length: int = Field(default=2000, alias="MAX_REVIEW_TEXT_LENGTH")
     max_upload_bytes: int = Field(default=25_000_000, alias="MAX_UPLOAD_BYTES")
     # Gear evidence is a camera file, not a photo. Real ones are 16-58 MB, so the

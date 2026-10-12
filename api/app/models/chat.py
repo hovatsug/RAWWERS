@@ -55,6 +55,10 @@ class ChatThread(Base):
     )
     context_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     token_budget_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # When each side last read the conversation; what the other side sent
+    # after it is unread. None: never read. See app/services/chat_inbox.py.
+    pro_last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    client_last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

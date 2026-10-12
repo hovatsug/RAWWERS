@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_admin, require_not_banned
 from app.api.v1.chats import _booking_request_view, _create_booking_request_from_body
+from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import ProProfile, UserAccount, UserRoleType
 from app.models.chat import AIInteractionLog, ChatMessage, ChatSenderType, ChatThread, ChatThreadStatus
-from app.models.launch_ops import RolloutCity
 from app.models.ops import FeatureFlagScope
 from app.schemas.ai_concierge import (
     AIDraftRequest,
@@ -26,6 +26,7 @@ from app.schemas.ai_concierge import (
     ChatThreadDetailResponse,
     ChatThreadListResponse,
     ChatThreadSummary,
+    ChatUnreadResponse,
     CreateBookingFromChatRequest,
     CreateBookingFromChatResponse,
     ProAIProfileUpdateRequest,
@@ -36,16 +37,17 @@ from app.schemas.onboarding import BookingRequestCreateRequest
 from app.services.ai_concierge import generate_ai_reply_for_thread, get_or_create_lead_profile, get_or_create_pro_ai_profile, redact_text
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
+from app.services.chat_assistant import assistant_enabled, queue_assistant_reply
 from app.services.chat_concierge import snapshot_pro_context
-from app.services.feature_flags import is_feature_enabled, upsert_feature_flag
-from app.services.outbox import enqueue_outbox_event
+from app.services.chat_inbox import Side, inbox_lines, last_activity, mark_read, photographer_unread, side_of
+from app.services.feature_flags import upsert_feature_flag
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 
 router = APIRouter(tags=["ai_concierge"])
 
 
-def _thread_summaries(db: Session, threads: Sequence[ChatThread]) -> list[ChatThreadSummary]:
+def _thread_summaries(db: Session, threads: Sequence[ChatThread], side: Side | None = None) -> list[ChatThreadSummary]:
     """Build thread summaries with both sides' display names resolved.
 
     Batched across the page: a per-thread lookup would be two extra queries
@@ -76,14 +78,28 @@ def _thread_summaries(db: Session, threads: Sequence[ChatThread]) -> list[ChatTh
         if name
     }
 
+    # What the viewer has not read, and the latest line - only when we know
+    # which side is looking.
+    lines = inbox_lines(db, threads, side) if side else {}
+
     summaries = []
     for thread in threads:
         summary = ChatThreadSummary.model_validate(thread, from_attributes=True)
+        line = lines.get(thread.id)
         summaries.append(
             summary.model_copy(
                 update={
                     "pro_display_name": pro_names.get(thread.pro_user_id) or account_names.get(thread.pro_user_id),
                     "client_display_name": account_names.get(thread.client_user_id) if thread.client_user_id else None,
+                    **(
+                        {
+                            "unread_count": line.unread_count,
+                            "last_message_at": line.last_message_at,
+                            "last_message_preview": line.last_message_preview,
+                        }
+                        if line
+                        else {}
+                    ),
                 }
             )
         )
@@ -100,7 +116,10 @@ def create_chat_thread_v1(
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_session),
 ) -> ChatThreadSummary:
-    _enforce_ai_chat_enabled(db, pro_user_id=body.pro_user_id, user_id=user.user_id if user else None)
+    # Messaging a photographer does not depend on the assistant: with the AI
+    # flags off this used to answer 503, so switching the assistant off
+    # switched messaging off. The flags now decide only whether the
+    # assistant joins in.
     principal = str(user.user_id) if user else f"guest:{body.session_id or 'anon'}"
     enforce_named_rate_limit("thread_creations", principal=principal)
     if not user and not body.session_id:
@@ -128,24 +147,19 @@ def create_chat_thread_v1(
     get_or_create_lead_profile(db, thread_id=thread.id)
     get_or_create_pro_ai_profile(db, pro_user_id=body.pro_user_id)
 
-    db.add(
-        ChatMessage(
-            thread_id=thread.id,
-            sender_type=ChatSenderType.system,
-            sender_user_id=None,
-            content="You are chatting with an AI assistant for this photographer.",
-            content_redacted="You are chatting with an AI assistant for this photographer.",
-            meta={"type": "disclaimer"},
+    if assistant_enabled(db, thread):
+        # Said only when it is true.
+        db.add(
+            ChatMessage(
+                thread_id=thread.id,
+                sender_type=ChatSenderType.system,
+                sender_user_id=None,
+                content="You are chatting with an AI assistant for this photographer.",
+                content_redacted="You are chatting with an AI assistant for this photographer.",
+                meta={"type": "disclaimer"},
+            )
         )
-    )
-    if _should_auto_ai_reply(db, thread):
-        enqueue_outbox_event(
-            db,
-            topic="ai.reply.generate",
-            payload={"thread_id": str(thread.id)},
-            idempotency_key=f"ai-reply-initial:{thread.id}",
-            idempotency_scope="ai_reply",
-        )
+        queue_assistant_reply(db, thread, after_message=None, idempotency_key=f"ai-reply-initial:{thread.id}")
     log_event(db, event_name="chat.thread_created", user_id=user.user_id if user else None, properties={"thread_id": str(thread.id), "pro_user_id": str(body.pro_user_id)})
     db.commit()
     return _thread_summary(db, thread)
@@ -184,7 +198,7 @@ def list_my_chat_threads(
     rows = list(db.execute(apply_keyset(query, ChatThread, cursor, limit)).scalars().all())
     page, next_cursor = build_page(rows, limit)
     return ChatThreadListResponse(
-        items=_thread_summaries(db, page),
+        items=_thread_summaries(db, page, side="client"),
         next_cursor=next_cursor,
     )
 
@@ -216,6 +230,7 @@ def post_chat_message_v1(
     _ensure_thread_access(db, user.user_id, thread)
     if thread.status == ChatThreadStatus.closed:
         raise APIError(code="invalid_state", message="Thread is closed", status_code=409)
+    _enforce_message_length(body.content)
 
     sender_type = ChatSenderType.pro if user.user_id == thread.pro_user_id else ChatSenderType.client
     if sender_type == ChatSenderType.pro:
@@ -233,14 +248,8 @@ def post_chat_message_v1(
     db.flush()
 
     log_event(db, event_name="chat.message_sent", user_id=user.user_id, properties={"thread_id": str(thread.id), "sender_type": sender_type.value})
-    if sender_type == ChatSenderType.client and _should_auto_ai_reply(db, thread):
-        enqueue_outbox_event(
-            db,
-            topic="ai.reply.generate",
-            payload={"thread_id": str(thread.id)},
-            idempotency_key=f"ai-reply:{thread.id}:{message.id}",
-            idempotency_scope="ai_reply",
-        )
+    if sender_type == ChatSenderType.client:
+        queue_assistant_reply(db, thread, after_message=message, idempotency_key=f"ai-reply:{thread.id}:{message.id}")
     db.commit()
     return ChatMessageV1View(
         id=message.id,
@@ -300,11 +309,46 @@ def list_pro_threads(
     db: Session = Depends(get_db_session),
 ) -> list[ChatThreadSummary]:
     _require_role(db, user.user_id, UserRoleType.pro)
-    stmt = select(ChatThread).where(ChatThread.pro_user_id == user.user_id).order_by(ChatThread.updated_at.desc())
+    # Newest conversation activity first. This sorted on updated_at, which
+    # a new message does not change, so a client writing again left their
+    # conversation where it was.
+    stmt = select(ChatThread).where(ChatThread.pro_user_id == user.user_id).order_by(last_activity().desc(), ChatThread.id)
     if status:
         stmt = stmt.where(ChatThread.status == status)
     rows = db.execute(stmt.limit(200)).scalars().all()
-    return _thread_summaries(db, rows)
+    return _thread_summaries(db, rows, side="pro")
+
+
+@router.get("/pro/chat/unread", response_model=ChatUnreadResponse)
+def pro_unread_messages(
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_read_session),
+) -> ChatUnreadResponse:
+    """For the Messages badge: conversations with something unread, and how
+    many messages. Cheap enough to poll."""
+    _require_role(db, user.user_id, UserRoleType.pro)
+    threads, messages = photographer_unread(db, user.user_id)
+    return ChatUnreadResponse(threads=threads, messages=messages)
+
+
+@router.post("/chat/threads/{thread_id}/read", response_model=ChatThreadSummary)
+def mark_chat_thread_read(
+    thread_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ChatThreadSummary:
+    """Everything in the conversation so far has been read by the caller's
+    side. Either participant; nobody else, admins included - they have no
+    side to have read it from."""
+    thread = db.get(ChatThread, thread_id)
+    if not thread:
+        raise APIError(code="not_found", message="Chat thread not found", status_code=404)
+    side = side_of(thread, user.user_id)
+    if side is None:
+        raise APIError(code="forbidden", message="Not allowed", status_code=403)
+    mark_read(db, thread, side)
+    db.commit()
+    return _thread_summaries(db, [thread], side=side)[0]
 
 
 @router.get("/pro/chat/threads/{thread_id}", response_model=ChatThreadDetailResponse)
@@ -328,9 +372,12 @@ def post_pro_message(
     db: Session = Depends(get_db_session),
 ) -> ChatMessageV1View:
     _require_role(db, user.user_id, UserRoleType.pro)
+    # The same limit the client's side has always had.
+    enforce_named_rate_limit("chat_messages", principal=str(user.user_id))
     thread = db.get(ChatThread, thread_id)
     if not thread or thread.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Chat thread not found", status_code=404)
+    _enforce_message_length(body.content)
     thread.status = ChatThreadStatus.pro_active
     msg = ChatMessage(
         thread_id=thread.id,
@@ -464,32 +511,15 @@ def _ensure_thread_access(db: Session, user_id: uuid.UUID, thread: ChatThread) -
     raise APIError(code="forbidden", message="Not allowed", status_code=403)
 
 
-def _should_auto_ai_reply(db: Session, thread: ChatThread) -> bool:
-    if thread.status != ChatThreadStatus.open:
-        return False
-    if is_feature_enabled(db, "ai_chat_kill_switch", user_id=thread.client_user_id):
-        return False
-    if not is_feature_enabled(db, "ai_chat_enabled_global", user_id=thread.client_user_id):
-        return False
-    ai_profile = get_or_create_pro_ai_profile(db, pro_user_id=thread.pro_user_id)
-    return ai_profile.is_enabled
+def _enforce_message_length(content: str) -> None:
+    """MAX_CHAT_MESSAGE_LENGTH, for both sides. Only the old /v1/chats route
+    read it; these took anything up to the schema's 4,000 characters."""
+    limit = get_settings().max_chat_message_length
+    if len(content.strip()) > limit:
+        raise APIError(code="validation_error", message=f"Messages can be at most {limit} characters.", status_code=422)
 
 
 def _require_role(db: Session, user_id: uuid.UUID, role: UserRoleType) -> None:
     roles = get_user_roles(db, user_id)
     if role not in roles:
         raise APIError(code="forbidden", message=f"Role {role.value} required", status_code=403)
-
-
-def _enforce_ai_chat_enabled(db: Session, *, pro_user_id: uuid.UUID, user_id: uuid.UUID | None) -> None:
-    if is_feature_enabled(db, "ai_chat_kill_switch", user_id=user_id):
-        raise APIError(code="feature_disabled", message="AI chat is disabled", status_code=503)
-    if not is_feature_enabled(db, "ai_chat_enabled_global", user_id=user_id):
-        raise APIError(code="feature_disabled", message="AI chat is disabled", status_code=503)
-
-    city_row = db.execute(select(RolloutCity).where(RolloutCity.is_client_browsing_enabled.is_(True))).scalar_one_or_none()
-    if not city_row and not is_feature_enabled(db, "ai_chat_enabled_city", user_id=user_id):
-        raise APIError(code="feature_disabled", message="AI chat is disabled for this city", status_code=503)
-    ai_profile = get_or_create_pro_ai_profile(db, pro_user_id=pro_user_id)
-    if not ai_profile.is_enabled and not is_feature_enabled(db, "ai_chat_enabled_pro", user_id=user_id):
-        raise APIError(code="feature_disabled", message="AI chat disabled for this pro", status_code=503)

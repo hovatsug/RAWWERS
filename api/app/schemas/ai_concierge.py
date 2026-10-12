@@ -32,6 +32,20 @@ class ChatThreadSummary(BaseModel):
     pro_display_name: str | None = None
     client_display_name: str | None = None
 
+    # As the viewer sees it - filled where the route knows which side is
+    # looking (both inboxes, and marking read); 0 / None elsewhere. See
+    # app/services/chat_inbox.py.
+    unread_count: int = 0
+    last_message_at: datetime | None = None
+    last_message_preview: str | None = None
+
+
+class ChatUnreadResponse(BaseModel):
+    """The photographer's Messages badge."""
+
+    threads: int
+    messages: int
+
 
 class ChatThreadListResponse(BaseModel):
     """Cursor-paginated thread list, matching the convention in

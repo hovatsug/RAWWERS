@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -52,7 +53,12 @@ def generate_ai_reply_for_thread(
     *,
     thread: ChatThread,
     draft_only: bool = False,
+    still_wanted: Callable[[], bool] | None = None,
 ) -> tuple[ChatMessage | None, AIInteractionLog]:
+    """`still_wanted`, when given, is asked once more after the model has
+    answered and before anything is posted: the model can take seconds, and
+    a person may have answered in them. The interaction is logged either way
+    - the model was called."""
     messages = db.execute(
         select(ChatMessage).where(ChatMessage.thread_id == thread.id).order_by(ChatMessage.created_at.asc())
     ).scalars().all()
@@ -97,6 +103,8 @@ def generate_ai_reply_for_thread(
     ai_message: ChatMessage | None = None
     if not draft_only:
         if thread.status not in {ChatThreadStatus.open}:
+            return None, log_row
+        if still_wanted is not None and not still_wanted():
             return None, log_row
         ai_message = ChatMessage(
             thread_id=thread.id,

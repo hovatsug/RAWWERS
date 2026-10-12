@@ -32,6 +32,7 @@ def enqueue_outbox_event(
     payload: dict,
     idempotency_key: str | None = None,
     idempotency_scope: str | None = None,
+    available_at: datetime | None = None,
 ) -> OutboxEvent | None:
     if idempotency_key and idempotency_scope:
         inserted = ensure_idempotency_key(
@@ -48,7 +49,9 @@ def enqueue_outbox_event(
         payload=payload,
         status=OutboxEventStatus.pending,
         attempts=0,
-        next_attempt_at=datetime.now(timezone.utc),
+        # Not dispatched before this - how a delayed action (the chat
+        # assistant's hold) waits without a scheduler of its own.
+        next_attempt_at=available_at or datetime.now(timezone.utc),
     )
     db.add(row)
     db.flush()

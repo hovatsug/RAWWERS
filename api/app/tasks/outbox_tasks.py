@@ -227,10 +227,22 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         from app.services.ai_concierge import generate_ai_reply_for_thread
         from app.services.analytics import log_event
 
+        from app.services.chat_assistant import assistant_should_answer
+
         thread = db.get(ChatThread, uuid.UUID(payload["thread_id"]))
         if not thread:
             return
-        ai_message, _ = generate_ai_reply_for_thread(db, thread=thread, draft_only=False)
+        after = payload.get("after_message_id")
+        # Asked before the model, so a conversation a person has picked up
+        # during the hold costs nothing - and again before posting.
+        if not assistant_should_answer(db, thread, after):
+            return
+        ai_message, _ = generate_ai_reply_for_thread(
+            db,
+            thread=thread,
+            draft_only=False,
+            still_wanted=lambda: assistant_should_answer(db, thread, after),
+        )
         if ai_message:
             log_event(
                 db,

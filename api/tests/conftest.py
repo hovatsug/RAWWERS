@@ -210,6 +210,47 @@ def setup_database() -> Generator[None, None, None]:
     yield
 
 
+def pytest_configure(config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "real_clock: read call quiet hours against the real time of day instead of midday Lisbon",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _quiet_hours_at_midday(request) -> Generator[None, None, None]:
+    """Call quiet hours are judged at midday Lisbon unless a test opts out.
+
+    The default contact is quiet 22:00-08:00 local, and is_quiet_hours_now
+    reads the real clock - so every call test that expects a call to go
+    through failed when the suite ran at night, and passed by morning. A
+    test about quiet hours themselves either sets a window that midday falls
+    in, or passes `now_utc`, or marks itself `real_clock`.
+
+    Patched and restored by hand, not through `monkeypatch`: an autouse
+    fixture that requests `monkeypatch` sets it up before every other
+    fixture, so it is torn down after them. A test that patched
+    `db_session.close` then kept the no-op through db_session's own
+    teardown, its transaction was never closed, and the next test's
+    DROP TABLE waited on it for seven hours.
+    """
+    if request.node.get_closest_marker("real_clock"):
+        yield
+        return
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    from app.services import call_compliance
+
+    midday = datetime.now(ZoneInfo("Europe/Lisbon")).replace(hour=12, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    real = call_compliance.is_quiet_hours_now
+    call_compliance.is_quiet_hours_now = lambda contact, now_utc=None: real(contact, now_utc or midday)
+    try:
+        yield
+    finally:
+        call_compliance.is_quiet_hours_now = real
+
+
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     db = TestingSessionLocal()

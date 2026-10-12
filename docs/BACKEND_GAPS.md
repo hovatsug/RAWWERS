@@ -1663,7 +1663,7 @@ The fix is one shared builder that both call (and the legacy shoot's, which is a
 third copy), with the snapshot written by the builder so no caller can forget it.
 Worth doing as its own task with a test that builds a gig both ways and compares.
 
-## `test_followups_calls.py` fails between 22:00 and 08:00 Lisbon
+## ~~`test_followups_calls.py` fails between 22:00 and 08:00 Lisbon~~ — FIXED
 
 Three tests (`test_calling_blocked_without_consent_except_call_me_button`,
 `test_mock_telephony_flow_updates_status_and_outcome`, `test_rate_limits_enforced`)
@@ -1682,6 +1682,11 @@ This is the second time-of-day test in this log (the scheduling fixture failed a
 and a comparison taken either side of a quiet-hours boundary will show phantom
 regressions in exactly this file.** Fix is to pin the clock in the tests, as the
 notifications tests already do for their quiet-hours window.
+
+**Fixed:** `tests/conftest.py` judges call quiet hours at midday Lisbon for every
+test (`_quiet_hours_at_midday`). An explicit `now_utc` still wins, and a test
+about quiet hours on the real clock marks itself `@pytest.mark.real_clock`.
+`tests/test_test_clock.py` pins all three behaviours.
 
 ## The search screen is unreachable, and the router says otherwise - LOGGED
 
@@ -1865,7 +1870,7 @@ The 2026-10-05 measurements ran over a connection doing ~165 KB/s down and
 numbers and request counts are environment-independent; transfer times are not,
 and production's worker-to-R2 link was not measurable from here.
 
-## `test_blackout_blocks_accepting_a_booking_inside_it` fails late in the evening - LOGGED
+## ~~`test_blackout_blocks_accepting_a_booking_inside_it` fails late in the evening~~ — FIXED
 
 The test gives its photographer working hours of 00:00-23:59 every day and asks
 for a 3-hour booking starting `now + 32 days`. Run after about 21:00, that
@@ -1873,4 +1878,9 @@ window runs past midnight, crosses the 23:59 end of the rule, and is refused as
 "outside working hours" before the blackout check it exists to test is ever
 reached. Found in a 2026-10-06 overnight run; the same test on the same tree
 passed at 06:34. Fix is to pin the requested start to midday, as the quiet-hours
-entry above recommends for its tests. Not changed here.
+entry above recommends for its tests.
+
+**Fixed:** the file's bookings start at 10:00 UTC on the target day
+(`_days_ahead_at_ten`) instead of at the current time of day, so no booking in it
+can cross midnight whatever hour the suite runs. A pin on the test clock would
+have hidden the dependence; removing it is the fix.

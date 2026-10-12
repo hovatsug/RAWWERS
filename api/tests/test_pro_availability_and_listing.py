@@ -91,8 +91,19 @@ def _create_package(client, pro_id: str) -> str:
     return resp.json()["id"]
 
 
+def _days_ahead_at_ten(days: int) -> datetime:
+    """10:00 UTC, `days` from today - never "now plus N days".
+
+    Bookings here last up to six hours, and the weekly rules end at 23:59
+    local. Anchored to the current time of day, a test run in the evening
+    asked for a booking that ran past midnight: refused for falling outside
+    working hours, which is not the refusal under test, so the blackout tests
+    failed every night and passed every morning."""
+    return (datetime.now(timezone.utc) + timedelta(days=days)).replace(hour=10, minute=0, second=0, microsecond=0)
+
+
 def _honeymoon(days_out: int = 30, length_days: int = 14) -> tuple[datetime, datetime]:
-    start = datetime.now(timezone.utc) + timedelta(days=days_out)
+    start = _days_ahead_at_ten(days_out)
     return start, start + timedelta(days=length_days)
 
 
@@ -182,7 +193,7 @@ def test_a_request_that_clips_blocked_time_is_refused(client, db_session):
     _add_weekly_rules(db_session, pro_uid)
     package_id = _create_package(client, pro_id)
 
-    window_start = datetime.now(timezone.utc) + timedelta(days=30)
+    window_start = _days_ahead_at_ten(30)
     db_session.add(
         ProBlackoutDate(
             pro_user_id=pro_uid,

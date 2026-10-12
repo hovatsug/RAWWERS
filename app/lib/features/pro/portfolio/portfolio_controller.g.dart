@@ -27,7 +27,7 @@ final portfolioControllerProvider =
 
 typedef _$PortfolioController = AutoDisposeAsyncNotifier<ProPortfolioResponse>;
 String _$portfolioUploadControllerHash() =>
-    r'541f088ac69824d5cfc5f4e6d8f9849da82aa505';
+    r'69ecc57e031a02906a56ff855478729d5478544a';
 
 /// Progress for the batch currently uploading, keyed by a per-file id.
 ///

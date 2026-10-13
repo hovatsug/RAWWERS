@@ -76,6 +76,10 @@ class ClientDiscoverCard(BaseModel):
     # How quickly they usually reply, as a sentence to show as is - only when
     # it is a positive one. Null means show nothing - see response_time.card_label.
     response_label: str | None = None
+    # Whether to show the photographer as online right now - set on every
+    # response from live presence, never cached, never a time. See
+    # app/services/presence.py.
+    online: bool = False
     top_niches: list[dict] = Field(default_factory=list)
     portfolio_photo_count: int
     portfolio_video_count: int
@@ -196,6 +200,10 @@ class ClientProProfileResponse(BaseModel):
     # How quickly they usually reply to a request, as a sentence to show as
     # is. Null means show nothing - see response_time.client_label.
     response_label: str | None = None
+    # Whether to show the photographer as online right now - set on every
+    # response from live presence, never cached, never a time. See
+    # app/services/presence.py.
+    online: bool = False
     portfolio_photo_count: int
     portfolio_video_count: int
     packages: list[ClientProfilePackage] = Field(default_factory=list)

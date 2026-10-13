@@ -77,6 +77,7 @@ from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
+from app.services import presence
 from app.services.response_time import card_label, client_label
 from app.models.risk import RiskActionType
 from app.services.trust_safety import (
@@ -193,7 +194,7 @@ def client_discover(
     )
     cached = cache_get_json(cache_key)
     if cached:
-        return ClientDiscoverResponse.model_validate(cached)
+        return _with_presence(ClientDiscoverResponse.model_validate(cached))
 
     rows = _discover_rows(
         db,
@@ -218,7 +219,8 @@ def client_discover(
         properties={"country": country.upper(), "city": city, "niche_slug": niche_slug, "count": len(items)},
     )
     db_write.commit()
-    return response
+    # After caching: the cache never holds a dot.
+    return _with_presence(response)
 
 
 @router.post("/client/match", response_model=ClientMatchResponse)
@@ -475,7 +477,7 @@ def client_pro_profile(
         properties={"country": country.upper(), "city": city, "pro_user_id": str(pro_user_id)},
     )
     db_write.commit()
-    return response
+    return _with_presence(response)
 
 
 # How far ahead a client can look, and how much at once. Ninety days covers
@@ -1057,7 +1059,7 @@ def client_home(
     )
     cached = cache_get_json(cache_key)
     if cached:
-        return ClientHomeResponse.model_validate(cached)
+        return _with_presence(ClientHomeResponse.model_validate(cached))
 
     base = _row_base_query(country, city)
     if scope is not None:
@@ -1176,7 +1178,7 @@ def client_home(
         },
     )
     db_write.commit()
-    return response
+    return _with_presence(response)
 
 
 # Tiers that count as genuinely working in a niche that is not someone's
@@ -1217,6 +1219,24 @@ def _in_niche(query, niche_id: uuid.UUID):
             ProNicheSkill.tier.in_(_NICHE_MEMBER_TIERS),
         )
     )
+
+
+def _with_presence(response):
+    """Set `online` on every card - or the profile - in one batched lookup.
+
+    Applied after the cache, on cached and fresh responses alike: cards are
+    cached until the public index changes, presence changes by the minute,
+    and a cached dot would show someone who closed the app. Only the flag
+    changes - never which cards appear or their order.
+    """
+    if isinstance(response, ClientProProfileResponse):
+        response.online = str(response.pro_user_id) in presence.shown_online([response.pro_user_id])
+        return response
+    cards = response.items if isinstance(response, ClientDiscoverResponse) else [c for row in response.rows for c in row.items]
+    shown = presence.shown_online(card.pro_user_id for card in cards)
+    for card in cards:
+        card.online = str(card.pro_user_id) in shown
+    return response
 
 
 def _with_niche_cover(card: ClientDiscoverCard, covers: dict[uuid.UUID, str] | None) -> ClientDiscoverCard:

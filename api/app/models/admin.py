@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import true as sa_true
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -164,6 +165,10 @@ class ProProfile(Base):
     # different answers to a client deciding whether to send a request.
     travel_radius_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False)
+    # Whether clients see a dot while this photographer's app is open. The
+    # source of truth; app/services/presence.py copies it into the presence
+    # key. Hiding it hides only the dot.
+    presence_visible: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=sa_true())
     # How much of their own cash this photographer passes to the client as
     # $RAWW credit, as whole percentage points of gross. A default rather than
     # a per-booking question: nobody wants to be asked on every request.

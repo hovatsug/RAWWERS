@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # While the photographer is online, how long the assistant waits for them
     # to answer before it does (app/services/chat_assistant.py).
     chat_assistant_hold_seconds: int = Field(default=120, alias="CHAT_ASSISTANT_HOLD_SECONDS")
+    # How long a heartbeat keeps a photographer online: the presence key's
+    # expiry, and so the longest a closed app can still show a dot
+    # (app/services/presence.py).
+    presence_window_seconds: int = Field(default=300, alias="PRESENCE_WINDOW_SECONDS")
+    # Heartbeats closer together than this are acknowledged and not written.
+    presence_heartbeat_min_interval_seconds: int = Field(default=50, alias="PRESENCE_HEARTBEAT_MIN_INTERVAL_SECONDS")
     max_review_text_length: int = Field(default=2000, alias="MAX_REVIEW_TEXT_LENGTH")
     max_upload_bytes: int = Field(default=25_000_000, alias="MAX_UPLOAD_BYTES")
     # Gear evidence is a camera file, not a photo. Real ones are 16-58 MB, so the

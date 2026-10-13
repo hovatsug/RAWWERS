@@ -757,23 +757,61 @@ def _ensure_skill(db, *, user_id, niche, tier, gig_count: int, portfolio_count: 
         skill = ProNicheSkill(pro_user_id=user_id, niche_id=niche.id)
         db.add(skill)
 
-    skill.tier = tier
     skill.gigs_completed = gig_count
     skill.review_count = max(0, gig_count - rng.randint(0, 3))
     skill.avg_rating = Decimal("0.00") if gig_count == 0 else Decimal(str(round(rng.uniform(4.1, 5.0), 2)))
-    skill.verified = tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
-    skill.score = {
+    db.flush()
+    _demo_tier(db, user_id=user_id, niche_id=niche.id, tier=tier, rng=rng)
+    skill.confidence = Decimal(str(round(min(0.95, 0.2 + gig_count / 60), 2)))
+    skill.evidence_gigs = gig_count
+    skill.evidence_reviews = skill.review_count
+    skill.evidence_portfolio = portfolio_count
+
+
+DEMO_SEED_REASON = "demo seed"
+
+
+def _demo_tier(db, *, user_id, niche_id, tier: SkillTier, rng) -> None:
+    """The planned tier, set the way an admin would set it: an override with
+    the reason "demo seed". Writing the tier column directly was undone by
+    the first recompute - the tier rules want verification these
+    photographers do not have, and a rebuild-all demoted 32 of them at once.
+    As an override it survives recomputes, shows on the admin page as
+    disagreeing with the evidence, and can be removed like any other.
+
+    Skipped when the same override is already in place, so re-running does
+    not add an audit row every time."""
+    from _seed_common import ADMIN_USER
+    from app.services.niche_skills import admin_override_niche_skill
+
+    score = {
         SkillTier.rookie: rng.randint(5, 24),
         SkillTier.skilled: rng.randint(25, 49),
         SkillTier.pro: rng.randint(50, 69),
         SkillTier.elite: rng.randint(70, 84),
         SkillTier.master: rng.randint(85, 100),
     }[tier]
-    skill.capability_score = skill.score
-    skill.confidence = Decimal(str(round(min(0.95, 0.2 + gig_count / 60), 2)))
-    skill.evidence_gigs = gig_count
-    skill.evidence_reviews = skill.review_count
-    skill.evidence_portfolio = portfolio_count
+    verified = tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
+    skill = db.execute(
+        select(ProNicheSkill).where(ProNicheSkill.pro_user_id == user_id, ProNicheSkill.niche_id == niche_id)
+    ).scalar_one_or_none()
+    if (
+        skill is not None
+        and skill.override_reason == DEMO_SEED_REASON
+        and skill.override_tier == tier
+        and skill.override_verified == verified
+    ):
+        return
+    admin_override_niche_skill(
+        db,
+        pro_user_id=user_id,
+        niche_id=niche_id,
+        tier=tier,
+        score=score,
+        verified=verified,
+        note=DEMO_SEED_REASON,
+        actor_user_id=ADMIN_USER.user_id,
+    )
 
 
 def gig_schedule(gig, *, duration_minutes: int, now) -> tuple[datetime, datetime] | None:
@@ -982,17 +1020,7 @@ def _apply_tiers(db, *, rng: random.Random) -> int:
             ).scalar_one_or_none()
             if skill is None:
                 continue
-            skill.tier = plan_tier
-            skill.score = {
-                SkillTier.rookie: rng.randint(5, 24),
-                SkillTier.skilled: rng.randint(25, 49),
-                SkillTier.pro: rng.randint(50, 69),
-                SkillTier.elite: rng.randint(70, 84),
-                SkillTier.master: rng.randint(85, 100),
-            }[plan_tier]
-            skill.capability_score = skill.score
-            skill.verified = plan_tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
-            skill.certification_score = 100 if skill.verified else 0
+            _demo_tier(db, user_id=user_id, niche_id=niches[plan_slug].id, tier=plan_tier, rng=rng)
             applied += 1
         db.flush()
 

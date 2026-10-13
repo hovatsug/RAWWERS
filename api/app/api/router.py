@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.admin import router as admin_router
 from app.api.v1.ai_concierge import router as ai_concierge_router
 from app.api.v1.presence import router as presence_router
+from app.api.v1.available_now import router as available_now_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chats import router as chats_router
 from app.api.v1.client_launch import router as client_launch_router
@@ -41,6 +42,7 @@ api_router.include_router(admin_router)
 api_router.include_router(ai_concierge_router)
 api_router.include_router(chats_router)
 api_router.include_router(presence_router)
+api_router.include_router(available_now_router)
 api_router.include_router(client_launch_router)
 api_router.include_router(communications_router)
 api_router.include_router(admin_reviews_router)

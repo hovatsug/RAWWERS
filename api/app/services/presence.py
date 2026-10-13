@@ -119,6 +119,18 @@ def photographer_is_online(db: Session, pro_user_id: uuid.UUID) -> bool:
     return current is not None and _fresh(current[0])
 
 
+def seen_within(pro_user_id: uuid.UUID, seconds: int) -> bool:
+    """The app checked in within the last `seconds` - for "available now",
+    which needs fresher presence than the dot. Visibility does not matter
+    here. False if Redis cannot say."""
+    try:
+        current = _parse(get_redis_client().get(_key(pro_user_id)))
+    except Exception:
+        logger.warning("presence_lookup_failed", exc_info=True)
+        return False
+    return current is not None and time.time() - current[0] <= seconds
+
+
 def shown_online(pro_user_ids: Iterable) -> set[str]:
     """Of these photographers, the ones a client should see a dot for: online
     and visible. One round trip for the whole screen. If the lookup fails,

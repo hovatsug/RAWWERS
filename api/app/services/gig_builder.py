@@ -8,6 +8,7 @@ from the gig. Both now call build_gig_for_request.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
@@ -19,6 +20,7 @@ from app.models.gig import Gig, GigStatus
 from app.models.niche import Niche
 from app.services.bookable_time import request_preset
 from app.services.commission import split_for_pro, vat_stamp_for
+from app.services.deadlines import pay_deadline_for_request
 from app.services.package_pricing import compute_minimum_amount
 
 
@@ -35,6 +37,7 @@ def build_gig_for_request(
     request: BookingRequest,
     *,
     client_credit_percent_override: Decimal | None = None,
+    accepted_at: datetime | None = None,
 ) -> Gig:
     """A new, unsaved payment_pending gig for `request`, priced and split as
     of now. The caller adds it; whether the request may be booked at all is
@@ -74,7 +77,11 @@ def build_gig_for_request(
         snapshot["niche_slug"] = niche.slug
         snapshot["niche_name"] = niche.name
 
+    accepted_at = accepted_at or datetime.now(timezone.utc)
     return Gig(
+        # Fixed now, from the request's terms: a short-notice booking keeps its
+        # short window to pay whatever the toggle does next.
+        pay_deadline_at=pay_deadline_for_request(request, accepted_at=accepted_at),
         client_user_id=request.client_user_id,
         pro_user_id=request.pro_user_id,
         status=GigStatus.payment_pending,

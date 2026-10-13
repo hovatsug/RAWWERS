@@ -53,6 +53,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
   **Open question:** `make deploy` in `api/` is a second path - it rsyncs `api/` to the server and runs `docker compose up -d --build` with `api/docker-compose.yml`, not either file above. Which one production actually uses needs confirming; until then, check the server's running services against this list rather than assuming.
 - [ ] **Confirm `beat` and every queue's worker are running.** Without `beat` the outbox is never drained: no in-app notifications, no AI replies, no request expiry. `tests/test_queue_consumers.py` checks the compose files; this checks the running stack.
 - [ ] **`alembic upgrade head`.** Migration `20261007_0056` also backfills the response-time label in SQL, so labels are right immediately.
+  Migration `20261013_0060` (Available now) adds columns only, with defaults that change nothing until a photographer switches it on: every existing package starts not bookable at short notice. It records a pay deadline on every gig still waiting for payment - when it was made plus 24 hours, the rule those gigs were made under - so no unpaid booking's terms move.
 
 ## 3. After deploying - data steps
 
@@ -62,7 +63,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   One run covers both, and it bumps the public index version so cached home and discover responses are dropped. The task logs `rebuild_all_pro_indexes` with `rows` and `overrides_preserved` - the admin tier overrides still in force afterwards; it should equal the count of `override_tier IS NOT NULL` rows before the run.
 
-  **A database that already ran migration `20261007_0056` needs this run regardless.** That migration's backfill was changed after it first ran (an expired request now counts as just past its window, and an even sample takes the higher middle value), and alembic will not run it again, so its `response_bucket` and `response_median_minutes` hold the old rule's answers until each row is recomputed. Dev ran the old version; a database migrating for the first time gets the new backfill and needs nothing extra for this.
+  **A database that already ran migration `20261007_0056` needs this run regardless.** That migration's backfill was changed after it first ran (an expired request now counts as 24 hours and a minute whatever its own window was, and an even sample takes the higher middle value), and alembic will not run it again, so its `response_bucket` and `response_median_minutes` hold the old rule's answers until each row is recomputed. Dev ran the old version; a database migrating for the first time gets the new backfill and needs nothing extra for this.
 - [ ] **Watermark backfill** (**once**, existing objects only): `scripts/backfill_watermark_previews.py`, dry run first. Done locally; see [The watermark fix is now actually in the bucket](BACKEND_GAPS.md#the-watermark-fix-is-now-actually-in-the-bucket-resolved).
 - [ ] **Release gate** - `python3 deploy/release_gate.py --env <staging|production>` ([release_engineering.md](release_engineering.md)).
 
@@ -70,6 +71,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 - [ ] **`AUTH_DEV_BYPASS` is false** in production ([api/README.md](../api/README.md)).
 - [ ] **Stripe: delayed-notification payment methods stay disabled** in the dashboard (Multibanco, SEPA debit, bank redirects). Turning any on arms unhandled paths with no deploy. See [Delayed-notification payment methods](BACKEND_GAPS.md#delayed-notification-payment-methods-are-not-handled-mitigated-for-launch-by-stripe-dashboard-config).
+- [ ] **Available now settings** - defaults are the agreed values; set them only to change one: `AVAILABLE_NOW_FRESH_SECONDS` (120 - how recently the app must have checked in), `AVAILABLE_NOW_HOURS` (4 - when it switches itself off), `SHORT_NOTICE_ACCEPT_MINUTES` (30), `SHORT_NOTICE_PAY_MINUTES` (30), `PAY_DEADLINE_MARGIN_MINUTES` (60 - payment closes at least this long before the shoot), `PAYMENT_WINDOW_HOURS` (24 - the ordinary pay window, formerly a constant).
 - [ ] **R2 lifecycle rule** expiring incomplete multipart uploads (**once** per bucket; not yet configured). See [Upload resume survives a dropped connection, not a killed app](BACKEND_GAPS.md#upload-resume-survives-a-dropped-connection-not-a-killed-app---logged).
 
 ## 5. Not deploy steps - they block a launch to real clients
@@ -93,7 +95,7 @@ Listed so a successful deploy is not mistaken for launch readiness.
 | Item | dev | staging | production |
 |---|---|---|---|
 | Recompute index (`min_package_price`) | done | | |
-| Recompute index (`ranking_score`, and `0056`'s labels under the current rule) | done 2026-10-12 | | |
+| Recompute index (`ranking_score`, and `0056`'s labels under the current rule) | done 2026-10-12 - the later 24h-and-a-minute change gives the same answers there, every dev request having a 24-hour window | | |
 | Watermark backfill | done | | |
 | Camera reference loaded | 98 cameras | | |
 | Price cap row for every active niche and tier | 40 of 60 - none for architecture, automotive, maternity, sports | | |

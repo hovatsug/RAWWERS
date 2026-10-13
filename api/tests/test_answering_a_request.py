@@ -206,9 +206,13 @@ def test_accept_and_confirm_slot_make_the_same_booking(client, db_session):
     assert _accept(client, pro, accepted, start, end).status_code == 200
     assert _confirm(client, pro, confirmed, start + timedelta(hours=2), end + timedelta(hours=2)).status_code == 200
 
-    via_accept, via_confirm = _comparable(_gig_for(db_session, accepted)), _comparable(_gig_for(db_session, confirmed))
+    gig_a, gig_c = _gig_for(db_session, accepted), _gig_for(db_session, confirmed)
+    via_accept, via_confirm = _comparable(gig_a), _comparable(gig_c)
     for row in (via_accept, via_confirm):
         row.pop("scheduled_start"), row.pop("scheduled_end")  # two hours apart by construction
+        row.pop("pay_deadline_at")  # counted from each answer's own moment - compared as a window below
+    windows = [round((g.pay_deadline_at - g.created_at).total_seconds() / 60) for g in (gig_a, gig_c)]
+    assert windows == [24 * 60, 24 * 60], windows
     differing = {k: (via_accept.get(k), via_confirm.get(k)) for k in via_accept.keys() | via_confirm.keys() if via_accept.get(k) != via_confirm.get(k)}
     assert not differing, differing
     assert via_confirm["meta"]["pricing_snapshot"]["package_id"] == str(confirmed.package_id)

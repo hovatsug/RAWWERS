@@ -83,6 +83,9 @@ class ProPackageCreateRequest(BaseModel):
     scheduling_preset: SchedulingPreset = SchedulingPreset.interval
     interval_minutes: int | None = None
     session_blocks: list[SessionBlockInput] = Field(default_factory=list)
+    # May be booked at short notice while "available now". Unset: by preset
+    # - an interval package of up to three hours yes, blocks and full days no.
+    short_notice_ok: bool | None = None
 
 
 class ProPackageUpdateRequest(BaseModel):
@@ -105,6 +108,7 @@ class ProPackageUpdateRequest(BaseModel):
     scheduling_preset: SchedulingPreset | None = None
     interval_minutes: int | None = None
     session_blocks: list[SessionBlockInput] | None = None
+    short_notice_ok: bool | None = None
 
 
 class ProPackageView(BaseModel):
@@ -125,6 +129,7 @@ class ProPackageView(BaseModel):
     scheduling_preset: SchedulingPreset = SchedulingPreset.interval
     interval_minutes: int | None = None
     session_blocks: list[SessionBlockInput] = Field(default_factory=list)
+    short_notice_ok: bool = False
 
 
 class AvailabilityRuleInput(BaseModel):

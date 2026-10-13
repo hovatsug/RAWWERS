@@ -51,6 +51,7 @@ from app.schemas.scheduling import (
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.booking_answer import ensure_request_can_be_booked
+from app.services.deadlines import ensure_payable_in_time
 from app.services.gig_builder import build_gig_for_request, find_gig_for_request
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.notifications import enqueue_notification
@@ -316,7 +317,12 @@ def confirm_booking_slot(
         ignore_booking_request_id=booking.id,
         requests_made_before=booking.created_at,
         preset=request_preset(booking),
+        # The terms the request was made under - see the accept route.
+        notice_minutes=booking.notice_minutes,
+        notice_from=booking.created_at if booking.notice_minutes is not None else None,
     )
+    if booking.status == BookingRequestStatus.pending:
+        ensure_payable_in_time(booking, accepted_at=datetime.now(timezone.utc))
     _validate_within_client_windows(db, booking_request_id=booking_request_id, start_at_utc=body.start_at_utc, end_at_utc=body.end_at_utc)
 
     gig = _find_or_create_gig_from_booking(db, booking)

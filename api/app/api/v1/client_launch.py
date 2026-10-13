@@ -58,13 +58,15 @@ from app.api.v1.reviews import build_review_view
 from app.services.analytics import log_event
 from app.services.availability_blocks import blocked_intervals
 from app.services.bookable_time import (
-    PAYMENT_WINDOW,
+    apply_request_terms,
     bookable_windows,
     check_bookable,
     check_offered,
+    check_requestable,
     gig_preset,
     shape_for_package,
 )
+from app.services.deadlines import gig_pay_deadline
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version
 from app.services.discovery_index import recompute_pro_public_index
@@ -604,22 +606,15 @@ def client_booking_request(
     # has sent an exact package-length time for a long while, and that
     # leniency took 3am on a day the photographer does not work.
     shape = shape_for_package(db, package)
-    check_bookable(
+    # Bookable (at short notice where that applies), and a window this
+    # package offers at all - free time is not enough. Returns the terms the
+    # request is made under: its deadline and how long payment may take.
+    terms = check_requestable(
         db,
         pro_user_id=body.pro_user_id,
         start_at_utc=body.date_window.start_at,
         end_at_utc=body.date_window.end_at,
-        preset=shape.preset,
-    )
-    # And it must be a window this package offers at all - free time is not
-    # enough. Without this the package's preset would only shape what the
-    # calendar shows, not what can be requested.
-    check_offered(
-        db,
-        pro_user_id=body.pro_user_id,
         shape=shape,
-        start_at_utc=body.date_window.start_at,
-        end_at_utc=body.date_window.end_at,
     )
 
     booking = BookingRequest(
@@ -631,9 +626,9 @@ def client_booking_request(
         location_text=body.location,
         notes=body.notes,
         status=BookingRequestStatus.pending,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
         scheduling_preset=shape.preset,
     )
+    apply_request_terms(booking, terms)
     db.add(booking)
     db.flush()
     db.add(
@@ -740,9 +735,17 @@ def list_client_bookings(
                 location_text=row.location_text,
                 expires_at=row.expires_at,
                 created_at=row.created_at,
+                short_notice=bool(row.short_notice),
+                pay_by=_pay_by(gig),
             )
         )
     return ClientBookingListResponse(items=items, next_cursor=next_cursor)
+
+
+def _pay_by(gig) -> datetime | None:
+    if gig is None or gig.status.value != "payment_pending":
+        return None
+    return gig_pay_deadline(gig)
 
 
 @router.get("/client/bookings/{booking_id}", response_model=ClientBookingStatusResponse)
@@ -819,6 +822,9 @@ def client_booking_status(
         payment_status=payment.status.value if payment else None,
         proof_gallery_id=gallery.id if gallery else None,
         proof_gallery_status=gallery.status.value if gallery else None,
+        expires_at=booking.expires_at if booking.status == BookingRequestStatus.pending else None,
+        short_notice=bool(booking.short_notice),
+        pay_by=_pay_by(gig),
         timeline=[
             {
                 "at": item.created_at.isoformat(),
@@ -887,7 +893,7 @@ def client_booking_pay(
     # it, so it does not trust either earlier answer. Notice and working hours
     # are not re-judged (see refusal_for), only whether the hour is still
     # theirs.
-    if gig.created_at <= datetime.now(timezone.utc) - PAYMENT_WINDOW:
+    if gig_pay_deadline(gig) <= datetime.now(timezone.utc):
         raise APIError(
             code="payment_window_closed",
             message="The time held for this booking has been released. Request a new time.",

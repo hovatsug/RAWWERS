@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_not_banned
 from app.api.v1.pro_onboarding import _booking_request_view, _ensure_pro_profile, _validate_availability
+from app.services.bookable_time import apply_request_terms
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import UserRoleType
@@ -357,7 +358,7 @@ def _create_booking_request_from_body(
     if not package or package.pro_user_id != pro_user_id or not package.is_active:
         raise APIError(code="validation_error", message="Invalid package", status_code=422)
 
-    _validate_availability(db, pro_user_id, body.requested_start, body.requested_end, package=package)
+    terms = _validate_availability(db, pro_user_id, body.requested_start, body.requested_end, package=package)
 
     request = BookingRequest(
         pro_user_id=pro_user_id,
@@ -368,9 +369,9 @@ def _create_booking_request_from_body(
         location_text=body.location_text,
         notes=body.notes,
         status=BookingRequestStatus.pending,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
         scheduling_preset=SchedulingPreset(package.scheduling_preset),
     )
+    apply_request_terms(request, terms)
     db.add(request)
     db.flush()
     db.add(

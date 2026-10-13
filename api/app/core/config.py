@@ -73,6 +73,17 @@ class Settings(BaseSettings):
     # expiry, and so the longest a closed app can still show a dot
     # (app/services/presence.py).
     presence_window_seconds: int = Field(default=300, alias="PRESENCE_WINDOW_SECONDS")
+    # "Available now" (app/services/available_now.py, deadlines.py): how
+    # fresh the heartbeat must be, how long the toggle lasts, and the short
+    # clock a short-notice booking runs on.
+    available_now_fresh_seconds: int = Field(default=120, alias="AVAILABLE_NOW_FRESH_SECONDS")
+    available_now_hours: int = Field(default=4, alias="AVAILABLE_NOW_HOURS")
+    short_notice_accept_minutes: int = Field(default=30, alias="SHORT_NOTICE_ACCEPT_MINUTES")
+    short_notice_pay_minutes: int = Field(default=30, alias="SHORT_NOTICE_PAY_MINUTES")
+    payment_window_hours: int = Field(default=24, alias="PAYMENT_WINDOW_HOURS")
+    # Payment must land at least this long before the shoot starts - the
+    # photographer needs to know before they set off.
+    pay_deadline_margin_minutes: int = Field(default=60, alias="PAY_DEADLINE_MARGIN_MINUTES")
     # Heartbeats closer together than this are acknowledged and not written.
     presence_heartbeat_min_interval_seconds: int = Field(default=50, alias="PRESENCE_HEARTBEAT_MIN_INTERVAL_SECONDS")
     max_review_text_length: int = Field(default=2000, alias="MAX_REVIEW_TEXT_LENGTH")

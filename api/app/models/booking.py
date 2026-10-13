@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, Numeric, UniqueConstraint
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, Numeric, UniqueConstraint, false
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -80,6 +80,10 @@ class ProPackage(Base):
     )
     # Only for the interval preset; None is the photographer's slot length.
     interval_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # May be booked at short notice while the photographer is "available
+    # now". Off for every package that existed before; a new one defaults by
+    # its preset (an interval package of up to three hours: on).
+    short_notice_ok: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -159,6 +163,13 @@ class ProSchedulingPolicy(Base):
     buffer_after_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     advance_notice_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
     max_bookings_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # "Available now": switched on until this time - the source of truth
+    # (Redis holds a copy). Counts only while the app has also checked in
+    # within two minutes; see app/services/available_now.py.
+    available_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # While available, the notice for the next 24 hours, for packages that
+    # allow it: how long they need to get ready and get there.
+    short_notice_prep_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -190,6 +201,13 @@ class BookingRequest(Base):
     scheduling_preset: Mapped[SchedulingPreset | None] = mapped_column(
         Enum(SchedulingPreset, name="scheduling_preset", native_enum=False, length=32), nullable=True
     )
+    # The terms it was made under, kept whatever the toggle does afterwards:
+    # whether it was a short-notice booking, the notice it was judged against,
+    # and how long the client has to pay once it is accepted. None (requests
+    # before these existed): ordinary terms. See app/services/deadlines.py.
+    short_notice: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
+    notice_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pay_window_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

@@ -299,6 +299,14 @@ class ClientBookingStatusResponse(BaseModel):
     # screen is the right destination. Carried here so the app does not have
     # to fetch the gallery to find out which one to show.
     proof_gallery_status: str | None = None
+    # While it waits on the photographer: when it lapses unanswered.
+    expires_at: datetime | None = None
+    # The terms it was requested on: a short-notice request is answered and
+    # paid on a short clock, so the client's screens refresh while waiting.
+    short_notice: bool = False
+    # When the client has to pay by - set only while payment is due. The
+    # same deadline the pay route enforces.
+    pay_by: datetime | None = None
     timeline: list[dict] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
     # The client's own review of this booking, whatever its status - so the
@@ -329,6 +337,12 @@ class ClientBookingListItem(BaseModel):
     location_text: str | None = None
     expires_at: datetime
     created_at: datetime
+    # The terms it was requested on: a short-notice request is answered and
+    # paid on a short clock, so the client's screens refresh while waiting.
+    short_notice: bool = False
+    # When the client has to pay by - set only while payment is due. The
+    # same deadline the pay route enforces.
+    pay_by: datetime | None = None
 
 
 class ClientBookingListResponse(BaseModel):

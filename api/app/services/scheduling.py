@@ -77,6 +77,8 @@ def validate_slot_available(
     ignore_booking_request_id: uuid.UUID | None = None,
     requests_made_before: datetime | None = None,
     preset=None,
+    notice_minutes: int | None = None,
+    notice_from: datetime | None = None,
 ) -> None:
     """Raise when [start, end) cannot be booked. See bookable_time."""
     from app.models.booking import SchedulingPreset
@@ -91,6 +93,8 @@ def validate_slot_available(
         ignore_booking_request_id=ignore_booking_request_id,
         requests_made_before=requests_made_before,
         preset=preset or SchedulingPreset.interval,
+        notice_minutes=notice_minutes,
+        notice_from=notice_from,
     )
 
 

@@ -69,7 +69,9 @@ from app.schemas.launch_ops import (
     ProOnboardingStatusResponse,
 )
 from app.services.audit import add_admin_audit_log
-from app.services.bookable_time import check_bookable, check_offered, request_preset, shape_for_package
+from app.services.bookable_time import RequestTerms, apply_request_terms, check_bookable, check_requestable, request_preset, shape_for_package
+from app.services.available_now import default_short_notice_ok
+from app.services.deadlines import ensure_payable_in_time
 from app.services.package_schedule import apply_schedule, current_blocks, validate_schedule
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
@@ -394,6 +396,11 @@ def create_package(
         finals_sla_days=body.finals_sla_days,
         addons=body.addons,
         is_active=True,
+        short_notice_ok=(
+            body.short_notice_ok
+            if body.short_notice_ok is not None
+            else default_short_notice_ok(body.scheduling_preset, body.duration_minutes)
+        ),
     )
     db.add(package)
     db.flush()
@@ -460,6 +467,8 @@ def update_package(
 
     # Validated against the package as it now stands, so a longer duration
     # cannot slip past a block it no longer fits.
+    if body.short_notice_ok is not None:
+        package.short_notice_ok = body.short_notice_ok
     if body.scheduling_preset is not None:
         apply_schedule(db, package, body.scheduling_preset, body.interval_minutes, body.session_blocks or [])
     else:
@@ -928,9 +937,9 @@ def get_pro_niche_skills(
     badge_codes = set(list_user_badge_codes(db, pro_user_id))
     items = [
         ProNicheSkillView(
-            niche_id=niche.id,
             niche_slug=niche.slug,
             niche_name=niche.name,
+            niche_id=niche.id,
             tier=skill.tier,
             score=skill.score,
             verified=skill.verified,
@@ -971,9 +980,9 @@ def get_my_niche_skills(
     badge_codes = set(list_user_badge_codes(db, user.user_id))
     items = [
         ProNicheSkillView(
-            niche_id=niche.id,
             niche_slug=niche.slug,
             niche_name=niche.name,
+            niche_id=niche.id,
             tier=skill.tier,
             score=skill.score,
             verified=skill.verified,
@@ -1018,7 +1027,7 @@ def create_booking_request(
     if not package or package.pro_user_id != pro_user_id or not package.is_active:
         raise APIError(code="validation_error", message="Invalid package", status_code=422)
 
-    _validate_availability(db, pro_user_id, body.requested_start, body.requested_end, package=package)
+    terms = _validate_availability(db, pro_user_id, body.requested_start, body.requested_end, package=package)
 
     request = BookingRequest(
         pro_user_id=pro_user_id,
@@ -1029,9 +1038,9 @@ def create_booking_request(
         location_text=body.location_text,
         notes=body.notes,
         status=BookingRequestStatus.pending,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.booking_response_deadline_hours),
         scheduling_preset=SchedulingPreset(package.scheduling_preset),
     )
+    apply_request_terms(request, terms)
     db.add(request)
     db.flush()
     db.add(
@@ -1167,9 +1176,16 @@ def accept_booking_request(
         # first served.
         ignore_booking_request_id=request.id,
         requests_made_before=request.created_at,
-        # Judged by the preset it was requested under, not the package's now.
+        # Judged by the preset it was requested under, not the package's now -
+        # and by the notice it was made under, from when it was made: a
+        # short-notice request stays acceptable if the toggle is switched
+        # off meanwhile.
         preset=request_preset(request),
+        notice_minutes=request.notice_minutes,
+        notice_from=request.created_at if request.notice_minutes is not None else None,
     )
+    # A yes the client cannot pay for in time books nothing.
+    ensure_payable_in_time(request, accepted_at=datetime.now(timezone.utc))
 
     package = db.get(ProPackage, request.package_id)
     if not package:
@@ -1373,23 +1389,16 @@ def _compute_completeness(profile: ProProfile) -> int:
 
 def _validate_availability(
     db: Session, pro_user_id: uuid.UUID, start: datetime, end: datetime, *, package: ProPackage | None = None
-) -> None:
+) -> RequestTerms:
     """The chat and pro-side request paths. The same rule as every other -
     see bookable_time; this one used to skip notice and existing bookings.
 
     With the package, also that the window is one the package offers at all,
-    exactly as the client's request path checks.
+    exactly as the client's request path checks. Returns the terms the
+    request is made under.
     """
     shape = shape_for_package(db, package) if package is not None else None
-    check_bookable(
-        db,
-        pro_user_id=pro_user_id,
-        start_at_utc=start,
-        end_at_utc=end,
-        preset=shape.preset if shape else SchedulingPreset.interval,
-    )
-    if shape is not None:
-        check_offered(db, pro_user_id=pro_user_id, shape=shape, start_at_utc=start, end_at_utc=end)
+    return check_requestable(db, pro_user_id=pro_user_id, start_at_utc=start, end_at_utc=end, shape=shape)
 
 
 def _booking_request_list_item(request: BookingRequest, *, now: datetime) -> BookingRequestListItem:
@@ -1454,6 +1463,7 @@ def _package_view(package: ProPackage, db: Session) -> ProPackageView:
         is_active=package.is_active,
         scheduling_preset=SchedulingPreset(package.scheduling_preset),
         interval_minutes=package.interval_minutes,
+        short_notice_ok=bool(package.short_notice_ok),
         session_blocks=[
             SessionBlockInput(label=SessionBlockLabel(b.label), start_time=b.start_time, end_time=b.end_time)
             for b in blocks

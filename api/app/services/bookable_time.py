@@ -11,7 +11,9 @@ time without a confirmed slot - so a paid shoot left its hour open.
 
 Everything now asks this module. A time is bookable when all of these hold:
 
-  - it is at least `advance_notice_hours` away;
+  - it is at least the notice away: `advance_notice_hours`, or - while the
+    photographer is "available now" and for a package that allows it - their
+    preparation time, for anything in the next 24 hours (notice_minutes_for);
   - one working-hours rule wholly contains it (a night shift owns the small
     hours of the next day - see availability_rules);
   - no blocked time touches it, from either table (availability_blocks);
@@ -22,9 +24,9 @@ What counts as a booking, i.e. what holds time:
 
   - a reserved or confirmed slot;
   - a paid gig's scheduled time;
-  - an accepted gig awaiting payment, for PAYMENT_WINDOW after it was
-    accepted - once a photographer has said yes, the hour is not theirs to
-    sell again while the client pays;
+  - an accepted gig awaiting payment, until its pay deadline (deadlines.py)
+    - once a photographer has said yes, the hour is not theirs to sell again
+    while the client pays;
   - a pending request, until it expires - first come, first served. A
     request holds against requests made after it, and not against earlier
     ones: when a photographer accepts a request, only pending requests older
@@ -61,7 +63,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
@@ -81,14 +83,20 @@ from app.models.booking import (
     SessionBlockLabel,
 )
 from app.models.gig import Gig, GigStatus, PaymentStatus, StripePayment
+from app.services import available_now
 from app.services.availability_blocks import blocked_intervals
 from app.services.availability_rules import any_rule_covers, rule_window
 
 logger = logging.getLogger(__name__)
 
-# How long an accepted, unpaid booking holds its time. The same 24 hours a
-# photographer has to answer a request, and what the client app tells people.
-PAYMENT_WINDOW = timedelta(hours=24)
+# How long an accepted, unpaid booking holds its time is its own pay
+# deadline, fixed at acceptance - see app/services/deadlines.py. Gigs from
+# before that was recorded had the standard window from when they were made.
+_STANDARD_PAY_WINDOW = timedelta(hours=24)
+
+
+def _pay_deadline_column():
+    return func.coalesce(Gig.pay_deadline_at, Gig.created_at + _STANDARD_PAY_WINDOW)
 
 # A gig holds its time once it is paid - "the date is not held until this is
 # paid", as the client app tells people. Everything after payment is here so a
@@ -147,6 +155,9 @@ class Shape:
     duration: timedelta
     interval: timedelta | None = None
     blocks: tuple[tuple[SessionBlockLabel, time, time], ...] = ()
+    # The package may be booked at the photographer's preparation time while
+    # they are "available now".
+    short_notice_ok: bool = False
 
 
 @dataclass(frozen=True)
@@ -182,6 +193,7 @@ def shape_for_package(db: Session, package: ProPackage) -> Shape:
         )
     return Shape(
         preset=preset,
+        short_notice_ok=bool(package.short_notice_ok),
         duration=timedelta(minutes=package.duration_minutes),
         interval=timedelta(minutes=package.interval_minutes) if package.interval_minutes else None,
         blocks=blocks,
@@ -199,6 +211,9 @@ class Calendar:
     bookings: list[Booking]
     counted: list[Booking]
     tz: ZoneInfo
+    # The preparation time to use as notice right now, or None: decided once,
+    # when the calendar is loaded (available_now.short_notice_hours).
+    short_notice_hours: int | None = None
 
     @property
     def has_schedule(self) -> bool:
@@ -249,7 +264,7 @@ def load_calendar(
                 Gig.status.in_(OCCUPYING_GIG_STATUSES),
                 # Accepted and inside its time to pay. Past it, the gig holds
                 # nothing even before the sweep cancels it.
-                and_(Gig.status == GigStatus.payment_pending, Gig.created_at > now - PAYMENT_WINDOW),
+                and_(Gig.status == GigStatus.payment_pending, _pay_deadline_column() > now),
             ),
             Gig.scheduled_start.is_not(None),
             Gig.scheduled_end.is_not(None),
@@ -309,7 +324,21 @@ def load_calendar(
         # Rules carry their own timezone; a photographer's are one zone in
         # practice. With no rules there is nothing to be local to.
         tz=ZoneInfo(rules[0].timezone) if rules else ZoneInfo("UTC"),
+        short_notice_hours=available_now.short_notice_hours(policy, pro_user_id, now),
     )
+
+
+SHORT_NOTICE_HORIZON = timedelta(hours=24)
+
+
+def notice_minutes_for(cal: Calendar, start: datetime, *, now: datetime, short_notice_ok: bool) -> int:
+    """The notice a booking starting at `start` needs, made `now`: the
+    photographer's preparation time if they are available now, the package
+    allows it and the start is within the next 24 hours; otherwise their
+    usual notice. The one place short notice changes anything."""
+    if cal.short_notice_hours is not None and short_notice_ok and start < now + SHORT_NOTICE_HORIZON:
+        return min(cal.short_notice_hours, cal.policy.advance_notice_hours) * 60
+    return cal.policy.advance_notice_hours * 60
 
 
 def refusal_for(
@@ -320,8 +349,16 @@ def refusal_for(
     now: datetime | None = None,
     at_payment: bool = False,
     preset: SchedulingPreset = SchedulingPreset.interval,
+    short_notice_ok: bool = False,
+    notice_minutes: int | None = None,
+    notice_from: datetime | None = None,
 ) -> Refusal | None:
     """Why [start, end) cannot be booked, or None when it can.
+
+    Notice is notice_minutes_for(...) - unless `notice_minutes` is given:
+    the notice a request was already judged against, measured from
+    `notice_from` (when it was made). Accepting or confirming a request
+    keeps the terms it was made under, whatever the toggle says now.
 
     `preset` is the preset the window is being booked under; see the module
     docstring for the two places it changes the answer.
@@ -336,9 +373,14 @@ def refusal_for(
     policy = cal.policy
     if end <= start:
         return Refusal("validation_error", "The end of a booking must be after its start.")
+    if notice_minutes is None:
+        notice_minutes = notice_minutes_for(cal, start, now=now, short_notice_ok=short_notice_ok)
+    else:
+        now = notice_from or now
+    required = timedelta(minutes=notice_minutes)
     notice = Refusal(
         "validation_error",
-        f"This photographer needs at least {policy.advance_notice_hours} hours' notice.",
+        f"This photographer needs at least {_hours(notice_minutes)} notice.",
     )
     if not at_payment:
         if not cal.rules:
@@ -349,10 +391,10 @@ def refusal_for(
             if not day_rules:
                 return Refusal("validation_error", "This photographer does not work that day.")
             first_hour = min(rule_window(rule, local_day)[0] for rule in day_rules)
-            if first_hour < now + timedelta(hours=policy.advance_notice_hours):
+            if first_hour < now + required:
                 return notice
         else:
-            if start < now + timedelta(hours=policy.advance_notice_hours):
+            if start < now + required:
                 return notice
             if not any_rule_covers(cal.rules, start, end):
                 return Refusal("validation_error", "That time is outside this photographer's working hours.")
@@ -386,8 +428,13 @@ def check_bookable(
     requests_made_before: datetime | None = None,
     at_payment: bool = False,
     preset: SchedulingPreset = SchedulingPreset.interval,
-) -> None:
-    """Raise a 409 naming the reason [start, end) cannot be booked.
+    short_notice_ok: bool = False,
+    notice_minutes: int | None = None,
+    notice_from: datetime | None = None,
+) -> Calendar:
+    """Raise a 409 naming the reason [start, end) cannot be booked; return
+    the calendar it was judged against (request creation reads the notice
+    it used from it).
 
     `ignore_gig_id` and `ignore_booking_request_id` are the booking being
     placed, accepted or paid for, so it is not refused for overlapping
@@ -402,9 +449,25 @@ def check_bookable(
         ignore_booking_request_id=ignore_booking_request_id,
         requests_made_before=requests_made_before,
     )
-    refusal = refusal_for(cal, start_at_utc, end_at_utc, at_payment=at_payment, preset=preset)
+    refusal = refusal_for(
+        cal,
+        start_at_utc,
+        end_at_utc,
+        at_payment=at_payment,
+        preset=preset,
+        short_notice_ok=short_notice_ok,
+        notice_minutes=notice_minutes,
+        notice_from=notice_from,
+    )
     if refusal is not None:
         raise APIError(code=refusal.code, message=refusal.message, status_code=409)
+    return cal
+
+
+def _hours(minutes: int) -> str:
+    if minutes % 60 == 0:
+        return "1 hour's" if minutes == 60 else f"{minutes // 60} hours'"
+    return f"{minutes} minutes'"
 
 
 def _local(day: date, at: time, tz: ZoneInfo) -> datetime:
@@ -480,7 +543,7 @@ def bookable_windows(
     return cal, [
         w
         for w in _candidates(cal, shape, from_date, to_date)
-        if refusal_for(cal, w.start, w.end, now=now, preset=shape.preset) is None
+        if refusal_for(cal, w.start, w.end, now=now, preset=shape.preset, short_notice_ok=shape.short_notice_ok) is None
     ]
 
 
@@ -524,7 +587,7 @@ def check_offered(db: Session, *, pro_user_id: uuid.UUID, shape: Shape, start_at
 
 
 def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int | None = 100) -> int:
-    """Cancel accepted gigs not paid within PAYMENT_WINDOW, releasing their time.
+    """Cancel accepted gigs not paid by their pay deadline, releasing their time.
 
     The rule already stops counting such a gig the moment its window passes;
     this makes it final, and closes its payment so a late charge cannot land
@@ -541,7 +604,7 @@ def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int |
     current = now or datetime.now(timezone.utc)
     query = (
         select(Gig)
-        .where(Gig.status == GigStatus.payment_pending, Gig.created_at <= current - PAYMENT_WINDOW)
+        .where(Gig.status == GigStatus.payment_pending, _pay_deadline_column() <= current)
         .order_by(Gig.created_at.asc())
     )
     if limit is not None:
@@ -578,3 +641,47 @@ def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int |
         except Exception:
             logger.exception("expire_unpaid_gig_failed", extra={"gig_id": str(gig.id)})
     return expired
+
+
+from app.services.deadlines import RequestTerms  # noqa: E402 - re-exported for the request paths
+
+
+def check_requestable(
+    db: Session,
+    *,
+    pro_user_id: uuid.UUID,
+    start_at_utc: datetime,
+    end_at_utc: datetime,
+    shape: Shape | None,
+) -> RequestTerms:
+    """For a new request: refuse unless bookable (with short notice where it
+    applies) and offered by the package, and return the terms it is made
+    under. Every path that makes a request uses this - the client funnel,
+    the photographer's side and chat - so none can drift."""
+    from app.services.deadlines import request_terms
+
+    now = datetime.now(timezone.utc)
+    short_ok = bool(shape and shape.short_notice_ok)
+    cal = check_bookable(
+        db,
+        pro_user_id=pro_user_id,
+        start_at_utc=start_at_utc,
+        end_at_utc=end_at_utc,
+        preset=shape.preset if shape else SchedulingPreset.interval,
+        short_notice_ok=short_ok,
+    )
+    if shape is not None:
+        check_offered(db, pro_user_id=pro_user_id, shape=shape, start_at_utc=start_at_utc, end_at_utc=end_at_utc)
+    return request_terms(
+        now=now,
+        start=start_at_utc,
+        standard_notice_hours=cal.policy.advance_notice_hours,
+        notice_minutes=notice_minutes_for(cal, start_at_utc, now=now, short_notice_ok=short_ok),
+    )
+
+
+def apply_request_terms(request: BookingRequest, terms: RequestTerms) -> None:
+    request.short_notice = terms.short_notice
+    request.notice_minutes = terms.notice_minutes
+    request.expires_at = terms.expires_at
+    request.pay_window_minutes = terms.pay_window_minutes

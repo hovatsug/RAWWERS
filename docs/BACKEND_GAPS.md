@@ -1965,3 +1965,18 @@ do not have, so the first full recompute demoted 32 of them on dev. The seed now
 sets its tiers through the override path with the reason "demo seed": they
 survive recomputes and show on the admin page as overrides that disagree with
 the evidence - which, for invented photographers, they do.
+
+## Available now: what changed beyond the toggle - LOGGED
+
+Short-notice booking (`app/services/available_now.py`, `deadlines.py`) brought four changes worth knowing about outside it.
+
+- **Accepting and confirming a slot judge notice by the request's own terms.** A request records, when made, whether it was short notice and the notice it was made under. Accept and confirm-slot now ask "was this bookable when it was requested?" (notice counted from `created_at`) rather than "is it bookable now?". Without that, a short-notice request could not be accepted once the toggle went off, and an ordinary request made 25 hours ahead could not be accepted two hours later. Working hours, blocked time, other bookings, holds and the daily limit are still judged now. The effect on ordinary requests is to relax a refusal that was a false one.
+- **The pay deadline is recorded on the gig** (`pay_deadline_at`), and the hold, the pay route, the unpaid sweep and the client's screens all read it. It replaced three separate 24-hour constants. Gigs from before it fall back to `created_at` + 24 hours.
+- **Accepting is refused (`too_late_to_pay`) when the pay deadline - capped `PAY_DEADLINE_MARGIN_MINUTES` before the start - has already passed.** That only happens when a short-notice request is answered very close to the shoot.
+- **The photographer skills endpoints (`/v1/pro/me/skills`, `/v1/pros/{id}/skills`) had no test.** When `niche_id` became required in their shared view, both would have returned 500. Both now set it, and a test covers both.
+
+**Sweeps: correctness does not wait for them.** An unanswered request is refused on accept and confirm-slot from its `expires_at`, and stops holding its time from then. An unpaid booking is refused on payment and stops holding from its pay deadline. The sweeps (every `BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS`, 900) only change the status the lists show. On a 30-minute clock, a status 15 minutes late is visible. Shortening the interval to 60 seconds would fix that at the cost of one small query a minute. Not changed yet, pending a decision.
+
+**Client availability is not cached.** It is computed per request, so switching on or off shows on the client's next calendar load (`test_the_calendar_is_never_served_stale_across_a_toggle`).
+
+**`make test-isolated` run from a worktree's own `api/` reports "all 15 Redis indexes are claimed".** That message is false: compose there finds no `.env` and no running Redis, so the claim command fails, and the script reads any non-OK reply as "claimed". Run it from the main `api/` with `REPO=<worktree>`, as documented.

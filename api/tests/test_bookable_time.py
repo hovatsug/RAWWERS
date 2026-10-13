@@ -706,7 +706,10 @@ def test_paying_after_the_24_hours_is_refused_even_before_the_sweep(client, db_s
     pro = _pro(db_session)
     monday = _future_weekday(MONDAY)
     booking_id, gig = _accepted_booking(client, db_session, pro, _utc(monday, 10), _utc(monday, 11))
+    # Its pay deadline - 24 hours from acceptance for an ordinary booking,
+    # fixed on the gig then - has passed.
     gig.created_at = datetime.now(timezone.utc) - timedelta(hours=25)
+    gig.pay_deadline_at = datetime.now(timezone.utc) - timedelta(hours=1)
     db_session.commit()
 
     resp = _pay(client, pro, booking_id)

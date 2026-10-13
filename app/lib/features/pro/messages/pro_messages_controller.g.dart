@@ -54,7 +54,7 @@ final proUnreadControllerProvider =
 
 typedef _$ProUnreadController = AsyncNotifier<int>;
 String _$proThreadControllerHash() =>
-    r'3f0589c523a1423bf8bcb1e9206375aaedce34bf';
+    r'b86f30b1c063ad0eaf73a95e614265f2eba53d9d';
 
 /// Copied from Dart SDK
 class _SystemHash {

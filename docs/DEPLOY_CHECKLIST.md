@@ -73,6 +73,14 @@ Listed so a successful deploy is not mistaken for launch readiness.
 - **No email is delivered and push does not exist.** A photographer is never told a request arrived. See [LAUNCH BLOCKER: no email is ever delivered](BACKEND_GAPS.md#launch-blocker-no-email-is-ever-delivered-and-push-does-not-exist). "Available now" also waits on this.
 - **Price caps** - see section 1; enforcement is inert until the rows exist ([LAUNCH BLOCKER: the tier price cap enforces nothing](BACKEND_GAPS.md#launch-blocker-the-tier-price-cap-enforces-nothing--zero-rows)).
 - **Cancellation and no-show terms for short-notice bookings** - an open product decision.
+- **Presence on a physical iPhone, never yet checked.** With the pro app on a real phone (Developer Mode on, paired in Xcode, signed with a team, `env/pro.json` pointing at an address the phone can reach), and the client app or `GET /v1/client/pros/<id>` watching that photographer:
+  1. Open the pro app: the dot appears within a few seconds.
+  2. Send it to the background (home gesture): the dot goes at once.
+  3. Reopen, then force-quit it (swipe it away): the dot is gone within 5 minutes. Record the times.
+  4. Reopen, then turn on airplane mode with the app open: the dot is gone within 5 minutes. Record the times.
+  5. Lock the phone with the app open for 10 minutes: the dot is gone within 5 minutes of locking.
+
+  Simulators covered steps 1-3; steps 3-5 on a phone are what the five-minute expiry exists for. See BACKEND_GAPS.md, "iOS suspension unverified on a physical device".
 
 ## Done per environment
 

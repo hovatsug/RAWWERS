@@ -1886,3 +1886,37 @@ entry above recommends for its tests.
 (`_days_ahead_at_ten`) instead of at the current time of day, so no booking in it
 can cross midnight whatever hour the suite runs. A pin on the test clock would
 have hidden the dependence; removing it is the fix.
+
+## iOS suspension unverified on a physical device - LOGGED
+
+Presence (the online dot) rests on two behaviours of the pro app: it stops
+heartbeating and sends one clear when it goes to the background, and when no
+clear arrives - force-quit, crash, no signal - the server's presence key
+expires after `PRESENCE_WINDOW_SECONDS` (5 minutes) and the dot goes with it.
+
+Verified:
+
+- the expiry on real Redis, with the window shortened to 2 seconds: one
+  heartbeat, no clear, and the dot is gone from home and the profile (test);
+- the default of 300 (guard test);
+- the app lifecycle driving the heartbeat: away stops it with exactly one
+  clear, back restarts it, a quick flick through inactive drops nothing
+  (widget test);
+- a failing or hanging server: no crash, never reported as online, backoff
+  10s/20s/40s capped at the minute, recovery on the first success (fake
+  client);
+- on two iOS simulators (pro app on an iPhone 16e, client view watched
+  through the API every 2s), 2026-10-12:
+  - launch 23:17:24 -> heartbeat 23:17:33.0 -> shown online 23:17:35;
+  - backgrounded by launching Settings 23:17:48 -> one clear 23:17:58.98 ->
+    offline;
+  - relaunched 23:18:24 -> online 23:18:29;
+  - force-quit with `xcrun simctl terminate` 23:18:33 -> no clear sent -> key
+    expired by Redis and dot gone 23:23:28, 300s after the last heartbeat.
+
+Not verified: how a real iPhone suspends the app. A simulator delivers the
+lifecycle events promptly and keeps the network up; a phone may suspend
+before the clear is sent, or in airplane mode cannot send it at all. The
+five-minute expiry is designed to cover exactly that, but it has only been
+observed on simulators. A device check is on the deploy checklist's
+blocks-real-client-launch list.

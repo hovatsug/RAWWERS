@@ -928,6 +928,7 @@ def get_pro_niche_skills(
     badge_codes = set(list_user_badge_codes(db, pro_user_id))
     items = [
         ProNicheSkillView(
+            niche_id=niche.id,
             niche_slug=niche.slug,
             niche_name=niche.name,
             tier=skill.tier,
@@ -970,6 +971,7 @@ def get_my_niche_skills(
     badge_codes = set(list_user_badge_codes(db, user.user_id))
     items = [
         ProNicheSkillView(
+            niche_id=niche.id,
             niche_slug=niche.slug,
             niche_name=niche.name,
             tier=skill.tier,

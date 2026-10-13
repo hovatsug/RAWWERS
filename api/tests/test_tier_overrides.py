@@ -168,8 +168,24 @@ def test_the_admin_view_says_when_the_evidence_disagrees(client, db_session):
     [row] = [i for i in items if i["niche_slug"] == "portraits"]
     assert row["tier"] == "elite" and row["evidence_tier"] == "rookie"
     assert row["evidence_disagrees"] is True
-    assert row["override"]["reason"] == "Known to us: ten years of weddings"
-    assert row["override"]["by"] == str(ADMIN)
+    assert row["active_override"]["reason"] == "Known to us: ten years of weddings"
+    assert row["active_override"]["by"] == str(ADMIN)
+
+
+@pytest.mark.parametrize("as_self", [True, False], ids=["own skills", "public skills"])
+def test_every_skills_view_names_its_niche_by_id(client, db_session, as_self):
+    # niche_id is required in the shared view; a builder that leaves it out
+    # turns the whole response into a 500, not a missing field.
+    pro, niche = _pro(db_session), _niche(db_session)
+    recompute_pro_niche_skills(db_session, pro)
+    db_session.commit()
+
+    path = "/v1/pro/me/skills" if as_self else f"/v1/pros/{pro}/skills"
+    resp = client.get(path, headers={"X-User-Id": str(pro)})
+
+    assert resp.status_code == 200, resp.text
+    [row] = [i for i in resp.json()["items"] if i["niche_slug"] == "portraits"]
+    assert row["niche_id"] == str(niche.id)
 
 
 def test_an_override_is_not_lost_through_the_per_photographer_recompute(client, db_session):

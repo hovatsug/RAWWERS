@@ -286,11 +286,11 @@ function NicheTiers({ proId, name }: { proId: string; name: string }) {
             <div className="min-w-0">
               <p className="text-sm text-slate-100">
                 {row.niche_name} · <span className="font-semibold">{humanise(row.tier)}</span>
-                {row.override ? <span className="ml-2"><StatusBadge tone="info" label="Admin override" /></span> : null}
+                {row.active_override ? <span className="ml-2"><StatusBadge tone="info" label="Admin override" /></span> : null}
               </p>
-              {row.override ? (
+              {row.active_override ? (
                 <p className="mt-1 text-xs text-slate-400">
-                  Set {row.override.at ? new Date(row.override.at).toLocaleDateString() : ""} — “{row.override.reason}”
+                  Set {row.active_override.at ? new Date(row.active_override.at).toLocaleDateString() : ""} — “{row.active_override.reason}”
                 </p>
               ) : null}
               {row.evidence_disagrees && row.evidence_tier ? (
@@ -304,13 +304,13 @@ function NicheTiers({ proId, name }: { proId: string; name: string }) {
               <AdminButton
                 tone="secondary"
                 onClick={() => {
-                  setTier(row.override?.tier ?? row.tier);
+                  setTier(row.active_override?.tier ?? row.tier);
                   setSetting(row);
                 }}
               >
-                {row.override ? "Change…" : "Override…"}
+                {row.active_override ? "Change…" : "Override…"}
               </AdminButton>
-              {row.override ? (
+              {row.active_override ? (
                 <AdminButton tone="secondary" onClick={() => setRemoving(row)}>
                   Remove override…
                 </AdminButton>

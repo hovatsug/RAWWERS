@@ -186,7 +186,7 @@ export type NicheSkillRow = {
   score: number;
   verified: boolean;
   gigs_completed: number;
-  override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
+  active_override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
 };
 
 export const admin = {

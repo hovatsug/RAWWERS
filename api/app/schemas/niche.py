@@ -59,9 +59,9 @@ class NicheSkillOverrideView(BaseModel):
 
 
 class ProNicheSkillView(BaseModel):
-    niche_id: uuid.UUID | None = None
     niche_slug: str
     niche_name: str
+    niche_id: uuid.UUID
     tier: SkillTier
     score: int = 0
     verified: bool = False
@@ -82,7 +82,9 @@ class ProNicheSkillView(BaseModel):
     # What the evidence alone gives; `tier` is the effective tier.
     evidence_tier: SkillTier | None = None
     # An admin's override in force, if any - kept until an admin removes it.
-    override: NicheSkillOverrideView | None = None
+    # Not named `override`: that shadows Dart's @override in the generated
+    # app client and breaks code generation for the whole class.
+    active_override: NicheSkillOverrideView | None = None
     # The override says something the evidence does not.
     evidence_disagrees: bool = False
 

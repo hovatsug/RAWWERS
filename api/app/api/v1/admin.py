@@ -1937,7 +1937,7 @@ def admin_get_pro_niche_skill(
                 last_demotion_at=skill.last_demotion_at,
                 updated_at=skill.updated_at,
                 evidence_tier=skill.evidence_tier,
-                override=_override_view(skill),
+                active_override=_override_view(skill),
                 evidence_disagrees=skill.override_tier is not None and skill.override_tier != skill.evidence_tier,
             )
         )

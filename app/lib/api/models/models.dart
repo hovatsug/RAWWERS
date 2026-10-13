@@ -182,6 +182,7 @@ export 'mux_upload_create_response.dart';
 export 'my_milestone_item.dart';
 export 'my_milestones_response.dart';
 export 'niche_pricing_preview_response.dart';
+export 'niche_skill_override_view.dart';
 export 'notification_action.dart';
 export 'notification_digest_mode.dart';
 export 'notification_list_response.dart';

@@ -170,6 +170,7 @@ void main() {
       final skill = ProNicheSkillView(
         nicheSlug: 'weddings',
         nicheName: 'Weddings',
+        nicheId: '00000000-0000-0000-0000-000000000001',
         tier: SkillTier.rookie,
         score: 60,
         verified: true,
@@ -200,6 +201,7 @@ void main() {
       final skill = ProNicheSkillView(
         nicheSlug: 'weddings',
         nicheName: 'Weddings',
+        nicheId: '00000000-0000-0000-0000-000000000001',
         tier: SkillTier.rookie,
         score: 0,
         verified: false,
@@ -228,6 +230,7 @@ void main() {
       final skill = ProNicheSkillView(
         nicheSlug: 'weddings',
         nicheName: 'Weddings',
+        nicheId: '00000000-0000-0000-0000-000000000001',
         tier: SkillTier.master,
         score: 90,
         verified: true,

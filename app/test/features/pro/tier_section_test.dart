@@ -122,6 +122,7 @@ void main() {
     final skill = ProNicheSkillView(
       nicheSlug: 'weddings',
       nicheName: 'Weddings',
+      nicheId: '00000000-0000-0000-0000-000000000001',
       tier: SkillTier.skilled,
       score: 30,
       verified: false,

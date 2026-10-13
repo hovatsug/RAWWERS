@@ -10,6 +10,7 @@ _ProNicheSkillView _$ProNicheSkillViewFromJson(Map<String, dynamic> json) =>
     _ProNicheSkillView(
       nicheSlug: json['niche_slug'] as String,
       nicheName: json['niche_name'] as String,
+      nicheId: json['niche_id'] as String,
       tier: SkillTier.fromJson(json['tier'] as String),
       score: (json['score'] as num?)?.toInt() ?? 0,
       verified: json['verified'] as bool? ?? false,
@@ -33,12 +34,22 @@ _ProNicheSkillView _$ProNicheSkillViewFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['last_demotion_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      evidenceTier: json['evidence_tier'] == null
+          ? null
+          : SkillTier.fromJson(json['evidence_tier'] as String),
+      activeOverride: json['active_override'] == null
+          ? null
+          : NicheSkillOverrideView.fromJson(
+              json['active_override'] as Map<String, dynamic>,
+            ),
+      evidenceDisagrees: json['evidence_disagrees'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ProNicheSkillViewToJson(_ProNicheSkillView instance) =>
     <String, dynamic>{
       'niche_slug': instance.nicheSlug,
       'niche_name': instance.nicheName,
+      'niche_id': instance.nicheId,
       'tier': instance.tier,
       'score': instance.score,
       'verified': instance.verified,
@@ -56,4 +67,7 @@ Map<String, dynamic> _$ProNicheSkillViewToJson(_ProNicheSkillView instance) =>
       'last_promotion_at': instance.lastPromotionAt?.toIso8601String(),
       'last_demotion_at': instance.lastDemotionAt?.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
+      'evidence_tier': instance.evidenceTier,
+      'active_override': instance.activeOverride,
+      'evidence_disagrees': instance.evidenceDisagrees,
     };

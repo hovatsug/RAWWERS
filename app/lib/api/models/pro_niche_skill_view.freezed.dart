@@ -17,7 +17,8 @@ mixin _$ProNicheSkillView {
 
 /// nicheSlug
 @JsonKey(name: ProNicheSkillView.nicheSlugKey_) String get nicheSlug;/// nicheName
-@JsonKey(name: ProNicheSkillView.nicheNameKey_) String get nicheName;/// tier
+@JsonKey(name: ProNicheSkillView.nicheNameKey_) String get nicheName;/// nicheId
+@JsonKey(name: ProNicheSkillView.nicheIdKey_) String get nicheId;/// tier
 @JsonKey(name: ProNicheSkillView.tierKey_) SkillTier get tier;/// score
 @JsonKey(name: ProNicheSkillView.scoreKey_) int get score;/// verified
 @JsonKey(name: ProNicheSkillView.verifiedKey_) bool get verified;/// gigsCompleted
@@ -34,7 +35,10 @@ mixin _$ProNicheSkillView {
 @JsonKey(name: ProNicheSkillView.badgesKey_) List<String>? get badges;/// lastPromotionAt
 @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) DateTime? get lastPromotionAt;/// lastDemotionAt
 @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) DateTime? get lastDemotionAt;/// updatedAt
-@JsonKey(name: ProNicheSkillView.updatedAtKey_) DateTime get updatedAt;
+@JsonKey(name: ProNicheSkillView.updatedAtKey_) DateTime get updatedAt;/// evidenceTier
+@JsonKey(name: ProNicheSkillView.evidenceTierKey_) SkillTier? get evidenceTier;/// activeOverride
+@JsonKey(name: ProNicheSkillView.activeOverrideKey_) NicheSkillOverrideView? get activeOverride;/// evidenceDisagrees
+@JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_) bool get evidenceDisagrees;
 /// Create a copy of ProNicheSkillView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -47,16 +51,16 @@ $ProNicheSkillViewCopyWith<ProNicheSkillView> get copyWith => _$ProNicheSkillVie
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProNicheSkillView&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.nicheName, nicheName) || other.nicheName == nicheName)&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.score, score) || other.score == score)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.gigsCompleted, gigsCompleted) || other.gigsCompleted == gigsCompleted)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.capabilityScore, capabilityScore) || other.capabilityScore == capabilityScore)&&(identical(other.certificationScore, certificationScore) || other.certificationScore == certificationScore)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.evidenceGigs, evidenceGigs) || other.evidenceGigs == evidenceGigs)&&(identical(other.evidenceReviews, evidenceReviews) || other.evidenceReviews == evidenceReviews)&&(identical(other.evidencePortfolio, evidencePortfolio) || other.evidencePortfolio == evidencePortfolio)&&const DeepCollectionEquality().equals(other.breakdown, breakdown)&&const DeepCollectionEquality().equals(other.badges, badges)&&(identical(other.lastPromotionAt, lastPromotionAt) || other.lastPromotionAt == lastPromotionAt)&&(identical(other.lastDemotionAt, lastDemotionAt) || other.lastDemotionAt == lastDemotionAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProNicheSkillView&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.nicheName, nicheName) || other.nicheName == nicheName)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.score, score) || other.score == score)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.gigsCompleted, gigsCompleted) || other.gigsCompleted == gigsCompleted)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.capabilityScore, capabilityScore) || other.capabilityScore == capabilityScore)&&(identical(other.certificationScore, certificationScore) || other.certificationScore == certificationScore)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.evidenceGigs, evidenceGigs) || other.evidenceGigs == evidenceGigs)&&(identical(other.evidenceReviews, evidenceReviews) || other.evidenceReviews == evidenceReviews)&&(identical(other.evidencePortfolio, evidencePortfolio) || other.evidencePortfolio == evidencePortfolio)&&const DeepCollectionEquality().equals(other.breakdown, breakdown)&&const DeepCollectionEquality().equals(other.badges, badges)&&(identical(other.lastPromotionAt, lastPromotionAt) || other.lastPromotionAt == lastPromotionAt)&&(identical(other.lastDemotionAt, lastDemotionAt) || other.lastDemotionAt == lastDemotionAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.evidenceTier, evidenceTier) || other.evidenceTier == evidenceTier)&&(identical(other.activeOverride, activeOverride) || other.activeOverride == activeOverride)&&(identical(other.evidenceDisagrees, evidenceDisagrees) || other.evidenceDisagrees == evidenceDisagrees));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,nicheSlug,nicheName,tier,score,verified,gigsCompleted,avgRating,reviewCount,capabilityScore,certificationScore,confidence,evidenceGigs,evidenceReviews,evidencePortfolio,const DeepCollectionEquality().hash(breakdown),const DeepCollectionEquality().hash(badges),lastPromotionAt,lastDemotionAt,updatedAt]);
+int get hashCode => Object.hashAll([runtimeType,nicheSlug,nicheName,nicheId,tier,score,verified,gigsCompleted,avgRating,reviewCount,capabilityScore,certificationScore,confidence,evidenceGigs,evidenceReviews,evidencePortfolio,const DeepCollectionEquality().hash(breakdown),const DeepCollectionEquality().hash(badges),lastPromotionAt,lastDemotionAt,updatedAt,evidenceTier,activeOverride,evidenceDisagrees]);
 
 @override
 String toString() {
-  return 'ProNicheSkillView(nicheSlug: $nicheSlug, nicheName: $nicheName, tier: $tier, score: $score, verified: $verified, gigsCompleted: $gigsCompleted, avgRating: $avgRating, reviewCount: $reviewCount, capabilityScore: $capabilityScore, certificationScore: $certificationScore, confidence: $confidence, evidenceGigs: $evidenceGigs, evidenceReviews: $evidenceReviews, evidencePortfolio: $evidencePortfolio, breakdown: $breakdown, badges: $badges, lastPromotionAt: $lastPromotionAt, lastDemotionAt: $lastDemotionAt, updatedAt: $updatedAt)';
+  return 'ProNicheSkillView(nicheSlug: $nicheSlug, nicheName: $nicheName, nicheId: $nicheId, tier: $tier, score: $score, verified: $verified, gigsCompleted: $gigsCompleted, avgRating: $avgRating, reviewCount: $reviewCount, capabilityScore: $capabilityScore, certificationScore: $certificationScore, confidence: $confidence, evidenceGigs: $evidenceGigs, evidenceReviews: $evidenceReviews, evidencePortfolio: $evidencePortfolio, breakdown: $breakdown, badges: $badges, lastPromotionAt: $lastPromotionAt, lastDemotionAt: $lastDemotionAt, updatedAt: $updatedAt, evidenceTier: $evidenceTier, activeOverride: $activeOverride, evidenceDisagrees: $evidenceDisagrees)';
 }
 
 
@@ -67,11 +71,11 @@ abstract mixin class $ProNicheSkillViewCopyWith<$Res>  {
   factory $ProNicheSkillViewCopyWith(ProNicheSkillView value, $Res Function(ProNicheSkillView) _then) = _$ProNicheSkillViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProNicheSkillView.nicheSlugKey_) String nicheSlug,@JsonKey(name: ProNicheSkillView.nicheNameKey_) String nicheName,@JsonKey(name: ProNicheSkillView.tierKey_) SkillTier tier,@JsonKey(name: ProNicheSkillView.scoreKey_) int score,@JsonKey(name: ProNicheSkillView.verifiedKey_) bool verified,@JsonKey(name: ProNicheSkillView.gigsCompletedKey_) int gigsCompleted,@JsonKey(name: ProNicheSkillView.avgRatingKey_) double avgRating,@JsonKey(name: ProNicheSkillView.reviewCountKey_) int reviewCount,@JsonKey(name: ProNicheSkillView.capabilityScoreKey_) int capabilityScore,@JsonKey(name: ProNicheSkillView.certificationScoreKey_) int certificationScore,@JsonKey(name: ProNicheSkillView.confidenceKey_) double confidence,@JsonKey(name: ProNicheSkillView.evidenceGigsKey_) int evidenceGigs,@JsonKey(name: ProNicheSkillView.evidenceReviewsKey_) int evidenceReviews,@JsonKey(name: ProNicheSkillView.evidencePortfolioKey_) int evidencePortfolio,@JsonKey(name: ProNicheSkillView.breakdownKey_) Map<String, dynamic>? breakdown,@JsonKey(name: ProNicheSkillView.badgesKey_) List<String>? badges,@JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) DateTime? lastPromotionAt,@JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) DateTime? lastDemotionAt,@JsonKey(name: ProNicheSkillView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: ProNicheSkillView.nicheSlugKey_) String nicheSlug,@JsonKey(name: ProNicheSkillView.nicheNameKey_) String nicheName,@JsonKey(name: ProNicheSkillView.nicheIdKey_) String nicheId,@JsonKey(name: ProNicheSkillView.tierKey_) SkillTier tier,@JsonKey(name: ProNicheSkillView.scoreKey_) int score,@JsonKey(name: ProNicheSkillView.verifiedKey_) bool verified,@JsonKey(name: ProNicheSkillView.gigsCompletedKey_) int gigsCompleted,@JsonKey(name: ProNicheSkillView.avgRatingKey_) double avgRating,@JsonKey(name: ProNicheSkillView.reviewCountKey_) int reviewCount,@JsonKey(name: ProNicheSkillView.capabilityScoreKey_) int capabilityScore,@JsonKey(name: ProNicheSkillView.certificationScoreKey_) int certificationScore,@JsonKey(name: ProNicheSkillView.confidenceKey_) double confidence,@JsonKey(name: ProNicheSkillView.evidenceGigsKey_) int evidenceGigs,@JsonKey(name: ProNicheSkillView.evidenceReviewsKey_) int evidenceReviews,@JsonKey(name: ProNicheSkillView.evidencePortfolioKey_) int evidencePortfolio,@JsonKey(name: ProNicheSkillView.breakdownKey_) Map<String, dynamic>? breakdown,@JsonKey(name: ProNicheSkillView.badgesKey_) List<String>? badges,@JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) DateTime? lastPromotionAt,@JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) DateTime? lastDemotionAt,@JsonKey(name: ProNicheSkillView.updatedAtKey_) DateTime updatedAt,@JsonKey(name: ProNicheSkillView.evidenceTierKey_) SkillTier? evidenceTier,@JsonKey(name: ProNicheSkillView.activeOverrideKey_) NicheSkillOverrideView? activeOverride,@JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_) bool evidenceDisagrees
 });
 
 
-
+$NicheSkillOverrideViewCopyWith<$Res>? get activeOverride;
 
 }
 /// @nodoc
@@ -84,10 +88,11 @@ class _$ProNicheSkillViewCopyWithImpl<$Res>
 
 /// Create a copy of ProNicheSkillView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? nicheSlug = null,Object? nicheName = null,Object? tier = null,Object? score = null,Object? verified = null,Object? gigsCompleted = null,Object? avgRating = null,Object? reviewCount = null,Object? capabilityScore = null,Object? certificationScore = null,Object? confidence = null,Object? evidenceGigs = null,Object? evidenceReviews = null,Object? evidencePortfolio = null,Object? breakdown = freezed,Object? badges = freezed,Object? lastPromotionAt = freezed,Object? lastDemotionAt = freezed,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? nicheSlug = null,Object? nicheName = null,Object? nicheId = null,Object? tier = null,Object? score = null,Object? verified = null,Object? gigsCompleted = null,Object? avgRating = null,Object? reviewCount = null,Object? capabilityScore = null,Object? certificationScore = null,Object? confidence = null,Object? evidenceGigs = null,Object? evidenceReviews = null,Object? evidencePortfolio = null,Object? breakdown = freezed,Object? badges = freezed,Object? lastPromotionAt = freezed,Object? lastDemotionAt = freezed,Object? updatedAt = null,Object? evidenceTier = freezed,Object? activeOverride = freezed,Object? evidenceDisagrees = null,}) {
   return _then(_self.copyWith(
 nicheSlug: null == nicheSlug ? _self.nicheSlug : nicheSlug // ignore: cast_nullable_to_non_nullable
 as String,nicheName: null == nicheName ? _self.nicheName : nicheName // ignore: cast_nullable_to_non_nullable
+as String,nicheId: null == nicheId ? _self.nicheId : nicheId // ignore: cast_nullable_to_non_nullable
 as String,tier: null == tier ? _self.tier : tier // ignore: cast_nullable_to_non_nullable
 as SkillTier,score: null == score ? _self.score : score // ignore: cast_nullable_to_non_nullable
 as int,verified: null == verified ? _self.verified : verified // ignore: cast_nullable_to_non_nullable
@@ -105,10 +110,25 @@ as Map<String, dynamic>?,badges: freezed == badges ? _self.badges : badges // ig
 as List<String>?,lastPromotionAt: freezed == lastPromotionAt ? _self.lastPromotionAt : lastPromotionAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,lastDemotionAt: freezed == lastDemotionAt ? _self.lastDemotionAt : lastDemotionAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,evidenceTier: freezed == evidenceTier ? _self.evidenceTier : evidenceTier // ignore: cast_nullable_to_non_nullable
+as SkillTier?,activeOverride: freezed == activeOverride ? _self.activeOverride : activeOverride // ignore: cast_nullable_to_non_nullable
+as NicheSkillOverrideView?,evidenceDisagrees: null == evidenceDisagrees ? _self.evidenceDisagrees : evidenceDisagrees // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
+/// Create a copy of ProNicheSkillView
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NicheSkillOverrideViewCopyWith<$Res>? get activeOverride {
+    if (_self.activeOverride == null) {
+    return null;
+  }
 
+  return $NicheSkillOverrideViewCopyWith<$Res>(_self.activeOverride!, (value) {
+    return _then(_self.copyWith(activeOverride: value));
+  });
+}
 }
 
 
@@ -190,10 +210,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProNicheSkillView.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_)  String nicheName, @JsonKey(name: ProNicheSkillView.tierKey_)  SkillTier tier, @JsonKey(name: ProNicheSkillView.scoreKey_)  int score, @JsonKey(name: ProNicheSkillView.verifiedKey_)  bool verified, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_)  int gigsCompleted, @JsonKey(name: ProNicheSkillView.avgRatingKey_)  double avgRating, @JsonKey(name: ProNicheSkillView.reviewCountKey_)  int reviewCount, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_)  int capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_)  int certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_)  double confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_)  int evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_)  int evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_)  int evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_)  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_)  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_)  DateTime? lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_)  DateTime? lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProNicheSkillView.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_)  String nicheName, @JsonKey(name: ProNicheSkillView.nicheIdKey_)  String nicheId, @JsonKey(name: ProNicheSkillView.tierKey_)  SkillTier tier, @JsonKey(name: ProNicheSkillView.scoreKey_)  int score, @JsonKey(name: ProNicheSkillView.verifiedKey_)  bool verified, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_)  int gigsCompleted, @JsonKey(name: ProNicheSkillView.avgRatingKey_)  double avgRating, @JsonKey(name: ProNicheSkillView.reviewCountKey_)  int reviewCount, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_)  int capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_)  int certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_)  double confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_)  int evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_)  int evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_)  int evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_)  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_)  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_)  DateTime? lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_)  DateTime? lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ProNicheSkillView.evidenceTierKey_)  SkillTier? evidenceTier, @JsonKey(name: ProNicheSkillView.activeOverrideKey_)  NicheSkillOverrideView? activeOverride, @JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_)  bool evidenceDisagrees)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProNicheSkillView() when $default != null:
-return $default(_that.nicheSlug,_that.nicheName,_that.tier,_that.score,_that.verified,_that.gigsCompleted,_that.avgRating,_that.reviewCount,_that.capabilityScore,_that.certificationScore,_that.confidence,_that.evidenceGigs,_that.evidenceReviews,_that.evidencePortfolio,_that.breakdown,_that.badges,_that.lastPromotionAt,_that.lastDemotionAt,_that.updatedAt);case _:
+return $default(_that.nicheSlug,_that.nicheName,_that.nicheId,_that.tier,_that.score,_that.verified,_that.gigsCompleted,_that.avgRating,_that.reviewCount,_that.capabilityScore,_that.certificationScore,_that.confidence,_that.evidenceGigs,_that.evidenceReviews,_that.evidencePortfolio,_that.breakdown,_that.badges,_that.lastPromotionAt,_that.lastDemotionAt,_that.updatedAt,_that.evidenceTier,_that.activeOverride,_that.evidenceDisagrees);case _:
   return orElse();
 
 }
@@ -211,10 +231,10 @@ return $default(_that.nicheSlug,_that.nicheName,_that.tier,_that.score,_that.ver
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProNicheSkillView.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_)  String nicheName, @JsonKey(name: ProNicheSkillView.tierKey_)  SkillTier tier, @JsonKey(name: ProNicheSkillView.scoreKey_)  int score, @JsonKey(name: ProNicheSkillView.verifiedKey_)  bool verified, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_)  int gigsCompleted, @JsonKey(name: ProNicheSkillView.avgRatingKey_)  double avgRating, @JsonKey(name: ProNicheSkillView.reviewCountKey_)  int reviewCount, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_)  int capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_)  int certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_)  double confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_)  int evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_)  int evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_)  int evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_)  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_)  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_)  DateTime? lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_)  DateTime? lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProNicheSkillView.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_)  String nicheName, @JsonKey(name: ProNicheSkillView.nicheIdKey_)  String nicheId, @JsonKey(name: ProNicheSkillView.tierKey_)  SkillTier tier, @JsonKey(name: ProNicheSkillView.scoreKey_)  int score, @JsonKey(name: ProNicheSkillView.verifiedKey_)  bool verified, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_)  int gigsCompleted, @JsonKey(name: ProNicheSkillView.avgRatingKey_)  double avgRating, @JsonKey(name: ProNicheSkillView.reviewCountKey_)  int reviewCount, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_)  int capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_)  int certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_)  double confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_)  int evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_)  int evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_)  int evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_)  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_)  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_)  DateTime? lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_)  DateTime? lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ProNicheSkillView.evidenceTierKey_)  SkillTier? evidenceTier, @JsonKey(name: ProNicheSkillView.activeOverrideKey_)  NicheSkillOverrideView? activeOverride, @JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_)  bool evidenceDisagrees)  $default,) {final _that = this;
 switch (_that) {
 case _ProNicheSkillView():
-return $default(_that.nicheSlug,_that.nicheName,_that.tier,_that.score,_that.verified,_that.gigsCompleted,_that.avgRating,_that.reviewCount,_that.capabilityScore,_that.certificationScore,_that.confidence,_that.evidenceGigs,_that.evidenceReviews,_that.evidencePortfolio,_that.breakdown,_that.badges,_that.lastPromotionAt,_that.lastDemotionAt,_that.updatedAt);case _:
+return $default(_that.nicheSlug,_that.nicheName,_that.nicheId,_that.tier,_that.score,_that.verified,_that.gigsCompleted,_that.avgRating,_that.reviewCount,_that.capabilityScore,_that.certificationScore,_that.confidence,_that.evidenceGigs,_that.evidenceReviews,_that.evidencePortfolio,_that.breakdown,_that.badges,_that.lastPromotionAt,_that.lastDemotionAt,_that.updatedAt,_that.evidenceTier,_that.activeOverride,_that.evidenceDisagrees);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -231,10 +251,10 @@ return $default(_that.nicheSlug,_that.nicheName,_that.tier,_that.score,_that.ver
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProNicheSkillView.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_)  String nicheName, @JsonKey(name: ProNicheSkillView.tierKey_)  SkillTier tier, @JsonKey(name: ProNicheSkillView.scoreKey_)  int score, @JsonKey(name: ProNicheSkillView.verifiedKey_)  bool verified, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_)  int gigsCompleted, @JsonKey(name: ProNicheSkillView.avgRatingKey_)  double avgRating, @JsonKey(name: ProNicheSkillView.reviewCountKey_)  int reviewCount, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_)  int capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_)  int certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_)  double confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_)  int evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_)  int evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_)  int evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_)  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_)  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_)  DateTime? lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_)  DateTime? lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProNicheSkillView.nicheSlugKey_)  String nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_)  String nicheName, @JsonKey(name: ProNicheSkillView.nicheIdKey_)  String nicheId, @JsonKey(name: ProNicheSkillView.tierKey_)  SkillTier tier, @JsonKey(name: ProNicheSkillView.scoreKey_)  int score, @JsonKey(name: ProNicheSkillView.verifiedKey_)  bool verified, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_)  int gigsCompleted, @JsonKey(name: ProNicheSkillView.avgRatingKey_)  double avgRating, @JsonKey(name: ProNicheSkillView.reviewCountKey_)  int reviewCount, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_)  int capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_)  int certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_)  double confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_)  int evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_)  int evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_)  int evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_)  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_)  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_)  DateTime? lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_)  DateTime? lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_)  DateTime updatedAt, @JsonKey(name: ProNicheSkillView.evidenceTierKey_)  SkillTier? evidenceTier, @JsonKey(name: ProNicheSkillView.activeOverrideKey_)  NicheSkillOverrideView? activeOverride, @JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_)  bool evidenceDisagrees)?  $default,) {final _that = this;
 switch (_that) {
 case _ProNicheSkillView() when $default != null:
-return $default(_that.nicheSlug,_that.nicheName,_that.tier,_that.score,_that.verified,_that.gigsCompleted,_that.avgRating,_that.reviewCount,_that.capabilityScore,_that.certificationScore,_that.confidence,_that.evidenceGigs,_that.evidenceReviews,_that.evidencePortfolio,_that.breakdown,_that.badges,_that.lastPromotionAt,_that.lastDemotionAt,_that.updatedAt);case _:
+return $default(_that.nicheSlug,_that.nicheName,_that.nicheId,_that.tier,_that.score,_that.verified,_that.gigsCompleted,_that.avgRating,_that.reviewCount,_that.capabilityScore,_that.certificationScore,_that.confidence,_that.evidenceGigs,_that.evidenceReviews,_that.evidencePortfolio,_that.breakdown,_that.badges,_that.lastPromotionAt,_that.lastDemotionAt,_that.updatedAt,_that.evidenceTier,_that.activeOverride,_that.evidenceDisagrees);case _:
   return null;
 
 }
@@ -246,13 +266,15 @@ return $default(_that.nicheSlug,_that.nicheName,_that.tier,_that.score,_that.ver
 
 @jsonSerializable
 class _ProNicheSkillView extends ProNicheSkillView {
-  const _ProNicheSkillView({@JsonKey(name: ProNicheSkillView.nicheSlugKey_) required this.nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_) required this.nicheName, @JsonKey(name: ProNicheSkillView.tierKey_) required this.tier, @JsonKey(name: ProNicheSkillView.scoreKey_) this.score = 0, @JsonKey(name: ProNicheSkillView.verifiedKey_) this.verified = false, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_) this.gigsCompleted = 0, @JsonKey(name: ProNicheSkillView.avgRatingKey_) this.avgRating = 0.0, @JsonKey(name: ProNicheSkillView.reviewCountKey_) this.reviewCount = 0, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_) required this.capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_) required this.certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_) required this.confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_) required this.evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_) required this.evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_) required this.evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_) final  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_) final  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) this.lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) this.lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_) required this.updatedAt}): _breakdown = breakdown,_badges = badges,super._();
+  const _ProNicheSkillView({@JsonKey(name: ProNicheSkillView.nicheSlugKey_) required this.nicheSlug, @JsonKey(name: ProNicheSkillView.nicheNameKey_) required this.nicheName, @JsonKey(name: ProNicheSkillView.nicheIdKey_) required this.nicheId, @JsonKey(name: ProNicheSkillView.tierKey_) required this.tier, @JsonKey(name: ProNicheSkillView.scoreKey_) this.score = 0, @JsonKey(name: ProNicheSkillView.verifiedKey_) this.verified = false, @JsonKey(name: ProNicheSkillView.gigsCompletedKey_) this.gigsCompleted = 0, @JsonKey(name: ProNicheSkillView.avgRatingKey_) this.avgRating = 0.0, @JsonKey(name: ProNicheSkillView.reviewCountKey_) this.reviewCount = 0, @JsonKey(name: ProNicheSkillView.capabilityScoreKey_) required this.capabilityScore, @JsonKey(name: ProNicheSkillView.certificationScoreKey_) required this.certificationScore, @JsonKey(name: ProNicheSkillView.confidenceKey_) required this.confidence, @JsonKey(name: ProNicheSkillView.evidenceGigsKey_) required this.evidenceGigs, @JsonKey(name: ProNicheSkillView.evidenceReviewsKey_) required this.evidenceReviews, @JsonKey(name: ProNicheSkillView.evidencePortfolioKey_) required this.evidencePortfolio, @JsonKey(name: ProNicheSkillView.breakdownKey_) final  Map<String, dynamic>? breakdown, @JsonKey(name: ProNicheSkillView.badgesKey_) final  List<String>? badges, @JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) this.lastPromotionAt, @JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) this.lastDemotionAt, @JsonKey(name: ProNicheSkillView.updatedAtKey_) required this.updatedAt, @JsonKey(name: ProNicheSkillView.evidenceTierKey_) this.evidenceTier, @JsonKey(name: ProNicheSkillView.activeOverrideKey_) this.activeOverride, @JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_) this.evidenceDisagrees = false}): _breakdown = breakdown,_badges = badges,super._();
   factory _ProNicheSkillView.fromJson(Map<String, dynamic> json) => _$ProNicheSkillViewFromJson(json);
 
 /// nicheSlug
 @override@JsonKey(name: ProNicheSkillView.nicheSlugKey_) final  String nicheSlug;
 /// nicheName
 @override@JsonKey(name: ProNicheSkillView.nicheNameKey_) final  String nicheName;
+/// nicheId
+@override@JsonKey(name: ProNicheSkillView.nicheIdKey_) final  String nicheId;
 /// tier
 @override@JsonKey(name: ProNicheSkillView.tierKey_) final  SkillTier tier;
 /// score
@@ -305,6 +327,12 @@ class _ProNicheSkillView extends ProNicheSkillView {
 @override@JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) final  DateTime? lastDemotionAt;
 /// updatedAt
 @override@JsonKey(name: ProNicheSkillView.updatedAtKey_) final  DateTime updatedAt;
+/// evidenceTier
+@override@JsonKey(name: ProNicheSkillView.evidenceTierKey_) final  SkillTier? evidenceTier;
+/// activeOverride
+@override@JsonKey(name: ProNicheSkillView.activeOverrideKey_) final  NicheSkillOverrideView? activeOverride;
+/// evidenceDisagrees
+@override@JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_) final  bool evidenceDisagrees;
 
 /// Create a copy of ProNicheSkillView
 /// with the given fields replaced by the non-null parameter values.
@@ -319,16 +347,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProNicheSkillView&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.nicheName, nicheName) || other.nicheName == nicheName)&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.score, score) || other.score == score)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.gigsCompleted, gigsCompleted) || other.gigsCompleted == gigsCompleted)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.capabilityScore, capabilityScore) || other.capabilityScore == capabilityScore)&&(identical(other.certificationScore, certificationScore) || other.certificationScore == certificationScore)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.evidenceGigs, evidenceGigs) || other.evidenceGigs == evidenceGigs)&&(identical(other.evidenceReviews, evidenceReviews) || other.evidenceReviews == evidenceReviews)&&(identical(other.evidencePortfolio, evidencePortfolio) || other.evidencePortfolio == evidencePortfolio)&&const DeepCollectionEquality().equals(other._breakdown, _breakdown)&&const DeepCollectionEquality().equals(other._badges, _badges)&&(identical(other.lastPromotionAt, lastPromotionAt) || other.lastPromotionAt == lastPromotionAt)&&(identical(other.lastDemotionAt, lastDemotionAt) || other.lastDemotionAt == lastDemotionAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProNicheSkillView&&(identical(other.nicheSlug, nicheSlug) || other.nicheSlug == nicheSlug)&&(identical(other.nicheName, nicheName) || other.nicheName == nicheName)&&(identical(other.nicheId, nicheId) || other.nicheId == nicheId)&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.score, score) || other.score == score)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.gigsCompleted, gigsCompleted) || other.gigsCompleted == gigsCompleted)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.reviewCount, reviewCount) || other.reviewCount == reviewCount)&&(identical(other.capabilityScore, capabilityScore) || other.capabilityScore == capabilityScore)&&(identical(other.certificationScore, certificationScore) || other.certificationScore == certificationScore)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.evidenceGigs, evidenceGigs) || other.evidenceGigs == evidenceGigs)&&(identical(other.evidenceReviews, evidenceReviews) || other.evidenceReviews == evidenceReviews)&&(identical(other.evidencePortfolio, evidencePortfolio) || other.evidencePortfolio == evidencePortfolio)&&const DeepCollectionEquality().equals(other._breakdown, _breakdown)&&const DeepCollectionEquality().equals(other._badges, _badges)&&(identical(other.lastPromotionAt, lastPromotionAt) || other.lastPromotionAt == lastPromotionAt)&&(identical(other.lastDemotionAt, lastDemotionAt) || other.lastDemotionAt == lastDemotionAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.evidenceTier, evidenceTier) || other.evidenceTier == evidenceTier)&&(identical(other.activeOverride, activeOverride) || other.activeOverride == activeOverride)&&(identical(other.evidenceDisagrees, evidenceDisagrees) || other.evidenceDisagrees == evidenceDisagrees));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,nicheSlug,nicheName,tier,score,verified,gigsCompleted,avgRating,reviewCount,capabilityScore,certificationScore,confidence,evidenceGigs,evidenceReviews,evidencePortfolio,const DeepCollectionEquality().hash(_breakdown),const DeepCollectionEquality().hash(_badges),lastPromotionAt,lastDemotionAt,updatedAt]);
+int get hashCode => Object.hashAll([runtimeType,nicheSlug,nicheName,nicheId,tier,score,verified,gigsCompleted,avgRating,reviewCount,capabilityScore,certificationScore,confidence,evidenceGigs,evidenceReviews,evidencePortfolio,const DeepCollectionEquality().hash(_breakdown),const DeepCollectionEquality().hash(_badges),lastPromotionAt,lastDemotionAt,updatedAt,evidenceTier,activeOverride,evidenceDisagrees]);
 
 @override
 String toString() {
-  return 'ProNicheSkillView(nicheSlug: $nicheSlug, nicheName: $nicheName, tier: $tier, score: $score, verified: $verified, gigsCompleted: $gigsCompleted, avgRating: $avgRating, reviewCount: $reviewCount, capabilityScore: $capabilityScore, certificationScore: $certificationScore, confidence: $confidence, evidenceGigs: $evidenceGigs, evidenceReviews: $evidenceReviews, evidencePortfolio: $evidencePortfolio, breakdown: $breakdown, badges: $badges, lastPromotionAt: $lastPromotionAt, lastDemotionAt: $lastDemotionAt, updatedAt: $updatedAt)';
+  return 'ProNicheSkillView(nicheSlug: $nicheSlug, nicheName: $nicheName, nicheId: $nicheId, tier: $tier, score: $score, verified: $verified, gigsCompleted: $gigsCompleted, avgRating: $avgRating, reviewCount: $reviewCount, capabilityScore: $capabilityScore, certificationScore: $certificationScore, confidence: $confidence, evidenceGigs: $evidenceGigs, evidenceReviews: $evidenceReviews, evidencePortfolio: $evidencePortfolio, breakdown: $breakdown, badges: $badges, lastPromotionAt: $lastPromotionAt, lastDemotionAt: $lastDemotionAt, updatedAt: $updatedAt, evidenceTier: $evidenceTier, activeOverride: $activeOverride, evidenceDisagrees: $evidenceDisagrees)';
 }
 
 
@@ -339,11 +367,11 @@ abstract mixin class _$ProNicheSkillViewCopyWith<$Res> implements $ProNicheSkill
   factory _$ProNicheSkillViewCopyWith(_ProNicheSkillView value, $Res Function(_ProNicheSkillView) _then) = __$ProNicheSkillViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProNicheSkillView.nicheSlugKey_) String nicheSlug,@JsonKey(name: ProNicheSkillView.nicheNameKey_) String nicheName,@JsonKey(name: ProNicheSkillView.tierKey_) SkillTier tier,@JsonKey(name: ProNicheSkillView.scoreKey_) int score,@JsonKey(name: ProNicheSkillView.verifiedKey_) bool verified,@JsonKey(name: ProNicheSkillView.gigsCompletedKey_) int gigsCompleted,@JsonKey(name: ProNicheSkillView.avgRatingKey_) double avgRating,@JsonKey(name: ProNicheSkillView.reviewCountKey_) int reviewCount,@JsonKey(name: ProNicheSkillView.capabilityScoreKey_) int capabilityScore,@JsonKey(name: ProNicheSkillView.certificationScoreKey_) int certificationScore,@JsonKey(name: ProNicheSkillView.confidenceKey_) double confidence,@JsonKey(name: ProNicheSkillView.evidenceGigsKey_) int evidenceGigs,@JsonKey(name: ProNicheSkillView.evidenceReviewsKey_) int evidenceReviews,@JsonKey(name: ProNicheSkillView.evidencePortfolioKey_) int evidencePortfolio,@JsonKey(name: ProNicheSkillView.breakdownKey_) Map<String, dynamic>? breakdown,@JsonKey(name: ProNicheSkillView.badgesKey_) List<String>? badges,@JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) DateTime? lastPromotionAt,@JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) DateTime? lastDemotionAt,@JsonKey(name: ProNicheSkillView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: ProNicheSkillView.nicheSlugKey_) String nicheSlug,@JsonKey(name: ProNicheSkillView.nicheNameKey_) String nicheName,@JsonKey(name: ProNicheSkillView.nicheIdKey_) String nicheId,@JsonKey(name: ProNicheSkillView.tierKey_) SkillTier tier,@JsonKey(name: ProNicheSkillView.scoreKey_) int score,@JsonKey(name: ProNicheSkillView.verifiedKey_) bool verified,@JsonKey(name: ProNicheSkillView.gigsCompletedKey_) int gigsCompleted,@JsonKey(name: ProNicheSkillView.avgRatingKey_) double avgRating,@JsonKey(name: ProNicheSkillView.reviewCountKey_) int reviewCount,@JsonKey(name: ProNicheSkillView.capabilityScoreKey_) int capabilityScore,@JsonKey(name: ProNicheSkillView.certificationScoreKey_) int certificationScore,@JsonKey(name: ProNicheSkillView.confidenceKey_) double confidence,@JsonKey(name: ProNicheSkillView.evidenceGigsKey_) int evidenceGigs,@JsonKey(name: ProNicheSkillView.evidenceReviewsKey_) int evidenceReviews,@JsonKey(name: ProNicheSkillView.evidencePortfolioKey_) int evidencePortfolio,@JsonKey(name: ProNicheSkillView.breakdownKey_) Map<String, dynamic>? breakdown,@JsonKey(name: ProNicheSkillView.badgesKey_) List<String>? badges,@JsonKey(name: ProNicheSkillView.lastPromotionAtKey_) DateTime? lastPromotionAt,@JsonKey(name: ProNicheSkillView.lastDemotionAtKey_) DateTime? lastDemotionAt,@JsonKey(name: ProNicheSkillView.updatedAtKey_) DateTime updatedAt,@JsonKey(name: ProNicheSkillView.evidenceTierKey_) SkillTier? evidenceTier,@JsonKey(name: ProNicheSkillView.activeOverrideKey_) NicheSkillOverrideView? activeOverride,@JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_) bool evidenceDisagrees
 });
 
 
-
+@override $NicheSkillOverrideViewCopyWith<$Res>? get activeOverride;
 
 }
 /// @nodoc
@@ -356,10 +384,11 @@ class __$ProNicheSkillViewCopyWithImpl<$Res>
 
 /// Create a copy of ProNicheSkillView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? nicheSlug = null,Object? nicheName = null,Object? tier = null,Object? score = null,Object? verified = null,Object? gigsCompleted = null,Object? avgRating = null,Object? reviewCount = null,Object? capabilityScore = null,Object? certificationScore = null,Object? confidence = null,Object? evidenceGigs = null,Object? evidenceReviews = null,Object? evidencePortfolio = null,Object? breakdown = freezed,Object? badges = freezed,Object? lastPromotionAt = freezed,Object? lastDemotionAt = freezed,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? nicheSlug = null,Object? nicheName = null,Object? nicheId = null,Object? tier = null,Object? score = null,Object? verified = null,Object? gigsCompleted = null,Object? avgRating = null,Object? reviewCount = null,Object? capabilityScore = null,Object? certificationScore = null,Object? confidence = null,Object? evidenceGigs = null,Object? evidenceReviews = null,Object? evidencePortfolio = null,Object? breakdown = freezed,Object? badges = freezed,Object? lastPromotionAt = freezed,Object? lastDemotionAt = freezed,Object? updatedAt = null,Object? evidenceTier = freezed,Object? activeOverride = freezed,Object? evidenceDisagrees = null,}) {
   return _then(_ProNicheSkillView(
 nicheSlug: null == nicheSlug ? _self.nicheSlug : nicheSlug // ignore: cast_nullable_to_non_nullable
 as String,nicheName: null == nicheName ? _self.nicheName : nicheName // ignore: cast_nullable_to_non_nullable
+as String,nicheId: null == nicheId ? _self.nicheId : nicheId // ignore: cast_nullable_to_non_nullable
 as String,tier: null == tier ? _self.tier : tier // ignore: cast_nullable_to_non_nullable
 as SkillTier,score: null == score ? _self.score : score // ignore: cast_nullable_to_non_nullable
 as int,verified: null == verified ? _self.verified : verified // ignore: cast_nullable_to_non_nullable
@@ -377,11 +406,26 @@ as Map<String, dynamic>?,badges: freezed == badges ? _self._badges : badges // i
 as List<String>?,lastPromotionAt: freezed == lastPromotionAt ? _self.lastPromotionAt : lastPromotionAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,lastDemotionAt: freezed == lastDemotionAt ? _self.lastDemotionAt : lastDemotionAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,evidenceTier: freezed == evidenceTier ? _self.evidenceTier : evidenceTier // ignore: cast_nullable_to_non_nullable
+as SkillTier?,activeOverride: freezed == activeOverride ? _self.activeOverride : activeOverride // ignore: cast_nullable_to_non_nullable
+as NicheSkillOverrideView?,evidenceDisagrees: null == evidenceDisagrees ? _self.evidenceDisagrees : evidenceDisagrees // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
+/// Create a copy of ProNicheSkillView
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NicheSkillOverrideViewCopyWith<$Res>? get activeOverride {
+    if (_self.activeOverride == null) {
+    return null;
+  }
 
+  return $NicheSkillOverrideViewCopyWith<$Res>(_self.activeOverride!, (value) {
+    return _then(_self.copyWith(activeOverride: value));
+  });
+}
 }
 
 // dart format on

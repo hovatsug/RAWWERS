@@ -9,6 +9,11 @@
 ///             "type": "string",
 ///             "title": "Niche Name"
 ///         },
+///         "niche_id": {
+///             "type": "string",
+///             "format": "uuid",
+///             "title": "Niche Id"
+///         },
 ///         "tier": {
 ///             "$ref": "#/components/schemas/SkillTier"
 ///         },
@@ -100,12 +105,38 @@
 ///             "type": "string",
 ///             "format": "date-time",
 ///             "title": "Updated At"
+///         },
+///         "evidence_tier": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/SkillTier"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
+///         },
+///         "active_override": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/NicheSkillOverrideView"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
+///         },
+///         "evidence_disagrees": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Evidence Disagrees"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
 ///         "niche_slug",
 ///         "niche_name",
+///         "niche_id",
 ///         "tier",
 ///         "capability_score",
 ///         "certification_score",
@@ -134,6 +165,9 @@ abstract class ProNicheSkillView with _$ProNicheSkillView {
 
     /// nicheName
     @JsonKey(name: ProNicheSkillView.nicheNameKey_) required String nicheName,
+
+    /// nicheId
+    @JsonKey(name: ProNicheSkillView.nicheIdKey_) required String nicheId,
 
     /// tier
     @JsonKey(name: ProNicheSkillView.tierKey_) required SkillTier tier,
@@ -201,6 +235,18 @@ abstract class ProNicheSkillView with _$ProNicheSkillView {
 
     /// updatedAt
     @JsonKey(name: ProNicheSkillView.updatedAtKey_) required DateTime updatedAt,
+
+    /// evidenceTier
+    @JsonKey(name: ProNicheSkillView.evidenceTierKey_) SkillTier? evidenceTier,
+
+    /// activeOverride
+    @JsonKey(name: ProNicheSkillView.activeOverrideKey_)
+    NicheSkillOverrideView? activeOverride,
+
+    /// evidenceDisagrees
+    @Default(false)
+    @JsonKey(name: ProNicheSkillView.evidenceDisagreesKey_)
+    bool evidenceDisagrees,
   }) = _ProNicheSkillView;
 
   factory ProNicheSkillView.fromJson(Map<String, dynamic> json) =>
@@ -209,6 +255,8 @@ abstract class ProNicheSkillView with _$ProNicheSkillView {
   static const String nicheSlugKey_ = r'niche_slug';
 
   static const String nicheNameKey_ = r'niche_name';
+
+  static const String nicheIdKey_ = r'niche_id';
 
   static const String tierKey_ = r'tier';
 
@@ -243,4 +291,10 @@ abstract class ProNicheSkillView with _$ProNicheSkillView {
   static const String lastDemotionAtKey_ = r'last_demotion_at';
 
   static const String updatedAtKey_ = r'updated_at';
+
+  static const String evidenceTierKey_ = r'evidence_tier';
+
+  static const String activeOverrideKey_ = r'active_override';
+
+  static const String evidenceDisagreesKey_ = r'evidence_disagrees';
 }

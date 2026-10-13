@@ -4,6 +4,7 @@
     {
       "niche_slug": "maternity",
       "niche_name": "Maternity",
+      "niche_id": "00000000-0000-0000-0000-00005eed0001",
       "tier": "rookie",
       "score": 0,
       "verified": false,
@@ -77,6 +78,7 @@
     {
       "niche_slug": "weddings",
       "niche_name": "Weddings",
+      "niche_id": "00000000-0000-0000-0000-00005eed0002",
       "tier": "rookie",
       "score": 0,
       "verified": false,

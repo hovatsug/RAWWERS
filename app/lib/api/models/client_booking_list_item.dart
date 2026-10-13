@@ -74,6 +74,23 @@
 ///             "type": "string",
 ///             "format": "date-time",
 ///             "title": "Created At"
+///         },
+///         "short_notice": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Short Notice"
+///         },
+///         "pay_by": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "date-time"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Pay By"
 ///         }
 ///     },
 ///     "type": "object",
@@ -136,6 +153,14 @@ abstract class ClientBookingListItem with _$ClientBookingListItem {
     /// createdAt
     @JsonKey(name: ClientBookingListItem.createdAtKey_)
     required DateTime createdAt,
+
+    /// shortNotice
+    @Default(false)
+    @JsonKey(name: ClientBookingListItem.shortNoticeKey_)
+    bool shortNotice,
+
+    /// payBy
+    @JsonKey(name: ClientBookingListItem.payByKey_) DateTime? payBy,
   }) = _ClientBookingListItem;
 
   factory ClientBookingListItem.fromJson(Map<String, dynamic> json) =>
@@ -160,4 +185,8 @@ abstract class ClientBookingListItem with _$ClientBookingListItem {
   static const String expiresAtKey_ = r'expires_at';
 
   static const String createdAtKey_ = r'created_at';
+
+  static const String shortNoticeKey_ = r'short_notice';
+
+  static const String payByKey_ = r'pay_by';
 }

@@ -17,6 +17,8 @@ export 'availability_rule_item.dart';
 export 'availability_rule_view.dart';
 export 'availability_rules_replace_request.dart';
 export 'availability_rules_response.dart';
+export 'available_now_update.dart';
+export 'available_now_view.dart';
 export 'blackout_create_request.dart';
 export 'blackout_view.dart';
 export 'booking_date_window.dart';

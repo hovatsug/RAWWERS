@@ -93,6 +93,11 @@
 ///                 "$ref": "#/components/schemas/SessionBlockInput"
 ///             },
 ///             "title": "Session Blocks"
+///         },
+///         "short_notice_ok": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Short Notice Ok"
 ///         }
 ///     },
 ///     "type": "object",
@@ -182,6 +187,11 @@ abstract class ProPackageView with _$ProPackageView {
     /// sessionBlocks
     @JsonKey(name: ProPackageView.sessionBlocksKey_)
     List<SessionBlockInput>? sessionBlocks,
+
+    /// shortNoticeOk
+    @Default(false)
+    @JsonKey(name: ProPackageView.shortNoticeOkKey_)
+    bool shortNoticeOk,
   }) = _ProPackageView;
 
   factory ProPackageView.fromJson(Map<String, dynamic> json) =>
@@ -220,4 +230,6 @@ abstract class ProPackageView with _$ProPackageView {
   static const String intervalMinutesKey_ = r'interval_minutes';
 
   static const String sessionBlocksKey_ = r'session_blocks';
+
+  static const String shortNoticeOkKey_ = r'short_notice_ok';
 }

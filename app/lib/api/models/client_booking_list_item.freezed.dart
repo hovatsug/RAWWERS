@@ -25,7 +25,9 @@ mixin _$ClientBookingListItem {
 @JsonKey(name: ClientBookingListItem.requestedEndKey_) DateTime get requestedEnd;/// locationText
 @JsonKey(name: ClientBookingListItem.locationTextKey_) String? get locationText;/// expiresAt
 @JsonKey(name: ClientBookingListItem.expiresAtKey_) DateTime get expiresAt;/// createdAt
-@JsonKey(name: ClientBookingListItem.createdAtKey_) DateTime get createdAt;
+@JsonKey(name: ClientBookingListItem.createdAtKey_) DateTime get createdAt;/// shortNotice
+@JsonKey(name: ClientBookingListItem.shortNoticeKey_) bool get shortNotice;/// payBy
+@JsonKey(name: ClientBookingListItem.payByKey_) DateTime? get payBy;
 /// Create a copy of ClientBookingListItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -38,16 +40,16 @@ $ClientBookingListItemCopyWith<ClientBookingListItem> get copyWith => _$ClientBo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingListItem&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.requestedStart, requestedStart) || other.requestedStart == requestedStart)&&(identical(other.requestedEnd, requestedEnd) || other.requestedEnd == requestedEnd)&&(identical(other.locationText, locationText) || other.locationText == locationText)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingListItem&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.requestedStart, requestedStart) || other.requestedStart == requestedStart)&&(identical(other.requestedEnd, requestedEnd) || other.requestedEnd == requestedEnd)&&(identical(other.locationText, locationText) || other.locationText == locationText)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.shortNotice, shortNotice) || other.shortNotice == shortNotice)&&(identical(other.payBy, payBy) || other.payBy == payBy));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,requestedStart,requestedEnd,locationText,expiresAt,createdAt);
+int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,requestedStart,requestedEnd,locationText,expiresAt,createdAt,shortNotice,payBy);
 
 @override
 String toString() {
-  return 'ClientBookingListItem(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, requestedStart: $requestedStart, requestedEnd: $requestedEnd, locationText: $locationText, expiresAt: $expiresAt, createdAt: $createdAt)';
+  return 'ClientBookingListItem(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, requestedStart: $requestedStart, requestedEnd: $requestedEnd, locationText: $locationText, expiresAt: $expiresAt, createdAt: $createdAt, shortNotice: $shortNotice, payBy: $payBy)';
 }
 
 
@@ -58,7 +60,7 @@ abstract mixin class $ClientBookingListItemCopyWith<$Res>  {
   factory $ClientBookingListItemCopyWith(ClientBookingListItem value, $Res Function(ClientBookingListItem) _then) = _$ClientBookingListItemCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientBookingListItem.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingListItem.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingListItem.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingListItem.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingListItem.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingListItem.requestedStartKey_) DateTime requestedStart,@JsonKey(name: ClientBookingListItem.requestedEndKey_) DateTime requestedEnd,@JsonKey(name: ClientBookingListItem.locationTextKey_) String? locationText,@JsonKey(name: ClientBookingListItem.expiresAtKey_) DateTime expiresAt,@JsonKey(name: ClientBookingListItem.createdAtKey_) DateTime createdAt
+@JsonKey(name: ClientBookingListItem.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingListItem.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingListItem.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingListItem.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingListItem.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingListItem.requestedStartKey_) DateTime requestedStart,@JsonKey(name: ClientBookingListItem.requestedEndKey_) DateTime requestedEnd,@JsonKey(name: ClientBookingListItem.locationTextKey_) String? locationText,@JsonKey(name: ClientBookingListItem.expiresAtKey_) DateTime expiresAt,@JsonKey(name: ClientBookingListItem.createdAtKey_) DateTime createdAt,@JsonKey(name: ClientBookingListItem.shortNoticeKey_) bool shortNotice,@JsonKey(name: ClientBookingListItem.payByKey_) DateTime? payBy
 });
 
 
@@ -75,7 +77,7 @@ class _$ClientBookingListItemCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingListItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? requestedStart = null,Object? requestedEnd = null,Object? locationText = freezed,Object? expiresAt = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? requestedStart = null,Object? requestedEnd = null,Object? locationText = freezed,Object? expiresAt = null,Object? createdAt = null,Object? shortNotice = null,Object? payBy = freezed,}) {
   return _then(_self.copyWith(
 bookingId: null == bookingId ? _self.bookingId : bookingId // ignore: cast_nullable_to_non_nullable
 as String,bookingStatus: null == bookingStatus ? _self.bookingStatus : bookingStatus // ignore: cast_nullable_to_non_nullable
@@ -87,7 +89,9 @@ as DateTime,requestedEnd: null == requestedEnd ? _self.requestedEnd : requestedE
 as DateTime,locationText: freezed == locationText ? _self.locationText : locationText // ignore: cast_nullable_to_non_nullable
 as String?,expiresAt: null == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
 as DateTime,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,shortNotice: null == shortNotice ? _self.shortNotice : shortNotice // ignore: cast_nullable_to_non_nullable
+as bool,payBy: freezed == payBy ? _self.payBy : payBy // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -172,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingListItem.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_)  DateTime requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_)  DateTime requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_)  String? locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_)  DateTime expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_)  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingListItem.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_)  DateTime requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_)  DateTime requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_)  String? locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_)  DateTime expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: ClientBookingListItem.shortNoticeKey_)  bool shortNotice, @JsonKey(name: ClientBookingListItem.payByKey_)  DateTime? payBy)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientBookingListItem() when $default != null:
-return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.requestedStart,_that.requestedEnd,_that.locationText,_that.expiresAt,_that.createdAt);case _:
+return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.requestedStart,_that.requestedEnd,_that.locationText,_that.expiresAt,_that.createdAt,_that.shortNotice,_that.payBy);case _:
   return orElse();
 
 }
@@ -193,10 +197,10 @@ return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingListItem.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_)  DateTime requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_)  DateTime requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_)  String? locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_)  DateTime expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_)  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingListItem.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_)  DateTime requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_)  DateTime requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_)  String? locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_)  DateTime expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: ClientBookingListItem.shortNoticeKey_)  bool shortNotice, @JsonKey(name: ClientBookingListItem.payByKey_)  DateTime? payBy)  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingListItem():
-return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.requestedStart,_that.requestedEnd,_that.locationText,_that.expiresAt,_that.createdAt);case _:
+return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.requestedStart,_that.requestedEnd,_that.locationText,_that.expiresAt,_that.createdAt,_that.shortNotice,_that.payBy);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +217,10 @@ return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingListItem.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_)  DateTime requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_)  DateTime requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_)  String? locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_)  DateTime expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_)  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingListItem.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_)  String bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_)  String? gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_)  String? gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_)  String? paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_)  DateTime requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_)  DateTime requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_)  String? locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_)  DateTime expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: ClientBookingListItem.shortNoticeKey_)  bool shortNotice, @JsonKey(name: ClientBookingListItem.payByKey_)  DateTime? payBy)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingListItem() when $default != null:
-return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.requestedStart,_that.requestedEnd,_that.locationText,_that.expiresAt,_that.createdAt);case _:
+return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,_that.paymentStatus,_that.requestedStart,_that.requestedEnd,_that.locationText,_that.expiresAt,_that.createdAt,_that.shortNotice,_that.payBy);case _:
   return null;
 
 }
@@ -228,7 +232,7 @@ return $default(_that.bookingId,_that.bookingStatus,_that.gigId,_that.gigStatus,
 
 @jsonSerializable
 class _ClientBookingListItem extends ClientBookingListItem {
-  const _ClientBookingListItem({@JsonKey(name: ClientBookingListItem.bookingIdKey_) required this.bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_) required this.bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_) this.gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_) this.gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_) this.paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_) required this.requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_) required this.requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_) this.locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_) required this.expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_) required this.createdAt}): super._();
+  const _ClientBookingListItem({@JsonKey(name: ClientBookingListItem.bookingIdKey_) required this.bookingId, @JsonKey(name: ClientBookingListItem.bookingStatusKey_) required this.bookingStatus, @JsonKey(name: ClientBookingListItem.gigIdKey_) this.gigId, @JsonKey(name: ClientBookingListItem.gigStatusKey_) this.gigStatus, @JsonKey(name: ClientBookingListItem.paymentStatusKey_) this.paymentStatus, @JsonKey(name: ClientBookingListItem.requestedStartKey_) required this.requestedStart, @JsonKey(name: ClientBookingListItem.requestedEndKey_) required this.requestedEnd, @JsonKey(name: ClientBookingListItem.locationTextKey_) this.locationText, @JsonKey(name: ClientBookingListItem.expiresAtKey_) required this.expiresAt, @JsonKey(name: ClientBookingListItem.createdAtKey_) required this.createdAt, @JsonKey(name: ClientBookingListItem.shortNoticeKey_) this.shortNotice = false, @JsonKey(name: ClientBookingListItem.payByKey_) this.payBy}): super._();
   factory _ClientBookingListItem.fromJson(Map<String, dynamic> json) => _$ClientBookingListItemFromJson(json);
 
 /// bookingId
@@ -251,6 +255,10 @@ class _ClientBookingListItem extends ClientBookingListItem {
 @override@JsonKey(name: ClientBookingListItem.expiresAtKey_) final  DateTime expiresAt;
 /// createdAt
 @override@JsonKey(name: ClientBookingListItem.createdAtKey_) final  DateTime createdAt;
+/// shortNotice
+@override@JsonKey(name: ClientBookingListItem.shortNoticeKey_) final  bool shortNotice;
+/// payBy
+@override@JsonKey(name: ClientBookingListItem.payByKey_) final  DateTime? payBy;
 
 /// Create a copy of ClientBookingListItem
 /// with the given fields replaced by the non-null parameter values.
@@ -265,16 +273,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingListItem&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.requestedStart, requestedStart) || other.requestedStart == requestedStart)&&(identical(other.requestedEnd, requestedEnd) || other.requestedEnd == requestedEnd)&&(identical(other.locationText, locationText) || other.locationText == locationText)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingListItem&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.gigStatus, gigStatus) || other.gigStatus == gigStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.requestedStart, requestedStart) || other.requestedStart == requestedStart)&&(identical(other.requestedEnd, requestedEnd) || other.requestedEnd == requestedEnd)&&(identical(other.locationText, locationText) || other.locationText == locationText)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.shortNotice, shortNotice) || other.shortNotice == shortNotice)&&(identical(other.payBy, payBy) || other.payBy == payBy));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,requestedStart,requestedEnd,locationText,expiresAt,createdAt);
+int get hashCode => Object.hash(runtimeType,bookingId,bookingStatus,gigId,gigStatus,paymentStatus,requestedStart,requestedEnd,locationText,expiresAt,createdAt,shortNotice,payBy);
 
 @override
 String toString() {
-  return 'ClientBookingListItem(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, requestedStart: $requestedStart, requestedEnd: $requestedEnd, locationText: $locationText, expiresAt: $expiresAt, createdAt: $createdAt)';
+  return 'ClientBookingListItem(bookingId: $bookingId, bookingStatus: $bookingStatus, gigId: $gigId, gigStatus: $gigStatus, paymentStatus: $paymentStatus, requestedStart: $requestedStart, requestedEnd: $requestedEnd, locationText: $locationText, expiresAt: $expiresAt, createdAt: $createdAt, shortNotice: $shortNotice, payBy: $payBy)';
 }
 
 
@@ -285,7 +293,7 @@ abstract mixin class _$ClientBookingListItemCopyWith<$Res> implements $ClientBoo
   factory _$ClientBookingListItemCopyWith(_ClientBookingListItem value, $Res Function(_ClientBookingListItem) _then) = __$ClientBookingListItemCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientBookingListItem.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingListItem.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingListItem.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingListItem.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingListItem.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingListItem.requestedStartKey_) DateTime requestedStart,@JsonKey(name: ClientBookingListItem.requestedEndKey_) DateTime requestedEnd,@JsonKey(name: ClientBookingListItem.locationTextKey_) String? locationText,@JsonKey(name: ClientBookingListItem.expiresAtKey_) DateTime expiresAt,@JsonKey(name: ClientBookingListItem.createdAtKey_) DateTime createdAt
+@JsonKey(name: ClientBookingListItem.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingListItem.bookingStatusKey_) String bookingStatus,@JsonKey(name: ClientBookingListItem.gigIdKey_) String? gigId,@JsonKey(name: ClientBookingListItem.gigStatusKey_) String? gigStatus,@JsonKey(name: ClientBookingListItem.paymentStatusKey_) String? paymentStatus,@JsonKey(name: ClientBookingListItem.requestedStartKey_) DateTime requestedStart,@JsonKey(name: ClientBookingListItem.requestedEndKey_) DateTime requestedEnd,@JsonKey(name: ClientBookingListItem.locationTextKey_) String? locationText,@JsonKey(name: ClientBookingListItem.expiresAtKey_) DateTime expiresAt,@JsonKey(name: ClientBookingListItem.createdAtKey_) DateTime createdAt,@JsonKey(name: ClientBookingListItem.shortNoticeKey_) bool shortNotice,@JsonKey(name: ClientBookingListItem.payByKey_) DateTime? payBy
 });
 
 
@@ -302,7 +310,7 @@ class __$ClientBookingListItemCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingListItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? requestedStart = null,Object? requestedEnd = null,Object? locationText = freezed,Object? expiresAt = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? bookingId = null,Object? bookingStatus = null,Object? gigId = freezed,Object? gigStatus = freezed,Object? paymentStatus = freezed,Object? requestedStart = null,Object? requestedEnd = null,Object? locationText = freezed,Object? expiresAt = null,Object? createdAt = null,Object? shortNotice = null,Object? payBy = freezed,}) {
   return _then(_ClientBookingListItem(
 bookingId: null == bookingId ? _self.bookingId : bookingId // ignore: cast_nullable_to_non_nullable
 as String,bookingStatus: null == bookingStatus ? _self.bookingStatus : bookingStatus // ignore: cast_nullable_to_non_nullable
@@ -314,7 +322,9 @@ as DateTime,requestedEnd: null == requestedEnd ? _self.requestedEnd : requestedE
 as DateTime,locationText: freezed == locationText ? _self.locationText : locationText // ignore: cast_nullable_to_non_nullable
 as String?,expiresAt: null == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
 as DateTime,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,shortNotice: null == shortNotice ? _self.shortNotice : shortNotice // ignore: cast_nullable_to_non_nullable
+as bool,payBy: freezed == payBy ? _self.payBy : payBy // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

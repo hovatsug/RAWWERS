@@ -19,6 +19,10 @@ _ClientBookingListItem _$ClientBookingListItemFromJson(
   locationText: json['location_text'] as String?,
   expiresAt: DateTime.parse(json['expires_at'] as String),
   createdAt: DateTime.parse(json['created_at'] as String),
+  shortNotice: json['short_notice'] as bool? ?? false,
+  payBy: json['pay_by'] == null
+      ? null
+      : DateTime.parse(json['pay_by'] as String),
 );
 
 Map<String, dynamic> _$ClientBookingListItemToJson(
@@ -34,4 +38,6 @@ Map<String, dynamic> _$ClientBookingListItemToJson(
   'location_text': instance.locationText,
   'expires_at': instance.expiresAt.toIso8601String(),
   'created_at': instance.createdAt.toIso8601String(),
+  'short_notice': instance.shortNotice,
+  'pay_by': instance.payBy?.toIso8601String(),
 };

@@ -31,6 +31,7 @@ _ProPackageUpdateRequest _$ProPackageUpdateRequestFromJson(
   sessionBlocks: (json['session_blocks'] as List<dynamic>?)
       ?.map((e) => SessionBlockInput.fromJson(e as Map<String, dynamic>))
       .toList(),
+  shortNoticeOk: json['short_notice_ok'] as bool?,
 );
 
 Map<String, dynamic> _$ProPackageUpdateRequestToJson(
@@ -52,4 +53,5 @@ Map<String, dynamic> _$ProPackageUpdateRequestToJson(
   'scheduling_preset': instance.schedulingPreset,
   'interval_minutes': instance.intervalMinutes,
   'session_blocks': instance.sessionBlocks,
+  'short_notice_ok': instance.shortNoticeOk,
 };

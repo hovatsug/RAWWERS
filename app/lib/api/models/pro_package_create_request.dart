@@ -114,6 +114,17 @@
 ///                 "$ref": "#/components/schemas/SessionBlockInput"
 ///             },
 ///             "title": "Session Blocks"
+///         },
+///         "short_notice_ok": {
+///             "anyOf": [
+///                 {
+///                     "type": "boolean"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Short Notice Ok"
 ///         }
 ///     },
 ///     "type": "object",
@@ -196,6 +207,10 @@ abstract class ProPackageCreateRequest with _$ProPackageCreateRequest {
     /// sessionBlocks
     @JsonKey(name: ProPackageCreateRequest.sessionBlocksKey_)
     List<SessionBlockInput>? sessionBlocks,
+
+    /// shortNoticeOk
+    @JsonKey(name: ProPackageCreateRequest.shortNoticeOkKey_)
+    bool? shortNoticeOk,
   }) = _ProPackageCreateRequest;
 
   factory ProPackageCreateRequest.fromJson(Map<String, dynamic> json) =>
@@ -230,4 +245,6 @@ abstract class ProPackageCreateRequest with _$ProPackageCreateRequest {
   static const String intervalMinutesKey_ = r'interval_minutes';
 
   static const String sessionBlocksKey_ = r'session_blocks';
+
+  static const String shortNoticeOkKey_ = r'short_notice_ok';
 }

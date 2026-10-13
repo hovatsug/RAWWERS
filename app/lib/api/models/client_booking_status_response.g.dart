@@ -16,6 +16,13 @@ _ClientBookingStatusResponse _$ClientBookingStatusResponseFromJson(
   paymentStatus: json['payment_status'] as String?,
   proofGalleryId: json['proof_gallery_id'] as String?,
   proofGalleryStatus: json['proof_gallery_status'] as String?,
+  expiresAt: json['expires_at'] == null
+      ? null
+      : DateTime.parse(json['expires_at'] as String),
+  shortNotice: json['short_notice'] as bool? ?? false,
+  payBy: json['pay_by'] == null
+      ? null
+      : DateTime.parse(json['pay_by'] as String),
   timeline: (json['timeline'] as List<dynamic>?)
       ?.map((e) => e as Map<String, dynamic>)
       .toList(),
@@ -37,6 +44,9 @@ Map<String, dynamic> _$ClientBookingStatusResponseToJson(
   'payment_status': instance.paymentStatus,
   'proof_gallery_id': instance.proofGalleryId,
   'proof_gallery_status': instance.proofGalleryStatus,
+  'expires_at': instance.expiresAt?.toIso8601String(),
+  'short_notice': instance.shortNotice,
+  'pay_by': instance.payBy?.toIso8601String(),
   'timeline': instance.timeline,
   'next_actions': instance.nextActions,
   'review': instance.review,

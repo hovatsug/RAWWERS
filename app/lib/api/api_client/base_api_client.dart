@@ -33,6 +33,10 @@ class BaseApiClient {
     return PresenceClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
+  AvailableNowClient get availableNowClient {
+    return AvailableNowClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   ClientLaunchClient get clientLaunchClient {
     return ClientLaunchClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

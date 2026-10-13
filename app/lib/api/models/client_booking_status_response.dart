@@ -67,6 +67,35 @@
 ///             ],
 ///             "title": "Proof Gallery Status"
 ///         },
+///         "expires_at": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "date-time"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Expires At"
+///         },
+///         "short_notice": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Short Notice"
+///         },
+///         "pay_by": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "date-time"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Pay By"
+///         },
 ///         "timeline": {
 ///             "type": "array",
 ///             "items": {
@@ -137,6 +166,18 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
     @JsonKey(name: ClientBookingStatusResponse.proofGalleryStatusKey_)
     String? proofGalleryStatus,
 
+    /// expiresAt
+    @JsonKey(name: ClientBookingStatusResponse.expiresAtKey_)
+    DateTime? expiresAt,
+
+    /// shortNotice
+    @Default(false)
+    @JsonKey(name: ClientBookingStatusResponse.shortNoticeKey_)
+    bool shortNotice,
+
+    /// payBy
+    @JsonKey(name: ClientBookingStatusResponse.payByKey_) DateTime? payBy,
+
     /// timeline
     @JsonKey(name: ClientBookingStatusResponse.timelineKey_)
     List<Map<String, dynamic>>? timeline,
@@ -165,6 +206,12 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
   static const String proofGalleryIdKey_ = r'proof_gallery_id';
 
   static const String proofGalleryStatusKey_ = r'proof_gallery_status';
+
+  static const String expiresAtKey_ = r'expires_at';
+
+  static const String shortNoticeKey_ = r'short_notice';
+
+  static const String payByKey_ = r'pay_by';
 
   static const String timelineKey_ = r'timeline';
 

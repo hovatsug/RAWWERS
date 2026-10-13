@@ -31,6 +31,7 @@ _ProPackageView _$ProPackageViewFromJson(Map<String, dynamic> json) =>
       sessionBlocks: (json['session_blocks'] as List<dynamic>?)
           ?.map((e) => SessionBlockInput.fromJson(e as Map<String, dynamic>))
           .toList(),
+      shortNoticeOk: json['short_notice_ok'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ProPackageViewToJson(_ProPackageView instance) =>
@@ -52,4 +53,5 @@ Map<String, dynamic> _$ProPackageViewToJson(_ProPackageView instance) =>
       'scheduling_preset': instance.schedulingPreset,
       'interval_minutes': instance.intervalMinutes,
       'session_blocks': instance.sessionBlocks,
+      'short_notice_ok': instance.shortNoticeOk,
     };

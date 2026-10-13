@@ -12,11 +12,17 @@ ClientBookingStatusResponse _booking({
   String bookingStatus = 'accepted',
   String? gigStatus = 'payment_pending',
   List<Map<String, dynamic>>? timeline,
+  bool shortNotice = false,
+  DateTime? payBy,
+  DateTime? expiresAt,
 }) =>
     ClientBookingStatusResponse(
       bookingId: _bookingId,
       bookingStatus: bookingStatus,
       gigStatus: gigStatus,
+      shortNotice: shortNotice,
+      payBy: payBy,
+      expiresAt: expiresAt,
       timeline: timeline ??
           [
             {'at': '2026-09-10T09:00:00+00:00', 'from': 'pending', 'to': 'accepted', 'reason': 'Pro accepted'},
@@ -82,5 +88,98 @@ void main() {
     await tester.pump();
 
     expect(find.text('Nothing has happened yet.'), findsOneWidget);
+  });
+
+  group('a short-notice booking is checked again while it waits', () {
+    // Each fetch returns the next answer in [answers], the last one repeating.
+    Future<(List<int>, Widget)> wrapSequence(List<ClientBookingStatusResponse> answers) async {
+      final fetches = [0];
+      final widget = ProviderScope(
+        overrides: [
+          bookingDetailProvider(_bookingId).overrideWith((ref) async {
+            final i = fetches[0]++;
+            // A refresh takes a moment, as a real one does - long enough for
+            // the screen to be drawn while it is under way.
+            if (i > 0) await Future<void>.delayed(const Duration(seconds: 1));
+            return answers[i < answers.length ? i : answers.length - 1];
+          }),
+        ],
+        child: MaterialApp(theme: buildClientTheme(), home: const BookingDetailScreen(bookingId: _bookingId)),
+      );
+      return (fetches, widget);
+    }
+
+    final soon = DateTime.now().add(const Duration(minutes: 25));
+    final waiting = _booking(bookingStatus: 'pending', gigStatus: null, shortNotice: true, expiresAt: soon);
+
+    testWidgets('every 20 seconds while the photographer has not answered, without blanking the screen',
+        (tester) async {
+      final (fetches, widget) = await wrapSequence([waiting]);
+      await tester.pumpWidget(widget);
+      await tester.pump();
+      expect(fetches[0], 1);
+
+      await tester.pump(shortNoticeRefreshEvery);
+      await tester.pump();
+      expect(fetches[0], 2);
+      expect(find.textContaining('has until'), findsOneWidget, reason: 'still on screen while it is checked again');
+      await tester.pump(shortNoticeRefreshEvery);
+      expect(fetches[0], 3);
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('and stops once nothing is waiting on the short clock', (tester) async {
+      final (fetches, widget) = await wrapSequence([waiting, _booking(gigStatus: 'paid', shortNotice: true)]);
+      await tester.pumpWidget(widget);
+      await tester.pump();
+      await tester.pump(shortNoticeRefreshEvery);
+      await tester.pump(const Duration(seconds: 1));
+      expect(fetches[0], 2);
+      expect(find.text('Paid'), findsOneWidget);
+
+      await tester.pump(shortNoticeRefreshEvery * 5);
+      expect(fetches[0], 2);
+    });
+
+    testWidgets('a check that fails leaves the booking on screen', (tester) async {
+      final fetches = [0];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            bookingDetailProvider(_bookingId).overrideWith((ref) async {
+              if (fetches[0]++ > 0) throw Exception('dropped');
+              return waiting;
+            }),
+          ],
+          child: MaterialApp(theme: buildClientTheme(), home: const BookingDetailScreen(bookingId: _bookingId)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(shortNoticeRefreshEvery);
+      await tester.pump();
+
+      expect(fetches[0], 2);
+      expect(find.textContaining('has until'), findsOneWidget);
+    });
+
+    testWidgets('an ordinary request is not polled', (tester) async {
+      final (fetches, widget) = await wrapSequence([_booking(bookingStatus: 'pending', gigStatus: null, expiresAt: soon)]);
+      await tester.pumpWidget(widget);
+      await tester.pump();
+
+      await tester.pump(shortNoticeRefreshEvery * 5);
+      expect(fetches[0], 1);
+    });
+  });
+
+  testWidgets('the pay panel names the time it is held until, not a fixed 24 hours', (tester) async {
+    final payBy = DateTime.now().add(const Duration(minutes: 30));
+    await tester.pumpWidget(_wrap(_booking(shortNotice: true, payBy: payBy)));
+    await tester.pump();
+
+    final element = tester.element(find.text('Pay to confirm'));
+    final time = TimeOfDay.fromDateTime(payBy).format(element);
+    expect(find.textContaining('holding this time for you until $time'), findsOneWidget);
+    expect(find.textContaining('24 hours'), findsNothing);
   });
 }

@@ -14,6 +14,7 @@ import 'package:rawwers/features/pro/settings/settings_controller.dart';
 import 'package:rawwers/features/pro/tier/tier_section.dart';
 import 'package:rawwers/features/pro/today/today_section.dart';
 import 'package:rawwers/features/shared/discover/discover_card.dart';
+import 'package:rawwers/features/pro/available_now/available_now_card.dart';
 
 /// The pro app's home: a photographer's own public identity, not a menu.
 ///
@@ -71,6 +72,8 @@ class DashboardScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(RSpace.s16),
             children: [
               const _Identity(),
+              const SizedBox(height: RSpace.s16),
+              const AvailableNowCard(),
               const SizedBox(height: RSpace.s24),
 
               _Section(

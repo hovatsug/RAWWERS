@@ -12,6 +12,7 @@ import 'package:rawwers/api/api_client/notifications_client.dart';
 import 'package:rawwers/api/api_client/repairs_client.dart';
 import 'package:rawwers/api/api_client/proof_galleries_client.dart';
 import 'package:rawwers/api/api_client/reviews_client.dart';
+import 'package:rawwers/api/api_client/available_now_client.dart';
 import 'package:rawwers/api/api_client/presence_client.dart';
 import 'package:rawwers/api/api_client/scheduling_client.dart';
 import 'package:rawwers/core/download/photo_saver.dart';
@@ -58,6 +59,9 @@ SchedulingClient schedulingClient(Ref ref) => SchedulingClient(ref.watch(dioProv
 
 @riverpod
 PresenceClient presenceClient(Ref ref) => PresenceClient(ref.watch(dioProvider));
+
+@riverpod
+AvailableNowClient availableNowClient(Ref ref) => AvailableNowClient(ref.watch(dioProvider));
 
 /// Proving what a photographer shoots on. Separate from [repairsClient] on
 /// purpose: that one records what they *own*, this one what qualifies them.

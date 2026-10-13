@@ -200,6 +200,25 @@ final presenceClientProvider = AutoDisposeProvider<PresenceClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PresenceClientRef = AutoDisposeProviderRef<PresenceClient>;
+String _$availableNowClientHash() =>
+    r'08976f1cc8f4585763bf5d915c5fe930099d4e7e';
+
+/// See also [availableNowClient].
+@ProviderFor(availableNowClient)
+final availableNowClientProvider =
+    AutoDisposeProvider<AvailableNowClient>.internal(
+      availableNowClient,
+      name: r'availableNowClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$availableNowClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AvailableNowClientRef = AutoDisposeProviderRef<AvailableNowClient>;
 String _$gearVerificationClientHash() =>
     r'154370255c84f6fd6316ad92429d4f5702a9df02';
 

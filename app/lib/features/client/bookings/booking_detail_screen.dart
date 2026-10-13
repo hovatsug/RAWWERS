@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,26 +16,64 @@ import 'package:rawwers/core/router/app_router_client.dart';
 import 'package:rawwers/features/client/bookings/booking_status_display.dart';
 import 'package:rawwers/features/client/bookings/review_panel.dart';
 
-class BookingDetailScreen extends ConsumerWidget {
+/// How often a booking on a short clock is checked again while the screen
+/// is open. A short-notice request has 30 minutes to be answered and 30 to
+/// be paid; with no push yet, waiting for a pull could miss most of either.
+const shortNoticeRefreshEvery = Duration(seconds: 20);
+
+/// Waiting on something that runs on the short clock: the photographer's
+/// answer, or the client's payment.
+bool waitsOnShortClock(ClientBookingStatusResponse booking) =>
+    booking.shortNotice && (booking.bookingStatus == 'pending' || booking.payBy != null);
+
+class BookingDetailScreen extends ConsumerStatefulWidget {
   const BookingDetailScreen({required this.bookingId, super.key});
 
   final String bookingId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BookingDetailScreen> createState() => _BookingDetailScreenState();
+}
+
+class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
+  Timer? _refresh;
+
+  void _keepFresh(bool on) {
+    if (on == (_refresh != null)) return;
+    _refresh?.cancel();
+    _refresh = on
+        ? Timer.periodic(shortNoticeRefreshEvery, (_) => ref.invalidate(bookingDetailProvider(widget.bookingId)))
+        : null;
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bookingId = widget.bookingId;
     final booking = ref.watch(bookingDetailProvider(bookingId));
+    _keepFresh(switch (booking.valueOrNull) {
+      final b? => waitsOnShortClock(b),
+      null => false,
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Booking')),
       body: SafeArea(
+        // A booking already on screen stays there if checking it again
+        // fails - one dropped request out of a check every 20 seconds must
+        // not replace it with an error page.
         child: switch (booking) {
-          AsyncLoading() => const PagedListSkeleton(),
+          AsyncValue(hasValue: true, :final value?) => _Detail(bookingId: bookingId, booking: value),
           AsyncError(:final error) => RErrorState(
               message: pagingFailureMessage(error),
               onRetry: () => ref.invalidate(bookingDetailProvider(bookingId)),
             ),
-          AsyncData(:final value) => _Detail(bookingId: bookingId, booking: value),
-          _ => const SizedBox.shrink(),
+          _ => const PagedListSkeleton(),
         },
       ),
     );
@@ -67,9 +107,16 @@ class _Detail extends ConsumerWidget {
               RStatusChip(label: status.label, kind: status.kind),
             ],
           ),
+          if (booking.bookingStatus == 'pending' && booking.expiresAt != null) ...[
+            const SizedBox(height: RSpace.s12),
+            Text(
+              'Your photographer has until ${clockTime(context, booking.expiresAt!)} to answer.',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
           if (status.canPay) ...[
             const SizedBox(height: RSpace.s16),
-            _PayPanel(bookingId: bookingId),
+            _PayPanel(bookingId: bookingId, payBy: booking.payBy),
           ],
           if (booking.proofGalleryId != null) ...[
             const SizedBox(height: RSpace.s16),
@@ -96,9 +143,10 @@ class _Detail extends ConsumerWidget {
 }
 
 class _PayPanel extends ConsumerWidget {
-  const _PayPanel({required this.bookingId});
+  const _PayPanel({required this.bookingId, required this.payBy});
 
   final String bookingId;
+  final DateTime? payBy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,9 +161,12 @@ class _PayPanel extends ConsumerWidget {
           Text('Pay to confirm', style: theme.textTheme.titleSmall),
           const SizedBox(height: RSpace.s4),
           Text(
-            // Accepted bookings hold their time for 24 hours while the client
-            // pays (bookable_time.PAYMENT_WINDOW); after that it is released.
-            'Your photographer accepted. We are holding this time for you for 24 hours - pay to confirm it.',
+            // The time is held until the deadline the pay route enforces - 24
+            // hours for an ordinary booking, 30 minutes at short notice -
+            // then released.
+            payBy == null
+                ? 'Your photographer accepted. Pay to confirm it.'
+                : 'Your photographer accepted. We are holding this time for you until ${clockTime(context, payBy!)} - pay to confirm it.',
             style: theme.textTheme.bodyMedium,
           ),
           if (progress case PaymentFailed(:final message)) ...[
@@ -228,4 +279,14 @@ class _PhotosPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A deadline as the client reads it: the time, and the day when it is not
+/// today.
+String clockTime(BuildContext context, DateTime at) {
+  final local = at.toLocal();
+  final now = DateTime.now();
+  final time = TimeOfDay.fromDateTime(local).format(context);
+  if (local.year == now.year && local.month == now.month && local.day == now.day) return time;
+  return '$time on ${local.day}/${local.month}';
 }

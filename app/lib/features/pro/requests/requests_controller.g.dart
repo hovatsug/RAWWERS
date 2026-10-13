@@ -27,7 +27,7 @@ final requestsFilterControllerProvider =
 
 typedef _$RequestsFilterController = AutoDisposeNotifier<RequestsFilter>;
 String _$requestsControllerHash() =>
-    r'8eeacb4a8e90ff169a1e429b585cf2461f727bd8';
+    r'a80831f987b7754540de9d1592f690b163b3e0df';
 
 /// See also [RequestsController].
 @ProviderFor(RequestsController)
@@ -47,5 +47,32 @@ final requestsControllerProvider =
 
 typedef _$RequestsController =
     AutoDisposeAsyncNotifier<CursorPage<BookingRequestListItem>>;
+String _$pendingRequestsControllerHash() =>
+    r'f714e5d953ced1a8dbaff6eb8d36ab1b76cee1da';
+
+/// Requests waiting on the photographer, for the Requests tab's badge.
+///
+/// Polled every 30 seconds while the app is running: with no push yet, this
+/// is how a photographer with the app open learns a request arrived - and a
+/// short-notice one has only 30 minutes to be answered. Read from the first
+/// page of the same pending list the tab shows, so the two cannot disagree;
+/// a request past its deadline that the sweep has not reached yet is not
+/// counted. When the count changes the list is refetched too, so a new
+/// request is already there when the tab is opened.
+///
+/// Copied from [PendingRequestsController].
+@ProviderFor(PendingRequestsController)
+final pendingRequestsControllerProvider =
+    AsyncNotifierProvider<PendingRequestsController, PendingRequests>.internal(
+      PendingRequestsController.new,
+      name: r'pendingRequestsControllerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$pendingRequestsControllerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$PendingRequestsController = AsyncNotifier<PendingRequests>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

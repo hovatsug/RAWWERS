@@ -148,6 +148,22 @@ class _PackageRow extends ConsumerWidget {
             ),
             const SizedBox(height: RSpace.s4),
             Text('${package.durationMinutes} minutes', style: theme.textTheme.bodySmall),
+            if (package.isActive)
+              // Only matters while "Available now" is on: then this package
+              // can be booked within the next day at the preparation time.
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('Can be booked at short notice'),
+                subtitle: const Text('When you are Available now'),
+                value: package.shortNoticeOk,
+                onChanged: (ok) async {
+                  final error = await ref.read(packagesControllerProvider.notifier).setShortNotice(package, ok: ok);
+                  if (error != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                  }
+                },
+              ),
           ],
         ),
       ),

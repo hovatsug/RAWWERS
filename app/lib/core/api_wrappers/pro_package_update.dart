@@ -28,5 +28,6 @@ ProPackageUpdateRequest buildProPackageUpdateRequest(ProPackageView current) {
     finalsSlaDays: current.finalsSlaDays,
     addons: current.addons,
     isActive: current.isActive,
+    shortNoticeOk: current.shortNoticeOk,
   );
 }

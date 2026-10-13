@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/features/pro/messages/pro_messages_controller.dart';
+import 'package:rawwers/features/pro/requests/requests_controller.dart';
 
 /// Bottom tabs only - one navigation system for the whole app. Settings is
 /// reached from the dashboard header, not a tab. Today is a section of the
@@ -26,7 +27,11 @@ class ProShell extends StatelessWidget {
         onDestinationSelected: (index) => navigationShell.goBranch(index),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'You'),
-          NavigationDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: 'Requests'),
+          NavigationDestination(
+            icon: RequestsTabIcon(Icons.inbox_outlined),
+            selectedIcon: RequestsTabIcon(Icons.inbox),
+            label: 'Requests',
+          ),
           NavigationDestination(
             icon: MessagesTabIcon(Icons.chat_bubble_outline),
             selectedIcon: MessagesTabIcon(Icons.chat_bubble),
@@ -53,6 +58,24 @@ class MessagesTabIcon extends ConsumerWidget {
     return Semantics(
       label: unread > 0 ? '$unread unread' : null,
       child: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: Icon(icon)),
+    );
+  }
+}
+
+/// The Requests tab's icon, carrying how many requests are waiting on an
+/// answer. Nothing at zero.
+class RequestsTabIcon extends ConsumerWidget {
+  const RequestsTabIcon(this.icon, {super.key});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pending = ref.watch(pendingRequestsControllerProvider).valueOrNull ?? const PendingRequests(0);
+    final waiting = pending.count > 0;
+    return Semantics(
+      label: waiting ? '${pending.label} waiting' : null,
+      child: Badge(isLabelVisible: waiting, label: Text(pending.label), child: Icon(icon)),
     );
   }
 }

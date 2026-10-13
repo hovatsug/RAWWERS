@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/models/accept_booking_request.dart';
 import 'package:rawwers/api/models/booking_decision_request.dart';
@@ -91,6 +93,9 @@ class RequestsController extends _$RequestsController {
   /// the state on screen is the state that will be enforced.
   Future<void> refresh() async {
     ref.invalidateSelf();
+    // An answer changes what is waiting; the badge says so now, not at the
+    // next poll.
+    ref.invalidate(pendingRequestsControllerProvider);
     await future;
   }
 
@@ -135,6 +140,69 @@ class RequestsController extends _$RequestsController {
         return null;
       case Err(:final failure):
         return _decisionMessage(failure);
+    }
+  }
+}
+
+/// What the Requests tab's badge shows: how many requests are waiting on an
+/// answer, and whether there are more than one page holds.
+class PendingRequests {
+  const PendingRequests(this.count, {this.more = false});
+
+  final int count;
+  final bool more;
+
+  String get label => more ? '$count+' : '$count';
+
+  @override
+  bool operator ==(Object other) => other is PendingRequests && other.count == count && other.more == more;
+
+  @override
+  int get hashCode => Object.hash(count, more);
+}
+
+/// Requests waiting on the photographer, for the Requests tab's badge.
+///
+/// Polled every 30 seconds while the app is running: with no push yet, this
+/// is how a photographer with the app open learns a request arrived - and a
+/// short-notice one has only 30 minutes to be answered. Read from the first
+/// page of the same pending list the tab shows, so the two cannot disagree;
+/// a request past its deadline that the sweep has not reached yet is not
+/// counted. When the count changes the list is refetched too, so a new
+/// request is already there when the tab is opened.
+@Riverpod(keepAlive: true)
+class PendingRequestsController extends _$PendingRequestsController {
+  static const pollEvery = Duration(seconds: 30);
+  Timer? _timer;
+
+  @override
+  Future<PendingRequests> build() async {
+    _timer ??= Timer.periodic(pollEvery, (_) => ref.invalidateSelf());
+    ref.onDispose(() {
+      _timer?.cancel();
+      _timer = null;
+    });
+    final before = state.valueOrNull;
+    final client = ref.read(proOnboardingClientProvider);
+    final result = await apiCall(
+      () => client.listBookingRequestsV1BookingRequestsGet(
+        status: BookingRequestStatus.pending,
+        cursor: null,
+        authorization: null,
+        xMinusUserMinusId: null,
+      ),
+    );
+    switch (result) {
+      case Ok(:final value):
+        final now = DateTime.now();
+        final waiting = (value.items ?? const []).where((r) => r.expiresAt.isAfter(now)).length;
+        final pending = PendingRequests(waiting, more: value.nextCursor != null);
+        if (before != null && before != pending) ref.invalidate(requestsControllerProvider);
+        return pending;
+      // A badge that cannot load keeps what it had rather than an error on
+      // every tab.
+      case Err():
+        return before ?? const PendingRequests(0);
     }
   }
 }

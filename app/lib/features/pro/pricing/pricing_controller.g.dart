@@ -222,7 +222,7 @@ class _PricingPreviewProviderElement
 }
 
 String _$packagesControllerHash() =>
-    r'987733437e13a66a3cd8f9561014ea99d7544411';
+    r'23a1587d2f690a9a8972cb2ed60ae1bd79d8514e';
 
 /// The pro's own packages, one per niche they price.
 ///

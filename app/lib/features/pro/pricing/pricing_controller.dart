@@ -5,6 +5,7 @@ import 'package:rawwers/api/models/pro_package_create_request.dart';
 import 'package:rawwers/api/models/pro_package_update_request.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
 import 'package:rawwers/core/api/api_call.dart';
+import 'package:rawwers/core/api_wrappers/pro_package_update.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
@@ -102,6 +103,33 @@ class PackagesController extends _$PackagesController {
           BusinessError(:final message) => message,
           Validation(:final fieldErrors) =>
             fieldErrors.values.firstOrNull?.firstOrNull ?? 'Some of that could not be saved.',
+          _ => 'Could not save that package.',
+        };
+    }
+  }
+
+  /// Whether [package] may be booked at short notice while the photographer
+  /// is "Available now". Sent with the rest of the package: the update route
+  /// needs its niche, and leaves a field it is not sent unchanged.
+  Future<String?> setShortNotice(ProPackageView package, {required bool ok}) async {
+    final client = ref.read(proOnboardingClientProvider);
+    final result = await apiCall(
+      () => client.updatePackageV1ProMePackagesPackageIdPut(
+        packageId: package.id,
+        requestBody: buildProPackageUpdateRequest(package).copyWith(shortNoticeOk: ok),
+        authorization: null,
+        xMinusUserMinusId: null,
+      ),
+    );
+    switch (result) {
+      case Ok():
+        ref.invalidateSelf();
+        await future;
+        return null;
+      case Err(:final failure):
+        return switch (failure) {
+          NetworkError() || Timeout() => 'Could not reach the server. Check your connection.',
+          BusinessError(:final message) => message,
           _ => 'Could not save that package.',
         };
     }

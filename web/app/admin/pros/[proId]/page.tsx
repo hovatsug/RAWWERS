@@ -273,6 +273,10 @@ function NicheTiers({ proId, name }: { proId: string; name: string }) {
   return (
     <Panel className="mt-4 p-4">
       <h2 className="text-sm font-semibold text-slate-100">Niche tiers</h2>
+      <p className="mt-1 text-xs text-slate-400">
+        Tiers from evidence change at most once a week in either direction (seven-day hysteresis). An override takes
+        effect at once, bypasses that wait, and stays until it is removed; removing it returns to the evidence tier at once.
+      </p>
       {skills.isLoading ? <div className="mt-3 h-16 animate-pulse rounded bg-white/[0.04]" /> : null}
       {skills.data && !skills.data.ok ? (
         <div className="mt-3">

@@ -14,7 +14,12 @@ feature is visible in the app rather than present only in tests:
                   relaxed for the demo. Runs until stopped:
                     ... scripts/seed_demo.py --refresh-presence
                     ... scripts/seed_demo.py --stop-presence-refresher
-  available now   (next step)
+  available now   two of the online four (Ines, Tomas) with a package that
+                  may be booked at short notice; the presence refresher
+                  also keeps them switched on, through the real toggle,
+                  and switches them off when it stops. Short notice still
+                  needs working hours inside the next 24 hours - the step
+                  prints the earliest short-notice slot each one has.
 
 Everything goes through the real routes, called in-process with real access
 tokens: the client's booking request (with its availability check and rate
@@ -519,6 +524,91 @@ def seed_chat(db, *, dry_run: bool) -> list[str]:
     return report
 
 
+# --- available now ------------------------------------------------------------
+
+# Switched on by the presence refresher; a subset of PRESENCE_EMAILS, because
+# "available now" only counts while the app is checking in.
+AVAILABLE_EMAILS = ("ines.carvalho@rawwers.dev", "tomas.belmonte@rawwers.dev")
+
+
+def _short_notice_package(db, pro_id: uuid.UUID) -> ProPackage | None:
+    """The package to flag: the shortest active one - an hour's portrait is
+    what can be shot at a couple of hours' notice, a full day is not."""
+    return db.execute(
+        select(ProPackage)
+        .where(ProPackage.pro_user_id == pro_id, ProPackage.is_active.is_(True))
+        .order_by(ProPackage.duration_minutes, ProPackage.id)
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def seed_available_now(db, *, dry_run: bool) -> list[str]:
+    """Flag one package per demo photographer as fine at short notice,
+    through the photographer's own package route (sent with its niche, as
+    the route requires). Already flagged is left alone."""
+    api = _api()
+    lines = []
+    for email in AVAILABLE_EMAILS:
+        pro_id = db.execute(select(UserAccount.user_id).where(UserAccount.email == email)).scalar_one_or_none()
+        package = _short_notice_package(db, pro_id) if pro_id else None
+        if package is None:
+            lines.append(f"{email}: no active package - skipped")
+            continue
+        if package.short_notice_ok:
+            lines.append(f"{email}: '{package.title}' already bookable at short notice")
+        elif dry_run:
+            lines.append(f"{email}: would flag '{package.title}'")
+        else:
+            resp = api.put(
+                f"/v1/pro/me/packages/{package.id}",
+                headers=_headers(db, pro_id),
+                json={"niche_id": str(package.niche_id), "short_notice_ok": True},
+            )
+            if resp.status_code != 200:
+                raise RuntimeError(f"{email}: flagging refused ({resp.status_code}): {resp.text}")
+            db.expire_all()
+            lines.append(f"{email}: flagged '{package.title}' ({package.duration_minutes} min)")
+        _ensure_working_hours(api, db, pro_id)
+    lines.append("switched on only while --refresh-presence runs; see the slots it prints")
+    return lines
+
+
+def _earliest_short_notice_slot(api, db, pro_id: uuid.UUID) -> str:
+    """What a client would be offered inside the next 24 hours, as the
+    client's own availability route answers it."""
+    package = _short_notice_package(db, pro_id)
+    today = date.today()
+    resp = api.get(
+        f"/v1/client/pros/{pro_id}/availability",
+        params={"package_id": str(package.id), "from": today.isoformat(), "to": (today + timedelta(days=1)).isoformat()},
+        headers=_headers(db, pro_id),
+    )
+    if resp.status_code != 200:
+        return f"availability {resp.status_code}"
+    horizon = datetime.now(timezone.utc) + timedelta(hours=24)
+    for day in resp.json()["days"]:
+        for window in day["start_times"]:
+            if datetime.fromisoformat(window["start_at"]) <= horizon:
+                return window["start_at"]
+    return "none in the next 24h (outside working hours)"
+
+
+def _keep_available(api, db, pro_ids: list[uuid.UUID], *, on: bool) -> list[str]:
+    """Through the real toggle. Switched on again only when under an hour
+    is left, so the until time a photographer sees moves rarely."""
+    out = []
+    for pro_id in pro_ids:
+        headers = _headers(db, pro_id)
+        if on:
+            view = api.get("/v1/pro/available-now", headers=headers).json()
+            until = view.get("available_until")
+            if until and datetime.fromisoformat(until) - datetime.now(timezone.utc) > timedelta(hours=1):
+                out.append("on")
+                continue
+        out.append(str(api.put("/v1/pro/available-now", headers=headers, json={"switched_on": on}).status_code))
+    return out
+
+
 # --- presence refresher -------------------------------------------------------
 
 # Online in the demo: four Lisbon photographers, two newcomers among them.
@@ -557,7 +647,13 @@ def refresh_presence() -> int:
             row
             for row in db.execute(select(UserAccount.user_id, UserAccount.email).where(UserAccount.email.in_(PRESENCE_EMAILS))).all()
         ]
+        available = [
+            row.user_id
+            for row in db.execute(select(UserAccount.user_id).where(UserAccount.email.in_(AVAILABLE_EMAILS))).all()
+        ]
     print(f"presence refresher: keeping {len(pros)} photographers online, every {_EVERY_SECONDS}s. Stop with --stop-presence-refresher.")
+    print(f"presence refresher: and {len(available)} of them available now")
+    first = True
     try:
         while not redis.exists(_STOP_KEY):
             redis.set(_RUNNING_KEY, "1", ex=_EVERY_SECONDS * 2)
@@ -565,7 +661,13 @@ def refresh_presence() -> int:
                 results = [
                     api.post("/v1/pro/presence/heartbeat", headers=_headers(db, pro_id)).status_code for pro_id, _ in pros
                 ]
-            print(f"  beat {time.strftime('%H:%M:%S')}: {results}", flush=True)
+                # After the heartbeat: switched on counts only while fresh.
+                switched = _keep_available(api, db, available, on=True)
+                if first:
+                    for pro_id in available:
+                        print(f"  {pro_id}: earliest short-notice slot {_earliest_short_notice_slot(api, db, pro_id)}")
+                    first = False
+            print(f"  beat {time.strftime('%H:%M:%S')}: {results} available {switched}", flush=True)
             for _ in range(_EVERY_SECONDS):
                 if redis.exists(_STOP_KEY):
                     break
@@ -574,10 +676,11 @@ def refresh_presence() -> int:
         pass
     finally:
         with SessionLocal() as db:
+            _keep_available(api, db, available, on=False)
             for pro_id, _ in pros:
                 api.delete("/v1/pro/presence", headers=_headers(db, pro_id))
         redis.delete(_RUNNING_KEY, _STOP_KEY)
-        print("presence refresher: stopped, dots cleared")
+        print("presence refresher: stopped, dots cleared, available now switched off")
     return 0
 
 
@@ -589,7 +692,7 @@ def stop_presence_refresher() -> int:
     return 0
 
 
-STEPS = {"response_time": seed_response_time, "chat": seed_chat}
+STEPS = {"response_time": seed_response_time, "chat": seed_chat, "available_now": seed_available_now}
 
 
 def main() -> int:

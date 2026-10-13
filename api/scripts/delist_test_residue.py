@@ -21,9 +21,18 @@ index row removes them from every client-facing surface, is exactly what an
 admin would do to a real account, and is reversible.
 
 The domain is the signal: real and demo accounts use `@rawwers.dev`,
-throwaway ones use `@rawwers.test`. Nothing in the repository creates the
-latter any more, so this is residue with no current producer - which is why
-it is a script to run rather than a filter in the discovery query. Adding a
+throwaway ones use `@rawwers.test`. One producer remains: the app's
+integration test (`test/core/auth/integration_auth_flow_test.dart`) registers
+an `f5-<n>@rawwers.test` photographer on every `flutter test` run that finds a
+backend on localhost:8000 - the dev stack, whenever it is up. Those accounts
+are never accepting bookings and never KYC-approved, so client traffic, which
+requires both, does not see them; this is still a script to run rather than a
+filter in the discovery query.
+
+Of the two changes this makes, `is_accepting_bookings = False` is the one that
+lasts. Dropping the index row is undone by the next rebuild-all, which
+recomputes a row for every photographer profile (seen 2026-10-13: 91 rows
+dropped, 97 back after one rebuild). Adding a
 permanent email-domain exclusion to production code would be defending
 against a thing that no longer happens, in the one place where a mistake
 hides a real photographer.

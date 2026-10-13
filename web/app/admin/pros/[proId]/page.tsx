@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { admin } from "@/lib/api/admin";
+import { admin, SKILL_TIERS, type NicheSkillRow, type SkillTier } from "@/lib/api/admin";
 import { humanise } from "@/app/admin/labels";
 import {
   AdminButton,
@@ -187,6 +187,8 @@ export default function AdminProReviewPage() {
         </div>
       </div>
 
+      <NicheTiers proId={proId} name={name} />
+
       <ConfirmDialog
         open={dialog === "approve"}
         title={`Approve ${name}?`}
@@ -246,5 +248,129 @@ function Gate({ label, done, detail }: { label: string; done: boolean; detail: s
         <span className="block text-xs text-slate-500">{detail}</span>
       </span>
     </li>
+  );
+}
+
+/**
+ * Tier per niche: what is in force, what the evidence alone says, and the
+ * admin override behind any difference - who set it, when and why.
+ *
+ * An override lasts until someone removes it here; recomputes and
+ * rebuild-all keep it and keep working out the evidence beside it. Where the
+ * two disagree it says so, because an override nobody remembers setting is
+ * how a photographer ends up priced at a tier their work does not support.
+ * Setting and removing both ask for a reason, kept in the audit log.
+ */
+function NicheTiers({ proId, name }: { proId: string; name: string }) {
+  const queryClient = useQueryClient();
+  const [setting, setSetting] = useState<NicheSkillRow | null>(null);
+  const [removing, setRemoving] = useState<NicheSkillRow | null>(null);
+  const [tier, setTier] = useState<SkillTier>("pro");
+  const skills = useQuery({ queryKey: ["admin", "niche-skills", proId], queryFn: () => admin.nicheSkills(proId) });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin", "niche-skills", proId] });
+  const rows = skills.data?.ok ? skills.data.data.items : [];
+
+  return (
+    <Panel className="mt-4 p-4">
+      <h2 className="text-sm font-semibold text-slate-100">Niche tiers</h2>
+      {skills.isLoading ? <div className="mt-3 h-16 animate-pulse rounded bg-white/[0.04]" /> : null}
+      {skills.data && !skills.data.ok ? (
+        <div className="mt-3">
+          <Notice tone="error">Could not load tiers: {skills.data.error.message}</Notice>
+        </div>
+      ) : null}
+      {skills.data?.ok && rows.length === 0 ? <p className="mt-2 text-sm text-slate-400">No niches yet.</p> : null}
+      <ul className="mt-3 divide-y divide-white/[0.06]">
+        {rows.map((row) => (
+          <li key={row.niche_slug} className="flex flex-wrap items-start justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <p className="text-sm text-slate-100">
+                {row.niche_name} · <span className="font-semibold">{humanise(row.tier)}</span>
+                {row.override ? <span className="ml-2"><StatusBadge tone="info" label="Admin override" /></span> : null}
+              </p>
+              {row.override ? (
+                <p className="mt-1 text-xs text-slate-400">
+                  Set {row.override.at ? new Date(row.override.at).toLocaleDateString() : ""} — “{row.override.reason}”
+                </p>
+              ) : null}
+              {row.evidence_disagrees && row.evidence_tier ? (
+                <p className="mt-1 text-xs text-amber-300">
+                  The evidence alone says {humanise(row.evidence_tier)} ({row.gigs_completed} completed gigs
+                  {row.verified ? ", verified" : ", not verified"}).
+                </p>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              <AdminButton
+                tone="secondary"
+                onClick={() => {
+                  setTier(row.override?.tier ?? row.tier);
+                  setSetting(row);
+                }}
+              >
+                {row.override ? "Change…" : "Override…"}
+              </AdminButton>
+              {row.override ? (
+                <AdminButton tone="secondary" onClick={() => setRemoving(row)}>
+                  Remove override…
+                </AdminButton>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <ConfirmDialog
+        open={setting !== null}
+        title={setting ? `Set ${name}'s ${setting.niche_name} tier` : ""}
+        confirmLabel="Set tier"
+        reason={{ label: "Reason — kept in the audit log", placeholder: "e.g. Portfolio reviewed by the team" }}
+        onClose={() => setSetting(null)}
+        onConfirm={async (reason) => {
+          if (!setting) return null;
+          const res = await admin.setTierOverride(proId, setting.niche_id, tier, reason);
+          if (!res.ok) return res.error.message;
+          refresh();
+          return null;
+        }}
+      >
+        <label className="block text-sm text-slate-300">
+          Tier
+          <select
+            className="mt-1 block w-full rounded border border-white/10 bg-transparent p-2"
+            value={tier}
+            onChange={(e) => setTier(e.target.value as SkillTier)}
+          >
+            {SKILL_TIERS.map((t) => (
+              <option key={t} value={t}>
+                {humanise(t)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="mt-2">It stays in force until someone removes it here. Recomputes keep it.</p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={removing ? `Remove the override on ${name}'s ${removing.niche_name} tier?` : ""}
+        confirmLabel="Remove override"
+        tone="danger"
+        reason={{ label: "Reason — kept in the audit log", placeholder: "e.g. Evidence has caught up" }}
+        onClose={() => setRemoving(null)}
+        onConfirm={async (reason) => {
+          if (!removing) return null;
+          const res = await admin.removeTierOverride(proId, removing.niche_id, reason);
+          if (!res.ok) return res.error.message;
+          refresh();
+          return null;
+        }}
+      >
+        <p>
+          Their tier goes to what the evidence says
+          {removing?.evidence_tier ? ` — ${humanise(removing.evidence_tier)}` : ""} — straight away.
+        </p>
+      </ConfirmDialog>
+    </Panel>
   );
 }

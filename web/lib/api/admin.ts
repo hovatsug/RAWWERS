@@ -171,6 +171,24 @@ export type PriceCapRow = {
 
 export type AdminNiche = { id: string; slug: string; name: string; is_active: boolean };
 
+export type SkillTier = "rookie" | "skilled" | "pro" | "elite" | "master";
+export const SKILL_TIERS: SkillTier[] = ["rookie", "skilled", "pro", "elite", "master"];
+
+/** One niche's tier for a photographer: what is in force, what the evidence
+ * alone says, and the admin override behind any difference. */
+export type NicheSkillRow = {
+  niche_id: string;
+  niche_slug: string;
+  niche_name: string;
+  tier: SkillTier;
+  evidence_tier: SkillTier | null;
+  evidence_disagrees: boolean;
+  score: number;
+  verified: boolean;
+  gigs_completed: number;
+  override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
+};
+
 export const admin = {
   niches: () => adminFetch<AdminNiche[]>("niches"),
   priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
@@ -190,6 +208,17 @@ export const admin = {
 
   reviewQueue: () => adminFetch<{ items: ProReviewRow[] }>("pros/review-queue"),
   reviewDetail: (proUserId: string) => adminFetch<ProReviewDetail>(`pros/${proUserId}/review`),
+  nicheSkills: (proUserId: string) => adminFetch<{ items: NicheSkillRow[] }>(`pros/${proUserId}/niche-skill`),
+  setTierOverride: (proUserId: string, nicheId: string, tier: SkillTier, note: string) =>
+    adminFetch<unknown>(`pros/${proUserId}/niche-skill/${nicheId}/override`, {
+      method: "POST",
+      body: JSON.stringify({ tier, note })
+    }),
+  removeTierOverride: (proUserId: string, nicheId: string, reason: string) =>
+    adminFetch<unknown>(`pros/${proUserId}/niche-skill/${nicheId}/override`, {
+      method: "DELETE",
+      body: JSON.stringify({ reason })
+    }),
   approvePro: (proUserId: string, note?: string) =>
     adminFetch<ProApprovalResult>(`pros/${proUserId}/approve`, {
       method: "POST",

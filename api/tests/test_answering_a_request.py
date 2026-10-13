@@ -63,6 +63,13 @@ def _gigs(db_session, request) -> int:
     ).scalar_one()
 
 
+def _all_gigs_for(db_session, pro) -> int:
+    """Every gig for this photographer, however made - a refusal that still
+    wrote a gig without the request's id would slip past a narrower count."""
+    db_session.expire_all()
+    return db_session.execute(select(func.count()).select_from(Gig).where(Gig.pro_user_id == pro.uuid)).scalar_one()
+
+
 def _weekly_pro(db_session):
     return _pro(db_session, rules=((0, time(9), time(18)),))
 
@@ -78,6 +85,7 @@ def test_a_pending_request_inside_its_deadline_becomes_one_booking(client, db_se
     db_session.refresh(request)
     assert request.status == S.accepted
     assert _gigs(db_session, request) == 1
+    assert _all_gigs_for(db_session, pro) == 1
 
 
 @ROUTES
@@ -91,6 +99,7 @@ def test_answering_an_accepted_request_again_returns_its_own_booking(client, db_
 
     assert second.status_code == 200, second.text
     assert _gigs(db_session, request) == 1, "no duplicate booking"
+    assert _all_gigs_for(db_session, pro) == 1
 
 
 @ROUTES
@@ -114,7 +123,7 @@ def test_a_request_that_can_no_longer_be_answered_is_refused_and_books_nothing(c
     assert resp.json()["error"]["code"] == code
     db_session.refresh(request)
     assert request.status == status, "the request is left as it was"
-    assert _gigs(db_session, request) == 0
+    assert _all_gigs_for(db_session, pro) == 0, "no booking of any kind - not only none tied to this request"
 
 
 @ROUTES
@@ -131,7 +140,7 @@ def test_a_photographer_without_approved_kyc_cannot_take_a_booking(client, db_se
 
     assert resp.status_code == 409, resp.text
     assert resp.json()["error"]["code"] == "kyc_required"
-    assert _gigs(db_session, request) == 0
+    assert _all_gigs_for(db_session, pro) == 0
 
 
 @ROUTES
@@ -145,7 +154,7 @@ def test_a_photographer_who_is_not_live_cannot_take_a_booking(client, db_session
 
     assert resp.status_code == 409, resp.text
     assert resp.json()["error"]["code"] == "pro_not_live"
-    assert _gigs(db_session, request) == 0
+    assert _all_gigs_for(db_session, pro) == 0
 
 
 # --- one booking, whichever route made it ------------------------------------

@@ -278,9 +278,28 @@ def test_no_payload_ever_says_when_someone_was_last_seen(client, db_session, lis
     for schema in (ClientDiscoverCard, ClientProProfileResponse):
         timing = [f for f in schema.model_fields if any(w in f for w in ("seen", "active", "heartbeat", "presence"))]
         assert timing == [], (schema.__name__, timing)
-    for body in (
-        client.get("/v1/client/home?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}).text,
-        client.get(f"/v1/client/pros/{pro}?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}).text,
-        _beat(client, pro).text,
+    from datetime import datetime, timezone
+
+    beat_at = datetime.fromtimestamp(ts, tz=timezone.utc)
+    # The heartbeat time in every form it could leak as: epoch seconds, and
+    # ISO to the minute - which also catches any later field.
+    leaks = (str(int(ts)), beat_at.strftime("%Y-%m-%dT%H:%M"))
+
+    def keys(value):
+        if isinstance(value, dict):
+            for k, v in value.items():
+                yield k
+                yield from keys(v)
+        elif isinstance(value, list):
+            for v in value:
+                yield from keys(v)
+
+    for resp in (
+        client.get("/v1/client/home?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}),
+        client.get(f"/v1/client/pros/{pro}?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}),
+        client.get("/v1/client/discover?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}),
+        _beat(client, pro),
     ):
-        assert str(int(ts)) not in body
+        assert not any(leak in resp.text for leak in leaks), resp.request.url
+        named = [k for k in keys(resp.json()) if any(w in k for w in ("seen", "heartbeat", "last_active"))]
+        assert named == [], (resp.request.url, named)

@@ -3,6 +3,7 @@ import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/design/components/r_online_dot.dart';
 
 /// One photographer in the Discover list.
 ///
@@ -57,7 +58,14 @@ class DiscoverCard extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: Text(name, style: theme.textTheme.titleMedium)),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(child: Text(name, style: theme.textTheme.titleMedium)),
+                                if (card.online) ...[const SizedBox(width: RSpace.s8), const ROnlineDot()],
+                              ],
+                            ),
+                          ),
                           if (card.reviewCount > 0) ...[
                             const SizedBox(width: RSpace.s8),
                             _Rating(rating: card.avgRating, count: card.reviewCount),

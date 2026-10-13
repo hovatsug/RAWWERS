@@ -183,6 +183,23 @@ final schedulingClientProvider = AutoDisposeProvider<SchedulingClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SchedulingClientRef = AutoDisposeProviderRef<SchedulingClient>;
+String _$presenceClientHash() => r'4f1af86d8aa6bec2cc8b80401a593654025479b2';
+
+/// See also [presenceClient].
+@ProviderFor(presenceClient)
+final presenceClientProvider = AutoDisposeProvider<PresenceClient>.internal(
+  presenceClient,
+  name: r'presenceClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$presenceClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PresenceClientRef = AutoDisposeProviderRef<PresenceClient>;
 String _$gearVerificationClientHash() =>
     r'154370255c84f6fd6316ad92429d4f5702a9df02';
 

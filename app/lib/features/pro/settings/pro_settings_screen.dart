@@ -12,6 +12,7 @@ import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
+import 'package:rawwers/features/pro/presence/presence_visibility_controller.dart';
 
 /// Everything about the account that is not the work itself.
 ///
@@ -189,6 +190,9 @@ class ProSettingsScreen extends ConsumerWidget {
               const SizedBox(height: RSpace.s24),
               _SectionLabel('Notifications'),
               const _NotificationChannels(),
+              const SizedBox(height: RSpace.s24),
+              _SectionLabel('Online status'),
+              const _PresenceVisibility(),
               const SizedBox(height: RSpace.s32),
               RButton(
                 label: 'Log out',
@@ -344,6 +348,37 @@ class _NotificationChannels extends ConsumerWidget {
       if (error == null || !context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
     });
+  }
+}
+
+class _PresenceVisibility extends ConsumerWidget {
+  const _PresenceVisibility();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final visible = ref.watch(presenceVisibilityControllerProvider);
+    final theme = Theme.of(context);
+
+    return switch (visible) {
+      AsyncData(:final value) => RCard(
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Show when I\u2019m online'),
+            subtitle: Text(
+              value ? presenceNotice : 'Clients do not see when you are online. Your assistant still waits for you while your app is open.',
+              style: theme.textTheme.bodySmall,
+            ),
+            value: value,
+            onChanged: (on) => ref.read(presenceVisibilityControllerProvider.notifier).set(on).then((error) {
+              if (error != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+              }
+            }),
+          ),
+        ),
+      AsyncError() => const _Unavailable('Could not load your online status setting.'),
+      _ => const _LoadingCard(),
+    };
   }
 }
 

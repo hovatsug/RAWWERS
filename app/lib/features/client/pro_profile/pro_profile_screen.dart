@@ -24,6 +24,7 @@ import 'package:rawwers/features/client/pro_profile/availability_calendar.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/message_button.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
+import 'package:rawwers/design/components/r_online_dot.dart';
 
 /// One photographer, in enough depth to decide whether to book them.
 ///
@@ -127,7 +128,12 @@ class _ProfileState extends State<_Profile> {
             padding: const EdgeInsets.all(RSpace.s16),
             sliver: SliverList.list(
               children: [
-                Text(name, style: theme.textTheme.headlineSmall),
+                Row(
+                  children: [
+                    Flexible(child: Text(name, style: theme.textTheme.headlineSmall)),
+                    if (profile.online) ...[const SizedBox(width: RSpace.s12), const ROnlineDot(showLabel: true)],
+                  ],
+                ),
                 if (profile.headline != null) ...[
                   const SizedBox(height: RSpace.s4),
                   Text(profile.headline!, style: theme.textTheme.bodyLarge),

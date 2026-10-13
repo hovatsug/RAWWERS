@@ -11,6 +11,7 @@ import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
+import 'package:rawwers/features/pro/presence/presence_visibility_controller.dart';
 
 /// Settings is where a photographer checks the two things they worry about:
 /// am I live, and where is my money going. These assert it answers both in
@@ -92,6 +93,7 @@ Widget _wrap({
         proProfileControllerProvider.overrideWith(profile ?? () => _FakeProfile(_profile())),
         notificationPreferencesControllerProvider.overrideWith(prefs ?? () => _FakePrefs(_prefs)),
         payoutAccountProvider.overrideWith((ref) async => payout ?? _payout),
+        presenceVisibilityControllerProvider.overrideWith(() => _FakeVisibility()),
       ],
       child: MaterialApp(
         theme: buildProTheme(),
@@ -104,6 +106,11 @@ Widget _wrap({
 Future<void> _scrollTo(WidgetTester tester, Finder target) async {
   await tester.scrollUntilVisible(target, 200, scrollable: find.byType(Scrollable).first);
   await tester.pump();
+}
+
+class _FakeVisibility extends PresenceVisibilityController {
+  @override
+  Future<bool> build() async => true;
 }
 
 void main() {
@@ -194,5 +201,14 @@ void main() {
     await tester.pump();
 
     expect(find.text('Verify your gear'), findsNothing);
+  });
+
+  testWidgets('says what clients see while the app is open, and offers to hide it', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Show when I\u2019m online'), 300);
+
+    expect(find.text(presenceNotice), findsOneWidget);
+    expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Show when I\u2019m online')).value, isTrue);
   });
 }

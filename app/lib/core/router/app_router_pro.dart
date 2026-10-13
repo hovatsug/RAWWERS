@@ -19,6 +19,7 @@ import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/profile/pro_profile_edit_screen.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
 import 'package:rawwers/features/pro/pricing/pricing_screen.dart';
+import 'package:rawwers/features/pro/presence/presence_scope.dart';
 import 'package:rawwers/features/pro/pro_shell.dart';
 import 'package:rawwers/features/pro/messages/pro_messages_screen.dart';
 import 'package:rawwers/features/pro/requests/requests_screen.dart';
@@ -159,7 +160,7 @@ GoRouter proRouter(Ref ref) {
       ),
       GoRoute(path: ProRoute.upgradeToPro, builder: (context, state) => const UpgradeToProScreen()),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => ProShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) => PresenceScope(child: ProShell(navigationShell: navigationShell)),
         branches: [
           StatefulShellBranch(
             routes: [

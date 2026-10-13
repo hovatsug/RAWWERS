@@ -10,6 +10,7 @@ import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/onboarding/onboarding_controller.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
+import 'package:rawwers/features/pro/presence/presence_visibility_controller.dart';
 
 /// Getting a photographer live.
 ///
@@ -184,6 +185,9 @@ class _Checklist extends ConsumerWidget {
             )),
         const SizedBox(height: RSpace.s12),
         _IdentityStep(checks: checks, profile: profile),
+        const SizedBox(height: RSpace.s16),
+        // Default on, so said before it happens. Changeable in Settings.
+        Text('$presenceNotice You can turn it off in Settings.', style: theme.textTheme.bodySmall),
         const SizedBox(height: RSpace.s24),
         if (readyForReview)
           RButton(

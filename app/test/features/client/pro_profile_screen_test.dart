@@ -13,6 +13,7 @@ import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
+import 'package:rawwers/design/components/r_online_dot.dart';
 import 'package:rawwers/features/client/pro_profile/message_button.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_screen.dart';
 
@@ -29,6 +30,7 @@ ClientProProfileResponse _profile({
   List<ClientPortfolioItem>? portfolio,
   List<ClientProfilePackage>? packages,
   List<ClientProfileNiche>? niches,
+  bool online = false,
 }) =>
     ClientProProfileResponse(
       proUserId: _proId,
@@ -41,6 +43,7 @@ ClientProProfileResponse _profile({
       styles: const ['editorial', 'natural-light'],
       avgRating: '4.80',
       reviewCount: 12,
+      online: online,
       portfolioPhotoCount: 3,
       portfolioVideoCount: 1,
       packages: packages ??
@@ -117,6 +120,20 @@ void main() {
     expect(urls, contains('https://media.example/cover.jpg'));
     expect(urls, contains('https://media.example/1.jpg'));
     expect(urls, contains('https://media.example/2.jpg'));
+  });
+
+  testWidgets('says "Online" next to the name only while the photographer is', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile(online: true))));
+    await tester.pump();
+    expect(find.text('Online'), findsOneWidget);
+  });
+
+  testWidgets('no "Online" while the photographer is not', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+    expect(find.byType(ROnlineDot), findsNothing);
   });
 
   testWidgets('a client can message the photographer before booking', (tester) async {

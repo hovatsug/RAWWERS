@@ -5,6 +5,7 @@ import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/shared/discover/discover_card.dart';
 import 'package:rawwers/core/images/disk_cached_image.dart';
+import 'package:rawwers/design/components/r_online_dot.dart';
 
 /// Discover is the first screen a client sees, so the cover photo reaching the
 /// screen is the thing worth pinning down. `Image.network` cannot actually
@@ -12,7 +13,7 @@ import 'package:rawwers/core/images/disk_cached_image.dart';
 /// the widget tree rather than pixels: that the server's `cover_url` becomes
 /// the image's URL, and that its absence degrades to a placeholder instead of
 /// a broken frame.
-ClientDiscoverCard _card({String? coverUrl, String? responseLabel}) => ClientDiscoverCard(
+ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false}) => ClientDiscoverCard(
       proUserId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
@@ -31,6 +32,7 @@ ClientDiscoverCard _card({String? coverUrl, String? responseLabel}) => ClientDis
       portfolioPhotoCount: 3,
       portfolioVideoCount: 0,
       responseLabel: responseLabel,
+      online: online,
     );
 
 Widget _wrap(ClientDiscoverCard card) => MaterialApp(
@@ -98,5 +100,17 @@ void main() {
 
     await tester.pumpWidget(_wrap(_card()));
     expect(find.textContaining('replies'), findsNothing);
+  });
+
+  testWidgets('a green dot only when the server says the photographer is online', (tester) async {
+    _usePhoneSurface(tester);
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_wrap(_card(online: true)));
+    expect(find.byType(ROnlineDot), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Online now')), findsOneWidget, reason: 'a screen reader hears it too');
+    semantics.dispose();
+
+    await tester.pumpWidget(_wrap(_card()));
+    expect(find.byType(ROnlineDot), findsNothing);
   });
 }

@@ -1920,3 +1920,48 @@ before the clear is sent, or in airplane mode cannot send it at all. The
 five-minute expiry is designed to cover exactly that, but it has only been
 observed on simulators. A device check is on the deploy checklist's
 blocks-real-client-launch list.
+
+## ~~Admin tier overrides were undone by the next recompute~~ — FIXED
+
+An admin's tier override was written into the skill's `breakdown` under
+`admin_override`; the recompute read only `override` (which nothing wrote) and
+then replaced `breakdown` wholesale. Within the hysteresis window the tier
+happened to stick; after it, the next recompute of any kind - a review, an
+accepted booking, a rebuild-all - put the evidence tier back. Proven on
+2026-10-12 (elite back to rookie). The old record also sat where the
+photographer's own view of their tier showed it in full: the admin's id and
+note.
+
+**Fixed (migration 0059):** an override is a set of columns - tier, and
+optionally score and verified, with who set it, when and why - read by every
+recompute as the effective value until an admin removes it. `evidence_tier`
+keeps what the evidence alone says beside it; the admin page shows the two and
+says when they disagree. Set and remove are both audited. Hysteresis damps only
+the evidence, and now holds any evidence change within the cooldown of the last
+one in either direction - which is also what
+`test_hysteresis_blocks_rapid_promotion_flip` always expected, so it passes. The
+photographer sees only that an override is active. Rebuild-all reports how many
+overrides it preserved. Overrides already erased before 0059 cannot be
+recovered from the row; the deploy checklist lists them from the event log.
+
+## ~~A photographer's primary niche could change on any recompute~~ — FIXED
+
+Top niches were sorted by tier, score, rating and gigs, and a photographer's
+unworked niches tie at zero on all four. Ties came out in the order Postgres
+returned the rows, which on larger tables is their physical order and moves
+whenever a row is rewritten - so the first of the tied niches, which becomes the
+primary niche (the niche row a photographer is guaranteed a place in), could
+change on any recompute. A second rebuild-all on dev changed 58 rows.
+
+**Fixed:** ties go to the niche the photographer chose as their primary, then by
+niche id (`niche_skills.order_niches`, tested on rows fed in reverse, because a
+small test database happens to return them in id order already).
+
+## Seeded demo tiers were not supported by the tier rules — HANDLED
+
+`seed_fake_photographers.py` wrote tiers straight into the tier column; the tier
+rules require verification for skilled and above, which the seeded photographers
+do not have, so the first full recompute demoted 32 of them on dev. The seed now
+sets its tiers through the override path with the reason "demo seed": they
+survive recomputes and show on the admin page as overrides that disagree with
+the evidence - which, for invented photographers, they do.

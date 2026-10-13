@@ -1,4 +1,6 @@
-# Backend tests known to fail - 29, as of commit c8e6853 (2026-10-12).
+# Backend tests known to fail - 28. 29 as of commit c8e6853 (2026-10-12);
+# test_hysteresis_blocks_rapid_promotion_flip passes since the tier-override
+# fix, which made hysteresis hold any evidence change within the cooldown.
 #
 # Every one also fails at plain HEAD before that work (ec0e00a), compared by
 # test id, not by count. None is time-of-day dependent any more: the call
@@ -26,7 +28,6 @@ tests/test_media_rights.py::test_share_link_expiry_max_views_and_revoke
 tests/test_mux_webhooks.py::test_webhook_idempotency
 tests/test_niche_skill_matrix_v2.py::test_badge_award_and_revoke_current_only
 tests/test_niche_skill_matrix_v2.py::test_extra_image_price_cap_uses_niche_tier
-tests/test_niche_skill_matrix_v2.py::test_hysteresis_blocks_rapid_promotion_flip
 tests/test_niche_skill_matrix_v2.py::test_tier_assignment_respects_verified_requirement
 tests/test_niches_skills.py::test_discovery_niche_filter_orders_by_tier_before_rank
 tests/test_notifications_v1.py::test_outbox_notification_retry_is_durable

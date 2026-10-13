@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.errors import APIError
 from app.models.admin import Dispute, DisputeStatus
 from app.models.gig import Gig, GigStatus
 from app.models.learning import Certificate, CertificateType
@@ -27,6 +28,7 @@ from app.models.niche import (
 )
 from app.models.review import Review, ReviewStatus
 from app.services.analytics import log_event
+from app.services.audit import add_admin_audit_log
 from app.services.gamification import queue_evaluate_user_milestones, queue_recompute_credentials
 from app.services.outbox import enqueue_outbox_event
 from app.services.search_indexing import enqueue_pro_index_upsert
@@ -234,22 +236,37 @@ def recompute_pro_niche_skill(
         db.add(skill)
         db.flush()
 
-    target_tier, hysteresis_blocked = _apply_hysteresis(
+    # Hysteresis damps the evidence, and only the evidence: it compares what
+    # the evidence says now with what it said last time, never with an
+    # admin's override, and only an evidence change moves its clocks.
+    previous_evidence = skill.evidence_tier or previous_tier
+    evidence_tier, hysteresis_blocked = _apply_hysteresis(
         skill=skill,
+        current=previous_evidence,
         target_tier=target_tier,
         now=now,
         bypass=bypass_hysteresis,
     )
+    if TIER_RANK.get(evidence_tier, 0) > TIER_RANK.get(previous_evidence, 0):
+        skill.last_promotion_at = now
+    elif TIER_RANK.get(evidence_tier, 0) < TIER_RANK.get(previous_evidence, 0):
+        skill.last_demotion_at = now
+    evidence_score, evidence_verified = score, verified
 
-    override_applied, score, target_tier, verified = _apply_active_override(skill.breakdown or {}, now, score, target_tier, verified)
+    # An admin's override is the effective value until an admin removes it -
+    # no expiry, and no hysteresis.
+    override_applied = any(v is not None for v in (skill.override_tier, skill.override_score, skill.override_verified))
+    target_tier = skill.override_tier or evidence_tier
+    if skill.override_score is not None:
+        score = skill.override_score
+    if skill.override_verified is not None:
+        verified = skill.override_verified
 
     event_type = ProNicheSkillEventType.recalculated
     if TIER_RANK.get(target_tier, 0) > TIER_RANK.get(previous_tier, 0):
         event_type = ProNicheSkillEventType.promoted
-        skill.last_promotion_at = now
     elif TIER_RANK.get(target_tier, 0) < TIER_RANK.get(previous_tier, 0):
         event_type = ProNicheSkillEventType.demoted
-        skill.last_demotion_at = now
     elif previous_verified != verified:
         event_type = ProNicheSkillEventType.verified_set
 
@@ -272,13 +289,19 @@ def recompute_pro_niche_skill(
         "thresholds": thresholds,
         "hysteresis_blocked": hysteresis_blocked,
         "override_applied": override_applied,
+        "evidence": {"tier": evidence_tier.value, "score": evidence_score, "verified": evidence_verified},
     }
+    if override_applied:
+        # Shown to the photographer only as {"active": true} - see
+        # pro_onboarding._sanitize_public_breakdown.
+        reasons["override"] = _override_view(skill)
 
     skill.score = score
     skill.verified = verified
     skill.gigs_completed = gigs_completed
     skill.avg_rating = avg_rating
     skill.review_count = review_count
+    skill.evidence_tier = evidence_tier
     skill.tier = target_tier
     skill.capability_score = score
     skill.certification_score = 100 if verified else skill.certification_score
@@ -318,6 +341,17 @@ def recompute_pro_niche_skill(
     return skill
 
 
+def _override_view(skill: ProNicheSkill) -> dict[str, Any]:
+    return {
+        "tier": skill.override_tier.value if skill.override_tier else None,
+        "score": skill.override_score,
+        "verified": skill.override_verified,
+        "by": str(skill.override_by) if skill.override_by else None,
+        "at": skill.override_at.isoformat() if skill.override_at else None,
+        "reason": skill.override_reason,
+    }
+
+
 def admin_override_niche_skill(
     db: Session,
     *,
@@ -329,35 +363,39 @@ def admin_override_niche_skill(
     note: str,
     actor_user_id: uuid.UUID,
 ) -> ProNicheSkill:
+    """Set an admin's override. It is the effective value from now until an
+    admin removes it (remove_niche_skill_override): recomputes keep it,
+    and keep working out the evidence tier beside it."""
     skill = db.execute(select(ProNicheSkill).where(ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche_id)).scalar_one_or_none()
     if not skill:
-        skill = ProNicheSkill(pro_user_id=pro_user_id, niche_id=niche_id)
+        skill = ProNicheSkill(pro_user_id=pro_user_id, niche_id=niche_id, evidence_tier=SkillTier.rookie)
         db.add(skill)
         db.flush()
 
     before_tier = skill.tier
     before_score = skill.score
+    now = datetime.now(timezone.utc)
 
     if tier is not None:
+        skill.override_tier = tier
         skill.tier = tier
     if score is not None:
-        skill.score = max(0, min(100, int(score)))
+        skill.override_score = max(0, min(100, int(score)))
+        skill.score = skill.override_score
         skill.capability_score = skill.score
     if verified is not None:
-        skill.verified = bool(verified)
+        skill.override_verified = bool(verified)
+        skill.verified = skill.override_verified
         skill.certification_score = 100 if skill.verified else 0
+    skill.override_by = actor_user_id
+    skill.override_at = now
+    skill.override_reason = note
 
     breakdown = dict(skill.breakdown or {})
-    breakdown["admin_override"] = {
-        "tier": skill.tier.value,
-        "score": skill.score,
-        "verified": skill.verified,
-        "note": note,
-        "actor_user_id": str(actor_user_id),
-        "at": datetime.now(timezone.utc).isoformat(),
-    }
+    breakdown.pop("admin_override", None)  # the old place, which no recompute read
+    breakdown["override"] = _override_view(skill)
     skill.breakdown = breakdown
-    skill.updated_at = datetime.now(timezone.utc)
+    skill.updated_at = now
 
     niche = db.get(Niche, niche_id)
     if niche:
@@ -372,13 +410,86 @@ def admin_override_niche_skill(
         to_tier=skill.tier.value,
         score_before=before_score,
         score_after=skill.score,
-        reasons={"note": note},
+        reasons={"note": note, "override": _override_view(skill)},
         actor_type=ProNicheSkillActorType.admin,
         actor_user_id=actor_user_id,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor_user_id,
+        target_type="pro_niche_skill",
+        target_id=f"{pro_user_id}:{niche_id}",
+        action="niche_skill_override_set",
+        reason=note,
+        metadata=_override_view(skill),
     )
     db.flush()
     enqueue_pro_index_upsert(db, pro_user_id, idempotency_suffix="admin_override")
     return skill
+
+
+def remove_niche_skill_override(
+    db: Session,
+    *,
+    pro_user_id: uuid.UUID,
+    niche_id: uuid.UUID,
+    reason: str,
+    actor_user_id: uuid.UUID,
+) -> ProNicheSkill:
+    """Remove an admin's override. The evidence takes over at once - removing
+    a decision is not a tier change hysteresis should hold back."""
+    skill = db.execute(select(ProNicheSkill).where(ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche_id)).scalar_one_or_none()
+    if skill is None or not any(v is not None for v in (skill.override_tier, skill.override_score, skill.override_verified)):
+        raise APIError(code="not_found", message="No override to remove", status_code=404)
+    removed = _override_view(skill)
+    before_tier, before_score = skill.tier, skill.score
+    for column in ("override_tier", "override_score", "override_verified", "override_by", "override_at", "override_reason"):
+        setattr(skill, column, None)
+    db.flush()
+    skill = recompute_pro_niche_skill(
+        db, pro_user_id, niche_id, actor_type=ProNicheSkillActorType.admin, actor_user_id=actor_user_id
+    )
+    _create_skill_event(
+        db,
+        pro_user_id=pro_user_id,
+        niche_id=niche_id,
+        event_type=ProNicheSkillEventType.override_removed,
+        from_tier=before_tier.value,
+        to_tier=skill.tier.value,
+        score_before=before_score,
+        score_after=skill.score,
+        reasons={"note": reason, "removed": removed},
+        actor_type=ProNicheSkillActorType.admin,
+        actor_user_id=actor_user_id,
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor_user_id,
+        target_type="pro_niche_skill",
+        target_id=f"{pro_user_id}:{niche_id}",
+        action="niche_skill_override_removed",
+        reason=reason,
+        metadata={"removed": removed, "tier_now": skill.tier.value},
+    )
+    db.flush()
+    return skill
+
+
+def order_niches(rows, primary_niche_ids) -> list:
+    """(skill, niche) pairs, strongest first; ties to the photographer's own
+    primary niche, then by niche id - never left to the order the database
+    returned them in."""
+    return sorted(
+        rows,
+        key=lambda item: (
+            -TIER_RANK.get(item[0].tier, 0),
+            -int(item[0].score or 0),
+            -float(item[0].avg_rating or 0),
+            -int(item[0].gigs_completed or 0),
+            item[1].id not in primary_niche_ids,
+            str(item[1].id),
+        ),
+    )
 
 
 def get_top_niches_for_index(db: Session, pro_user_id: uuid.UUID, limit: int = 3) -> list[dict[str, Any]]:
@@ -387,16 +498,15 @@ def get_top_niches_for_index(db: Session, pro_user_id: uuid.UUID, limit: int = 3
         .join(Niche, Niche.id == ProNicheSkill.niche_id)
         .where(ProNicheSkill.pro_user_id == pro_user_id)
     ).all()
-    rows.sort(
-        key=lambda item: (
-            TIER_RANK.get(item[0].tier, 0),
-            int(item[0].score or 0),
-            float(item[0].avg_rating or 0),
-            int(item[0].gigs_completed or 0),
-        ),
-        reverse=True,
+    # Ties - common: a photographer's unworked niches all score zero - go
+    # to the niche they chose as their primary, then by niche id. Without
+    # this the order was the database's physical row order, which moves
+    # whenever a row is rewritten, so the primary niche (and the niche row a
+    # photographer is guaranteed a place in) could change on any recompute.
+    primary = set(
+        db.execute(select(ProNiche.niche_id).where(ProNiche.pro_user_id == pro_user_id, ProNiche.is_primary.is_(True))).scalars()
     )
-    top = rows[:limit]
+    top = order_niches(rows, primary)[:limit]
     return [
         {
             "slug": niche.slug,
@@ -468,61 +578,20 @@ def _tier_from_thresholds(
 def _apply_hysteresis(
     *,
     skill: ProNicheSkill,
+    current: SkillTier,
     target_tier: SkillTier,
     now: datetime,
     bypass: bool,
 ) -> tuple[SkillTier, bool]:
-    if bypass:
+    """The evidence tier, held where it was if it last changed - either way -
+    within HYSTERESIS_DAYS: one review or one dispute must not flip a tier
+    back and forth."""
+    if bypass or TIER_RANK.get(target_tier, 0) == TIER_RANK.get(current, 0):
         return target_tier, False
-    current_rank = TIER_RANK.get(skill.tier, 0)
-    target_rank = TIER_RANK.get(target_tier, 0)
-    if target_rank == current_rank:
-        return target_tier, False
-
-    cooldown = timedelta(days=HYSTERESIS_DAYS)
-    if target_rank > current_rank and skill.last_promotion_at and (now - skill.last_promotion_at) < cooldown:
-        return skill.tier, True
-    if target_rank < current_rank and skill.last_demotion_at and (now - skill.last_demotion_at) < cooldown:
-        return skill.tier, True
+    changes = [t for t in (skill.last_promotion_at, skill.last_demotion_at) if t is not None]
+    if changes and now - max(changes) < timedelta(days=HYSTERESIS_DAYS):
+        return current, True
     return target_tier, False
-
-
-def _apply_active_override(
-    breakdown: dict[str, Any],
-    now: datetime,
-    score: int,
-    tier: SkillTier,
-    verified: bool,
-) -> tuple[bool, int, SkillTier, bool]:
-    override = breakdown.get("override")
-    if not isinstance(override, dict):
-        return False, score, tier, verified
-
-    expires_at_raw = override.get("expires_at")
-    if expires_at_raw:
-        try:
-            expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
-            if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
-            if now >= expires_at:
-                return False, score, tier, verified
-        except ValueError:
-            pass
-
-    override_score = override.get("score")
-    override_tier = override.get("tier")
-    override_verified = override.get("verified")
-
-    if isinstance(override_score, int):
-        score = max(0, min(100, override_score))
-    if isinstance(override_tier, str):
-        try:
-            tier = SkillTier(override_tier)
-        except ValueError:
-            pass
-    if isinstance(override_verified, bool):
-        verified = override_verified
-    return True, score, tier, verified
 
 
 def _create_skill_event(

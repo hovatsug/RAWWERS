@@ -32,13 +32,19 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   Any row is a booking the client did not agree to, or no longer wanted. **Nothing deletes these automatically** - a paid one involves money and a person - so each is a decision: cancel and refund, or contact the client. Dev, 2026-10-12: none.
 
-- [ ] **BLOCKING until admin tier overrides are persisted: no rebuild-all on a database with admin overrides.** A recompute of niche skills - which rebuild-all, and every per-photographer index recompute, runs - currently undoes an admin's tier override once the hysteresis window has passed: the override is written to a key the recompute never reads, and the recompute then replaces the record. Proven on 2026-10-12 (elite back to rookie). Count what is at stake:
+- [ ] **Admin tier overrides lost before migration `20261013_0059`.** Until then an override was undone by the first recompute after the hysteresis window - and rebuild-all, which this deploy runs, would have undone every one at once. `0059` keeps overrides (tier, admin, time, reason) and carries over any still in place; one already erased cannot be recovered from the skill row. List them from the event log, before and after migrating, and re-apply on the admin page (Photographers -> the photographer -> Niche tiers) any that should stand:
 
-      SELECT count(DISTINCT (pro_user_id, niche_id))
-      FROM pro_niche_skill_event
-      WHERE event_type = 'admin_override';
+      SELECT e.pro_user_id, n.slug, e.to_tier, e.actor_user_id, e.created_at, e.reasons->>'note' AS reason,
+             s.tier AS tier_now, s.override_tier
+      FROM pro_niche_skill_event e
+      JOIN niche n ON n.id = e.niche_id
+      LEFT JOIN pro_niche_skill s ON s.pro_user_id = e.pro_user_id AND s.niche_id = e.niche_id
+      WHERE e.event_type = 'admin_override'
+        AND e.created_at = (SELECT max(created_at) FROM pro_niche_skill_event x
+                            WHERE x.pro_user_id = e.pro_user_id AND x.niche_id = e.niche_id AND x.event_type = 'admin_override')
+      ORDER BY e.created_at;
 
-  Zero: the recompute below is safe. Anything else: do not run it, and do not deploy changes that require it, until the fix that persists overrides (tier, admin, time, reason) has landed. Dev: zero.
+  A row where `override_tier` is empty after migrating is an override that was lost. Dev: none.
 
 ## 2. Deploying
 
@@ -50,11 +56,11 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 ## 3. After deploying - data steps
 
-- [ ] **Recompute every public index row** - first check the blocking item in section 1 about admin tier overrides - `POST /v1/admin/index/pro/rebuild-all`, or `recompute_pro_public_index` over every `ProPublicIndex` row. **Once per environment** for each of:
+- [ ] **Recompute every public index row** - after `0059`, which keeps admin tier overrides through it - `POST /v1/admin/index/pro/rebuild-all`, or `recompute_pro_public_index` over every `ProPublicIndex` row. **Once per environment** for each of:
   - `min_package_price` changed unit (per-photo rate to starting total). Until recomputed, the budget filter and price sort mix units. See [DEPLOY REQUIREMENT: recompute every `min_package_price`](BACKEND_GAPS.md#deploy-requirement-recompute-every-min_package_price-before-trusting-the-budget-filter).
   - `ranking_score` lost the response bonus. Until recomputed, photographers who once replied quickly keep up to 10 points they no longer earn. See [DEPLOY REQUIREMENT: recompute every `ranking_score`](BACKEND_GAPS.md#deploy-requirement-recompute-every-ranking_score-after-the-response-time-change).
 
-  One run covers both, and it bumps the public index version so cached home and discover responses are dropped.
+  One run covers both, and it bumps the public index version so cached home and discover responses are dropped. The task logs `rebuild_all_pro_indexes` with `rows` and `overrides_preserved` - the admin tier overrides still in force afterwards; it should equal the count of `override_tier IS NOT NULL` rows before the run.
 
   **A database that already ran migration `20261007_0056` needs this run regardless.** That migration's backfill was changed after it first ran (an expired request now counts as just past its window, and an even sample takes the higher middle value), and alembic will not run it again, so its `response_bucket` and `response_median_minutes` hold the old rule's answers until each row is recomputed. Dev ran the old version; a database migrating for the first time gets the new backfill and needs nothing extra for this.
 - [ ] **Watermark backfill** (**once**, existing objects only): `scripts/backfill_watermark_previews.py`, dry run first. Done locally; see [The watermark fix is now actually in the bucket](BACKEND_GAPS.md#the-watermark-fix-is-now-actually-in-the-bucket-resolved).

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -186,12 +187,28 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     return index
 
 
-def recompute_all_pro_public_indexes(db: Session) -> int:
+@dataclass(frozen=True)
+class RebuildResult:
+    rows: int
+    # Admin tier overrides in force after the rebuild - every one of them
+    # still the effective tier. Reported because rebuild-all is exactly what
+    # used to erase them.
+    overrides_preserved: int
+
+
+def recompute_all_pro_public_indexes(db: Session) -> RebuildResult:
+    from app.models.niche import ProNicheSkill
+
     pro_ids = db.execute(select(ProProfile.user_id)).scalars().all()
     for pro_id in pro_ids:
         recompute_pro_public_index(db, pro_id)
     db.flush()
-    return len(pro_ids)
+    preserved = db.execute(
+        select(func.count())
+        .select_from(ProNicheSkill)
+        .where(ProNicheSkill.override_tier.is_not(None), ProNicheSkill.tier == ProNicheSkill.override_tier)
+    ).scalar_one()
+    return RebuildResult(rows=len(pro_ids), overrides_preserved=int(preserved))
 
 
 def _compute_ranking_score(

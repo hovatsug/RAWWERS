@@ -88,6 +88,20 @@ class ProNicheSkill(Base):
     review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_promotion_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_demotion_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # What the evidence alone gives, after hysteresis. `tier` is the effective
+    # tier: the override's when there is one, otherwise this. None until the
+    # first recompute, which then reads `tier` as the previous evidence - a
+    # row written with a tier and no evidence yet must not read as rookie.
+    evidence_tier: Mapped[SkillTier | None] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False, length=64), nullable=True)
+    # An admin's decision, kept until an admin removes it. Any of the three
+    # values may be set; the others follow the evidence. See
+    # app/services/niche_skills.py.
+    override_tier: Mapped[SkillTier | None] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False, length=64), nullable=True)
+    override_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    override_verified: Mapped[bool | None] = mapped_column(nullable=True)
+    override_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    override_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     evidence_gigs: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     evidence_reviews: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     evidence_portfolio: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -118,6 +132,7 @@ class ProNicheSkillEventType(str, enum.Enum):
     promoted = "promoted"
     demoted = "demoted"
     admin_override = "admin_override"
+    override_removed = "override_removed"
     verified_set = "verified_set"
 
 

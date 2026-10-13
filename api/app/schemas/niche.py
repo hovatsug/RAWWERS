@@ -49,7 +49,17 @@ class PortfolioNicheTagsResponse(BaseModel):
     niche_slugs: list[str] = Field(default_factory=list)
 
 
+class NicheSkillOverrideView(BaseModel):
+    tier: SkillTier | None = None
+    score: int | None = None
+    verified: bool | None = None
+    by: uuid.UUID | None = None
+    at: datetime | None = None
+    reason: str | None = None
+
+
 class ProNicheSkillView(BaseModel):
+    niche_id: uuid.UUID | None = None
     niche_slug: str
     niche_name: str
     tier: SkillTier
@@ -69,6 +79,16 @@ class ProNicheSkillView(BaseModel):
     last_promotion_at: datetime | None = None
     last_demotion_at: datetime | None = None
     updated_at: datetime
+    # What the evidence alone gives; `tier` is the effective tier.
+    evidence_tier: SkillTier | None = None
+    # An admin's override in force, if any - kept until an admin removes it.
+    override: NicheSkillOverrideView | None = None
+    # The override says something the evidence does not.
+    evidence_disagrees: bool = False
+
+
+class AdminNicheSkillOverrideRemoveRequest(BaseModel):
+    reason: str = Field(min_length=1)
 
 
 class ProNicheSkillListResponse(BaseModel):

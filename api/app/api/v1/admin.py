@@ -128,10 +128,12 @@ from app.schemas.disputes import (
     RefundCaseDetailView,
 )
 from app.schemas.niche import (
+    AdminNicheSkillOverrideRemoveRequest,
     AdminNicheSkillOverrideRequest,
     AdminNicheSkillOverrideV2Request,
     AdminNicheSkillRecalcRequest,
     NicheTierPolicyUpsertRequest,
+    NicheSkillOverrideView,
     NicheTierPolicyView,
     NicheView,
     ProNicheSkillListResponse,
@@ -179,6 +181,7 @@ from app.services.niche_skills import (
     get_or_create_niche_tier_policy,
     list_user_badge_codes,
     recompute_pro_niche_skills,
+    remove_niche_skill_override,
 )
 from app.services.learning import replace_niche_program_requirements
 from app.tasks.niche_tasks import recompute_all_pro_niche_skills_task, recompute_pro_niche_skills_task
@@ -1900,6 +1903,7 @@ def admin_get_pro_niche_skill(
         ).scalars().all()
         items.append(
             ProNicheSkillView(
+                niche_id=niche.id,
                 niche_slug=niche.slug,
                 niche_name=niche.name,
                 tier=skill.tier,
@@ -1932,10 +1936,44 @@ def admin_get_pro_niche_skill(
                 last_promotion_at=skill.last_promotion_at,
                 last_demotion_at=skill.last_demotion_at,
                 updated_at=skill.updated_at,
+                evidence_tier=skill.evidence_tier,
+                override=_override_view(skill),
+                evidence_disagrees=skill.override_tier is not None and skill.override_tier != skill.evidence_tier,
             )
         )
     db.commit()
     return ProNicheSkillListResponse(pro_user_id=pro_user_id, items=items)
+
+
+def _override_view(skill: ProNicheSkill) -> NicheSkillOverrideView | None:
+    if all(v is None for v in (skill.override_tier, skill.override_score, skill.override_verified)):
+        return None
+    return NicheSkillOverrideView(
+        tier=skill.override_tier,
+        score=skill.override_score,
+        verified=skill.override_verified,
+        by=skill.override_by,
+        at=skill.override_at,
+        reason=skill.override_reason,
+    )
+
+
+@router.delete("/pros/{pro_user_id}/niche-skill/{niche_id}/override")
+def admin_remove_niche_skill_override(
+    pro_user_id: uuid.UUID,
+    niche_id: uuid.UUID,
+    body: AdminNicheSkillOverrideRemoveRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    """Remove an admin's override; the evidence tier takes over at once.
+    Audited, with the reason."""
+    skill = remove_niche_skill_override(
+        db, pro_user_id=pro_user_id, niche_id=niche_id, reason=body.reason, actor_user_id=actor.user_id
+    )
+    recompute_pro_public_index(db, pro_user_id)
+    db.commit()
+    return {"pro_user_id": str(pro_user_id), "niche_id": str(niche_id), "tier": skill.tier.value}
 
 
 @router.post("/pros/{pro_user_id}/niche-skill/{niche_id}/override")
@@ -1961,15 +1999,7 @@ def admin_override_niche_skill_v2(
         note=body.note,
         actor_user_id=actor.user_id,
     )
-    add_admin_audit_log(
-        db,
-        actor_user_id=actor.user_id,
-        target_type="pro_niche_skill",
-        target_id=f"{pro_user_id}:{niche_id}",
-        action="pro_niche_skill_override_v2",
-        reason=body.note,
-        metadata={"tier": row.tier.value, "score": row.score, "verified": row.verified},
-    )
+    # Audited by admin_override_niche_skill, the same for every route.
     recompute_pro_public_index(db, pro_user_id)
     db.commit()
     return {"pro_user_id": str(pro_user_id), "niche_id": str(niche_id), "tier": row.tier.value, "score": row.score, "verified": row.verified}
@@ -2070,6 +2100,10 @@ def override_pro_niche_skill(
         raise APIError(code="not_found", message="Niche not found", status_code=404)
     if body.tier is None and body.capability_score is None and body.certification_score is None and body.score is None and body.verified is None:
         raise APIError(code="validation_error", message="At least one override field is required", status_code=422)
+    if body.expires_at is not None:
+        # It was accepted and never honoured. Overrides now last until an
+        # admin removes them, so saying otherwise would be a promise unkept.
+        raise APIError(code="validation_error", message="Overrides do not expire; remove one when it no longer applies.", status_code=422)
 
     score = body.score
     if score is None and body.capability_score is not None:
@@ -2087,17 +2121,7 @@ def override_pro_niche_skill(
         note=body.reason,
         actor_user_id=actor.user_id,
     )
-    override_payload = {"tier": body.tier.value if body.tier else None, "score": score, "verified": verified, "reason": body.reason}
-
-    add_admin_audit_log(
-        db,
-        actor_user_id=actor.user_id,
-        target_type="pro_niche_skill",
-        target_id=f"{pro_user_id}:{niche_slug}",
-        action="pro_niche_skill_override",
-        reason=body.reason,
-        metadata=override_payload,
-    )
+    # Audited by admin_override_niche_skill, the same for every route.
     recompute_pro_public_index(db, pro_user_id)
     db.commit()
     return {

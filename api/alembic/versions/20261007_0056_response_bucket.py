@@ -3,9 +3,9 @@
 `avg_response_minutes` was the mean time to accept or decline, and it left
 out requests that expired unanswered: ignoring most requests and answering a
 few quickly read as fast. It is replaced by the median over the last 10
-resolved requests, with an expired request counted as just over its window
-and an even sample taking the higher middle value, and the bucket clients are
-shown (see app/services/response_time.py).
+resolved requests, with an expired request counted as the standard day and
+a minute whatever its own window, and an even sample taking the higher middle
+value, and the bucket clients are shown (see app/services/response_time.py).
 
 Existing rows are backfilled here with the same rule, in SQL, so a label is
 right from the first request after deploy rather than after each
@@ -29,8 +29,9 @@ BACKFILL_SQL = """
 WITH resolved AS (
     SELECT r.pro_user_id,
            CASE WHEN t.to_status = 'expired'
-                -- Never answered: the whole window, and one minute more.
-                THEN GREATEST(0, EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) / 60) + 1
+                -- Never answered: the standard day and a minute, whatever
+                -- window the request had (response_time.EXPIRED_COUNTS_AS_MINUTES).
+                THEN 1441
                 ELSE GREATEST(0, EXTRACT(EPOCH FROM (t.created_at - r.created_at)) / 60)
            END AS minutes,
            ROW_NUMBER() OVER (PARTITION BY r.pro_user_id ORDER BY t.created_at DESC) AS recency

@@ -275,6 +275,9 @@ def test_the_migration_backfill_agrees_with_the_python_rule_on_every_edge(db_ses
         + [dict(answered_after=None, outcome=S.expired)] * 3,
         # The lower middle value would be a reply in 20 minutes.
         "5 replied, 5 expired": [dict(answered_after=m(20))] * 5 + [dict(answered_after=None, outcome=S.expired)] * 5,
+        # A short-notice request has 30 minutes; ignoring it is no faster a
+        # reply than ignoring an ordinary one.
+        "short-notice requests expired after 30 minutes": [dict(answered_after=None, outcome=S.expired, window=m(30))] * 3,
         "cancellations between": [dict(answered_after=m(20), outcome=S.cancelled)] * 4 + [dict(answered_after=m(40))] * 3,
         "answered before it was asked": [dict(answered_after=m(-5))] * 3,
         "none at all": [],
@@ -315,7 +318,10 @@ def test_the_migration_backfill_agrees_with_the_python_rule_on_every_edge(db_ses
     # An expiry is just past its window, however late the sweep ran.
     assert median("median exactly on an expired request") == 24 * 60 + 1
     assert median("swept late, still its window") == 24 * 60 + 1
-    assert median("expired on a 48h window") == 48 * 60 + 1
+    # An expiry counts as the standard day and a minute, whatever its own window.
+    assert median("expired on a 48h window") == 24 * 60 + 1
+    assert median("short-notice requests expired after 30 minutes") == 24 * 60 + 1
+    assert bucket("short-notice requests expired after 30 minutes") == "over_day"
     assert bucket("old slow, recent quick") == "within_hour" and bucket("old quick, recent slow") == "over_day"
     assert bucket("two only") == bucket("none at all") == "no_history"
     assert median("the eleventh does not count") == 100

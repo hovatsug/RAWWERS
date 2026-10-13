@@ -9,8 +9,12 @@ feature is visible in the app rather than present only in tests:
   chat            conversations with Alex Lens (pro1@rawwers.dev): two with
                   unread messages, one with the assistant's labelled replies,
                   one already read
-  presence /      a refresher that re-heartbeats a few seeded photographers
-  available now   every minute - freshness is never relaxed for the demo
+  presence        a refresher that re-heartbeats a few seeded photographers
+                  every minute through the real route - freshness is never
+                  relaxed for the demo. Runs until stopped:
+                    ... scripts/seed_demo.py --refresh-presence
+                    ... scripts/seed_demo.py --stop-presence-refresher
+  available now   (next step)
 
 Everything goes through the real routes, called in-process with real access
 tokens: the client's booking request (with its availability check and rate
@@ -515,6 +519,76 @@ def seed_chat(db, *, dry_run: bool) -> list[str]:
     return report
 
 
+# --- presence refresher -------------------------------------------------------
+
+# Online in the demo: four Lisbon photographers, two newcomers among them.
+PRESENCE_EMAILS = (
+    "ines.carvalho@rawwers.dev",
+    "simao.vasques@rawwers.dev",
+    "tomas.belmonte@rawwers.dev",
+    "patricia.boaventura@rawwers.dev",
+)
+_STOP_KEY = "demo:presence-refresher:stop"
+_RUNNING_KEY = "demo:presence-refresher:running"
+_EVERY_SECONDS = 60  # above the server's minimum heartbeat interval
+
+
+def refresh_presence() -> int:
+    """Re-heartbeat the demo photographers every minute until stopped.
+
+    The real heartbeat route, with real tokens: nothing about presence is
+    relaxed for the demo, so a photographer is shown online exactly as long
+    as a real heartbeat would keep them. One instance at a time; stopped by
+    --stop-presence-refresher (checked every minute), Ctrl-C, or removing the
+    container. On stopping it clears their presence, so their dots go at once.
+    """
+    import time
+
+    from app.services.cache import get_redis_client
+
+    redis = get_redis_client()
+    if not redis.set(_RUNNING_KEY, "1", nx=True, ex=_EVERY_SECONDS * 2):
+        print("presence refresher: another one is running - stop it first")
+        return 1
+    redis.delete(_STOP_KEY)
+    api = _api()
+    with SessionLocal() as db:
+        pros = [
+            row
+            for row in db.execute(select(UserAccount.user_id, UserAccount.email).where(UserAccount.email.in_(PRESENCE_EMAILS))).all()
+        ]
+    print(f"presence refresher: keeping {len(pros)} photographers online, every {_EVERY_SECONDS}s. Stop with --stop-presence-refresher.")
+    try:
+        while not redis.exists(_STOP_KEY):
+            redis.set(_RUNNING_KEY, "1", ex=_EVERY_SECONDS * 2)
+            with SessionLocal() as db:
+                results = [
+                    api.post("/v1/pro/presence/heartbeat", headers=_headers(db, pro_id)).status_code for pro_id, _ in pros
+                ]
+            print(f"  beat {time.strftime('%H:%M:%S')}: {results}", flush=True)
+            for _ in range(_EVERY_SECONDS):
+                if redis.exists(_STOP_KEY):
+                    break
+                time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        with SessionLocal() as db:
+            for pro_id, _ in pros:
+                api.delete("/v1/pro/presence", headers=_headers(db, pro_id))
+        redis.delete(_RUNNING_KEY, _STOP_KEY)
+        print("presence refresher: stopped, dots cleared")
+    return 0
+
+
+def stop_presence_refresher() -> int:
+    from app.services.cache import get_redis_client
+
+    get_redis_client().set(_STOP_KEY, "1", ex=_EVERY_SECONDS * 3)
+    print("presence refresher: asked to stop - it will within a second")
+    return 0
+
+
 STEPS = {"response_time": seed_response_time, "chat": seed_chat}
 
 
@@ -522,8 +596,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--only", choices=sorted(STEPS), action="append")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--refresh-presence", action="store_true", help="keep the demo photographers online until stopped")
+    parser.add_argument("--stop-presence-refresher", action="store_true")
     args = parser.parse_args()
     assert_development_only()
+    if args.stop_presence_refresher:
+        return stop_presence_refresher()
+    if args.refresh_presence:
+        return refresh_presence()
     with SessionLocal() as db:
         for name in args.only or list(STEPS):
             print(f"== {name}{' (dry run)' if args.dry_run else ''}")

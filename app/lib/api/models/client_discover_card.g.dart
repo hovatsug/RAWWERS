@@ -23,6 +23,7 @@ _ClientDiscoverCard _$ClientDiscoverCardFromJson(Map<String, dynamic> json) =>
       avgRating: json['avg_rating'] as String,
       reviewCount: (json['review_count'] as num).toInt(),
       responseLabel: json['response_label'] as String?,
+      online: json['online'] as bool? ?? false,
       topNiches: (json['top_niches'] as List<dynamic>?)
           ?.map((e) => e as Map<String, dynamic>)
           .toList(),
@@ -47,6 +48,7 @@ Map<String, dynamic> _$ClientDiscoverCardToJson(_ClientDiscoverCard instance) =>
       'avg_rating': instance.avgRating,
       'review_count': instance.reviewCount,
       'response_label': instance.responseLabel,
+      'online': instance.online,
       'top_niches': instance.topNiches,
       'portfolio_photo_count': instance.portfolioPhotoCount,
       'portfolio_video_count': instance.portfolioVideoCount,

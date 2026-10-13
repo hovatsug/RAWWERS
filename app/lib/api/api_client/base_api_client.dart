@@ -29,6 +29,10 @@ class BaseApiClient {
     return ChatsClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
+  PresenceClient get presenceClient {
+    return PresenceClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   ClientLaunchClient get clientLaunchClient {
     return ClientLaunchClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

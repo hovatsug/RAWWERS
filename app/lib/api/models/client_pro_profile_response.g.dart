@@ -21,6 +21,7 @@ _ClientProProfileResponse _$ClientProProfileResponseFromJson(
   avgRating: json['avg_rating'] as String,
   reviewCount: (json['review_count'] as num).toInt(),
   responseLabel: json['response_label'] as String?,
+  online: json['online'] as bool? ?? false,
   portfolioPhotoCount: (json['portfolio_photo_count'] as num).toInt(),
   portfolioVideoCount: (json['portfolio_video_count'] as num).toInt(),
   packages: (json['packages'] as List<dynamic>?)
@@ -54,6 +55,7 @@ Map<String, dynamic> _$ClientProProfileResponseToJson(
   'avg_rating': instance.avgRating,
   'review_count': instance.reviewCount,
   'response_label': instance.responseLabel,
+  'online': instance.online,
   'portfolio_photo_count': instance.portfolioPhotoCount,
   'portfolio_video_count': instance.portfolioVideoCount,
   'packages': instance.packages,

@@ -4,6 +4,7 @@ export 'dart:typed_data';
 export 'auth_client.dart';
 export 'ai_concierge_client.dart';
 export 'chats_client.dart';
+export 'presence_client.dart';
 export 'client_launch_client.dart';
 export 'communications_client.dart';
 export 'discovery_client.dart';

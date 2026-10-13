@@ -144,6 +144,11 @@
 ///             ],
 ///             "title": "Response Label"
 ///         },
+///         "online": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Online"
+///         },
 ///         "top_niches": {
 ///             "type": "array",
 ///             "items": {
@@ -229,6 +234,9 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
     /// responseLabel
     @JsonKey(name: ClientDiscoverCard.responseLabelKey_) String? responseLabel,
 
+    /// online
+    @Default(false) @JsonKey(name: ClientDiscoverCard.onlineKey_) bool online,
+
     /// topNiches
     @JsonKey(name: ClientDiscoverCard.topNichesKey_)
     List<Map<String, dynamic>>? topNiches,
@@ -274,6 +282,8 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
   static const String reviewCountKey_ = r'review_count';
 
   static const String responseLabelKey_ = r'response_label';
+
+  static const String onlineKey_ = r'online';
 
   static const String topNichesKey_ = r'top_niches';
 

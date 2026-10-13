@@ -111,6 +111,11 @@
 ///             ],
 ///             "title": "Response Label"
 ///         },
+///         "online": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Online"
+///         },
 ///         "portfolio_photo_count": {
 ///             "type": "integer",
 ///             "title": "Portfolio Photo Count"
@@ -218,6 +223,11 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     @JsonKey(name: ClientProProfileResponse.responseLabelKey_)
     String? responseLabel,
 
+    /// online
+    @Default(false)
+    @JsonKey(name: ClientProProfileResponse.onlineKey_)
+    bool online,
+
     /// portfolioPhotoCount
     @JsonKey(name: ClientProProfileResponse.portfolioPhotoCountKey_)
     required int portfolioPhotoCount,
@@ -274,6 +284,8 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
   static const String reviewCountKey_ = r'review_count';
 
   static const String responseLabelKey_ = r'response_label';
+
+  static const String onlineKey_ = r'online';
 
   static const String portfolioPhotoCountKey_ = r'portfolio_photo_count';
 

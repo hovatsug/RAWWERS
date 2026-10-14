@@ -7,9 +7,13 @@
 # quiet-hours tests and the blackout tests were fixed in 3492337.
 #
 # Use: a run's failures, minus this list, is what that change broke.
-#   make test-isolated ARGS="tests -q -p no:cacheprovider" 2>&1 \
-#     | grep '^FAILED' | sed 's/ - .*//;s/^FAILED //' | sort \
-#     | comm -23 - <(grep -v '^#' docs/KNOWN_FAILURES.txt)
+#   make test-isolated > run.txt 2>&1        # (from api/; default ARGS has -rfE)
+#   python3 scripts/check_known_failures.py run.txt
+# A run is clean only if it failed exactly these tests AND errored on none.
+# An errored test never set up, so it proves nothing either way: on
+# 2026-10-14 five suites at once exhausted the Postgres lock table and 13
+# tests errored while the failure list still matched. Rerun, fewer at once
+# (make test-isolated now allows three by default).
 #
 # When a change fixes one, remove its line in the same commit; when a change
 # makes one fail, fix it - never add a line here to make a run look clean.

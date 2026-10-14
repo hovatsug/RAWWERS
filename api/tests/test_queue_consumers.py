@@ -62,3 +62,38 @@ def test_every_routed_queue_has_a_worker(compose):
     assert compose.is_file(), f"a workflow runs {compose}, which does not exist"
     missing = _routed_queues() - _consumed_queues(compose)
     assert not missing, f"{compose.relative_to(REPO)}: no worker consumes {sorted(missing)}"
+
+
+# The stacks that run the scheduler: the two deployed ones and the dev stack.
+# The `deploy/docker-compose.*` pair are stale copies with no beat at all -
+# DEPLOY_CHECKLIST says never to use them - and the e2e stack runs no
+# scheduler by design.
+SCHEDULED_STACKS = ["deploy/compose.prod.yml", "deploy/compose.staging.yml", "api/docker-compose.yml"]
+SWEEP_SETTING = "BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS"
+
+
+def _example_env(compose: Path) -> Path | None:
+    """The committed example of the env file a stack reads, if any."""
+    for name in re.findall(r"env_file:\s*\n?\s*-?\s*(\S*\.env[\w.-]*)", compose.read_text()):
+        example = (compose.parent / name).resolve()
+        for candidate in (example.with_name(example.name + ".example"), REPO / (name.lstrip("./") + ".example")):
+            if candidate.is_file():
+                return candidate
+    return None
+
+
+@pytest.mark.parametrize("stack", SCHEDULED_STACKS)
+def test_every_scheduled_stack_runs_the_sweeps_every_minute(stack):
+    """Request expiry and unpaid bookings are swept every 60 seconds - a
+    short-notice request has 30 minutes. That holds only where beat runs and
+    nothing overrides the interval."""
+    compose = REPO / stack
+    text = compose.read_text()
+    assert re.search(r"^\s*command:.*celery.*\bbeat\b", text, flags=re.M), f"{stack} runs no beat: nothing is swept"
+    assert SWEEP_SETTING not in text, f"{stack} overrides the sweep interval"
+    example = _example_env(compose)
+    if example is not None:
+        assert SWEEP_SETTING not in example.read_text(), f"{example.relative_to(REPO)} overrides the sweep interval"
+    schedule = celery_app.conf.beat_schedule
+    for name in ("expire-booking-requests", "expire-unpaid-gigs"):
+        assert schedule[name]["schedule"].total_seconds() == 60, name

@@ -62,7 +62,12 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   - **0060** (down-tested 2026-10-13 on a copy of dev; every other column of the four tables it touches came back byte-identical): it loses who is switched on and their preparation time, the per-package short-notice flags, and each request's recorded terms. On re-upgrade, an unpaid short-notice booking's 30-minute pay deadline comes back as 24 hours, because the backfill is `created_at + 24h`. The time stays held for a day that the client was told was half an hour.
 
-  - **0061**: preparation time moves from hours to minutes, rounded *up* to an option (1 h becomes 90 min), and the hours column is dropped. The downgrade rounds up again (90 min becomes 2 h). So a round trip lengthens 90-minute preparation times to 120, and the photographer's choice is lost.
+  - **0061** changes data on the way up, not only on a round trip. Preparation time moves from hours to minutes, rounded *up* to an allowed option, and the hours column is dropped. A photographer who chose **1 hour**, below the new 90-minute floor, now has **90 minutes**; one who chose **5 hours** now has **6**. Nobody is told, and fewer short-notice slots are offered for them until they change it. 2, 3, 4 and 6 hours are unchanged. Before migrating, count who moves:
+
+        SELECT short_notice_prep_hours, count(*) FROM pro_scheduling_policy
+        WHERE short_notice_prep_hours IN (1, 5) GROUP BY 1;
+
+    Dev, 2026-10-14: none (all 11 policies were at the 2-hour default). The downgrade rounds up again (90 min becomes 2 h), so a round trip also lengthens 90-minute choices to 120.
 
   `20261014_0062` only adds an index; it reverses cleanly.
 

@@ -28,8 +28,8 @@ def rebuild_all_pro_indexes() -> dict:
         db.commit()
         logger.info(
             "rebuild_all_pro_indexes",
-            extra={"rows": result.rows, "overrides_preserved": result.overrides_preserved},
+            extra={"rows": result.rows, "listed": result.listed, "overrides_preserved": result.overrides_preserved},
         )
-        return {"rows": result.rows, "overrides_preserved": result.overrides_preserved}
+        return {"rows": result.rows, "listed": result.listed, "overrides_preserved": result.overrides_preserved}
     finally:
         db.close()

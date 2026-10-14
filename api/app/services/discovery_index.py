@@ -194,6 +194,31 @@ class RebuildResult:
     # still the effective tier. Reported because rebuild-all is exactly what
     # used to erase them.
     overrides_preserved: int
+    # Photographers clients can see afterwards (listed_photographer_count).
+    # `rows` counts every profile, test accounts and unfinished ones
+    # included; this is the number a deploy check compares.
+    listed: int = 0
+
+
+def listed_photographer_count(db: Session) -> int:
+    """Photographers who pass the five gates every client list applies -
+    approved for the public, KYC approved, accepting bookings, a profile at
+    least 60% complete, and a price. The same five as client_launch's
+    _row_base_query and discovery's list, without a city."""
+    from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
+
+    return db.execute(
+        select(func.count())
+        .select_from(ProPublicIndex)
+        .join(ProOnboarding, ProOnboarding.pro_user_id == ProPublicIndex.pro_user_id)
+        .where(
+            ProOnboarding.status == ProOnboardingStatus.approved_public,
+            ProPublicIndex.kyc_status == KYCStatus.approved,
+            ProPublicIndex.is_accepting_bookings.is_(True),
+            ProPublicIndex.completeness_score >= 60,
+            ProPublicIndex.min_package_price.is_not(None),
+        )
+    ).scalar_one()
 
 
 def recompute_all_pro_public_indexes(db: Session) -> RebuildResult:
@@ -208,7 +233,7 @@ def recompute_all_pro_public_indexes(db: Session) -> RebuildResult:
         .select_from(ProNicheSkill)
         .where(ProNicheSkill.override_tier.is_not(None), ProNicheSkill.tier == ProNicheSkill.override_tier)
     ).scalar_one()
-    return RebuildResult(rows=len(pro_ids), overrides_preserved=int(preserved))
+    return RebuildResult(rows=len(pro_ids), overrides_preserved=int(preserved), listed=listed_photographer_count(db))
 
 
 def _compute_ranking_score(

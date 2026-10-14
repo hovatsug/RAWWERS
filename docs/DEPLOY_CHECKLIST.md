@@ -77,7 +77,16 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
   - `min_package_price` changed unit (per-photo rate to starting total). Until recomputed, the budget filter and price sort mix units. See [DEPLOY REQUIREMENT: recompute every `min_package_price`](BACKEND_GAPS.md#deploy-requirement-recompute-every-min_package_price-before-trusting-the-budget-filter).
   - `ranking_score` lost the response bonus. Until recomputed, photographers who once replied quickly keep up to 10 points they no longer earn. See [DEPLOY REQUIREMENT: recompute every `ranking_score`](BACKEND_GAPS.md#deploy-requirement-recompute-every-ranking_score-after-the-response-time-change).
 
-  One run covers both, and it bumps the public index version so cached home and discover responses are dropped. The task logs `rebuild_all_pro_indexes` with `rows` and `overrides_preserved` - the admin tier overrides still in force afterwards; it should equal the count of `override_tier IS NOT NULL` rows before the run.
+  One run covers both, and it bumps the public index version so cached home and discover responses are dropped. The task logs `rebuild_all_pro_indexes` with `rows`, `listed` and `overrides_preserved`. Check two of them:
+  - **`listed`**: the photographers clients can see, which a recompute should not change. Count them before the run with the query below; `listed` afterwards must be the same number, and a difference is a photographer who appeared or vanished. **`rows` is not a check.** It counts every profile, test accounts and unfinished ones included (dev, 2026-10-14: 159 rows, 42 listed).
+
+        SELECT count(*)
+        FROM pro_public_index i
+        JOIN pro_onboarding o ON o.pro_user_id = i.pro_user_id AND o.status = 'approved_public'
+        WHERE i.kyc_status = 'approved' AND i.is_accepting_bookings
+          AND i.completeness_score >= 60 AND i.min_package_price IS NOT NULL;
+
+  - **`overrides_preserved`**: the admin tier overrides still in force afterwards. It should equal the count of `override_tier IS NOT NULL` rows before the run.
 
   **A database that already ran migration `20261007_0056` needs this run regardless.** That migration's backfill was changed after it first ran (an expired request now counts as 24 hours and a minute whatever its own window was, and an even sample takes the higher middle value), and alembic will not run it again, so its `response_bucket` and `response_median_minutes` hold the old rule's answers until each row is recomputed. Dev ran the old version; a database migrating for the first time gets the new backfill and needs nothing extra for this.
 - [ ] **Watermark backfill** (**once**, existing objects only): `scripts/backfill_watermark_previews.py`, dry run first. Done locally; see [The watermark fix is now actually in the bucket](BACKEND_GAPS.md#the-watermark-fix-is-now-actually-in-the-bucket-resolved).
@@ -105,6 +114,23 @@ Listed so a successful deploy is not mistaken for launch readiness.
   5. Lock the phone with the app open for 10 minutes: the dot is gone within 5 minutes of locking.
 
   Simulators covered steps 1-3; steps 3-5 on a phone are what the five-minute expiry exists for. See BACKEND_GAPS.md, "iOS suspension unverified on a physical device".
+
+## 6. Blocks beta - money and access routes no test calls
+
+From listing every route and searching the tests for a call to each (2026-10-14: 205 of 458 routes called, 231 never). These are the money and access routes among the 231, most dangerous first. Each needs a test - the route's own rule, and who may call it - before beta users can reach it. Where a feature is off for beta, its routes can wait until it is turned on; say so here instead of deleting the line.
+
+1. **Refunds** - `POST /v1/gigs/{gig_id}/refunds/stripe`, `POST /v1/admin/refunds/{refund_case_id}/retry`. Send money back to a card; a wrong amount or a repeat is real money.
+2. **Payouts** - `POST /v1/pro/payouts/request`, `POST /v1/admin/payouts/{id}/approve`, `/mark-paid`, `/reject`. Money out to photographers.
+3. **Where payouts go** - `POST /v1/pro/payouts/connect/account`, `/connect/onboarding-link`, `GET /connect/status`, `GET`/`PUT /v1/pro/payouts/account`. Whose account receives the money.
+4. **Charges outside bookings** - `POST /v1/prints/orders/{order_id}/pay`, `POST /v1/gigs/{gig_id}/prints/orders`, `PUT /v1/prints/orders/{order_id}`. Charge a card.
+5. **Earnings holds** - `POST /v1/admin/holds/create`, `POST /v1/admin/holds/{hold_id}/release`. Decide when a photographer's money becomes payable.
+6. **Roles and bans** - `POST /v1/admin/users/{user_id}/roles`, `POST /v1/admin/users/{user_id}/ban`, `POST /v1/admin/impersonate/end`. Who is an admin, who is shut out, and leaving another person's session.
+7. **Disputes** - `POST /v1/admin/disputes/{id}/set-status`, `/status`, `POST /v1/disputes/{id}/cancel`, `/evidence`. Decide refunds and who wins them.
+8. **What everyone pays** - `PUT /v1/admin/finance/fee-policy`, `PUT /v1/admin/learn/fee-policy`, `PUT /v1/admin/raww/multiplier-policy`, `PUT /v1/admin/pricing/extra-image-policies`, `POST`/`PUT /v1/admin/store/price-rules`. One request changes the platform's take or prices for everyone.
+9. **Private media** - `POST /v1/media/videos/{media_asset_id}/playback-token`. Who may watch a private video.
+10. **Becoming a photographer** - `POST /v1/me/upgrade-to-pro`. A role change. Only the on-request integration test calls it; no backend test does.
+11. **Money and tax records** - `GET /v1/pro/earnings/balance`, `/ledger`, `/summary`, `/invoices`, `/invoices/{gig_id}`, `GET`/`PUT /v1/pro/tax-profile`, `GET /v1/admin/finance/pros`, `/pros/{pro_user_id}`. Read-only for money, but each must show one person's records to that person (and admins) only. The tax profile holds identity data.
+12. **Contact and verification** - `PUT /v1/me/contact`, `POST /v1/auth/verify-email/request`. Where account messages go.
 
 ## Done per environment
 

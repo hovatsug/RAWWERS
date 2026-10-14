@@ -169,7 +169,8 @@ class ProSchedulingPolicy(Base):
     available_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # While available, the notice for the next 24 hours, for packages that
     # allow it: how long they need to get ready and get there.
-    short_notice_prep_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
+    # One of available_now.PREP_MINUTES_OPTIONS.
+    short_notice_prep_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=120, server_default="120")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

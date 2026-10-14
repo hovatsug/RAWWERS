@@ -368,11 +368,106 @@ def test_the_pay_deadline_is_short_and_leaves_a_margin_before_the_start(db_sessi
     settings = get_settings()
     now = datetime.now(timezone.utc)
     far = now + timedelta(days=5)
-    near = now + timedelta(minutes=70)
+    near = now + timedelta(minutes=50)  # less than the pay window plus the margin before it
 
     assert pay_deadline(accepted_at=now, start=far, short_notice=True) == now + timedelta(minutes=settings.short_notice_pay_minutes)
     assert pay_deadline(accepted_at=now, start=far, short_notice=False) == now + timedelta(hours=settings.payment_window_hours)
     assert pay_deadline(accepted_at=now, start=near, short_notice=True) == near - timedelta(minutes=settings.pay_deadline_margin_minutes)
+
+
+# --- preparation time and the pay margin -------------------------------------------
+
+PREP_OPTIONS = (90, 120, 180, 240, 360)
+
+
+def _prep(client, pro, minutes, on=True):
+    return client.put("/v1/pro/available-now", headers={"X-User-Id": pro.id}, json={"switched_on": on, "prep_minutes": minutes})
+
+
+def test_the_pay_margin_and_the_prep_options_are_the_agreed_ones():
+    from app.services import available_now
+
+    assert get_settings().pay_deadline_margin_minutes == 30
+    assert available_now.PREP_MINUTES_OPTIONS == PREP_OPTIONS
+    assert available_now.PREP_MINUTES_DEFAULT == 120
+
+
+def test_preparation_time_is_one_of_the_offered_options(client, db_session):
+    pro = _short_notice_pro(db_session)
+    _seen(pro)
+
+    view = client.get("/v1/pro/available-now", headers={"X-User-Id": pro.id}).json()
+    assert view["prep_options_minutes"] == list(PREP_OPTIONS)
+    assert view["prep_minutes"] == 120
+    for refused in (60, 75, 150, 420):
+        assert _prep(client, pro, refused).status_code == 422, refused
+    resp = _prep(client, pro, 90)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["prep_minutes"] == 90
+
+
+@pytest.mark.parametrize("prep", PREP_OPTIONS)
+def test_every_prep_time_leaves_the_whole_pay_window_at_the_notice_boundary(prep):
+    """The invariant behind the 90-minute minimum. A request made at t0 for
+    a start exactly `prep` later, accepted at any moment up to its accept
+    deadline - the last one included - still leaves the client the full pay
+    window before the margin ahead of the start. 90 = 30 to accept + 30 to
+    pay + 30 of margin; anything shorter could be accepted into a booking
+    nobody can pay for in time."""
+    from app.services.deadlines import pay_deadline_for_terms, request_terms
+
+    settings = get_settings()
+    t0 = datetime(2026, 10, 14, 9, 0, tzinfo=timezone.utc)
+    start = t0 + timedelta(minutes=prep)
+    terms = request_terms(now=t0, start=start, standard_notice_hours=24, notice_minutes=prep)
+    assert terms.short_notice and terms.expires_at == t0 + timedelta(minutes=settings.short_notice_accept_minutes)
+
+    for accepted in (t0, t0 + timedelta(minutes=15), terms.expires_at):
+        deadline = pay_deadline_for_terms(terms, start=start, accepted_at=accepted)
+        assert deadline - accepted == timedelta(minutes=settings.short_notice_pay_minutes), (prep, accepted)
+        assert deadline <= start - timedelta(minutes=settings.pay_deadline_margin_minutes)
+
+
+def test_a_prep_time_below_the_minimum_would_break_that_invariant():
+    """The same check at 60 minutes fails: the invariant test is not
+    vacuous, and the minimum is not arbitrary."""
+    from app.services.deadlines import pay_deadline_for_terms, request_terms
+
+    t0 = datetime(2026, 10, 14, 9, 0, tzinfo=timezone.utc)
+    start = t0 + timedelta(minutes=60)
+    terms = request_terms(now=t0, start=start, standard_notice_hours=24, notice_minutes=60)
+    last = terms.expires_at
+    assert pay_deadline_for_terms(terms, start=start, accepted_at=last) - last < timedelta(minutes=30)
+
+
+def _earliest_offered(client, pro, *, within: timedelta):
+    tz = ZoneInfo(TZ)
+    today = datetime.now(timezone.utc).astimezone(tz).date()
+    resp = client.get(
+        f"/v1/client/pros/{pro.id}/availability",
+        params={"package_id": pro.package_id, "from": today.isoformat(), "to": (today + timedelta(days=1)).isoformat()},
+        headers={"X-User-Id": pro.client_id},
+    )
+    starts = sorted(
+        datetime.fromisoformat(s["start_at"]).astimezone(timezone.utc) for d in resp.json()["days"] for s in d["start_times"]
+    )
+    horizon = datetime.now(timezone.utc) + within
+    return [s for s in starts if s <= horizon][0]
+
+
+@pytest.mark.parametrize("prep", PREP_OPTIONS)
+def test_every_prep_time_can_be_requested_accepted_and_paid_at_its_earliest_slot(client, db_session, prep):
+    pro = _short_notice_pro(db_session)
+    _seen(pro)
+    assert _prep(client, pro, prep).status_code == 200
+    start = _earliest_offered(client, pro, within=timedelta(hours=24))
+    now = datetime.now(timezone.utc)
+    assert timedelta(minutes=prep) <= start - now < timedelta(minutes=prep + 61), "the earliest slot is at the boundary"
+
+    booking_id = _request(client, pro, pro.client_id, start, start + timedelta(hours=1)).json()["booking_id"]
+    accepted = client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
+    assert accepted.status_code == 200, accepted.text
+    assert _pay(client, pro, booking_id).status_code == 200
 
 
 def test_every_way_of_making_a_request_uses_the_one_deadline(client, db_session, monkeypatch):
@@ -486,93 +581,6 @@ def test_notice_is_counted_from_when_the_request_was_made(client, db_session, an
     assert resp.status_code == 200, resp.text
 
 
-def test_paying_after_the_short_window_is_refused_even_before_the_sweep(client, db_session):
-    pro = _short_notice_pro(db_session)
-    _available(client, db_session, pro)
-    start, end = _slot_in(3)
-    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
-    client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
-    gig = _gig_for(db_session, booking_id)
-    gig.pay_deadline_at = datetime.now(timezone.utc) - timedelta(seconds=1)
-    db_session.commit()
-
-    resp = _pay(client, pro, booking_id)
-
-    assert resp.status_code == 409, resp.text
-    assert resp.json()["error"]["code"] == "payment_window_closed"
-
-
-def test_accepting_too_late_to_pay_in_time_is_refused(client, db_session, monkeypatch):
-    """If the pay deadline - capped a margin before the start - has already
-    passed, a yes would make a booking nobody can complete."""
-    pro = _short_notice_pro(db_session)
-    _available(client, db_session, pro)
-    start, end = _slot_in(3)
-    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
-    # Payment must land further ahead of the start than the start is away.
-    monkeypatch.setattr(get_settings(), "pay_deadline_margin_minutes", 6 * 60)
-
-    resp = client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
-
-    assert resp.status_code == 409, resp.text
-    assert resp.json()["error"]["code"] == "too_late_to_pay"
-
-
-# --- the sweep (6) -----------------------------------------------------------------
-
-
-def test_an_unanswered_short_notice_request_expires_on_its_short_clock_and_frees_its_time(client, db_session):
-    from app.services.scheduling import expire_pending_booking_requests
-
-    pro = _short_notice_pro(db_session)
-    _available(client, db_session, pro)
-    start, end = _slot_in(3)
-    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
-    booking = _booking(db_session, booking_id)
-    booking.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)  # its 30 minutes are up
-    db_session.commit()
-
-    assert _offered(client, pro, start) is True, "freed at once, before any sweep"
-    expire_pending_booking_requests(db_session, limit=None)
-    db_session.commit()
-    assert _booking(db_session, booking_id).status == BookingRequestStatus.expired
-
-
-def test_an_unpaid_short_notice_booking_is_cancelled_after_its_pay_deadline(client, db_session, monkeypatch):
-    from app.services.bookable_time import expire_unpaid_gigs
-
-    # Its open payment is closed with Stripe first, as for any unpaid gig.
-    monkeypatch.setattr("app.services.bookable_time.stripe.PaymentIntent.cancel", lambda pi_id: None)
-
-    pro = _short_notice_pro(db_session)
-    _available(client, db_session, pro)
-    start, end = _slot_in(3)
-    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
-    client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
-    gig = _gig_for(db_session, booking_id)
-    assert _offered(client, pro, start) is False, "held while it may still be paid"
-    gig.pay_deadline_at = datetime.now(timezone.utc) - timedelta(seconds=1)
-    db_session.commit()
-
-    assert _offered(client, pro, start) is True, "freed the moment its deadline passes"
-    expire_unpaid_gigs(db_session, limit=None)
-    db_session.commit()
-    assert _gig_for(db_session, booking_id).status != GigStatus.payment_pending
-
-
-# --- what the client sees -------------------------------------------------------------
-
-
-def test_the_calendar_is_never_served_stale_across_a_toggle(client, db_session):
-    pro = _short_notice_pro(db_session)
-    _seen(pro)
-    start, _ = _slot_in(3)
-    assert _offered(client, pro, start) is False
-
-    _toggle(client, pro, on=True)
-    assert _offered(client, pro, start) is True
-    _toggle(client, pro, on=False)
-    assert _offered(client, pro, start) is False
 # --- confirming a time other than the one requested ----------------------------------
 #
 # A request's recorded terms belong to the time it asked for. Any other time -
@@ -720,3 +728,90 @@ def test_the_requested_time_keeps_its_recorded_terms_after_a_reschedule_elsewher
     assert _confirm(client, pro, booking_id, asked, asked_end).status_code == 200
 
 
+def test_paying_after_the_short_window_is_refused_even_before_the_sweep(client, db_session):
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    start, end = _slot_in(3)
+    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
+    client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
+    gig = _gig_for(db_session, booking_id)
+    gig.pay_deadline_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db_session.commit()
+
+    resp = _pay(client, pro, booking_id)
+
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "payment_window_closed"
+
+
+def test_accepting_too_late_to_pay_in_time_is_refused(client, db_session, monkeypatch):
+    """If the pay deadline - capped a margin before the start - has already
+    passed, a yes would make a booking nobody can complete."""
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    start, end = _slot_in(3)
+    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
+    # Payment must land further ahead of the start than the start is away.
+    monkeypatch.setattr(get_settings(), "pay_deadline_margin_minutes", 6 * 60)
+
+    resp = client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
+
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "too_late_to_pay"
+
+
+# --- the sweep (6) -----------------------------------------------------------------
+
+
+def test_an_unanswered_short_notice_request_expires_on_its_short_clock_and_frees_its_time(client, db_session):
+    from app.services.scheduling import expire_pending_booking_requests
+
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    start, end = _slot_in(3)
+    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
+    booking = _booking(db_session, booking_id)
+    booking.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)  # its 30 minutes are up
+    db_session.commit()
+
+    assert _offered(client, pro, start) is True, "freed at once, before any sweep"
+    expire_pending_booking_requests(db_session, limit=None)
+    db_session.commit()
+    assert _booking(db_session, booking_id).status == BookingRequestStatus.expired
+
+
+def test_an_unpaid_short_notice_booking_is_cancelled_after_its_pay_deadline(client, db_session, monkeypatch):
+    from app.services.bookable_time import expire_unpaid_gigs
+
+    # Its open payment is closed with Stripe first, as for any unpaid gig.
+    monkeypatch.setattr("app.services.bookable_time.stripe.PaymentIntent.cancel", lambda pi_id: None)
+
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    start, end = _slot_in(3)
+    booking_id = _request(client, pro, pro.client_id, start, end).json()["booking_id"]
+    client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})
+    gig = _gig_for(db_session, booking_id)
+    assert _offered(client, pro, start) is False, "held while it may still be paid"
+    gig.pay_deadline_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db_session.commit()
+
+    assert _offered(client, pro, start) is True, "freed the moment its deadline passes"
+    expire_unpaid_gigs(db_session, limit=None)
+    db_session.commit()
+    assert _gig_for(db_session, booking_id).status != GigStatus.payment_pending
+
+
+# --- what the client sees -------------------------------------------------------------
+
+
+def test_the_calendar_is_never_served_stale_across_a_toggle(client, db_session):
+    pro = _short_notice_pro(db_session)
+    _seen(pro)
+    start, _ = _slot_in(3)
+    assert _offered(client, pro, start) is False
+
+    _toggle(client, pro, on=True)
+    assert _offered(client, pro, start) is True
+    _toggle(client, pro, on=False)
+    assert _offered(client, pro, start) is False

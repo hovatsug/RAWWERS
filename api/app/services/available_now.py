@@ -33,7 +33,11 @@ from app.models.booking import ProPackage, ProSchedulingPolicy
 from app.services import presence
 from app.services.cache import get_redis_client
 
-PREP_HOURS_MIN, PREP_HOURS_MAX = 1, 6
+# The preparation time a photographer may choose. 90 minutes is the floor:
+# 30 to accept, 30 to pay and the 30-minute margin before the start, so a
+# request at the edge of the notice can still be accepted and paid for.
+PREP_MINUTES_OPTIONS = (90, 120, 180, 240, 360)
+PREP_MINUTES_DEFAULT = 120
 
 
 def _key(pro_user_id) -> str:
@@ -45,14 +49,14 @@ def is_switched_on(policy: ProSchedulingPolicy | None, now: datetime | None = No
     return bool(policy is not None and policy.available_until is not None and policy.available_until > now)
 
 
-def short_notice_hours(policy: ProSchedulingPolicy | None, pro_user_id: uuid.UUID, now: datetime | None = None) -> int | None:
+def short_notice_minutes(policy: ProSchedulingPolicy | None, pro_user_id: uuid.UUID, now: datetime | None = None) -> int | None:
     """The preparation time to use as notice right now, or None when short
     notice does not apply (switched off, or the app has gone quiet)."""
     if not is_switched_on(policy, now):
         return None
     if not presence.seen_within(pro_user_id, get_settings().available_now_fresh_seconds):
         return None
-    return policy.short_notice_prep_hours
+    return policy.short_notice_prep_minutes
 
 
 def default_short_notice_ok(preset, duration_minutes: int) -> bool:
@@ -74,19 +78,19 @@ def eligible_package_ids(db: Session, pro_user_id: uuid.UUID) -> list[uuid.UUID]
     )
 
 
-def switch(db: Session, policy: ProSchedulingPolicy, *, on: bool, prep_hours: int | None = None) -> None:
+def switch(db: Session, policy: ProSchedulingPolicy, *, on: bool, prep_minutes: int | None = None) -> None:
     """Switch on (until now + AVAILABLE_NOW_HOURS) or off. Refuses to switch
     on with no package that may be booked at short notice - a toggle that
     can never produce a booking would only mislead. The column is written
     and flushed; the caller commits, then calls copy_to_redis."""
-    if prep_hours is not None:
-        if not PREP_HOURS_MIN <= prep_hours <= PREP_HOURS_MAX:
+    if prep_minutes is not None:
+        if prep_minutes not in PREP_MINUTES_OPTIONS:
             raise APIError(
                 code="validation_error",
-                message=f"Preparation time must be between {PREP_HOURS_MIN} and {PREP_HOURS_MAX} hours.",
+                message="Preparation time must be 1.5, 2, 3, 4 or 6 hours.",
                 status_code=422,
             )
-        policy.short_notice_prep_hours = prep_hours
+        policy.short_notice_prep_minutes = prep_minutes
     if on:
         if not eligible_package_ids(db, policy.pro_user_id):
             raise APIError(

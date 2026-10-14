@@ -212,8 +212,8 @@ class Calendar:
     counted: list[Booking]
     tz: ZoneInfo
     # The preparation time to use as notice right now, or None: decided once,
-    # when the calendar is loaded (available_now.short_notice_hours).
-    short_notice_hours: int | None = None
+    # when the calendar is loaded (available_now.short_notice_minutes).
+    short_notice_minutes: int | None = None
 
     @property
     def has_schedule(self) -> bool:
@@ -324,7 +324,7 @@ def load_calendar(
         # Rules carry their own timezone; a photographer's are one zone in
         # practice. With no rules there is nothing to be local to.
         tz=ZoneInfo(rules[0].timezone) if rules else ZoneInfo("UTC"),
-        short_notice_hours=available_now.short_notice_hours(policy, pro_user_id, now),
+        short_notice_minutes=available_now.short_notice_minutes(policy, pro_user_id, now),
     )
 
 
@@ -336,8 +336,8 @@ def notice_minutes_for(cal: Calendar, start: datetime, *, now: datetime, short_n
     photographer's preparation time if they are available now, the package
     allows it and the start is within the next 24 hours; otherwise their
     usual notice. The one place short notice changes anything."""
-    if cal.short_notice_hours is not None and short_notice_ok and start < now + SHORT_NOTICE_HORIZON:
-        return min(cal.short_notice_hours, cal.policy.advance_notice_hours) * 60
+    if cal.short_notice_minutes is not None and short_notice_ok and start < now + SHORT_NOTICE_HORIZON:
+        return min(cal.short_notice_minutes, cal.policy.advance_notice_hours * 60)
     return cal.policy.advance_notice_hours * 60
 
 

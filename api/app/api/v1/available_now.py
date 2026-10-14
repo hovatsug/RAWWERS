@@ -28,7 +28,9 @@ class AvailableNowView(BaseModel):
     # Whether clients can book at short notice right now: switched on AND the
     # app checked in within the last two minutes.
     effective: bool
-    prep_hours: int
+    prep_minutes: int
+    # The choices, in minutes: 90, 120, 180, 240, 360.
+    prep_options_minutes: list[int]
     # Packages that may be booked at short notice. Empty means switching on
     # would do nothing - the app asks the photographer to choose some first.
     eligible_package_ids: list[uuid.UUID] = Field(default_factory=list)
@@ -37,7 +39,8 @@ class AvailableNowView(BaseModel):
 
 class AvailableNowUpdate(BaseModel):
     switched_on: bool
-    prep_hours: int | None = Field(default=None, ge=available_now.PREP_HOURS_MIN, le=available_now.PREP_HOURS_MAX)
+    # One of prep_options_minutes; anything else is refused with 422.
+    prep_minutes: int | None = None
 
 
 def _require_pro(db: Session, user: CurrentUser) -> None:
@@ -49,8 +52,9 @@ def _view(db: Session, policy) -> AvailableNowView:
     return AvailableNowView(
         switched_on=available_now.is_switched_on(policy),
         available_until=policy.available_until if available_now.is_switched_on(policy) else None,
-        effective=available_now.short_notice_hours(policy, policy.pro_user_id) is not None,
-        prep_hours=policy.short_notice_prep_hours,
+        effective=available_now.short_notice_minutes(policy, policy.pro_user_id) is not None,
+        prep_minutes=policy.short_notice_prep_minutes,
+        prep_options_minutes=list(available_now.PREP_MINUTES_OPTIONS),
         eligible_package_ids=available_now.eligible_package_ids(db, policy.pro_user_id),
         lasts_hours=get_settings().available_now_hours,
     )
@@ -75,7 +79,7 @@ def put_available_now(
     could be booked that way."""
     _require_pro(db, user)
     policy = get_or_create_scheduling_policy(db, pro_user_id=user.user_id)
-    available_now.switch(db, policy, on=body.switched_on, prep_hours=body.prep_hours)
+    available_now.switch(db, policy, on=body.switched_on, prep_minutes=body.prep_minutes)
     db.commit()
     # After the commit: the copy never gets ahead of the truth.
     available_now.copy_to_redis(policy)

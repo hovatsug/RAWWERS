@@ -1977,6 +1977,8 @@ Short-notice booking (`app/services/available_now.py`, `deadlines.py`) brought f
 
 **Sweeps: correctness does not wait for them.** An unanswered request is refused on accept and confirm-slot from its `expires_at`, and stops holding its time from then. An unpaid booking is refused on payment and stops holding from its pay deadline. The sweeps (every `BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS`, 900) only change the status the lists show. On a 30-minute clock, a status 15 minutes late is visible. Shortening the interval to 60 seconds would fix that at the cost of one small query a minute. Not changed yet, pending a decision.
 
+**Preparation time is 1.5, 2, 3, 4 or 6 hours, and payment closes 30 minutes before the shoot.** 90 minutes is the floor, not a preference. A request at the edge of the notice may be accepted up to 30 minutes later, and must then leave 30 minutes to pay before the 30-minute margin. A test checks that every offered option keeps the whole pay window when accepted at the last moment, and another shows 60 minutes would not.
+
 **Client availability is not cached.** It is computed per request, so switching on or off shows on the client's next calendar load (`test_the_calendar_is_never_served_stale_across_a_toggle`).
 
 **`make test-isolated` run from a worktree's own `api/` reports "all 15 Redis indexes are claimed".** That message is false: compose there finds no `.env` and no running Redis, so the claim command fails, and the script reads any non-OK reply as "claimed". Run it from the main `api/` with `REPO=<worktree>`, as documented.

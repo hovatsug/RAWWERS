@@ -57,12 +57,14 @@ class _Backend {
   final packageWrites = <Map<String, dynamic>>[];
   final toggles = <Map<String, dynamic>>[];
   bool switchedOn = false;
+  int prepMinutes = 120;
 
   Map<String, dynamic> _view() => {
         'switched_on': switchedOn,
         'available_until': switchedOn ? '2026-10-13T18:00:00Z' : null,
         'effective': switchedOn,
-        'prep_hours': 2,
+        'prep_minutes': prepMinutes,
+        'prep_options_minutes': [90, 120, 180, 240, 360],
         'eligible_package_ids': [
           for (final p in packages)
             if (p['short_notice_ok'] == true) p['id'],
@@ -88,6 +90,7 @@ class _Backend {
         );
       }
       switchedOn = body['switched_on'] as bool;
+      if (body['prep_minutes'] case final int minutes) prepMinutes = minutes;
       return jsonResponseBody(jsonEncode(_view()), 200);
     }
     if (path == '/v1/pro/$_me/packages' && o.method == 'GET') {
@@ -180,7 +183,7 @@ void main() {
 
     expect(find.text('Which packages can be booked at short notice?'), findsNothing);
     expect(backend.toggles, [
-      {'switched_on': true, 'prep_hours': null},
+      {'switched_on': true, 'prep_minutes': null},
     ]);
     expect(find.textContaining(listedOnlyWhileOpen), findsOneWidget);
   });
@@ -197,5 +200,26 @@ void main() {
     expect(write['niche_id'], 'niche-portraits');
     expect(write['price'], '12.00');
     expect(write['title'], 'Mini session');
+  });
+
+  test('preparation times read as hours', () {
+    expect([90, 120, 180, 240, 360].map(prepLabel), ['1.5 hours', '2 hours', '3 hours', '4 hours', '6 hours']);
+    expect(prepLabel(60), '1 hour');
+  });
+
+  testWidgets('the preparation choices are the server\'s, and choosing one sends its minutes', (tester) async {
+    final backend = _Backend(shortNoticeOk: true);
+    await _pump(tester, backend, const AvailableNowCard());
+
+    await tester.tap(find.text('2 hours'));
+    await tester.pumpAndSettle();
+    for (final label in ['1.5 hours', '3 hours', '4 hours', '6 hours']) {
+      expect(find.text(label), findsWidgets, reason: label);
+    }
+    await tester.tap(find.text('1.5 hours').last);
+    await tester.pumpAndSettle();
+
+    expect(backend.toggles.last['prep_minutes'], 90);
+    expect(find.text('1.5 hours'), findsOneWidget, reason: 'the card shows what the server now holds');
   });
 }

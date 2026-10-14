@@ -21,9 +21,16 @@
 ///             "type": "boolean",
 ///             "title": "Effective"
 ///         },
-///         "prep_hours": {
+///         "prep_minutes": {
 ///             "type": "integer",
-///             "title": "Prep Hours"
+///             "title": "Prep Minutes"
+///         },
+///         "prep_options_minutes": {
+///             "type": "array",
+///             "items": {
+///                 "type": "integer"
+///             },
+///             "title": "Prep Options Minutes"
 ///         },
 ///         "eligible_package_ids": {
 ///             "type": "array",
@@ -42,7 +49,8 @@
 ///     "required": [
 ///         "switched_on",
 ///         "effective",
-///         "prep_hours",
+///         "prep_minutes",
+///         "prep_options_minutes",
 ///         "lasts_hours"
 ///     ],
 ///     "title": "AvailableNowView"
@@ -69,8 +77,12 @@ abstract class AvailableNowView with _$AvailableNowView {
     /// effective
     @JsonKey(name: AvailableNowView.effectiveKey_) required bool effective,
 
-    /// prepHours
-    @JsonKey(name: AvailableNowView.prepHoursKey_) required int prepHours,
+    /// prepMinutes
+    @JsonKey(name: AvailableNowView.prepMinutesKey_) required int prepMinutes,
+
+    /// prepOptionsMinutes
+    @JsonKey(name: AvailableNowView.prepOptionsMinutesKey_)
+    required List<int> prepOptionsMinutes,
 
     /// eligiblePackageIds
     @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)
@@ -89,7 +101,9 @@ abstract class AvailableNowView with _$AvailableNowView {
 
   static const String effectiveKey_ = r'effective';
 
-  static const String prepHoursKey_ = r'prep_hours';
+  static const String prepMinutesKey_ = r'prep_minutes';
+
+  static const String prepOptionsMinutesKey_ = r'prep_options_minutes';
 
   static const String eligiblePackageIdsKey_ = r'eligible_package_ids';
 

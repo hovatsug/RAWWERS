@@ -11,6 +11,13 @@ import 'package:rawwers/features/pro/pricing/pricing_controller.dart';
 /// reaches the photographer only through the open app.
 const listedOnlyWhileOpen = "You're listed only while the app is open.";
 
+/// A preparation time as the photographer reads it: 90 -> "1.5 hours".
+String prepLabel(int minutes) {
+  final hours = minutes / 60;
+  final number = hours == hours.roundToDouble() ? hours.round().toString() : hours.toString();
+  return '$number ${hours == 1 ? 'hour' : 'hours'}';
+}
+
 /// "Available now" on the photographer's dashboard: can shoot within the
 /// next day at short notice. Off, on until a time, and the preparation time
 /// that replaces their usual notice. Switching on with no package that may be
@@ -42,16 +49,16 @@ class _Card extends ConsumerStatefulWidget {
 class _CardState extends ConsumerState<_Card> {
   bool _busy = false;
 
-  Future<void> _set({required bool on, int? prepHours}) async {
+  Future<void> _set({required bool on, int? prepMinutes}) async {
     setState(() => _busy = true);
     final notifier = ref.read(availableNowControllerProvider.notifier);
     String? error;
     try {
-      error = await notifier.set(on: on, prepHours: prepHours);
+      error = await notifier.set(on: on, prepMinutes: prepMinutes);
     } on NoShortNoticePackages {
       if (!mounted) return;
       final chosen = await showModalBottomSheet<bool>(context: context, builder: (_) => const _ChoosePackages());
-      if (chosen == true) error = await notifier.set(on: true, prepHours: prepHours);
+      if (chosen == true) error = await notifier.set(on: true, prepMinutes: prepMinutes);
     }
     if (!mounted) return;
     setState(() => _busy = false);
@@ -73,7 +80,7 @@ class _CardState extends ConsumerState<_Card> {
             title: const Text('Available now'),
             subtitle: Text(
               view.switchedOn && until != null
-                  ? 'Clients can book you at ${view.prepHours} hours’ notice until ${TimeOfDay.fromDateTime(until.toLocal()).format(context)}. $listedOnlyWhileOpen'
+                  ? 'Clients can book you at ${prepLabel(view.prepMinutes)}’ notice until ${TimeOfDay.fromDateTime(until.toLocal()).format(context)}. $listedOnlyWhileOpen'
                   : 'Take bookings in the next day at short notice, for up to ${view.lastsHours} hours.',
               style: theme.textTheme.bodySmall,
             ),
@@ -84,10 +91,14 @@ class _CardState extends ConsumerState<_Card> {
             children: [
               Text('Ready in about', style: theme.textTheme.bodySmall),
               const SizedBox(width: RSpace.s8),
+              // The server's options - the minimum is a rule there, not here.
               DropdownButton<int>(
-                value: view.prepHours,
-                items: [for (var h = 1; h <= 6; h++) DropdownMenuItem(value: h, child: Text(h == 1 ? '1 hour' : '$h hours'))],
-                onChanged: _busy ? null : (h) => h == null ? null : _set(on: view.switchedOn, prepHours: h),
+                value: view.prepMinutes,
+                items: [
+                  for (final minutes in view.prepOptionsMinutes)
+                    DropdownMenuItem(value: minutes, child: Text(prepLabel(minutes))),
+                ],
+                onChanged: _busy ? null : (m) => m == null ? null : _set(on: view.switchedOn, prepMinutes: m),
               ),
             ],
           ),

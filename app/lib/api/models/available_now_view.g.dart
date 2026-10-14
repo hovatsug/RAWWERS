@@ -13,7 +13,10 @@ _AvailableNowView _$AvailableNowViewFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['available_until'] as String),
       effective: json['effective'] as bool,
-      prepHours: (json['prep_hours'] as num).toInt(),
+      prepMinutes: (json['prep_minutes'] as num).toInt(),
+      prepOptionsMinutes: (json['prep_options_minutes'] as List<dynamic>)
+          .map((e) => (e as num).toInt())
+          .toList(),
       eligiblePackageIds: (json['eligible_package_ids'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
@@ -25,7 +28,8 @@ Map<String, dynamic> _$AvailableNowViewToJson(_AvailableNowView instance) =>
       'switched_on': instance.switchedOn,
       'available_until': instance.availableUntil?.toIso8601String(),
       'effective': instance.effective,
-      'prep_hours': instance.prepHours,
+      'prep_minutes': instance.prepMinutes,
+      'prep_options_minutes': instance.prepOptionsMinutes,
       'eligible_package_ids': instance.eligiblePackageIds,
       'lasts_hours': instance.lastsHours,
     };

@@ -34,11 +34,11 @@ class AvailableNowController extends _$AvailableNowController {
 
   /// Switch on or off, optionally changing the preparation time. Returns an
   /// error message, or throws [NoShortNoticePackages].
-  Future<String?> set({required bool on, int? prepHours}) async {
+  Future<String?> set({required bool on, int? prepMinutes}) async {
     final client = ref.read(availableNowClientProvider);
     final result = await apiCall(
       () => client.putAvailableNowV1ProAvailableNowPut(
-        requestBody: AvailableNowUpdate(switchedOn: on, prepHours: prepHours),
+        requestBody: AvailableNowUpdate(switchedOn: on, prepMinutes: prepMinutes),
         authorization: null,
         xMinusUserMinusId: null,
       ),

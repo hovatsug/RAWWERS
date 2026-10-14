@@ -7,7 +7,7 @@ part of 'available_now_controller.dart';
 // **************************************************************************
 
 String _$availableNowControllerHash() =>
-    r'df8397f49384b3f9135fab8e686668343b3d7a64';
+    r'ee1b6341ac977ed11f141abe0d0580a7f9067b7b';
 
 /// The photographer's "Available now": switched on or not, until when, and
 /// whether clients can book at short notice right now - all the server's

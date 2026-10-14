@@ -9,11 +9,11 @@ part of 'available_now_update.dart';
 _AvailableNowUpdate _$AvailableNowUpdateFromJson(Map<String, dynamic> json) =>
     _AvailableNowUpdate(
       switchedOn: json['switched_on'] as bool,
-      prepHours: (json['prep_hours'] as num?)?.toInt(),
+      prepMinutes: (json['prep_minutes'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$AvailableNowUpdateToJson(_AvailableNowUpdate instance) =>
     <String, dynamic>{
       'switched_on': instance.switchedOn,
-      'prep_hours': instance.prepHours,
+      'prep_minutes': instance.prepMinutes,
     };

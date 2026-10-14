@@ -5,7 +5,7 @@
 ///             "type": "boolean",
 ///             "title": "Switched On"
 ///         },
-///         "prep_hours": {
+///         "prep_minutes": {
 ///             "anyOf": [
 ///                 {
 ///                     "type": "integer"
@@ -14,7 +14,7 @@
 ///                     "type": "null"
 ///                 }
 ///             ],
-///             "title": "Prep Hours"
+///             "title": "Prep Minutes"
 ///         }
 ///     },
 ///     "type": "object",
@@ -38,8 +38,8 @@ abstract class AvailableNowUpdate with _$AvailableNowUpdate {
     /// switchedOn
     @JsonKey(name: AvailableNowUpdate.switchedOnKey_) required bool switchedOn,
 
-    /// prepHours
-    @JsonKey(name: AvailableNowUpdate.prepHoursKey_) int? prepHours,
+    /// prepMinutes
+    @JsonKey(name: AvailableNowUpdate.prepMinutesKey_) int? prepMinutes,
   }) = _AvailableNowUpdate;
 
   factory AvailableNowUpdate.fromJson(Map<String, dynamic> json) =>
@@ -47,5 +47,5 @@ abstract class AvailableNowUpdate with _$AvailableNowUpdate {
 
   static const String switchedOnKey_ = r'switched_on';
 
-  static const String prepHoursKey_ = r'prep_hours';
+  static const String prepMinutesKey_ = r'prep_minutes';
 }

@@ -18,8 +18,9 @@ mixin _$AvailableNowView {
 /// switchedOn
 @JsonKey(name: AvailableNowView.switchedOnKey_) bool get switchedOn;/// availableUntil
 @JsonKey(name: AvailableNowView.availableUntilKey_) DateTime? get availableUntil;/// effective
-@JsonKey(name: AvailableNowView.effectiveKey_) bool get effective;/// prepHours
-@JsonKey(name: AvailableNowView.prepHoursKey_) int get prepHours;/// eligiblePackageIds
+@JsonKey(name: AvailableNowView.effectiveKey_) bool get effective;/// prepMinutes
+@JsonKey(name: AvailableNowView.prepMinutesKey_) int get prepMinutes;/// prepOptionsMinutes
+@JsonKey(name: AvailableNowView.prepOptionsMinutesKey_) List<int> get prepOptionsMinutes;/// eligiblePackageIds
 @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) List<String>? get eligiblePackageIds;/// lastsHours
 @JsonKey(name: AvailableNowView.lastsHoursKey_) int get lastsHours;
 /// Create a copy of AvailableNowView
@@ -34,16 +35,16 @@ $AvailableNowViewCopyWith<AvailableNowView> get copyWith => _$AvailableNowViewCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AvailableNowView&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.availableUntil, availableUntil) || other.availableUntil == availableUntil)&&(identical(other.effective, effective) || other.effective == effective)&&(identical(other.prepHours, prepHours) || other.prepHours == prepHours)&&const DeepCollectionEquality().equals(other.eligiblePackageIds, eligiblePackageIds)&&(identical(other.lastsHours, lastsHours) || other.lastsHours == lastsHours));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AvailableNowView&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.availableUntil, availableUntil) || other.availableUntil == availableUntil)&&(identical(other.effective, effective) || other.effective == effective)&&(identical(other.prepMinutes, prepMinutes) || other.prepMinutes == prepMinutes)&&const DeepCollectionEquality().equals(other.prepOptionsMinutes, prepOptionsMinutes)&&const DeepCollectionEquality().equals(other.eligiblePackageIds, eligiblePackageIds)&&(identical(other.lastsHours, lastsHours) || other.lastsHours == lastsHours));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,switchedOn,availableUntil,effective,prepHours,const DeepCollectionEquality().hash(eligiblePackageIds),lastsHours);
+int get hashCode => Object.hash(runtimeType,switchedOn,availableUntil,effective,prepMinutes,const DeepCollectionEquality().hash(prepOptionsMinutes),const DeepCollectionEquality().hash(eligiblePackageIds),lastsHours);
 
 @override
 String toString() {
-  return 'AvailableNowView(switchedOn: $switchedOn, availableUntil: $availableUntil, effective: $effective, prepHours: $prepHours, eligiblePackageIds: $eligiblePackageIds, lastsHours: $lastsHours)';
+  return 'AvailableNowView(switchedOn: $switchedOn, availableUntil: $availableUntil, effective: $effective, prepMinutes: $prepMinutes, prepOptionsMinutes: $prepOptionsMinutes, eligiblePackageIds: $eligiblePackageIds, lastsHours: $lastsHours)';
 }
 
 
@@ -54,7 +55,7 @@ abstract mixin class $AvailableNowViewCopyWith<$Res>  {
   factory $AvailableNowViewCopyWith(AvailableNowView value, $Res Function(AvailableNowView) _then) = _$AvailableNowViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: AvailableNowView.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowView.availableUntilKey_) DateTime? availableUntil,@JsonKey(name: AvailableNowView.effectiveKey_) bool effective,@JsonKey(name: AvailableNowView.prepHoursKey_) int prepHours,@JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) List<String>? eligiblePackageIds,@JsonKey(name: AvailableNowView.lastsHoursKey_) int lastsHours
+@JsonKey(name: AvailableNowView.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowView.availableUntilKey_) DateTime? availableUntil,@JsonKey(name: AvailableNowView.effectiveKey_) bool effective,@JsonKey(name: AvailableNowView.prepMinutesKey_) int prepMinutes,@JsonKey(name: AvailableNowView.prepOptionsMinutesKey_) List<int> prepOptionsMinutes,@JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) List<String>? eligiblePackageIds,@JsonKey(name: AvailableNowView.lastsHoursKey_) int lastsHours
 });
 
 
@@ -71,13 +72,14 @@ class _$AvailableNowViewCopyWithImpl<$Res>
 
 /// Create a copy of AvailableNowView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? switchedOn = null,Object? availableUntil = freezed,Object? effective = null,Object? prepHours = null,Object? eligiblePackageIds = freezed,Object? lastsHours = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? switchedOn = null,Object? availableUntil = freezed,Object? effective = null,Object? prepMinutes = null,Object? prepOptionsMinutes = null,Object? eligiblePackageIds = freezed,Object? lastsHours = null,}) {
   return _then(_self.copyWith(
 switchedOn: null == switchedOn ? _self.switchedOn : switchedOn // ignore: cast_nullable_to_non_nullable
 as bool,availableUntil: freezed == availableUntil ? _self.availableUntil : availableUntil // ignore: cast_nullable_to_non_nullable
 as DateTime?,effective: null == effective ? _self.effective : effective // ignore: cast_nullable_to_non_nullable
-as bool,prepHours: null == prepHours ? _self.prepHours : prepHours // ignore: cast_nullable_to_non_nullable
-as int,eligiblePackageIds: freezed == eligiblePackageIds ? _self.eligiblePackageIds : eligiblePackageIds // ignore: cast_nullable_to_non_nullable
+as bool,prepMinutes: null == prepMinutes ? _self.prepMinutes : prepMinutes // ignore: cast_nullable_to_non_nullable
+as int,prepOptionsMinutes: null == prepOptionsMinutes ? _self.prepOptionsMinutes : prepOptionsMinutes // ignore: cast_nullable_to_non_nullable
+as List<int>,eligiblePackageIds: freezed == eligiblePackageIds ? _self.eligiblePackageIds : eligiblePackageIds // ignore: cast_nullable_to_non_nullable
 as List<String>?,lastsHours: null == lastsHours ? _self.lastsHours : lastsHours // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -164,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowView.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_)  DateTime? availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_)  bool effective, @JsonKey(name: AvailableNowView.prepHoursKey_)  int prepHours, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_)  int lastsHours)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowView.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_)  DateTime? availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_)  bool effective, @JsonKey(name: AvailableNowView.prepMinutesKey_)  int prepMinutes, @JsonKey(name: AvailableNowView.prepOptionsMinutesKey_)  List<int> prepOptionsMinutes, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_)  int lastsHours)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AvailableNowView() when $default != null:
-return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prepHours,_that.eligiblePackageIds,_that.lastsHours);case _:
+return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prepMinutes,_that.prepOptionsMinutes,_that.eligiblePackageIds,_that.lastsHours);case _:
   return orElse();
 
 }
@@ -185,10 +187,10 @@ return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prep
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowView.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_)  DateTime? availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_)  bool effective, @JsonKey(name: AvailableNowView.prepHoursKey_)  int prepHours, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_)  int lastsHours)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowView.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_)  DateTime? availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_)  bool effective, @JsonKey(name: AvailableNowView.prepMinutesKey_)  int prepMinutes, @JsonKey(name: AvailableNowView.prepOptionsMinutesKey_)  List<int> prepOptionsMinutes, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_)  int lastsHours)  $default,) {final _that = this;
 switch (_that) {
 case _AvailableNowView():
-return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prepHours,_that.eligiblePackageIds,_that.lastsHours);case _:
+return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prepMinutes,_that.prepOptionsMinutes,_that.eligiblePackageIds,_that.lastsHours);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +207,10 @@ return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prep
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: AvailableNowView.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_)  DateTime? availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_)  bool effective, @JsonKey(name: AvailableNowView.prepHoursKey_)  int prepHours, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_)  int lastsHours)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: AvailableNowView.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_)  DateTime? availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_)  bool effective, @JsonKey(name: AvailableNowView.prepMinutesKey_)  int prepMinutes, @JsonKey(name: AvailableNowView.prepOptionsMinutesKey_)  List<int> prepOptionsMinutes, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_)  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_)  int lastsHours)?  $default,) {final _that = this;
 switch (_that) {
 case _AvailableNowView() when $default != null:
-return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prepHours,_that.eligiblePackageIds,_that.lastsHours);case _:
+return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prepMinutes,_that.prepOptionsMinutes,_that.eligiblePackageIds,_that.lastsHours);case _:
   return null;
 
 }
@@ -220,7 +222,7 @@ return $default(_that.switchedOn,_that.availableUntil,_that.effective,_that.prep
 
 @jsonSerializable
 class _AvailableNowView extends AvailableNowView {
-  const _AvailableNowView({@JsonKey(name: AvailableNowView.switchedOnKey_) required this.switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_) this.availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_) required this.effective, @JsonKey(name: AvailableNowView.prepHoursKey_) required this.prepHours, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) final  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_) required this.lastsHours}): _eligiblePackageIds = eligiblePackageIds,super._();
+  const _AvailableNowView({@JsonKey(name: AvailableNowView.switchedOnKey_) required this.switchedOn, @JsonKey(name: AvailableNowView.availableUntilKey_) this.availableUntil, @JsonKey(name: AvailableNowView.effectiveKey_) required this.effective, @JsonKey(name: AvailableNowView.prepMinutesKey_) required this.prepMinutes, @JsonKey(name: AvailableNowView.prepOptionsMinutesKey_) required final  List<int> prepOptionsMinutes, @JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) final  List<String>? eligiblePackageIds, @JsonKey(name: AvailableNowView.lastsHoursKey_) required this.lastsHours}): _prepOptionsMinutes = prepOptionsMinutes,_eligiblePackageIds = eligiblePackageIds,super._();
   factory _AvailableNowView.fromJson(Map<String, dynamic> json) => _$AvailableNowViewFromJson(json);
 
 /// switchedOn
@@ -229,8 +231,17 @@ class _AvailableNowView extends AvailableNowView {
 @override@JsonKey(name: AvailableNowView.availableUntilKey_) final  DateTime? availableUntil;
 /// effective
 @override@JsonKey(name: AvailableNowView.effectiveKey_) final  bool effective;
-/// prepHours
-@override@JsonKey(name: AvailableNowView.prepHoursKey_) final  int prepHours;
+/// prepMinutes
+@override@JsonKey(name: AvailableNowView.prepMinutesKey_) final  int prepMinutes;
+/// prepOptionsMinutes
+ final  List<int> _prepOptionsMinutes;
+/// prepOptionsMinutes
+@override@JsonKey(name: AvailableNowView.prepOptionsMinutesKey_) List<int> get prepOptionsMinutes {
+  if (_prepOptionsMinutes is EqualUnmodifiableListView) return _prepOptionsMinutes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_prepOptionsMinutes);
+}
+
 /// eligiblePackageIds
  final  List<String>? _eligiblePackageIds;
 /// eligiblePackageIds
@@ -258,16 +269,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AvailableNowView&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.availableUntil, availableUntil) || other.availableUntil == availableUntil)&&(identical(other.effective, effective) || other.effective == effective)&&(identical(other.prepHours, prepHours) || other.prepHours == prepHours)&&const DeepCollectionEquality().equals(other._eligiblePackageIds, _eligiblePackageIds)&&(identical(other.lastsHours, lastsHours) || other.lastsHours == lastsHours));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AvailableNowView&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.availableUntil, availableUntil) || other.availableUntil == availableUntil)&&(identical(other.effective, effective) || other.effective == effective)&&(identical(other.prepMinutes, prepMinutes) || other.prepMinutes == prepMinutes)&&const DeepCollectionEquality().equals(other._prepOptionsMinutes, _prepOptionsMinutes)&&const DeepCollectionEquality().equals(other._eligiblePackageIds, _eligiblePackageIds)&&(identical(other.lastsHours, lastsHours) || other.lastsHours == lastsHours));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,switchedOn,availableUntil,effective,prepHours,const DeepCollectionEquality().hash(_eligiblePackageIds),lastsHours);
+int get hashCode => Object.hash(runtimeType,switchedOn,availableUntil,effective,prepMinutes,const DeepCollectionEquality().hash(_prepOptionsMinutes),const DeepCollectionEquality().hash(_eligiblePackageIds),lastsHours);
 
 @override
 String toString() {
-  return 'AvailableNowView(switchedOn: $switchedOn, availableUntil: $availableUntil, effective: $effective, prepHours: $prepHours, eligiblePackageIds: $eligiblePackageIds, lastsHours: $lastsHours)';
+  return 'AvailableNowView(switchedOn: $switchedOn, availableUntil: $availableUntil, effective: $effective, prepMinutes: $prepMinutes, prepOptionsMinutes: $prepOptionsMinutes, eligiblePackageIds: $eligiblePackageIds, lastsHours: $lastsHours)';
 }
 
 
@@ -278,7 +289,7 @@ abstract mixin class _$AvailableNowViewCopyWith<$Res> implements $AvailableNowVi
   factory _$AvailableNowViewCopyWith(_AvailableNowView value, $Res Function(_AvailableNowView) _then) = __$AvailableNowViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: AvailableNowView.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowView.availableUntilKey_) DateTime? availableUntil,@JsonKey(name: AvailableNowView.effectiveKey_) bool effective,@JsonKey(name: AvailableNowView.prepHoursKey_) int prepHours,@JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) List<String>? eligiblePackageIds,@JsonKey(name: AvailableNowView.lastsHoursKey_) int lastsHours
+@JsonKey(name: AvailableNowView.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowView.availableUntilKey_) DateTime? availableUntil,@JsonKey(name: AvailableNowView.effectiveKey_) bool effective,@JsonKey(name: AvailableNowView.prepMinutesKey_) int prepMinutes,@JsonKey(name: AvailableNowView.prepOptionsMinutesKey_) List<int> prepOptionsMinutes,@JsonKey(name: AvailableNowView.eligiblePackageIdsKey_) List<String>? eligiblePackageIds,@JsonKey(name: AvailableNowView.lastsHoursKey_) int lastsHours
 });
 
 
@@ -295,13 +306,14 @@ class __$AvailableNowViewCopyWithImpl<$Res>
 
 /// Create a copy of AvailableNowView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? switchedOn = null,Object? availableUntil = freezed,Object? effective = null,Object? prepHours = null,Object? eligiblePackageIds = freezed,Object? lastsHours = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? switchedOn = null,Object? availableUntil = freezed,Object? effective = null,Object? prepMinutes = null,Object? prepOptionsMinutes = null,Object? eligiblePackageIds = freezed,Object? lastsHours = null,}) {
   return _then(_AvailableNowView(
 switchedOn: null == switchedOn ? _self.switchedOn : switchedOn // ignore: cast_nullable_to_non_nullable
 as bool,availableUntil: freezed == availableUntil ? _self.availableUntil : availableUntil // ignore: cast_nullable_to_non_nullable
 as DateTime?,effective: null == effective ? _self.effective : effective // ignore: cast_nullable_to_non_nullable
-as bool,prepHours: null == prepHours ? _self.prepHours : prepHours // ignore: cast_nullable_to_non_nullable
-as int,eligiblePackageIds: freezed == eligiblePackageIds ? _self._eligiblePackageIds : eligiblePackageIds // ignore: cast_nullable_to_non_nullable
+as bool,prepMinutes: null == prepMinutes ? _self.prepMinutes : prepMinutes // ignore: cast_nullable_to_non_nullable
+as int,prepOptionsMinutes: null == prepOptionsMinutes ? _self._prepOptionsMinutes : prepOptionsMinutes // ignore: cast_nullable_to_non_nullable
+as List<int>,eligiblePackageIds: freezed == eligiblePackageIds ? _self._eligiblePackageIds : eligiblePackageIds // ignore: cast_nullable_to_non_nullable
 as List<String>?,lastsHours: null == lastsHours ? _self.lastsHours : lastsHours // ignore: cast_nullable_to_non_nullable
 as int,
   ));

@@ -16,8 +16,8 @@ T _$identity<T>(T value) => value;
 mixin _$AvailableNowUpdate {
 
 /// switchedOn
-@JsonKey(name: AvailableNowUpdate.switchedOnKey_) bool get switchedOn;/// prepHours
-@JsonKey(name: AvailableNowUpdate.prepHoursKey_) int? get prepHours;
+@JsonKey(name: AvailableNowUpdate.switchedOnKey_) bool get switchedOn;/// prepMinutes
+@JsonKey(name: AvailableNowUpdate.prepMinutesKey_) int? get prepMinutes;
 /// Create a copy of AvailableNowUpdate
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +30,16 @@ $AvailableNowUpdateCopyWith<AvailableNowUpdate> get copyWith => _$AvailableNowUp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AvailableNowUpdate&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.prepHours, prepHours) || other.prepHours == prepHours));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AvailableNowUpdate&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.prepMinutes, prepMinutes) || other.prepMinutes == prepMinutes));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,switchedOn,prepHours);
+int get hashCode => Object.hash(runtimeType,switchedOn,prepMinutes);
 
 @override
 String toString() {
-  return 'AvailableNowUpdate(switchedOn: $switchedOn, prepHours: $prepHours)';
+  return 'AvailableNowUpdate(switchedOn: $switchedOn, prepMinutes: $prepMinutes)';
 }
 
 
@@ -50,7 +50,7 @@ abstract mixin class $AvailableNowUpdateCopyWith<$Res>  {
   factory $AvailableNowUpdateCopyWith(AvailableNowUpdate value, $Res Function(AvailableNowUpdate) _then) = _$AvailableNowUpdateCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: AvailableNowUpdate.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowUpdate.prepHoursKey_) int? prepHours
+@JsonKey(name: AvailableNowUpdate.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowUpdate.prepMinutesKey_) int? prepMinutes
 });
 
 
@@ -67,10 +67,10 @@ class _$AvailableNowUpdateCopyWithImpl<$Res>
 
 /// Create a copy of AvailableNowUpdate
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? switchedOn = null,Object? prepHours = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? switchedOn = null,Object? prepMinutes = freezed,}) {
   return _then(_self.copyWith(
 switchedOn: null == switchedOn ? _self.switchedOn : switchedOn // ignore: cast_nullable_to_non_nullable
-as bool,prepHours: freezed == prepHours ? _self.prepHours : prepHours // ignore: cast_nullable_to_non_nullable
+as bool,prepMinutes: freezed == prepMinutes ? _self.prepMinutes : prepMinutes // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }
@@ -156,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowUpdate.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowUpdate.prepHoursKey_)  int? prepHours)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowUpdate.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowUpdate.prepMinutesKey_)  int? prepMinutes)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AvailableNowUpdate() when $default != null:
-return $default(_that.switchedOn,_that.prepHours);case _:
+return $default(_that.switchedOn,_that.prepMinutes);case _:
   return orElse();
 
 }
@@ -177,10 +177,10 @@ return $default(_that.switchedOn,_that.prepHours);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowUpdate.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowUpdate.prepHoursKey_)  int? prepHours)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: AvailableNowUpdate.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowUpdate.prepMinutesKey_)  int? prepMinutes)  $default,) {final _that = this;
 switch (_that) {
 case _AvailableNowUpdate():
-return $default(_that.switchedOn,_that.prepHours);case _:
+return $default(_that.switchedOn,_that.prepMinutes);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +197,10 @@ return $default(_that.switchedOn,_that.prepHours);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: AvailableNowUpdate.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowUpdate.prepHoursKey_)  int? prepHours)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: AvailableNowUpdate.switchedOnKey_)  bool switchedOn, @JsonKey(name: AvailableNowUpdate.prepMinutesKey_)  int? prepMinutes)?  $default,) {final _that = this;
 switch (_that) {
 case _AvailableNowUpdate() when $default != null:
-return $default(_that.switchedOn,_that.prepHours);case _:
+return $default(_that.switchedOn,_that.prepMinutes);case _:
   return null;
 
 }
@@ -212,13 +212,13 @@ return $default(_that.switchedOn,_that.prepHours);case _:
 
 @jsonSerializable
 class _AvailableNowUpdate extends AvailableNowUpdate {
-  const _AvailableNowUpdate({@JsonKey(name: AvailableNowUpdate.switchedOnKey_) required this.switchedOn, @JsonKey(name: AvailableNowUpdate.prepHoursKey_) this.prepHours}): super._();
+  const _AvailableNowUpdate({@JsonKey(name: AvailableNowUpdate.switchedOnKey_) required this.switchedOn, @JsonKey(name: AvailableNowUpdate.prepMinutesKey_) this.prepMinutes}): super._();
   factory _AvailableNowUpdate.fromJson(Map<String, dynamic> json) => _$AvailableNowUpdateFromJson(json);
 
 /// switchedOn
 @override@JsonKey(name: AvailableNowUpdate.switchedOnKey_) final  bool switchedOn;
-/// prepHours
-@override@JsonKey(name: AvailableNowUpdate.prepHoursKey_) final  int? prepHours;
+/// prepMinutes
+@override@JsonKey(name: AvailableNowUpdate.prepMinutesKey_) final  int? prepMinutes;
 
 /// Create a copy of AvailableNowUpdate
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +233,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AvailableNowUpdate&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.prepHours, prepHours) || other.prepHours == prepHours));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AvailableNowUpdate&&(identical(other.switchedOn, switchedOn) || other.switchedOn == switchedOn)&&(identical(other.prepMinutes, prepMinutes) || other.prepMinutes == prepMinutes));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,switchedOn,prepHours);
+int get hashCode => Object.hash(runtimeType,switchedOn,prepMinutes);
 
 @override
 String toString() {
-  return 'AvailableNowUpdate(switchedOn: $switchedOn, prepHours: $prepHours)';
+  return 'AvailableNowUpdate(switchedOn: $switchedOn, prepMinutes: $prepMinutes)';
 }
 
 
@@ -253,7 +253,7 @@ abstract mixin class _$AvailableNowUpdateCopyWith<$Res> implements $AvailableNow
   factory _$AvailableNowUpdateCopyWith(_AvailableNowUpdate value, $Res Function(_AvailableNowUpdate) _then) = __$AvailableNowUpdateCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: AvailableNowUpdate.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowUpdate.prepHoursKey_) int? prepHours
+@JsonKey(name: AvailableNowUpdate.switchedOnKey_) bool switchedOn,@JsonKey(name: AvailableNowUpdate.prepMinutesKey_) int? prepMinutes
 });
 
 
@@ -270,10 +270,10 @@ class __$AvailableNowUpdateCopyWithImpl<$Res>
 
 /// Create a copy of AvailableNowUpdate
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? switchedOn = null,Object? prepHours = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? switchedOn = null,Object? prepMinutes = freezed,}) {
   return _then(_AvailableNowUpdate(
 switchedOn: null == switchedOn ? _self.switchedOn : switchedOn // ignore: cast_nullable_to_non_nullable
-as bool,prepHours: freezed == prepHours ? _self.prepHours : prepHours // ignore: cast_nullable_to_non_nullable
+as bool,prepMinutes: freezed == prepMinutes ? _self.prepMinutes : prepMinutes // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }

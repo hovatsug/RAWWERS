@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, Numeric, UniqueConstraint, false
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Text, Time, Numeric, UniqueConstraint, false, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -211,6 +211,15 @@ class BookingRequest(Base):
     pay_window_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+# The expiry sweep's way in, every minute: pending requests by deadline
+# (migration 20261014_0062).
+Index(
+    "ix_booking_request_pending_expires",
+    BookingRequest.expires_at,
+    postgresql_where=text("status = 'pending'"),
+)
 
 
 class BookingRequestTransition(Base):

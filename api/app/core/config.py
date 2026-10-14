@@ -163,7 +163,7 @@ class Settings(BaseSettings):
     # be well under that granularity, not seconds-fresh like the outbox.
     followup_jobs_interval_seconds: int = Field(default=60, alias="FOLLOWUP_JOBS_INTERVAL_SECONDS")
     reminders_interval_seconds: int = Field(default=60, alias="REMINDERS_INTERVAL_SECONDS")
-    booking_request_expiry_sweep_interval_seconds: int = Field(default=900, alias="BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS")
+    booking_request_expiry_sweep_interval_seconds: int = Field(default=60, alias="BOOKING_REQUEST_EXPIRY_SWEEP_INTERVAL_SECONDS")
     payout_hold_release_sweep_interval_seconds: int = Field(default=3600, alias="PAYOUT_HOLD_RELEASE_SWEEP_INTERVAL_SECONDS")
     dispute_escalation_sweep_interval_seconds: int = Field(default=3600, alias="DISPUTE_ESCALATION_SWEEP_INTERVAL_SECONDS")
     stuck_booking_sweep_interval_seconds: int = Field(default=3600, alias="STUCK_BOOKING_SWEEP_INTERVAL_SECONDS")

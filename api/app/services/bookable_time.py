@@ -634,7 +634,7 @@ def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int |
                         gig,
                         GigStatus.cancelled_by_client,
                         gig.client_user_id,
-                        reason="Not paid within 24 hours of being accepted; the time was released",
+                        reason="Not paid by its pay deadline; the time was released",
                     )
                 )
             expired += 1

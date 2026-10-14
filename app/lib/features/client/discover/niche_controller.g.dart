@@ -6,7 +6,7 @@ part of 'niche_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$nicheControllerHash() => r'2a4ab1bf32c80b384ab3bfeb41f6fe221b3c3202';
+String _$nicheControllerHash() => r'7dd57b9976b5b6b8e38efa6b8a184283d321abe2';
 
 /// Copied from Dart SDK
 class _SystemHash {

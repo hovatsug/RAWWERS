@@ -20,6 +20,7 @@ import 'package:rawwers/features/shared/auth/login_screen.dart';
 import 'package:rawwers/features/shared/auth/register_screen.dart';
 import 'package:rawwers/features/shared/auth/reset_password_screen.dart';
 import 'package:rawwers/features/shared/auth/verify_email_screen.dart';
+import 'package:rawwers/features/client/discover/discover_freshness.dart';
 
 part 'app_router_client.g.dart';
 
@@ -109,6 +110,9 @@ GoRouter clientRouter(Ref ref) {
         builder: (context, state, navigationShell) => ClientShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
+            // Back from a profile or a niche page: Discover's live rows may
+            // be stale (discover_freshness.dart).
+            observers: [DiscoverPopObserver(() => ref.read(discoverReturnsProvider.notifier).bump())],
             routes: [
               GoRoute(
                 path: ClientRoute.discover,

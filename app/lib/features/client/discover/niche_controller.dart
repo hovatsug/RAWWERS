@@ -7,6 +7,7 @@ import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
 import 'package:rawwers/features/client/discover/location_controller.dart';
+import 'package:rawwers/features/client/discover/discover_freshness.dart';
 
 part 'niche_controller.g.dart';
 
@@ -48,6 +49,7 @@ class NichePage extends NicheState {
 class NicheController extends _$NicheController {
   @override
   Future<NicheState> build(String nicheSlug) async {
+    refetchWhenDiscoverReturns(ref, fetchedAt: DateTime.now(), refetch: ref.invalidateSelf);
     final location = await ref.watch(locationControllerProvider.future);
     if (location == null) return const NicheNeedsLocation();
 

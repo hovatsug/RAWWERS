@@ -121,6 +121,18 @@ class DiscoverCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      // Set by the server only while they are available now:
+                      // switched on, app open, and a real start in the next
+                      // 24 hours.
+                      if (card.readyInMinutes case final minutes?) ...[
+                        const SizedBox(height: RSpace.s4),
+                        Text(
+                          readyInLabel(minutes),
+                          style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -186,4 +198,12 @@ String _humanise(String slug) {
       .split('-')
       .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
       .join(' ');
+}
+
+/// "Ready in about 2 hours" from a preparation time in minutes: 90 reads as
+/// "1.5 hours".
+String readyInLabel(int minutes) {
+  final hours = minutes / 60;
+  final number = hours == hours.roundToDouble() ? hours.round().toString() : hours.toString();
+  return 'Ready in about $number ${hours == 1 ? 'hour' : 'hours'}';
 }

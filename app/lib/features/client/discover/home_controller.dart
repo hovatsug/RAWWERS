@@ -5,6 +5,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
 import 'package:rawwers/features/client/discover/location_controller.dart';
+import 'package:rawwers/features/client/discover/discover_freshness.dart';
 
 part 'home_controller.g.dart';
 
@@ -46,6 +47,9 @@ class HomeRows extends HomeState {
 class HomeController extends _$HomeController {
   @override
   Future<HomeState> build() async {
+    // The live rows go stale by the minute: fetch again when Discover comes
+    // back into view (discover_freshness.dart).
+    refetchWhenDiscoverReturns(ref, fetchedAt: DateTime.now(), refetch: ref.invalidateSelf);
     final location = await ref.watch(locationControllerProvider.future);
     if (location == null) return const HomeNeedsLocation();
 

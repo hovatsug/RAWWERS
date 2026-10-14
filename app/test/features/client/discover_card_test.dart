@@ -13,7 +13,7 @@ import 'package:rawwers/design/components/r_online_dot.dart';
 /// the widget tree rather than pixels: that the server's `cover_url` becomes
 /// the image's URL, and that its absence degrades to a placeholder instead of
 /// a broken frame.
-ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false}) => ClientDiscoverCard(
+ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false, int? readyInMinutes}) => ClientDiscoverCard(
       proUserId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
@@ -33,6 +33,7 @@ ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online =
       portfolioVideoCount: 0,
       responseLabel: responseLabel,
       online: online,
+      readyInMinutes: readyInMinutes,
     );
 
 Widget _wrap(ClientDiscoverCard card) => MaterialApp(
@@ -112,5 +113,25 @@ void main() {
 
     await tester.pumpWidget(_wrap(_card()));
     expect(find.byType(ROnlineDot), findsNothing);
+  });
+
+  testWidgets('an available photographer\'s card says how soon they can be ready', (tester) async {
+    await tester.pumpWidget(_wrap(_card(readyInMinutes: 90)));
+    expect(find.text('Ready in about 1.5 hours'), findsOneWidget);
+  });
+
+  testWidgets('a card says nothing about readiness unless the server says they are available', (tester) async {
+    await tester.pumpWidget(_wrap(_card()));
+    expect(find.textContaining('Ready in'), findsNothing);
+  });
+
+  test('preparation times read as hours', () {
+    expect([90, 120, 180, 240, 360].map(readyInLabel), [
+      'Ready in about 1.5 hours',
+      'Ready in about 2 hours',
+      'Ready in about 3 hours',
+      'Ready in about 4 hours',
+      'Ready in about 6 hours',
+    ]);
   });
 }

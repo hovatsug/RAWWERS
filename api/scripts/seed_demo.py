@@ -20,6 +20,13 @@ feature is visible in the app rather than present only in tests:
                   and switches them off when it stops. Short notice still
                   needs working hours inside the next 24 hours - the step
                   prints the earliest short-notice slot each one has.
+  live rows       Discover's "Available now" and "Online now" show Ines and
+                  Tomas, and three photographers are set up to be left out,
+                  one per rule: Patricia online with her dot hidden (not in
+                  Online now), Nuno switched on but never checking in, and
+                  Simao switched on and online with the next three days
+                  blocked (neither in Available now; Simao still in Online
+                  now).
 
 Everything goes through the real routes, called in-process with real access
 tokens: the client's booking request (with its availability check and rate
@@ -530,6 +537,19 @@ def seed_chat(db, *, dry_run: bool) -> list[str]:
 # "available now" only counts while the app is checking in.
 AVAILABLE_EMAILS = ("ines.carvalho@rawwers.dev", "tomas.belmonte@rawwers.dev")
 
+# The three ways to be left out of Discover's live rows, one photographer
+# each, so each can be seen not happening:
+#   hidden dot  online, but hides the dot           -> not in "Online now"
+#   stale       switched on, app never checks in    -> not in "Available now"
+#   no start    switched on and online, but every
+#               hour blocked for the next three days -> not in "Available now"
+#                                                       (still in "Online now")
+HIDDEN_DOT_EMAIL = "patricia.boaventura@rawwers.dev"
+STALE_EMAIL = "nuno.bastos@rawwers.dev"
+NO_START_EMAIL = "simao.vasques@rawwers.dev"
+SWITCHED_ON_EMAILS = AVAILABLE_EMAILS + (STALE_EMAIL, NO_START_EMAIL)
+BLOCK_REASON = "demo: away - no start in the next 24 hours"
+
 
 def _short_notice_package(db, pro_id: uuid.UUID) -> ProPackage | None:
     """The package to flag: the shortest active one - an hour's portrait is
@@ -542,13 +562,32 @@ def _short_notice_package(db, pro_id: uuid.UUID) -> ProPackage | None:
     ).scalar_one_or_none()
 
 
+def _user_id(db, email: str) -> uuid.UUID | None:
+    return db.execute(select(UserAccount.user_id).where(UserAccount.email == email)).scalar_one_or_none()
+
+
+def _block_next_days(api, db, pro_id: uuid.UUID) -> int:
+    """Every hour of the next three days blocked, through the photographer's
+    own blocked-time route. The route replaces their whole set - this is a
+    demo account, made for this."""
+    now = datetime.now(timezone.utc)
+    resp = api.put(
+        "/v1/pro/scheduling/exceptions",
+        headers=_headers(db, pro_id),
+        json={"items": [{"start_at_utc": (now - timedelta(hours=1)).isoformat(), "end_at_utc": (now + timedelta(days=3)).isoformat(), "reason": BLOCK_REASON}]},
+    )
+    return resp.status_code
+
+
 def seed_available_now(db, *, dry_run: bool) -> list[str]:
     """Flag one package per demo photographer as fine at short notice,
     through the photographer's own package route (sent with its niche, as
-    the route requires). Already flagged is left alone."""
+    the route requires). Already flagged is left alone. Then set up the
+    three exclusion cases: hide one dot, block one calendar (the stale one
+    needs nothing - it simply never checks in)."""
     api = _api()
     lines = []
-    for email in AVAILABLE_EMAILS:
+    for email in SWITCHED_ON_EMAILS:
         pro_id = db.execute(select(UserAccount.user_id).where(UserAccount.email == email)).scalar_one_or_none()
         package = _short_notice_package(db, pro_id) if pro_id else None
         if package is None:
@@ -569,6 +608,16 @@ def seed_available_now(db, *, dry_run: bool) -> list[str]:
             db.expire_all()
             lines.append(f"{email}: flagged '{package.title}' ({package.duration_minutes} min)")
         _ensure_working_hours(api, db, pro_id)
+    hidden, blocked = _user_id(db, HIDDEN_DOT_EMAIL), _user_id(db, NO_START_EMAIL)
+    if dry_run:
+        lines.append(f"would hide {HIDDEN_DOT_EMAIL}'s dot and block {NO_START_EMAIL}'s next three days")
+    else:
+        if hidden:
+            status = api.put("/v1/pro/presence/visibility", headers=_headers(db, hidden), json={"visible": False}).status_code
+            lines.append(f"{HIDDEN_DOT_EMAIL}: dot hidden ({status}) - online, but not in Online now")
+        if blocked:
+            lines.append(f"{NO_START_EMAIL}: next three days blocked ({_block_next_days(api, db, blocked)}) - online, not in Available now")
+        lines.append(f"{STALE_EMAIL}: switched on by the refresher but never checks in - not in Available now")
     lines.append("switched on only while --refresh-presence runs; see the slots it prints")
     return lines
 
@@ -649,10 +698,10 @@ def refresh_presence() -> int:
         ]
         available = [
             row.user_id
-            for row in db.execute(select(UserAccount.user_id).where(UserAccount.email.in_(AVAILABLE_EMAILS))).all()
+            for row in db.execute(select(UserAccount.user_id).where(UserAccount.email.in_(SWITCHED_ON_EMAILS))).all()
         ]
     print(f"presence refresher: keeping {len(pros)} photographers online, every {_EVERY_SECONDS}s. Stop with --stop-presence-refresher.")
-    print(f"presence refresher: and {len(available)} of them available now")
+    print(f"presence refresher: and {len(available)} switched on (two available now, two set up to be left out)")
     first = True
     try:
         while not redis.exists(_STOP_KEY):

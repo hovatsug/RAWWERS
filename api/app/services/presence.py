@@ -74,6 +74,33 @@ def _fresh(ts: float) -> bool:
     return time.time() - ts <= get_settings().presence_window_seconds
 
 
+def live_states(pro_user_ids: Iterable) -> dict[str, tuple[float, bool]] | None:
+    """For the live Discover rows: each photographer's heartbeat age and
+    visibility, in one MGET. Only for the server's own decisions - the time
+    never leaves this process. None when Redis cannot say: the rows are then
+    left out, never guessed."""
+    ids = list(dict.fromkeys(str(i) for i in pro_user_ids))
+    if not ids:
+        return {}
+    try:
+        values = _mget([_key(i) for i in ids])
+    except Exception:
+        logger.warning("presence_lookup_failed", exc_info=True)
+        return None
+    now = time.time()
+    states = {}
+    for pro_id, raw in zip(ids, values):
+        current = _parse(raw)
+        if current is not None:
+            states[pro_id] = (now - current[0], current[1])
+    return states
+
+
+def is_shown(state: tuple[float, bool] | None) -> bool:
+    """The dot's rule, for one state from live_states: fresh and visible."""
+    return state is not None and state[1] and state[0] <= get_settings().presence_window_seconds
+
+
 def record_heartbeat(db: Session, pro_user_id: uuid.UUID) -> bool:
     """Record that the photographer's app is open. False when throttled: a
     beat within the minimum interval of the last one is acknowledged and not

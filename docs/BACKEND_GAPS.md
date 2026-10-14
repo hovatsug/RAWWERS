@@ -2001,3 +2001,20 @@ Every field of `SchedulingPolicyUpdateRequest` has a default, and the route writ
 - the test deletes its account at the end through `DELETE /v1/dev/test-accounts/me`
 
 Both dev routes exist only when `APP_ENV` is development, dev, local or test. Elsewhere they answer 404 before authentication, and they are not in the published API. The deletion refuses anything but an `@rawwers.test` account made in the last hour with no booking or money rows. The 91 existing f5 accounts were de-listed on 2026-10-13 (never visible to clients); nothing deleted them.
+
+## Discover's live rows: "Available now" and "Online now" - LOGGED
+
+Both rows lead Discover and every niche page. They are worked out on every request, after the cached rows (`app/services/live_rows.py`), from the primary database rather than the replica, so a photographer who switches off or goes quiet is gone on the next request.
+
+- **Online now:** presence fresh (the dot's five minutes) and the dot visible. A photographer who hides the dot is left out.
+- **Available now:** switched on, presence fresh (two minutes), an active short-notice package (in the niche, on a niche page), and a real bookable start in the next 24 hours from `bookable_windows`, the rule every booking path uses.
+
+**Order never uses ranking.** "Available now" sorts by preparation time, then a rotation; "Online now" by the rotation alone. The rotation is a hash of the day, the viewer and the photographer.
+
+**Cost per home request:** one indexed query for the eligible photographers, one presence MGET that also sets every card's dot, one query for who is switched on, and the availability rule for at most `AVAILABLE_CANDIDATE_CAP` (24) candidates. Dev Lisbon, 2026-10-14: 15 eligible, 3 checked, 36-66 ms warm (431 ms on the first, cold request). Almost all of it is the availability rule, about 10-20 ms per candidate warm, so a city with 24 switched-on photographers would add roughly half a second.
+
+**Failure.** If Redis cannot answer, both rows are left out and the dots go too; if anything else in them fails, the rows are left out and the dots fall back to their own lookup. The screen never fails for them.
+
+**Freshness, the toggle and the package flag are checked twice.** `live_rows` filters on them before the availability rule, as a cheap pre-filter. The rule enforces them anyway: a stale, switched-off or unflagged photographer gets ordinary notice, and so has no start in the next 24 hours. Tests check both: the photographer is left out, and the expensive check is never run for them.
+
+**The app** fetches Discover again when it comes back into view (app resumed, Discover tab selected, a profile or niche page popped), at most every 15 seconds (`discover_freshness.dart`). Cards show "Ready in about N hours" while the server says the photographer is available now.

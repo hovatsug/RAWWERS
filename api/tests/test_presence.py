@@ -258,8 +258,10 @@ def test_presence_never_changes_any_order(client, db_session, lisbon):
     def orders():
         home = client.get("/v1/client/home?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}).json()
         discover = client.get("/v1/client/discover?city=Lisbon&country=PT", headers={"X-User-Id": str(lisbon)}).json()
+        # "Online now" is the one row presence decides, by design
+        # (test_live_rows.py); every other row and the list must not move.
         return (
-            [(row["key"], [c["pro_user_id"] for c in row["items"]]) for row in home["rows"]],
+            [(row["key"], [c["pro_user_id"] for c in row["items"]]) for row in home["rows"] if row["key"] != "online_now"],
             [c["pro_user_id"] for c in discover["items"]],
         )
 

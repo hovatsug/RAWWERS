@@ -80,6 +80,10 @@ class ClientDiscoverCard(BaseModel):
     # response from live presence, never cached, never a time. See
     # app/services/presence.py.
     online: bool = False
+    # "Ready in about N hours": the photographer is in "Available now" and
+    # this is their preparation time, in minutes. Set live on every response
+    # like `online`; null whenever they are not available now.
+    ready_in_minutes: int | None = None
     top_niches: list[dict] = Field(default_factory=list)
     portfolio_photo_count: int
     portfolio_video_count: int

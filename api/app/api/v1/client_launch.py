@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from collections import Counter
 from collections.abc import Sequence
@@ -79,7 +80,7 @@ from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
-from app.services import presence
+from app.services import live_rows, presence
 from app.services.response_time import card_label, client_label
 from app.models.risk import RiskActionType
 from app.services.trust_safety import (
@@ -100,6 +101,7 @@ PROFILE_PORTFOLIO_LIMIT = 24
 
 
 router = APIRouter(tags=["client_launch"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/client/access", response_model=ClientAccessResponse)
@@ -480,6 +482,63 @@ def client_pro_profile(
     )
     db_write.commit()
     return _with_presence(response)
+
+
+def _with_live_rows(db: Session, response: ClientHomeResponse, *, country: str, city: str, scope, user) -> ClientHomeResponse:
+    """Put "Available now" and "Online now" at the top - worked out now,
+    never from the cache (app/services/live_rows.py). Read from the primary,
+    not the replica: a photographer who just switched off must be gone on
+    the very next request. The ranked rows below are not touched. If any of
+    this fails, the screen comes without the two rows rather than not at
+    all.
+
+    It also sets every card's dot (see _with_presence), from the same one
+    presence read: every card on this screen is one of the eligible
+    photographers it covers."""
+    try:
+        base = _row_base_query(country, city)
+        if scope is not None:
+            base = _in_niche(base, scope.id)
+        eligible = list(db.execute(base.with_only_columns(ProPublicIndex.pro_user_id)).scalars())
+        live = live_rows.compute(
+            db,
+            eligible=eligible,
+            niche_id=scope.id if scope else None,
+            seed=live_rows.viewer_seed(user.user_id if user else None, country, city),
+        )
+        shown = {p for p in eligible if presence.is_shown((live.states or {}).get(str(p)))}
+        if not (live.available or live.online):
+            return _with_dots(response, shown)
+        known = {card.pro_user_id: card for row in response.rows for card in row.items}
+        missing = [p for p in {*live.available, *live.online} if p not in known]
+        if missing:
+            index_rows = db.execute(select(ProPublicIndex).where(ProPublicIndex.pro_user_id.in_(missing))).scalars().all()
+            for card in _cards_from_index(db, index_rows):
+                known[card.pro_user_id] = card
+        where = f" in {scope.name}" if scope else ""
+        rows = []
+        for key, title, subtitle, ids in (
+            ("available_now", f"Available now{where}", "Can shoot in the next 24 hours", live.available),
+            ("online_now", f"Online now{where}", "Open to chat right now", live.online),
+        ):
+            items = [known[p].model_copy() for p in ids if p in known]
+            if items:  # absent, never empty
+                rows.append(ClientHomeRow(key=key, title=title, subtitle=subtitle, items=items))
+        response.rows = rows + response.rows
+        for row in response.rows:
+            for card in row.items:
+                card.ready_in_minutes = live.ready_in.get(card.pro_user_id)
+        return _with_dots(response, shown)
+    except Exception:
+        logger.warning("live_rows_failed", exc_info=True)
+        return _with_presence(response)
+
+
+def _with_dots(response: ClientHomeResponse, shown: set[uuid.UUID]) -> ClientHomeResponse:
+    for row in response.rows:
+        for card in row.items:
+            card.online = card.pro_user_id in shown
+    return response
 
 
 # How far ahead a client can look, and how much at once. Ninety days covers
@@ -1065,7 +1124,7 @@ def client_home(
     )
     cached = cache_get_json(cache_key)
     if cached:
-        return _with_presence(ClientHomeResponse.model_validate(cached))
+        return _with_live_rows(db_write, ClientHomeResponse.model_validate(cached), country=country, city=city, scope=scope, user=user)
 
     base = _row_base_query(country, city)
     if scope is not None:
@@ -1184,7 +1243,7 @@ def client_home(
         },
     )
     db_write.commit()
-    return _with_presence(response)
+    return _with_live_rows(db_write, response, country=country, city=city, scope=scope, user=user)
 
 
 # Tiers that count as genuinely working in a niche that is not someone's

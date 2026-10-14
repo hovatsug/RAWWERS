@@ -653,11 +653,16 @@ def check_requestable(
     start_at_utc: datetime,
     end_at_utc: datetime,
     shape: Shape | None,
+    ignore_gig_id: uuid.UUID | None = None,
+    ignore_booking_request_id: uuid.UUID | None = None,
 ) -> RequestTerms:
     """For a new request: refuse unless bookable (with short notice where it
     applies) and offered by the package, and return the terms it is made
     under. Every path that makes a request uses this - the client funnel,
-    the photographer's side and chat - so none can drift."""
+    the photographer's side and chat - so none can drift. Confirming a time
+    other than the one requested is judged here too, as a request made now;
+    the ignore_* arguments are that booking, so it does not clash with
+    itself."""
     from app.services.deadlines import request_terms
 
     now = datetime.now(timezone.utc)
@@ -667,6 +672,8 @@ def check_requestable(
         pro_user_id=pro_user_id,
         start_at_utc=start_at_utc,
         end_at_utc=end_at_utc,
+        ignore_gig_id=ignore_gig_id,
+        ignore_booking_request_id=ignore_booking_request_id,
         preset=shape.preset if shape else SchedulingPreset.interval,
         short_notice_ok=short_ok,
     )

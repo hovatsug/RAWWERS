@@ -75,10 +75,24 @@ def pay_deadline_for_request(request, *, accepted_at: datetime) -> datetime:
     return pay_deadline(accepted_at=accepted_at, start=request.requested_start, short_notice=request.short_notice, window=window)
 
 
+def pay_deadline_for_terms(terms: RequestTerms, *, start: datetime, accepted_at: datetime) -> datetime:
+    """The pay deadline of a booking confirmed now for `start` on `terms` -
+    for a time other than the one requested, judged as a new request."""
+    return pay_deadline(
+        accepted_at=accepted_at,
+        start=start,
+        short_notice=terms.short_notice,
+        window=timedelta(minutes=terms.pay_window_minutes),
+    )
+
+
 def ensure_payable_in_time(request, *, accepted_at: datetime) -> datetime:
     """The pay deadline accepting now would set, refusing if it has already
     passed: a yes the client cannot complete in time books nothing."""
-    deadline = pay_deadline_for_request(request, accepted_at=accepted_at)
+    return refuse_if_too_late_to_pay(pay_deadline_for_request(request, accepted_at=accepted_at), accepted_at=accepted_at)
+
+
+def refuse_if_too_late_to_pay(deadline: datetime, *, accepted_at: datetime) -> datetime:
     if deadline <= accepted_at:
         raise APIError(
             code="too_late_to_pay",

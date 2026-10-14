@@ -190,6 +190,27 @@ def test_a_slot_three_hours_away_is_offered_requested_accepted_and_paid_when_ava
     assert _pay(client, pro, booking_id).status_code == 200  # 5. before payment
 
 
+def test_a_different_short_notice_time_is_offered_confirmed_and_paid_when_available(client, db_session):
+    """The six paths for a time other than the one requested: offered by the
+    calendar, confirmed by the photographer (judged as a new request now),
+    paid before its deadline, and then no longer offered."""
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    asked, _ = _slot_in(30)
+    booking_id = _request(client, pro, pro.client_id, asked, asked + timedelta(hours=1)).json()["booking_id"]
+    start, end = _slot_in(4)
+
+    assert _offered(client, pro, start) is True  # 1. the calendar
+    confirmed = client.post(
+        f"/v1/pro/bookings/{booking_id}/confirm-slot",
+        headers={"X-User-Id": pro.id},
+        json={"start_at_utc": start.isoformat(), "end_at_utc": end.isoformat()},
+    )
+    assert confirmed.status_code == 200, confirmed.text  # 4. confirming a slot
+    assert _pay(client, pro, booking_id).status_code == 200  # 5. before payment
+    assert _offered(client, pro, start) is False  # taken
+
+
 def test_the_same_slot_is_refused_by_calendar_and_request_when_switched_off(client, db_session):
     pro = _short_notice_pro(db_session)
     _seen(pro)
@@ -552,3 +573,150 @@ def test_the_calendar_is_never_served_stale_across_a_toggle(client, db_session):
     assert _offered(client, pro, start) is True
     _toggle(client, pro, on=False)
     assert _offered(client, pro, start) is False
+# --- confirming a time other than the one requested ----------------------------------
+#
+# A request's recorded terms belong to the time it asked for. Any other time -
+# confirming a different window, or a reschedule - is judged as a new request
+# made now: the toggle, the package flag and the app's freshness as they are
+# now, the photographer's notice from now, and a pay deadline worked out again
+# for the new time.
+
+
+def _confirm(client, pro, booking_id, start, end):
+    return client.post(
+        f"/v1/pro/bookings/{booking_id}/confirm-slot",
+        headers={"X-User-Id": pro.id},
+        json={"start_at_utc": start.isoformat(), "end_at_utc": end.isoformat()},
+    )
+
+
+def _ordinary_request(client, db_session, pro, *, accept=False, asked_days_ago=0):
+    """A request for a slot 30 hours ahead - outside the 24 hours' notice -
+    optionally accepted, and optionally made some days ago."""
+    asked, _ = _slot_in(30)
+    booking_id = _request(client, pro, pro.client_id, asked, asked + timedelta(hours=1)).json()["booking_id"]
+    if accept:
+        assert client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id}).status_code == 200
+    if asked_days_ago:
+        booking = _booking(db_session, booking_id)
+        booking.created_at -= timedelta(days=asked_days_ago)
+        db_session.commit()
+    return booking_id
+
+
+@pytest.mark.parametrize("accept", [False, True], ids=["pending", "accepted (reschedule)"])
+def test_another_time_inside_notice_is_refused_when_not_available(client, db_session, accept):
+    """Asked a week ago; moving it to three hours from now is a new booking
+    inside the photographer's 24 hours' notice. Counting that notice from a
+    week ago let it through."""
+    pro = _short_notice_pro(db_session)
+    booking_id = _ordinary_request(client, db_session, pro, accept=accept, asked_days_ago=7)
+    start, end = _slot_in(3)
+
+    resp = _confirm(client, pro, booking_id, start, end)
+
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "validation_error"
+
+
+@pytest.mark.parametrize("accept", [False, True], ids=["pending", "accepted (reschedule)"])
+def test_another_time_at_short_notice_goes_through_while_available_on_short_terms(client, db_session, accept):
+    pro = _short_notice_pro(db_session)
+    booking_id = _ordinary_request(client, db_session, pro, accept=accept, asked_days_ago=7)
+    _available(client, db_session, pro)
+    start, end = _slot_in(3)
+
+    resp = _confirm(client, pro, booking_id, start, end)
+
+    assert resp.status_code == 200, resp.text
+    gig = _gig_for(db_session, booking_id)
+    assert gig.scheduled_start == start
+    now = datetime.now(timezone.utc)
+    assert gig.pay_deadline_at - now <= timedelta(minutes=31), "the short pay window of a short-notice time"
+    assert gig.pay_deadline_at <= start - timedelta(minutes=get_settings().pay_deadline_margin_minutes)
+    assert _pay(client, pro, booking_id).status_code == 200
+
+
+def test_another_time_uses_the_package_flag_as_it_is_now(client, db_session):
+    pro = _short_notice_pro(db_session, flagged=False)
+    booking_id = _ordinary_request(client, db_session, pro)
+    _seen(pro)
+    package = db_session.get(ProPackage, uuid.UUID(pro.package_id))
+    package.short_notice_ok = True  # flagged to switch on ...
+    db_session.commit()
+    assert _toggle(client, pro).status_code == 200
+    package.short_notice_ok = False  # ... and unflagged since
+    db_session.commit()
+    start, end = _slot_in(3)
+
+    assert _confirm(client, pro, booking_id, start, end).status_code == 409
+
+
+def test_another_time_needs_the_app_to_be_fresh_now(client, db_session):
+    pro = _short_notice_pro(db_session)
+    booking_id = _ordinary_request(client, db_session, pro)
+    _available(client, db_session, pro)
+    _seen(pro, seconds_ago=get_settings().available_now_fresh_seconds + 30)
+    start, end = _slot_in(3)
+
+    assert _confirm(client, pro, booking_id, start, end).status_code == 409
+
+
+def test_another_time_outside_notice_gets_a_pay_deadline_worked_out_again(client, db_session):
+    """A reschedule of an unpaid booking to an ordinary time: the pay
+    deadline is the new time's, counted from the confirmation."""
+    pro = _short_notice_pro(db_session)
+    booking_id = _ordinary_request(client, db_session, pro, accept=True)
+    gig = _gig_for(db_session, booking_id)
+    gig.pay_deadline_at = datetime.now(timezone.utc) + timedelta(minutes=5)  # nearly spent
+    db_session.commit()
+    start, end = _slot_in(60)
+
+    resp = _confirm(client, pro, booking_id, start, end)
+
+    assert resp.status_code == 200, resp.text
+    window = _gig_for(db_session, booking_id).pay_deadline_at - datetime.now(timezone.utc)
+    assert timedelta(hours=23, minutes=55) < window <= timedelta(hours=24)
+
+
+def test_another_time_must_be_a_window_the_package_offers(client, db_session):
+    pro = _short_notice_pro(db_session)
+    booking_id = _ordinary_request(client, db_session, pro)
+    start, end = _slot_in(40)
+    start += timedelta(minutes=17)
+
+    resp = _confirm(client, pro, booking_id, start, end + timedelta(minutes=17))
+
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "not_offered"
+
+
+def test_another_time_too_close_to_pay_for_is_refused(client, db_session, monkeypatch):
+    monkeypatch.setattr(get_settings(), "pay_deadline_margin_minutes", 300)
+    pro = _short_notice_pro(db_session)
+    booking_id = _ordinary_request(client, db_session, pro)
+    _available(client, db_session, pro)
+    start, end = _slot_in(3)
+
+    resp = _confirm(client, pro, booking_id, start, end)
+
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "too_late_to_pay"
+
+
+def test_the_requested_time_keeps_its_recorded_terms_after_a_reschedule_elsewhere(client, db_session):
+    """Requested at short notice while available, moved to a later time, and
+    moved back after the toggle went off: the time the client asked for is
+    still judged by the terms it was asked under. Judged as a new request it
+    would be refused - it is inside the 24 hours' notice."""
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    asked, asked_end = _slot_in(3)
+    booking_id = _request(client, pro, pro.client_id, asked, asked_end).json()["booking_id"]
+    assert client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id}).status_code == 200
+    assert _confirm(client, pro, booking_id, *_slot_in(60)).status_code == 200
+    assert _toggle(client, pro, on=False).status_code == 200
+
+    assert _confirm(client, pro, booking_id, asked, asked_end).status_code == 200
+
+

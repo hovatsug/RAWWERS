@@ -24,8 +24,9 @@ from app.models.booking import (
     ConfirmedSlotStatus,
     ProAvailabilityException,
     ProAvailabilityRule,
+    ProPackage,
 )
-from app.models.gig import Gig
+from app.models.gig import Gig, GigStatus
 from app.models.legacy_shoot import LegacyBooking, LegacyBookingStatus
 from app.schemas.media import CurrentUser
 from app.schemas.scheduling import (
@@ -51,13 +52,13 @@ from app.schemas.scheduling import (
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.booking_answer import ensure_request_can_be_booked
-from app.services.deadlines import ensure_payable_in_time
+from app.services.deadlines import ensure_payable_in_time, pay_deadline_for_terms, refuse_if_too_late_to_pay
 from app.services.gig_builder import build_gig_for_request, find_gig_for_request
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.notifications import enqueue_notification
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.availability_rules import validate_rule_times
-from app.services.bookable_time import request_preset
+from app.services.bookable_time import check_requestable, request_preset, shape_for_package
 from app.services.scheduling import (
     create_booking_time_request,
     create_slot_reminders,
@@ -306,28 +307,53 @@ def confirm_booking_slot(
     # The booking's own gig, if accepting has already made one, is the
     # booking being placed - not a clash with it.
     own_gig = _find_gig_by_booking_request(db, booking.id)
-    validate_slot_available(
-        db,
-        pro_user_id=booking.pro_user_id,
-        start_at_utc=body.start_at_utc,
-        end_at_utc=body.end_at_utc,
-        ignore_gig_id=own_gig.id if own_gig else None,
-        # The booking's own request, and any made after it, do not stand in
-        # its way - the same first-come rule as accepting.
-        ignore_booking_request_id=booking.id,
-        requests_made_before=booking.created_at,
-        preset=request_preset(booking),
-        # The terms the request was made under - see the accept route.
-        notice_minutes=booking.notice_minutes,
-        notice_from=booking.created_at if booking.notice_minutes is not None else None,
-    )
-    if booking.status == BookingRequestStatus.pending:
-        ensure_payable_in_time(booking, accepted_at=datetime.now(timezone.utc))
+    now = datetime.now(timezone.utc)
+    new_pay_deadline = None
+    if body.start_at_utc == booking.requested_start and body.end_at_utc == booking.requested_end:
+        # The time the client asked for, on the terms it was asked under -
+        # see the accept route.
+        validate_slot_available(
+            db,
+            pro_user_id=booking.pro_user_id,
+            start_at_utc=body.start_at_utc,
+            end_at_utc=body.end_at_utc,
+            ignore_gig_id=own_gig.id if own_gig else None,
+            # The booking's own request, and any made after it, do not stand
+            # in its way - the same first-come rule as accepting.
+            ignore_booking_request_id=booking.id,
+            requests_made_before=booking.created_at,
+            preset=request_preset(booking),
+            notice_minutes=booking.notice_minutes,
+            notice_from=booking.created_at if booking.notice_minutes is not None else None,
+        )
+        if booking.status == BookingRequestStatus.pending:
+            ensure_payable_in_time(booking, accepted_at=now)
+    else:
+        # Any other time - a different window, or a reschedule - is a new
+        # booking made now: notice from now, the toggle, the package flag and
+        # the app's freshness as they are now, every other hold in its way,
+        # and a pay deadline of its own. The request's recorded terms stay
+        # with the time it asked for.
+        package = db.get(ProPackage, booking.package_id) if booking.package_id else None
+        terms = check_requestable(
+            db,
+            pro_user_id=booking.pro_user_id,
+            start_at_utc=body.start_at_utc,
+            end_at_utc=body.end_at_utc,
+            shape=shape_for_package(db, package) if package else None,
+            ignore_gig_id=own_gig.id if own_gig else None,
+            ignore_booking_request_id=booking.id,
+        )
+        new_pay_deadline = pay_deadline_for_terms(terms, start=body.start_at_utc, accepted_at=now)
+        if own_gig is None or own_gig.status == GigStatus.payment_pending:
+            refuse_if_too_late_to_pay(new_pay_deadline, accepted_at=now)
     _validate_within_client_windows(db, booking_request_id=booking_request_id, start_at_utc=body.start_at_utc, end_at_utc=body.end_at_utc)
 
     gig = _find_or_create_gig_from_booking(db, booking)
     gig.scheduled_start = body.start_at_utc
     gig.scheduled_end = body.end_at_utc
+    if new_pay_deadline is not None and gig.status == GigStatus.payment_pending:
+        gig.pay_deadline_at = new_pay_deadline
 
     try:
         slot = db.execute(select(ConfirmedSlot).where(ConfirmedSlot.gig_id == gig.id)).scalar_one_or_none()

@@ -12,9 +12,10 @@ import '../../support/local_backend.dart';
 
 /// F-3's deliverable: one real call, through the full transport stack
 /// (interceptors included), against the actual local backend - not a fake.
-/// Requires `docker compose up` in api/ to be running; skipped otherwise.
-Future<void> main() async {
-  final skip = await localBackendSkipReason(tests: 1);
+/// Runs only on request, against `docker compose up` in api/ on this
+/// machine - see test/support/local_backend.dart.
+void main() {
+  requireLocalDevBackend();
   test('GET /v1/i18n/bundles round-trips through the real transport stack against the local backend', () async {
     final dio = createDio(baseUrl: localBackendUrl, sessionStorage: InMemorySessionStorage());
     final client = I18nClient(dio);
@@ -31,5 +32,5 @@ Future<void> main() async {
       case Err(:final failure):
         fail('expected the local backend to be reachable and return 200, got $failure');
     }
-  }, skip: skip);
+  });
 }

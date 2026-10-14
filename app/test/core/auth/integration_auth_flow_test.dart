@@ -18,9 +18,11 @@ import '../../support/local_backend.dart';
 /// that were actual backend findings (register returns no tokens, and every
 /// new account is client-only until it explicitly upgrades).
 ///
-/// Requires `docker compose up` in api/ to be running; skipped otherwise.
-Future<void> main() async {
-  final skip = await localBackendSkipReason(tests: 2);
+/// Runs only on request, against `docker compose up` in api/ on this
+/// machine - see test/support/local_backend.dart. The account it registers is
+/// deleted when the test ends.
+void main() {
+  requireLocalDevBackend();
   late ProviderContainer container;
   late InMemorySessionStorage storage;
 
@@ -36,6 +38,7 @@ Future<void> main() async {
     // against a seeded fixture email would fail on "already exists".
     final email = 'f5-${DateTime.now().microsecondsSinceEpoch}@rawwers.test';
     const password = 'correct-horse-8';
+    addTearDown(() => deleteTestAccount(email: email, password: password));
 
     // No stored session -> resolves to Unauthenticated with no network call.
     expect(await container.read(authControllerProvider.future), isA<AuthUnauthenticated>());
@@ -72,7 +75,7 @@ Future<void> main() async {
     await container.read(authControllerProvider.notifier).logout();
     expect(container.read(authControllerProvider).valueOrNull, isA<AuthUnauthenticated>());
     expect(await storage.read(), isNull, reason: 'logout must clear the stored session, not just the in-memory state');
-  }, skip: skip);
+  });
 
   test('login with a wrong password surfaces a readable message and stores nothing', () async {
     final error = await container.read(authControllerProvider.notifier).login(
@@ -83,5 +86,5 @@ Future<void> main() async {
     expect(error, isNotNull);
     expect(error, isNot(contains('Exception')), reason: 'users see this string - it must not be a raw error');
     expect(storage.writeCallCount, 0);
-  }, skip: skip);
+  });
 }

@@ -1990,3 +1990,12 @@ Now the recorded terms apply only to the exact requested time. Any other time is
 ## `PUT /v1/pro/scheduling/policy` replaces the whole policy - LOGGED
 
 Every field of `SchedulingPolicyUpdateRequest` has a default, and the route writes all of them. So a body carrying only `advance_notice_hours` silently resets the buffers, slot length and daily limit to their defaults. Clients must send the whole policy. `test_a_put_replaces_the_whole_policy` records this behaviour so a change to it is deliberate. A partial-update `PATCH`, or `exclude_unset`, would be the fix, but nothing in the apps sends a partial body today.
+
+## ~~The app's integration test left an account in dev on every run~~ - FIXED
+
+`integration_auth_flow_test.dart` registers an `f5-<n>@rawwers.test` photographer. It ran on every plain `flutter test` that found a backend on localhost:8000, so whenever the dev stack was up it left one account behind: 97 by 2026-10-13. Now:
+- the `integration` tag is skipped by default (`dart_test.yaml`), and the tests run only on request: `flutter test --tags integration --run-skipped`
+- before any test they check that the backend they call (the app's own `API_BASE_URL`) is on this machine and reports a development or test environment through `/v1/dev/environment`, and fail every test otherwise
+- the test deletes its account at the end through `DELETE /v1/dev/test-accounts/me`
+
+Both dev routes exist only when `APP_ENV` is development, dev, local or test. Elsewhere they answer 404 before authentication, and they are not in the published API. The deletion refuses anything but an `@rawwers.test` account made in the last hour with no booking or money rows. The 91 existing f5 accounts were de-listed on 2026-10-13 (never visible to clients); nothing deleted them.

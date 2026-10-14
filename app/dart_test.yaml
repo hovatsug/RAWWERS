@@ -1,5 +1,10 @@
 tags:
   integration:
-    # Hits the real local backend (api/, docker compose up) - not run in CI,
-    # which has no live backend for this job. Run locally with:
-    #   flutter test --tags=integration
+    # These register real accounts against a running backend, so they never
+    # run by accident: an ordinary `flutter test` skips them, and CI excludes
+    # them. Run them on request, against `docker compose up` in api/ on this
+    # machine (a development or test environment only - they refuse anything
+    # else, and delete the accounts they make):
+    #   flutter test --tags integration --run-skipped
+    # The pre-deploy checklist runs them that way; they must pass, not skip.
+    skip: "integration - runs only on request: flutter test --tags integration --run-skipped"

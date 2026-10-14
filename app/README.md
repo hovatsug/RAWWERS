@@ -108,7 +108,13 @@ No generic retry-on-network-error exists for arbitrary requests. The only two re
 
 Debug-only logging (`debug_log_interceptor.dart`) logs method/URL/status only — never request or response bodies, which is the simplest way to guarantee a token buried in a login/refresh payload never reaches the log — and redacts the `Authorization` header value.
 
-`test/core/api/integration_transport_test.dart` is tagged `integration` (see `dart_test.yaml`) and makes one real call through the full stack against the local backend (`docker compose up` in `api/`). CI excludes it (`flutter test --exclude-tags=integration`) since that job has no live backend; run it locally with `flutter test --tags=integration`.
+`test/core/api/integration_transport_test.dart` and `test/core/auth/integration_auth_flow_test.dart` are tagged `integration` and run against a real backend. They run only on request:
+- an ordinary `flutter test` skips the tag (`dart_test.yaml`), and CI excludes it (`--exclude-tags=integration`)
+- run them with `api/` up on this machine (`docker compose up`, a development or test `APP_ENV`):
+
+      flutter test --tags integration --run-skipped
+
+Before any test runs they check `API_BASE_URL`, the address they really call: it must be this machine, and its `/v1/dev/environment` must report development or test. Otherwise every test fails rather than skips. The auth-flow test deletes the account it registers when it ends. See `test/support/local_backend.dart`; the pre-deploy checklist runs them this way.
 
 ## Design system (F-4)
 
@@ -150,7 +156,7 @@ That two-step introduces a **split failure**: register succeeds, the follow-up l
 
 **A generated-client bug had to be fixed first.** Any endpoint whose OpenAPI response is a free-form object (`additionalProperties: true` with no `properties` — FastAPI's bare `-> dict`) makes swagger_to_dart emit `dynamic.fromJson(...)`, which isn't valid Dart. Nothing had imported `AuthClient` before F-5, so this had sat uncompiled since F-2; 7 occurrences across 5 client files. Note that *avoiding the call* doesn't help — Dart compiles every method body in an imported class, so the file fails to build whether or not you invoke the broken method. Since `lib/api/` is generated and never hand-edited, the fix is `tool/fix_generated_client_bugs.dart`, a deterministic idempotent post-processing step wired into `make gen-api` after `build_runner`; the correct value is just the already-decoded body (`_value = _result.data!`). A one-off hand-patch would have been silently reverted by the next regeneration.
 
-**Tests**: `test/core/auth/integration_auth_flow_test.dart` (tagged `integration`, needs the local backend) drives the whole deliverable against the real API — register, auto-login, client-only roles, upgrade to pro, roles added not replaced, logout clearing stored session — plus a wrong-password path asserting the user-facing string isn't a raw exception and that nothing is written. The two boot tests (`main_client_test.dart`, `main_pro_test.dart`) override `sessionStorageProvider` with the in-memory fake, since the real `SecureSessionStorage` has no platform-channel handler under `flutter test`, and use bounded `pump()` calls rather than `pumpAndSettle()` — the launch screen's spinner never settles on its own.
+**Tests**: `test/core/auth/integration_auth_flow_test.dart` (tagged `integration`, run on request against the local backend - see above) drives the whole deliverable against the real API — register, auto-login, client-only roles, upgrade to pro, roles added not replaced, logout clearing stored session — plus a wrong-password path asserting the user-facing string isn't a raw exception and that nothing is written. The two boot tests (`main_client_test.dart`, `main_pro_test.dart`) override `sessionStorageProvider` with the in-memory fake, since the real `SecureSessionStorage` has no platform-channel handler under `flutter test`, and use bounded `pump()` calls rather than `pumpAndSettle()` — the launch screen's spinner never settles on its own.
 
 ## Pro app core (F-6)
 

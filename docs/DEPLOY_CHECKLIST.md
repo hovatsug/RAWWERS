@@ -20,7 +20,11 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   A `master` row with no maximum is correct: master is uncapped by design, and the row has to exist anyway.
 
-- [ ] **Run the integration tests against a live backend.** With the release candidate's `api/` up (`docker compose up`), run `flutter test --tags=integration` in `app/` and confirm they *ran* - the summary must show them passing, not skipped. They skip whenever no backend answers `localhost:8000/healthz`, which is every ordinary `flutter test` and CI, so nothing else runs them: the real transport stack and the register-login-upgrade-logout flow are proven only here.
+- [ ] **Run the integration tests against a live backend, and they must pass.** With the release candidate's `api/` up on this machine (`docker compose up`, a development or test `APP_ENV`), run in `app/`:
+
+      flutter test --tags integration --run-skipped
+
+  The summary must show **3 passed, 0 skipped, 0 failed**. An ordinary `flutter test` skips them by tag, and CI excludes them, so nothing else runs them: the real transport stack and the register-login-upgrade-logout flow are proven only here. Run on request they never skip. Before any test they check that the backend is on this machine and reports a development or test environment (`/v1/dev/environment`, which production does not have), and if it isn't, every test fails. The account the flow registers is deleted at the end of the run (`DELETE /v1/dev/test-accounts/me`), so a run leaves nothing behind.
 
 - [ ] **Gigs made from requests that could not be booked.** Until confirm-slot checked the request it was answering, a photographer could make an unpaid gig from a request that had expired, that they had declined, or that the client had withdrawn. Count them:
 

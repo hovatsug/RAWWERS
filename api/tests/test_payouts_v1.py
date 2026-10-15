@@ -45,6 +45,10 @@ def _make_available_entry(db_session, *, pro_user_id: uuid.UUID, source_id: uuid
     )
     assert row is not None
     row.available_at = datetime.now(timezone.utc) - timedelta(days=1)
+    # The session does not autoflush: without this the sweep never saw the
+    # date, the entry stayed pending, and every test built on it ran against
+    # a balance of zero - two failed, and one passed for the wrong reason.
+    db_session.flush()
     settle_due_earnings_entries(db_session)
 
 
@@ -142,6 +146,7 @@ def test_payout_request_cannot_exceed_available(db_session):
     )
     db_session.commit()
 
+    assert payout_balance_view(db_session, pro_user_id=pro_id)["withdrawable_eur"] == Decimal("80.00"), "refused for exceeding a real balance"
     with pytest.raises(APIError):
         create_payout_request(db_session, pro_user_id=pro_id, amount_eur=Decimal("90.00"))
 

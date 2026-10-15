@@ -1,4 +1,6 @@
-# Backend tests known to fail - 28. 29 as of commit c8e6853 (2026-10-12);
+# Backend tests known to fail - 26. 29 as of commit c8e6853 (2026-10-12);
+# the two test_payouts_v1 approval/mark-paid tests pass since their helper
+# flushes before settling (2026-10-14) - they had run against a zero balance;
 # test_hysteresis_blocks_rapid_promotion_flip passes since the tier-override
 # fix, which made hysteresis hold any evidence change within the cooldown.
 #
@@ -37,8 +39,6 @@ tests/test_niches_skills.py::test_discovery_niche_filter_orders_by_tier_before_r
 tests/test_notifications_v1.py::test_outbox_notification_retry_is_durable
 tests/test_ops_security_baseline.py::test_chat_spam_creates_abuse_signal
 tests/test_ops_security_baseline.py::test_sensitive_errors_are_safe_and_include_request_id
-tests/test_payouts_v1.py::test_approval_allocates_and_prevents_double_spending
-tests/test_payouts_v1.py::test_manual_mark_paid_flow
 tests/test_pro_availability_and_listing.py::test_listing_preview_reflects_a_pricing_edit
 tests/test_pro_onboarding_booking.py::test_pro_cannot_activate_without_kyc_in_production
 tests/test_proof_gallery.py::test_upsell_webhook_idempotency

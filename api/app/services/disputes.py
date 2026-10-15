@@ -571,6 +571,15 @@ def initiate_refund_case(db: Session, refund_case_id: uuid.UUID) -> RefundCase:
 
     row.status = RefundCaseStatus.refund_initiated
     amount_minor = int((row.amount * Decimal("100")).quantize(Decimal("1")))
+    # One idempotency key per attempt at the money, not per case. Stripe
+    # replays a key's first answer for 24 hours, so a retry after a failure
+    # under the same key got the failure back and no money moved. Until a
+    # refund fails, every retry reuses the key - Stripe then cannot refund
+    # twice, even if our record of the first attempt was lost.
+    failures = db.execute(
+        select(func.count()).select_from(RefundEvent).where(RefundEvent.refund_case_id == row.id, RefundEvent.type == "refund_failed")
+    ).scalar_one()
+    key = f"refund-case:{row.id}" if not failures else f"refund-case:{row.id}:retry-{failures}"
     refund = stripe.Refund.create(
         payment_intent=row.stripe_payment_intent_id,
         amount=amount_minor,
@@ -578,7 +587,7 @@ def initiate_refund_case(db: Session, refund_case_id: uuid.UUID) -> RefundCase:
             "refund_case_id": str(row.id),
             "dispute_id": str(row.dispute_id) if row.dispute_id else "",
         },
-        idempotency_key=f"refund-case:{row.id}",
+        idempotency_key=key,
     )
 
     row.meta = {**(row.meta or {}), "stripe_refund_id": refund.id}

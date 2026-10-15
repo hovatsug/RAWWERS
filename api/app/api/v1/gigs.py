@@ -251,6 +251,17 @@ def create_refund(
         refund_ids.append(refund.id)
         last_refund = refund
 
+        # Asked again, Stripe answers the same idempotency key with the same
+        # refund; it is recorded once, however often the client asks.
+        already = db.execute(
+            select(LedgerEntry.id).where(
+                LedgerEntry.gig_id == gig.id,
+                LedgerEntry.entry_type == LedgerEntryType.refund_initiated,
+                LedgerEntry.reference_id == refund.id,
+            )
+        ).first()
+        if already:
+            continue
         db.add(
             LedgerEntry(
                 gig_id=gig.id,

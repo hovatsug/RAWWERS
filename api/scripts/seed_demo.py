@@ -14,6 +14,8 @@ feature is visible in the app rather than present only in tests:
                   relaxed for the demo. Runs until stopped:
                     ... scripts/seed_demo.py --refresh-presence
                     ... scripts/seed_demo.py --stop-presence-refresher
+                  and put everything the live rows' demo changed back:
+                    ... scripts/seed_demo.py --reset
   available now   two of the online four (Ines, Tomas) with a package that
                   may be booked at short notice; the presence refresher
                   also keeps them switched on, through the real toggle,
@@ -741,6 +743,57 @@ def stop_presence_refresher() -> int:
     return 0
 
 
+def reset_live_state(db) -> list[str]:
+    """Put the demo back as it was before the live rows' demo ran: refresher
+    stopped, nobody switched on or online, Patricia's dot shown again, and
+    Simao's demo block removed - only the block this module added, found by
+    its reason, so other blocked time is kept. The short-notice package
+    flags stay: they change nothing unless someone is switched on.
+
+    For when the demo state would distort something else - a test, or a
+    screen someone is checking."""
+    import time
+
+    from app.services.cache import get_redis_client
+
+    redis = get_redis_client()
+    lines = []
+    if redis.exists(_RUNNING_KEY):
+        redis.set(_STOP_KEY, "1", ex=_EVERY_SECONDS * 3)
+        for _ in range(15):
+            if not redis.exists(_RUNNING_KEY):
+                break
+            time.sleep(1)
+        lines.append("refresher: stopped" if not redis.exists(_RUNNING_KEY) else "refresher: asked to stop, still running - check it")
+    api = _api()
+    for email in SWITCHED_ON_EMAILS:
+        pro_id = _user_id(db, email)
+        if pro_id:
+            status = api.put("/v1/pro/available-now", headers=_headers(db, pro_id), json={"switched_on": False}).status_code
+            lines.append(f"{email}: switched off ({status})")
+    for email in dict.fromkeys(PRESENCE_EMAILS + (STALE_EMAIL,)):
+        pro_id = _user_id(db, email)
+        if pro_id:
+            api.delete("/v1/pro/presence", headers=_headers(db, pro_id))
+    lines.append("presence cleared for the demo photographers")
+    hidden = _user_id(db, HIDDEN_DOT_EMAIL)
+    if hidden:
+        status = api.put("/v1/pro/presence/visibility", headers=_headers(db, hidden), json={"visible": True}).status_code
+        lines.append(f"{HIDDEN_DOT_EMAIL}: dot shown again ({status})")
+    blocked = _user_id(db, NO_START_EMAIL)
+    if blocked:
+        headers = _headers(db, blocked)
+        items = api.get("/v1/pro/scheduling/exceptions", headers=headers).json().get("items", [])
+        kept = [
+            {"start_at_utc": i["start_at_utc"], "end_at_utc": i["end_at_utc"], "reason": i.get("reason")}
+            for i in items
+            if i.get("reason") != BLOCK_REASON
+        ]
+        status = api.put("/v1/pro/scheduling/exceptions", headers=headers, json={"items": kept}).status_code
+        lines.append(f"{NO_START_EMAIL}: demo block removed, {len(kept)} other blocked time kept ({status})")
+    return lines
+
+
 STEPS = {"response_time": seed_response_time, "chat": seed_chat, "available_now": seed_available_now}
 
 
@@ -750,8 +803,14 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--refresh-presence", action="store_true", help="keep the demo photographers online until stopped")
     parser.add_argument("--stop-presence-refresher", action="store_true")
+    parser.add_argument("--reset", action="store_true", help="undo the live rows' demo state: refresher, toggles, presence, hidden dot, blocked days")
     args = parser.parse_args()
     assert_development_only()
+    if args.reset:
+        with SessionLocal() as db:
+            for line in reset_live_state(db):
+                print("  " + line)
+        return 0
     if args.stop_presence_refresher:
         return stop_presence_refresher()
     if args.refresh_presence:

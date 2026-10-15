@@ -51,6 +51,7 @@ from app.services.growth_engine import (
 from app.services.i18n import get_user_locale_preference, upsert_user_locale_preference
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.trust_safety import capture_request_signals, evaluate_login_failure_rule
+from app.services import presence
 
 router = APIRouter(tags=["auth"])
 
@@ -149,6 +150,9 @@ def logout(
     else:
         add_auth_event(db, event_type="logout", user_id=user.user_id, ip=_request_ip(request), user_agent=request.headers.get("user-agent"))
     db.commit()
+    # A photographer who signs out is offline now, and stays so whatever this
+    # session still sends.
+    presence.sign_out(user.user_id, user.refresh_family_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

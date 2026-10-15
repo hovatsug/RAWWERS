@@ -40,6 +40,10 @@ def _require_pro(db: Session, user: CurrentUser) -> None:
 def heartbeat(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> HeartbeatResponse:
     """The app is open. Sent at most once a minute while in the foreground."""
     _require_pro(db, user)
+    # A token from a session that signed out stays valid until it expires;
+    # it must not bring the dot back (presence.sign_out).
+    if presence.session_closed(user.refresh_family_id):
+        raise APIError(code="session_ended", message="This session has signed out.", status_code=401)
     # A ceiling on top of the minimum interval: a misbehaving client cannot
     # turn this into a write per request.
     enforce_rate_limit(f"presence-heartbeat:{user.user_id}", max_requests=10, window_seconds=60)

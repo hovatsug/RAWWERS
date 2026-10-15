@@ -123,6 +123,36 @@ def clear(pro_user_id: uuid.UUID) -> None:
     get_redis_client().delete(_key(pro_user_id))
 
 
+def _closed_key(session_id) -> str:
+    return f"presence:closed:{session_id}"
+
+
+def sign_out(pro_user_id: uuid.UUID, session_id: uuid.UUID | None) -> None:
+    """Signed out: offline now, and that session closed for as long as its
+    access tokens can still be presented - a heartbeat already in flight, or
+    sent by a timer that had not stopped, must not put the dot back. Other
+    sessions (another device) are untouched. Best effort: if Redis cannot
+    be reached, the key's own expiry is the backstop."""
+    try:
+        redis = get_redis_client()
+        redis.delete(_key(pro_user_id))
+        if session_id is not None:
+            redis.set(_closed_key(session_id), "1", ex=get_settings().auth_access_token_ttl_minutes * 60)
+    except Exception:
+        logger.warning("presence_sign_out_failed", exc_info=True)
+
+
+def session_closed(session_id: uuid.UUID | None) -> bool:
+    """Whether this session signed out. False if Redis cannot say - the
+    heartbeat it would refuse could not be written then either."""
+    if session_id is None:
+        return False
+    try:
+        return bool(get_redis_client().exists(_closed_key(session_id)))
+    except Exception:
+        return False
+
+
 def copy_visibility_to_key(pro_user_id: uuid.UUID, visible: bool) -> None:
     """After ProProfile.presence_visible is committed - never before, so the
     copy cannot get ahead of the truth - put it into a live key at once,

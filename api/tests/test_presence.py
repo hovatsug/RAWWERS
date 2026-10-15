@@ -55,8 +55,9 @@ def lisbon(db_session):
 def _no_presence_left_over():
     """Redis outlives the per-test database wipe."""
     redis = get_redis_client()
-    for key in redis.scan_iter(match="presence:pro:*"):
-        redis.delete(key)
+    for pattern in ("presence:pro:*", "presence:closed:*"):
+        for key in redis.scan_iter(match=pattern):
+            redis.delete(key)
     yield
 
 

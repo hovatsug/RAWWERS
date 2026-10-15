@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/models/login_request.dart';
+import 'package:rawwers/api/models/logout_request.dart';
 import 'package:rawwers/api/models/register_request.dart';
 import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
@@ -96,8 +97,33 @@ class AuthController extends _$AuthController {
     return null;
   }
 
+  /// How long signing out waits for the server before going ahead anyway.
+  static const serverLogoutTimeout = Duration(seconds: 3);
+
   Future<void> logout() async {
-    await ref.read(sessionStorageProvider).clear();
+    final storage = ref.read(sessionStorageProvider);
+    // Tell the server first, while this session can still be presented: it
+    // revokes the refresh token and, for a photographer, takes the online
+    // dot down now and refuses anything this session sends afterwards - a
+    // heartbeat already in flight included. Best effort and short: signing
+    // out never waits long on, or fails because of, the network. If the
+    // server never hears, the dot's own five-minute expiry is the backstop.
+    final session = await storage.read();
+    if (session != null) {
+      final client = ref.read(authClientProvider);
+      try {
+        await apiCall(
+          () => client.logoutV1AuthLogoutPost(
+            requestBody: LogoutRequest(refreshToken: session.refreshToken),
+            authorization: null,
+            xMinusUserMinusId: null,
+          ),
+        ).timeout(serverLogoutTimeout);
+      } on Object {
+        // Offline, slow or refused: sign out locally all the same.
+      }
+    }
+    await storage.clear();
     state = const AsyncData(AuthUnauthenticated());
   }
 

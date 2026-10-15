@@ -7,9 +7,10 @@ with the AI flags off it answered 503, so turning the assistant off turned
 messaging off. Human messaging is now independent of the assistant, and the
 first tests here run with it switched off.
 
-The assistant, when on, is held while the photographer is online, so a
-person gets the first chance to answer. "Online" is one function that says
-no until presence exists, so for now it answers at once, as before.
+The assistant, when on, is held for two minutes while the photographer is
+online, so a person gets the first chance to answer. "Online" is
+presence.photographer_is_online, which reads the app's heartbeat; the tests
+near the end drive it with real heartbeats, not a stand-in.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -201,7 +202,7 @@ def _ai_messages(db_session, thread_id) -> list[ChatMessage]:
     ).scalars().all()
 
 
-def test_online_until_presence_exists_means_no(db_session):
+def test_with_no_heartbeat_nobody_is_online(db_session):
     from app.services.presence import photographer_is_online
 
     assert photographer_is_online(db_session, uuid.uuid4()) is False
@@ -352,3 +353,67 @@ def test_both_sides_are_rate_limited(client, db_session, monkeypatch, as_pro):
     codes = [client.post(path, headers={"X-User-Id": who}, json={"content": f"message {n}"}).status_code for n in range(3)]
 
     assert codes == [200, 200, 429]
+
+
+# --- the hold, driven by real presence -----------------------------------------------
+
+
+@pytest.fixture
+def _clean_presence():
+    from app.services.cache import get_redis_client
+
+    redis = get_redis_client()
+    for key in redis.scan_iter(match="presence:pro:*"):
+        redis.delete(key)
+    yield
+
+
+def _hold_seconds(client, db_session, pro_id, client_id) -> float:
+    thread_id = _open(client, client_id, pro_id)
+    before = datetime.now(timezone.utc)
+    _say(client, client_id, thread_id, "Are you free today?")
+    [*_, event] = _ai_events(db_session, thread_id)
+    return (event.next_attempt_at - before).total_seconds()
+
+
+def test_a_real_heartbeat_turns_the_hold_on(client, db_session, fake_model, _clean_presence):
+    _ai(db_session, on=True)
+    pro_id, client_id = _people(db_session)
+    assert client.post("/v1/pro/presence/heartbeat", headers={"X-User-Id": pro_id}).status_code == 200
+
+    assert 110 <= _hold_seconds(client, db_session, pro_id, client_id) <= 130
+
+
+def test_with_no_heartbeat_the_assistant_answers_at_once(client, db_session, fake_model, _clean_presence):
+    _ai(db_session, on=True)
+    pro_id, client_id = _people(db_session)
+
+    assert _hold_seconds(client, db_session, pro_id, client_id) <= 5
+
+
+def test_a_hidden_dot_still_holds_the_assistant(client, db_session, fake_model, _clean_presence):
+    """Hiding the dot is about what clients see, not about being there: a
+    photographer with the app open and the dot hidden still gets the first
+    chance to answer."""
+    _ai(db_session, on=True)
+    pro_id, client_id = _people(db_session)
+    client.post("/v1/pro/presence/heartbeat", headers={"X-User-Id": pro_id})
+    assert client.put("/v1/pro/presence/visibility", headers={"X-User-Id": pro_id}, json={"visible": False}).status_code == 200
+
+    assert 110 <= _hold_seconds(client, db_session, pro_id, client_id) <= 130
+
+
+def test_a_heartbeat_gone_stale_no_longer_holds(client, db_session, fake_model, _clean_presence):
+    import json
+    import time
+
+    from app.core.config import get_settings
+    from app.services.cache import get_redis_client
+
+    _ai(db_session, on=True)
+    pro_id, client_id = _people(db_session)
+    stale = time.time() - get_settings().presence_window_seconds - 10
+    get_redis_client().set(f"presence:pro:{pro_id}", json.dumps({"ts": stale, "visible": True}), ex=60)
+
+    assert _hold_seconds(client, db_session, pro_id, client_id) <= 5
+

@@ -462,7 +462,11 @@ def test_every_prep_time_can_be_requested_accepted_and_paid_at_its_earliest_slot
     assert _prep(client, pro, prep).status_code == 200
     start = _earliest_offered(client, pro, within=timedelta(hours=24))
     now = datetime.now(timezone.utc)
-    assert timedelta(minutes=prep) <= start - now < timedelta(minutes=prep + 61), "the earliest slot is at the boundary"
+    # Never inside the preparation time. No upper bound: the earliest slot
+    # can sit well past it - the test photographer's day ends at 23:59, so
+    # with six hours' notice at 16:44 Lisbon the first slot is midnight
+    # (this failed once for exactly that, 2026-10-14).
+    assert start - now >= timedelta(minutes=prep), "never inside the preparation time"
 
     booking_id = _request(client, pro, pro.client_id, start, start + timedelta(hours=1)).json()["booking_id"]
     accepted = client.post(f"/v1/booking-requests/{booking_id}/accept", headers={"X-User-Id": pro.id})

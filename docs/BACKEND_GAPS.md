@@ -2011,7 +2011,12 @@ Both rows lead Discover and every niche page. They are worked out on every reque
 
 **Order never uses ranking.** "Available now" sorts by preparation time, then a rotation; "Online now" by the rotation alone. The rotation is a hash of the day, the viewer and the photographer.
 
-**Cost per home request:** one indexed query for the eligible photographers, one presence MGET that also sets every card's dot, one query for who is switched on, and the availability rule for at most `AVAILABLE_CANDIDATE_CAP` (24) candidates. Dev Lisbon, 2026-10-14: 15 eligible, 3 checked, 36-66 ms warm (431 ms on the first, cold request). Almost all of it is the availability rule, about 10-20 ms per candidate warm, so a city with 24 switched-on photographers would add roughly half a second.
+**Cost per home request:** one indexed query for the eligible photographers, one presence MGET that also sets every card's dot, and one query for who is switched on. Then **one batched calendar load for every candidate** (`load_calendars`, the same queries with IN, which `load_calendar` itself now goes through), followed by the rule, applied candidate by candidate in row order. It stops once the row is full. Dev, 2026-10-14, measured on a running API:
+- **Warm:** the live rows take 17-20 ms and a whole Discover load 46-50 ms. Before batching they were about 45 ms and 78 ms.
+- **Scaling:** checking 4 candidates took 13 ms and 42 took 21 ms. Loading each photographer's calendar separately took 47 ms and 469 ms.
+- **Cold:** the first request after the API starts took 0.9 s, of which the live rows were 50 ms. A cold cache in a warm process (Porto) took 115 ms, so roughly 90 ms is building the uncached ranked rows and the rest is first-request start-up: connections, query compilation, imports.
+
+A per-photographer cache of "has a bookable start" was considered and not added, because batching made it unnecessary.
 
 **Failure.** If Redis cannot answer, both rows are left out and the dots go too; if anything else in them fails, the rows are left out and the dots fall back to their own lookup. The screen never fails for them.
 

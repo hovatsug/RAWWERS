@@ -59,6 +59,30 @@ def short_notice_minutes(policy: ProSchedulingPolicy | None, pro_user_id: uuid.U
     return policy.short_notice_prep_minutes
 
 
+def short_notice_minutes_for(
+    policies: dict[uuid.UUID, ProSchedulingPolicy],
+    now: datetime | None = None,
+    states: dict | None = None,
+) -> dict[uuid.UUID, int | None]:
+    """short_notice_minutes for several photographers, with one presence
+    read for all of them - the same answer, one round trip. Nobody gets
+    short notice if Redis cannot say, as with seen_within. `states` is a
+    presence.live_states read the caller already made, to reuse."""
+    now = now or datetime.now(timezone.utc)
+    switched_on = [pro_id for pro_id, policy in policies.items() if is_switched_on(policy, now)]
+    result: dict[uuid.UUID, int | None] = {pro_id: None for pro_id in policies}
+    if not switched_on:
+        return result
+    if states is None:
+        states = presence.live_states(switched_on) or {}
+    fresh_for = get_settings().available_now_fresh_seconds
+    for pro_id in switched_on:
+        state = states.get(str(pro_id))
+        if state is not None and state[0] <= fresh_for:
+            result[pro_id] = policies[pro_id].short_notice_prep_minutes
+    return result
+
+
 def default_short_notice_ok(preset, duration_minutes: int) -> bool:
     """What a new package starts with: an hourly-style package of up to
     three hours can usually be shot at a couple of hours' notice; a block or

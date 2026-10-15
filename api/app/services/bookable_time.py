@@ -235,97 +235,152 @@ def load_calendar(
     Loaded a day wider on each side: a night shift reaches back into the
     previous day, buffers reach past the edges, and the per-day count needs
     the whole local day.
+
+    One photographer through load_calendars - the one way calendars are
+    loaded, so the batched path the Discover rows use cannot drift from the
+    one every booking takes.
     """
+    return load_calendars(
+        db,
+        pro_user_ids=[pro_user_id],
+        start=start,
+        end=end,
+        ignore_gig_id=ignore_gig_id,
+        ignore_booking_request_id=ignore_booking_request_id,
+        requests_made_before=requests_made_before,
+    )[pro_user_id]
+
+
+def load_calendars(
+    db: Session,
+    *,
+    pro_user_ids: list[uuid.UUID],
+    start: datetime,
+    end: datetime,
+    ignore_gig_id: uuid.UUID | None = None,
+    ignore_booking_request_id: uuid.UUID | None = None,
+    requests_made_before: datetime | None = None,
+    presence_states: dict | None = None,
+) -> dict[uuid.UUID, Calendar]:
+    """load_calendar for several photographers at once: the same queries
+    with IN instead of =, so the cost does not grow with how many.
+    `presence_states` reuses a presence read the caller already made."""
+    from app.models.booking import ProSchedulingPolicy
+    from app.services.availability_blocks import blocked_intervals_for
     from app.services.scheduling import get_or_create_scheduling_policy
 
-    policy = get_or_create_scheduling_policy(db, pro_user_id=pro_user_id)
-    rules = list(
+    ids = list(dict.fromkeys(pro_user_ids))
+    policies = {row.pro_user_id: row for row in db.execute(select(ProSchedulingPolicy).where(ProSchedulingPolicy.pro_user_id.in_(ids))).scalars()}
+    for pro_id in ids:
+        if pro_id not in policies:
+            policies[pro_id] = get_or_create_scheduling_policy(db, pro_user_id=pro_id)
+
+    def by_pro(rows, attr="pro_user_id") -> dict[uuid.UUID, list]:
+        grouped: dict[uuid.UUID, list] = {pro_id: [] for pro_id in ids}
+        for row in rows:
+            grouped[getattr(row, attr)].append(row)
+        return grouped
+
+    rules = by_pro(
         db.execute(
             select(ProAvailabilityRule)
-            .where(ProAvailabilityRule.pro_user_id == pro_user_id)
-            .order_by(ProAvailabilityRule.day_of_week.asc(), ProAvailabilityRule.start_time.asc())
+            .where(ProAvailabilityRule.pro_user_id.in_(ids))
+            .order_by(ProAvailabilityRule.pro_user_id, ProAvailabilityRule.day_of_week.asc(), ProAvailabilityRule.start_time.asc())
         ).scalars()
     )
     wide_start, wide_end = start - timedelta(days=2), end + timedelta(days=2)
 
-    slots = db.execute(
-        select(ConfirmedSlot).where(
-            ConfirmedSlot.pro_user_id == pro_user_id,
-            ConfirmedSlot.status.in_(_COUNTED_SLOT_STATUSES),
-            ConfirmedSlot.start_at_utc < wide_end,
-            ConfirmedSlot.end_at_utc > wide_start,
-        )
-    ).scalars().all()
+    slots = by_pro(
+        db.execute(
+            select(ConfirmedSlot).where(
+                ConfirmedSlot.pro_user_id.in_(ids),
+                ConfirmedSlot.status.in_(_COUNTED_SLOT_STATUSES),
+                ConfirmedSlot.start_at_utc < wide_end,
+                ConfirmedSlot.end_at_utc > wide_start,
+            )
+        ).scalars()
+    )
     now = datetime.now(timezone.utc)
-    gigs = db.execute(
-        select(Gig).where(
-            Gig.pro_user_id == pro_user_id,
-            or_(
-                Gig.status.in_(OCCUPYING_GIG_STATUSES),
-                # Accepted and inside its time to pay. Past it, the gig holds
-                # nothing even before the sweep cancels it.
-                and_(Gig.status == GigStatus.payment_pending, _pay_deadline_column() > now),
-            ),
-            Gig.scheduled_start.is_not(None),
-            Gig.scheduled_end.is_not(None),
-            Gig.scheduled_start < wide_end,
-            Gig.scheduled_end > wide_start,
-        )
-    ).scalars().all()
-    requests = db.execute(
-        select(BookingRequest).where(
-            BookingRequest.pro_user_id == pro_user_id,
-            BookingRequest.status == BookingRequestStatus.pending,
-            BookingRequest.expires_at > now,
-            BookingRequest.requested_start < wide_end,
-            BookingRequest.requested_end > wide_start,
-            *([BookingRequest.created_at < requests_made_before] if requests_made_before else []),
-        )
-    ).scalars().all()
+    gigs = by_pro(
+        db.execute(
+            select(Gig).where(
+                Gig.pro_user_id.in_(ids),
+                or_(
+                    Gig.status.in_(OCCUPYING_GIG_STATUSES),
+                    # Accepted and inside its time to pay. Past it, the gig holds
+                    # nothing even before the sweep cancels it.
+                    and_(Gig.status == GigStatus.payment_pending, _pay_deadline_column() > now),
+                ),
+                Gig.scheduled_start.is_not(None),
+                Gig.scheduled_end.is_not(None),
+                Gig.scheduled_start < wide_end,
+                Gig.scheduled_end > wide_start,
+            )
+        ).scalars()
+    )
+    requests = by_pro(
+        db.execute(
+            select(BookingRequest).where(
+                BookingRequest.pro_user_id.in_(ids),
+                BookingRequest.status == BookingRequestStatus.pending,
+                BookingRequest.expires_at > now,
+                BookingRequest.requested_start < wide_end,
+                BookingRequest.requested_end > wide_start,
+                *([BookingRequest.created_at < requests_made_before] if requests_made_before else []),
+            )
+        ).scalars()
+    )
 
     # A gig with a confirmed slot is one booking, timed by the slot. Its
     # preset lives on the gig.
-    slotted_gigs = {slot.gig_id for slot in slots}
-    gig_preset = {gig.id: (gig.meta or {}).get("scheduling_preset") for gig in gigs}
-    missing = slotted_gigs - set(gig_preset)
+    gig_preset = {gig.id: (gig.meta or {}).get("scheduling_preset") for rows in gigs.values() for gig in rows}
+    missing = {slot.gig_id for rows in slots.values() for slot in rows} - set(gig_preset)
     if missing:
         for gig_id, meta in db.execute(select(Gig.id, Gig.meta).where(Gig.id.in_(missing))).all():
             gig_preset[gig_id] = (meta or {}).get("scheduling_preset")
-    busy: list[Booking] = []
-    counted: list[Booking] = []
-    for slot in slots:
-        if slot.gig_id == ignore_gig_id:
-            continue
-        booking = Booking(slot.start_at_utc, slot.end_at_utc, slot.gig_id, _buffered(gig_preset.get(slot.gig_id)))
-        counted.append(booking)
-        if str(getattr(slot.status, "value", slot.status)) in _BUSY_SLOT_STATUSES:
-            busy.append(booking)
-    for gig in gigs:
-        if gig.id == ignore_gig_id or gig.id in slotted_gigs:
-            continue
-        booking = Booking(gig.scheduled_start, gig.scheduled_end, gig.id, _buffered(gig_preset.get(gig.id)))
-        busy.append(booking)
-        counted.append(booking)
-    # A pending request has no gig yet; accepting turns it into one and its
-    # status to accepted, so it is never counted twice.
-    for request in requests:
-        if request.id == ignore_booking_request_id:
-            continue
-        booking = Booking(request.requested_start, request.requested_end, None, _buffered(request.scheduling_preset))
-        busy.append(booking)
-        counted.append(booking)
 
-    return Calendar(
-        policy=policy,
-        rules=rules,
-        blocks=blocked_intervals(db, pro_user_id, start=wide_start, end=wide_end),
-        bookings=busy,
-        counted=counted,
-        # Rules carry their own timezone; a photographer's are one zone in
-        # practice. With no rules there is nothing to be local to.
-        tz=ZoneInfo(rules[0].timezone) if rules else ZoneInfo("UTC"),
-        short_notice_minutes=available_now.short_notice_minutes(policy, pro_user_id, now),
-    )
+    blocks = blocked_intervals_for(db, ids, start=wide_start, end=wide_end)
+    short_notice = available_now.short_notice_minutes_for(policies, now, states=presence_states)
+
+    calendars: dict[uuid.UUID, Calendar] = {}
+    for pro_id in ids:
+        slotted_gigs = {slot.gig_id for slot in slots[pro_id]}
+        busy: list[Booking] = []
+        counted: list[Booking] = []
+        for slot in slots[pro_id]:
+            if slot.gig_id == ignore_gig_id:
+                continue
+            booking = Booking(slot.start_at_utc, slot.end_at_utc, slot.gig_id, _buffered(gig_preset.get(slot.gig_id)))
+            counted.append(booking)
+            if str(getattr(slot.status, "value", slot.status)) in _BUSY_SLOT_STATUSES:
+                busy.append(booking)
+        for gig in gigs[pro_id]:
+            if gig.id == ignore_gig_id or gig.id in slotted_gigs:
+                continue
+            booking = Booking(gig.scheduled_start, gig.scheduled_end, gig.id, _buffered(gig_preset.get(gig.id)))
+            busy.append(booking)
+            counted.append(booking)
+        # A pending request has no gig yet; accepting turns it into one and its
+        # status to accepted, so it is never counted twice.
+        for request in requests[pro_id]:
+            if request.id == ignore_booking_request_id:
+                continue
+            booking = Booking(request.requested_start, request.requested_end, None, _buffered(request.scheduling_preset))
+            busy.append(booking)
+            counted.append(booking)
+        pro_rules = rules[pro_id]
+        calendars[pro_id] = Calendar(
+            policy=policies[pro_id],
+            rules=pro_rules,
+            blocks=blocks[pro_id],
+            bookings=busy,
+            counted=counted,
+            # Rules carry their own timezone; a photographer's are one zone in
+            # practice. With no rules there is nothing to be local to.
+            tz=ZoneInfo(pro_rules[0].timezone) if pro_rules else ZoneInfo("UTC"),
+            short_notice_minutes=short_notice[pro_id],
+        )
+    return calendars
 
 
 SHORT_NOTICE_HORIZON = timedelta(hours=24)
@@ -545,6 +600,65 @@ def bookable_windows(
         for w in _candidates(cal, shape, from_date, to_date)
         if refusal_for(cal, w.start, w.end, now=now, preset=shape.preset, short_notice_ok=shape.short_notice_ok) is None
     ]
+
+
+def first_bookable_start(
+    db: Session,
+    *,
+    pro_user_id: uuid.UUID,
+    shapes: list[Shape],
+    after: datetime,
+    before: datetime,
+) -> Window | None:
+    """The earliest window any of `shapes` lays out that starts in
+    (after, before] and the rule allows. See first_bookable_starts."""
+    return first_bookable_starts(db, shapes_by_pro={pro_user_id: shapes}, after=after, before=before, want=1).get(pro_user_id)
+
+
+def first_bookable_starts(
+    db: Session,
+    *,
+    shapes_by_pro: dict[uuid.UUID, list[Shape]],
+    after: datetime,
+    before: datetime,
+    want: int,
+    presence_states: dict | None = None,
+) -> dict[uuid.UUID, Window]:
+    """For photographers taken in the order given, each one's earliest
+    window that starts in (after, before] and the rule allows - stopping
+    once `want` have one. What "Available now" asks.
+
+    The same rule as bookable_windows, asked cheaply: every calendar in one
+    batched load, then windows tried in time order, stopping at the first
+    the rule allows instead of judging every window in the range."""
+    from_date, to_date = (after - timedelta(days=1)).date(), (before + timedelta(days=1)).date()
+    calendars = load_calendars(
+        db,
+        pro_user_ids=list(shapes_by_pro),
+        start=datetime.combine(from_date, time(0), tzinfo=timezone.utc),
+        end=datetime.combine(to_date + timedelta(days=1), time(0), tzinfo=timezone.utc),
+        presence_states=presence_states,
+    )
+    found: dict[uuid.UUID, Window] = {}
+    for pro_id, shapes in shapes_by_pro.items():
+        cal = calendars[pro_id]
+        if not cal.rules:
+            continue
+        best: Window | None = None
+        for shape in shapes:
+            for window in _candidates(cal, shape, from_date, to_date):
+                if window.start <= after:
+                    continue
+                if window.start > before or (best is not None and window.start >= best.start):
+                    break
+                if refusal_for(cal, window.start, window.end, now=after, preset=shape.preset, short_notice_ok=shape.short_notice_ok) is None:
+                    best = window
+                    break
+        if best is not None:
+            found[pro_id] = best
+            if len(found) == want:
+                break
+    return found
 
 
 def bookable_starts(

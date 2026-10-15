@@ -31,27 +31,37 @@ def blocked_intervals(
     merged and sorted. Overlapping and touching intervals are coalesced so
     two adjacent blocks read as the one continuous unavailability they
     represent."""
-    blackouts = db.execute(
-        select(ProBlackoutDate.start_at, ProBlackoutDate.end_at).where(
-            ProBlackoutDate.pro_user_id == pro_user_id,
+    return blocked_intervals_for(db, [pro_user_id], start=start, end=end)[pro_user_id]
+
+
+def blocked_intervals_for(
+    db: Session, pro_user_ids: list[uuid.UUID], *, start: datetime, end: datetime
+) -> dict[uuid.UUID, list[tuple[datetime, datetime]]]:
+    """blocked_intervals for several photographers in two queries."""
+    ids = list(dict.fromkeys(pro_user_ids))
+    raw: dict[uuid.UUID, list[tuple[datetime, datetime]]] = {pro_id: [] for pro_id in ids}
+    for pro_id, block_start, block_end in db.execute(
+        select(ProBlackoutDate.pro_user_id, ProBlackoutDate.start_at, ProBlackoutDate.end_at).where(
+            ProBlackoutDate.pro_user_id.in_(ids),
             ProBlackoutDate.start_at < end,
             ProBlackoutDate.end_at > start,
         )
-    ).all()
-    exceptions = db.execute(
-        select(ProAvailabilityException.start_at_utc, ProAvailabilityException.end_at_utc).where(
-            ProAvailabilityException.pro_user_id == pro_user_id,
+    ).all():
+        raw[pro_id].append((block_start, block_end))
+    for pro_id, block_start, block_end in db.execute(
+        select(ProAvailabilityException.pro_user_id, ProAvailabilityException.start_at_utc, ProAvailabilityException.end_at_utc).where(
+            ProAvailabilityException.pro_user_id.in_(ids),
             ProAvailabilityException.start_at_utc < end,
             ProAvailabilityException.end_at_utc > start,
         )
-    ).all()
+    ).all():
+        raw[pro_id].append((block_start, block_end))
+    return {pro_id: _merge(blocks) for pro_id, blocks in raw.items()}
 
-    raw = sorted(
-        [(row[0], row[1]) for row in list(blackouts) + list(exceptions)],
-        key=lambda pair: pair[0],
-    )
+
+def _merge(blocks: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
     merged: list[tuple[datetime, datetime]] = []
-    for block_start, block_end in raw:
+    for block_start, block_end in sorted(blocks, key=lambda pair: pair[0]):
         if merged and block_start <= merged[-1][1]:
             merged[-1] = (merged[-1][0], max(merged[-1][1], block_end))
         else:

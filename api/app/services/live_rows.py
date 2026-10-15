@@ -40,7 +40,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.booking import ProPackage, ProSchedulingPolicy
 from app.services import presence
-from app.services.bookable_time import bookable_windows, shape_for_package
+from app.services.bookable_time import first_bookable_starts, shape_for_package
 
 logger = logging.getLogger(__name__)
 
@@ -79,24 +79,6 @@ class LiveRows:
     # every card on a home screen is one of the eligible photographers.
     # None when Redis could not say.
     states: dict | None = None
-
-
-def _has_start_soon(db: Session, pro_user_id: uuid.UUID, packages: list[ProPackage], now: datetime) -> bool:
-    """A real bookable start in the next 24 hours, by the rule every booking
-    path uses - working hours, blocked time, bookings, holds, buffers, the
-    daily limit and the short notice all apply."""
-    for package in packages:
-        # A day either side, so a city far from UTC loses no local morning.
-        _cal, windows = bookable_windows(
-            db,
-            pro_user_id=pro_user_id,
-            shape=shape_for_package(db, package),
-            from_date=(now - timedelta(days=1)).date(),
-            to_date=(now + HORIZON + timedelta(days=1)).date(),
-        )
-        if any(now < w.start <= now + HORIZON for w in windows):
-            return True
-    return False
 
 
 def compute(
@@ -147,13 +129,23 @@ def compute(
 
         candidates = sorted(packages, key=lambda p: (prep[p], by_rotation(p)))[:AVAILABLE_CANDIDATE_CAP]
         t = time.perf_counter()
-        for pro_id in candidates:
-            out.candidates_checked += 1
-            if _has_start_soon(db, pro_id, packages[pro_id], now):
-                out.available.append(pro_id)
-                out.ready_in[pro_id] = prep[pro_id]
-                if len(out.available) == ROW_SIZE:
-                    break
+        if candidates:
+            # One batched calendar load for every candidate, then each judged
+            # in row order until the row is full - a real start in the next
+            # 24 hours, by the rule every booking path uses: working hours,
+            # blocked time, bookings, holds, buffers, the daily limit and the
+            # short notice all apply.
+            found = first_bookable_starts(
+                db,
+                shapes_by_pro={p: [shape_for_package(db, pkg) for pkg in packages[p]] for p in candidates},
+                after=now,
+                before=now + HORIZON,
+                want=ROW_SIZE,
+                presence_states=states,
+            )
+            out.candidates_checked = len(candidates)
+            out.available = [p for p in candidates if p in found]
+            out.ready_in = {p: prep[p] for p in out.available}
         out.timings_ms["bookable"] = (time.perf_counter() - t) * 1000
 
     out.timings_ms["total"] = (time.perf_counter() - started) * 1000

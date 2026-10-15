@@ -59,9 +59,19 @@ def _checks(monkeypatch) -> list:
     """Who the availability rule was asked about - the per-photographer
     cost the cheap checks before it exist to avoid."""
     calls = []
-    real = live_rows.bookable_windows
-    monkeypatch.setattr(live_rows, "bookable_windows", lambda *a, **k: calls.append(k["pro_user_id"]) or real(*a, **k))
+    real = live_rows.first_bookable_starts
+    monkeypatch.setattr(live_rows, "first_bookable_starts", lambda *a, **k: calls.extend(k["shapes_by_pro"]) or real(*a, **k))
     return calls
+
+
+def _evaluated(monkeypatch) -> list:
+    """Whose windows the rule was actually run on."""
+    from app.services import bookable_time
+
+    seen = []
+    real = bookable_time._candidates
+    monkeypatch.setattr(bookable_time, "_candidates", lambda cal, *a, **k: seen.append(cal.policy.pro_user_id) or real(cal, *a, **k))
+    return seen
 
 
 def _hide(client, pro, hidden=True):
@@ -296,14 +306,117 @@ def test_the_availability_check_runs_on_a_capped_candidate_set(client, db_sessio
     for pro in pros:
         _available(client, db_session, pro)
     monkeypatch.setattr(live_rows, "AVAILABLE_CANDIDATE_CAP", 2)
-    calls = []
-    real = live_rows.bookable_windows
-    monkeypatch.setattr(live_rows, "bookable_windows", lambda *a, **k: calls.append(k["pro_user_id"]) or real(*a, **k))
+    calls = _checks(monkeypatch)
 
     row = _row(_home(client, pros[0].client_id), "available_now")
 
-    assert len(set(calls)) == 2
+    assert len(calls) == 2
     assert len(row) == 2
+
+
+def test_the_checks_stop_once_the_row_is_full(client, db_session, monkeypatch):
+    """However many are switched on, a full row costs one check per place in
+    it: a city of a hundred costs what a city of fifteen does."""
+    pros = [_short_notice_pro(db_session) for _ in range(4)]
+    for pro in pros:
+        _available(client, db_session, pro)
+    monkeypatch.setattr(live_rows, "ROW_SIZE", 2)
+    evaluated = _evaluated(monkeypatch)
+
+    row = _row(_home(client, pros[0].client_id), "available_now")
+
+    assert len(row) == 2
+    assert len(set(evaluated)) == 2, "stopped as soon as the row was full"
+
+
+def test_the_calendars_load_in_one_batch_whatever_the_number_of_candidates(client, db_session, monkeypatch):
+    """The cost of the availability check does not grow with the candidates:
+    the same number of queries for one as for five."""
+    from sqlalchemy import event
+
+    def queries_for(n):
+        pros = [_short_notice_pro(db_session) for _ in range(n)]
+        for pro in pros:
+            _available(client, db_session, pro)
+        from app.services.bookable_time import first_bookable_starts, shape_for_package
+
+        shapes = {pro.uuid: [shape_for_package(db_session, db_session.get(ProPackage, uuid.UUID(pro.package_id)))] for pro in pros}
+        seen = []
+        listener = lambda *args: seen.append(1)  # noqa: E731
+        bind = db_session.get_bind()
+        event.listen(bind, "before_cursor_execute", listener)
+        now = datetime.now(timezone.utc)
+        try:
+            found = first_bookable_starts(db_session, shapes_by_pro=shapes, after=now, before=now + timedelta(hours=24), want=n)
+        finally:
+            event.remove(bind, "before_cursor_execute", listener)
+        assert len(found) == n
+        return len(seen)
+
+    assert queries_for(1) == queries_for(5)
+
+
+def test_a_batch_gives_each_photographer_the_calendar_they_get_alone(client, db_session):
+    """load_calendars is load_calendar for several at once, not a second
+    reading of the rule: different bookings, blocks, requests and toggles
+    stay with their own photographer."""
+    from app.services.bookable_time import load_calendar, load_calendars
+    from tests.test_bookable_time import _paid_gig
+
+    pros = [_short_notice_pro(db_session) for _ in range(3)]
+    now = datetime.now(timezone.utc)
+    start = (now + timedelta(hours=5)).replace(minute=0, second=0, microsecond=0)
+    _paid_gig(db_session, pros[0], start, start + timedelta(hours=1))
+    db_session.add(ProBlackoutDate(pro_user_id=pros[1].uuid, start_at=now, end_at=now + timedelta(hours=9), reason="x"))
+    db_session.commit()
+    _available(client, db_session, pros[2])
+    window = dict(start=now - timedelta(days=1), end=now + timedelta(days=2))
+
+    batch = load_calendars(db_session, pro_user_ids=[p.uuid for p in pros], **window)
+
+    for pro in pros:
+        alone = load_calendar(db_session, pro_user_id=pro.uuid, **window)
+        mine = batch[pro.uuid]
+        assert (mine.rules, mine.blocks, mine.bookings, mine.counted, mine.tz, mine.short_notice_minutes) == (
+            alone.rules, alone.blocks, alone.bookings, alone.counted, alone.tz, alone.short_notice_minutes
+        ), pro.id
+    assert [bool(batch[p.uuid].bookings) for p in pros] == [True, False, False]
+    assert [bool(batch[p.uuid].blocks) for p in pros] == [False, True, False]
+    assert [batch[p.uuid].short_notice_minutes for p in pros] == [None, None, 120]
+
+
+@pytest.mark.parametrize("setup", ["free", "next_hours_blocked", "a_booking_in_the_way", "all_blocked", "switched_off"])
+def test_the_first_start_is_exactly_the_first_window_the_calendar_offers(client, db_session, setup):
+    """first_bookable_start is the availability rule asked more cheaply, not a
+    second rule: its answer is the earliest window bookable_windows lists in
+    the next 24 hours, or none when that list has none."""
+    from app.services.bookable_time import bookable_windows, first_bookable_start, shape_for_package
+    from tests.test_bookable_time import _paid_gig
+
+    pro = _short_notice_pro(db_session)
+    _available(client, db_session, pro)
+    now = datetime.now(timezone.utc)
+    if setup == "next_hours_blocked":
+        db_session.add(ProBlackoutDate(pro_user_id=pro.uuid, start_at=now, end_at=now + timedelta(hours=7), reason="x"))
+    elif setup == "all_blocked":
+        db_session.add(ProBlackoutDate(pro_user_id=pro.uuid, start_at=now - timedelta(hours=1), end_at=now + timedelta(days=2), reason="x"))
+    elif setup == "a_booking_in_the_way":
+        start = (now + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+        _paid_gig(db_session, pro, start, start + timedelta(hours=1))
+    elif setup == "switched_off":
+        _toggle(client, pro, on=False)
+    db_session.commit()
+    package = db_session.get(ProPackage, uuid.UUID(pro.package_id))
+    shape = shape_for_package(db_session, package)
+
+    _cal, windows = bookable_windows(
+        db_session, pro_user_id=pro.uuid, shape=shape, from_date=(now - timedelta(days=1)).date(), to_date=(now + timedelta(days=2)).date()
+    )
+    expected = next((w for w in windows if now < w.start <= now + timedelta(hours=24)), None)
+    found = first_bookable_start(db_session, pro_user_id=pro.uuid, shapes=[shape], after=now, before=now + timedelta(hours=24))
+
+    assert (found.start if found else None) == (expected.start if expected else None)
+    assert (found is None) == (setup in ("all_blocked", "switched_off"))
 
 
 def test_presence_is_one_batched_lookup_for_both_rows(client, db_session, monkeypatch):

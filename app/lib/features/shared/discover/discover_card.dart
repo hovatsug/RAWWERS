@@ -132,6 +132,16 @@ class DiscoverCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        // Quietly: a short-notice request is not instant. The
+                        // photographer has this long, then it lapses - what
+                        // the rule enforces, not a promise they will answer.
+                        if (card.answerWithinMinutes case final answer?)
+                          Text(
+                            'Has $answer minutes to answer a request',
+                            style: theme.textTheme.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                       ],
                     ],
                   ),

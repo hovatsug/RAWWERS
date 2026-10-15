@@ -25,6 +25,7 @@ _ClientDiscoverCard _$ClientDiscoverCardFromJson(Map<String, dynamic> json) =>
       responseLabel: json['response_label'] as String?,
       online: json['online'] as bool? ?? false,
       readyInMinutes: (json['ready_in_minutes'] as num?)?.toInt(),
+      answerWithinMinutes: (json['answer_within_minutes'] as num?)?.toInt(),
       topNiches: (json['top_niches'] as List<dynamic>?)
           ?.map((e) => e as Map<String, dynamic>)
           .toList(),
@@ -51,6 +52,7 @@ Map<String, dynamic> _$ClientDiscoverCardToJson(_ClientDiscoverCard instance) =>
       'response_label': instance.responseLabel,
       'online': instance.online,
       'ready_in_minutes': instance.readyInMinutes,
+      'answer_within_minutes': instance.answerWithinMinutes,
       'top_niches': instance.topNiches,
       'portfolio_photo_count': instance.portfolioPhotoCount,
       'portfolio_video_count': instance.portfolioVideoCount,

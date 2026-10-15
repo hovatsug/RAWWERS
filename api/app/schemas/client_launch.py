@@ -84,6 +84,10 @@ class ClientDiscoverCard(BaseModel):
     # this is their preparation time, in minutes. Set live on every response
     # like `online`; null whenever they are not available now.
     ready_in_minutes: int | None = None
+    # Alongside ready_in_minutes: how long the photographer has to answer a
+    # short-notice request before it lapses (SHORT_NOTICE_ACCEPT_MINUTES).
+    # What the rule enforces, not a promise that they will.
+    answer_within_minutes: int | None = None
     top_niches: list[dict] = Field(default_factory=list)
     portfolio_photo_count: int
     portfolio_video_count: int

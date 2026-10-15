@@ -160,6 +160,17 @@
 ///             ],
 ///             "title": "Ready In Minutes"
 ///         },
+///         "answer_within_minutes": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Answer Within Minutes"
+///         },
 ///         "top_niches": {
 ///             "type": "array",
 ///             "items": {
@@ -251,6 +262,10 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
     /// readyInMinutes
     @JsonKey(name: ClientDiscoverCard.readyInMinutesKey_) int? readyInMinutes,
 
+    /// answerWithinMinutes
+    @JsonKey(name: ClientDiscoverCard.answerWithinMinutesKey_)
+    int? answerWithinMinutes,
+
     /// topNiches
     @JsonKey(name: ClientDiscoverCard.topNichesKey_)
     List<Map<String, dynamic>>? topNiches,
@@ -300,6 +315,8 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
   static const String onlineKey_ = r'online';
 
   static const String readyInMinutesKey_ = r'ready_in_minutes';
+
+  static const String answerWithinMinutesKey_ = r'answer_within_minutes';
 
   static const String topNichesKey_ = r'top_niches';
 

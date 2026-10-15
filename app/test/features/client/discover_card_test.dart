@@ -13,7 +13,7 @@ import 'package:rawwers/design/components/r_online_dot.dart';
 /// the widget tree rather than pixels: that the server's `cover_url` becomes
 /// the image's URL, and that its absence degrades to a placeholder instead of
 /// a broken frame.
-ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false, int? readyInMinutes}) => ClientDiscoverCard(
+ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false, int? readyInMinutes, int? answerWithinMinutes}) => ClientDiscoverCard(
       proUserId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
@@ -34,6 +34,7 @@ ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online =
       responseLabel: responseLabel,
       online: online,
       readyInMinutes: readyInMinutes,
+      answerWithinMinutes: answerWithinMinutes,
     );
 
 Widget _wrap(ClientDiscoverCard card) => MaterialApp(
@@ -134,4 +135,16 @@ void main() {
       'Ready in about 6 hours',
     ]);
   });
+
+  testWidgets('an available photographer\'s card also says how long they have to answer', (tester) async {
+    await tester.pumpWidget(_wrap(_card(readyInMinutes: 120, answerWithinMinutes: 30)));
+    expect(find.text('Ready in about 2 hours'), findsOneWidget);
+    expect(find.text('Has 30 minutes to answer a request'), findsOneWidget);
+  });
+
+  testWidgets('without being available now there is no answer line', (tester) async {
+    await tester.pumpWidget(_wrap(_card(answerWithinMinutes: 30)));
+    expect(find.textContaining('to answer'), findsNothing);
+  });
 }
+

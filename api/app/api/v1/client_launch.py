@@ -525,9 +525,11 @@ def _with_live_rows(db: Session, response: ClientHomeResponse, *, country: str, 
             if items:  # absent, never empty
                 rows.append(ClientHomeRow(key=key, title=title, subtitle=subtitle, items=items))
         response.rows = rows + response.rows
+        answer_within = settings.short_notice_accept_minutes
         for row in response.rows:
             for card in row.items:
                 card.ready_in_minutes = live.ready_in.get(card.pro_user_id)
+                card.answer_within_minutes = answer_within if card.ready_in_minutes is not None else None
         return _with_dots(response, shown)
     except Exception:
         logger.warning("live_rows_failed", exc_info=True)

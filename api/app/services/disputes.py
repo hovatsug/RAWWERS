@@ -33,14 +33,19 @@ from app.models.admin import (
     RefundPolicyDefaultAction,
 )
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
-from app.models.gig import Gig, GigStatus
+from app.models.gig import Gig, GigStatus, StripePayment
 from app.models.media_rights import GigEntitlementType, GigMediaEntitlement
 from app.models.ops import AbuseSeverity
 from app.models.payouts import EarningsHoldReason, EarningsSourceType
 from app.models.reward import RewardEntryType, RewardLedgerEntry
 from app.services.abuse import create_abuse_signal
 from app.services.analytics import log_event
-from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig
+from app.services.payment_intents import (
+    allocate_refund_oldest_first,
+    list_succeeded_payments_for_gig,
+    refundable_remaining,
+    refunded_or_refunding,
+)
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.notifications import enqueue_notification
 from app.services.payouts import create_earnings_hold, release_earnings_holds_for_source, reverse_earnings_entries_for_source
@@ -439,7 +444,9 @@ def create_or_get_refund_case_for_dispute(
         currency = purchase.currency if hasattr(purchase, "currency") else currency
         gig_id = purchase.gig_id
         requested_by = dispute.opened_by_user_id
-        payment_allocations = [(purchase.stripe_payment_intent_id, None, amount_authorized)]
+        payment_allocations = None  # computed below, once refund_amount is known
+        # What is left on the purchase, not what it cost.
+        refundable = max(Decimal("0.00"), purchase.total - refunded_or_refunding(db, purchase.stripe_payment_intent_id))
     else:
         if not dispute.gig_id:
             raise APIError(code="validation_error", message="Dispute has no payment reference", status_code=422)
@@ -449,6 +456,9 @@ def create_or_get_refund_case_for_dispute(
         payment_scope = RefundPaymentScope.booking_payment
         reference_id = dispute.gig_id
         amount_authorized = sum((p.amount for p in payments), Decimal("0.00"))
+        # What is left across the booking's payments, not what was paid:
+        # earlier refunds, made or under way, are already spoken for.
+        refundable = sum((refundable_remaining(db, p) for p in payments), Decimal("0.00"))
         currency = payments[0].currency
         gig_id = dispute.gig_id
         requested_by = dispute.opened_by_user_id
@@ -467,10 +477,12 @@ def create_or_get_refund_case_for_dispute(
         else:
             refund_amount = Decimal("0.00")
 
-    refund_amount = max(Decimal("0.00"), min(amount_authorized, refund_amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    refund_amount = max(Decimal("0.00"), min(refundable, refund_amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    if payment_allocations is None:
-        allocation = allocate_amount_oldest_first(payments, refund_amount)
+    if dispute.extra_purchase_id:
+        payment_allocations = [(purchase.stripe_payment_intent_id, None, refund_amount)] if refund_amount > 0 else []
+    else:
+        allocation = allocate_refund_oldest_first(db, payments, refund_amount)
         payment_allocations = [(p.stripe_payment_intent_id, p.id, take) for p, take in allocation]
 
     rows: list[RefundCase] = []
@@ -556,6 +568,23 @@ def clawback_gig_rewards_for_fraud(db: Session, *, gig_id: uuid.UUID, user_id: u
     return abs(int(adjustment.amount)) if adjustment else 0
 
 
+def _refundable_on_intent(db: Session, row: RefundCase) -> Decimal | None:
+    """What is left to refund on the case's payment intent, other refunds
+    counted and this one not. None when the intent is neither a booking
+    payment nor an extra-images purchase - nothing to measure against."""
+    payment = db.execute(
+        select(StripePayment).where(StripePayment.stripe_payment_intent_id == row.stripe_payment_intent_id)
+    ).scalar_one_or_none()
+    if payment is not None:
+        return refundable_remaining(db, payment, excluding=row.id)
+    purchase = db.execute(
+        select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == row.stripe_payment_intent_id)
+    ).scalar_one_or_none()
+    if purchase is not None:
+        return max(Decimal("0.00"), purchase.total - refunded_or_refunding(db, row.stripe_payment_intent_id, excluding=row.id))
+    return None
+
+
 def initiate_refund_case(db: Session, refund_case_id: uuid.UUID) -> RefundCase:
     row = db.get(RefundCase, refund_case_id)
     if not row:
@@ -568,6 +597,18 @@ def initiate_refund_case(db: Session, refund_case_id: uuid.UUID) -> RefundCase:
         return row
     if not row.stripe_payment_intent_id:
         raise APIError(code="invalid_state", message="Missing payment intent for refund", status_code=409)
+
+    # Sized when it was created; by now other refunds may have taken the
+    # money. Never sent if it no longer fits: it fails, saying why, and the
+    # amount is a person's decision to make again.
+    left = _refundable_on_intent(db, row)
+    if left is not None and row.amount > left:
+        row.status = RefundCaseStatus.failed
+        row.meta = {**(row.meta or {}), "failure_reason": "exceeds_remaining", "refundable_remaining": str(left)}
+        db.add(RefundEvent(refund_case_id=row.id, type="refund_blocked", payload={"reason": "exceeds_remaining", "left": str(left)}))
+        log_event(db, event_name="refund.blocked", user_id=row.requested_by_user_id, properties={"refund_case_id": str(row.id)})
+        db.flush()
+        return row
 
     row.status = RefundCaseStatus.refund_initiated
     amount_minor = int((row.amount * Decimal("100")).quantize(Decimal("1")))

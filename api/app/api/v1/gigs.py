@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_session, require_not_banned
 from app.core.config import Settings, get_settings
 from app.core.errors import APIError
+from app.models.admin import RefundCase, RefundCaseStatus, RefundPaymentScope
 from app.models.gallery import ProofGallery, ProofGalleryStatus
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
@@ -32,7 +33,9 @@ from app.services.analytics import log_event
 from app.services.payment_intents import (
     allocate_amount_oldest_first,
     create_or_get_gig_payment_intent,
+    REFUND_CASE_STATUSES_NOT_REFUNDING,
     list_succeeded_payments_for_gig,
+    refundable_remaining,
 )
 from app.services.feature_flags import is_feature_enabled
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
@@ -43,6 +46,8 @@ settings = get_settings()
 
 # Where a client may refund a booking themselves (POST /gigs/{id}/refunds/stripe).
 SELF_SERVICE_REFUND_ENVIRONMENTS = frozenset({"development", "dev", "local", "test"})
+#: Marks the refund cases the client's own refund creates.
+CLIENT_REFUND_SOURCE = "client_refund"
 router = APIRouter(prefix="/gigs", tags=["gigs"])
 
 
@@ -259,22 +264,75 @@ def create_refund(
         raise APIError(code="refund_not_allowed", message="Refund not allowed after shoot_done", status_code=409)
 
     refund_ids: list[str] = []
-    last_refund = None
+    last_status = None
     for payment in payments:
+        # Asked again: the refund already made for this payment, not another.
+        earlier = db.execute(
+            select(RefundCase).where(
+                RefundCase.stripe_payment_intent_id == payment.stripe_payment_intent_id,
+                RefundCase.meta["source"].astext == CLIENT_REFUND_SOURCE,
+                RefundCase.status.not_in(REFUND_CASE_STATUSES_NOT_REFUNDING),
+            )
+        ).scalars().first()
+        if earlier is not None:
+            refund_ids.append(earlier.meta["stripe_refund_id"])
+            last_status = earlier.meta.get("stripe_status")
+            continue
+
+        # Only what is left: an earlier refund, made or under way, has taken
+        # its share.
+        left = refundable_remaining(db, payment)
+        if left <= 0:
+            continue
+        # A new key after each failed attempt - Stripe replays a key's first
+        # answer, the failure included, for 24 hours.
+        failures = db.execute(
+            select(func.count()).select_from(RefundCase).where(
+                RefundCase.stripe_payment_intent_id == payment.stripe_payment_intent_id,
+                RefundCase.meta["source"].astext == CLIENT_REFUND_SOURCE,
+                RefundCase.status == RefundCaseStatus.failed,
+            )
+        ).scalar_one()
+        key = f"gig:{gig.id}:client-refund:{payment.id}" + (f":retry-{failures}" if failures else "")
         refund = stripe.Refund.create(
             payment_intent=payment.stripe_payment_intent_id,
+            amount=int((left * Decimal("100")).quantize(Decimal("1"))),
             reason="requested_by_customer",
             metadata={
                 "gig_id": str(gig.id),
                 "reason": body.reason or "client_requested",
             },
-            idempotency_key=f"gig:{gig.id}:client-refund:{payment.id}",
+            idempotency_key=key,
         )
         refund_ids.append(refund.id)
-        last_refund = refund
+        last_status = refund.status
 
-        # Asked again, Stripe answers the same idempotency key with the same
-        # refund; it is recorded once, however often the client asks.
+        # Recorded as a refund case, so later refunds see what this one took
+        # and the refund webhook settles it.
+        db.add(
+            RefundCase(
+                gig_id=gig.id,
+                requested_by_user_id=user.user_id,
+                payment_scope=RefundPaymentScope.booking_payment,
+                reference_id=gig.id,
+                stripe_payment_intent_id=payment.stripe_payment_intent_id,
+                amount_authorized=payment.amount,
+                amount_refunded=Decimal("0.00"),
+                status=RefundCaseStatus.refund_initiated,
+                amount=left,
+                currency=payment.currency,
+                reason=body.reason or "client_requested",
+                meta={
+                    "source": CLIENT_REFUND_SOURCE,
+                    "stripe_refund_id": refund.id,
+                    "stripe_status": refund.status,
+                    "stripe_payment_id": str(payment.id),
+                },
+            )
+        )
+
+        # Stripe answers a repeated key with the same refund; it is
+        # recorded once, however often the client asks.
         already = db.execute(
             select(LedgerEntry.id).where(
                 LedgerEntry.gig_id == gig.id,
@@ -295,9 +353,11 @@ def create_refund(
                 reference_id=refund.id,
             )
         )
+    if not refund_ids:
+        raise APIError(code="nothing_to_refund", message="This booking has already been refunded", status_code=409)
     db.commit()
 
-    return CreateRefundResponse(refund_id=refund_ids[0], status=last_refund.status, refund_ids=refund_ids)
+    return CreateRefundResponse(refund_id=refund_ids[0], status=last_status or "pending", refund_ids=refund_ids)
 
 
 

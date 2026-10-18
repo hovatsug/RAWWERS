@@ -32,6 +32,7 @@ from app.models.admin import (
     RefundCase,
     RefundEvent,
     RefundCaseStatus,
+    RefundPaymentScope,
     UserAccount,
     UserRole,
     UserRoleType,
@@ -166,7 +167,7 @@ from app.schemas.launch_ops import (
 )
 from app.services.gear_floor import evaluate_gear_floor, niche_slugs_for_pro
 from app.services.audit import add_admin_audit_log
-from app.services.payment_intents import allocate_amount_oldest_first, list_succeeded_payments_for_gig, total_succeeded_amount_for_gig
+from app.services.payment_intents import allocate_refund_oldest_first, list_succeeded_payments_for_gig, refundable_remaining
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.media_urls import resolve_image_urls
 from app.services.launch_ops import onboarding_checks
@@ -1543,12 +1544,20 @@ def create_admin_refund(
     if not payments:
         raise APIError(code="invalid_state", message="No stripe payment for gig", status_code=409)
 
-    total_paid = total_succeeded_amount_for_gig(db, gig_id)
-    amount = body.amount or total_paid
-    if amount <= 0 or amount > total_paid:
+    # What is left, not what was paid: earlier refunds, made or under way,
+    # are already spoken for.
+    left = sum((refundable_remaining(db, p) for p in payments), Decimal("0.00"))
+    amount = body.amount or left
+    if amount <= 0:
         raise APIError(code="validation_error", message="Invalid refund amount", status_code=422)
+    if amount > left:
+        raise APIError(
+            code="refund_exceeds_remaining",
+            message=f"Only {left} {gig.currency} is left to refund on this booking",
+            status_code=422,
+        )
 
-    allocation = allocate_amount_oldest_first(payments, amount)
+    allocation = allocate_refund_oldest_first(db, payments, amount)
 
     refund_cases: list[RefundCase] = []
     for payment, take in allocation:
@@ -1567,6 +1576,9 @@ def create_admin_refund(
             gig_id=gig.id,
             dispute_id=body.dispute_id,
             requested_by_user_id=actor.user_id,
+            payment_scope=RefundPaymentScope.booking_payment,
+            reference_id=gig.id,
+            stripe_payment_intent_id=payment.stripe_payment_intent_id,
             status=RefundCaseStatus.processing,
             amount=take,
             currency=gig.currency,

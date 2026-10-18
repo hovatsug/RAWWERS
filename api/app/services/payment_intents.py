@@ -4,13 +4,14 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 import stripe
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 import uuid
 
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.models.admin import RefundCase, RefundCaseStatus
 from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.services.stripe_service import map_intent_status, to_cents
 
@@ -86,6 +87,50 @@ def list_succeeded_payments_for_gig(
 
 def total_succeeded_amount_for_gig(db: Session, gig_id: uuid.UUID) -> Decimal:
     return sum((p.amount for p in list_succeeded_payments_for_gig(db, gig_id)), Decimal("0.00"))
+
+
+#: Refund cases whose money never moved and never will: their amount is
+#: still refundable. Every other status is a refund made or under way.
+REFUND_CASE_STATUSES_NOT_REFUNDING = (RefundCaseStatus.failed, RefundCaseStatus.cancelled, RefundCaseStatus.rejected)
+
+
+def refunded_or_refunding(
+    db: Session, payment_intent_id: str, *, payment_id: uuid.UUID | None = None, excluding: uuid.UUID | None = None
+) -> Decimal:
+    """Every refund made or under way against this payment intent. Admin
+    refunds recorded before refund cases named their payment intent carry
+    only the payment row's id in their metadata; give it, and they count."""
+    matches = [RefundCase.stripe_payment_intent_id == payment_intent_id]
+    if payment_id is not None:
+        matches.append(RefundCase.meta["stripe_payment_id"].astext == str(payment_id))
+    stmt = select(func.coalesce(func.sum(RefundCase.amount), 0)).where(
+        or_(*matches), RefundCase.status.not_in(REFUND_CASE_STATUSES_NOT_REFUNDING)
+    )
+    if excluding is not None:
+        stmt = stmt.where(RefundCase.id != excluding)
+    return Decimal(db.execute(stmt).scalar_one()).quantize(_CENTS)
+
+
+def refundable_remaining(db: Session, payment: StripePayment, *, excluding: uuid.UUID | None = None) -> Decimal:
+    """What can still be refunded on this payment - never more than this."""
+    already = refunded_or_refunding(db, payment.stripe_payment_intent_id, payment_id=payment.id, excluding=excluding)
+    return max(Decimal("0.00"), payment.amount - already)
+
+
+def allocate_refund_oldest_first(db: Session, payments: list[StripePayment], amount: Decimal) -> list[tuple[StripePayment, Decimal]]:
+    """Split a refund across `payments` (already oldest-first), each capped
+    at what is still refundable on it. Allocates at most the total left;
+    the caller decides whether asking for more is an error or a cap."""
+    remaining = amount
+    allocation: list[tuple[StripePayment, Decimal]] = []
+    for payment in payments:
+        if remaining <= 0:
+            break
+        take = min(remaining, refundable_remaining(db, payment))
+        if take > 0:
+            allocation.append((payment, take))
+            remaining -= take
+    return allocation
 
 
 def allocate_amount_oldest_first(payments: list[StripePayment], amount: Decimal) -> list[tuple[StripePayment, Decimal]]:

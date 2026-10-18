@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import stripe
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_session, require_not_banned
 from app.core.config import Settings, get_settings
 from app.core.errors import APIError
+from app.models.gallery import ProofGallery, ProofGalleryStatus
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gig import (
@@ -37,9 +38,11 @@ from app.services.feature_flags import is_feature_enabled
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.rewards import reserve_points_for_discount
-from app.services.stripe_service import is_within_hours
 
 settings = get_settings()
+
+# Where a client may refund a booking themselves (POST /gigs/{id}/refunds/stripe).
+SELF_SERVICE_REFUND_ENVIRONMENTS = frozenset({"development", "dev", "local", "test"})
 router = APIRouter(prefix="/gigs", tags=["gigs"])
 
 
@@ -217,6 +220,14 @@ def create_refund(
         raise APIError(code="not_found", message="Gig not found", status_code=404)
     if gig.client_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only client may request refund", status_code=403)
+    # Off outside development until the platform cancellation standard
+    # replaces it: refunds there go through support (admin refunds).
+    if (get_settings().app_env or "").strip().lower() not in SELF_SERVICE_REFUND_ENVIRONMENTS:
+        raise APIError(
+            code="self_service_refunds_off",
+            message="Refunds are handled by our support team for now - get in touch and we will sort it out.",
+            status_code=403,
+        )
     if gig.status != GigStatus.paid:
         raise APIError(code="invalid_state", message="Gig must be paid to request refund", status_code=409)
 
@@ -229,9 +240,20 @@ def create_refund(
     if not paid_at_raw:
         raise APIError(code="invalid_state", message="Payment paid timestamp missing", status_code=409)
 
+    # The interim rule: until the earlier of 24 hours after paying and the
+    # shoot's start - a short-notice shoot can begin two hours after payment
+    # - and never once the client has been shown a gallery.
     paid_at = datetime.fromisoformat(paid_at_raw)
-    if not is_within_hours(paid_at, 24):
+    closes_at = paid_at + timedelta(hours=24)
+    if gig.scheduled_start is not None:
+        closes_at = min(closes_at, gig.scheduled_start)
+    if datetime.now(timezone.utc) >= closes_at:
         raise APIError(code="refund_not_allowed", message="Refund window is closed", status_code=409)
+    shown = db.execute(
+        select(ProofGallery.id).where(ProofGallery.gig_id == gig.id, ProofGallery.status != ProofGalleryStatus.draft)
+    ).first()
+    if shown:
+        raise APIError(code="refund_not_allowed", message="Refunds close once your photographer has shared your gallery", status_code=409)
 
     if gig.status == GigStatus.shoot_done:
         raise APIError(code="refund_not_allowed", message="Refund not allowed after shoot_done", status_code=409)

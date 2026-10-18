@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -42,7 +43,7 @@ from app.models.learning import (
     InstructorProfile,
     InstructorStatus,
 )
-from app.models.booking import ProPackage
+from app.models.booking import ProPackage, ProSchedulingPolicy
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
 from app.models.niche import Niche, NicheTierPolicy, ProNicheSkill, ProNicheSkillEvent, SkillTier
 from app.models.discovery import AnalyticsEvent, ProPublicIndex
@@ -213,7 +214,10 @@ from app.services.launch_ops import (
     set_pro_onboarding_status,
 )
 from app.services.proof_of_gigs import enqueue_raww_mint, create_raww_clawback, ensure_default_raww_config, list_raww_mints
+from app.services import available_now, presence
+from app.services.auth_service import revoke_all_user_sessions
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
@@ -539,7 +543,24 @@ def update_user_ban(
         reason=body.reason,
         metadata={"ban_action": body.action.value, "ends_at": body.ends_at.isoformat() if body.ends_at else None},
     )
+    shut_out = body.action in (BanActionType.banned, BanActionType.suspended)
+    if shut_out:
+        # Every session ends now, not when each request is next refused, and
+        # Available now goes off with the person.
+        revoke_all_user_sessions(db, user_id)
+        policy = db.get(ProSchedulingPolicy, user_id)
+        if policy is not None:
+            policy.available_until = None
     db.commit()
+    if shut_out:
+        # Best effort: if Redis cannot be reached, the presence key expires on
+        # its own and every heartbeat is already refused for the ban.
+        try:
+            presence.clear(user_id)
+        except Exception:
+            logger.warning("ban_presence_clear_failed", exc_info=True)
+        if policy is not None:
+            available_now.copy_to_redis(policy)
     return {"user_id": str(user_id), "action": body.action.value}
 
 

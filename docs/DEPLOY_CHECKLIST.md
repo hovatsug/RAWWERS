@@ -130,7 +130,7 @@ From listing every route and searching the tests for a call to each (2026-10-14:
 3. **Where payouts go** - `POST /v1/pro/payouts/connect/account`, `/connect/onboarding-link`, `GET /connect/status`, `GET`/`PUT /v1/pro/payouts/account`. Whose account receives the money.
 4. **Charges outside bookings** - `POST /v1/prints/orders/{order_id}/pay`, `POST /v1/gigs/{gig_id}/prints/orders`, `PUT /v1/prints/orders/{order_id}`. Charge a card.
 5. **Earnings holds** - `POST /v1/admin/holds/create`, `POST /v1/admin/holds/{hold_id}/release`. Decide when a photographer's money becomes payable.
-6. **Roles and bans** - `POST /v1/admin/users/{user_id}/roles`, `POST /v1/admin/users/{user_id}/ban`, `POST /v1/admin/impersonate/end`. Who is an admin, who is shut out, and leaving another person's session.
+6. **Roles and bans** - `POST /v1/admin/users/{user_id}/roles`, `POST /v1/admin/impersonate/end`. Who is an admin, and leaving another person's session. (`POST /v1/admin/users/{user_id}/ban` is tested since 2026-10-18: only an admin bans, a ban or suspension ends every session and the photographer's presence, and a banned admin loses the admin routes.)
 7. **Disputes** - `POST /v1/admin/disputes/{id}/set-status`, `/status`, `POST /v1/disputes/{id}/cancel`, `/evidence`. Decide refunds and who wins them.
 8. **What everyone pays** - `PUT /v1/admin/finance/fee-policy`, `PUT /v1/admin/learn/fee-policy`, `PUT /v1/admin/raww/multiplier-policy`, `PUT /v1/admin/pricing/extra-image-policies`, `POST`/`PUT /v1/admin/store/price-rules`. One request changes the platform's take or prices for everyone.
 9. **Private media** - `POST /v1/media/videos/{media_asset_id}/playback-token`. Who may watch a private video.

@@ -126,6 +126,8 @@ def require_admin(
     db.commit()
     if UserRoleType.admin not in roles:
         raise APIError(code="forbidden", message="Admin access required", status_code=403)
+    # A banned or suspended admin keeps the role row but none of its powers.
+    enforce_not_banned(db, user.user_id)
     user.roles = list(roles)
     return user
 

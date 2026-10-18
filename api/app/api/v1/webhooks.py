@@ -30,6 +30,7 @@ from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurc
 from app.models.admin import ProProfile
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.webhooks import WebhookAckResponse
+from app.services.full_refund import is_fully_refunded, settle_full_refund
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
@@ -723,26 +724,22 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         if fully_refunded:
             payment.status = PaymentStatus.refunded
 
-        # Deliberately no gig transition. A charge.refunded arriving from an
-        # admin refund, a client cancellation and a dispute resolution are
-        # three different things, and this handler sees only an amount. It
-        # used to force `refunded` unconditionally, which claimed a
-        # part-refunded booking was cancelled, and raised "Transition
+        # No gig transition for a partial refund. A charge.refunded arriving
+        # from an admin refund, a client cancellation and a dispute
+        # resolution are different things, and this handler sees only an
+        # amount. It used to force `refunded` unconditionally, which claimed
+        # a part-refunded booking was cancelled, and raised "Transition
         # disputed -> refunded not allowed" for any refund arising from a
-        # dispute - failing the event forever while money that had genuinely
-        # left the platform went unrecorded. If a full refund should move
-        # the gig, that belongs in the resolution path, where the intent is
-        # known.
+        # dispute - failing the event forever. A refund of everything paid
+        # is unambiguous whatever its route: settle_full_refund, below,
+        # ends the booking once every captured payment is refunded in full.
 
         enqueue_raww_refund_reversal(db, gig_id=gig.id)
-        if fully_refunded:
-            reverse_earnings_entries_for_source(
-                db,
-                source_type=EarningsSourceType.gig_base,
-                source_id=gig.id,
-                reason="stripe_refund",
-            )
-        else:
+        # A whole booking refunded: settle_full_refund, below, reverses the
+        # earnings once. Anything less - a part of a payment, or one payment
+        # of several - reduces them: reversing everything here took the
+        # whole booking's earnings away for, say, its difference charge.
+        if not (fully_refunded and is_fully_refunded(db, gig)):
             adjust_earnings_for_partial_refund(
                 db,
                 gig_id=gig.id,
@@ -768,6 +765,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     reference_id=ref_id,
                 )
             )
+        if fully_refunded:
+            settle_full_refund(db, gig, reason=f"Refunded in full ({event_type})")
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)

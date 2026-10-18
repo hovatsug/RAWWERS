@@ -29,6 +29,11 @@ feature is visible in the app rather than present only in tests:
                   Simao switched on and online with the next three days
                   blocked (neither in Available now; Simao still in Online
                   now).
+  refunds         two bookings with Bruno Cardoso from a seed-only client,
+                  paid in Stripe test mode: one refunded in full by the
+                  client (the booking ends, its time is free again), one
+                  part-refunded through a dispute, after which an admin
+                  refund of more than is left is refused.
 
 Everything goes through the real routes, called in-process with real access
 tokens: the client's booking request (with its availability check and rate
@@ -65,6 +70,7 @@ import sys
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -794,7 +800,206 @@ def reset_live_state(db) -> list[str]:
     return lines
 
 
-STEPS = {"response_time": seed_response_time, "chat": seed_chat, "available_now": seed_available_now}
+# --- refunds -----------------------------------------------------------------
+
+REFUNDS_TAG = "[demo:refunds]"
+REFUNDS_PRO_EMAIL = "bruno.cardoso@rawwers.dev"
+REFUNDS_CLIENT = SeedUser(
+    user_id=uuid.UUID("00000000-0000-0000-0000-0000000e0001"),
+    email="seed.refunds@rawwers.dev",
+    password="Passw0rd!",
+    display_name="Seed refunds client",
+    roles=(UserRoleType.client,),
+)
+
+
+def _admin_headers(db) -> dict[str, str]:
+    from app.core.config import get_settings
+
+    admin_id = _user_id(db, "admin@rawwers.dev")
+    if admin_id is None:
+        raise RuntimeError("admin@rawwers.dev is missing - run the base seed first")
+    headers = _headers(db, admin_id)
+    keys = sorted(get_settings().admin_api_key_set())
+    if keys:
+        headers["X-Admin-Api-Key"] = keys[0]
+    return headers
+
+
+def _refund_demo_request(api, db, pro_id: uuid.UUID, index: int) -> BookingRequest:
+    """The demo's booking request #index, made by the seed-only client
+    through the real route the first time."""
+    tagged = db.execute(
+        select(BookingRequest).where(
+            BookingRequest.pro_user_id == pro_id, BookingRequest.notes == f"{REFUNDS_TAG} #{index}"
+        )
+    ).scalars().first()
+    if tagged is not None:
+        return tagged
+    package = db.execute(
+        select(ProPackage).where(ProPackage.pro_user_id == pro_id, ProPackage.is_active.is_(True)).order_by(ProPackage.created_at)
+    ).scalars().first()
+    niche_slug = db.execute(select(Niche.slug).where(Niche.id == package.niche_id)).scalar_one()
+    headers = _headers(db, REFUNDS_CLIENT.user_id)
+    start_at, end_at = _first_open_window(api, headers, pro_id, package.id)
+    resp = api.post(
+        "/v1/client/bookings/request",
+        headers=headers,
+        json={
+            "pro_user_id": str(pro_id),
+            "niche_slug": niche_slug,
+            "date_window": {"start_at": start_at, "end_at": end_at},
+            "package_id": str(package.id),
+            "notes": f"{REFUNDS_TAG} #{index}",
+        },
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"refunds demo #{index}: booking request refused ({resp.status_code}): {resp.text}")
+    db.expire_all()
+    return db.get(BookingRequest, uuid.UUID(resp.json()["booking_id"]))
+
+
+def _refund_demo_gig(db, request: BookingRequest):
+    from app.models.gig import Gig
+
+    return db.execute(select(Gig).where(Gig.meta["booking_request_id"].astext == str(request.id))).scalars().first()
+
+
+def _apply_stripe(db, event_type: str, obj) -> None:
+    """What Stripe would send to the webhook, applied by the webhook's own
+    handler - the dev stack has no tunnel for Stripe to reach it."""
+    import json
+
+    from app.api.v1.webhooks import _apply_stripe_event
+
+    _apply_stripe_event(db, event_type, json.loads(str(obj)))  # the JSON a webhook would carry
+    db.commit()
+    db.expire_all()
+
+
+def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str]):
+    """Booking #index taken as far as paid: requested by the seed-only
+    client, accepted by the photographer, paid with Stripe's test card in
+    test mode - each through the real route or Stripe's own API."""
+    import stripe
+
+    from app.models.gig import GigStatus, StripePayment, StripePaymentKind
+    from app.services import stripe_service  # noqa: F401 - sets the API key
+
+    request = _refund_demo_request(api, db, pro_id, index)
+    gig = _refund_demo_gig(db, request)
+    if gig is None:
+        resp = api.post(f"/v1/booking-requests/{request.id}/accept", headers=_headers(db, pro_id))
+        if resp.status_code != 200:
+            raise RuntimeError(f"refunds demo #{index}: accept refused ({resp.status_code}): {resp.text}")
+        db.expire_all()
+        gig = _refund_demo_gig(db, request)
+        lines.append(f"#{index}: requested and accepted")
+    if gig.status == GigStatus.payment_pending:
+        payment = db.execute(
+            select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.base)
+        ).scalar_one()
+        intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+        if intent.status != "succeeded":
+            intent = stripe.PaymentIntent.confirm(
+                intent.id, payment_method="pm_card_visa", return_url="https://rawwers.dev/demo-return"
+            )
+        _apply_stripe(db, "payment_intent.succeeded", intent)
+        gig = _refund_demo_gig(db, request)
+        lines.append(f"#{index}: paid {payment.amount} {payment.currency} with Stripe's test card")
+    return gig
+
+
+def _settle_refund_at_stripe(db, refund_id: str) -> str:
+    import stripe
+
+    refund = stripe.Refund.retrieve(refund_id)
+    if refund.status == "succeeded":
+        _apply_stripe(db, "refund.succeeded", refund)
+    return refund.status
+
+
+def seed_refunds(db, *, dry_run: bool) -> list[str]:
+    """Two bookings with Bruno Cardoso, from a seed-only client, in Stripe
+    test mode:
+
+      #1  paid, then refunded in full by the client's own refund (on in
+          development only): the booking ends - `refunded`, its time free in
+          Bruno's calendar again, finals revoked, earnings reversed.
+      #2  paid, disputed, resolved with a 30% refund; then an admin refund
+          of more than is left is refused, naming what is left.
+
+    Re-running carries each booking on from wherever it stopped; a booking
+    already finished is left as it is. Never deleted: these are payments."""
+    from app.models.gig import GigStatus
+
+    pro_id = _user_id(db, REFUNDS_PRO_EMAIL)
+    if pro_id is None:
+        return [f"{REFUNDS_PRO_EMAIL}: missing - run seed_fake_photographers.py first"]
+    if dry_run:
+        return ["would book, pay and refund two bookings with Bruno Cardoso in Stripe test mode"]
+    _upsert_user(db, REFUNDS_CLIENT)
+    db.commit()
+    api = _api()
+    _ensure_working_hours(api, db, pro_id)
+    lines: list[str] = []
+
+    # 1 - refunded in full by the client.
+    gig = _paid_demo_gig(api, db, pro_id, 1, lines)
+    if gig.status == GigStatus.paid:
+        resp = api.post(
+            f"/v1/gigs/{gig.id}/refunds/stripe", headers=_headers(db, REFUNDS_CLIENT.user_id), json={"reason": "Plans changed"}
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"#1: client refund refused ({resp.status_code}): {resp.text}")
+        status = _settle_refund_at_stripe(db, resp.json()["refund_id"])
+        lines.append(f"#1: client refunded in full - Stripe says {status}")
+    gig = _refund_demo_gig(db, db.get(BookingRequest, uuid.UUID(gig.meta["booking_request_id"])))
+    lines.append(f"#1: gig {gig.id} is {gig.status.value}")
+
+    # 2 - a partial refund through a dispute, then the cap.
+    gig = _paid_demo_gig(api, db, pro_id, 2, lines)
+    if gig.status == GigStatus.paid:
+        resp = api.post(
+            "/v1/disputes",
+            headers=_headers(db, REFUNDS_CLIENT.user_id),
+            json={"gig_id": str(gig.id), "category": "deliverable_quality", "reason": "Fewer photos than agreed", "summary": "Demo dispute"},
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"#2: dispute refused ({resp.status_code}): {resp.text}")
+        db.expire_all()
+        lines.append("#2: the client opened a dispute")
+    from app.models.admin import Dispute, RefundCase, RefundCaseStatus
+
+    dispute = db.execute(select(Dispute).where(Dispute.gig_id == gig.id)).scalars().first()
+    if dispute is not None and not dispute.resolution:
+        partial = (gig.amount_minimum * Decimal("0.30")).quantize(Decimal("0.01"))
+        resp = api.post(
+            f"/v1/admin/disputes/{dispute.id}/resolve",
+            headers=_admin_headers(db),
+            json={"decision": "partial_refund", "amount": str(partial), "rationale": "Demo: 30% back for fewer photos"},
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"#2: resolve refused ({resp.status_code}): {resp.text}")
+        db.expire_all()
+        lines.append(f"#2: resolved with a {partial} refund")
+    for case in db.execute(select(RefundCase).where(RefundCase.gig_id == gig.id)).scalars().all():
+        if case.status == RefundCaseStatus.pending:
+            from app.services.disputes import initiate_refund_case
+
+            initiate_refund_case(db, case.id)  # what the refund.initiate outbox event runs
+            db.commit()
+            db.expire_all()
+        if case.status == RefundCaseStatus.refund_initiated and (case.meta or {}).get("stripe_refund_id"):
+            lines.append(f"#2: Stripe says {_settle_refund_at_stripe(db, case.meta['stripe_refund_id'])} for {case.amount}")
+    resp = api.post(
+        f"/v1/admin/gigs/{gig.id}/refunds", headers=_admin_headers(db), json={"amount": str(gig.amount_minimum), "reason": "Demo: too much"}
+    )
+    lines.append(f"#2: an admin refund of the full {gig.amount_minimum} now answers {resp.status_code}: {resp.json()['error']['message'] if resp.status_code >= 400 else resp.text}")
+    return lines
+
+
+STEPS = {"response_time": seed_response_time, "chat": seed_chat, "available_now": seed_available_now, "refunds": seed_refunds}
 
 
 def main() -> int:

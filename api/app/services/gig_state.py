@@ -26,7 +26,8 @@ ALLOWED_TRANSITIONS: dict[GigStatus, set[GigStatus]] = {
     GigStatus.payment_pending: {GigStatus.paid, GigStatus.cancelled_by_client, GigStatus.cancelled_by_pro},
     GigStatus.paid: {GigStatus.refunded, GigStatus.disputed, GigStatus.completed},
     GigStatus.refunded: set(),
-    GigStatus.disputed: set(),
+    # A dispute that ends in a full refund ends the booking.
+    GigStatus.disputed: {GigStatus.refunded},
     GigStatus.completed: set(),
 }
 

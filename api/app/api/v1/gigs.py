@@ -34,7 +34,10 @@ from app.services.payment_intents import (
     allocate_amount_oldest_first,
     create_or_get_gig_payment_intent,
     REFUND_CASE_STATUSES_NOT_REFUNDING,
+    hold_refund_slot,
     list_succeeded_payments_for_gig,
+    refund_in_flight,
+    refund_in_progress_error,
     refundable_remaining,
 )
 from app.services.feature_flags import is_feature_enabled
@@ -263,10 +266,13 @@ def create_refund(
     if gig.status == GigStatus.shoot_done:
         raise APIError(code="refund_not_allowed", message="Refund not allowed after shoot_done", status_code=409)
 
-    refund_ids: list[str] = []
-    last_status = None
+    # What each payment needs: the refund already made for it when the
+    # client asks again, or what is left on it. Decided for every payment
+    # before Stripe is asked about any: a refund in flight on the second
+    # payment must stop the request before the first goes out - refusing
+    # halfway would roll back the record of a refund that really happened.
+    plan: list[tuple[StripePayment, RefundCase | None, Decimal]] = []
     for payment in payments:
-        # Asked again: the refund already made for this payment, not another.
         earlier = db.execute(
             select(RefundCase).where(
                 RefundCase.stripe_payment_intent_id == payment.stripe_payment_intent_id,
@@ -275,15 +281,42 @@ def create_refund(
             )
         ).scalars().first()
         if earlier is not None:
-            refund_ids.append(earlier.meta["stripe_refund_id"])
-            last_status = earlier.meta.get("stripe_status")
+            plan.append((payment, earlier, Decimal("0.00")))
             continue
-
         # Only what is left: an earlier refund, made or under way, has taken
         # its share.
         left = refundable_remaining(db, payment)
         if left <= 0:
             continue
+        if refund_in_flight(db, payment.stripe_payment_intent_id) is not None:
+            raise refund_in_progress_error()
+        plan.append((payment, None, left))
+
+    refund_ids: list[str] = []
+    last_status = None
+    for payment, earlier, left in plan:
+        if earlier is not None:
+            refund_ids.append(earlier.meta["stripe_refund_id"])
+            last_status = earlier.meta.get("stripe_status")
+            continue
+        # Recorded as a refund case before Stripe is asked: later refunds see
+        # what this one took, the database holds one in flight per payment,
+        # and the refund webhook settles it.
+        case = RefundCase(
+            gig_id=gig.id,
+            requested_by_user_id=user.user_id,
+            payment_scope=RefundPaymentScope.booking_payment,
+            reference_id=gig.id,
+            stripe_payment_intent_id=payment.stripe_payment_intent_id,
+            amount_authorized=payment.amount,
+            amount_refunded=Decimal("0.00"),
+            status=RefundCaseStatus.refund_initiated,
+            amount=left,
+            currency=payment.currency,
+            reason=body.reason or "client_requested",
+            meta={"source": CLIENT_REFUND_SOURCE, "stripe_payment_id": str(payment.id)},
+        )
+        hold_refund_slot(db, case)
         # A new key after each failed attempt - Stripe replays a key's first
         # answer, the failure included, for 24 hours.
         failures = db.execute(
@@ -306,30 +339,7 @@ def create_refund(
         )
         refund_ids.append(refund.id)
         last_status = refund.status
-
-        # Recorded as a refund case, so later refunds see what this one took
-        # and the refund webhook settles it.
-        db.add(
-            RefundCase(
-                gig_id=gig.id,
-                requested_by_user_id=user.user_id,
-                payment_scope=RefundPaymentScope.booking_payment,
-                reference_id=gig.id,
-                stripe_payment_intent_id=payment.stripe_payment_intent_id,
-                amount_authorized=payment.amount,
-                amount_refunded=Decimal("0.00"),
-                status=RefundCaseStatus.refund_initiated,
-                amount=left,
-                currency=payment.currency,
-                reason=body.reason or "client_requested",
-                meta={
-                    "source": CLIENT_REFUND_SOURCE,
-                    "stripe_refund_id": refund.id,
-                    "stripe_status": refund.status,
-                    "stripe_payment_id": str(payment.id),
-                },
-            )
-        )
+        case.meta = {**case.meta, "stripe_refund_id": refund.id, "stripe_status": refund.status}
 
         # Stripe answers a repeated key with the same refund; it is
         # recorded once, however often the client asks.

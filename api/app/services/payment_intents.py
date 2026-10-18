@@ -5,13 +5,14 @@ from decimal import ROUND_HALF_UP, Decimal
 
 import stripe
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import uuid
 
 from app.core.config import get_settings
 from app.core.errors import APIError
-from app.models.admin import RefundCase, RefundCaseStatus
+from app.models.admin import REFUND_CASE_STATUSES_IN_FLIGHT, RefundCase, RefundCaseStatus
 from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.services.stripe_service import map_intent_status, to_cents
 
@@ -115,6 +116,38 @@ def refundable_remaining(db: Session, payment: StripePayment, *, excluding: uuid
     """What can still be refunded on this payment - never more than this."""
     already = refunded_or_refunding(db, payment.stripe_payment_intent_id, payment_id=payment.id, excluding=excluding)
     return max(Decimal("0.00"), payment.amount - already)
+
+
+def refund_in_flight(db: Session, payment_intent_id: str) -> RefundCase | None:
+    """The refund already asked for, or about to be, on this payment."""
+    return db.execute(
+        select(RefundCase).where(
+            RefundCase.stripe_payment_intent_id == payment_intent_id,
+            RefundCase.status.in_(REFUND_CASE_STATUSES_IN_FLIGHT),
+        )
+    ).scalars().first()
+
+
+def refund_in_progress_error() -> APIError:
+    return APIError(
+        code="refund_in_progress",
+        message="A refund on this payment is already under way - wait for it to finish",
+        status_code=409,
+    )
+
+
+def hold_refund_slot(db: Session, case: RefundCase) -> None:
+    """Write the refund case now - before Stripe is asked. The database
+    allows one refund in flight per payment; a request that loses a race
+    with another fails here, before any money moves."""
+    try:
+        with db.begin_nested():
+            db.add(case)
+            db.flush()
+    except IntegrityError as exc:
+        if "uq_refund_case_one_in_flight_per_payment" not in str(exc.orig):
+            raise
+        raise refund_in_progress_error() from exc
 
 
 def allocate_refund_oldest_first(db: Session, payments: list[StripePayment], amount: Decimal) -> list[tuple[StripePayment, Decimal]]:

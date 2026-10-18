@@ -50,6 +50,17 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   A row where `override_tier` is empty after migrating is an override that was lost. Dev: none.
 
+- [ ] **More than one refund in flight on one payment - before migration `20261018_0063`.** `0063` adds a partial unique index allowing one refund case in flight (`pending`, `requested`, `approved`, `refund_initiated`, `processing`) per payment intent. If two already share one, the migration stops and lists them rather than choosing; a refund record is money, so which one is real is a person's call. This must return no rows:
+
+      SELECT stripe_payment_intent_id, count(*), string_agg(id::text || ' ' || status, ', ')
+      FROM refund_case
+      WHERE stripe_payment_intent_id IS NOT NULL
+        AND status IN ('pending', 'requested', 'approved', 'refund_initiated', 'processing')
+      GROUP BY stripe_payment_intent_id
+      HAVING count(*) > 1;
+
+  For each row, check the payment in the Stripe dashboard: keep the case that matches a refund Stripe has, and set the other to `cancelled` with a note in `admin_note`. Dev, 2026-10-18: none.
+
 ## 2. Deploying
 
 - [ ] **Build `api` and `worker` together** - `docker compose build api worker`. They are separate images from one Dockerfile; building only `api` leaves webhooks, outbox effects and photo processing on the old code with nothing failing. See [Rebuilding `api` does not rebuild `worker`](BACKEND_GAPS.md#rebuilding-api-does-not-rebuild-worker).
@@ -70,6 +81,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
     Dev, 2026-10-14: none (all 11 policies were at the 2-hour default). The downgrade rounds up again (90 min becomes 2 h), so a round trip also lengthens 90-minute choices to 120.
 
   `20261014_0062` only adds an index; it reverses cleanly.
+  `20261018_0063` only adds a unique partial index on `refund_case`; it reverses cleanly (up, down and up again tested 2026-10-18 on a copy of dev). It refuses to run while the duplicates query above returns rows.
 
   If a release containing them has to be rolled back, roll back the code and leave the schema at head - with one exception. 0058-0060 only add columns that are nullable or have a server default, so the older code runs against them. **0061 is the exception:** it drops `short_notice_prep_hours`, which code from before it reads, so taking the code back past 0061 needs `alembic downgrade 20261013_0060` as well. That costs only the 90-minute choices, which become 2 hours. One cost while it runs: its recompute ignores the override columns, so overridden tiers show the evidence tier until the new code is back. The overrides stay stored, and the first recompute after that restores them.
 - [ ] **`alembic upgrade head`.** Migration `20261007_0056` also backfills the response-time label in SQL, so labels are right immediately.

@@ -167,7 +167,14 @@ from app.schemas.launch_ops import (
 )
 from app.services.gear_floor import evaluate_gear_floor, niche_slugs_for_pro
 from app.services.audit import add_admin_audit_log
-from app.services.payment_intents import allocate_refund_oldest_first, list_succeeded_payments_for_gig, refundable_remaining
+from app.services.payment_intents import (
+    allocate_refund_oldest_first,
+    hold_refund_slot,
+    list_succeeded_payments_for_gig,
+    refund_in_flight,
+    refund_in_progress_error,
+    refundable_remaining,
+)
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.media_urls import resolve_image_urls
 from app.services.launch_ops import onboarding_checks
@@ -1558,20 +1565,12 @@ def create_admin_refund(
         )
 
     allocation = allocate_refund_oldest_first(db, payments, amount)
+    for payment, _take in allocation:
+        if refund_in_flight(db, payment.stripe_payment_intent_id) is not None:
+            raise refund_in_progress_error()
 
     refund_cases: list[RefundCase] = []
     for payment, take in allocation:
-        refund = stripe.Refund.create(
-            payment_intent=payment.stripe_payment_intent_id,
-            amount=int((take * Decimal("100")).quantize(Decimal("1"))),
-            metadata={
-                "gig_id": str(gig.id),
-                "actor_user_id": str(actor.user_id),
-                "dispute_id": str(body.dispute_id) if body.dispute_id else "",
-            },
-            idempotency_key=f"gig:{gig.id}:admin-refund:{payment.id}",
-        )
-
         refund_case = RefundCase(
             gig_id=gig.id,
             dispute_id=body.dispute_id,
@@ -1584,10 +1583,25 @@ def create_admin_refund(
             currency=gig.currency,
             reason=body.reason,
             admin_note=body.reason,
-            meta={"stripe_refund_id": refund.id, "stripe_payment_id": str(payment.id)},
+            meta={"stripe_payment_id": str(payment.id)},
         )
-        db.add(refund_case)
+        hold_refund_slot(db, refund_case)
         refund_cases.append(refund_case)
+
+        refund = stripe.Refund.create(
+            payment_intent=payment.stripe_payment_intent_id,
+            amount=int((take * Decimal("100")).quantize(Decimal("1"))),
+            metadata={
+                "gig_id": str(gig.id),
+                "actor_user_id": str(actor.user_id),
+                "dispute_id": str(body.dispute_id) if body.dispute_id else "",
+            },
+            # One key per refund case. Per payment, a later partial refund
+            # of what was left reused the first one's key: Stripe replayed
+            # the first refund, or refused the different amount.
+            idempotency_key=f"refund-case:{refund_case.id}",
+        )
+        refund_case.meta = {**refund_case.meta, "stripe_refund_id": refund.id}
 
         db.add(
             LedgerEntry(

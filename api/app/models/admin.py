@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import text
 from sqlalchemy import true as sa_true
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -247,8 +248,31 @@ class DisputeEvidence(Base):
     dispute: Mapped[Dispute] = relationship(back_populates="evidences")
 
 
+#: A refund case in these statuses is a refund in flight: asked for, or
+#: about to be. One at a time per payment - the database holds it.
+REFUND_CASE_STATUSES_IN_FLIGHT = (
+    RefundCaseStatus.pending,
+    RefundCaseStatus.requested,
+    RefundCaseStatus.approved,
+    RefundCaseStatus.refund_initiated,
+    RefundCaseStatus.processing,
+)
+
+
 class RefundCase(Base):
     __tablename__ = "refund_case"
+    __table_args__ = (
+        Index(
+            "uq_refund_case_one_in_flight_per_payment",
+            "stripe_payment_intent_id",
+            unique=True,
+            postgresql_where=text(
+                "stripe_payment_intent_id IS NOT NULL AND status IN ("
+                + ", ".join(f"'{s.value}'" for s in REFUND_CASE_STATUSES_IN_FLIGHT)
+                + ")"
+            ),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     gig_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=True, index=True)

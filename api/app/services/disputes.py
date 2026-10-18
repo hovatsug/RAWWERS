@@ -42,6 +42,7 @@ from app.services.abuse import create_abuse_signal
 from app.services.analytics import log_event
 from app.services.payment_intents import (
     allocate_refund_oldest_first,
+    hold_refund_slot,
     list_succeeded_payments_for_gig,
     refundable_remaining,
     refunded_or_refunding,
@@ -485,6 +486,9 @@ def create_or_get_refund_case_for_dispute(
         allocation = allocate_refund_oldest_first(db, payments, refund_amount)
         payment_allocations = [(p.stripe_payment_intent_id, p.id, take) for p, take in allocation]
 
+    # No Stripe call here, so holding the slot is the whole check: a refund in
+    # flight on any of these payments refuses the lot (409), and the request
+    # rolls back with nothing written.
     rows: list[RefundCase] = []
     for stripe_payment_intent_id, stripe_payment_id, take in payment_allocations:
         row = RefundCase(
@@ -503,7 +507,7 @@ def create_or_get_refund_case_for_dispute(
             admin_note=None,
             meta={"stripe_payment_id": str(stripe_payment_id)} if stripe_payment_id else {},
         )
-        db.add(row)
+        hold_refund_slot(db, row)
         rows.append(row)
     db.flush()
     return rows

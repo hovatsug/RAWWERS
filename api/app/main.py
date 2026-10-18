@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -9,6 +11,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import JsonBodyLimitMiddleware, RequestContextMiddleware
 from app.db.session import ReplicaSessionLocal, SessionLocal, get_replica_lag_seconds
+from app.services import warmup
 from app.services.cache import get_redis_client
 from app.services.metrics import render_metrics
 
@@ -41,7 +44,15 @@ def _require_admin_api_key_configured() -> None:
 
 _require_admin_api_key_configured()
 
-app = FastAPI(title="RAWWERS API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app_: FastAPI):
+    # Before the first request, not inside it (app/services/warmup.py).
+    if get_settings().startup_warmup:
+        await warmup.warm_up(app_)
+    yield
+
+
+app = FastAPI(title="RAWWERS API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allow_origin_list(),

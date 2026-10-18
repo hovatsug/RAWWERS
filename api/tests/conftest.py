@@ -9,6 +9,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 os.environ.setdefault("APP_ENV", "development")
+# Every `with TestClient(app)` runs the app's startup; its warm-up is tested
+# on its own (test_startup_warmup.py), not before each of a thousand tests.
+os.environ["STARTUP_WARMUP"] = "false"
 # Forced empty, not setdefault: when ADMIN_API_KEYS is configured,
 # require_admin enforces the X-Admin-Api-Key header, and every admin test
 # in this suite sends an empty one. Inheriting a real key from a developer's

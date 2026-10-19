@@ -1448,6 +1448,14 @@ def admin_resolve_dispute(
     return _dispute_detail_view(db, dispute)
 
 
+#: Set by the route that moves the money, never by the admin status route.
+MONEY_STATES_OWNED_ELSEWHERE = {
+    GigStatus.paid: "the payment (Stripe's payment webhook)",
+    GigStatus.refunded: "a refund (the admin refund route; a booking refunded in full ends as refunded)",
+    GigStatus.disputed: "a dispute (opened by the client or photographer)",
+}
+
+
 @router.post("/gigs/{gig_id}/status")
 def update_gig_status(
     gig_id: uuid.UUID,
@@ -1458,33 +1466,21 @@ def update_gig_status(
     gig = db.get(Gig, gig_id)
     if not gig:
         raise APIError(code="not_found", message="Gig not found", status_code=404)
-    if body.status == GigStatus.paid:
-        raise APIError(code="invalid_state_transition", message="Gig cannot be set to paid by admin", status_code=409)
-
-    allowed_operational_statuses = {
-        GigStatus.disputed,
-        GigStatus.cancelled_by_client,
-        GigStatus.cancelled_by_pro,
-        GigStatus.refunded,
-        GigStatus.completed,
-    }
-    if body.status not in allowed_operational_statuses:
-        raise APIError(code="invalid_state_transition", message="Target status is not admin-operational", status_code=409)
-
-    previous = gig.status
-    if body.status == GigStatus.completed:
-        db.add(transition_gig(gig, GigStatus.completed, actor.user_id, reason=body.reason))
-    else:
-        gig.status = body.status
-        db.add(
-            GigTransition(
-                gig_id=gig.id,
-                from_status=previous,
-                to_status=body.status,
-                actor_user_id=actor.user_id,
-                reason=body.reason,
-            )
+    # The statuses that mean money move only where the money does.
+    owner = MONEY_STATES_OWNED_ELSEWHERE.get(body.status)
+    if owner is not None:
+        raise APIError(
+            code="money_state_has_its_own_route",
+            message=f"A gig becomes {body.status.value} only through {owner}, not by setting its status",
+            status_code=409,
         )
+
+    if body.status == gig.status:
+        raise APIError(code="invalid_state_transition", message=f"Gig is already {gig.status.value}", status_code=409)
+    # Along the state machine only: transition_gig refuses anything else
+    # (409 invalid_state_transition), and nothing is written.
+    previous = gig.status
+    db.add(transition_gig(gig, body.status, actor.user_id, reason=body.reason))
     add_admin_audit_log(
         db,
         actor_user_id=actor.user_id,

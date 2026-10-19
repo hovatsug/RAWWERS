@@ -61,6 +61,17 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   For each row, check the payment in the Stripe dashboard: keep the case that matches a refund Stripe has, and set the other to `cancelled` with a note in `admin_note`. Dev, 2026-10-18: none.
 
+- [ ] **Paid payments left `pending` by an admin refund - repaired by migration `20261019_0064`.** Until then an admin refund marked its payment `pending` as soon as it was asked for, whatever the amount, so a part-refunded booking looked unpaid. `0064` puts each one back to `succeeded` (or `refunded` if its settled refunds add up to all of it) and records the amount refunded. Count them before migrating, so the change is known:
+
+      SELECT count(*), sum(p.amount)
+      FROM stripe_payment p
+      WHERE p.status = 'pending' AND p.metadata ? 'paid_at'
+        AND EXISTS (SELECT 1 FROM refund_case c
+                    WHERE c.stripe_payment_intent_id = p.stripe_payment_intent_id
+                       OR c.metadata->>'stripe_payment_id' = p.id::text);
+
+  Dev, 2026-10-19: none. Each repaired booking's finals unlock again if the rest of it was paid - which is the point: a partial refund was never meant to lock them.
+
 ## 2. Deploying
 
 - [ ] **Build `api` and `worker` together** - `docker compose build api worker`. They are separate images from one Dockerfile; building only `api` leaves webhooks, outbox effects and photo processing on the old code with nothing failing. See [Rebuilding `api` does not rebuild `worker`](BACKEND_GAPS.md#rebuilding-api-does-not-rebuild-worker).
@@ -82,6 +93,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   `20261014_0062` only adds an index; it reverses cleanly.
   `20261018_0063` only adds a unique partial index on `refund_case`; it reverses cleanly (up, down and up again tested 2026-10-18 on a copy of dev). It refuses to run while the duplicates query above returns rows.
+  `20261019_0064` adds `stripe_payment.amount_refunded` and repairs the payments above (up, down and up tested 2026-10-19 on a copy of dev, with one such payment planted). Its downgrade drops the column and leaves the repaired statuses as they are, so a round trip loses the amount refunded on a repaired part-refunded payment: it reads 0 until Stripe's next charge.refunded for it.
 
   If a release containing them has to be rolled back, roll back the code and leave the schema at head - with one exception. 0058-0060 only add columns that are nullable or have a server default, so the older code runs against them. **0061 is the exception:** it drops `short_notice_prep_hours`, which code from before it reads, so taking the code back past 0061 needs `alembic downgrade 20261013_0060` as well. That costs only the 90-minute choices, which become 2 hours. One cost while it runs: its recompute ignores the override columns, so overridden tiers show the evidence tier until the new code is back. The overrides stay stored, and the first recompute after that restores them.
 - [ ] **`alembic upgrade head`.** Migration `20261007_0056` also backfills the response-time label in SQL, so labels are right immediately.

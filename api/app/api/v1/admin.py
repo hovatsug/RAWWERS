@@ -1615,9 +1615,6 @@ def create_admin_refund(
             )
         )
 
-        if payment.status != PaymentStatus.disputed:
-            payment.status = PaymentStatus.pending
-
     add_admin_audit_log(
         db,
         actor_user_id=actor.user_id,

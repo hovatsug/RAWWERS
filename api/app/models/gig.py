@@ -133,6 +133,10 @@ class StripePayment(Base):
     stripe_payment_intent_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # How much of it has come back to the client, as Stripe reports it
+    # (charge.refunded's running total). The status stays `succeeded` until
+    # this reaches `amount`.
+    amount_refunded: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"), server_default="0")
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)

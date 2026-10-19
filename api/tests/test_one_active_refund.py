@@ -13,7 +13,6 @@ from decimal import Decimal
 
 import pytest
 from app.models.admin import RefundCase, RefundCaseStatus, RefundPaymentScope
-from app.models.gig import PaymentStatus
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -170,11 +169,6 @@ def test_a_later_refund_of_what_is_left_gets_a_key_of_its_own(client, db_session
     db_session.expire_all()
     case = db_session.get(RefundCase, uuid.UUID(first.json()["id"]))
     case.status = RefundCaseStatus.refunded  # the webhook settled it
-    # The admin route still marks a part-refunded payment `pending`, which
-    # hides it from every later refund (reported, not changed here); put it
-    # back to measure the key alone.
-    payment = gig.payments[0]
-    payment.status = PaymentStatus.succeeded
     db_session.commit()
 
     second = _admin_refund(client, gig, amount=Decimal("60.00"))

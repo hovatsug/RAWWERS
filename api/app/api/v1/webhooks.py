@@ -717,10 +717,13 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             if refunded_minor is not None
             else payment.amount
         )
-        fully_refunded = refunded_amount >= payment.amount
+        # charge.refunded carries the running total; a late delivery of an
+        # earlier one must not lower it.
+        payment.amount_refunded = max(payment.amount_refunded or Decimal("0.00"), min(refunded_amount, payment.amount))
+        fully_refunded = payment.amount_refunded >= payment.amount
 
-        # Only a full refund makes the payment "refunded"; after a partial
-        # one most of the money is still with us.
+        # Only everything back makes the payment "refunded"; after a partial
+        # refund it stays succeeded - most of the money is still with us.
         if fully_refunded:
             payment.status = PaymentStatus.refunded
 

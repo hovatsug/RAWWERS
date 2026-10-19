@@ -38,6 +38,7 @@ DONE = [
 def _row(gig, status, amount=Decimal("10.00")) -> RefundCase:
     return RefundCase(
         gig_id=gig.id,
+        requested_by_user_id=gig.client_user_id,
         payment_scope=RefundPaymentScope.booking_payment,
         reference_id=gig.id,
         stripe_payment_intent_id=f"pi_{gig.id.hex[:10]}_0",

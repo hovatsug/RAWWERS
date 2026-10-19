@@ -275,9 +275,10 @@ class RefundCase(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    gig_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=True, index=True)
+    # NOT NULL in every database since migration 0003; the model said otherwise.
+    gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, index=True)
     dispute_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("dispute.id"), nullable=True)
-    requested_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     payment_scope: Mapped[RefundPaymentScope | None] = mapped_column(
         Enum(RefundPaymentScope, name="refund_payment_scope", native_enum=False, length=64),
         nullable=True,

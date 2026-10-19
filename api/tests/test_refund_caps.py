@@ -34,6 +34,7 @@ def _earlier_refund(db_session, gig, amount, status=RefundCaseStatus.refunded, *
     payment_id = next(p.id for p in gig.payments if p.stripe_payment_intent_id == payment_intent)
     case = RefundCase(
         gig_id=gig.id,
+        requested_by_user_id=gig.client_user_id,
         payment_scope=RefundPaymentScope.booking_payment,
         reference_id=gig.id,
         # Admin refunds made before this change recorded only the payment row.

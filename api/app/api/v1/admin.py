@@ -1226,6 +1226,17 @@ def list_disputes(
     ]
 
 
+def _refuse_dispute_money_outcome(status: DisputeStatus) -> None:
+    """A refund outcome is recorded by the resolve route, which makes the
+    refund - never set as a bare status, with no money behind it."""
+    if status in (DisputeStatus.resolved_refund, DisputeStatus.resolved_partial_refund):
+        raise APIError(
+            code="money_state_has_its_own_route",
+            message=f"A dispute becomes {status.value} only through POST /v1/admin/disputes/{{id}}/resolve, which makes the refund",
+            status_code=409,
+        )
+
+
 @router.post("/disputes/{dispute_id}/status", response_model=DisputeView)
 def update_dispute_status(
     dispute_id: uuid.UUID,
@@ -1236,6 +1247,7 @@ def update_dispute_status(
     dispute = db.get(Dispute, dispute_id)
     if not dispute:
         raise APIError(code="not_found", message="Dispute not found", status_code=404)
+    _refuse_dispute_money_outcome(body.status)
 
     dispute.status = body.status
     dispute.resolution_note = body.resolution_note
@@ -1293,6 +1305,7 @@ def admin_set_dispute_status(
     dispute = db.get(Dispute, dispute_id)
     if not dispute:
         raise APIError(code="not_found", message="Dispute not found", status_code=404)
+    _refuse_dispute_money_outcome(body.status)
     previous = dispute.status
     dispute.status = body.status
     if body.status in {

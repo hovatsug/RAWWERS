@@ -158,16 +158,16 @@ Listed so a successful deploy is not mistaken for launch readiness.
 
 From listing every route and searching the tests for a call to each (2026-10-14: 205 of 458 routes called, 231 never). These are the money and access routes among the 231, most dangerous first. Each needs a test - the route's own rule, and who may call it - before beta users can reach it. Where a feature is off for beta, its routes can wait until it is turned on; say so here instead of deleting the line.
 
-1. **Refunds** - `POST /v1/gigs/{gig_id}/refunds/stripe`, `POST /v1/admin/refunds/{refund_case_id}/retry`. Send money back to a card; a wrong amount or a repeat is real money.
-2. **Payouts** - `POST /v1/pro/payouts/request`, `POST /v1/admin/payouts/{id}/approve`, `/mark-paid`, `/reject`. Money out to photographers.
+1. ~~**Refunds**~~ - tested since 2026-10-14 (`test_refund_routes.py`), with the caps, the one-in-flight rule and self-service off outside dev since 2026-10-18.
+2. ~~**Payouts**~~ - request, approve, mark-paid and reject tested since 2026-10-14 (`test_payout_routes.py`).
 3. **Where payouts go** - `POST /v1/pro/payouts/connect/account`, `/connect/onboarding-link`, `GET /connect/status`, `GET`/`PUT /v1/pro/payouts/account`. Whose account receives the money.
 4. **Charges outside bookings** - `POST /v1/prints/orders/{order_id}/pay`, `POST /v1/gigs/{gig_id}/prints/orders`, `PUT /v1/prints/orders/{order_id}`. Charge a card.
 5. **Earnings holds** - `POST /v1/admin/holds/create`, `POST /v1/admin/holds/{hold_id}/release`. Decide when a photographer's money becomes payable.
-6. **Roles and bans** - `POST /v1/admin/users/{user_id}/roles`, `POST /v1/admin/impersonate/end`. Who is an admin, and leaving another person's session. (`POST /v1/admin/users/{user_id}/ban` is tested since 2026-10-18: only an admin bans, a ban or suspension ends every session and the photographer's presence, and a banned admin loses the admin routes.)
-7. **Disputes** - `POST /v1/admin/disputes/{id}/set-status`, `/status`, `POST /v1/disputes/{id}/cancel`, `/evidence`. Decide refunds and who wins them.
+6. ~~**Roles and bans**~~ - roles, ban and impersonation start/end tested (`test_access_routes.py`, `test_ban_enforcement.py`). An ended impersonation's token now stops working at once.
+7. **Disputes** - `POST /v1/disputes/{id}/cancel`, `/evidence`. Decide who can withdraw a dispute and add to it. (`/set-status` and `/status` are tested since 2026-10-19: admin only, audited, and a refund outcome only through `/resolve`.)
 8. **What everyone pays** - `PUT /v1/admin/finance/fee-policy`, `PUT /v1/admin/learn/fee-policy`, `PUT /v1/admin/raww/multiplier-policy`, `PUT /v1/admin/pricing/extra-image-policies`, `POST`/`PUT /v1/admin/store/price-rules`. One request changes the platform's take or prices for everyone.
-9. **Private media** - `POST /v1/media/videos/{media_asset_id}/playback-token`. Who may watch a private video.
-10. **Becoming a photographer** - `POST /v1/me/upgrade-to-pro`. A role change. Only the on-request integration test calls it; no backend test does.
+9. ~~**Private media**~~ - `POST /v1/media/videos/{media_asset_id}/playback-token` tested: the owner only, this video's playback id only, and not for a banned account.
+10. ~~**Becoming a photographer**~~ - `POST /v1/me/upgrade-to-pro` tested: signed in, not banned, once.
 11. **Money and tax records** - `GET /v1/pro/earnings/balance`, `/ledger`, `/summary`, `/invoices`, `/invoices/{gig_id}`, `GET`/`PUT /v1/pro/tax-profile`, `GET /v1/admin/finance/pros`, `/pros/{pro_user_id}`. Read-only for money, but each must show one person's records to that person (and admins) only. The tax profile holds identity data.
 12. **Contact and verification** - `PUT /v1/me/contact`, `POST /v1/auth/verify-email/request`. Where account messages go.
 

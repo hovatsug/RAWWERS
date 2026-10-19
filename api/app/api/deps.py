@@ -43,6 +43,14 @@ def get_current_user(
                 roles.append(UserRoleType(value))
             except Exception:
                 continue
+        # An impersonation token acts only while its session is open: ending
+        # it must stop the token at once, not when it expires.
+        if payload.get("imp_session_id"):
+            from app.models.auth import ImpersonationSession
+
+            session = db.get(ImpersonationSession, uuid.UUID(payload["imp_session_id"]))
+            if session is None or session.ended_at is not None:
+                raise APIError(code="unauthorized", message="Impersonation has ended", status_code=401)
         preferred_locale = get_user_locale_preference(db, user_id=user_id, fallback_to_default=False)
         if preferred_locale:
             request.state.locale = preferred_locale

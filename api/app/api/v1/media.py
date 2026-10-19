@@ -450,7 +450,7 @@ def create_mux_upload(
 def create_playback_token(
     media_asset_id: uuid.UUID,
     body: PlaybackTokenRequest,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> PlaybackTokenResponse:
     asset = db.get(MediaAsset, media_asset_id)
@@ -459,7 +459,11 @@ def create_playback_token(
 
     _ensure_read_access(asset, user.user_id)
 
-    playback_id = body.playback_id or asset.meta.get("playback_id")
+    # Only this video's playback id. The caller's id was signed as sent, so
+    # access to one video bought a token for any other whose id was known.
+    playback_id = asset.meta.get("playback_id")
+    if body.playback_id and body.playback_id != playback_id:
+        raise APIError(code="forbidden", message="That playback id is not this video's", status_code=403)
     if not playback_id:
         raise APIError(code="invalid_state", message="No playback id available", status_code=409)
 

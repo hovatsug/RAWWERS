@@ -9,8 +9,8 @@ instead.
 Never at the cost of starting. Every step is fail-soft - a failure is
 logged and the next step runs - and the whole is bounded by a budget: a
 step still running when it is spent is left behind, marked "timed out".
-The home request is a guest's, so it writes nothing: no user, no session,
-no analytics row. It counts once against the shared guest read limit.
+The home request comes from a fixed warm-up viewer with no account, and
+writes nothing. It counts once against that viewer's read limit.
 """
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ import asyncio
 import logging
 import threading
 import time
+import uuid
 from collections.abc import Callable
 
 import httpx
@@ -31,6 +32,9 @@ from app.services.cache import get_redis_client
 logger = logging.getLogger(__name__)
 
 DEFAULT_BUDGET_SECONDS = 10.0
+#: Who the warm-up's home request comes from. No account has this id; the
+#: request reads, and the tests hold that it writes nothing.
+WARMUP_VIEWER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
 
 def _configure_mappers() -> None:
@@ -97,13 +101,31 @@ async def warm_up(app, *, budget_seconds: float = DEFAULT_BUDGET_SECONDS) -> dic
     report: dict[str, str] = {}
 
     async def home() -> str:
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://warmup") as client:
-            resp = await client.get(
-                "/v1/client/home",
-                params={"country": settings.warmup_home_country, "city": settings.warmup_home_city},
-                headers={"User-Agent": "rawwers-startup-warmup"},
-            )
+        # As the warm-up's own viewer, not a guest: where guests may not
+        # browse, a guest's request is refused before any row is read and
+        # warms nothing. Safe to set on the app: nothing else is served
+        # during startup, and the previous value is put back.
+        from app.api.deps import get_optional_current_user
+        from app.models.admin import UserRoleType
+        from app.schemas.media import CurrentUser
+
+        previous = app.dependency_overrides.get(get_optional_current_user)
+        app.dependency_overrides[get_optional_current_user] = lambda: CurrentUser(
+            user_id=WARMUP_VIEWER_ID, roles=[UserRoleType.client]
+        )
+        try:
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://warmup") as client:
+                resp = await client.get(
+                    "/v1/client/home",
+                    params={"country": settings.warmup_home_country, "city": settings.warmup_home_city},
+                    headers={"User-Agent": "rawwers-startup-warmup"},
+                )
+        finally:
+            if previous is None:
+                app.dependency_overrides.pop(get_optional_current_user, None)
+            else:
+                app.dependency_overrides[get_optional_current_user] = previous
         return f"http {resp.status_code}"
 
     steps: list[tuple[str, Callable]] = [

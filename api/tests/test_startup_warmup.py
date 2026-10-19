@@ -110,3 +110,26 @@ def test_the_primary_database_is_really_asked(db_session, monkeypatch):
 
     assert _run()["primary_db"] == "ok"
     assert asked == ["SELECT 1"]
+
+
+def test_the_home_request_is_not_stopped_at_the_guest_check(db_session, monkeypatch):
+    """Where guests may not browse, a guest's home request is a 401 before
+    any row is read - it warmed nothing. The warm-up asks as its own viewer."""
+    from app.api.deps import get_optional_current_user
+    from app.main import app
+
+    from types import SimpleNamespace
+
+    monkeypatch.setattr("app.api.v1.client_launch.is_feature_enabled", lambda db, key, **kw: False if key == "guest_discovery_enabled" else True)
+    # The city is open, so the guest check is what stands in the way.
+    monkeypatch.setattr(
+        "app.api.v1.client_launch.evaluate_client_city_access",
+        lambda db, **kw: SimpleNamespace(enabled=True, reason="test"),
+    )
+    monkeypatch.delitem(app.dependency_overrides, get_optional_current_user, raising=False)
+    before = dict(app.dependency_overrides)
+
+    report = _run()
+
+    assert report["home"] == "http 200", report
+    assert app.dependency_overrides == before, "the viewer is for the warm-up only"

@@ -118,6 +118,14 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
   - **`overrides_preserved`**: the admin tier overrides still in force afterwards. It should equal the count of `override_tier IS NOT NULL` rows before the run.
 
   **A database that already ran migration `20261007_0056` needs this run regardless.** That migration's backfill was changed after it first ran (an expired request now counts as 24 hours and a minute whatever its own window was, and an even sample takes the higher middle value), and alembic will not run it again, so its `response_bucket` and `response_median_minutes` hold the old rule's answers until each row is recomputed. Dev ran the old version; a database migrating for the first time gets the new backfill and needs nothing extra for this.
+- [ ] **Recompute niche skills** - after the release that drops the refund penalty from niche skill scores: `POST /v1/admin/jobs/recompute-niche-skills`, then the public index rebuild above so ranking picks up the new tiers. Until then, a photographer with a dispute settled by a refund in the last 90 days keeps up to 30 points less, and possibly a lower tier, than the formula now gives. Count who moves first:
+
+        SELECT count(DISTINCT g.pro_user_id)
+        FROM dispute d JOIN gig g ON g.id = d.gig_id
+        WHERE d.status IN ('resolved_refund', 'resolved_partial_refund')
+          AND d.updated_at >= now() - interval '90 days';
+
+  Dev, 2026-10-19: 2. Migration `20261019_0065` (the photographer-fault table) only adds a table; it reverses cleanly (up, down and up tested on a copy of dev).
 - [ ] **Watermark backfill** (**once**, existing objects only): `scripts/backfill_watermark_previews.py`, dry run first. Done locally; see [The watermark fix is now actually in the bucket](BACKEND_GAPS.md#the-watermark-fix-is-now-actually-in-the-bucket-resolved).
 - [ ] **Release gate** - `python3 deploy/release_gate.py --env <staging|production>` ([release_engineering.md](release_engineering.md)).
 

@@ -27,8 +27,6 @@ from app.models.admin import (
     EntitlementHold,
     EntitlementHoldType,
     ProProfile,
-    ProQualityPenaltySeverity,
-    ProQualityPenalty,
     RefundCase,
     RefundEvent,
     RefundCaseStatus,
@@ -126,7 +124,6 @@ from app.schemas.disputes import (
     DisputeEventView,
     DisputeMessageView,
     EntitlementHoldView,
-    ProQualityPenaltyView,
     RefundCaseDetailView,
 )
 from app.schemas.niche import (
@@ -205,7 +202,7 @@ from app.services.client_rewards_pricing import (
     upsert_share_fraud_settings,
 )
 from app.services.disputes import (
-    apply_pro_quality_penalty,
+    record_photographer_fault,
     create_or_get_refund_case_for_dispute,
     finalize_refund_case_failed,
     finalize_refund_case_success,
@@ -1411,18 +1408,16 @@ def admin_resolve_dispute(
                 idempotency_key=f"refund-initiate:{case.id}",
                 idempotency_scope="refund_initiate",
             )
-    if decision in {"full_refund", "partial_refund"}:
-        severity_value = (body.actions or {}).get("penalty_severity", "medium")
-        severity = AbuseSeverity.medium
-        if severity_value == "low":
-            severity = AbuseSeverity.low
-        elif severity_value == "high":
-            severity = AbuseSeverity.high
-
-        apply_pro_quality_penalty(
+    # A refund is a money decision, not a verdict on the photographer: it
+    # records nothing against them. Fault is recorded only when the admin
+    # finds it - and never feeds ranking.
+    if (body.actions or {}).get("photographer_at_fault") is True:
+        record_photographer_fault(
             db,
             dispute=dispute,
-            severity=ProQualityPenaltySeverity(severity.value),
+            severity=str((body.actions or {}).get("penalty_severity") or "medium"),
+            note=body.rationale,
+            recorded_by=actor.user_id,
         )
     add_admin_audit_log(
         db,

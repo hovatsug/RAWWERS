@@ -22,9 +22,7 @@ from app.models.admin import (
     EntitlementHold,
     EntitlementHoldType,
     GigContractSnapshot,
-    ProQualityPenalty,
-    ProQualityPenaltySeverity,
-    ProQualityPenaltyType,
+    ProFaultEvent,
     RefundCase,
     RefundCaseStatus,
     RefundEvent,
@@ -513,32 +511,26 @@ def create_or_get_refund_case_for_dispute(
     return rows
 
 
-def apply_pro_quality_penalty(db: Session, *, dispute: Dispute, severity: ProQualityPenaltySeverity) -> ProQualityPenalty | None:
+def record_photographer_fault(
+    db: Session, *, dispute: Dispute, severity: str, note: str | None, recorded_by: uuid.UUID | None
+) -> ProFaultEvent | None:
+    """An explicit finding that the photographer was at fault, kept for
+    review. Once per dispute. Nothing reads it for ranking or rows."""
     if not dispute.against_user_id:
         return None
-    penalty_type = ProQualityPenaltyType.warning
-    recent = db.execute(
-        select(func.count()).select_from(Dispute).where(
-            Dispute.against_user_id == dispute.against_user_id,
-            Dispute.status.in_([
-                DisputeStatus.resolved_refund,
-                DisputeStatus.resolved_partial_refund,
-            ]),
-            Dispute.resolved_at >= datetime.now(timezone.utc) - timedelta(days=90),
-        )
-    ).scalar_one()
-    if recent >= 3:
-        penalty_type = ProQualityPenaltyType.visibility_downrank
-    if recent >= 5:
-        penalty_type = ProQualityPenaltyType.temporary_suspension
-
-    row = ProQualityPenalty(
+    existing = db.execute(
+        select(ProFaultEvent).where(ProFaultEvent.dispute_id == dispute.id, ProFaultEvent.kind == "dispute_at_fault")
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+    row = ProFaultEvent(
         pro_user_id=dispute.against_user_id,
+        gig_id=dispute.gig_id,
         dispute_id=dispute.id,
-        type=penalty_type,
-        severity=severity,
-        expires_at=(datetime.now(timezone.utc) + timedelta(days=14)) if penalty_type != ProQualityPenaltyType.warning else None,
-        meta={"recent_refund_disputes_90d": int(recent)},
+        kind="dispute_at_fault",
+        severity=severity if severity in ("low", "medium", "high") else "medium",
+        note=note,
+        recorded_by_user_id=recorded_by,
     )
     db.add(row)
     db.flush()
@@ -704,7 +696,6 @@ def finalize_refund_case_success(
                 hold = active_entitlement_hold(db, gig_id=dispute.gig_id, user_id=dispute.opened_by_user_id, hold_type=EntitlementHoldType.downloads_frozen)
                 if hold:
                     release_entitlement_hold(db, hold)
-                apply_pro_quality_penalty(db, dispute=dispute, severity=ProQualityPenaltySeverity.medium)
                 release_earnings_holds_for_source(
                     db,
                     pro_user_id=dispute.against_user_id,

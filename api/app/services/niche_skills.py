@@ -9,7 +9,6 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
-from app.models.admin import Dispute, DisputeStatus
 from app.models.gig import Gig, GigStatus
 from app.models.learning import Certificate, CertificateType
 from app.models.media import MediaAsset, MediaPurpose, MediaStatus
@@ -161,21 +160,6 @@ def recompute_pro_niche_skill(
     ).scalar_one()
     avg_rating = Decimal(str(float(avg_rating_raw) if avg_rating_raw is not None else 0.0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    disputes_lost_90d = int(
-        db.execute(
-            select(func.count())
-            .select_from(Dispute)
-            .join(Gig, Gig.id == Dispute.gig_id)
-            .where(
-                Gig.pro_user_id == pro_user_id,
-                Gig.niche_id == niche_id,
-                Dispute.status.in_([DisputeStatus.resolved_refund, DisputeStatus.resolved_partial_refund]),
-                Dispute.updated_at >= now - timedelta(days=90),
-            )
-        ).scalar_one()
-        or 0
-    )
-
     cert_verified = db.execute(
         select(Certificate.id).where(
             Certificate.user_id == pro_user_id,
@@ -199,8 +183,11 @@ def recompute_pro_niche_skill(
     rating_points_raw = (avg_rating - Decimal("4.0")) * rating_multiplier
     rating_points = max(Decimal("0"), min(rating_points_raw, Decimal("25") if review_count >= 10 else Decimal("15")))
     verified_bonus = Decimal("10") if verified else Decimal("0")
-    penalty = Decimal(str(min(disputes_lost_90d * 10, 30)))
-    score_decimal = gigs_points + rating_points + verified_bonus - penalty
+    # No refund penalty: a dispute settled with a refund cost 10 points (up to
+    # 30) here, and the tier this score sets feeds ranking and niche-row
+    # order - so refunds, goodwill ones included, ranked photographers.
+    # Photographer fault is recorded apart (pro_fault_event) and ranks no one.
+    score_decimal = gigs_points + rating_points + verified_bonus
     score = int(max(0, min(100, round(float(score_decimal)))))
 
     portfolio_assets = db.execute(
@@ -275,14 +262,12 @@ def recompute_pro_niche_skill(
             "gigs_points": float(gigs_points),
             "rating_points": float(rating_points),
             "verified_bonus": int(verified_bonus),
-            "penalty": int(penalty),
             "score": score,
         },
         "signals": {
             "gigs_completed": gigs_completed,
             "avg_rating": float(avg_rating),
             "review_count": review_count,
-            "disputes_lost_90d": disputes_lost_90d,
             "verified": verified,
             "evidence_portfolio": evidence_portfolio,
         },

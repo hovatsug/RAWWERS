@@ -9,7 +9,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.admin import Dispute, KYCStatus, ProProfile
+from app.models.admin import KYCStatus, ProFaultEvent, ProProfile
 from app.models.booking import ProPackage
 from app.models.discovery import ProPublicIndex
 from app.models.gig import Gig, GigStatus
@@ -105,20 +105,23 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     gigs_completed = db.execute(
         select(func.count()).select_from(Gig).where(Gig.pro_user_id == pro_user_id, Gig.status == GigStatus.completed)
     ).scalar_one()
+    # The photographer's own cancellations only: a client cancelling is not
+    # something the photographer did.
     gigs_cancelled = db.execute(
         select(func.count())
         .select_from(Gig)
-        .where(
-            Gig.pro_user_id == pro_user_id,
-            Gig.status.in_([GigStatus.cancelled_by_client, GigStatus.cancelled_by_pro]),
-        )
+        .where(Gig.pro_user_id == pro_user_id, Gig.status == GigStatus.cancelled_by_pro)
     ).scalar_one()
 
+    # A dispute counts only with a recorded finding that the photographer
+    # was at fault - not every dispute opened on their bookings, whoever
+    # opened it and however it ended. The one place fault events are read.
     disputes_count = db.execute(
-        select(func.count())
-        .select_from(Dispute)
-        .join(Gig, Gig.id == Dispute.gig_id)
-        .where(Gig.pro_user_id == pro_user_id)
+        select(func.count(func.distinct(ProFaultEvent.dispute_id))).where(
+            ProFaultEvent.pro_user_id == pro_user_id,
+            ProFaultEvent.kind == "dispute_at_fault",
+            ProFaultEvent.dispute_id.is_not(None),
+        )
     ).scalar_one()
 
     # A label for clients, never an input to ranking: ordering photographers

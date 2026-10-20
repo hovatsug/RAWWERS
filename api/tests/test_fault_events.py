@@ -6,8 +6,9 @@ included - and three or five in 90 days escalated it to "visibility
 downrank" and "temporary suspension". Refunds now record nothing against
 anyone. When the admin resolving a dispute finds the photographer at fault,
 they say so explicitly (actions.photographer_at_fault), and that is recorded
-as a photographer-fault event: kept for review, never an input to ranking
-or to which rows a photographer appears in.
+as a photographer-fault event: kept for review. Its one use in ranking is
+that a dispute counts against a photographer only with such a finding
+(test_ranking_counts).
 """
 import uuid
 from decimal import Decimal
@@ -93,20 +94,9 @@ def test_resolving_twice_records_one_fault(client, db_session, stripe_all):
     assert len(_faults(db_session, pro_id)) == 1
 
 
-def test_ranking_never_reads_fault_events(db_session):
-    """The score is a function of its inputs; fault events are not one."""
-    import inspect
-
-    from app.services import discovery_index
-
-    assert not any("fault" in name or "penalt" in name for name in inspect.signature(_compute_ranking_score).parameters)
-
-    source = inspect.getsource(discovery_index)
-    assert "ProFaultEvent" not in source and "pro_fault_event" not in source
-    assert "ProQualityPenalty" not in source
-
-
-def test_a_recomputed_index_is_the_same_with_or_without_a_fault(client, db_session, stripe_all):
+def test_a_found_fault_is_what_the_dispute_count_counts(client, db_session, stripe_all):
+    """Since the ranking change (test_ranking_counts): a dispute counts only
+    with a fault finding - resolving it with a refund alone does not."""
     from app.models.discovery import ProPublicIndex
     from app.services.discovery_index import recompute_pro_public_index
 
@@ -123,7 +113,8 @@ def test_a_recomputed_index_is_the_same_with_or_without_a_fault(client, db_sessi
     db_session.expire_all()
     after = db_session.get(ProPublicIndex, uuid.UUID(pro_id))
 
-    assert (after.ranking_score, after.disputes_count) == before
+    assert after.disputes_count == before[1] + 1 == 1
+    assert after.ranking_score == before[0] - 5
     assert len(_faults(db_session, pro_id)) == 1
 
 

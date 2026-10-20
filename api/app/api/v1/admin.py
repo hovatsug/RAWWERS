@@ -27,6 +27,7 @@ from app.models.admin import (
     EntitlementHold,
     EntitlementHoldType,
     ProProfile,
+    MoneyAttentionItem,
     RefundCase,
     RefundEvent,
     RefundCaseStatus,
@@ -1638,6 +1639,62 @@ def create_admin_refund(
     db.commit()
     db.refresh(refund_cases[0])
     return _refund_case_view(refund_cases[0])
+
+
+def _money_attention_view(item: MoneyAttentionItem) -> dict:
+    return {
+        "id": str(item.id),
+        "kind": item.kind,
+        "status": item.status,
+        "gig_id": str(item.gig_id) if item.gig_id else None,
+        "client_user_id": str(item.client_user_id) if item.client_user_id else None,
+        "refund_case_id": str(item.refund_case_id) if item.refund_case_id else None,
+        "stripe_refund_id": item.stripe_refund_id,
+        "amount": str(item.amount),
+        "currency": item.currency,
+        "note": item.note,
+        "created_at": item.created_at.isoformat(),
+        "resolved_at": item.resolved_at.isoformat() if item.resolved_at else None,
+    }
+
+
+@router.get("/money-attention")
+def list_money_attention(
+    status: str | None = "open",
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    """Money an admin has to act on: clients owed after a failed refund, and
+    refunds made outside RAWWERS."""
+    stmt = select(MoneyAttentionItem).order_by(MoneyAttentionItem.created_at.desc()).limit(500)
+    if status:
+        stmt = stmt.where(MoneyAttentionItem.status == status)
+    return {"items": [_money_attention_view(i) for i in db.execute(stmt).scalars()]}
+
+
+@router.post("/money-attention/{item_id}/resolve")
+def resolve_money_attention(
+    item_id: uuid.UUID,
+    body: dict,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> dict:
+    item = db.get(MoneyAttentionItem, item_id)
+    if not item:
+        raise APIError(code="not_found", message="Item not found", status_code=404)
+    note = str((body or {}).get("note") or "").strip()
+    if not note:
+        raise APIError(code="validation_error", message="Say what was done", status_code=422)
+    item.status = "resolved"
+    item.resolved_by_user_id = actor.user_id
+    item.resolved_at = datetime.now(timezone.utc)
+    item.note = f"{item.note or ''}\nResolved: {note}".strip()
+    add_admin_audit_log(
+        db, actor_user_id=actor.user_id, target_type="money_attention", target_id=str(item.id),
+        action="money_attention_resolved", reason=note, metadata={"kind": item.kind, "amount": str(item.amount)},
+    )
+    db.commit()
+    return _money_attention_view(item)
 
 
 @router.get("/refunds", response_model=list[RefundCaseView])

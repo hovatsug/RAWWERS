@@ -38,20 +38,22 @@ def map_intent_status(status: str) -> str:
 
 
 def construct_stripe_event(raw_body: bytes, signature_header: str | None) -> dict:
-    secret = settings.stripe_webhook_secret
+    # One secret per endpoint, comma-separated: the platform endpoint and the
+    # Connect endpoint sign with different secrets.
+    secrets = [s.strip() for s in (settings.stripe_webhook_secret or "").split(",") if s.strip()]
 
-    if secret:
+    if secrets:
         if not signature_header:
             raise APIError(code="invalid_signature", message="Missing Stripe signature", status_code=401)
-        try:
-            event = stripe.Webhook.construct_event(raw_body, signature_header, secret)
-            if hasattr(event, "to_dict_recursive"):
-                return event.to_dict_recursive()
-            return dict(event)
-        except stripe.error.SignatureVerificationError as exc:
-            raise APIError(code="invalid_signature", message="Invalid Stripe signature", status_code=401) from exc
-        except ValueError as exc:
-            raise APIError(code="invalid_payload", message="Malformed Stripe payload", status_code=400) from exc
+        for secret in secrets:
+            try:
+                event = stripe.Webhook.construct_event(raw_body, signature_header, secret)
+            except stripe.error.SignatureVerificationError:
+                continue
+            except ValueError as exc:
+                raise APIError(code="invalid_payload", message="Malformed Stripe payload", status_code=400) from exc
+            return json.loads(str(event))
+        raise APIError(code="invalid_signature", message="Invalid Stripe signature", status_code=401)
 
     dev_env = settings.app_env.lower() in {"dev", "development", "test"}
     if dev_env and settings.stripe_webhook_allow_unverified:

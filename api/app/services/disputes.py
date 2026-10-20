@@ -702,12 +702,9 @@ def finalize_refund_case_success(
                     source_type=EarningsSourceType.gig_base.value,
                     source_id=dispute.gig_id,
                 )
-                reverse_earnings_entries_for_source(
-                    db,
-                    source_type=EarningsSourceType.gig_base,
-                    source_id=dispute.gig_id,
-                    reason=f"dispute_refund:{row.id}",
-                )
+                # Earnings come down by the share refunded, in refund
+                # reconciliation - not wholesale here, which took the whole
+                # booking's earnings for a partial refund.
 
             # extra purchase entitlement revocation policy
             if dispute.extra_purchase_id and dispute.gig_id:

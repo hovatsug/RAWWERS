@@ -171,6 +171,7 @@ class Settings(BaseSettings):
     payout_hold_release_sweep_interval_seconds: int = Field(default=3600, alias="PAYOUT_HOLD_RELEASE_SWEEP_INTERVAL_SECONDS")
     dispute_escalation_sweep_interval_seconds: int = Field(default=3600, alias="DISPUTE_ESCALATION_SWEEP_INTERVAL_SECONDS")
     stuck_booking_sweep_interval_seconds: int = Field(default=3600, alias="STUCK_BOOKING_SWEEP_INTERVAL_SECONDS")
+    refund_reconcile_interval_seconds: int = Field(default=900, alias="REFUND_RECONCILE_INTERVAL_SECONDS")
     stuck_booking_max_age_hours: int = Field(default=720, alias="STUCK_BOOKING_MAX_AGE_HOURS")
     scheduled_sweep_batch_size: int = Field(default=100, alias="SCHEDULED_SWEEP_BATCH_SIZE")
 

@@ -57,3 +57,15 @@ def sweep_stuck_bookings_task(limit: int | None = None) -> int:
         return count
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.reconcile_stuck_refunds")
+def reconcile_stuck_refunds_task() -> int:
+    """Refund cases no Stripe event settled, fetched from Stripe."""
+    from app.services.refund_reconcile import reconcile_stuck_refund_cases
+
+    db = SessionLocal()
+    try:
+        return reconcile_stuck_refund_cases(db)
+    finally:
+        db.close()

@@ -865,16 +865,36 @@ def _refund_demo_gig(db, request: BookingRequest):
     return db.execute(select(Gig).where(Gig.meta["booking_request_id"].astext == str(request.id))).scalars().first()
 
 
-def _apply_stripe(db, event_type: str, obj) -> None:
-    """What Stripe would send to the webhook, applied by the webhook's own
-    handler - the dev stack has no tunnel for Stripe to reach it."""
+def _deliver_stripe_events(db, payment_intent_id: str, types: set[str], *, since: int) -> int:
+    """Deliver the real events Stripe sent for this payment intent to the
+    webhook's own handler, in order - what a registered endpoint (or
+    `stripe listen`) would deliver; the dev stack has no tunnel. Waits a
+    little for Stripe to have sent them."""
     import json
+    import time
+
+    import stripe
 
     from app.api.v1.webhooks import _apply_stripe_event
 
-    _apply_stripe_event(db, event_type, json.loads(str(obj)))  # the JSON a webhook would carry
-    db.commit()
+    def pi_of(event):
+        obj = event.data.object
+        return obj.get("payment_intent") or (obj.get("id") if obj.get("object") == "payment_intent" else None)
+
+    events = []
+    for _ in range(10):
+        events = sorted(
+            (e for e in stripe.Event.list(created={"gte": since - 60}, limit=100).auto_paging_iter() if e.type in types and pi_of(e) == payment_intent_id),
+            key=lambda e: (e.created, e.id),
+        )
+        if events:
+            break
+        time.sleep(2)
+    for event in events:
+        _apply_stripe_event(db, event.type, json.loads(str(event.data.object)))
+        db.commit()
     db.expire_all()
+    return len(events)
 
 
 def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str]):
@@ -904,7 +924,7 @@ def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str]):
             intent = stripe.PaymentIntent.confirm(
                 intent.id, payment_method="pm_card_visa", return_url="https://rawwers.dev/demo-return"
             )
-        _apply_stripe(db, "payment_intent.succeeded", intent)
+        _deliver_stripe_events(db, intent.id, {"payment_intent.succeeded"}, since=intent.created)
         gig = _refund_demo_gig(db, request)
         lines.append(f"#{index}: paid {payment.amount} {payment.currency} with Stripe's test card")
     return gig
@@ -913,10 +933,11 @@ def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str]):
 def _settle_refund_at_stripe(db, refund_id: str) -> str:
     import stripe
 
+    from app.services.refund_reconcile import REFUND_EVENT_TYPES
+
     refund = stripe.Refund.retrieve(refund_id)
-    if refund.status == "succeeded":
-        _apply_stripe(db, "refund.succeeded", refund)
-    return refund.status
+    delivered = _deliver_stripe_events(db, refund.payment_intent, set(REFUND_EVENT_TYPES), since=refund.created)
+    return f"{stripe.Refund.retrieve(refund_id).status} ({delivered} events delivered)"
 
 
 def seed_refunds(db, *, dry_run: bool) -> list[str]:

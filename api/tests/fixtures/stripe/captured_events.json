@@ -1,0 +1,3194 @@
+{
+ "api_versions": [
+  "2025-12-15.clover"
+ ],
+ "captured_at": "2026-10-19T23:46:16+00:00",
+ "event_types": [
+  "account.updated",
+  "charge.dispute.closed",
+  "charge.dispute.created",
+  "charge.dispute.funds_withdrawn",
+  "charge.dispute.updated",
+  "charge.failed",
+  "charge.refund.updated",
+  "charge.refunded",
+  "charge.succeeded",
+  "charge.updated",
+  "payment_intent.canceled",
+  "payment_intent.created",
+  "payment_intent.payment_failed",
+  "payment_intent.succeeded",
+  "refund.created",
+  "refund.failed",
+  "refund.updated",
+  "transfer.created",
+  "transfer.reversed"
+ ],
+ "mode": "test",
+ "note": "Real Stripe test-mode events, rendered in the account's default API version; refunds as Stripe held them at capture. account.updated was captured from a connected (Connect) account. The charge.dispute.* samples include a chargeback lost in test mode (charge.dispute.closed, status lost).",
+ "refund_scenarios": {
+  "full": {
+   "amount": 24040,
+   "currency": "eur",
+   "events": [
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357929,
+     "data": {
+      "object": {
+       "amount": 24040,
+       "balance_transaction": "txn_3US1NBBYq7Jg3KEu0DNkffqD",
+       "charge": "ch_3US1NBBYq7Jg3KEu0BiJrlvh",
+       "created": 1792357929,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "pending",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3US1NBBYq7Jg3KEu0rW9kFIt",
+       "metadata": {
+        "gig_id": "ed779707-651a-48be-a5dc-73dfa10ba4ba",
+        "reason": "Plans changed"
+       },
+       "object": "refund",
+       "payment_intent": "pi_3US1NBBYq7Jg3KEu0YVo93zJ",
+       "payment_method": "pm_1US1NCBYq7Jg3KEupnKrY2Cy",
+       "reason": "requested_by_customer",
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {}
+     },
+     "id": "evt_3US1NBBYq7Jg3KEu05r4m7tX",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_JTt2hkM68tdUNV",
+      "idempotency_key": "gig:ed779707-651a-48be-a5dc-73dfa10ba4ba:client-refund:815d02a3-15b0-47cc-aa6a-6237383d9729"
+     },
+     "type": "refund.created"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357929,
+     "data": {
+      "object": {
+       "amount": 24040,
+       "amount_captured": 24040,
+       "amount_refunded": 24040,
+       "application": null,
+       "application_fee": null,
+       "application_fee_amount": null,
+       "balance_transaction": "txn_3US1NBBYq7Jg3KEu09AKogw6",
+       "billing_details": {
+        "address": {
+         "city": null,
+         "country": null,
+         "line1": null,
+         "line2": null,
+         "postal_code": null,
+         "state": null
+        },
+        "email": null,
+        "name": null,
+        "phone": null,
+        "tax_id": null
+       },
+       "calculated_statement_descriptor": "PACT RAWWERS",
+       "captured": true,
+       "created": 1792357927,
+       "currency": "eur",
+       "customer": null,
+       "description": null,
+       "destination": null,
+       "dispute": null,
+       "disputed": false,
+       "failure_balance_transaction": null,
+       "failure_code": null,
+       "failure_message": null,
+       "fraud_details": {},
+       "id": "ch_3US1NBBYq7Jg3KEu0BiJrlvh",
+       "livemode": false,
+       "metadata": {
+        "client_user_id": "00000000-0000-0000-0000-0000000e0001",
+        "gig_id": "ed779707-651a-48be-a5dc-73dfa10ba4ba",
+        "kind": "base",
+        "pro_user_id": "55c3154c-3098-5e99-85a7-7e6512fae14f",
+        "return_url": "http://localhost:3000/pay/return"
+       },
+       "object": "charge",
+       "on_behalf_of": null,
+       "order": null,
+       "outcome": {
+        "advice_code": null,
+        "network_advice_code": null,
+        "network_decline_code": null,
+        "network_status": "approved_by_network",
+        "reason": null,
+        "risk_level": "normal",
+        "risk_score": 30,
+        "seller_message": "Payment complete.",
+        "type": "authorized"
+       },
+       "paid": true,
+       "payment_intent": "pi_3US1NBBYq7Jg3KEu0YVo93zJ",
+       "payment_method": "pm_1US1NCBYq7Jg3KEupnKrY2Cy",
+       "payment_method_details": {
+        "card": {
+         "amount_authorized": 24040,
+         "authorization_code": "948285",
+         "brand": "visa",
+         "checks": {
+          "address_line1_check": null,
+          "address_postal_code_check": null,
+          "cvc_check": "pass"
+         },
+         "country": "US",
+         "electronic_commerce_indicator": "07",
+         "exp_month": 10,
+         "exp_year": 2027,
+         "extended_authorization": {
+          "status": "disabled"
+         },
+         "fingerprint": "fGEbKHgXxai3GCMC",
+         "funding": "credit",
+         "incremental_authorization": {
+          "status": "unavailable"
+         },
+         "installments": null,
+         "last4": "4242",
+         "mandate": null,
+         "multicapture": {
+          "status": "unavailable"
+         },
+         "network": "visa",
+         "network_token": {
+          "used": false
+         },
+         "network_transaction_id": "102716998757210",
+         "overcapture": {
+          "maximum_amount_capturable": 24040,
+          "status": "unavailable"
+         },
+         "regulated_status": "unregulated",
+         "three_d_secure": null,
+         "transaction_link_id": null,
+         "wallet": null
+        },
+        "type": "card"
+       },
+       "radar_options": {},
+       "receipt_email": null,
+       "receipt_number": null,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KKrs1NYGMgaAgqZjPQ06LBbJ66sr9EyeiVH9jztamlE_KfLKtKTaT_p2dwwcRiL92thNgL3kIHPbc2a_",
+       "refunded": true,
+       "review": null,
+       "shipping": null,
+       "source": null,
+       "source_transfer": null,
+       "statement_descriptor": null,
+       "statement_descriptor_suffix": null,
+       "status": "succeeded",
+       "transfer_data": null,
+       "transfer_group": null
+      },
+      "previous_attributes": {
+       "amount_refunded": 0,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KKns1NYGMga0-qocfIY6LBaMWq4skkJD88E4jzffAC0J03v_N4M5a7g2rg6CkYqtMlkDZlJLKWR5n8np",
+       "refunded": false
+      }
+     },
+     "id": "evt_3US1NBBYq7Jg3KEu0Uz8sEJn",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_JTt2hkM68tdUNV",
+      "idempotency_key": "gig:ed779707-651a-48be-a5dc-73dfa10ba4ba:client-refund:815d02a3-15b0-47cc-aa6a-6237383d9729"
+     },
+     "type": "charge.refunded"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357930,
+     "data": {
+      "object": {
+       "amount": 24040,
+       "balance_transaction": "txn_3US1NBBYq7Jg3KEu0DNkffqD",
+       "charge": "ch_3US1NBBYq7Jg3KEu0BiJrlvh",
+       "created": 1792357929,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "2337592347384514",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3US1NBBYq7Jg3KEu0rW9kFIt",
+       "metadata": {
+        "gig_id": "ed779707-651a-48be-a5dc-73dfa10ba4ba",
+        "reason": "Plans changed"
+       },
+       "object": "refund",
+       "payment_intent": "pi_3US1NBBYq7Jg3KEu0YVo93zJ",
+       "payment_method": "pm_1US1NCBYq7Jg3KEupnKrY2Cy",
+       "reason": "requested_by_customer",
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3US1NBBYq7Jg3KEu0WCvAbcd",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357930,
+     "data": {
+      "object": {
+       "amount": 24040,
+       "balance_transaction": "txn_3US1NBBYq7Jg3KEu0DNkffqD",
+       "charge": "ch_3US1NBBYq7Jg3KEu0BiJrlvh",
+       "created": 1792357929,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "2337592347384514",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3US1NBBYq7Jg3KEu0rW9kFIt",
+       "metadata": {
+        "gig_id": "ed779707-651a-48be-a5dc-73dfa10ba4ba",
+        "reason": "Plans changed"
+       },
+       "object": "refund",
+       "payment_intent": "pi_3US1NBBYq7Jg3KEu0YVo93zJ",
+       "payment_method": "pm_1US1NCBYq7Jg3KEupnKrY2Cy",
+       "reason": "requested_by_customer",
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3US1NBBYq7Jg3KEu0nMtsqLF",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "charge.refund.updated"
+    }
+   ],
+   "payment_intent": "pi_3US1NBBYq7Jg3KEu0YVo93zJ",
+   "refunds": [
+    {
+     "amount": 24040,
+     "balance_transaction": "txn_3US1NBBYq7Jg3KEu0DNkffqD",
+     "charge": "ch_3US1NBBYq7Jg3KEu0BiJrlvh",
+     "created": 1792357929,
+     "currency": "eur",
+     "customer": null,
+     "customer_account": null,
+     "destination_details": {
+      "card": {
+       "reference": "2337592347384514",
+       "reference_status": "available",
+       "reference_type": "acquirer_reference_number",
+       "type": "refund"
+      },
+      "type": "card"
+     },
+     "id": "re_3US1NBBYq7Jg3KEu0rW9kFIt",
+     "metadata": {
+      "gig_id": "ed779707-651a-48be-a5dc-73dfa10ba4ba",
+      "reason": "Plans changed"
+     },
+     "object": "refund",
+     "payment_intent": "pi_3US1NBBYq7Jg3KEu0YVo93zJ",
+     "payment_method": "pm_1US1NCBYq7Jg3KEupnKrY2Cy",
+     "reason": "requested_by_customer",
+     "receipt_number": null,
+     "source_transfer_reversal": null,
+     "status": "succeeded",
+     "transfer_reversal": null
+    }
+   ]
+  },
+  "partial": {
+   "amount": 24040,
+   "currency": "eur",
+   "events": [
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357936,
+     "data": {
+      "object": {
+       "amount": 7212,
+       "balance_transaction": "txn_3US1NHBYq7Jg3KEu0Urt67Pf",
+       "charge": "ch_3US1NHBYq7Jg3KEu0FBc1AxG",
+       "created": 1792357935,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "251797883810609",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3US1NHBYq7Jg3KEu0mjywaXx",
+       "metadata": {
+        "dispute_id": "c11f554e-435d-4f86-9c1d-805981685f0c",
+        "refund_case_id": "1a0daccb-1662-440b-8cfa-b50ded5d1e06"
+       },
+       "object": "refund",
+       "payment_intent": "pi_3US1NHBYq7Jg3KEu0nmGon3U",
+       "payment_method": "pm_1US1NIBYq7Jg3KEu3qZLy612",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3US1NHBYq7Jg3KEu0bx7wBVy",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "charge.refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357936,
+     "data": {
+      "object": {
+       "amount": 24040,
+       "amount_captured": 24040,
+       "amount_refunded": 7212,
+       "application": null,
+       "application_fee": null,
+       "application_fee_amount": null,
+       "balance_transaction": "txn_3US1NHBYq7Jg3KEu0xcNvbHr",
+       "billing_details": {
+        "address": {
+         "city": null,
+         "country": null,
+         "line1": null,
+         "line2": null,
+         "postal_code": null,
+         "state": null
+        },
+        "email": null,
+        "name": null,
+        "phone": null,
+        "tax_id": null
+       },
+       "calculated_statement_descriptor": "PACT RAWWERS",
+       "captured": true,
+       "created": 1792357933,
+       "currency": "eur",
+       "customer": null,
+       "description": null,
+       "destination": null,
+       "dispute": null,
+       "disputed": false,
+       "failure_balance_transaction": null,
+       "failure_code": null,
+       "failure_message": null,
+       "fraud_details": {},
+       "id": "ch_3US1NHBYq7Jg3KEu0FBc1AxG",
+       "livemode": false,
+       "metadata": {
+        "client_user_id": "00000000-0000-0000-0000-0000000e0001",
+        "gig_id": "ad82ce01-4b09-4c9b-bfbd-f3fc2a023998",
+        "kind": "base",
+        "pro_user_id": "55c3154c-3098-5e99-85a7-7e6512fae14f",
+        "return_url": "http://localhost:3000/pay/return"
+       },
+       "object": "charge",
+       "on_behalf_of": null,
+       "order": null,
+       "outcome": {
+        "advice_code": null,
+        "network_advice_code": null,
+        "network_decline_code": null,
+        "network_status": "approved_by_network",
+        "reason": null,
+        "risk_level": "normal",
+        "risk_score": 42,
+        "seller_message": "Payment complete.",
+        "type": "authorized"
+       },
+       "paid": true,
+       "payment_intent": "pi_3US1NHBYq7Jg3KEu0nmGon3U",
+       "payment_method": "pm_1US1NIBYq7Jg3KEu3qZLy612",
+       "payment_method_details": {
+        "card": {
+         "amount_authorized": 24040,
+         "authorization_code": "109577",
+         "brand": "visa",
+         "checks": {
+          "address_line1_check": null,
+          "address_postal_code_check": null,
+          "cvc_check": "pass"
+         },
+         "country": "US",
+         "electronic_commerce_indicator": "07",
+         "exp_month": 10,
+         "exp_year": 2027,
+         "extended_authorization": {
+          "status": "disabled"
+         },
+         "fingerprint": "fGEbKHgXxai3GCMC",
+         "funding": "credit",
+         "incremental_authorization": {
+          "status": "unavailable"
+         },
+         "installments": null,
+         "last4": "4242",
+         "mandate": null,
+         "multicapture": {
+          "status": "unavailable"
+         },
+         "network": "visa",
+         "network_token": {
+          "used": false
+         },
+         "network_transaction_id": "102716998757210",
+         "overcapture": {
+          "maximum_amount_capturable": 24040,
+          "status": "unavailable"
+         },
+         "regulated_status": "unregulated",
+         "three_d_secure": null,
+         "transaction_link_id": null,
+         "wallet": null
+        },
+        "type": "card"
+       },
+       "radar_options": {},
+       "receipt_email": null,
+       "receipt_number": null,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KLDs1NYGMgbspAwvPUQ6LBa7dey5RGejAsBVcugan_0oF0r_ivmZ6_2W7K57q2Rphf6yUZMQdE6EhyXK",
+       "refunded": false,
+       "review": null,
+       "shipping": null,
+       "source": null,
+       "source_transfer": null,
+       "statement_descriptor": null,
+       "statement_descriptor_suffix": null,
+       "status": "succeeded",
+       "transfer_data": null,
+       "transfer_group": null
+      },
+      "previous_attributes": {
+       "amount_refunded": 0,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KK_s1NYGMgbfKhtDdw06LBbYjQg7FeXfKYU2987Ir8FMX077Fp2OOqGOM82oQ0ejKyE80lZ83RHoCDcT"
+      }
+     },
+     "id": "evt_3US1NHBYq7Jg3KEu0eoZADeG",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_5e64Hbz2VFfByz",
+      "idempotency_key": "refund-case:1a0daccb-1662-440b-8cfa-b50ded5d1e06"
+     },
+     "type": "charge.refunded"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357936,
+     "data": {
+      "object": {
+       "amount": 7212,
+       "balance_transaction": "txn_3US1NHBYq7Jg3KEu0Urt67Pf",
+       "charge": "ch_3US1NHBYq7Jg3KEu0FBc1AxG",
+       "created": 1792357935,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "pending",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3US1NHBYq7Jg3KEu0mjywaXx",
+       "metadata": {
+        "dispute_id": "c11f554e-435d-4f86-9c1d-805981685f0c",
+        "refund_case_id": "1a0daccb-1662-440b-8cfa-b50ded5d1e06"
+       },
+       "object": "refund",
+       "payment_intent": "pi_3US1NHBYq7Jg3KEu0nmGon3U",
+       "payment_method": "pm_1US1NIBYq7Jg3KEu3qZLy612",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {}
+     },
+     "id": "evt_3US1NHBYq7Jg3KEu0nypTVxG",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_5e64Hbz2VFfByz",
+      "idempotency_key": "refund-case:1a0daccb-1662-440b-8cfa-b50ded5d1e06"
+     },
+     "type": "refund.created"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792357936,
+     "data": {
+      "object": {
+       "amount": 7212,
+       "balance_transaction": "txn_3US1NHBYq7Jg3KEu0Urt67Pf",
+       "charge": "ch_3US1NHBYq7Jg3KEu0FBc1AxG",
+       "created": 1792357935,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "251797883810609",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3US1NHBYq7Jg3KEu0mjywaXx",
+       "metadata": {
+        "dispute_id": "c11f554e-435d-4f86-9c1d-805981685f0c",
+        "refund_case_id": "1a0daccb-1662-440b-8cfa-b50ded5d1e06"
+       },
+       "object": "refund",
+       "payment_intent": "pi_3US1NHBYq7Jg3KEu0nmGon3U",
+       "payment_method": "pm_1US1NIBYq7Jg3KEu3qZLy612",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3US1NHBYq7Jg3KEu0smIuTRe",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "refund.updated"
+    }
+   ],
+   "payment_intent": "pi_3US1NHBYq7Jg3KEu0nmGon3U",
+   "refunds": [
+    {
+     "amount": 7212,
+     "balance_transaction": "txn_3US1NHBYq7Jg3KEu0Urt67Pf",
+     "charge": "ch_3US1NHBYq7Jg3KEu0FBc1AxG",
+     "created": 1792357935,
+     "currency": "eur",
+     "customer": null,
+     "customer_account": null,
+     "destination_details": {
+      "card": {
+       "reference": "251797883810609",
+       "reference_status": "available",
+       "reference_type": "acquirer_reference_number",
+       "type": "refund"
+      },
+      "type": "card"
+     },
+     "id": "re_3US1NHBYq7Jg3KEu0mjywaXx",
+     "metadata": {
+      "dispute_id": "c11f554e-435d-4f86-9c1d-805981685f0c",
+      "refund_case_id": "1a0daccb-1662-440b-8cfa-b50ded5d1e06"
+     },
+     "object": "refund",
+     "payment_intent": "pi_3US1NHBYq7Jg3KEu0nmGon3U",
+     "payment_method": "pm_1US1NIBYq7Jg3KEu3qZLy612",
+     "reason": null,
+     "receipt_number": null,
+     "source_transfer_reversal": null,
+     "status": "succeeded",
+     "transfer_reversal": null
+    }
+   ]
+  },
+  "refund_fails": {
+   "amount": 10000,
+   "currency": "eur",
+   "events": [
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405213,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "balance_transaction": "txn_3USDfrBYq7Jg3KEu1VQm8BEC",
+       "charge": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+       "created": 1792405213,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "pending",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfrBYq7Jg3KEu1s7vo7yw",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+       "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {}
+     },
+     "id": "evt_3USDfrBYq7Jg3KEu19NN2Un5",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_IkzbRSGAJdEdXw",
+      "idempotency_key": "9c1c3d36-9660-4e41-a634-8c1fa11fc595"
+     },
+     "type": "refund.created"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405213,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "amount_captured": 10000,
+       "amount_refunded": 10000,
+       "application": null,
+       "application_fee": null,
+       "application_fee_amount": null,
+       "balance_transaction": "txn_3USDfrBYq7Jg3KEu1J3zuQFW",
+       "billing_details": {
+        "address": {
+         "city": null,
+         "country": null,
+         "line1": null,
+         "line2": null,
+         "postal_code": null,
+         "state": null
+        },
+        "email": null,
+        "name": null,
+        "phone": null,
+        "tax_id": null
+       },
+       "calculated_statement_descriptor": "PACT RAWWERS",
+       "captured": true,
+       "created": 1792405212,
+       "currency": "eur",
+       "customer": null,
+       "description": null,
+       "destination": null,
+       "dispute": null,
+       "disputed": false,
+       "failure_balance_transaction": null,
+       "failure_code": null,
+       "failure_message": null,
+       "fraud_details": {},
+       "id": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+       "livemode": false,
+       "metadata": {
+        "probe": "refund-check"
+       },
+       "object": "charge",
+       "on_behalf_of": null,
+       "order": null,
+       "outcome": {
+        "advice_code": null,
+        "network_advice_code": null,
+        "network_decline_code": null,
+        "network_status": "approved_by_network",
+        "reason": null,
+        "risk_level": "normal",
+        "risk_score": 57,
+        "seller_message": "Payment complete.",
+        "type": "authorized"
+       },
+       "paid": true,
+       "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+       "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+       "payment_method_details": {
+        "card": {
+         "amount_authorized": 10000,
+         "authorization_code": "249610",
+         "brand": "visa",
+         "checks": {
+          "address_line1_check": null,
+          "address_postal_code_check": null,
+          "cvc_check": "pass"
+         },
+         "country": "US",
+         "electronic_commerce_indicator": "07",
+         "exp_month": 10,
+         "exp_year": 2027,
+         "extended_authorization": {
+          "status": "disabled"
+         },
+         "fingerprint": "cWWKy12uKcvEAWES",
+         "funding": "credit",
+         "incremental_authorization": {
+          "status": "unavailable"
+         },
+         "installments": null,
+         "last4": "5126",
+         "mandate": null,
+         "multicapture": {
+          "status": "unavailable"
+         },
+         "network": "visa",
+         "network_token": {
+          "used": false
+         },
+         "network_transaction_id": "998787751214950",
+         "overcapture": {
+          "maximum_amount_capturable": 10000,
+          "status": "unavailable"
+         },
+         "regulated_status": "unregulated",
+         "three_d_secure": null,
+         "transaction_link_id": null,
+         "wallet": null
+        },
+        "type": "card"
+       },
+       "radar_options": {},
+       "receipt_email": null,
+       "receipt_number": null,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KN3d19YGMgaewOnM1DA6LBaKsK97gpLo7IcFqulLU0Mfx4gj1bKHDAApHTD6CHmih2lCd1NmZEzzvfvC",
+       "refunded": true,
+       "review": null,
+       "shipping": null,
+       "source": null,
+       "source_transfer": null,
+       "statement_descriptor": null,
+       "statement_descriptor_suffix": null,
+       "status": "succeeded",
+       "transfer_data": null,
+       "transfer_group": null
+      },
+      "previous_attributes": {
+       "amount_refunded": 0,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KN3d19YGMgbcZKTN_D06LBbjQmp5jtLf5tXnq3c8WXqw3AwD_f2QK4O4R7UVKfA4Ds14My9E3q2Ow3d-",
+       "refunded": false
+      }
+     },
+     "id": "evt_3USDfrBYq7Jg3KEu1J432FK2",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_IkzbRSGAJdEdXw",
+      "idempotency_key": "9c1c3d36-9660-4e41-a634-8c1fa11fc595"
+     },
+     "type": "charge.refunded"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405340,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "balance_transaction": "txn_3USDfrBYq7Jg3KEu1VQm8BEC",
+       "charge": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+       "created": 1792405213,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "unavailable",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfrBYq7Jg3KEu1s7vo7yw",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+       "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3USDfrBYq7Jg3KEu10LdJAZG",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "charge.refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405340,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "balance_transaction": "txn_3USDfrBYq7Jg3KEu1VQm8BEC",
+       "charge": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+       "created": 1792405213,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "unavailable",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfrBYq7Jg3KEu1s7vo7yw",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+       "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3USDfrBYq7Jg3KEu1AfWy47o",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405344,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "balance_transaction": "txn_3USDfrBYq7Jg3KEu1VQm8BEC",
+       "charge": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+       "created": 1792405213,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "unavailable",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "failure_balance_transaction": "txn_1USDi0BYq7Jg3KEuF7f1bTD5",
+       "failure_reason": "expired_or_canceled_card",
+       "id": "re_3USDfrBYq7Jg3KEu1s7vo7yw",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+       "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "failed",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "failure_balance_transaction": null,
+       "failure_reason": null,
+       "status": "succeeded"
+      }
+     },
+     "id": "evt_3USDfrBYq7Jg3KEu1GOQylK4",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "charge.refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405344,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "balance_transaction": "txn_3USDfrBYq7Jg3KEu1VQm8BEC",
+       "charge": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+       "created": 1792405213,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "unavailable",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "failure_balance_transaction": "txn_1USDi0BYq7Jg3KEuF7f1bTD5",
+       "failure_reason": "expired_or_canceled_card",
+       "id": "re_3USDfrBYq7Jg3KEu1s7vo7yw",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+       "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "failed",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "failure_balance_transaction": null,
+       "failure_reason": null,
+       "status": "succeeded"
+      }
+     },
+     "id": "evt_3USDfrBYq7Jg3KEu1NOstrCm",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "refund.failed"
+    }
+   ],
+   "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+   "refunds": [
+    {
+     "amount": 10000,
+     "balance_transaction": "txn_3USDfrBYq7Jg3KEu1VQm8BEC",
+     "charge": "ch_3USDfrBYq7Jg3KEu1WQb4mpg",
+     "created": 1792405213,
+     "currency": "eur",
+     "customer": null,
+     "customer_account": null,
+     "destination_details": {
+      "card": {
+       "reference_status": "unavailable",
+       "reference_type": "acquirer_reference_number",
+       "type": "refund"
+      },
+      "type": "card"
+     },
+     "failure_balance_transaction": "txn_1USDi0BYq7Jg3KEuF7f1bTD5",
+     "failure_reason": "expired_or_canceled_card",
+     "id": "re_3USDfrBYq7Jg3KEu1s7vo7yw",
+     "metadata": {},
+     "object": "refund",
+     "payment_intent": "pi_3USDfrBYq7Jg3KEu1WSCzJ7z",
+     "payment_method": "pm_1USDfrBYq7Jg3KEuSL0FhcR3",
+     "reason": null,
+     "receipt_number": null,
+     "source_transfer_reversal": null,
+     "status": "failed",
+     "transfer_reversal": null
+    }
+   ]
+  },
+  "two_partials": {
+   "amount": 10000,
+   "currency": "eur",
+   "events": [
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405206,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "amount_captured": 10000,
+       "amount_refunded": 3000,
+       "application": null,
+       "application_fee": null,
+       "application_fee_amount": null,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1gMcKctt",
+       "billing_details": {
+        "address": {
+         "city": null,
+         "country": null,
+         "line1": null,
+         "line2": null,
+         "postal_code": null,
+         "state": null
+        },
+        "email": null,
+        "name": null,
+        "phone": null,
+        "tax_id": null
+       },
+       "calculated_statement_descriptor": "PACT RAWWERS",
+       "captured": true,
+       "created": 1792405204,
+       "currency": "eur",
+       "customer": null,
+       "description": null,
+       "destination": null,
+       "dispute": null,
+       "disputed": false,
+       "failure_balance_transaction": null,
+       "failure_code": null,
+       "failure_message": null,
+       "fraud_details": {},
+       "id": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "livemode": false,
+       "metadata": {
+        "probe": "refund-check"
+       },
+       "object": "charge",
+       "on_behalf_of": null,
+       "order": null,
+       "outcome": {
+        "advice_code": null,
+        "network_advice_code": null,
+        "network_decline_code": null,
+        "network_status": "approved_by_network",
+        "reason": null,
+        "risk_level": "normal",
+        "risk_score": 21,
+        "seller_message": "Payment complete.",
+        "type": "authorized"
+       },
+       "paid": true,
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "payment_method_details": {
+        "card": {
+         "amount_authorized": 10000,
+         "authorization_code": "793161",
+         "brand": "visa",
+         "checks": {
+          "address_line1_check": null,
+          "address_postal_code_check": null,
+          "cvc_check": "pass"
+         },
+         "country": "US",
+         "electronic_commerce_indicator": "07",
+         "exp_month": 10,
+         "exp_year": 2027,
+         "extended_authorization": {
+          "status": "disabled"
+         },
+         "fingerprint": "fGEbKHgXxai3GCMC",
+         "funding": "credit",
+         "incremental_authorization": {
+          "status": "unavailable"
+         },
+         "installments": null,
+         "last4": "4242",
+         "mandate": null,
+         "multicapture": {
+          "status": "unavailable"
+         },
+         "network": "visa",
+         "network_token": {
+          "used": false
+         },
+         "network_transaction_id": "102716998757210",
+         "overcapture": {
+          "maximum_amount_capturable": 10000,
+          "status": "unavailable"
+         },
+         "regulated_status": "unregulated",
+         "three_d_secure": null,
+         "transaction_link_id": null,
+         "wallet": null
+        },
+        "type": "card"
+       },
+       "radar_options": {},
+       "receipt_email": null,
+       "receipt_number": null,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KNbd19YGMgagP_3P6pE6LBY5yYvSXlNuEuLkyShx3dGu1Yu8i9njrsa7ktDEsCr3U9T8ogl47cv4N3CS",
+       "refunded": false,
+       "review": null,
+       "shipping": null,
+       "source": null,
+       "source_transfer": null,
+       "statement_descriptor": null,
+       "statement_descriptor_suffix": null,
+       "status": "succeeded",
+       "transfer_data": null,
+       "transfer_group": null
+      },
+      "previous_attributes": {
+       "amount_refunded": 0,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KNXd19YGMgZ0uO3KLDA6LBbgkI3XeguSuGZ3qnsyXQrfAcxPCZBeXmghKwA0WQZW9JWSOSs7NmmGumVP"
+      }
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu16qIg2RK",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_C3kxv8OXrKvWhJ",
+      "idempotency_key": "1fb0abcd-e062-4400-96b1-ad41d9188b90"
+     },
+     "type": "charge.refunded"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405206,
+     "data": {
+      "object": {
+       "amount": 3000,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1e12567K",
+       "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "created": 1792405205,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "pending",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfkBYq7Jg3KEu12GDzrzn",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {}
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1r5LEqS5",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_C3kxv8OXrKvWhJ",
+      "idempotency_key": "1fb0abcd-e062-4400-96b1-ad41d9188b90"
+     },
+     "type": "refund.created"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405207,
+     "data": {
+      "object": {
+       "amount": 3000,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1e12567K",
+       "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "created": 1792405205,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "1935053179403238",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfkBYq7Jg3KEu12GDzrzn",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1CmhJSG6",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405207,
+     "data": {
+      "object": {
+       "amount": 10000,
+       "amount_captured": 10000,
+       "amount_refunded": 5000,
+       "application": null,
+       "application_fee": null,
+       "application_fee_amount": null,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1gMcKctt",
+       "billing_details": {
+        "address": {
+         "city": null,
+         "country": null,
+         "line1": null,
+         "line2": null,
+         "postal_code": null,
+         "state": null
+        },
+        "email": null,
+        "name": null,
+        "phone": null,
+        "tax_id": null
+       },
+       "calculated_statement_descriptor": "PACT RAWWERS",
+       "captured": true,
+       "created": 1792405204,
+       "currency": "eur",
+       "customer": null,
+       "description": null,
+       "destination": null,
+       "dispute": null,
+       "disputed": false,
+       "failure_balance_transaction": null,
+       "failure_code": null,
+       "failure_message": null,
+       "fraud_details": {},
+       "id": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "livemode": false,
+       "metadata": {
+        "probe": "refund-check"
+       },
+       "object": "charge",
+       "on_behalf_of": null,
+       "order": null,
+       "outcome": {
+        "advice_code": null,
+        "network_advice_code": null,
+        "network_decline_code": null,
+        "network_status": "approved_by_network",
+        "reason": null,
+        "risk_level": "normal",
+        "risk_score": 21,
+        "seller_message": "Payment complete.",
+        "type": "authorized"
+       },
+       "paid": true,
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "payment_method_details": {
+        "card": {
+         "amount_authorized": 10000,
+         "authorization_code": "793161",
+         "brand": "visa",
+         "checks": {
+          "address_line1_check": null,
+          "address_postal_code_check": null,
+          "cvc_check": "pass"
+         },
+         "country": "US",
+         "electronic_commerce_indicator": "07",
+         "exp_month": 10,
+         "exp_year": 2027,
+         "extended_authorization": {
+          "status": "disabled"
+         },
+         "fingerprint": "fGEbKHgXxai3GCMC",
+         "funding": "credit",
+         "incremental_authorization": {
+          "status": "unavailable"
+         },
+         "installments": null,
+         "last4": "4242",
+         "mandate": null,
+         "multicapture": {
+          "status": "unavailable"
+         },
+         "network": "visa",
+         "network_token": {
+          "used": false
+         },
+         "network_transaction_id": "102716998757210",
+         "overcapture": {
+          "maximum_amount_capturable": 10000,
+          "status": "unavailable"
+         },
+         "regulated_status": "unregulated",
+         "three_d_secure": null,
+         "transaction_link_id": null,
+         "wallet": null
+        },
+        "type": "card"
+       },
+       "radar_options": {},
+       "receipt_email": null,
+       "receipt_number": null,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KNfd19YGMgZPzf5uVgw6LBbUwTmc31-mk4TNe9ZVf4dASc4Bwl91Qn1NGUP_S5bcsANiG4v41_B_dRkH",
+       "refunded": false,
+       "review": null,
+       "shipping": null,
+       "source": null,
+       "source_transfer": null,
+       "statement_descriptor": null,
+       "statement_descriptor_suffix": null,
+       "status": "succeeded",
+       "transfer_data": null,
+       "transfer_group": null
+      },
+      "previous_attributes": {
+       "amount_refunded": 3000,
+       "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KNbd19YGMgYhSfiZDwY6LBYsA9w_ZVTiXRIiTOBmfz0osB1d5z-FRu2d1x3TmuD5QnqEx9WprKB6-OAK"
+      }
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1OxRfR1Q",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_d1cjKpqAki5ffQ",
+      "idempotency_key": "0e01f693-dc22-41ca-b4ac-57fc0f7145ab"
+     },
+     "type": "charge.refunded"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405207,
+     "data": {
+      "object": {
+       "amount": 3000,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1e12567K",
+       "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "created": 1792405205,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "1935053179403238",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfkBYq7Jg3KEu12GDzrzn",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1TLEnNF5",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "charge.refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405207,
+     "data": {
+      "object": {
+       "amount": 2000,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1HRdn2tD",
+       "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "created": 1792405206,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference_status": "pending",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfkBYq7Jg3KEu1Os6O1KV",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {}
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1Yl53Yey",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": "req_d1cjKpqAki5ffQ",
+      "idempotency_key": "0e01f693-dc22-41ca-b4ac-57fc0f7145ab"
+     },
+     "type": "refund.created"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405207,
+     "data": {
+      "object": {
+       "amount": 2000,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1HRdn2tD",
+       "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "created": 1792405206,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "8119455886487364",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfkBYq7Jg3KEu1Os6O1KV",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1opsg18g",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "charge.refund.updated"
+    },
+    {
+     "api_version": "2025-12-15.clover",
+     "created": 1792405207,
+     "data": {
+      "object": {
+       "amount": 2000,
+       "balance_transaction": "txn_3USDfkBYq7Jg3KEu1HRdn2tD",
+       "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+       "created": 1792405206,
+       "currency": "eur",
+       "customer": null,
+       "customer_account": null,
+       "destination_details": {
+        "card": {
+         "reference": "8119455886487364",
+         "reference_status": "available",
+         "reference_type": "acquirer_reference_number",
+         "type": "refund"
+        },
+        "type": "card"
+       },
+       "id": "re_3USDfkBYq7Jg3KEu1Os6O1KV",
+       "metadata": {},
+       "object": "refund",
+       "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+       "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+       "reason": null,
+       "receipt_number": null,
+       "source_transfer_reversal": null,
+       "status": "succeeded",
+       "transfer_reversal": null
+      },
+      "previous_attributes": {
+       "destination_details": {
+        "card": {
+         "reference": null,
+         "reference_status": "pending"
+        }
+       }
+      }
+     },
+     "id": "evt_3USDfkBYq7Jg3KEu1tTF9SIE",
+     "livemode": false,
+     "object": "event",
+     "pending_webhooks": 0,
+     "request": {
+      "id": null,
+      "idempotency_key": null
+     },
+     "type": "refund.updated"
+    }
+   ],
+   "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+   "refunds": [
+    {
+     "amount": 3000,
+     "balance_transaction": "txn_3USDfkBYq7Jg3KEu1e12567K",
+     "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+     "created": 1792405205,
+     "currency": "eur",
+     "customer": null,
+     "customer_account": null,
+     "destination_details": {
+      "card": {
+       "reference": "1935053179403238",
+       "reference_status": "available",
+       "reference_type": "acquirer_reference_number",
+       "type": "refund"
+      },
+      "type": "card"
+     },
+     "id": "re_3USDfkBYq7Jg3KEu12GDzrzn",
+     "metadata": {},
+     "object": "refund",
+     "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+     "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+     "reason": null,
+     "receipt_number": null,
+     "source_transfer_reversal": null,
+     "status": "succeeded",
+     "transfer_reversal": null
+    },
+    {
+     "amount": 2000,
+     "balance_transaction": "txn_3USDfkBYq7Jg3KEu1HRdn2tD",
+     "charge": "ch_3USDfkBYq7Jg3KEu16VHUt0c",
+     "created": 1792405206,
+     "currency": "eur",
+     "customer": null,
+     "customer_account": null,
+     "destination_details": {
+      "card": {
+       "reference": "8119455886487364",
+       "reference_status": "available",
+       "reference_type": "acquirer_reference_number",
+       "type": "refund"
+      },
+      "type": "card"
+     },
+     "id": "re_3USDfkBYq7Jg3KEu1Os6O1KV",
+     "metadata": {},
+     "object": "refund",
+     "payment_intent": "pi_3USDfkBYq7Jg3KEu151l6aPY",
+     "payment_method": "pm_1USDfkBYq7Jg3KEub7Cr9hUf",
+     "reason": null,
+     "receipt_number": null,
+     "source_transfer_reversal": null,
+     "status": "succeeded",
+     "transfer_reversal": null
+    }
+   ]
+  }
+ },
+ "samples": {
+  "account.updated": {
+   "account": "acct_1USQGGPfjbNHvB1q",
+   "api_version": "2025-12-15.clover",
+   "context": "acct_1USQGGPfjbNHvB1q",
+   "created": 1792453661,
+   "data": {
+    "object": {
+     "business_profile": {
+      "annual_revenue": null,
+      "estimated_worker_count": null,
+      "mcc": null,
+      "minority_owned_business_designation": null,
+      "name": null,
+      "product_description": null,
+      "specified_commercial_transactions_act_url": null,
+      "support_address": null,
+      "support_email": null,
+      "support_phone": null,
+      "support_url": null,
+      "url": null
+     },
+     "business_type": null,
+     "capabilities": {},
+     "charges_enabled": false,
+     "controller": {
+      "fees": {
+       "payer": "account"
+      },
+      "is_controller": true,
+      "losses": {
+       "payments": "stripe"
+      },
+      "requirement_collection": "stripe",
+      "stripe_dashboard": {
+       "type": "full"
+      },
+      "type": "application"
+     },
+     "country": "PT",
+     "created": 1792453597,
+     "default_currency": "eur",
+     "details_submitted": false,
+     "email": null,
+     "external_accounts": {
+      "data": [],
+      "has_more": false,
+      "object": "list",
+      "total_count": 0,
+      "url": "/v1/accounts/acct_1USQGGPfjbNHvB1q/external_accounts"
+     },
+     "future_requirements": {
+      "alternatives": [],
+      "current_deadline": null,
+      "currently_due": [],
+      "disabled_reason": null,
+      "errors": [],
+      "eventually_due": [],
+      "past_due": [],
+      "pending_verification": []
+     },
+     "id": "acct_1USQGGPfjbNHvB1q",
+     "metadata": {
+      "foo": "bar"
+     },
+     "object": "account",
+     "payouts_enabled": false,
+     "requirements": {
+      "alternatives": [],
+      "current_deadline": null,
+      "currently_due": [
+       "business_profile.product_description",
+       "business_profile.support_phone",
+       "business_profile.url",
+       "external_account",
+       "tos_acceptance.date",
+       "tos_acceptance.ip"
+      ],
+      "disabled_reason": "requirements.past_due",
+      "errors": [],
+      "eventually_due": [
+       "business_profile.product_description",
+       "business_profile.support_phone",
+       "business_profile.url",
+       "external_account",
+       "tos_acceptance.date",
+       "tos_acceptance.ip"
+      ],
+      "past_due": [
+       "business_profile.product_description",
+       "business_profile.support_phone",
+       "business_profile.url",
+       "external_account",
+       "tos_acceptance.date",
+       "tos_acceptance.ip"
+      ],
+      "pending_verification": []
+     },
+     "settings": {
+      "bacs_debit_payments": {
+       "display_name": "Stripe",
+       "service_user_number": "449900"
+      },
+      "branding": {
+       "icon": null,
+       "logo": null,
+       "primary_color": null,
+       "secondary_color": null
+      },
+      "card_issuing": {
+       "tos_acceptance": {
+        "date": null,
+        "ip": null
+       }
+      },
+      "card_payments": {
+       "decline_on": {
+        "avs_failure": false,
+        "cvc_failure": false
+       },
+       "statement_descriptor_prefix": null,
+       "statement_descriptor_prefix_kana": null,
+       "statement_descriptor_prefix_kanji": null
+      },
+      "dashboard": {
+       "display_name": null,
+       "timezone": "Etc/UTC"
+      },
+      "invoices": {
+       "default_account_tax_ids": null,
+       "hosted_payment_method_save": "offer"
+      },
+      "payments": {
+       "statement_descriptor": null,
+       "statement_descriptor_kana": null,
+       "statement_descriptor_kanji": null
+      },
+      "payouts": {
+       "debit_negative_balances": true,
+       "schedule": {
+        "delay_days": 7,
+        "interval": "daily"
+       },
+       "statement_descriptor": null
+      },
+      "sepa_debit_payments": {}
+     },
+     "tos_acceptance": {
+      "date": null,
+      "ip": null,
+      "user_agent": null
+     },
+     "type": "standard"
+    },
+    "previous_attributes": {}
+   },
+   "id": "evt_1USQHJPfjbNHvB1q7f5BjPBd",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": null,
+    "idempotency_key": null
+   },
+   "type": "account.updated"
+  },
+  "charge.dispute.closed": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792457707,
+   "data": {
+    "object": {
+     "amount": 12000,
+     "balance_transaction": "txn_1USRKVBYq7Jg3KEu9MXaMkgb",
+     "balance_transactions": [
+      {
+       "amount": -12000,
+       "available_on": 1792457703,
+       "balance_type": "payments",
+       "created": 1792457703,
+       "currency": "eur",
+       "description": "Chargeback withdrawal for ch_3USRKRBYq7Jg3KEu1ynxxW7g",
+       "exchange_rate": null,
+       "fee": 2000,
+       "fee_details": [
+        {
+         "amount": 2000,
+         "application": null,
+         "currency": "eur",
+         "description": "Dispute fee",
+         "type": "stripe_fee"
+        }
+       ],
+       "id": "txn_1USRKVBYq7Jg3KEu9MXaMkgb",
+       "net": -14000,
+       "object": "balance_transaction",
+       "reporting_category": "dispute",
+       "source": "du_1USRKVBYq7Jg3KEuRserQdyw",
+       "status": "available",
+       "type": "adjustment"
+      }
+     ],
+     "charge": "ch_3USRKRBYq7Jg3KEu1ynxxW7g",
+     "created": 1792457703,
+     "currency": "eur",
+     "enhanced_eligibility_types": [],
+     "evidence": {
+      "access_activity_log": null,
+      "appeal": null,
+      "billing_address": null,
+      "cancellation_policy": null,
+      "cancellation_policy_disclosure": null,
+      "cancellation_rebuttal": null,
+      "customer_communication": null,
+      "customer_email_address": null,
+      "customer_name": null,
+      "customer_purchase_ip": null,
+      "customer_signature": null,
+      "duplicate_charge_documentation": null,
+      "duplicate_charge_explanation": null,
+      "duplicate_charge_id": null,
+      "enhanced_evidence": {},
+      "product_description": null,
+      "receipt": null,
+      "refund_policy": null,
+      "refund_policy_disclosure": null,
+      "refund_refusal_explanation": null,
+      "service_date": null,
+      "service_documentation": null,
+      "shipping_address": null,
+      "shipping_carrier": null,
+      "shipping_date": null,
+      "shipping_documentation": null,
+      "shipping_tracking_number": null,
+      "uncategorized_file": null,
+      "uncategorized_text": "losing_evidence"
+     },
+     "evidence_details": {
+      "due_by": 1793231999,
+      "enhanced_eligibility": {},
+      "has_evidence": true,
+      "past_due": false,
+      "submission_count": 1,
+      "submission_method": "manual"
+     },
+     "id": "du_1USRKVBYq7Jg3KEuRserQdyw",
+     "intended_submission_method": "prefer_manual",
+     "is_charge_refundable": false,
+     "livemode": false,
+     "metadata": {},
+     "object": "dispute",
+     "payment_intent": "pi_3USRKRBYq7Jg3KEu10ae5qxq",
+     "payment_method_details": {
+      "card": {
+       "brand": "visa",
+       "case_type": "chargeback",
+       "network": "visa",
+       "network_reason_code": "10.4"
+      },
+      "type": "card"
+     },
+     "reason": "fraudulent",
+     "status": "lost"
+    }
+   },
+   "id": "evt_1USRKZBYq7Jg3KEulnDQSVIZ",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": null,
+    "idempotency_key": null
+   },
+   "type": "charge.dispute.closed"
+  },
+  "charge.dispute.created": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453492,
+   "data": {
+    "object": {
+     "amount": 100,
+     "balance_transaction": null,
+     "balance_transactions": [],
+     "charge": "ch_3USQEZBYq7Jg3KEu1y358V5Y",
+     "created": 1792453492,
+     "currency": "usd",
+     "enhanced_eligibility_types": [],
+     "evidence": {
+      "access_activity_log": null,
+      "appeal": null,
+      "billing_address": null,
+      "cancellation_policy": null,
+      "cancellation_policy_disclosure": null,
+      "cancellation_rebuttal": null,
+      "customer_communication": null,
+      "customer_email_address": null,
+      "customer_name": null,
+      "customer_purchase_ip": null,
+      "customer_signature": null,
+      "duplicate_charge_documentation": null,
+      "duplicate_charge_explanation": null,
+      "duplicate_charge_id": null,
+      "enhanced_evidence": {},
+      "product_description": null,
+      "receipt": null,
+      "refund_policy": null,
+      "refund_policy_disclosure": null,
+      "refund_refusal_explanation": null,
+      "service_date": null,
+      "service_documentation": null,
+      "shipping_address": null,
+      "shipping_carrier": null,
+      "shipping_date": null,
+      "shipping_documentation": null,
+      "shipping_tracking_number": null,
+      "uncategorized_file": null,
+      "uncategorized_text": null
+     },
+     "evidence_details": {
+      "due_by": 1793145599,
+      "enhanced_eligibility": {},
+      "has_evidence": false,
+      "past_due": false,
+      "submission_count": 0,
+      "submission_method": "not_submitted"
+     },
+     "id": "du_1USQEaBYq7Jg3KEuB9pFOXqf",
+     "intended_submission_method": "prefer_manual",
+     "is_charge_refundable": true,
+     "livemode": false,
+     "metadata": {},
+     "object": "dispute",
+     "payment_intent": "pi_3USQEZBYq7Jg3KEu1SHC5EhZ",
+     "payment_method_details": {
+      "card": {
+       "brand": "visa",
+       "case_type": "inquiry",
+       "network": "visa",
+       "network_reason_code": "10"
+      },
+      "type": "card"
+     },
+     "reason": "fraudulent",
+     "status": "warning_needs_response"
+    }
+   },
+   "id": "evt_1USQEaBYq7Jg3KEuunCzjM8x",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_8mQ8sZu309GAAq",
+    "idempotency_key": "86e42866-d408-4583-979c-daabc7d4ba74"
+   },
+   "type": "charge.dispute.created"
+  },
+  "charge.dispute.funds_withdrawn": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792457703,
+   "data": {
+    "object": {
+     "amount": 12000,
+     "balance_transaction": "txn_1USRKVBYq7Jg3KEu9MXaMkgb",
+     "balance_transactions": [
+      {
+       "amount": -12000,
+       "available_on": 1792457703,
+       "balance_type": "payments",
+       "created": 1792457703,
+       "currency": "eur",
+       "description": "Chargeback withdrawal for ch_3USRKRBYq7Jg3KEu1ynxxW7g",
+       "exchange_rate": null,
+       "fee": 2000,
+       "fee_details": [
+        {
+         "amount": 2000,
+         "application": null,
+         "currency": "eur",
+         "description": "Dispute fee",
+         "type": "stripe_fee"
+        }
+       ],
+       "id": "txn_1USRKVBYq7Jg3KEu9MXaMkgb",
+       "net": -14000,
+       "object": "balance_transaction",
+       "reporting_category": "dispute",
+       "source": "du_1USRKVBYq7Jg3KEuRserQdyw",
+       "status": "available",
+       "type": "adjustment"
+      }
+     ],
+     "charge": "ch_3USRKRBYq7Jg3KEu1ynxxW7g",
+     "created": 1792457703,
+     "currency": "eur",
+     "enhanced_eligibility_types": [],
+     "evidence": {
+      "access_activity_log": null,
+      "appeal": null,
+      "billing_address": null,
+      "cancellation_policy": null,
+      "cancellation_policy_disclosure": null,
+      "cancellation_rebuttal": null,
+      "customer_communication": null,
+      "customer_email_address": null,
+      "customer_name": null,
+      "customer_purchase_ip": null,
+      "customer_signature": null,
+      "duplicate_charge_documentation": null,
+      "duplicate_charge_explanation": null,
+      "duplicate_charge_id": null,
+      "enhanced_evidence": {},
+      "product_description": null,
+      "receipt": null,
+      "refund_policy": null,
+      "refund_policy_disclosure": null,
+      "refund_refusal_explanation": null,
+      "service_date": null,
+      "service_documentation": null,
+      "shipping_address": null,
+      "shipping_carrier": null,
+      "shipping_date": null,
+      "shipping_documentation": null,
+      "shipping_tracking_number": null,
+      "uncategorized_file": null,
+      "uncategorized_text": null
+     },
+     "evidence_details": {
+      "due_by": 1793231999,
+      "enhanced_eligibility": {},
+      "has_evidence": false,
+      "past_due": false,
+      "submission_count": 0,
+      "submission_method": "not_submitted"
+     },
+     "id": "du_1USRKVBYq7Jg3KEuRserQdyw",
+     "intended_submission_method": "prefer_manual",
+     "is_charge_refundable": false,
+     "livemode": false,
+     "metadata": {},
+     "object": "dispute",
+     "payment_intent": "pi_3USRKRBYq7Jg3KEu10ae5qxq",
+     "payment_method_details": {
+      "card": {
+       "brand": "visa",
+       "case_type": "chargeback",
+       "network": "visa",
+       "network_reason_code": "10.4"
+      },
+      "type": "card"
+     },
+     "reason": "fraudulent",
+     "status": "needs_response"
+    }
+   },
+   "id": "evt_1USRKVBYq7Jg3KEunAhpAyKR",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_rz7Tpue0pEQKzT",
+    "idempotency_key": "a3f17d83-ef9a-4794-bd6e-6971d865aed7"
+   },
+   "type": "charge.dispute.funds_withdrawn"
+  },
+  "charge.dispute.updated": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792457704,
+   "data": {
+    "object": {
+     "amount": 12000,
+     "balance_transaction": "txn_1USRKVBYq7Jg3KEu9MXaMkgb",
+     "balance_transactions": [
+      {
+       "amount": -12000,
+       "available_on": 1792457703,
+       "balance_type": "payments",
+       "created": 1792457703,
+       "currency": "eur",
+       "description": "Chargeback withdrawal for ch_3USRKRBYq7Jg3KEu1ynxxW7g",
+       "exchange_rate": null,
+       "fee": 2000,
+       "fee_details": [
+        {
+         "amount": 2000,
+         "application": null,
+         "currency": "eur",
+         "description": "Dispute fee",
+         "type": "stripe_fee"
+        }
+       ],
+       "id": "txn_1USRKVBYq7Jg3KEu9MXaMkgb",
+       "net": -14000,
+       "object": "balance_transaction",
+       "reporting_category": "dispute",
+       "source": "du_1USRKVBYq7Jg3KEuRserQdyw",
+       "status": "available",
+       "type": "adjustment"
+      }
+     ],
+     "charge": "ch_3USRKRBYq7Jg3KEu1ynxxW7g",
+     "created": 1792457703,
+     "currency": "eur",
+     "enhanced_eligibility_types": [],
+     "evidence": {
+      "access_activity_log": null,
+      "appeal": null,
+      "billing_address": null,
+      "cancellation_policy": null,
+      "cancellation_policy_disclosure": null,
+      "cancellation_rebuttal": null,
+      "customer_communication": null,
+      "customer_email_address": null,
+      "customer_name": null,
+      "customer_purchase_ip": null,
+      "customer_signature": null,
+      "duplicate_charge_documentation": null,
+      "duplicate_charge_explanation": null,
+      "duplicate_charge_id": null,
+      "enhanced_evidence": {},
+      "product_description": null,
+      "receipt": null,
+      "refund_policy": null,
+      "refund_policy_disclosure": null,
+      "refund_refusal_explanation": null,
+      "service_date": null,
+      "service_documentation": null,
+      "shipping_address": null,
+      "shipping_carrier": null,
+      "shipping_date": null,
+      "shipping_documentation": null,
+      "shipping_tracking_number": null,
+      "uncategorized_file": null,
+      "uncategorized_text": "losing_evidence"
+     },
+     "evidence_details": {
+      "due_by": 1793231999,
+      "enhanced_eligibility": {},
+      "has_evidence": true,
+      "past_due": false,
+      "submission_count": 1,
+      "submission_method": "manual"
+     },
+     "id": "du_1USRKVBYq7Jg3KEuRserQdyw",
+     "intended_submission_method": "prefer_manual",
+     "is_charge_refundable": false,
+     "livemode": false,
+     "metadata": {},
+     "object": "dispute",
+     "payment_intent": "pi_3USRKRBYq7Jg3KEu10ae5qxq",
+     "payment_method_details": {
+      "card": {
+       "brand": "visa",
+       "case_type": "chargeback",
+       "network": "visa",
+       "network_reason_code": "10.4"
+      },
+      "type": "card"
+     },
+     "reason": "fraudulent",
+     "status": "under_review"
+    },
+    "previous_attributes": {
+     "evidence": {
+      "uncategorized_text": null
+     },
+     "evidence_details": {
+      "has_evidence": false,
+      "submission_count": 0,
+      "submission_method": "not_submitted"
+     },
+     "status": "needs_response"
+    }
+   },
+   "id": "evt_3USRKRBYq7Jg3KEu1I7E6OMm",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_h9WbfalMfDNntk",
+    "idempotency_key": "1c1d51a1-41a3-4962-b89b-20134104babb"
+   },
+   "type": "charge.dispute.updated"
+  },
+  "charge.failed": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453487,
+   "data": {
+    "object": {
+     "amount": 2000,
+     "amount_captured": 0,
+     "amount_refunded": 0,
+     "application": null,
+     "application_fee": null,
+     "application_fee_amount": null,
+     "balance_transaction": null,
+     "billing_details": {
+      "address": {
+       "city": null,
+       "country": null,
+       "line1": null,
+       "line2": null,
+       "postal_code": null,
+       "state": null
+      },
+      "email": null,
+      "name": null,
+      "phone": null,
+      "tax_id": null
+     },
+     "calculated_statement_descriptor": "PACT RAWWERS",
+     "captured": false,
+     "created": 1792453486,
+     "currency": "usd",
+     "customer": null,
+     "description": "(created by Stripe CLI)",
+     "destination": null,
+     "dispute": null,
+     "disputed": false,
+     "failure_balance_transaction": null,
+     "failure_code": "card_declined",
+     "failure_message": "Your card was declined.",
+     "fraud_details": {},
+     "id": "ch_3USQEUBYq7Jg3KEu0kRJMokB",
+     "livemode": false,
+     "metadata": {},
+     "object": "charge",
+     "on_behalf_of": null,
+     "order": null,
+     "outcome": {
+      "advice_code": "try_again_later",
+      "network_advice_code": null,
+      "network_decline_code": "01",
+      "network_status": "declined_by_network",
+      "reason": "generic_decline",
+      "risk_level": "normal",
+      "risk_score": 38,
+      "seller_message": "The bank did not return any further details with this decline.",
+      "type": "issuer_declined"
+     },
+     "paid": false,
+     "payment_intent": "pi_3USQEUBYq7Jg3KEu0UyvUCVT",
+     "payment_method": "pm_1USQEUBYq7Jg3KEuDf96usqe",
+     "payment_method_details": {
+      "card": {
+       "amount_authorized": null,
+       "authorization_code": "885294",
+       "brand": "visa",
+       "checks": {
+        "address_line1_check": null,
+        "address_postal_code_check": null,
+        "cvc_check": "pass"
+       },
+       "country": "US",
+       "electronic_commerce_indicator": "07",
+       "exp_month": 10,
+       "exp_year": 2027,
+       "extended_authorization": {
+        "status": "disabled"
+       },
+       "fingerprint": "nsKZUREwKPh3j1SG",
+       "funding": "credit",
+       "incremental_authorization": {
+        "status": "unavailable"
+       },
+       "installments": null,
+       "last4": "0002",
+       "mandate": null,
+       "multicapture": {
+        "status": "unavailable"
+       },
+       "network": "visa",
+       "network_token": {
+        "used": false
+       },
+       "network_transaction_id": "110115759085826",
+       "overcapture": {
+        "maximum_amount_capturable": 2000,
+        "status": "unavailable"
+       },
+       "regulated_status": "unregulated",
+       "three_d_secure": null,
+       "transaction_link_id": null,
+       "wallet": null
+      },
+      "type": "card"
+     },
+     "radar_options": {},
+     "receipt_email": null,
+     "receipt_number": null,
+     "receipt_url": null,
+     "refunded": false,
+     "review": null,
+     "shipping": null,
+     "source": null,
+     "source_transfer": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "failed",
+     "transfer_data": null,
+     "transfer_group": null
+    }
+   },
+   "id": "evt_3USQEUBYq7Jg3KEu0gGBllFQ",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_OOU0uZpaW2lNIp",
+    "idempotency_key": "c117eac5-4a8d-4ae5-9d87-d02e99113cf9"
+   },
+   "type": "charge.failed"
+  },
+  "charge.succeeded": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453491,
+   "data": {
+    "object": {
+     "amount": 100,
+     "amount_captured": 100,
+     "amount_refunded": 0,
+     "application": null,
+     "application_fee": null,
+     "application_fee_amount": null,
+     "balance_transaction": null,
+     "billing_details": {
+      "address": {
+       "city": null,
+       "country": null,
+       "line1": null,
+       "line2": null,
+       "postal_code": null,
+       "state": null
+      },
+      "email": null,
+      "name": null,
+      "phone": null,
+      "tax_id": null
+     },
+     "calculated_statement_descriptor": "PACT RAWWERS",
+     "captured": true,
+     "created": 1792453491,
+     "currency": "usd",
+     "customer": null,
+     "description": "(created by Stripe CLI)",
+     "destination": null,
+     "dispute": "du_1USQEaBYq7Jg3KEuB9pFOXqf",
+     "disputed": true,
+     "failure_balance_transaction": null,
+     "failure_code": null,
+     "failure_message": null,
+     "fraud_details": {},
+     "id": "ch_3USQEZBYq7Jg3KEu1y358V5Y",
+     "livemode": false,
+     "metadata": {},
+     "object": "charge",
+     "on_behalf_of": null,
+     "order": null,
+     "outcome": {
+      "advice_code": null,
+      "network_advice_code": null,
+      "network_decline_code": null,
+      "network_status": "approved_by_network",
+      "reason": null,
+      "risk_level": "normal",
+      "risk_score": 51,
+      "seller_message": "Payment complete.",
+      "type": "authorized"
+     },
+     "paid": true,
+     "payment_intent": "pi_3USQEZBYq7Jg3KEu1SHC5EhZ",
+     "payment_method": "pm_1USQEZBYq7Jg3KEumll6rOha",
+     "payment_method_details": {
+      "card": {
+       "amount_authorized": 100,
+       "authorization_code": "413198",
+       "brand": "visa",
+       "checks": {
+        "address_line1_check": null,
+        "address_postal_code_check": null,
+        "cvc_check": "pass"
+       },
+       "country": "US",
+       "electronic_commerce_indicator": "07",
+       "exp_month": 10,
+       "exp_year": 2027,
+       "extended_authorization": {
+        "status": "disabled"
+       },
+       "fingerprint": "iotQbQsd5HkxYo2K",
+       "funding": "credit",
+       "incremental_authorization": {
+        "status": "unavailable"
+       },
+       "installments": null,
+       "last4": "1976",
+       "mandate": null,
+       "multicapture": {
+        "status": "unavailable"
+       },
+       "network": "visa",
+       "network_token": {
+        "used": false
+       },
+       "network_transaction_id": "105111116819881",
+       "overcapture": {
+        "maximum_amount_capturable": 100,
+        "status": "unavailable"
+       },
+       "regulated_status": "unregulated",
+       "three_d_secure": null,
+       "transaction_link_id": null,
+       "wallet": null
+      },
+      "type": "card"
+     },
+     "radar_options": {},
+     "receipt_email": null,
+     "receipt_number": null,
+     "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KPTW2tYGMgZuLabb6E46LBZ5o7tNv9XK6Bcl1MF8ZziIm2g8W9_avFEXh1DB1vu6HOoDqRMWG_-IpqCw",
+     "refunded": false,
+     "review": null,
+     "shipping": null,
+     "source": null,
+     "source_transfer": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "succeeded",
+     "transfer_data": null,
+     "transfer_group": null
+    }
+   },
+   "id": "evt_3USQEZBYq7Jg3KEu1JazxiQ3",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_8mQ8sZu309GAAq",
+    "idempotency_key": "86e42866-d408-4583-979c-daabc7d4ba74"
+   },
+   "type": "charge.succeeded"
+  },
+  "charge.updated": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453495,
+   "data": {
+    "object": {
+     "amount": 100,
+     "amount_captured": 100,
+     "amount_refunded": 0,
+     "application": null,
+     "application_fee": null,
+     "application_fee_amount": null,
+     "balance_transaction": "txn_3USQEZBYq7Jg3KEu1j6T4mAk",
+     "billing_details": {
+      "address": {
+       "city": null,
+       "country": null,
+       "line1": null,
+       "line2": null,
+       "postal_code": null,
+       "state": null
+      },
+      "email": null,
+      "name": null,
+      "phone": null,
+      "tax_id": null
+     },
+     "calculated_statement_descriptor": "PACT RAWWERS",
+     "captured": true,
+     "created": 1792453491,
+     "currency": "usd",
+     "customer": null,
+     "description": "(created by Stripe CLI)",
+     "destination": null,
+     "dispute": "du_1USQEaBYq7Jg3KEuB9pFOXqf",
+     "disputed": true,
+     "failure_balance_transaction": null,
+     "failure_code": null,
+     "failure_message": null,
+     "fraud_details": {},
+     "id": "ch_3USQEZBYq7Jg3KEu1y358V5Y",
+     "livemode": false,
+     "metadata": {},
+     "object": "charge",
+     "on_behalf_of": null,
+     "order": null,
+     "outcome": {
+      "advice_code": null,
+      "network_advice_code": null,
+      "network_decline_code": null,
+      "network_status": "approved_by_network",
+      "reason": null,
+      "risk_level": "normal",
+      "risk_score": 51,
+      "seller_message": "Payment complete.",
+      "type": "authorized"
+     },
+     "paid": true,
+     "payment_intent": "pi_3USQEZBYq7Jg3KEu1SHC5EhZ",
+     "payment_method": "pm_1USQEZBYq7Jg3KEumll6rOha",
+     "payment_method_details": {
+      "card": {
+       "amount_authorized": 100,
+       "authorization_code": "413198",
+       "brand": "visa",
+       "checks": {
+        "address_line1_check": null,
+        "address_postal_code_check": null,
+        "cvc_check": "pass"
+       },
+       "country": "US",
+       "electronic_commerce_indicator": "07",
+       "exp_month": 10,
+       "exp_year": 2027,
+       "extended_authorization": {
+        "status": "disabled"
+       },
+       "fingerprint": "iotQbQsd5HkxYo2K",
+       "funding": "credit",
+       "incremental_authorization": {
+        "status": "unavailable"
+       },
+       "installments": null,
+       "last4": "1976",
+       "mandate": null,
+       "multicapture": {
+        "status": "unavailable"
+       },
+       "network": "visa",
+       "network_token": {
+        "used": false
+       },
+       "network_transaction_id": "105111116819881",
+       "overcapture": {
+        "maximum_amount_capturable": 100,
+        "status": "unavailable"
+       },
+       "regulated_status": "unregulated",
+       "three_d_secure": null,
+       "transaction_link_id": null,
+       "wallet": null
+      },
+      "type": "card"
+     },
+     "radar_options": {},
+     "receipt_email": null,
+     "receipt_number": null,
+     "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KPfW2tYGMgaf_DgPMng6LBblwbcTDKuqCUNmumO_0T8pjIhwIOVndqGoPMw4AowjI7moW2-LR3AcV7IU",
+     "refunded": false,
+     "review": null,
+     "shipping": null,
+     "source": null,
+     "source_transfer": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "succeeded",
+     "transfer_data": null,
+     "transfer_group": null
+    },
+    "previous_attributes": {
+     "balance_transaction": null,
+     "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU24xdU9CWXE3SmczS0V1KPfW2tYGMgZ3h9xQSvs6LBY0es1AKpRJFJyx2vtEIT0Zfe4PRrS0ufgpfKVHJJvsuOWYfxKx__fkLN0A"
+    }
+   },
+   "id": "evt_3USQEZBYq7Jg3KEu1hbXWFXF",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": null,
+    "idempotency_key": null
+   },
+   "type": "charge.updated"
+  },
+  "payment_intent.canceled": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453488,
+   "data": {
+    "object": {
+     "allowed_payment_method_types": null,
+     "amount": 2000,
+     "amount_capturable": 0,
+     "amount_details": {
+      "tip": {}
+     },
+     "amount_received": 0,
+     "application": null,
+     "application_fee_amount": null,
+     "automatic_payment_methods": {
+      "allow_redirects": "always",
+      "enabled": true
+     },
+     "canceled_at": 1792453488,
+     "cancellation_reason": "requested_by_customer",
+     "capture_method": "automatic_async",
+     "client_secret": "redacted",
+     "confirmation_method": "automatic",
+     "created": 1792453488,
+     "currency": "usd",
+     "customer": null,
+     "customer_account": null,
+     "description": "(created by Stripe CLI)",
+     "excluded_payment_method_types": null,
+     "id": "pi_3USQEWBYq7Jg3KEu13e5wKjb",
+     "last_payment_error": null,
+     "latest_charge": null,
+     "livemode": false,
+     "managed_payments": {
+      "enabled": false
+     },
+     "metadata": {},
+     "next_action": null,
+     "object": "payment_intent",
+     "on_behalf_of": null,
+     "payment_method": null,
+     "payment_method_configuration_details": {
+      "id": "pmc_1Sn1uuBYq7Jg3KEub0rDO6N4",
+      "parent": null
+     },
+     "payment_method_options": {
+      "amazon_pay": {
+       "express_checkout_element_session_id": null
+      },
+      "card": {
+       "installments": null,
+       "mandate_options": null,
+       "network": null,
+       "request_three_d_secure": "automatic"
+      },
+      "link": {
+       "persistent_token": null
+      }
+     },
+     "payment_method_types": [
+      "card",
+      "link",
+      "amazon_pay"
+     ],
+     "payment_record": null,
+     "processing": null,
+     "receipt_email": null,
+     "review": null,
+     "setup_future_usage": null,
+     "shared_payment_granted_token": null,
+     "shipping": null,
+     "source": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "canceled",
+     "transfer_data": null,
+     "transfer_group": null
+    }
+   },
+   "id": "evt_3USQEWBYq7Jg3KEu1r1LJbku",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_CrJC3cBMFAMRcA",
+    "idempotency_key": "f786f9f3-b01a-4377-8833-2d48deccc613"
+   },
+   "type": "payment_intent.canceled"
+  },
+  "payment_intent.created": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453491,
+   "data": {
+    "object": {
+     "allowed_payment_method_types": null,
+     "amount": 100,
+     "amount_capturable": 0,
+     "amount_details": {
+      "tip": {}
+     },
+     "amount_received": 0,
+     "application": null,
+     "application_fee_amount": null,
+     "automatic_payment_methods": null,
+     "canceled_at": null,
+     "cancellation_reason": null,
+     "capture_method": "automatic_async",
+     "client_secret": "redacted",
+     "confirmation_method": "automatic",
+     "created": 1792453491,
+     "currency": "usd",
+     "customer": null,
+     "customer_account": null,
+     "description": "(created by Stripe CLI)",
+     "excluded_payment_method_types": null,
+     "id": "pi_3USQEZBYq7Jg3KEu1SHC5EhZ",
+     "last_payment_error": null,
+     "latest_charge": null,
+     "livemode": false,
+     "managed_payments": {
+      "enabled": false
+     },
+     "metadata": {},
+     "next_action": null,
+     "object": "payment_intent",
+     "on_behalf_of": null,
+     "payment_method": null,
+     "payment_method_configuration_details": null,
+     "payment_method_options": {
+      "card": {
+       "installments": null,
+       "mandate_options": null,
+       "network": null,
+       "request_three_d_secure": "automatic"
+      }
+     },
+     "payment_method_types": [
+      "card"
+     ],
+     "payment_record": null,
+     "processing": null,
+     "receipt_email": null,
+     "review": null,
+     "setup_future_usage": null,
+     "shared_payment_granted_token": null,
+     "shipping": null,
+     "source": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "requires_payment_method",
+     "transfer_data": null,
+     "transfer_group": null
+    }
+   },
+   "id": "evt_3USQEZBYq7Jg3KEu1Wh4R4Lp",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_8mQ8sZu309GAAq",
+    "idempotency_key": "86e42866-d408-4583-979c-daabc7d4ba74"
+   },
+   "type": "payment_intent.created"
+  },
+  "payment_intent.payment_failed": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453487,
+   "data": {
+    "object": {
+     "allowed_payment_method_types": null,
+     "amount": 2000,
+     "amount_capturable": 0,
+     "amount_details": {
+      "tip": {}
+     },
+     "amount_received": 0,
+     "application": null,
+     "application_fee_amount": null,
+     "automatic_payment_methods": null,
+     "canceled_at": null,
+     "cancellation_reason": null,
+     "capture_method": "automatic_async",
+     "client_secret": "redacted",
+     "confirmation_method": "automatic",
+     "created": 1792453486,
+     "currency": "usd",
+     "customer": null,
+     "customer_account": null,
+     "description": "(created by Stripe CLI)",
+     "excluded_payment_method_types": null,
+     "id": "pi_3USQEUBYq7Jg3KEu0UyvUCVT",
+     "last_payment_error": {
+      "advice_code": "try_again_later",
+      "charge": "ch_3USQEUBYq7Jg3KEu0kRJMokB",
+      "code": "card_declined",
+      "decline_code": "generic_decline",
+      "doc_url": "https://stripe.com/docs/error-codes/card-declined",
+      "message": "Your card was declined.",
+      "network_decline_code": "01",
+      "payment_method": {
+       "allow_redisplay": "unspecified",
+       "billing_details": {
+        "address": {
+         "city": null,
+         "country": null,
+         "line1": null,
+         "line2": null,
+         "postal_code": null,
+         "state": null
+        },
+        "email": null,
+        "name": null,
+        "phone": null,
+        "tax_id": null
+       },
+       "card": {
+        "brand": "visa",
+        "checks": {
+         "address_line1_check": null,
+         "address_postal_code_check": null,
+         "cvc_check": "pass"
+        },
+        "country": "US",
+        "display_brand": "visa",
+        "exp_month": 10,
+        "exp_year": 2027,
+        "fingerprint": "nsKZUREwKPh3j1SG",
+        "funding": "credit",
+        "generated_from": null,
+        "last4": "0002",
+        "networks": {
+         "available": [
+          "visa"
+         ],
+         "preferred": null
+        },
+        "regulated_status": "unregulated",
+        "three_d_secure_usage": {
+         "supported": true
+        },
+        "wallet": null
+       },
+       "created": 1792453486,
+       "customer": null,
+       "customer_account": null,
+       "id": "pm_1USQEUBYq7Jg3KEuDf96usqe",
+       "livemode": false,
+       "metadata": {},
+       "object": "payment_method",
+       "shared_payment_granted_token": null,
+       "type": "card"
+      },
+      "payment_method_type": "card",
+      "type": "card_error"
+     },
+     "latest_charge": "ch_3USQEUBYq7Jg3KEu0kRJMokB",
+     "livemode": false,
+     "managed_payments": {
+      "enabled": false
+     },
+     "metadata": {},
+     "next_action": null,
+     "object": "payment_intent",
+     "on_behalf_of": null,
+     "payment_method": null,
+     "payment_method_configuration_details": null,
+     "payment_method_options": {
+      "card": {
+       "installments": null,
+       "mandate_options": null,
+       "network": null,
+       "request_three_d_secure": "automatic"
+      }
+     },
+     "payment_method_types": [
+      "card"
+     ],
+     "payment_record": null,
+     "processing": null,
+     "receipt_email": null,
+     "review": null,
+     "setup_future_usage": null,
+     "shared_payment_granted_token": null,
+     "shipping": null,
+     "source": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "requires_payment_method",
+     "transfer_data": null,
+     "transfer_group": null
+    }
+   },
+   "id": "evt_3USQEUBYq7Jg3KEu0SR7wrKS",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_OOU0uZpaW2lNIp",
+    "idempotency_key": "c117eac5-4a8d-4ae5-9d87-d02e99113cf9"
+   },
+   "type": "payment_intent.payment_failed"
+  },
+  "payment_intent.succeeded": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453492,
+   "data": {
+    "object": {
+     "allowed_payment_method_types": null,
+     "amount": 100,
+     "amount_capturable": 0,
+     "amount_details": {
+      "tip": {}
+     },
+     "amount_received": 100,
+     "application": null,
+     "application_fee_amount": null,
+     "automatic_payment_methods": null,
+     "canceled_at": null,
+     "cancellation_reason": null,
+     "capture_method": "automatic_async",
+     "client_secret": "redacted",
+     "confirmation_method": "automatic",
+     "created": 1792453491,
+     "currency": "usd",
+     "customer": null,
+     "customer_account": null,
+     "description": "(created by Stripe CLI)",
+     "excluded_payment_method_types": null,
+     "id": "pi_3USQEZBYq7Jg3KEu1SHC5EhZ",
+     "last_payment_error": null,
+     "latest_charge": "ch_3USQEZBYq7Jg3KEu1y358V5Y",
+     "livemode": false,
+     "managed_payments": {
+      "enabled": false
+     },
+     "metadata": {},
+     "next_action": null,
+     "object": "payment_intent",
+     "on_behalf_of": null,
+     "payment_method": "pm_1USQEZBYq7Jg3KEumll6rOha",
+     "payment_method_configuration_details": null,
+     "payment_method_options": {
+      "card": {
+       "installments": null,
+       "mandate_options": null,
+       "network": null,
+       "request_three_d_secure": "automatic"
+      }
+     },
+     "payment_method_types": [
+      "card"
+     ],
+     "payment_record": null,
+     "processing": null,
+     "receipt_email": null,
+     "review": null,
+     "setup_future_usage": null,
+     "shared_payment_granted_token": null,
+     "shipping": null,
+     "source": null,
+     "statement_descriptor": null,
+     "statement_descriptor_suffix": null,
+     "status": "succeeded",
+     "transfer_data": null,
+     "transfer_group": null
+    }
+   },
+   "id": "evt_3USQEZBYq7Jg3KEu1N4zdhZr",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_8mQ8sZu309GAAq",
+    "idempotency_key": "86e42866-d408-4583-979c-daabc7d4ba74"
+   },
+   "type": "payment_intent.succeeded"
+  },
+  "transfer.created": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453659,
+   "data": {
+    "object": {
+     "amount": 1000,
+     "amount_reversed": 0,
+     "balance_transaction": "txn_1USQHHBYq7Jg3KEuEtR1jjf1",
+     "created": 1792453659,
+     "currency": "eur",
+     "description": null,
+     "destination": "acct_1USQGGPfjbNHvB1q",
+     "destination_payment": "py_1USQHHPfjbNHvB1qjt7Av9ph",
+     "id": "tr_1USQHHBYq7Jg3KEuHoa1UFb7",
+     "livemode": false,
+     "metadata": {
+      "capture": "fixture"
+     },
+     "object": "transfer",
+     "reversals": {
+      "data": [],
+      "has_more": false,
+      "object": "list",
+      "total_count": 0,
+      "url": "/v1/transfers/tr_1USQHHBYq7Jg3KEuHoa1UFb7/reversals"
+     },
+     "reversed": false,
+     "source_transaction": null,
+     "source_type": "card",
+     "transfer_group": null
+    }
+   },
+   "id": "evt_1USQHHBYq7Jg3KEuz3yCv1ee",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_dEdhxHq9WXgjc4",
+    "idempotency_key": "ca7b0a61-a700-4ad0-ae4c-78bbc62e9fd1"
+   },
+   "type": "transfer.created"
+  },
+  "transfer.reversed": {
+   "api_version": "2025-12-15.clover",
+   "created": 1792453939,
+   "data": {
+    "object": {
+     "amount": 1000,
+     "amount_reversed": 1000,
+     "balance_transaction": "txn_1USQHHBYq7Jg3KEuEtR1jjf1",
+     "created": 1792453659,
+     "currency": "eur",
+     "description": null,
+     "destination": "acct_1USQGGPfjbNHvB1q",
+     "destination_payment": "py_1USQHHPfjbNHvB1qjt7Av9ph",
+     "id": "tr_1USQHHBYq7Jg3KEuHoa1UFb7",
+     "livemode": false,
+     "metadata": {
+      "capture": "fixture"
+     },
+     "object": "transfer",
+     "reversals": {
+      "data": [
+       {
+        "amount": 1000,
+        "balance_transaction": "txn_1USQLnBYq7Jg3KEuzjYKWcBD",
+        "created": 1792453939,
+        "currency": "eur",
+        "destination_payment_refund": "pyr_1USQLmPfjbNHvB1qxQvqfowk",
+        "id": "trr_1USQLnBYq7Jg3KEuQZWjJzTd",
+        "metadata": {
+         "capture": "fixture"
+        },
+        "object": "transfer_reversal",
+        "source_refund": null,
+        "transfer": "tr_1USQHHBYq7Jg3KEuHoa1UFb7"
+       }
+      ],
+      "has_more": false,
+      "object": "list",
+      "total_count": 1,
+      "url": "/v1/transfers/tr_1USQHHBYq7Jg3KEuHoa1UFb7/reversals"
+     },
+     "reversed": true,
+     "source_transaction": null,
+     "source_type": "card",
+     "transfer_group": null
+    },
+    "previous_attributes": {
+     "amount_reversed": 0,
+     "reversals": {
+      "data": [],
+      "total_count": 0
+     },
+     "reversed": false
+    }
+   },
+   "id": "evt_1USQLnBYq7Jg3KEuIXms1Stn",
+   "livemode": false,
+   "object": "event",
+   "pending_webhooks": 0,
+   "request": {
+    "id": "req_gzos2tsuyKqbf7",
+    "idempotency_key": "bb6713a0-f838-4c4e-902b-1c34f98aa0b4"
+   },
+   "type": "transfer.reversed"
+  }
+ }
+}

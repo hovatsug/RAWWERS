@@ -1,5 +1,8 @@
+import copy
+import json
 import uuid
 from decimal import Decimal
+from pathlib import Path
 
 from app.models.admin import UserAccount
 from app.models.payouts import (
@@ -102,45 +105,61 @@ def test_transfer_created_without_metadata_is_a_noop(db_session):
 
 
 # ---------------------------------------------------------------------------
-# transfer.failed: an async failure after the synchronous path already
-# reported success (e.g. the transfer was reversed).
+# transfer.reversed: a transfer already reported paid, taken back. Stripe has
+# no "transfer.failed" - these tests used to feed that name, and the branch
+# behind it never ran. The event here is the one captured from Stripe.
 # ---------------------------------------------------------------------------
 
+_CAPTURE = json.loads((Path(__file__).parent / "fixtures" / "stripe" / "captured_events.json").read_text())
 
-def test_transfer_failed_marks_a_paid_request_failed(db_session):
+
+def _reversed_transfer(request, *, fully=True) -> dict:
+    obj = copy.deepcopy(_CAPTURE["samples"]["transfer.reversed"]["data"]["object"])
+    obj["metadata"] = {"payout_request_id": str(request.id)}
+    if not fully:
+        obj["reversed"] = False
+        obj["amount_reversed"] = obj["amount"] // 2
+    return obj
+
+
+def test_a_fully_reversed_transfer_marks_a_paid_request_failed(db_session):
     pro_id = uuid.uuid4()
     _ensure_account(db_session, pro_id)
     request = _create_payout_request(db_session, pro_id, status=PayoutRequestStatus.paid)
 
-    _apply_stripe_event(
-        db_session,
-        "transfer.failed",
-        {"id": "tr_789", "metadata": {"payout_request_id": str(request.id)}, "failure_message": "destination account closed"},
-    )
+    _apply_stripe_event(db_session, "transfer.reversed", _reversed_transfer(request))
     db_session.commit()
 
     db_session.refresh(request)
     assert request.status == PayoutRequestStatus.failed
-    assert request.failure_reason == "destination account closed"
-
+    assert request.failure_reason == "Stripe transfer reversed"
     events = db_session.execute(select(PayoutEvent).where(PayoutEvent.payout_request_id == request.id)).scalars().all()
-    assert len(events) == 1
-    assert events[0].type == "transfer_failed"
+    assert [e.type for e in events] == ["transfer_reversed"]
 
 
-def test_transfer_failed_is_idempotent(db_session):
+def test_a_reversal_is_recorded_once(db_session):
     pro_id = uuid.uuid4()
     _ensure_account(db_session, pro_id)
     request = _create_payout_request(db_session, pro_id, status=PayoutRequestStatus.paid)
 
-    event = {"id": "tr_999", "metadata": {"payout_request_id": str(request.id)}, "failure_message": "insufficient funds"}
-    _apply_stripe_event(db_session, "transfer.failed", event)
-    db_session.commit()
-    _apply_stripe_event(db_session, "transfer.failed", event)
-    db_session.commit()
+    for _ in range(2):
+        _apply_stripe_event(db_session, "transfer.reversed", _reversed_transfer(request))
+        db_session.commit()
 
     events = db_session.execute(select(PayoutEvent).where(PayoutEvent.payout_request_id == request.id)).scalars().all()
     assert len(events) == 1
+
+
+def test_a_partial_reversal_leaves_the_payout_paid(db_session):
+    pro_id = uuid.uuid4()
+    _ensure_account(db_session, pro_id)
+    request = _create_payout_request(db_session, pro_id, status=PayoutRequestStatus.paid)
+
+    _apply_stripe_event(db_session, "transfer.reversed", _reversed_transfer(request, fully=False))
+    db_session.commit()
+
+    db_session.refresh(request)
+    assert request.status == PayoutRequestStatus.paid
 
 
 # ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ from app.models.admin import (
     DisputeMessage,
     EntitlementHold,
     GigContractSnapshot,
+    MoneyAttentionItem,
     ProFaultEvent,
     ProQualityPenalty,
     ProProfile,

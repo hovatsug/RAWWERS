@@ -83,6 +83,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.sweep_stuck_bookings",
         "schedule": timedelta(seconds=settings.stuck_booking_sweep_interval_seconds),
     },
+    # Refund cases still in flight with no settling event, fetched from Stripe.
+    "reconcile-stuck-refunds": {
+        "task": "app.tasks.scheduled.reconcile_stuck_refunds",
+        "schedule": timedelta(seconds=settings.refund_reconcile_interval_seconds),
+    },
 }
 celery_app.conf.task_routes = {
     # Its own queue, served by the worker-photos processes: a photographer's
@@ -115,6 +120,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.expire_booking_requests": {"queue": "media"},
     "app.tasks.scheduled.expire_unpaid_gigs": {"queue": "media"},
     "app.tasks.scheduled.sweep_stuck_bookings": {"queue": "media"},
+    "app.tasks.scheduled.reconcile_stuck_refunds": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

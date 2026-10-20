@@ -30,7 +30,6 @@ from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurc
 from app.models.admin import ProProfile
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.webhooks import WebhookAckResponse
-from app.services.full_refund import is_fully_refunded, settle_full_refund
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
@@ -54,11 +53,10 @@ from app.services.abuse import detect_payment_failures_anomaly
 from app.services.metrics import observe_business_event, observe_payout_volume, observe_webhook
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.client_rewards_pricing import increment_share_link_conversion
-from app.services.disputes import finalize_refund_case_failed, finalize_refund_case_success
+from app.services.refund_reconcile import REFUND_EVENT_TYPES, reconcile_payment_refunds
 from app.services.gallery_completion import finalize_gallery_and_complete_gig, is_selection_fully_paid
-from app.services.proof_of_gigs import enqueue_raww_mint, enqueue_raww_refund_reversal
+from app.services.proof_of_gigs import enqueue_raww_mint
 from app.services.payouts import (
-    adjust_earnings_for_partial_refund,
     create_earnings_entry,
     reverse_earnings_entries_for_source,
 )
@@ -70,6 +68,23 @@ from app.services.trust_safety import evaluate_payment_failure_rule
 
 
 logger = logging.getLogger(__name__)
+
+#: Every Stripe event this webhook acts on - each one Stripe really sends,
+#: held against captured events by tests/test_stripe_event_contract.py. The
+#: endpoints are registered with exactly these (scripts/register_stripe_webhook.py).
+CONNECT_STRIPE_EVENTS = frozenset({"account.updated"})
+HANDLED_STRIPE_EVENTS = frozenset(
+    {
+        "payment_intent.succeeded",
+        "payment_intent.payment_failed",
+        "payment_intent.canceled",
+        *REFUND_EVENT_TYPES,
+        "charge.dispute.created",
+        "transfer.created",
+        "transfer.reversed",
+        *CONNECT_STRIPE_EVENTS,
+    }
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 settings = get_settings()
@@ -136,6 +151,16 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db_session)
         raise
 
     event_id = event.get("id")
+    # The endpoint is pinned to our API version, so payloads match what our
+    # calls ask for. Another version means it was registered wrongly; the
+    # refund path is safe either way (it fetches from Stripe), the rest reads
+    # the payload, so say so loudly.
+    pinned = get_settings().stripe_api_version
+    if pinned and event.get("api_version") and event.get("api_version") != pinned:
+        logger.warning(
+            "stripe_event_api_version_mismatch",
+            extra={"event_id": event_id, "event_api_version": event.get("api_version"), "pinned": pinned},
+        )
     _log_webhook_security_event(
         db,
         provider="stripe",
@@ -658,139 +683,46 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 reason="payment_intent_cancelled",
             )
 
-    elif event_type in {"charge.refunded", "refund.succeeded"}:
+    elif event_type in REFUND_EVENT_TYPES:
+        # Every refund event only names the payment: Stripe is asked for the
+        # payment's refunds and our records reconciled to them, whatever the
+        # order or number of events (services/refund_reconcile).
         payment_intent_id = obj.get("payment_intent")
-        # On `refund.succeeded` the object *is* the refund. On
-        # `charge.refunded` it is the charge, whose id is `ch_...` - passing
-        # that on as a refund id meant finalisation searched for a charge id
-        # in a field holding `re_...` and never matched, leaving every refund
-        # case stuck at refund_initiated after the money had gone.
-        if event_type == "refund.succeeded":
-            refund_id = obj.get("id")
-        else:
-            refunds = (obj.get("refunds") or {}).get("data") or []
-            refund_id = refunds[0].get("id") if refunds else None
         if not payment_intent_id:
             return
-        print_order = on_print_refund_event(db, payment_intent_id=payment_intent_id, refund_ref=refund_id)
-        if print_order:
-            return
-
-        upsell = db.execute(
-            select(UpsellPurchase).where(UpsellPurchase.stripe_payment_intent_id == payment_intent_id)
-        ).scalar_one_or_none()
-        if upsell:
-            upsell.status = UpsellPurchaseStatus.refunded
-            snapshot = db.execute(
-                select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
+        # Prints and extra-image purchases keep their own paths, which act on
+        # the charge event.
+        if event_type == "charge.refunded":
+            if on_print_refund_event(db, payment_intent_id=payment_intent_id, refund_ref=None):
+                return
+            upsell = db.execute(
+                select(UpsellPurchase).where(UpsellPurchase.stripe_payment_intent_id == payment_intent_id)
             ).scalar_one_or_none()
-            if snapshot:
-                snapshot.status = ExtraImagePurchaseStatus.refunded
-                reverse_earnings_entries_for_source(
-                    db,
-                    source_type=EarningsSourceType.extra_images,
-                    source_id=snapshot.id,
-                    reason="stripe_refund",
-                )
-            return
+            if upsell:
+                upsell.status = UpsellPurchaseStatus.refunded
+                snapshot = db.execute(
+                    select(ExtraImagePurchase).where(ExtraImagePurchase.stripe_payment_intent_id == payment_intent_id)
+                ).scalar_one_or_none()
+                if snapshot:
+                    snapshot.status = ExtraImagePurchaseStatus.refunded
+                    reverse_earnings_entries_for_source(
+                        db,
+                        source_type=EarningsSourceType.extra_images,
+                        source_id=snapshot.id,
+                        reason="stripe_refund",
+                    )
+                return
 
+        if not reconcile_payment_refunds(db, payment_intent_id, trigger=event_type):
+            return
         payment = db.execute(
             select(StripePayment).where(StripePayment.stripe_payment_intent_id == payment_intent_id)
-        ).scalar_one_or_none()
-        if not payment:
-            return
-
+        ).scalar_one()
         gig = db.get(Gig, payment.gig_id)
-        if not gig:
-            return
-
-        # How much actually came back. `charge.refunded` carries the
-        # charge's cumulative amount_refunded; `refund.succeeded` carries
-        # the individual refund's amount. Everything below scales to this
-        # rather than to the original payment - this handler used to assume
-        # every refund was a full one.
-        refunded_minor = obj.get("amount_refunded")
-        if refunded_minor is None:
-            refunded_minor = obj.get("amount")
-        refunded_amount = (
-            (Decimal(str(refunded_minor)) / Decimal("100")).quantize(Decimal("0.01"))
-            if refunded_minor is not None
-            else payment.amount
-        )
-        # charge.refunded carries the running total; a late delivery of an
-        # earlier one must not lower it.
-        payment.amount_refunded = max(payment.amount_refunded or Decimal("0.00"), min(refunded_amount, payment.amount))
-        fully_refunded = payment.amount_refunded >= payment.amount
-
-        # Only everything back makes the payment "refunded"; after a partial
-        # refund it stays succeeded - most of the money is still with us.
-        if fully_refunded:
-            payment.status = PaymentStatus.refunded
-
-        # No gig transition for a partial refund. A charge.refunded arriving
-        # from an admin refund, a client cancellation and a dispute
-        # resolution are different things, and this handler sees only an
-        # amount. It used to force `refunded` unconditionally, which claimed
-        # a part-refunded booking was cancelled, and raised "Transition
-        # disputed -> refunded not allowed" for any refund arising from a
-        # dispute - failing the event forever. A refund of everything paid
-        # is unambiguous whatever its route: settle_full_refund, below,
-        # ends the booking once every captured payment is refunded in full.
-
-        enqueue_raww_refund_reversal(db, gig_id=gig.id)
-        # A whole booking refunded: settle_full_refund, below, reverses the
-        # earnings once. Anything less - a part of a payment, or one payment
-        # of several - reduces them: reversing everything here took the
-        # whole booking's earnings away for, say, its difference charge.
-        if not (fully_refunded and is_fully_refunded(db, gig)):
-            adjust_earnings_for_partial_refund(
-                db,
-                gig_id=gig.id,
-                refunded_amount=refunded_amount,
-                reason="stripe_partial_refund",
-            )
-
-        ref_id = refund_id or f"refund:{payment_intent_id}"
-        if not _ledger_reference_exists(db, gig.id, LedgerEntryType.refund_succeeded, ref_id):
-            db.add(
-                LedgerEntry(
-                    gig_id=gig.id,
-                    entry_type=LedgerEntryType.refund_succeeded,
-                    # What came back, not what was paid.
-                    amount=-refunded_amount,
-                    currency=gig.currency,
-                    description=(
-                        "Stripe refund succeeded"
-                        if fully_refunded
-                        else f"Stripe partial refund of {refunded_amount}"
-                    ),
-                    reference_type="stripe_refund",
-                    reference_id=ref_id,
-                )
-            )
-        if fully_refunded:
-            settle_full_refund(db, gig, reason=f"Refunded in full ({event_type})")
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
         queue_evaluate_user_milestones(gig.pro_user_id, gig.niche_id)
-
-        # Falls back to the payment intent: `charge.refunded` does not
-        # always expand its refunds list, so the refund id is frequently
-        # unavailable and the payment intent is the only reliable handle.
-        finalized = finalize_refund_case_success(
-            db, stripe_refund_id=refund_id, payment_intent_id=payment_intent_id
-        )
-        if finalized:
-            finalized.meta = {**(finalized.meta or {}), "finalized_by_event": event_type}
-
-    elif event_type == "refund.failed":
-        refund_id = obj.get("id")
-        if not refund_id:
-            return
-        finalized = finalize_refund_case_failed(db, stripe_refund_id=refund_id, reason=(obj.get("failure_reason") or "stripe_refund_failed"))
-        if finalized:
-            finalized.meta = {**(finalized.meta or {}), "finalized_by_event": event_type}
 
     elif event_type == "charge.dispute.created":
         payment_intent_id = obj.get("payment_intent")
@@ -864,12 +796,14 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             )
             observe_business_event("payout_transfer_created")
 
-    elif event_type == "transfer.failed":
-        # An async failure of a transfer that had already been reported as
-        # paid (e.g. reversed because the destination account was closed
-        # or restricted after the Stripe API call succeeded) - the
-        # synchronous exception path in execute_payout_request only
-        # catches failures raised by the create() call itself, not this.
+    elif event_type == "transfer.reversed":
+        # A transfer already reported as paid, taken back in full - e.g. the
+        # destination account was closed or restricted after the Stripe API
+        # call succeeded. Stripe has no "transfer.failed": this branch used
+        # to wait for that name and never ran. A partial reversal leaves the
+        # payout paid (an admin sees it in Stripe).
+        if not obj.get("reversed"):
+            return
         payout_request_id = (obj.get("metadata") or {}).get("payout_request_id")
         if not payout_request_id:
             return
@@ -879,29 +813,29 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             return
         if not row:
             return
-        if _payout_event_recorded(db, row.id, "transfer_failed"):
+        if _payout_event_recorded(db, row.id, "transfer_reversed"):
             return
 
         row.status = PayoutRequestStatus.failed
-        row.failure_reason = (obj.get("failure_message") or "Stripe transfer failed")[:500]
+        row.failure_reason = (obj.get("failure_message") or "Stripe transfer reversed")[:500]
         row.updated_at = datetime.now(timezone.utc)
-        db.add(PayoutEvent(payout_request_id=row.id, type="transfer_failed", payload={"stripe_transfer_id": obj.get("id"), "reason": row.failure_reason}))
+        db.add(PayoutEvent(payout_request_id=row.id, type="transfer_reversed", payload={"stripe_transfer_id": obj.get("id"), "reason": row.failure_reason}))
         add_admin_audit_log(
             db,
             actor_user_id=SYSTEM_USER_ID,
             target_type="payout_request",
             target_id=str(row.id),
-            action="transfer_failed",
+            action="transfer_reversed",
             reason=row.failure_reason,
             metadata={"stripe_transfer_id": obj.get("id")},
         )
         log_event(
             db,
-            event_name="payout.transfer_failed",
+            event_name="payout.transfer_reversed",
             user_id=row.pro_user_id,
             properties={"payout_request_id": str(row.id), "reason": row.failure_reason},
         )
-        observe_business_event("payout_transfer_failed")
+        observe_business_event("payout_transfer_reversed")
 
     elif event_type == "account.updated":
         stripe_account_id = obj.get("id")

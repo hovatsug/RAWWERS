@@ -126,10 +126,28 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
           AND d.updated_at >= now() - interval '90 days';
 
   Dev, 2026-10-19: 2. Migration `20261019_0065` (the photographer-fault table) only adds a table; it reverses cleanly (up, down and up tested on a copy of dev).
+- [ ] **Refunds made outside RAWWERS and clients owed** - after the release with refund reconciliation (migration `20261020_0066` adds its table; it only adds a table and reverses cleanly). Reconciling adopts every refund Stripe has that our routes did not make, and raises a "client owed" item for every refund that failed. Look at `GET /v1/admin/money-attention` after the first day: each item needs a person - check an adopted refund was intended; pay back a client owed (then `POST /v1/admin/money-attention/{id}/resolve` with what was done).
 - [ ] **Watermark backfill** (**once**, existing objects only): `scripts/backfill_watermark_previews.py`, dry run first. Done locally; see [The watermark fix is now actually in the bucket](BACKEND_GAPS.md#the-watermark-fix-is-now-actually-in-the-bucket-resolved).
 - [ ] **Release gate** - `python3 deploy/release_gate.py --env <staging|production>` ([release_engineering.md](release_engineering.md)).
 
 ## 4. Configuration outside the code
+
+- [ ] **Stripe webhook endpoints, registered and pinned** - once per mode (test for staging and dev, live for production), and again whenever `HANDLED_STRIPE_EVENTS` in `app/api/v1/webhooks.py` changes. Nothing reaches the webhook until this is done: on 2026-10-20 the test account had no endpoint at all. Two endpoints on the same URL, both pinned to `STRIPE_API_VERSION` (`2024-06-20`), so events arrive in the version our calls use:
+  - **platform**: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.refunded`, `charge.refund.updated`, `refund.created`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `transfer.created`, `transfer.reversed`;
+  - **connect** (events from photographers' connected accounts): `account.updated`.
+
+  Run, with the mode's secret key, first without `--apply` to see what it would do:
+
+      docker compose run --rm api python scripts/register_stripe_webhook.py --url https://<api host>/v1/webhooks/stripe --mode test --apply
+      docker compose run --rm api python scripts/register_stripe_webhook.py --url https://api.rawwers.com/v1/webhooks/stripe --mode live --apply
+
+  Each new endpoint prints its signing secret once. Put **both** in `STRIPE_WEBHOOK_SECRET`, comma-separated (`whsec_platform,whsec_connect`): with only one, every event of the other endpoint is refused as unsigned. Stripe sets an endpoint's API version only when it is created - the script reports an endpoint pinned to another version; delete that one in the dashboard and run again. After deploying, the API log must show no `stripe_event_api_version_mismatch`.
+- [ ] **Dev: `stripe listen`** instead of an endpoint - the dev stack has no public URL. With the Stripe CLI and the test key:
+
+      stripe listen --api-key "$STRIPE_SECRET_KEY" --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.refund.updated,refund.created,refund.updated,refund.failed,charge.dispute.created,transfer.created,transfer.reversed,account.updated --forward-to localhost:8000/v1/webhooks/stripe --forward-connect-to localhost:8000/v1/webhooks/stripe
+
+  It prints a `whsec_...` signing secret: put it in dev's `STRIPE_WEBHOOK_SECRET`. `stripe listen` delivers in the account's default API version (`2025-12-15.clover` on 2026-10-20), not the pinned one, so dev logs the version mismatch; the refund path is unaffected (it fetches refunds from Stripe).
+- [ ] **`REFUND_RECONCILE_INTERVAL_SECONDS`** (900) - how often refund cases still in flight 15 minutes after their last change are fetched from Stripe (`app.tasks.scheduled.reconcile_stuck_refunds`, on `beat`).
 
 - [ ] **`AUTH_DEV_BYPASS` is false** in production ([api/README.md](../api/README.md)).
 - [ ] **Stripe: delayed-notification payment methods stay disabled** in the dashboard (Multibanco, SEPA debit, bank redirects). Turning any on arms unhandled paths with no deploy. See [Delayed-notification payment methods](BACKEND_GAPS.md#delayed-notification-payment-methods-are-not-handled-mitigated-for-launch-by-stripe-dashboard-config).

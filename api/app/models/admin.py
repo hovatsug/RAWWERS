@@ -370,6 +370,29 @@ class EntitlementHold(Base):
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class MoneyAttentionItem(Base):
+    """Money an admin has to act on: a client still owed after a refund
+    failed, or a refund made outside RAWWERS (in the Stripe dashboard).
+    One per Stripe refund and kind."""
+
+    __tablename__ = "money_attention_item"
+    __table_args__ = (UniqueConstraint("kind", "stripe_refund_id", name="uq_money_attention_kind_refund"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="open", index=True)
+    gig_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=True, index=True)
+    client_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    refund_case_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("refund_case.id"), nullable=True)
+    stripe_refund_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
 class ProFaultEvent(Base):
     """A photographer found at fault, recorded for review. Never an input to
     ranking, rows or visibility. Written only on an explicit finding - a

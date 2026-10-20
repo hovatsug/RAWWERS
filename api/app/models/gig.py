@@ -36,6 +36,8 @@ class LedgerEntryType(str, enum.Enum):
     payout_hold_released = "payout_hold_released"
     refund_initiated = "refund_initiated"
     refund_succeeded = "refund_succeeded"
+    # A refund Stripe reported as made, then failed: reverses that refund's line.
+    refund_failed = "refund_failed"
     chargeback_opened = "chargeback_opened"
     chargeback_won = "chargeback_won"
     chargeback_lost = "chargeback_lost"

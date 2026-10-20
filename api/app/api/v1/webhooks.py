@@ -54,6 +54,7 @@ from app.services.metrics import observe_business_event, observe_payout_volume, 
 from app.services.media_rights import increment_entitlement_quantity
 from app.services.client_rewards_pricing import increment_share_link_conversion
 from app.services.refund_reconcile import REFUND_EVENT_TYPES, reconcile_payment_refunds
+from app.services.dispute_hold import enter_dispute
 from app.services.gallery_completion import finalize_gallery_and_complete_gig, is_selection_fully_paid
 from app.services.proof_of_gigs import enqueue_raww_mint
 from app.services.payouts import (
@@ -741,9 +742,10 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             return
 
         payment.status = PaymentStatus.disputed
-        if gig.status != GigStatus.disputed:
-            transition = transition_gig(gig, GigStatus.disputed, SYSTEM_USER_ID, reason="Stripe dispute opened")
-            db.add(transition)
+        # Any status: chargebacks usually come after the shoot. Through the
+        # state machine this raised for every gig past `paid`, failing the
+        # event on each retry with nothing of the chargeback recorded.
+        enter_dispute(db, gig, actor_user_id=SYSTEM_USER_ID, reason="Stripe dispute opened")
 
         ref_id = dispute_id or f"dispute:{payment_intent_id}"
         if not _ledger_reference_exists(db, gig.id, LedgerEntryType.chargeback_opened, ref_id):

@@ -20,7 +20,7 @@ from app.models.admin import (
     UserRoleType,
 )
 from app.models.client_rewards_pricing import ExtraImagePurchase
-from app.models.gig import Gig, GigStatus, GigTransition
+from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaVisibility
 from app.schemas.disputes import (
     DisputeCreateV1Request,
@@ -38,6 +38,7 @@ from app.services.disputes import create_dispute, post_dispute_message
 from app.services.gamification import queue_evaluate_user_milestones
 from app.services.niche_skills import enqueue_niche_skill_recalc, recompute_pro_niche_skills
 
+from app.services.dispute_hold import enter_dispute, leave_dispute_without_refund
 router = APIRouter(prefix="/disputes", tags=["disputes"])
 
 
@@ -71,16 +72,7 @@ def create_dispute_endpoint(
     )
 
     if gig and gig.status != GigStatus.disputed:
-        db.add(
-            GigTransition(
-                gig_id=gig.id,
-                from_status=gig.status,
-                to_status=GigStatus.disputed,
-                actor_user_id=user.user_id,
-                reason="Dispute opened",
-            )
-        )
-        gig.status = GigStatus.disputed
+        enter_dispute(db, gig, actor_user_id=user.user_id, reason="Dispute opened")
         recompute_pro_public_index(db, gig.pro_user_id)
         if gig.niche_id:
             recompute_pro_niche_skills(db, gig.pro_user_id, gig.niche_id)
@@ -215,6 +207,7 @@ def cancel_dispute(
             payload={},
         )
     )
+    leave_dispute_without_refund(db, db.get(Gig, dispute.gig_id) if dispute.gig_id else None, actor_user_id=user.user_id, reason="Dispute cancelled by its opener")
     db.commit()
     db.refresh(dispute)
     return _to_detail(db, dispute)

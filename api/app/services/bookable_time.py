@@ -110,6 +110,9 @@ OCCUPYING_GIG_STATUSES = frozenset(
         GigStatus.selection_pending,
         GigStatus.final_delivered,
         GigStatus.completed,
+        # Paused, not over: a dispute may end with the shoot going ahead, and
+        # until it does nobody else may book that time.
+        GigStatus.disputed,
     }
 )
 _BUSY_SLOT_STATUSES = ("reserved", "confirmed")

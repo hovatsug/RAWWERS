@@ -12,8 +12,9 @@ from app.core.errors import APIError
 settings = get_settings()
 
 stripe.api_key = settings.stripe_secret_key or "sk_test_placeholder"
-if settings.stripe_api_version:
-    stripe.api_version = settings.stripe_api_version
+# Always: the library otherwise sends the version it was built for
+# (2025-08-27.basil for stripe 12.5.1), not ours.
+stripe.api_version = settings.stripe_api_version
 
 
 def to_cents(amount: Decimal) -> int:

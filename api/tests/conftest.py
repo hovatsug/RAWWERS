@@ -77,7 +77,7 @@ os.environ["MUX_SIGNING_KEY_PRIVATE"] = "-----BEGIN RSA PRIVATE KEY-----\nMIIBOg
 os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"
 os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test_123"
 os.environ["STRIPE_WEBHOOK_ALLOW_UNVERIFIED"] = "true"
-os.environ["STRIPE_API_VERSION"] = "2024-06-20"
+os.environ.pop("STRIPE_API_VERSION", None)  # the one in code (STRIPE_API_VERSION), as in production
 os.environ["PLATFORM_FEE_BPS"] = "2000"
 os.environ["APP_PUBLIC_URL"] = "http://localhost:3000"
 os.environ["ADMIN_USER_IDS"] = "00000000-0000-0000-0000-0000000000aa"

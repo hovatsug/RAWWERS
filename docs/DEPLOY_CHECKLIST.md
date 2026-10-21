@@ -133,7 +133,7 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 ## 4. Configuration outside the code
 
-- [ ] **Stripe webhook endpoints, registered and pinned** - once per mode (test for staging and dev, live for production), and again whenever `HANDLED_STRIPE_EVENTS` in `app/api/v1/webhooks.py` changes. Nothing reaches the webhook until this is done: on 2026-10-20 the test account had no endpoint at all. Two endpoints on the same URL, both pinned to `STRIPE_API_VERSION` (`2024-06-20`), so events arrive in the version our calls use:
+- [ ] **Stripe webhook endpoints, registered and pinned** - once per mode (test for staging and dev, live for production), and again whenever `HANDLED_STRIPE_EVENTS` in `app/api/v1/webhooks.py` changes. Nothing reaches the webhook until this is done: on 2026-10-20 the test account had no endpoint at all. Two endpoints on the same URL, both pinned to `STRIPE_API_VERSION` (`2025-12-15.clover`, a constant in `app/core/config.py`), so events arrive in the version our calls use and the fixtures were captured in:
   - **platform**: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.refunded`, `charge.refund.updated`, `refund.created`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `transfer.created`, `transfer.reversed`;
   - **connect** (events from photographers' connected accounts): `account.updated`.
 
@@ -147,7 +147,8 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
       stripe listen --api-key "$STRIPE_SECRET_KEY" --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.refund.updated,refund.created,refund.updated,refund.failed,charge.dispute.created,transfer.created,transfer.reversed,account.updated --forward-to localhost:8000/v1/webhooks/stripe --forward-connect-to localhost:8000/v1/webhooks/stripe
 
-  It prints a `whsec_...` signing secret: put it in dev's `STRIPE_WEBHOOK_SECRET`. `stripe listen` delivers in the account's default API version (`2025-12-15.clover` on 2026-10-20), not the pinned one, so dev logs the version mismatch; the refund path is unaffected (it fetches refunds from Stripe).
+  It prints a `whsec_...` signing secret: put it in dev's `STRIPE_WEBHOOK_SECRET`. `stripe listen` delivers in the account's default API version - `2025-12-15.clover`, the pinned one, on 2026-10-21. If the account's default is ever upgraded, dev starts logging `stripe_event_api_version_mismatch`: that is the moment to move `STRIPE_API_VERSION` and recapture the fixtures, not to ignore it.
+- [ ] **`STRIPE_API_VERSION`** - leave unset (the constant in `app/core/config.py`) or `2025-12-15.clover`. Any other value makes our calls disagree with the pinned endpoints and the tested fixtures.
 - [ ] **`REFUND_RECONCILE_INTERVAL_SECONDS`** (900) - how often refund cases still in flight 15 minutes after their last change are fetched from Stripe (`app.tasks.scheduled.reconcile_stuck_refunds`, on `beat`).
 
 - [ ] **`AUTH_DEV_BYPASS` is false** in production ([api/README.md](../api/README.md)).

@@ -5,6 +5,14 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+
+#: The one Stripe API version: what our calls send, what the webhook endpoints
+#: are pinned to (scripts/register_stripe_webhook.py), and what the captured
+#: test fixtures are rendered in. The account's default when it was chosen,
+#: so events Stripe renders by default are in it too. Change all three
+#: together - tests/test_stripe_api_version.py fails otherwise.
+STRIPE_API_VERSION = "2025-12-15.clover"
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -47,7 +55,7 @@ class Settings(BaseSettings):
     connect_return_url: str = Field(default="rawwerspro://payouts/return", alias="CONNECT_RETURN_URL")
     connect_refresh_url: str = Field(default="rawwerspro://payouts/refresh", alias="CONNECT_REFRESH_URL")
     stripe_webhook_secret: str = Field(default="", alias="STRIPE_WEBHOOK_SECRET")
-    stripe_api_version: str | None = Field(default=None, alias="STRIPE_API_VERSION")
+    stripe_api_version: str = Field(default=STRIPE_API_VERSION, alias="STRIPE_API_VERSION")
     stripe_webhook_allow_unverified: bool = Field(default=False, alias="STRIPE_WEBHOOK_ALLOW_UNVERIFIED")
 
     platform_fee_bps: int = Field(default=2000, alias="PLATFORM_FEE_BPS")

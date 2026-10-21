@@ -28,12 +28,14 @@ function useQueueCounts() {
   const gear = useQuery({ queryKey: ["admin", "gear-queue"], queryFn: () => admin.gearQueue() });
   const payouts = useQuery({ queryKey: ["admin", "payout-queue"], queryFn: () => admin.payoutQueue() });
   const disputes = useQuery({ queryKey: ["admin", "disputes"], queryFn: () => admin.disputes() });
+  const money = useQuery({ queryKey: ["admin", "money-attention"], queryFn: () => admin.moneyAttention() });
 
   return {
     photographers: photographers.data?.ok ? photographers.data.data.items.length : null,
     gear: gear.data?.ok ? gear.data.data.items.length : null,
     payouts: payouts.data?.ok ? payouts.data.data.items.filter((p) => p.status === "requested").length : null,
-    disputes: disputes.data?.ok && Array.isArray(disputes.data.data) ? disputes.data.data.filter(isOpenDispute).length : null
+    disputes: disputes.data?.ok && Array.isArray(disputes.data.data) ? disputes.data.data.filter(isOpenDispute).length : null,
+    money: money.data?.ok ? money.data.data.items.filter((item) => item.status === "open").length : null
   };
 }
 
@@ -57,7 +59,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       title: "Money",
       items: [
         { href: "/admin/payouts", label: "Payouts", count: counts.payouts },
-        { href: "/admin/disputes", label: "Disputes", count: counts.disputes }
+        { href: "/admin/disputes", label: "Disputes", count: counts.disputes },
+        { href: "/admin/money-attention", label: "Money to act on", count: counts.money }
       ]
     },
     {

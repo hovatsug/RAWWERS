@@ -189,6 +189,24 @@ export type NicheSkillRow = {
   active_override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
 };
 
+/** Money an admin has to act on (GET /v1/admin/money-attention). */
+export type MoneyAttentionItem = {
+  id: string;
+  kind: "client_owed" | "refund_outside_rawwers" | "chargeback_evidence_due" | "chargeback_lost" | string;
+  status: "open" | "resolved" | string;
+  gig_id: string | null;
+  client_user_id: string | null;
+  refund_case_id: string | null;
+  stripe_refund_id: string | null;
+  stripe_dispute_id: string | null;
+  amount: string;
+  currency: string;
+  note: string | null;
+  due_at: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
 export const admin = {
   niches: () => adminFetch<AdminNiche[]>("niches"),
   priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
@@ -239,6 +257,9 @@ export const admin = {
   rejectPayout: (id: string, reason: string) =>
     adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 
+  moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[] }>("money-attention"),
+  resolveMoneyAttention: (id: string, note: string) =>
+    adminFetch<MoneyAttentionItem>(`money-attention/${id}/resolve`, { method: "POST", body: JSON.stringify({ note }) }),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

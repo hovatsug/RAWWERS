@@ -149,7 +149,7 @@ test("every admin page sits in one sidebar, grouped by the work, with live count
   await page.goto("/admin");
   const nav = page.getByRole("navigation", { name: "Admin" });
 
-  for (const group of ["Approvals", "Money", "Catalog & pricing"]) await expect(nav.getByText(group)).toBeVisible();
+  for (const group of ["Approvals", "Money", "Catalog & pricing"]) await expect(nav.getByText(group, { exact: true })).toBeVisible();
   // The price caps page used to be reachable only by typing its URL.
   await nav.getByRole("link", { name: "Price caps" }).click();
   await expect(page.getByRole("heading", { name: "Entry price caps" })).toBeVisible();

@@ -28,8 +28,6 @@ OPEN_DISPUTE_STATUSES = (
     DisputeStatus.awaiting_admin,
     DisputeStatus.under_review,
 )
-#: The statuses a dispute ends in without any money going back.
-ENDED_WITHOUT_REFUND = (DisputeStatus.resolved_no_refund, DisputeStatus.cancelled, DisputeStatus.closed)
 
 
 def enter_dispute(db: Session, gig: Gig, *, actor_user_id: uuid.UUID, reason: str) -> None:

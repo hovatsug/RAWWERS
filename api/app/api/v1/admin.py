@@ -222,7 +222,7 @@ from app.services.launch_ops import (
 from app.services.proof_of_gigs import enqueue_raww_mint, create_raww_clawback, ensure_default_raww_config, list_raww_mints
 from app.services import available_now, presence
 from app.services.auth_service import revoke_all_user_sessions
-from app.services.dispute_hold import ENDED_WITHOUT_REFUND, leave_dispute_without_refund
+from app.services.dispute_hold import leave_dispute_without_refund
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -1253,10 +1253,11 @@ def update_dispute_status(
 
     dispute.status = body.status
     dispute.resolution_note = body.resolution_note
-    if body.status in ENDED_WITHOUT_REFUND:
-        leave_dispute_without_refund(
-            db, db.get(Gig, dispute.gig_id) if dispute.gig_id else None, actor_user_id=actor.user_id, reason=f"Dispute {body.status.value}"
-        )
+    # Back to how it was if this ended the gig's last open dispute (a
+    # status still under way leaves it disputed - leave_dispute_... checks).
+    leave_dispute_without_refund(
+        db, db.get(Gig, dispute.gig_id) if dispute.gig_id else None, actor_user_id=actor.user_id, reason=f"Dispute {body.status.value}"
+    )
 
     add_admin_audit_log(
         db,
@@ -1314,10 +1315,11 @@ def admin_set_dispute_status(
     _refuse_dispute_money_outcome(body.status)
     previous = dispute.status
     dispute.status = body.status
-    if body.status in ENDED_WITHOUT_REFUND:
-        leave_dispute_without_refund(
-            db, db.get(Gig, dispute.gig_id) if dispute.gig_id else None, actor_user_id=actor.user_id, reason=f"Dispute {body.status.value}"
-        )
+    # Back to how it was if this ended the gig's last open dispute (a
+    # status still under way leaves it disputed - leave_dispute_... checks).
+    leave_dispute_without_refund(
+        db, db.get(Gig, dispute.gig_id) if dispute.gig_id else None, actor_user_id=actor.user_id, reason=f"Dispute {body.status.value}"
+    )
     if body.status in {
         DisputeStatus.resolved_no_refund,
         DisputeStatus.resolved_partial_refund,

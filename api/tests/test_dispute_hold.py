@@ -153,7 +153,7 @@ def test_a_full_refund_still_ends_it(client, db_session, stripe_all):
 # --- Stripe chargebacks ----------------------------------------------------------------------
 
 
-def _chargeback(db_session, gig):
+def _chargeback(db_session, gig, monkeypatch):
     import copy
     import json
     from pathlib import Path
@@ -166,26 +166,28 @@ def _chargeback(db_session, gig):
     payment = db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one()
     obj["payment_intent"] = payment.stripe_payment_intent_id
     obj["id"] = f"dp_{uuid.uuid4().hex[:12]}"
+    # The handler asks Stripe for the dispute (services/chargebacks).
+    monkeypatch.setattr("app.services.chargebacks.stripe.Dispute.retrieve", lambda dispute_id, **kw: copy.deepcopy(obj))
     _apply_stripe_event(db_session, "charge.dispute.created", obj)
     db_session.commit()
 
 
-def test_a_chargeback_stores_the_status_and_keeps_the_time(db_session):
+def test_a_chargeback_stores_the_status_and_keeps_the_time(db_session, monkeypatch):
     gig, _client = _booking(db_session)
 
-    _chargeback(db_session, gig)
+    _chargeback(db_session, gig, monkeypatch)
 
     assert _status(db_session, gig) == GigStatus.disputed
     assert db_session.get(Gig, gig.id).meta["pre_dispute_status"] == "paid"
     assert _holds_time(db_session, gig)
 
 
-def test_a_chargeback_on_a_completed_booking_is_recorded(db_session):
+def test_a_chargeback_on_a_completed_booking_is_recorded(db_session, monkeypatch):
     """It used to raise "completed -> disputed not allowed", failing the
     event on every retry: nothing of the chargeback was recorded."""
     gig, _client = _booking(db_session, status=GigStatus.completed)
 
-    _chargeback(db_session, gig)
+    _chargeback(db_session, gig, monkeypatch)
 
     assert _status(db_session, gig) == GigStatus.disputed
     assert db_session.get(Gig, gig.id).meta["pre_dispute_status"] == "completed"

@@ -1662,6 +1662,8 @@ def _money_attention_view(item: MoneyAttentionItem) -> dict:
         "client_user_id": str(item.client_user_id) if item.client_user_id else None,
         "refund_case_id": str(item.refund_case_id) if item.refund_case_id else None,
         "stripe_refund_id": item.stripe_refund_id,
+        "stripe_dispute_id": item.stripe_dispute_id,
+        "due_at": item.due_at.isoformat() if item.due_at else None,
         "amount": str(item.amount),
         "currency": item.currency,
         "note": item.note,

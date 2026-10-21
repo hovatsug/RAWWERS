@@ -9,7 +9,8 @@ disputes with a recorded photographer-fault finding. Everything that reads
 them follows: ranking_score, the match score's dispute penalty, the "high
 reliability" reason, and the counts on the public profile.
 
-Fault events are read in exactly one place: this count.
+Fault events are read here for this count, and by the lost-chargeback policy;
+nowhere else.
 """
 import uuid
 from decimal import Decimal
@@ -129,5 +130,7 @@ def test_fault_events_are_read_in_one_place_only():
         for path in root.rglob("*.py")
         if "ProFaultEvent" in path.read_text()
     }
-    # The model, its registration, the one writer, and the one reader.
-    assert readers == {"models/admin.py", "db/base.py", "services/disputes.py", "services/discovery_index.py"}
+    # The model, its registration, the one writer, and two readers: this
+    # count, and the lost-chargeback policy (a finding decides whether the
+    # photographer's earnings are reversed - services/chargebacks.py).
+    assert readers == {"models/admin.py", "db/base.py", "services/disputes.py", "services/discovery_index.py", "services/chargebacks.py"}

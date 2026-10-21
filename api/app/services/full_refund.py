@@ -42,6 +42,21 @@ def is_fully_refunded(db: Session, gig: Gig) -> bool:
     return bool(captured) and all(p.status == PaymentStatus.refunded for p in captured)
 
 
+def revoke_finals(db: Session, gig: Gig, *, reason: str) -> None:
+    """End the client's finals and extras downloads for this booking."""
+    now = datetime.now(timezone.utc)
+    for entitlement in db.execute(
+        select(GigMediaEntitlement).where(
+            GigMediaEntitlement.gig_id == gig.id,
+            GigMediaEntitlement.user_id == gig.client_user_id,
+            GigMediaEntitlement.entitlement_type.in_(REVOKED_ON_FULL_REFUND),
+        )
+    ).scalars():
+        if entitlement.valid_until is None or entitlement.valid_until > now:
+            entitlement.valid_until = now
+            entitlement.meta = {**(entitlement.meta or {}), "revoked_reason": reason}
+
+
 def settle_full_refund(db: Session, gig: Gig, *, reason: str) -> bool:
     """Settle the booking if it is now refunded in full. True only the
     first time - a repeated or late event changes nothing."""
@@ -54,16 +69,7 @@ def settle_full_refund(db: Session, gig: Gig, *, reason: str) -> bool:
     else:
         logger.warning("full_refund_gig_status_kept", extra={"gig_id": str(gig.id), "status": gig.status.value})
 
-    for entitlement in db.execute(
-        select(GigMediaEntitlement).where(
-            GigMediaEntitlement.gig_id == gig.id,
-            GigMediaEntitlement.user_id == gig.client_user_id,
-            GigMediaEntitlement.entitlement_type.in_(REVOKED_ON_FULL_REFUND),
-        )
-    ).scalars():
-        if entitlement.valid_until is None or entitlement.valid_until > now:
-            entitlement.valid_until = now
-            entitlement.meta = {**(entitlement.meta or {}), "revoked_reason": "full_refund"}
+    revoke_finals(db, gig, reason="full_refund")
 
     reverse_earnings_entries_for_source(db, source_type=EarningsSourceType.gig_base, source_id=gig.id, reason="full_refund")
 

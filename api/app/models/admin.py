@@ -372,11 +372,15 @@ class EntitlementHold(Base):
 
 class MoneyAttentionItem(Base):
     """Money an admin has to act on: a client still owed after a refund
-    failed, or a refund made outside RAWWERS (in the Stripe dashboard).
-    One per Stripe refund and kind."""
+    failed, a refund made outside RAWWERS (in the Stripe dashboard), a
+    chargeback's evidence deadline, a chargeback lost. One per Stripe refund
+    or dispute, and kind."""
 
     __tablename__ = "money_attention_item"
-    __table_args__ = (UniqueConstraint("kind", "stripe_refund_id", name="uq_money_attention_kind_refund"),)
+    __table_args__ = (
+        UniqueConstraint("kind", "stripe_refund_id", name="uq_money_attention_kind_refund"),
+        UniqueConstraint("kind", "stripe_dispute_id", name="uq_money_attention_kind_dispute"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     kind: Mapped[str] = mapped_column(Text, nullable=False, index=True)
@@ -385,6 +389,9 @@ class MoneyAttentionItem(Base):
     client_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     refund_case_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("refund_case.id"), nullable=True)
     stripe_refund_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stripe_dispute_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: When something must be done by - a chargeback's evidence deadline.
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)

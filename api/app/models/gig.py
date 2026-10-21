@@ -39,6 +39,8 @@ class LedgerEntryType(str, enum.Enum):
     # A refund Stripe reported as made, then failed: reverses that refund's line.
     refund_failed = "refund_failed"
     chargeback_opened = "chargeback_opened"
+    # Stripe's dispute fee, kept by Stripe whether the chargeback is won or lost.
+    chargeback_fee = "chargeback_fee"
     chargeback_won = "chargeback_won"
     chargeback_lost = "chargeback_lost"
     upsell_captured = "upsell_captured"

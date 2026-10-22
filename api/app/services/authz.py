@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import APIError
-from app.models.admin import BanAction, BanActionType, KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
+from app.models.admin import BanAction, KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
+from app.services.pro_standing import is_shut_out, latest_ban_action
 
 settings = get_settings()
 
@@ -35,24 +35,16 @@ def get_user_roles(db: Session, user_id: uuid.UUID) -> set[UserRoleType]:
 
 
 def get_latest_ban_action(db: Session, user_id: uuid.UUID) -> BanAction | None:
-    return db.execute(
-        select(BanAction).where(BanAction.user_id == user_id).order_by(BanAction.created_at.desc())
-    ).scalar_one_or_none()
+    # The latest of possibly several: a ban, then its lift, is two rows.
+    # This asked for exactly one, so the second action made every later
+    # request by that person fail.
+    return latest_ban_action(db, user_id)
 
 
 def enforce_not_banned(db: Session, user_id: uuid.UUID) -> None:
     ensure_user_account(db, user_id)
 
-    action = get_latest_ban_action(db, user_id)
-    if action is None:
-        return
-
-    now = datetime.now(timezone.utc)
-    blocked = False
-    if action.action == BanActionType.banned:
-        blocked = True
-    elif action.action == BanActionType.suspended and (action.ends_at is None or now < action.ends_at):
-        blocked = True
+    blocked = is_shut_out(get_latest_ban_action(db, user_id))
 
     if blocked and settings.ban_enforcement_mode == "strict":
         raise APIError(code="forbidden", message="User is banned/suspended", status_code=403)

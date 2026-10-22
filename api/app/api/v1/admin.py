@@ -221,6 +221,7 @@ from app.services.launch_ops import (
 )
 from app.services.proof_of_gigs import enqueue_raww_mint, create_raww_clawback, ensure_default_raww_config, list_raww_mints
 from app.services import available_now, presence
+from app.services.pro_standing import latest_ban_action, list_open_bookings_for_review
 from app.services.auth_service import revoke_all_user_sessions
 from app.services.dispute_hold import leave_dispute_without_refund
 
@@ -340,9 +341,7 @@ def list_users(
     for user in users:
         roles = db.execute(select(UserRole.role).where(UserRole.user_id == user.user_id)).scalars().all()
         profile = db.get(ProProfile, user.user_id)
-        latest_ban = db.execute(
-            select(BanAction).where(BanAction.user_id == user.user_id).order_by(BanAction.created_at.desc())
-        ).scalar_one_or_none()
+        latest_ban = latest_ban_action(db, user.user_id)
 
         if role and role not in roles:
             continue
@@ -558,6 +557,11 @@ def update_user_ban(
         policy = db.get(ProSchedulingPolicy, user_id)
         if policy is not None:
             policy.available_until = None
+        # Their paid bookings stay as they are, listed for a person.
+        list_open_bookings_for_review(db, user_id, why=f"Photographer {body.action.value}")
+    if db.get(ProProfile, user_id) is not None:
+        # Out of discovery while shut out; back in when lifted.
+        recompute_pro_public_index(db, user_id)
     db.commit()
     if shut_out:
         # Best effort: if Redis cannot be reached, the presence key expires on

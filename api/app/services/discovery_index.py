@@ -19,6 +19,7 @@ from app.models.review import ProReputation
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.gamification import queue_evaluate_user_milestones
 from app.services.cache import bump_public_index_version
+from app.services.pro_standing import booking_block_reason
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import get_niche_tier_map_for_index, get_verified_niches_for_index
 from app.services.response_time import bucket_for, response_median_minutes
@@ -156,7 +157,8 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     index.min_entry_rate = min_entry_rate
     index.min_entry_photos = min_entry_photos
     index.currency = currency
-    index.is_accepting_bookings = profile.is_accepting_bookings if profile else False
+    # The photographer's own switch, and never while banned or suspended.
+    index.is_accepting_bookings = bool(profile and profile.is_accepting_bookings) and booking_block_reason(db, pro_user_id) is None
     index.kyc_status = profile.kyc_status if profile else KYCStatus.unsubmitted
     index.completeness_score = completeness
     index.portfolio_photo_count = portfolio_photos

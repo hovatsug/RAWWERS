@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_session, require_not_banned
 from app.api.v1.pro_onboarding import _booking_request_view, _ensure_pro_profile, _validate_availability
 from app.services.bookable_time import apply_request_terms
+from app.services.pro_standing import booking_block_reason
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import UserRoleType
@@ -353,6 +354,9 @@ def _create_booking_request_from_body(
     is_dev_override = settings.app_env.lower() in {"dev", "development"} and settings.allow_unverified_pro
     if not profile.is_accepting_bookings and not is_dev_override:
         raise APIError(code="validation_error", message="Pro is not accepting bookings", status_code=409)
+    # Not overridable: the dev override is about unverified photographers.
+    if booking_block_reason(db, pro_user_id) is not None:
+        raise APIError(code="pro_unavailable", message="This photographer isn't taking bookings right now.", status_code=409)
 
     package = db.get(ProPackage, body.package_id)
     if not package or package.pro_user_id != pro_user_id or not package.is_active:

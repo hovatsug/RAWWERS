@@ -88,6 +88,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.reconcile_stuck_refunds",
         "schedule": timedelta(seconds=settings.refund_reconcile_interval_seconds),
     },
+    # A suspension that has run out puts the photographer back on Discover.
+    "relist-after-suspensions": {
+        "task": "app.tasks.scheduled.relist_after_suspensions",
+        "schedule": timedelta(minutes=10),
+    },
     # Clients' raw IPs on download logs, kept for chargeback evidence only.
     "purge-raw-access-ips": {
         "task": "app.tasks.scheduled.purge_raw_access_ips",
@@ -127,6 +132,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.sweep_stuck_bookings": {"queue": "media"},
     "app.tasks.scheduled.reconcile_stuck_refunds": {"queue": "media"},
     "app.tasks.scheduled.purge_raw_access_ips": {"queue": "media"},
+    "app.tasks.scheduled.relist_after_suspensions": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

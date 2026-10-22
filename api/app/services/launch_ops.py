@@ -8,7 +8,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
-from app.models.admin import BanAction, BanActionType, KYCStatus, ProProfile, UserRoleType
+from app.models.admin import KYCStatus, ProProfile, UserRoleType
 from app.models.booking import ProPackage
 from app.models.client_rewards_pricing import ProExtraImagePrice
 from app.models.launch_ops import (
@@ -26,6 +26,7 @@ from app.models.launch_ops import (
 )
 from app.models.media import MediaAsset, MediaPurpose, MediaStatus
 from app.models.niche import ProNiche
+from app.services.pro_standing import booking_block_reason
 from app.services.analytics import log_event
 from app.services.feature_flags import is_feature_enabled
 from app.services.notifications import enqueue_notification
@@ -398,10 +399,7 @@ def maybe_advance_to_ready_for_review(db: Session, *, pro_user_id: uuid.UUID) ->
 
 
 def is_pro_publicly_discoverable(db: Session, *, pro_user_id: uuid.UUID) -> bool:
-    latest_ban = db.execute(
-        select(BanAction).where(BanAction.user_id == pro_user_id).order_by(BanAction.created_at.desc())
-    ).scalar_one_or_none()
-    if latest_ban and latest_ban.action in {BanActionType.banned, BanActionType.suspended}:
+    if booking_block_reason(db, pro_user_id) is not None:
         return False
     onboarding = db.get(ProOnboarding, pro_user_id)
     if not onboarding or onboarding.status != ProOnboardingStatus.approved_public:

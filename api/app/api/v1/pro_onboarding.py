@@ -76,6 +76,7 @@ from app.services.package_schedule import apply_schedule, current_blocks, valida
 from app.services.analytics import log_event
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.booking_answer import ensure_request_can_be_booked
+from app.services.pro_standing import booking_block_reason
 from app.services.gig_builder import build_gig_for_request, find_gig_for_request
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
@@ -1022,6 +1023,9 @@ def create_booking_request(
     is_dev_override = settings.app_env.lower() in {"dev", "development"} and settings.allow_unverified_pro
     if not profile.is_accepting_bookings and not is_dev_override:
         raise APIError(code="validation_error", message="Pro is not accepting bookings", status_code=409)
+    # Not overridable: the dev override is about unverified photographers.
+    if booking_block_reason(db, pro_user_id) is not None:
+        raise APIError(code="pro_unavailable", message="This photographer isn't taking bookings right now.", status_code=409)
 
     package = db.get(ProPackage, body.package_id)
     if not package or package.pro_user_id != pro_user_id or not package.is_active:

@@ -18,6 +18,7 @@ from app.core.errors import APIError
 from app.models.admin import KYCStatus, ProProfile
 from app.models.booking import BookingRequest, BookingRequestStatus
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
+from app.services.pro_standing import booking_block_reason
 
 _GONE = {
     BookingRequestStatus.expired: ("request_expired", "This request has expired."),
@@ -52,6 +53,9 @@ def ensure_request_can_be_booked(db: Session, request: BookingRequest) -> None:
 
 def _ensure_photographer_may_take_bookings(db: Session, request: BookingRequest) -> None:
     settings = get_settings()
+    # Before anything else, and whatever BAN_ENFORCEMENT_MODE says.
+    if booking_block_reason(db, request.pro_user_id) is not None:
+        raise APIError(code="pro_shut_out", message="Your account is suspended, so you cannot take bookings.", status_code=409)
     profile = db.get(ProProfile, request.pro_user_id)
     unverified_allowed = settings.app_env.lower() in {"dev", "development"} and settings.allow_unverified_pro
     if (profile is None or profile.kyc_status != KYCStatus.approved) and not unverified_allowed:

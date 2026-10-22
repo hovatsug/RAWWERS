@@ -71,6 +71,20 @@ def reconcile_stuck_refunds_task() -> int:
         db.close()
 
 
+@celery_app.task(name="app.tasks.scheduled.relist_after_suspensions")
+def relist_after_suspensions_task() -> int:
+    """Photographers whose suspension has run out, back on Discover."""
+    from app.services.pro_standing import relist_after_suspensions
+
+    db = SessionLocal()
+    try:
+        relisted = relist_after_suspensions(db)
+        db.commit()
+        return relisted
+    finally:
+        db.close()
+
+
 @celery_app.task(name="app.tasks.scheduled.purge_raw_access_ips")
 def purge_raw_access_ips_task() -> int:
     """Clients' raw IPs on download logs, past their retention period."""

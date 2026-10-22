@@ -20,7 +20,8 @@ const KIND: Record<string, string> = {
   client_owed: "Client owed",
   refund_outside_rawwers: "Refund made in Stripe",
   chargeback_evidence_due: "Chargeback: evidence due",
-  chargeback_lost: "Chargeback lost"
+  chargeback_lost: "Chargeback lost",
+  pro_shut_out_booking: "Booking with a banned or suspended photographer"
 };
 
 function dueLabel(dueAt: string | null): { text: string; overdue: boolean } | null {

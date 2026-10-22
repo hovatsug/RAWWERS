@@ -39,7 +39,7 @@ from app.services.analytics import log_event
 from app.services.authz import enforce_not_banned, get_user_roles
 from app.services.rewards import apply_redemption_for_context, release_redemption_for_context, reserve_points_for_discount
 from app.services.search_indexing import enqueue_product_index_upsert
-from app.services.stripe_service import to_cents
+from app.services.stripe_service import PAYMENT_METHODS, to_cents
 
 settings = get_settings()
 
@@ -315,7 +315,7 @@ def create_order_from_cart(
             amount=to_cents(order.total),
             currency=order.currency.lower(),
             metadata={"order_id": str(order.id), "user_id": str(order.user_id), "scope": "commerce_order"},
-            automatic_payment_methods={"enabled": True},
+            automatic_payment_methods=PAYMENT_METHODS,
             idempotency_key=f"store-order:{order.id}:pi",
         )
         payment = OrderPayment(

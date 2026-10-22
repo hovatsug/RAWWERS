@@ -35,7 +35,7 @@ from app.services.analytics import log_event
 from app.services.media_rights import has_valid_entitlement
 from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
-from app.services.stripe_service import to_cents
+from app.services.stripe_service import PAYMENT_METHODS, to_cents
 from app.services.trust_safety import has_active_risk_action
 
 settings = get_settings()
@@ -410,7 +410,7 @@ def create_print_payment_intent(db: Session, *, order: PrintOrder) -> tuple[Prin
     intent = stripe.PaymentIntent.create(
         amount=to_cents(_q2(order.total_eur)),
         currency=(order.currency or "EUR").lower(),
-        automatic_payment_methods={"enabled": True},
+        automatic_payment_methods=PAYMENT_METHODS,
         metadata={
             "type": "print_order",
             "print_order_id": str(order.id),

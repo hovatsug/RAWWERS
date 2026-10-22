@@ -16,6 +16,13 @@ stripe.api_key = settings.stripe_secret_key or "sk_test_placeholder"
 # (2025-08-27.basil for stripe 12.5.1), not ours.
 stripe.api_version = settings.stripe_api_version
 
+#: Every PaymentIntent is created with this: cards and wallets only, never a
+#: method that sends the client to their bank's page. The app's PaymentSheet
+#: has no returnURL and the iOS app no URL scheme, so a redirect would leave
+#: the client outside the app with no way back. A test fails on any creation
+#: path that does not pass it.
+PAYMENT_METHODS = {"enabled": True, "allow_redirects": "never"}
+
 
 def to_cents(amount: Decimal) -> int:
     quantized = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

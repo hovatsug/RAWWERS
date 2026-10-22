@@ -14,7 +14,7 @@ from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import REFUND_CASE_STATUSES_IN_FLIGHT, RefundCase, RefundCaseStatus
 from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
-from app.services.stripe_service import map_intent_status, to_cents
+from app.services.stripe_service import PAYMENT_METHODS, map_intent_status, to_cents
 
 settings = get_settings()
 
@@ -231,16 +231,16 @@ def _create_intent(
     # `automatic_payment_methods` and specify `payment_method_types`"), which
     # made every PaymentIntent creation in the product a 500.
     #
-    # Automatic is the deliberate choice rather than card-only. Launching in
-    # Europe, a hardcoded ["card"] excludes iDEAL, Bancontact, SEPA debit and
-    # Multibanco - and Multibanco is a mainstream way to pay in Portugal.
-    # Letting Stripe surface the right methods per region also means new
-    # markets need no per-market list maintained here.
+    # Automatic rather than a hardcoded ["card"], so Stripe surfaces the
+    # methods the dashboard enables per region. Without redirects, though
+    # (PAYMENT_METHODS): iDEAL, Bancontact and Multibanco send the client to
+    # their bank's page, and the app has no return path yet. Cards and
+    # wallets only until it does.
     pi = stripe.PaymentIntent.create(
         amount=to_cents(payable_amount),
         currency=gig.currency.lower(),
         metadata=metadata,
-        automatic_payment_methods={"enabled": True},
+        automatic_payment_methods=PAYMENT_METHODS,
         idempotency_key=idempotency_key,
     )
 

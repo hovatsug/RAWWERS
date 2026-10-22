@@ -39,7 +39,7 @@ from app.services.abuse import create_abuse_signal, hash_ip
 from app.services.authz import ensure_user_account, get_user_roles
 from app.services.rewards import add_reward_entry
 from app.services.storage import create_presigned_get
-from app.services.stripe_service import map_intent_status, to_cents
+from app.services.stripe_service import PAYMENT_METHODS, map_intent_status, to_cents
 from app.services.proof_of_gigs import reverse_raww_mints_for_reference
 from app.services.payouts import reverse_earnings_entries_for_source
 
@@ -356,7 +356,7 @@ def create_stripe_payment_intent_for_pack(
     return stripe.PaymentIntent.create(
         amount=to_cents(amount),
         currency=(pack.currency or "EUR").lower(),
-        automatic_payment_methods={"enabled": True},
+        automatic_payment_methods=PAYMENT_METHODS,
         metadata={
             "content_pack_order_id": str(order_id),
             "content_pack_id": str(pack.id),

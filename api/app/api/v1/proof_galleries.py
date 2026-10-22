@@ -64,6 +64,7 @@ from app.services.media_urls import (
     resolve_variant_urls,
 )
 from app.services.storage import create_presigned_get
+from app.services.stripe_service import PAYMENT_METHODS
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
 from app.services.gig_state import require_gig_deliverable
@@ -858,7 +859,7 @@ def _ensure_upsell_intent(
                 "type": "upsell",
                 "share_link_id": str(share_link_id) if share_link_id else "",
             },
-            automatic_payment_methods={"enabled": True},
+            automatic_payment_methods=PAYMENT_METHODS,
             idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
         )
         existing.extra_count = extras_count
@@ -887,7 +888,7 @@ def _ensure_upsell_intent(
                 "type": "upsell",
                 "share_link_id": str(share_link_id) if share_link_id else "",
             },
-            automatic_payment_methods={"enabled": True},
+            automatic_payment_methods=PAYMENT_METHODS,
             idempotency_key=f"gallery:{gallery.id}:selection:{selection.id}:upsell",
         )
         purchase = UpsellPurchase(

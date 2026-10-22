@@ -88,6 +88,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.reconcile_stuck_refunds",
         "schedule": timedelta(seconds=settings.refund_reconcile_interval_seconds),
     },
+    # Clients' raw IPs on download logs, kept for chargeback evidence only.
+    "purge-raw-access-ips": {
+        "task": "app.tasks.scheduled.purge_raw_access_ips",
+        "schedule": timedelta(days=1),
+    },
 }
 celery_app.conf.task_routes = {
     # Its own queue, served by the worker-photos processes: a photographer's
@@ -121,6 +126,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.expire_unpaid_gigs": {"queue": "media"},
     "app.tasks.scheduled.sweep_stuck_bookings": {"queue": "media"},
     "app.tasks.scheduled.reconcile_stuck_refunds": {"queue": "media"},
+    "app.tasks.scheduled.purge_raw_access_ips": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

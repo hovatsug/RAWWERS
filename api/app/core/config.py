@@ -151,6 +151,10 @@ class Settings(BaseSettings):
     media_signed_url_ttl_seconds: int = Field(default=120, alias="MEDIA_SIGNED_URL_TTL_SECONDS")
     media_share_token_pepper: str = Field(default="dev-media-share-pepper", alias="MEDIA_SHARE_TOKEN_PEPPER")
     media_access_ip_hash_pepper: str = Field(default="dev-media-ip-pepper", alias="MEDIA_ACCESS_IP_HASH_PEPPER")
+    # How long the client's raw IP is kept on their download log, for
+    # chargeback evidence. 120 days: card networks generally let a cardholder
+    # dispute for 120 days, and downloads come after the shoot.
+    media_access_raw_ip_retention_days: int = Field(default=120, alias="MEDIA_ACCESS_RAW_IP_RETENTION_DAYS")
     media_watermark_text_template: str = Field(default="RAWWERS", alias="MEDIA_WATERMARK_TEXT_TEMPLATE")
     media_watermark_include_pro_name: bool = Field(default=False, alias="MEDIA_WATERMARK_INCLUDE_PRO_NAME")
     share_view_fingerprint_pepper: str = Field(default="dev-share-fingerprint-pepper", alias="SHARE_VIEW_FINGERPRINT_PEPPER")

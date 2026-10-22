@@ -2023,3 +2023,11 @@ A per-photographer cache of "has a bookable start" was considered and not added,
 **Freshness, the toggle and the package flag are checked twice.** `live_rows` filters on them before the availability rule, as a cheap pre-filter. The rule enforces them anyway: a stale, switched-off or unflagged photographer gets ordinary notice, and so has no start in the next 24 hours. Tests check both: the photographer is left out, and the expensive check is never run for them.
 
 **The app** fetches Discover again when it comes back into view (app resumed, Discover tab selected, a profile or niche page popped), at most every 15 seconds (`discover_freshness.dart`). Cards show "Ready in about N hours" while the server says the photographer is available now.
+
+## The client's IP is whatever `X-Forwarded-For` says - LOGGED
+
+`_request_ip` (in `app/api/v1/media_rights.py`, and the same function in `app/services/trust_safety.py`) takes the first entry of `X-Forwarded-For` when the header is present, and the socket address otherwise. Nothing in `deploy/` puts a proxy in front of the API (`compose.prod.yml` publishes port 8000 directly), so the header comes from the caller: anyone can set it to any address.
+
+**What it affects.** The client's raw IP now kept on their downloads for chargeback evidence (`media_access_log.ip_address`) - a client who later files a chargeback could have made it say anything, which weakens the evidence. Also every IP hash: share-view fingerprints, risk and abuse signals, referral-farm and share-view-farm rules, which an abuser can rotate at will.
+
+**Fix, not yet approved.** One helper, used everywhere, that trusts `X-Forwarded-For` only when the socket address is a configured proxy (`TRUSTED_PROXY_IPS`), and then takes the rightmost address that is not a trusted proxy. Production needs its real front (load balancer, Cloudflare or a reverse proxy) named in that setting, or the socket address is used. Until then, a stored IP is evidence only to the extent the header was not set by the client.

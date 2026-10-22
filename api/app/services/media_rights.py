@@ -3,13 +3,14 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, ProofGalleryItem, SelectionStatus, UpsellPurchase, UpsellPurchaseStatus
+from app.models.admin import MoneyAttentionItem
 from app.models.gig import Gig
 from app.services.package_pricing import is_curve_priced
 from app.models.media_rights import (
@@ -366,9 +367,34 @@ def log_media_access(
             derivative_kind=derivative_kind,
             action=action,
             ip_hash=hash_ip(ip),
+            ip_address=ip if _is_gig_client(db, gig_id=gig_id, user_id=user_id) else None,
             user_agent=user_agent,
         )
     )
+
+
+def _is_gig_client(db: Session, *, gig_id: uuid.UUID, user_id: uuid.UUID | None) -> bool:
+    if user_id is None:
+        return False
+    gig = db.get(Gig, gig_id)
+    return gig is not None and gig.client_user_id == user_id
+
+
+def purge_raw_access_ips(db: Session, *, now: datetime | None = None) -> int:
+    """Clear raw IPs older than the retention period; the hash stays. A
+    booking with a chargeback whose evidence is still due keeps them until
+    that is dealt with. Returns how many rows were cleared."""
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=settings.media_access_raw_ip_retention_days)
+    evidence_due = select(MoneyAttentionItem.gig_id).where(
+        MoneyAttentionItem.kind == "chargeback_evidence_due", MoneyAttentionItem.status == "open", MoneyAttentionItem.gig_id.is_not(None)
+    )
+    result = db.execute(
+        update(MediaAccessLog)
+        .where(MediaAccessLog.ip_address.is_not(None), MediaAccessLog.created_at < cutoff, MediaAccessLog.gig_id.not_in(evidence_due))
+        .values(ip_address=None)
+        .execution_options(synchronize_session=False)
+    )
+    return int(result.rowcount or 0)
 
 
 def can_manage_share_links(db: Session, *, gig_id: uuid.UUID, user_id: uuid.UUID) -> bool:

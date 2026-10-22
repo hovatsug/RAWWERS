@@ -145,5 +145,9 @@ class MediaAccessLog(Base):
         nullable=False,
     )
     ip_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The raw IP, for chargeback evidence (Stripe asks for the customer's IP,
+    # and a hash cannot be given to it). The gig's own client only, cleared
+    # after MEDIA_ACCESS_RAW_IP_RETENTION_DAYS by purge_raw_access_ips.
+    ip_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)

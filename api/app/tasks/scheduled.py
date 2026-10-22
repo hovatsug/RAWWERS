@@ -69,3 +69,17 @@ def reconcile_stuck_refunds_task() -> int:
         return reconcile_stuck_refund_cases(db)
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.purge_raw_access_ips")
+def purge_raw_access_ips_task() -> int:
+    """Clients' raw IPs on download logs, past their retention period."""
+    from app.services.media_rights import purge_raw_access_ips
+
+    db = SessionLocal()
+    try:
+        cleared = purge_raw_access_ips(db)
+        db.commit()
+        return cleared
+    finally:
+        db.close()

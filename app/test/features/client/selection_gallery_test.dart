@@ -138,7 +138,7 @@ void main() {
 
     // Back to the grid: the same photo must already be ticked. Two separate
     // selection sets would show nothing here.
-    await tester.tap(find.byTooltip('Close'));
+    await tester.tap(find.byTooltip('Close photo viewer'));
     await tester.pumpAndSettle();
 
     final tiles = tester.widgetList<RImageTile>(find.byType(RImageTile)).toList();
@@ -153,7 +153,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Chosen'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Close'));
+    await tester.tap(find.byTooltip('Close photo viewer'));
     await tester.pumpAndSettle();
 
     final tiles = tester.widgetList<RImageTile>(find.byType(RImageTile)).toList();
@@ -168,7 +168,7 @@ void main() {
 
     expect(find.text('1 chosen'), findsOneWidget, reason: 'the viewer should show the running count');
 
-    await tester.tap(find.byTooltip('Close'));
+    await tester.tap(find.byTooltip('Close photo viewer'));
     await tester.pumpAndSettle();
     expect(find.text('9 more to continue'), findsOneWidget);
   });

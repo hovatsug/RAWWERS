@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/core/images/disk_cached_image.dart';
 
@@ -21,6 +22,10 @@ import 'package:rawwers/core/images/disk_cached_image.dart';
 /// panning down to look at the bottom of a frame throws the viewer away. Both
 /// come back the moment the photo is back at 1x.
 ///
+/// None of the three is the only way: every gesture has a labelled button
+/// beside it (close, previous, next, zoom), and each change of photo is
+/// announced, so the viewer works with a screen reader or a switch.
+///
 /// No package for any of this: PageView, InteractiveViewer and a drag
 /// recogniser are all core Flutter, and a dependency here would be one more
 /// thing to keep current for gestures the framework already has.
@@ -29,6 +34,7 @@ class RPhotoViewer extends StatefulWidget {
     required this.urls,
     required this.initialIndex,
     this.title,
+    this.captions,
     this.actionsBuilder,
     this.prefetchNeighbours = true,
     super.key,
@@ -43,6 +49,10 @@ class RPhotoViewer extends StatefulWidget {
 
   /// Shown above the counter. The gallery's own name, usually.
   final String? title;
+
+  /// One line under each photo - the niche it was taken in, on a profile.
+  /// Aligned with [urls]; a null entry, or no list at all, shows nothing.
+  final List<String?>? captions;
 
   /// Lets a caller put controls over the photo - selection, in the client
   /// galleries - without this widget knowing what they mean.
@@ -85,6 +95,10 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
 
   @override
   void dispose() {
+    // Nothing decoded here outlives the viewer.
+    for (final url in widget.urls) {
+      _release(url);
+    }
     _transform.removeListener(_onTransform);
     _transform.dispose();
     _pages.dispose();
@@ -113,6 +127,27 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
     }
   }
 
+  /// Let go of every photo more than one away. The page view already drops
+  /// their widgets, but the decoded frames stay in the image cache until it
+  /// fills, and a long portfolio would hold dozens of them.
+  void _releaseDistant() {
+    for (var i = 0; i < widget.urls.length; i++) {
+      if ((i - _index).abs() > 1) _release(widget.urls[i]);
+    }
+  }
+
+  void _release(String? url) {
+    if (url == null || url.isEmpty) return;
+    PaintingBinding.instance.imageCache.evict(DiskCachedImage(url));
+  }
+
+  String? _captionAt(int index) {
+    final captions = widget.captions;
+    if (captions == null || index >= captions.length) return null;
+    final caption = captions[index];
+    return (caption == null || caption.isEmpty) ? null : caption;
+  }
+
   void _onPageChanged(int index) {
     setState(() {
       _index = index;
@@ -120,7 +155,32 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
       // transform over lands the next one off-centre and half cropped.
       _transform.value = Matrix4.identity();
     });
+    _releaseDistant();
     _prefetchNeighbours();
+    final caption = _captionAt(index);
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      'Photo ${index + 1} of ${widget.urls.length}${caption == null ? '' : ', $caption'}',
+      Directionality.of(context),
+    );
+  }
+
+  /// The buttons' way to page: the same move a swipe makes, without the
+  /// slide under reduced motion.
+  void _goTo(int index) {
+    if (index < 0 || index >= widget.urls.length) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pages.jumpToPage(index);
+    } else {
+      _pages.animateToPage(index, duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
+    }
+  }
+
+  /// The button's zoom: like a double-tap on the middle of the photo.
+  void _toggleZoomFromButton() {
+    final size = MediaQuery.sizeOf(context);
+    _doubleTapAt = TapDownDetails(localPosition: Offset(size.width / 2, size.height / 2));
+    _toggleZoom();
   }
 
   void _toggleZoom() {
@@ -161,6 +221,10 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
     // The ground fades out as the photo is dragged away, so the gesture reads
     // as lifting the photo off rather than sliding a page.
     final progress = (_dragOffset.abs() / (_dismissAt * 2)).clamp(0.0, 1.0);
+    // With a screen reader the controls are the way around, so a tap never
+    // hides them.
+    final chromeVisible = _chromeVisible || MediaQuery.accessibleNavigationOf(context);
+    final caption = _captionAt(_index);
 
     return Scaffold(
       backgroundColor: RInk.i900.withValues(alpha: 1 - progress * 0.6),
@@ -192,14 +256,30 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
               ),
             ),
           ),
-          if (_chromeVisible) ...[
+          if (chromeVisible) ...[
             _Chrome(
               title: widget.title,
               index: _index,
               total: widget.urls.length,
+              zoomed: _zoomed,
               onClose: () => Navigator.of(context).maybePop(),
+              onZoom: _toggleZoomFromButton,
             ),
-            if (widget.actionsBuilder != null)
+            if (_index > 0 && !_zoomed)
+              _PageButton(
+                alignment: Alignment.centerLeft,
+                icon: Icons.chevron_left,
+                tooltip: 'Previous photo',
+                onPressed: () => _goTo(_index - 1),
+              ),
+            if (_index < widget.urls.length - 1 && !_zoomed)
+              _PageButton(
+                alignment: Alignment.centerRight,
+                icon: Icons.chevron_right,
+                tooltip: 'Next photo',
+                onPressed: () => _goTo(_index + 1),
+              ),
+            if (caption != null || widget.actionsBuilder != null)
               Positioned(
                 left: 0,
                 right: 0,
@@ -207,7 +287,19 @@ class _RPhotoViewerState extends State<RPhotoViewer> {
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(RSpace.s16),
-                    child: widget.actionsBuilder!(context, _index),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (caption != null)
+                          Text(
+                            caption,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: RInk.i050),
+                          ),
+                        if (caption != null && widget.actionsBuilder != null) const SizedBox(height: RSpace.s8),
+                        if (widget.actionsBuilder != null) widget.actionsBuilder!(context, _index),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -258,18 +350,75 @@ class _ViewerFallback extends StatelessWidget {
   }
 }
 
+/// Previous or next, at the edge of the photo, for anyone who cannot swipe.
+class _PageButton extends StatelessWidget {
+  const _PageButton({required this.alignment, required this.icon, required this.tooltip, required this.onPressed});
+
+  final Alignment alignment;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: SafeArea(
+        child: Align(
+          alignment: alignment,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: RSpace.s4),
+            child: _ChromeButton(icon: icon, tooltip: tooltip, onPressed: onPressed),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A control over a photo: a large target on a dark disc, so it reads on a
+/// white sky as well as on a night shot.
+class _ChromeButton extends StatelessWidget {
+  /// Above the 48px minimum: these sit over a photo, often reached one-handed
+  /// with the phone held up to look.
+  static const double target = RSpace.s48 + RSpace.s8;
+
+  const _ChromeButton({required this.icon, required this.tooltip, required this.onPressed});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      // Labelled on the icon too: a tooltip alone is not read as the
+      // button's name by every screen reader.
+      icon: Icon(icon, semanticLabel: tooltip),
+      tooltip: tooltip,
+      color: RInk.i050,
+      constraints: const BoxConstraints(minWidth: target, minHeight: target),
+      style: IconButton.styleFrom(backgroundColor: RInk.i900.withValues(alpha: 0.45)),
+    );
+  }
+}
+
 class _Chrome extends StatelessWidget {
   const _Chrome({
     required this.title,
     required this.index,
     required this.total,
+    required this.zoomed,
     required this.onClose,
+    required this.onZoom,
   });
 
   final String? title;
   final int index;
   final int total;
+  final bool zoomed;
   final VoidCallback onClose;
+  final VoidCallback onZoom;
 
   @override
   Widget build(BuildContext context) {
@@ -283,12 +432,8 @@ class _Chrome extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: RSpace.s8, vertical: RSpace.s8),
           child: Row(
             children: [
-              IconButton(
-                onPressed: onClose,
-                icon: const Icon(Icons.close),
-                color: RInk.i050,
-                tooltip: 'Close',
-              ),
+              _ChromeButton(icon: Icons.close, tooltip: 'Close photo viewer', onPressed: onClose),
+              const SizedBox(width: RSpace.s8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,6 +450,11 @@ class _Chrome extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              _ChromeButton(
+                icon: zoomed ? Icons.zoom_out : Icons.zoom_in,
+                tooltip: zoomed ? 'Zoom out' : 'Zoom in',
+                onPressed: onZoom,
               ),
             ],
           ),
@@ -323,6 +473,7 @@ Future<void> showRPhotoViewer(
   required List<String?> urls,
   required int initialIndex,
   String? title,
+  List<String?>? captions,
   Widget Function(BuildContext context, int index)? actionsBuilder,
   bool prefetchNeighbours = true,
 }) {
@@ -337,6 +488,7 @@ Future<void> showRPhotoViewer(
         urls: urls,
         initialIndex: initialIndex,
         title: title,
+        captions: captions,
         actionsBuilder: actionsBuilder,
         prefetchNeighbours: prefetchNeighbours,
       ),

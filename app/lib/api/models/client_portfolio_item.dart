@@ -21,6 +21,17 @@
 ///             ],
 ///             "title": "Thumbnail Url"
 ///         },
+///         "preview_url": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Preview Url"
+///         },
 ///         "niche_slugs": {
 ///             "type": "array",
 ///             "items": {
@@ -58,6 +69,9 @@ abstract class ClientPortfolioItem with _$ClientPortfolioItem {
     /// thumbnailUrl
     @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,
 
+    /// previewUrl
+    @JsonKey(name: ClientPortfolioItem.previewUrlKey_) String? previewUrl,
+
     /// nicheSlugs
     @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs,
   }) = _ClientPortfolioItem;
@@ -70,6 +84,8 @@ abstract class ClientPortfolioItem with _$ClientPortfolioItem {
   static const String kindKey_ = r'kind';
 
   static const String thumbnailUrlKey_ = r'thumbnail_url';
+
+  static const String previewUrlKey_ = r'preview_url';
 
   static const String nicheSlugsKey_ = r'niche_slugs';
 }

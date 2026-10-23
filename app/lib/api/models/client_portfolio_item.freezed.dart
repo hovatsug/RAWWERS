@@ -18,7 +18,8 @@ mixin _$ClientPortfolioItem {
 /// mediaAssetId
 @JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) String get mediaAssetId;/// kind
 @JsonKey(name: ClientPortfolioItem.kindKey_) String get kind;/// thumbnailUrl
-@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? get thumbnailUrl;/// nicheSlugs
+@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? get thumbnailUrl;/// previewUrl
+@JsonKey(name: ClientPortfolioItem.previewUrlKey_) String? get previewUrl;/// nicheSlugs
 @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? get nicheSlugs;
 /// Create a copy of ClientPortfolioItem
 /// with the given fields replaced by the non-null parameter values.
@@ -32,16 +33,16 @@ $ClientPortfolioItemCopyWith<ClientPortfolioItem> get copyWith => _$ClientPortfo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientPortfolioItem&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&const DeepCollectionEquality().equals(other.nicheSlugs, nicheSlugs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientPortfolioItem&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.previewUrl, previewUrl) || other.previewUrl == previewUrl)&&const DeepCollectionEquality().equals(other.nicheSlugs, nicheSlugs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mediaAssetId,kind,thumbnailUrl,const DeepCollectionEquality().hash(nicheSlugs));
+int get hashCode => Object.hash(runtimeType,mediaAssetId,kind,thumbnailUrl,previewUrl,const DeepCollectionEquality().hash(nicheSlugs));
 
 @override
 String toString() {
-  return 'ClientPortfolioItem(mediaAssetId: $mediaAssetId, kind: $kind, thumbnailUrl: $thumbnailUrl, nicheSlugs: $nicheSlugs)';
+  return 'ClientPortfolioItem(mediaAssetId: $mediaAssetId, kind: $kind, thumbnailUrl: $thumbnailUrl, previewUrl: $previewUrl, nicheSlugs: $nicheSlugs)';
 }
 
 
@@ -52,7 +53,7 @@ abstract mixin class $ClientPortfolioItemCopyWith<$Res>  {
   factory $ClientPortfolioItemCopyWith(ClientPortfolioItem value, $Res Function(ClientPortfolioItem) _then) = _$ClientPortfolioItemCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: ClientPortfolioItem.kindKey_) String kind,@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,@JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs
+@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: ClientPortfolioItem.kindKey_) String kind,@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,@JsonKey(name: ClientPortfolioItem.previewUrlKey_) String? previewUrl,@JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs
 });
 
 
@@ -69,11 +70,12 @@ class _$ClientPortfolioItemCopyWithImpl<$Res>
 
 /// Create a copy of ClientPortfolioItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? mediaAssetId = null,Object? kind = null,Object? thumbnailUrl = freezed,Object? nicheSlugs = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? mediaAssetId = null,Object? kind = null,Object? thumbnailUrl = freezed,Object? previewUrl = freezed,Object? nicheSlugs = freezed,}) {
   return _then(_self.copyWith(
 mediaAssetId: null == mediaAssetId ? _self.mediaAssetId : mediaAssetId // ignore: cast_nullable_to_non_nullable
 as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as String,thumbnailUrl: freezed == thumbnailUrl ? _self.thumbnailUrl : thumbnailUrl // ignore: cast_nullable_to_non_nullable
+as String?,previewUrl: freezed == previewUrl ? _self.previewUrl : previewUrl // ignore: cast_nullable_to_non_nullable
 as String?,nicheSlugs: freezed == nicheSlugs ? _self.nicheSlugs : nicheSlugs // ignore: cast_nullable_to_non_nullable
 as List<String>?,
   ));
@@ -160,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_)  String kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_)  String? thumbnailUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_)  List<String>? nicheSlugs)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_)  String kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_)  String? thumbnailUrl, @JsonKey(name: ClientPortfolioItem.previewUrlKey_)  String? previewUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_)  List<String>? nicheSlugs)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientPortfolioItem() when $default != null:
-return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.nicheSlugs);case _:
+return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.previewUrl,_that.nicheSlugs);case _:
   return orElse();
 
 }
@@ -181,10 +183,10 @@ return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.nicheSlug
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_)  String kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_)  String? thumbnailUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_)  List<String>? nicheSlugs)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_)  String kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_)  String? thumbnailUrl, @JsonKey(name: ClientPortfolioItem.previewUrlKey_)  String? previewUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_)  List<String>? nicheSlugs)  $default,) {final _that = this;
 switch (_that) {
 case _ClientPortfolioItem():
-return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.nicheSlugs);case _:
+return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.previewUrl,_that.nicheSlugs);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +203,10 @@ return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.nicheSlug
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_)  String kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_)  String? thumbnailUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_)  List<String>? nicheSlugs)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_)  String kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_)  String? thumbnailUrl, @JsonKey(name: ClientPortfolioItem.previewUrlKey_)  String? previewUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_)  List<String>? nicheSlugs)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientPortfolioItem() when $default != null:
-return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.nicheSlugs);case _:
+return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.previewUrl,_that.nicheSlugs);case _:
   return null;
 
 }
@@ -216,7 +218,7 @@ return $default(_that.mediaAssetId,_that.kind,_that.thumbnailUrl,_that.nicheSlug
 
 @jsonSerializable
 class _ClientPortfolioItem extends ClientPortfolioItem {
-  const _ClientPortfolioItem({@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) required this.mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_) required this.kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) this.thumbnailUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) final  List<String>? nicheSlugs}): _nicheSlugs = nicheSlugs,super._();
+  const _ClientPortfolioItem({@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) required this.mediaAssetId, @JsonKey(name: ClientPortfolioItem.kindKey_) required this.kind, @JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) this.thumbnailUrl, @JsonKey(name: ClientPortfolioItem.previewUrlKey_) this.previewUrl, @JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) final  List<String>? nicheSlugs}): _nicheSlugs = nicheSlugs,super._();
   factory _ClientPortfolioItem.fromJson(Map<String, dynamic> json) => _$ClientPortfolioItemFromJson(json);
 
 /// mediaAssetId
@@ -225,6 +227,8 @@ class _ClientPortfolioItem extends ClientPortfolioItem {
 @override@JsonKey(name: ClientPortfolioItem.kindKey_) final  String kind;
 /// thumbnailUrl
 @override@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) final  String? thumbnailUrl;
+/// previewUrl
+@override@JsonKey(name: ClientPortfolioItem.previewUrlKey_) final  String? previewUrl;
 /// nicheSlugs
  final  List<String>? _nicheSlugs;
 /// nicheSlugs
@@ -250,16 +254,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientPortfolioItem&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&const DeepCollectionEquality().equals(other._nicheSlugs, _nicheSlugs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientPortfolioItem&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.previewUrl, previewUrl) || other.previewUrl == previewUrl)&&const DeepCollectionEquality().equals(other._nicheSlugs, _nicheSlugs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mediaAssetId,kind,thumbnailUrl,const DeepCollectionEquality().hash(_nicheSlugs));
+int get hashCode => Object.hash(runtimeType,mediaAssetId,kind,thumbnailUrl,previewUrl,const DeepCollectionEquality().hash(_nicheSlugs));
 
 @override
 String toString() {
-  return 'ClientPortfolioItem(mediaAssetId: $mediaAssetId, kind: $kind, thumbnailUrl: $thumbnailUrl, nicheSlugs: $nicheSlugs)';
+  return 'ClientPortfolioItem(mediaAssetId: $mediaAssetId, kind: $kind, thumbnailUrl: $thumbnailUrl, previewUrl: $previewUrl, nicheSlugs: $nicheSlugs)';
 }
 
 
@@ -270,7 +274,7 @@ abstract mixin class _$ClientPortfolioItemCopyWith<$Res> implements $ClientPortf
   factory _$ClientPortfolioItemCopyWith(_ClientPortfolioItem value, $Res Function(_ClientPortfolioItem) _then) = __$ClientPortfolioItemCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: ClientPortfolioItem.kindKey_) String kind,@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,@JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs
+@JsonKey(name: ClientPortfolioItem.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: ClientPortfolioItem.kindKey_) String kind,@JsonKey(name: ClientPortfolioItem.thumbnailUrlKey_) String? thumbnailUrl,@JsonKey(name: ClientPortfolioItem.previewUrlKey_) String? previewUrl,@JsonKey(name: ClientPortfolioItem.nicheSlugsKey_) List<String>? nicheSlugs
 });
 
 
@@ -287,11 +291,12 @@ class __$ClientPortfolioItemCopyWithImpl<$Res>
 
 /// Create a copy of ClientPortfolioItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? mediaAssetId = null,Object? kind = null,Object? thumbnailUrl = freezed,Object? nicheSlugs = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? mediaAssetId = null,Object? kind = null,Object? thumbnailUrl = freezed,Object? previewUrl = freezed,Object? nicheSlugs = freezed,}) {
   return _then(_ClientPortfolioItem(
 mediaAssetId: null == mediaAssetId ? _self.mediaAssetId : mediaAssetId // ignore: cast_nullable_to_non_nullable
 as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as String,thumbnailUrl: freezed == thumbnailUrl ? _self.thumbnailUrl : thumbnailUrl // ignore: cast_nullable_to_non_nullable
+as String?,previewUrl: freezed == previewUrl ? _self.previewUrl : previewUrl // ignore: cast_nullable_to_non_nullable
 as String?,nicheSlugs: freezed == nicheSlugs ? _self._nicheSlugs : nicheSlugs // ignore: cast_nullable_to_non_nullable
 as List<String>?,
   ));

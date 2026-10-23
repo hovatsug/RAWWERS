@@ -493,3 +493,49 @@ def test_a_niche_description_is_returned_when_written_and_null_when_not(client, 
     by_slug = {n["slug"]: n["description"] for n in body["niches"]}
     assert by_slug["weddings"] == "Long days, shot quietly."
     assert by_slug["portraits"] is None, "an undescribed niche must stay null so the client can fall back"
+
+
+# ---------------------------------------------------------------------------
+# Full screen on the profile: the 2048px copy, never the original.
+# ---------------------------------------------------------------------------
+
+
+def _add_derivative(db_session, asset_id: uuid.UUID, kind, suffix: str, width: int) -> None:
+    from app.models.media_rights import MediaDerivative
+
+    db_session.add(
+        MediaDerivative(
+            media_asset_id=asset_id,
+            kind=kind,
+            storage_key=f"portfolio/{asset_id}{suffix}",
+            content_type="image/jpeg",
+            width=width,
+            height=width * 2 // 3,
+            bytes=100,
+        )
+    )
+
+
+def test_a_portfolio_photo_opens_full_screen_on_its_web_copy_not_the_original(client, db_session):
+    """The viewer needs something sharper than the 512px tile, and the client
+    must never be handed the photographer's original to save."""
+    from app.models.media_rights import MediaDerivativeKind
+
+    pro_id = "00000000-0000-0000-0000-0000000009a7"
+    pro_uuid = _seed_pro(db_session, pro_id)
+    client_id = "00000000-0000-0000-0000-0000000009b7"
+    _seed_user(db_session, client_id, [UserRoleType.client])
+    with_web = _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=1)
+    _add_derivative(db_session, with_web, MediaDerivativeKind.web_res, "_web.jpg", 2048)
+    _add_derivative(db_session, with_web, MediaDerivativeKind.full_res, "_full.jpg", 6000)
+    without_web = _seed_portfolio_photo(db_session, pro_uuid, tags=["weddings"], index=2)
+    _add_derivative(db_session, without_web, MediaDerivativeKind.full_res, "_full.jpg", 6000)
+    _enable_city_and_flags(db_session)
+    db_session.commit()
+
+    items = {i["media_asset_id"]: i for i in _profile(client, pro_id, client_id)["portfolio_preview"]}
+
+    assert "_web.jpg" in (items[str(with_web)]["preview_url"] or ""), "no full-screen copy on the profile"
+    for item in items.values():
+        assert "_full.jpg" not in (item["preview_url"] or ""), "the original went to a client"
+    assert items[str(without_web)]["preview_url"] is None, "a missing web copy must say so, not fall back to the original"

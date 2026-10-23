@@ -21,7 +21,7 @@ from app.models.discovery import ProPublicIndex
 from app.models.gig import Gig, GigStatus, StripePayment, StripePaymentKind
 from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaPurpose, MediaStatus
-from app.models.media_rights import GigConsentLevel
+from app.models.media_rights import GigConsentLevel, MediaDerivativeKind
 from app.models.niche import Niche, ProNiche, ProNicheSkill, SkillTier
 from app.models.review import Review, ReviewReply
 from app.schemas.client_launch import (
@@ -74,7 +74,13 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
 from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
-from app.services.media_urls import ORIGINAL_FIRST, THUMBNAIL_FIRST, resolve_image_urls, resolve_niche_cover_urls
+from app.services.media_urls import (
+    ORIGINAL_FIRST,
+    THUMBNAIL_FIRST,
+    resolve_derivative_urls,
+    resolve_image_urls,
+    resolve_niche_cover_urls,
+)
 from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import create_or_get_gig_payment_intent
@@ -405,6 +411,13 @@ def client_pro_profile(
         prefer=THUMBNAIL_FIRST,
         expires_in=MEDIA_URL_BASE_TTL_SECONDS,
     )
+    # One more batched presign for the full-screen copies.
+    portfolio_previews = resolve_derivative_urls(
+        db,
+        [asset_id for asset_id, _, _ in portfolio_rows],
+        kinds=(MediaDerivativeKind.web_res,),
+        expires_in=MEDIA_URL_BASE_TTL_SECONDS,
+    )
     cover_urls = resolve_image_urls(
         db,
         [profile.cover_media_asset_id],
@@ -457,6 +470,7 @@ def client_pro_profile(
                 media_asset_id=asset_id,
                 kind=kind.value,
                 thumbnail_url=portfolio_urls.get(asset_id),
+                preview_url=portfolio_previews.get(asset_id, {}).get(MediaDerivativeKind.web_res),
                 niche_slugs=list(tags or []),
             )
             for asset_id, kind, tags in portfolio_rows

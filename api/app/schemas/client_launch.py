@@ -168,6 +168,10 @@ class ClientPortfolioItem(BaseModel):
     # have no MediaObject rows, so `thumbnail_url` is null for them - see
     # docs/BACKEND_GAPS.md, "no video poster frames".
     thumbnail_url: str | None = None
+    # The 2048px web copy, for opening the photo full screen: the thumbnail is
+    # too small for that and the original is never handed to a client. Null
+    # when the photo has no web copy yet, and for videos.
+    preview_url: str | None = None
     # Which niches this photo belongs to. Without it the client cannot split a
     # multi-niche portfolio at all: a wedding, a studio portrait and a festival
     # crowd shot arrive indistinguishable and render in one flat grid.

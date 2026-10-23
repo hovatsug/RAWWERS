@@ -14,6 +14,7 @@ import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/shared/reviews/review_display.dart';
 import 'package:rawwers/features/shared/reviews/pro_reviews_controller.dart';
@@ -77,6 +78,31 @@ class _ProfileState extends State<_Profile> {
   /// than on the busiest niche: defaulting to a filter would hide most of a
   /// portfolio behind a control the client has not touched yet.
   String? _niche;
+
+  /// Full screen, starting on the photo that was tapped and paging through
+  /// the photos in the grid as it is filtered. The web copy where there is
+  /// one; the thumbnail only for a photo still waiting for it. Each photo is
+  /// captioned with its niches, by the names the server gives them.
+  void _openPhoto(
+    BuildContext context,
+    List<ClientPortfolioItem> grid,
+    int tapped,
+    List<ClientProfileNiche> niches,
+    String name,
+  ) {
+    final photos = grid.where((p) => p.kind == 'photo').toList();
+    final names = {for (final n in niches) n.slug: n.name};
+    showRPhotoViewer(
+      context,
+      title: name,
+      initialIndex: photos.indexOf(grid[tapped]),
+      urls: [for (final p in photos) p.previewUrl ?? p.thumbnailUrl],
+      captions: [
+        for (final p in photos)
+          [for (final slug in p.nicheSlugs ?? const <String>[]) ?names[slug]].join(' · '),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,10 +277,22 @@ class _ProfileState extends State<_Profile> {
                   crossAxisSpacing: RSpace.s4,
                 ),
                 itemCount: portfolio.length,
-                itemBuilder: (context, index) => RNetworkPhoto(
-                  url: portfolio[index].thumbnailUrl,
-                  semanticLabel: 'Portfolio photo ${index + 1} by $name',
-                ),
+                itemBuilder: (context, index) {
+                  final tile = RNetworkPhoto(
+                    url: portfolio[index].thumbnailUrl,
+                    semanticLabel: 'Portfolio photo ${index + 1} by $name',
+                  );
+                  // A video has nothing to open full screen yet.
+                  if (portfolio[index].kind != 'photo') return tile;
+                  return Semantics(
+                    button: true,
+                    onTapHint: 'open full screen',
+                    child: GestureDetector(
+                      onTap: () => _openPhoto(context, portfolio, index, niches, name),
+                      child: tile,
+                    ),
+                  );
+                },
               ),
             ),
           ],

@@ -10,6 +10,7 @@ import 'package:rawwers/api/models/client_profile_package.dart';
 import 'package:rawwers/api/models/skill_tier.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
@@ -392,5 +393,86 @@ void _multiNicheTests() {
       findsOneWidget,
       reason: 'the tier is invisible on a single-niche profile',
     );
+  });
+
+  // --- Full screen. ---
+
+  const viewerPortfolio = [
+    ClientPortfolioItem(
+      mediaAssetId: 'a',
+      kind: 'photo',
+      thumbnailUrl: 'https://media.example/1.jpg',
+      previewUrl: 'https://media.example/1_web.jpg',
+      nicheSlugs: ['weddings'],
+    ),
+    // A video sits in the grid but has nothing to open full screen.
+    ClientPortfolioItem(mediaAssetId: 'v', kind: 'video'),
+    ClientPortfolioItem(
+      mediaAssetId: 'b',
+      kind: 'photo',
+      thumbnailUrl: 'https://media.example/2.jpg',
+      previewUrl: 'https://media.example/2_web.jpg',
+      nicheSlugs: ['portraits'],
+    ),
+    // Still waiting for its web copy: the thumbnail rather than nothing.
+    ClientPortfolioItem(mediaAssetId: 'c', kind: 'photo', thumbnailUrl: 'https://media.example/3.jpg'),
+  ];
+  const viewerNiches = [
+    ClientProfileNiche(slug: 'weddings', name: 'Weddings', photoCount: 1, tier: SkillTier.pro),
+    ClientProfileNiche(slug: 'portraits', name: 'Portraits', photoCount: 1, tier: SkillTier.pro),
+  ];
+
+  Future<void> openAt(WidgetTester tester, String thumbnailUrl) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile(portfolio: viewerPortfolio, niches: viewerNiches))));
+    await tester.pump();
+    final tile = find.byWidgetPredicate((w) => w is RNetworkPhoto && w.url == thumbnailUrl);
+    await tester.ensureVisible(tile);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('tapping a portfolio photo opens it full screen, on that photo', (tester) async {
+    await openAt(tester, 'https://media.example/2.jpg');
+
+    final viewer = tester.widget<RPhotoViewer>(find.byType(RPhotoViewer));
+    expect(viewer.urls, ['https://media.example/1_web.jpg', 'https://media.example/2_web.jpg', 'https://media.example/3.jpg'],
+        reason: 'photos only, each on its web copy, the thumbnail only where there is none');
+    expect(viewer.initialIndex, 1, reason: 'opened on a different photo from the one tapped');
+    expect(find.text('2 of 3'), findsOneWidget);
+    expect(viewer.title, 'Alex Lens');
+  });
+
+  testWidgets('each photo is captioned with its niche, by the server\'s name for it', (tester) async {
+    await openAt(tester, 'https://media.example/1.jpg');
+    final viewer = tester.widget<RPhotoViewer>(find.byType(RPhotoViewer));
+    expect(viewer.captions, ['Weddings', 'Portraits', '']);
+    expect(find.descendant(of: find.byType(RPhotoViewer), matching: find.text('Weddings')), findsOneWidget);
+  });
+
+  testWidgets('a video tile opens nothing', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile(portfolio: viewerPortfolio, niches: viewerNiches))));
+    await tester.pump();
+    final video = find.byWidgetPredicate((w) => w is RNetworkPhoto && w.url == null && w.semanticLabel != null);
+    await tester.ensureVisible(video);
+    await tester.tap(video, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.byType(RPhotoViewer), findsNothing);
+  });
+
+  testWidgets('the close button and a swipe down both return to the profile', (tester) async {
+    await openAt(tester, 'https://media.example/1.jpg');
+    await tester.tap(find.byTooltip('Close photo viewer'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RPhotoViewer), findsNothing);
+    expect(find.byType(ProProfileScreen), findsOneWidget);
+
+    final tile = find.byWidgetPredicate((w) => w is RNetworkPhoto && w.url == 'https://media.example/1.jpg');
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(PageView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(find.byType(RPhotoViewer), findsNothing);
   });
 }

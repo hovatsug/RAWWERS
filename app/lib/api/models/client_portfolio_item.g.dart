@@ -11,6 +11,7 @@ _ClientPortfolioItem _$ClientPortfolioItemFromJson(Map<String, dynamic> json) =>
       mediaAssetId: json['media_asset_id'] as String,
       kind: json['kind'] as String,
       thumbnailUrl: json['thumbnail_url'] as String?,
+      previewUrl: json['preview_url'] as String?,
       nicheSlugs: (json['niche_slugs'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
@@ -22,5 +23,6 @@ Map<String, dynamic> _$ClientPortfolioItemToJson(
   'media_asset_id': instance.mediaAssetId,
   'kind': instance.kind,
   'thumbnail_url': instance.thumbnailUrl,
+  'preview_url': instance.previewUrl,
   'niche_slugs': instance.nicheSlugs,
 };

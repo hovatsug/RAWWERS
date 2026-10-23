@@ -8,6 +8,16 @@
 ///         "name": {
 ///             "type": "string",
 ///             "title": "Name"
+///         },
+///         "banner": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/NicheBannerView"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -35,6 +45,9 @@ abstract class ClientHomeNiche with _$ClientHomeNiche {
 
     /// name
     @JsonKey(name: ClientHomeNiche.nameKey_) required String name,
+
+    /// banner
+    @JsonKey(name: ClientHomeNiche.bannerKey_) NicheBannerView? banner,
   }) = _ClientHomeNiche;
 
   factory ClientHomeNiche.fromJson(Map<String, dynamic> json) =>
@@ -43,4 +56,6 @@ abstract class ClientHomeNiche with _$ClientHomeNiche {
   static const String slugKey_ = r'slug';
 
   static const String nameKey_ = r'name';
+
+  static const String bannerKey_ = r'banner';
 }

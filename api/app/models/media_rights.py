@@ -16,6 +16,11 @@ class MediaDerivativeKind(str, enum.Enum):
     web_res = "web_res"
     full_res = "full_res"
     thumbnail = "thumbnail"
+    # A niche banner's: the Discover tile, the niche page's hero, and a tiny
+    # blurred stand-in.
+    banner_tile = "banner_tile"
+    banner_hero = "banner_hero"
+    banner_placeholder = "banner_placeholder"
 
 
 class GigEntitlementType(str, enum.Enum):

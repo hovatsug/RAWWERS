@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/design/components/r_empty_state.dart';
+import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/discover/hero_slides.dart';
@@ -53,6 +54,7 @@ class NicheScreen extends ConsumerWidget {
         AsyncData(value: NichePage(:final niche, :final rows)) => RefreshIndicator(
             onRefresh: () => ref.read(nicheControllerProvider(nicheSlug).notifier).refresh(),
             child: _Page(
+              banner: RNicheBanner(title: niche.name, banner: niche.banner, shape: RNicheBannerShape.hero),
               slides: nicheHeroSlidesFrom(rows, nicheSlug: niche.slug),
               rows: [
                 for (final row in rows)
@@ -72,8 +74,10 @@ class NicheScreen extends ConsumerWidget {
 }
 
 class _Page extends StatelessWidget {
-  const _Page({required this.slides, required this.rows, this.onOpenPro});
+  const _Page({required this.banner, required this.slides, required this.rows, this.onOpenPro});
 
+  /// The niche's own banner, as the admin set it, above its photographers.
+  final Widget banner;
   final List<HeroSlide> slides;
   final List<Widget> rows;
   final void Function(String proUserId)? onOpenPro;
@@ -83,6 +87,7 @@ class _Page extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: RSpace.s32),
       children: [
+        banner,
         // Every slide here is this niche, so a slide opens the photographer it
         // shows - opening the niche would reload the page you are on.
         HeroCarousel(slides: slides, onOpen: (slide) => onOpenPro?.call(slide.card.proUserId)),

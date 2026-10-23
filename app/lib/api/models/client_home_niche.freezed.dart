@@ -17,7 +17,8 @@ mixin _$ClientHomeNiche {
 
 /// slug
 @JsonKey(name: ClientHomeNiche.slugKey_) String get slug;/// name
-@JsonKey(name: ClientHomeNiche.nameKey_) String get name;
+@JsonKey(name: ClientHomeNiche.nameKey_) String get name;/// banner
+@JsonKey(name: ClientHomeNiche.bannerKey_) NicheBannerView? get banner;
 /// Create a copy of ClientHomeNiche
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $ClientHomeNicheCopyWith<ClientHomeNiche> get copyWith => _$ClientHomeNicheCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientHomeNiche&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientHomeNiche&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.banner, banner) || other.banner == banner));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,slug,name);
+int get hashCode => Object.hash(runtimeType,slug,name,banner);
 
 @override
 String toString() {
-  return 'ClientHomeNiche(slug: $slug, name: $name)';
+  return 'ClientHomeNiche(slug: $slug, name: $name, banner: $banner)';
 }
 
 
@@ -50,11 +51,11 @@ abstract mixin class $ClientHomeNicheCopyWith<$Res>  {
   factory $ClientHomeNicheCopyWith(ClientHomeNiche value, $Res Function(ClientHomeNiche) _then) = _$ClientHomeNicheCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientHomeNiche.slugKey_) String slug,@JsonKey(name: ClientHomeNiche.nameKey_) String name
+@JsonKey(name: ClientHomeNiche.slugKey_) String slug,@JsonKey(name: ClientHomeNiche.nameKey_) String name,@JsonKey(name: ClientHomeNiche.bannerKey_) NicheBannerView? banner
 });
 
 
-
+$NicheBannerViewCopyWith<$Res>? get banner;
 
 }
 /// @nodoc
@@ -67,14 +68,27 @@ class _$ClientHomeNicheCopyWithImpl<$Res>
 
 /// Create a copy of ClientHomeNiche
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? slug = null,Object? name = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? slug = null,Object? name = null,Object? banner = freezed,}) {
   return _then(_self.copyWith(
 slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,banner: freezed == banner ? _self.banner : banner // ignore: cast_nullable_to_non_nullable
+as NicheBannerView?,
   ));
 }
+/// Create a copy of ClientHomeNiche
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NicheBannerViewCopyWith<$Res>? get banner {
+    if (_self.banner == null) {
+    return null;
+  }
 
+  return $NicheBannerViewCopyWith<$Res>(_self.banner!, (value) {
+    return _then(_self.copyWith(banner: value));
+  });
+}
 }
 
 
@@ -156,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeNiche.slugKey_)  String slug, @JsonKey(name: ClientHomeNiche.nameKey_)  String name)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeNiche.slugKey_)  String slug, @JsonKey(name: ClientHomeNiche.nameKey_)  String name, @JsonKey(name: ClientHomeNiche.bannerKey_)  NicheBannerView? banner)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientHomeNiche() when $default != null:
-return $default(_that.slug,_that.name);case _:
+return $default(_that.slug,_that.name,_that.banner);case _:
   return orElse();
 
 }
@@ -177,10 +191,10 @@ return $default(_that.slug,_that.name);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeNiche.slugKey_)  String slug, @JsonKey(name: ClientHomeNiche.nameKey_)  String name)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeNiche.slugKey_)  String slug, @JsonKey(name: ClientHomeNiche.nameKey_)  String name, @JsonKey(name: ClientHomeNiche.bannerKey_)  NicheBannerView? banner)  $default,) {final _that = this;
 switch (_that) {
 case _ClientHomeNiche():
-return $default(_that.slug,_that.name);case _:
+return $default(_that.slug,_that.name,_that.banner);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +211,10 @@ return $default(_that.slug,_that.name);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientHomeNiche.slugKey_)  String slug, @JsonKey(name: ClientHomeNiche.nameKey_)  String name)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientHomeNiche.slugKey_)  String slug, @JsonKey(name: ClientHomeNiche.nameKey_)  String name, @JsonKey(name: ClientHomeNiche.bannerKey_)  NicheBannerView? banner)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientHomeNiche() when $default != null:
-return $default(_that.slug,_that.name);case _:
+return $default(_that.slug,_that.name,_that.banner);case _:
   return null;
 
 }
@@ -212,13 +226,15 @@ return $default(_that.slug,_that.name);case _:
 
 @jsonSerializable
 class _ClientHomeNiche extends ClientHomeNiche {
-  const _ClientHomeNiche({@JsonKey(name: ClientHomeNiche.slugKey_) required this.slug, @JsonKey(name: ClientHomeNiche.nameKey_) required this.name}): super._();
+  const _ClientHomeNiche({@JsonKey(name: ClientHomeNiche.slugKey_) required this.slug, @JsonKey(name: ClientHomeNiche.nameKey_) required this.name, @JsonKey(name: ClientHomeNiche.bannerKey_) this.banner}): super._();
   factory _ClientHomeNiche.fromJson(Map<String, dynamic> json) => _$ClientHomeNicheFromJson(json);
 
 /// slug
 @override@JsonKey(name: ClientHomeNiche.slugKey_) final  String slug;
 /// name
 @override@JsonKey(name: ClientHomeNiche.nameKey_) final  String name;
+/// banner
+@override@JsonKey(name: ClientHomeNiche.bannerKey_) final  NicheBannerView? banner;
 
 /// Create a copy of ClientHomeNiche
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientHomeNiche&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientHomeNiche&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.banner, banner) || other.banner == banner));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,slug,name);
+int get hashCode => Object.hash(runtimeType,slug,name,banner);
 
 @override
 String toString() {
-  return 'ClientHomeNiche(slug: $slug, name: $name)';
+  return 'ClientHomeNiche(slug: $slug, name: $name, banner: $banner)';
 }
 
 
@@ -253,11 +269,11 @@ abstract mixin class _$ClientHomeNicheCopyWith<$Res> implements $ClientHomeNiche
   factory _$ClientHomeNicheCopyWith(_ClientHomeNiche value, $Res Function(_ClientHomeNiche) _then) = __$ClientHomeNicheCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientHomeNiche.slugKey_) String slug,@JsonKey(name: ClientHomeNiche.nameKey_) String name
+@JsonKey(name: ClientHomeNiche.slugKey_) String slug,@JsonKey(name: ClientHomeNiche.nameKey_) String name,@JsonKey(name: ClientHomeNiche.bannerKey_) NicheBannerView? banner
 });
 
 
-
+@override $NicheBannerViewCopyWith<$Res>? get banner;
 
 }
 /// @nodoc
@@ -270,15 +286,28 @@ class __$ClientHomeNicheCopyWithImpl<$Res>
 
 /// Create a copy of ClientHomeNiche
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? slug = null,Object? name = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? slug = null,Object? name = null,Object? banner = freezed,}) {
   return _then(_ClientHomeNiche(
 slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,banner: freezed == banner ? _self.banner : banner // ignore: cast_nullable_to_non_nullable
+as NicheBannerView?,
   ));
 }
 
+/// Create a copy of ClientHomeNiche
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NicheBannerViewCopyWith<$Res>? get banner {
+    if (_self.banner == null) {
+    return null;
+  }
 
+  return $NicheBannerViewCopyWith<$Res>(_self.banner!, (value) {
+    return _then(_self.copyWith(banner: value));
+  });
+}
 }
 
 // dart format on

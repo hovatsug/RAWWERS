@@ -5,7 +5,10 @@
 //         "preview_watermarked",
 //         "web_res",
 //         "full_res",
-//         "thumbnail"
+//         "thumbnail",
+//         "banner_tile",
+//         "banner_hero",
+//         "banner_placeholder"
 //     ],
 //     "title": "MediaDerivativeKind"
 // }
@@ -24,7 +27,13 @@ enum MediaDerivativeKind {
   @JsonValue("full_res")
   fullRes,
   @JsonValue("thumbnail")
-  thumbnail;
+  thumbnail,
+  @JsonValue("banner_tile")
+  bannerTile,
+  @JsonValue("banner_hero")
+  bannerHero,
+  @JsonValue("banner_placeholder")
+  bannerPlaceholder;
 
   factory MediaDerivativeKind.fromJson(String json) =>
       MediaDerivativeKind.values.firstWhere(

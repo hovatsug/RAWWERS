@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.models.niche import SkillTier
 
 from app.models.media_rights import GigConsentLevel
+from app.schemas.niche_banners import NicheBannerView
 from app.schemas.review import ReviewView
 
 
@@ -448,6 +449,8 @@ class ClientHomeRow(BaseModel):
     # response entirely rather than sent for the app to render as a blank
     # shelf.
     items: list[ClientDiscoverCard] = Field(default_factory=list)
+    # A niche row's banner, as the admin set it; null on every other row.
+    banner: NicheBannerView | None = None
 
 
 class ClientHomeNiche(BaseModel):
@@ -455,6 +458,8 @@ class ClientHomeNiche(BaseModel):
 
     slug: str
     name: str
+    # The niche page's hero.
+    banner: NicheBannerView | None = None
 
 
 class ClientHomeResponse(BaseModel):

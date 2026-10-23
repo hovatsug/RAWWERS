@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
-import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/components/r_tier_badge.dart';
@@ -60,7 +60,6 @@ class PhotographerRow extends StatelessWidget {
     // out to have nothing is worse than rendering none.
     final items = row.items ?? const <ClientDiscoverCard>[];
     if (items.isEmpty) return const SizedBox.shrink();
-    final leadCover = items.first.coverUrl;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,10 +68,9 @@ class PhotographerRow extends StatelessWidget {
           padding: _RowMetrics.headingPadding,
           child: slug == null
               ? _RowHeading(title: row.title, subtitle: row.subtitle)
-              : RNicheTile(
-                  label: row.title,
-                  imageUrl: leadCover,
-                  width: double.infinity,
+              : RNicheBanner(
+                  title: row.title,
+                  banner: row.banner,
                   height: 96,
                   onTap: onOpenNiche == null ? null : () => onOpenNiche!(slug),
                 ),

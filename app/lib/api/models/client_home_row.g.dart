@@ -14,6 +14,9 @@ _ClientHomeRow _$ClientHomeRowFromJson(Map<String, dynamic> json) =>
       items: (json['items'] as List<dynamic>?)
           ?.map((e) => ClientDiscoverCard.fromJson(e as Map<String, dynamic>))
           .toList(),
+      banner: json['banner'] == null
+          ? null
+          : NicheBannerView.fromJson(json['banner'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$ClientHomeRowToJson(_ClientHomeRow instance) =>
@@ -22,4 +25,5 @@ Map<String, dynamic> _$ClientHomeRowToJson(_ClientHomeRow instance) =>
       'title': instance.title,
       'subtitle': instance.subtitle,
       'items': instance.items,
+      'banner': instance.banner,
     };

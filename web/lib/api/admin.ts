@@ -324,6 +324,20 @@ export const admin = {
   liftBookingPause: (proId: string, note: string) =>
     adminFetch<unknown>(`pros/${proId}/booking-pause/lift`, { method: "POST", body: JSON.stringify({ note }) }),
   accountabilityPolicy: () => adminFetch<AccountabilityPolicy>("policies/accountability"),
+  nicheBanners: () => adminFetch<NicheBannerList>("niche-banners"),
+  nicheBanner: (slug: string) => adminFetch<NicheBannerDetail>(`niche-banners/${slug}`),
+  editNicheBanner: (slug: string, body: { banner_style?: BannerStyle; banner_tagline?: string | null }) =>
+    adminFetch<NicheBannerDetail>(`niche-banners/${slug}`, { method: "PATCH", body: JSON.stringify(body) }),
+  startBannerUpload: (content_type: string, file_name: string) =>
+    adminFetch<BannerUploadStarted>("niche-banner-uploads", { method: "POST", body: JSON.stringify({ content_type, file_name }) }),
+  completeBannerUpload: (mediaAssetId: string) =>
+    adminFetch<BannerUploadCompleted>(`niche-banner-uploads/${mediaAssetId}/complete`, { method: "POST" }),
+  setBannerImage: (slug: string, body: BannerImageFields & { media_asset_id: string }) =>
+    adminFetch<NicheBannerDetail>(`niche-banners/${slug}/image`, { method: "PUT", body: JSON.stringify(body) }),
+  editBannerImage: (slug: string, body: Partial<BannerImageFields>) =>
+    adminFetch<NicheBannerDetail>(`niche-banners/${slug}/image`, { method: "PATCH", body: JSON.stringify(body) }),
+  removeBannerImage: (slug: string) => adminFetch<NicheBannerDetail>(`niche-banners/${slug}/image`, { method: "DELETE" }),
+  revertBannerImage: (slug: string) => adminFetch<NicheBannerDetail>(`niche-banners/${slug}/image/revert`, { method: "POST" }),
   saveAccountabilityPolicy: (body: Partial<AccountabilityPolicy>) =>
     adminFetch<AccountabilityPolicy>("policies/accountability", { method: "PUT", body: JSON.stringify(body) }),
   moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[] }>("money-attention"),
@@ -440,4 +454,76 @@ export type CameraImportResult = {
   errors: number;
   changes_sensor_size: boolean;
   applied: boolean;
+};
+
+// ─── Niche banners ─────────────────────────────────────────────────────────
+
+export type BannerStyle = "image" | "text";
+export type BannerStatus = "image_set" | "image_missing" | "text_only";
+
+export type BannerImageFields = {
+  alt_text: string;
+  focal_x: number;
+  focal_y: number;
+  source: "owner" | "stock";
+  credit: string | null;
+  licence: string | null;
+  source_url: string | null;
+};
+
+export type BannerRecord = BannerImageFields & {
+  banner_id: string;
+  media_asset_id: string;
+  state: "current" | "previous" | "past";
+  width: number;
+  height: number;
+  scrim_opacity: number;
+  created_at: string;
+  created_by_user_id: string;
+  tile_url: string | null;
+  hero_url: string | null;
+  placeholder: string;
+};
+
+export type BannerLimits = {
+  mime_types: string[];
+  max_bytes: number;
+  min_width: number;
+  min_height: number;
+  tagline_max: number;
+  alt_max: number;
+  min_contrast: number;
+};
+
+export type NicheBannerRow = {
+  slug: string;
+  name: string;
+  is_active: boolean;
+  banner_style: BannerStyle;
+  banner_tagline: string | null;
+  status: BannerStatus;
+  current: BannerRecord | null;
+  has_previous: boolean;
+};
+
+export type NicheBannerList = { items: NicheBannerRow[]; limits: BannerLimits };
+
+export type NicheBannerDetail = NicheBannerRow & {
+  previous: BannerRecord | null;
+  history: BannerRecord[];
+  limits: BannerLimits;
+};
+
+export type BannerUploadStarted = {
+  media_asset_id: string;
+  upload: { method: string; url: string; headers: Record<string, string>; storage_key: string; expires_in: number };
+};
+
+export type BannerUploadCompleted = {
+  media_asset_id: string;
+  width: number;
+  height: number;
+  scrim_opacity: number;
+  placeholder: string;
+  warnings: string[];
 };

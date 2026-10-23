@@ -74,6 +74,7 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
 from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
+from app.services.niche_banners import banner_views as niche_banner_views
 from app.services.media_urls import (
     ORIGINAL_FIRST,
     THUMBNAIL_FIRST,
@@ -1203,6 +1204,7 @@ def client_home(
 
     # Which niche's work each row shows, by row key.
     row_niche: dict[str, str] = {}
+    row_niches: list[Niche] = []
     if scope is not None:
         ranked = db.execute(
             base.order_by(ProPublicIndex.ranking_score.desc()).limit(_ROW_SIZE)
@@ -1220,6 +1222,7 @@ def client_home(
                 .limit(_ROW_SIZE)
             ).scalars().all()
             row_niche[f"niche:{slug}"] = slug
+            row_niches.append(niche)
             plans.append((f"niche:{slug}", f"{name} in {city.strip()}", None, list(rows)))
 
     # Cards are built once across every row rather than per row. The same
@@ -1247,12 +1250,17 @@ def client_home(
         if pro_ids
     }
 
+    # Each niche's banner, as the admin set it - in the response, and so in
+    # its cache, which every banner change invalidates.
+    banners = niche_banner_views(db, row_niches + ([scope] if scope else []), expires_in=_media_url_ttl())
+
     response = ClientHomeResponse(
         rows=[
             ClientHomeRow(
                 key=key,
                 title=title,
                 subtitle=subtitle,
+                banner=banners.get(key.removeprefix("niche:")) if key.startswith("niche:") else None,
                 items=[
                     _with_niche_cover(cards[row.pro_user_id], niche_covers.get(row_niche.get(key, "")))
                     for row in rows
@@ -1265,7 +1273,7 @@ def client_home(
             if any(row.pro_user_id in cards for row in rows)
         ],
         guest_limited=user is None,
-        niche=ClientHomeNiche(slug=scope.slug, name=scope.name) if scope else None,
+        niche=ClientHomeNiche(slug=scope.slug, name=scope.name, banner=banners.get(scope.slug)) if scope else None,
     )
 
     cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=max(10, settings.discover_cache_ttl_seconds))

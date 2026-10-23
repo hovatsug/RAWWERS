@@ -19,7 +19,8 @@ mixin _$ClientHomeRow {
 @JsonKey(name: ClientHomeRow.keyKey_) String get key;/// title
 @JsonKey(name: ClientHomeRow.titleKey_) String get title;/// subtitle
 @JsonKey(name: ClientHomeRow.subtitleKey_) String? get subtitle;/// items
-@JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? get items;
+@JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? get items;/// banner
+@JsonKey(name: ClientHomeRow.bannerKey_) NicheBannerView? get banner;
 /// Create a copy of ClientHomeRow
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +33,16 @@ $ClientHomeRowCopyWith<ClientHomeRow> get copyWith => _$ClientHomeRowCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientHomeRow&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.subtitle, subtitle) || other.subtitle == subtitle)&&const DeepCollectionEquality().equals(other.items, items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientHomeRow&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.subtitle, subtitle) || other.subtitle == subtitle)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.banner, banner) || other.banner == banner));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,key,title,subtitle,const DeepCollectionEquality().hash(items));
+int get hashCode => Object.hash(runtimeType,key,title,subtitle,const DeepCollectionEquality().hash(items),banner);
 
 @override
 String toString() {
-  return 'ClientHomeRow(key: $key, title: $title, subtitle: $subtitle, items: $items)';
+  return 'ClientHomeRow(key: $key, title: $title, subtitle: $subtitle, items: $items, banner: $banner)';
 }
 
 
@@ -52,11 +53,11 @@ abstract mixin class $ClientHomeRowCopyWith<$Res>  {
   factory $ClientHomeRowCopyWith(ClientHomeRow value, $Res Function(ClientHomeRow) _then) = _$ClientHomeRowCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientHomeRow.keyKey_) String key,@JsonKey(name: ClientHomeRow.titleKey_) String title,@JsonKey(name: ClientHomeRow.subtitleKey_) String? subtitle,@JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? items
+@JsonKey(name: ClientHomeRow.keyKey_) String key,@JsonKey(name: ClientHomeRow.titleKey_) String title,@JsonKey(name: ClientHomeRow.subtitleKey_) String? subtitle,@JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? items,@JsonKey(name: ClientHomeRow.bannerKey_) NicheBannerView? banner
 });
 
 
-
+$NicheBannerViewCopyWith<$Res>? get banner;
 
 }
 /// @nodoc
@@ -69,16 +70,29 @@ class _$ClientHomeRowCopyWithImpl<$Res>
 
 /// Create a copy of ClientHomeRow
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? key = null,Object? title = null,Object? subtitle = freezed,Object? items = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? key = null,Object? title = null,Object? subtitle = freezed,Object? items = freezed,Object? banner = freezed,}) {
   return _then(_self.copyWith(
 key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,subtitle: freezed == subtitle ? _self.subtitle : subtitle // ignore: cast_nullable_to_non_nullable
 as String?,items: freezed == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
-as List<ClientDiscoverCard>?,
+as List<ClientDiscoverCard>?,banner: freezed == banner ? _self.banner : banner // ignore: cast_nullable_to_non_nullable
+as NicheBannerView?,
   ));
 }
+/// Create a copy of ClientHomeRow
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NicheBannerViewCopyWith<$Res>? get banner {
+    if (_self.banner == null) {
+    return null;
+  }
 
+  return $NicheBannerViewCopyWith<$Res>(_self.banner!, (value) {
+    return _then(_self.copyWith(banner: value));
+  });
+}
 }
 
 
@@ -160,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeRow.keyKey_)  String key, @JsonKey(name: ClientHomeRow.titleKey_)  String title, @JsonKey(name: ClientHomeRow.subtitleKey_)  String? subtitle, @JsonKey(name: ClientHomeRow.itemsKey_)  List<ClientDiscoverCard>? items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeRow.keyKey_)  String key, @JsonKey(name: ClientHomeRow.titleKey_)  String title, @JsonKey(name: ClientHomeRow.subtitleKey_)  String? subtitle, @JsonKey(name: ClientHomeRow.itemsKey_)  List<ClientDiscoverCard>? items, @JsonKey(name: ClientHomeRow.bannerKey_)  NicheBannerView? banner)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientHomeRow() when $default != null:
-return $default(_that.key,_that.title,_that.subtitle,_that.items);case _:
+return $default(_that.key,_that.title,_that.subtitle,_that.items,_that.banner);case _:
   return orElse();
 
 }
@@ -181,10 +195,10 @@ return $default(_that.key,_that.title,_that.subtitle,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeRow.keyKey_)  String key, @JsonKey(name: ClientHomeRow.titleKey_)  String title, @JsonKey(name: ClientHomeRow.subtitleKey_)  String? subtitle, @JsonKey(name: ClientHomeRow.itemsKey_)  List<ClientDiscoverCard>? items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientHomeRow.keyKey_)  String key, @JsonKey(name: ClientHomeRow.titleKey_)  String title, @JsonKey(name: ClientHomeRow.subtitleKey_)  String? subtitle, @JsonKey(name: ClientHomeRow.itemsKey_)  List<ClientDiscoverCard>? items, @JsonKey(name: ClientHomeRow.bannerKey_)  NicheBannerView? banner)  $default,) {final _that = this;
 switch (_that) {
 case _ClientHomeRow():
-return $default(_that.key,_that.title,_that.subtitle,_that.items);case _:
+return $default(_that.key,_that.title,_that.subtitle,_that.items,_that.banner);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +215,10 @@ return $default(_that.key,_that.title,_that.subtitle,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientHomeRow.keyKey_)  String key, @JsonKey(name: ClientHomeRow.titleKey_)  String title, @JsonKey(name: ClientHomeRow.subtitleKey_)  String? subtitle, @JsonKey(name: ClientHomeRow.itemsKey_)  List<ClientDiscoverCard>? items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientHomeRow.keyKey_)  String key, @JsonKey(name: ClientHomeRow.titleKey_)  String title, @JsonKey(name: ClientHomeRow.subtitleKey_)  String? subtitle, @JsonKey(name: ClientHomeRow.itemsKey_)  List<ClientDiscoverCard>? items, @JsonKey(name: ClientHomeRow.bannerKey_)  NicheBannerView? banner)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientHomeRow() when $default != null:
-return $default(_that.key,_that.title,_that.subtitle,_that.items);case _:
+return $default(_that.key,_that.title,_that.subtitle,_that.items,_that.banner);case _:
   return null;
 
 }
@@ -216,7 +230,7 @@ return $default(_that.key,_that.title,_that.subtitle,_that.items);case _:
 
 @jsonSerializable
 class _ClientHomeRow extends ClientHomeRow {
-  const _ClientHomeRow({@JsonKey(name: ClientHomeRow.keyKey_) required this.key, @JsonKey(name: ClientHomeRow.titleKey_) required this.title, @JsonKey(name: ClientHomeRow.subtitleKey_) this.subtitle, @JsonKey(name: ClientHomeRow.itemsKey_) final  List<ClientDiscoverCard>? items}): _items = items,super._();
+  const _ClientHomeRow({@JsonKey(name: ClientHomeRow.keyKey_) required this.key, @JsonKey(name: ClientHomeRow.titleKey_) required this.title, @JsonKey(name: ClientHomeRow.subtitleKey_) this.subtitle, @JsonKey(name: ClientHomeRow.itemsKey_) final  List<ClientDiscoverCard>? items, @JsonKey(name: ClientHomeRow.bannerKey_) this.banner}): _items = items,super._();
   factory _ClientHomeRow.fromJson(Map<String, dynamic> json) => _$ClientHomeRowFromJson(json);
 
 /// key
@@ -236,6 +250,8 @@ class _ClientHomeRow extends ClientHomeRow {
   return EqualUnmodifiableListView(value);
 }
 
+/// banner
+@override@JsonKey(name: ClientHomeRow.bannerKey_) final  NicheBannerView? banner;
 
 /// Create a copy of ClientHomeRow
 /// with the given fields replaced by the non-null parameter values.
@@ -250,16 +266,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientHomeRow&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.subtitle, subtitle) || other.subtitle == subtitle)&&const DeepCollectionEquality().equals(other._items, _items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientHomeRow&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.subtitle, subtitle) || other.subtitle == subtitle)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.banner, banner) || other.banner == banner));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,key,title,subtitle,const DeepCollectionEquality().hash(_items));
+int get hashCode => Object.hash(runtimeType,key,title,subtitle,const DeepCollectionEquality().hash(_items),banner);
 
 @override
 String toString() {
-  return 'ClientHomeRow(key: $key, title: $title, subtitle: $subtitle, items: $items)';
+  return 'ClientHomeRow(key: $key, title: $title, subtitle: $subtitle, items: $items, banner: $banner)';
 }
 
 
@@ -270,11 +286,11 @@ abstract mixin class _$ClientHomeRowCopyWith<$Res> implements $ClientHomeRowCopy
   factory _$ClientHomeRowCopyWith(_ClientHomeRow value, $Res Function(_ClientHomeRow) _then) = __$ClientHomeRowCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientHomeRow.keyKey_) String key,@JsonKey(name: ClientHomeRow.titleKey_) String title,@JsonKey(name: ClientHomeRow.subtitleKey_) String? subtitle,@JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? items
+@JsonKey(name: ClientHomeRow.keyKey_) String key,@JsonKey(name: ClientHomeRow.titleKey_) String title,@JsonKey(name: ClientHomeRow.subtitleKey_) String? subtitle,@JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? items,@JsonKey(name: ClientHomeRow.bannerKey_) NicheBannerView? banner
 });
 
 
-
+@override $NicheBannerViewCopyWith<$Res>? get banner;
 
 }
 /// @nodoc
@@ -287,17 +303,30 @@ class __$ClientHomeRowCopyWithImpl<$Res>
 
 /// Create a copy of ClientHomeRow
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? key = null,Object? title = null,Object? subtitle = freezed,Object? items = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? key = null,Object? title = null,Object? subtitle = freezed,Object? items = freezed,Object? banner = freezed,}) {
   return _then(_ClientHomeRow(
 key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,subtitle: freezed == subtitle ? _self.subtitle : subtitle // ignore: cast_nullable_to_non_nullable
 as String?,items: freezed == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
-as List<ClientDiscoverCard>?,
+as List<ClientDiscoverCard>?,banner: freezed == banner ? _self.banner : banner // ignore: cast_nullable_to_non_nullable
+as NicheBannerView?,
   ));
 }
 
+/// Create a copy of ClientHomeRow
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NicheBannerViewCopyWith<$Res>? get banner {
+    if (_self.banner == null) {
+    return null;
+  }
 
+  return $NicheBannerViewCopyWith<$Res>(_self.banner!, (value) {
+    return _then(_self.copyWith(banner: value));
+  });
+}
 }
 
 // dart format on

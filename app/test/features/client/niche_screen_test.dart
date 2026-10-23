@@ -14,7 +14,7 @@ import 'package:rawwers/api/models/client_home_niche.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
-import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/discover/hero_slides.dart';
 import 'package:rawwers/features/client/discover/niche_controller.dart';
@@ -122,9 +122,12 @@ void main() {
     expect(newcomers.toSet().intersection(experienced.toSet()), isEmpty, reason: 'the two rows were blended');
   });
 
-  testWidgets('no row here is a niche tile - that would link to this page', (tester) async {
+  testWidgets('the page leads with its own banner, and no row is a niche tile linking to it', (tester) async {
     await _pump(tester, () => _Fake(_page([_row('niche_ranked', 'Weddings in Lisbon', ['Ana'])])));
-    expect(find.byType(RNicheTile), findsNothing);
+    final banners = tester.widgetList<RNicheBanner>(find.byType(RNicheBanner)).toList();
+    expect(banners.length, 1, reason: 'one hero, and no tile in the rows');
+    expect(banners.single.shape, RNicheBannerShape.hero);
+    expect(banners.single.title, 'Weddings');
   });
 
   group('the hero', () {

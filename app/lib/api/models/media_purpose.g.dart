@@ -12,5 +12,6 @@ const _$MediaPurposeEnumMap = {
   MediaPurpose.proof: 'proof',
   MediaPurpose.finalDelivery: 'final_delivery',
   MediaPurpose.gearEvidence: 'gear_evidence',
+  MediaPurpose.nicheBanner: 'niche_banner',
   MediaPurpose.other: 'other',
 };

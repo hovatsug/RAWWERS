@@ -7,6 +7,7 @@
 //         "proof",
 //         "final_delivery",
 //         "gear_evidence",
+//         "niche_banner",
 //         "other"
 //     ],
 //     "title": "MediaPurpose"
@@ -29,6 +30,8 @@ enum MediaPurpose {
   finalDelivery,
   @JsonValue("gear_evidence")
   gearEvidence,
+  @JsonValue("niche_banner")
+  nicheBanner,
   @JsonValue("other")
   other;
 

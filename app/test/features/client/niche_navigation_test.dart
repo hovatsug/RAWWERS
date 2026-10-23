@@ -1,7 +1,7 @@
 // Every way into a niche lands on the same page.
 //
 // Driven through the real client router rather than by checking a callback
-// fired: the bug this replaces was never in a widget - RNicheTile took an
+// fired: the bug this replaces was never in a widget - the niche tile took an
 // onTap all along - it was the router not passing one through. A test that
 // hands the screen its own callback would have passed the whole time the
 // tiles did nothing.
@@ -19,7 +19,7 @@ import 'package:rawwers/api/models/me_response.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
 import 'package:rawwers/core/router/app_router_client.dart';
-import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/discover/home_controller.dart';
 import 'package:rawwers/features/client/discover/niche_controller.dart';
@@ -124,7 +124,7 @@ void main() {
   testWidgets('the niche tile - which is also the row heading - opens the niche page', (tester) async {
     final router = await _pumpApp(tester, nicheOverrides);
 
-    await tester.tap(find.widgetWithText(RNicheTile, 'Weddings in Lisbon'));
+    await tester.tap(find.widgetWithText(RNicheBanner, 'Weddings in Lisbon'));
     await _settle(tester);
 
     _expectNichePage(tester, router, 'weddings');
@@ -143,7 +143,7 @@ void main() {
   testWidgets('tile and hero slide for one niche arrive at the same place', (tester) async {
     final router = await _pumpApp(tester, nicheOverrides);
 
-    await tester.tap(find.widgetWithText(RNicheTile, 'Weddings in Lisbon'));
+    await tester.tap(find.widgetWithText(RNicheBanner, 'Weddings in Lisbon'));
     await _settle(tester);
     final fromTile = _at(router);
 
@@ -161,7 +161,7 @@ void main() {
   testWidgets('each niche opens its own page', (tester) async {
     final router = await _pumpApp(tester, nicheOverrides);
 
-    await tester.tap(find.widgetWithText(RNicheTile, 'Portraits in Lisbon'));
+    await tester.tap(find.widgetWithText(RNicheBanner, 'Portraits in Lisbon'));
     await _settle(tester);
 
     _expectNichePage(tester, router, 'portraits');

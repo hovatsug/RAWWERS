@@ -41,6 +41,22 @@ abstract final class RAccent {
   static const meter700 = Color(0xFF2C4F66);
 }
 
+/// A niche banner's own colours.
+///
+/// The text-only banner is a designed object, not an empty image: the deep
+/// meter blue ground, the name in near-white (8.3:1 on it) and the tagline
+/// one step softer (6.8:1), with a thin meter rule above the name. The scrim
+/// over an image banner is ink, its strength measured per image by the
+/// server so a white title keeps at least 4.5:1.
+abstract final class RBanner {
+  static const textGround = RAccent.meter700;
+  static const textName = RInk.i050;
+  static const textTagline = RInk.i200;
+  static const textRule = RAccent.meter500;
+  static const scrim = RInk.i950;
+  static const title = RInk.i050;
+}
+
 /// Positive-terminal booking states (DELIVERED, CLOSED). "Developed" - a
 /// photo fully realized - rather than a generic success green.
 abstract final class RDevelop {

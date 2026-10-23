@@ -11,4 +11,7 @@ const _$MediaDerivativeKindEnumMap = {
   MediaDerivativeKind.webRes: 'web_res',
   MediaDerivativeKind.fullRes: 'full_res',
   MediaDerivativeKind.thumbnail: 'thumbnail',
+  MediaDerivativeKind.bannerTile: 'banner_tile',
+  MediaDerivativeKind.bannerHero: 'banner_hero',
+  MediaDerivativeKind.bannerPlaceholder: 'banner_placeholder',
 };

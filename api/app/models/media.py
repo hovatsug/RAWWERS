@@ -25,6 +25,8 @@ class MediaPurpose(str, enum.Enum):
     #: portfolio or gallery asset: it is a RAW, so it has no variants and the
     #: photo pipeline cannot decode it.
     gear_evidence = "gear_evidence"
+    #: A niche's banner, uploaded by an admin. Public; its own derivatives.
+    niche_banner = "niche_banner"
     other = "other"
 
 

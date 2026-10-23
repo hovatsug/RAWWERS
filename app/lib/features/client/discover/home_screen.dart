@@ -16,11 +16,8 @@ import 'package:rawwers/features/client/discover/hero_slides.dart';
 /// live in one place, and a second opinion here is how two implementations of
 /// one rule start to drift.
 ///
-/// A niche row is headed by a photograph from that niche rather than a text
-/// chip. The image is the first card's cover, which by construction is the
-/// top-ranked photographer in that niche in this city - so the tile is a live
-/// sample of the marketplace's own inventory rather than a category
-/// illustration, and it cannot go stale the way a curated asset would.
+/// A niche row is headed by the niche's banner - an image or a typographic
+/// banner, as an admin set it (see RNicheBanner), never chosen here.
 class ClientHomeScreen extends ConsumerWidget {
   const ClientHomeScreen({this.onOpenPro, this.onOpenNiche, super.key});
 

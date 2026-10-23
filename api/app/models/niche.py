@@ -3,9 +3,9 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.media import Base
 
@@ -34,6 +34,14 @@ class Niche(Base):
     name_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    # How the niche's banner is drawn: "image" (the current NicheBanner, or a
+    # neutral ground while there is none) or "text" - a deliberate typographic
+    # banner with no image at all. Switching keeps every image on file.
+    banner_style: Mapped[str] = mapped_column(Text, nullable=False, default="image", server_default="image")
+    # One short line under the name on a banner. Localised the way the name
+    # is: the text here, and a key slot for when niche copy is translated.
+    banner_tagline: Mapped[str | None] = mapped_column(Text, nullable=True)
+    banner_tagline_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -42,6 +50,56 @@ class Niche(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (CheckConstraint("banner_style in ('image', 'text')", name="ck_niche_banner_style"),)
+
+
+class NicheBanner(Base):
+    """One image a niche's banner has used, kept for good.
+
+    `state` is where it stands: the `current` banner, the `previous` one (what
+    a revert goes back to), or `past`. At most one of each of the first two
+    per niche, held by the database. Removing the current image makes it the
+    previous one, so a removal can be reverted like a replacement.
+    """
+
+    __tablename__ = "niche_banner"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
+    media_asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=False)
+    state: Mapped[str] = mapped_column(Text, nullable=False)
+    alt_text: Mapped[str] = mapped_column(Text, nullable=False)
+    # What must stay visible, as fractions of the width and height: every
+    # crop of the banner is placed around it.
+    focal_x: Mapped[Decimal] = mapped_column(Numeric(4, 3), nullable=False, default=Decimal("0.5"))
+    focal_y: Mapped[Decimal] = mapped_column(Numeric(4, 3), nullable=False, default=Decimal("0.5"))
+    # "owner" (the platform's own upload) or "stock"; a stock image carries
+    # its credit, licence and where it came from.
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    credit: Mapped[str | None] = mapped_column(Text, nullable=True)
+    licence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    # How dark the title scrim must be for white text to stay legible on
+    # this image, measured when it was uploaded.
+    scrim_opacity: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False)
+    # A tiny blurred copy, inline, drawn while the real one loads.
+    placeholder: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    niche: Mapped[Niche] = relationship(Niche)
+
+    __table_args__ = (
+        CheckConstraint("state in ('current', 'previous', 'past')", name="ck_niche_banner_state"),
+        CheckConstraint("source in ('owner', 'stock')", name="ck_niche_banner_source"),
+        Index("uq_niche_banner_current", "niche_id", unique=True, postgresql_where=text("state = 'current'")),
+        Index("uq_niche_banner_previous", "niche_id", unique=True, postgresql_where=text("state = 'previous'")),
     )
 
 

@@ -19,13 +19,22 @@ class RNetworkPhoto extends StatelessWidget {
   const RNetworkPhoto({
     required this.url,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
     this.semanticLabel,
+    this.loading,
     super.key,
   });
 
   final String? url;
   final BoxFit fit;
+
+  /// Which part of the photo a crop keeps - a banner's focal point.
+  final Alignment alignment;
   final String? semanticLabel;
+
+  /// Shown while the photo loads, in place of the skeleton - a banner's
+  /// blurred placeholder.
+  final Widget? loading;
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +46,11 @@ class RNetworkPhoto extends StatelessWidget {
     return Image(
       image: DiskCachedImage(source),
       fit: fit,
+      alignment: alignment,
       semanticLabel: semanticLabel,
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
-        return const RSkeleton(height: double.infinity, radius: RRadius.photo);
+        return loading ?? const RSkeleton(height: double.infinity, radius: RRadius.photo);
       },
       errorBuilder: (context, error, stack) => const _PhotoFallback(),
     );

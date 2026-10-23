@@ -56,3 +56,11 @@ export async function POST(req: NextRequest, ctx: { params: { path: string[] } }
 export async function PUT(req: NextRequest, ctx: { params: { path: string[] } }) {
   return forward(req, ctx.params.path);
 }
+
+export async function PATCH(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return forward(req, ctx.params.path);
+}
+
+export async function DELETE(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return forward(req, ctx.params.path);
+}

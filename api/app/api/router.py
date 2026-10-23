@@ -12,6 +12,7 @@ from app.api.v1.communications import router as communications_router
 from app.api.v1.admin_reviews import router as admin_reviews_router
 from app.api.v1.admin_price_reductions import router as admin_price_reductions_router
 from app.api.v1.accountability import router as accountability_router
+from app.api.v1.niche_banners import router as niche_banners_router
 from app.api.v1.camera_reference import router as camera_reference_router
 from app.api.v1.courses import router as courses_router
 from app.api.v1.discovery import router as discovery_router
@@ -51,6 +52,7 @@ api_router.include_router(communications_router)
 api_router.include_router(admin_reviews_router)
 api_router.include_router(admin_price_reductions_router)
 api_router.include_router(accountability_router)
+api_router.include_router(niche_banners_router)
 api_router.include_router(camera_reference_router)
 api_router.include_router(courses_router)
 api_router.include_router(discovery_router)

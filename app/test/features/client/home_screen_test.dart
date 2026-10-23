@@ -18,7 +18,10 @@ import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
-import 'package:rawwers/design/components/r_niche_tile.dart';
+import 'package:rawwers/api/models/niche_banner_image_view.dart';
+import 'package:rawwers/api/models/niche_banner_style.dart';
+import 'package:rawwers/api/models/niche_banner_view.dart';
+import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/discover/home_controller.dart';
@@ -60,8 +63,8 @@ ClientDiscoverCard _card(
   );
 }
 
-ClientHomeRow _row(String key, String title, List<ClientDiscoverCard> items, {String? subtitle}) {
-  return ClientHomeRow(key: key, title: title, subtitle: subtitle, items: items);
+ClientHomeRow _row(String key, String title, List<ClientDiscoverCard> items, {String? subtitle, NicheBannerView? banner}) {
+  return ClientHomeRow(key: key, title: title, subtitle: subtitle, items: items, banner: banner);
 }
 
 Future<void> _pump(WidgetTester tester, HomeState state, {void Function(String)? onOpenNiche}) async {
@@ -143,7 +146,7 @@ void main() {
   // The niche tile.
   // -------------------------------------------------------------------------
 
-  testWidgets('a niche row is headed by a photograph, a popularity row is not', (tester) async {
+  testWidgets('a niche row is headed by its banner, a popularity row is not', (tester) async {
     await _pump(
       tester,
       HomeRows([
@@ -152,27 +155,38 @@ void main() {
       ]),
     );
 
-    final tiles = tester.widgetList<RNicheTile>(find.byType(RNicheTile)).toList();
-    expect(tiles.length, 1, reason: 'only the niche row gets a photo tile');
-    expect(tiles.first.label, 'Weddings in Lisbon');
+    final tiles = tester.widgetList<RNicheBanner>(find.byType(RNicheBanner)).toList();
+    expect(tiles.length, 1, reason: 'only the niche row gets a banner');
+    expect(tiles.first.title, 'Weddings in Lisbon');
+    expect(tiles.first.shape, RNicheBannerShape.tile);
   });
 
-  testWidgets('the tile shows the top-ranked photographer in that niche', (tester) async {
-    // The first card is, by construction, the highest-ranked in this niche
-    // and city. Using any other card would make the tile a decoration rather
-    // than a live sample of what is actually on offer.
+  testWidgets('the tile draws the banner the server sent, not a photographer\'s cover', (tester) async {
+    const banner = NicheBannerView(
+      style: NicheBannerStyle.image,
+      name: 'Weddings',
+      image: NicheBannerImageView(
+        mediaAssetId: 'm',
+        tileUrl: 'https://example.test/tile.jpg',
+        heroUrl: 'https://example.test/hero.jpg',
+        placeholder: '',
+        altText: 'A couple',
+        focalX: 0.5,
+        focalY: 0.5,
+        scrimOpacity: 0.4,
+        width: 2400,
+        height: 1350,
+      ),
+    );
     await _pump(
       tester,
       HomeRows([
-        _row('niche:weddings', 'Weddings in Lisbon', [
-          _card('Top', cover: 'https://example.test/top.jpg'),
-          _card('Second', cover: 'https://example.test/second.jpg'),
-        ]),
+        _row('niche:weddings', 'Weddings in Lisbon', [_card('Top', cover: 'https://example.test/top.jpg')], banner: banner),
       ]),
     );
 
-    final tile = tester.widget<RNicheTile>(find.byType(RNicheTile));
-    expect(tile.imageUrl, 'https://example.test/top.jpg');
+    final tile = tester.widget<RNicheBanner>(find.byType(RNicheBanner));
+    expect(tile.banner, banner);
   });
 
   testWidgets('the niche slug comes from the key, not the title', (tester) async {
@@ -187,7 +201,7 @@ void main() {
       onOpenNiche: (slug) => tapped = slug,
     );
 
-    await tester.tap(find.byType(RNicheTile));
+    await tester.tap(find.byType(RNicheBanner));
     // Not pumpAndSettle: the hero animates continuously, so nothing settles.
     await tester.pump();
     expect(tapped, 'events_nightlife');

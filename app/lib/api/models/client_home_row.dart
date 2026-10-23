@@ -26,6 +26,16 @@
 ///                 "$ref": "#/components/schemas/ClientDiscoverCard"
 ///             },
 ///             "title": "Items"
+///         },
+///         "banner": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/NicheBannerView"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -59,6 +69,9 @@ abstract class ClientHomeRow with _$ClientHomeRow {
 
     /// items
     @JsonKey(name: ClientHomeRow.itemsKey_) List<ClientDiscoverCard>? items,
+
+    /// banner
+    @JsonKey(name: ClientHomeRow.bannerKey_) NicheBannerView? banner,
   }) = _ClientHomeRow;
 
   factory ClientHomeRow.fromJson(Map<String, dynamic> json) =>
@@ -71,4 +84,6 @@ abstract class ClientHomeRow with _$ClientHomeRow {
   static const String subtitleKey_ = r'subtitle';
 
   static const String itemsKey_ = r'items';
+
+  static const String bannerKey_ = r'banner';
 }

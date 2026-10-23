@@ -56,10 +56,10 @@ from app.services.storage import (
     create_presigned_put,
     create_presigned_upload_part,
     delete_object,
-    generate_photo_storage_key,
     list_uploaded_parts,
     object_size,
 )
+from app.services.photo_uploads import begin_photo_upload
 from app.tasks.media_tasks import process_photo_variants
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -147,42 +147,18 @@ def create_photo_upload(
     elif body.content_type.lower() not in settings.allowed_upload_mime_type_set():
         raise APIError(code="validation_error", message="Unsupported content_type", status_code=422)
 
-    storage_key = generate_photo_storage_key(str(user.user_id), body.file_name)
-    asset = MediaAsset(
+    asset, started = begin_photo_upload(
+        db,
         owner_user_id=user.user_id,
-        kind=MediaKind.photo,
         purpose=body.purpose,
-        provider=MediaProvider.r2,
-        status=MediaStatus.uploading,
         visibility=_default_visibility(body.purpose, body.visibility),
         content_type=body.content_type,
-        meta={"file_name": body.file_name} if body.file_name else {},
+        file_name=body.file_name,
     )
-    db.add(asset)
-    db.flush()
-
-    original = MediaObject(
-        media_asset_id=asset.id,
-        variant=MediaVariant.original,
-        storage_key=storage_key,
-        status=ObjectStatus.created,
-    )
-    db.add(original)
     if body.purpose == MediaPurpose.portfolio_reel:
         recompute_pro_public_index(db, user.user_id)
     db.commit()
-
-    upload_url = create_presigned_put(storage_key=storage_key, content_type=body.content_type)
-    return PhotoUploadCreateResponse(
-        media_asset_id=asset.id,
-        upload=UploadPayload(
-            method="PUT",
-            url=upload_url,
-            headers={"Content-Type": body.content_type},
-            storage_key=storage_key,
-            expires_in=900,
-        ),
-    )
+    return started
 
 
 @router.post("/photos/{media_asset_id}/complete", response_model=CompletePhotoUploadResponse)

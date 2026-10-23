@@ -117,6 +117,23 @@ class Settings(BaseSettings):
         default="image/jpeg,image/png,image/webp,video/mp4",
         alias="ALLOWED_UPLOAD_MIME_TYPES",
     )
+    # Niche banners, set by an admin. Formats and the size cap are checked when
+    # the upload starts and again on the object itself; the minimum size is
+    # what a full-width banner needs on a 3x phone.
+    niche_banner_mime_types: str = Field(default="image/jpeg,image/png,image/webp", alias="NICHE_BANNER_MIME_TYPES")
+    niche_banner_max_bytes: int = Field(default=15_000_000, alias="NICHE_BANNER_MAX_BYTES")
+    niche_banner_min_width: int = Field(default=1600, alias="NICHE_BANNER_MIN_WIDTH")
+    niche_banner_min_height: int = Field(default=900, alias="NICHE_BANNER_MIN_HEIGHT")
+    niche_banner_tile_width: int = Field(default=800, alias="NICHE_BANNER_TILE_WIDTH")
+    niche_banner_hero_width: int = Field(default=2048, alias="NICHE_BANNER_HERO_WIDTH")
+    niche_banner_placeholder_width: int = Field(default=24, alias="NICHE_BANNER_PLACEHOLDER_WIDTH")
+    niche_banner_tagline_max: int = Field(default=60, alias="NICHE_BANNER_TAGLINE_MAX")
+    niche_banner_alt_max: int = Field(default=250, alias="NICHE_BANNER_ALT_MAX")
+    # White title over the scrimmed image must reach at least this contrast
+    # (WCAG AA for normal text); the scrim is never lighter than the floor.
+    niche_banner_min_contrast: float = Field(default=4.5, alias="NICHE_BANNER_MIN_CONTRAST")
+    niche_banner_scrim_floor: float = Field(default=0.25, alias="NICHE_BANNER_SCRIM_FLOOR")
+    niche_banner_scrim_ceiling: float = Field(default=0.85, alias="NICHE_BANNER_SCRIM_CEILING")
     rate_limit_public_read_per_min: int = Field(default=120, alias="RATE_LIMIT_PUBLIC_READ_PER_MIN")
     rate_limit_auth_mutation_per_min: int = Field(default=30, alias="RATE_LIMIT_AUTH_MUTATION_PER_MIN")
     rate_limit_chat_messages_per_min: int = Field(default=10, alias="RATE_LIMIT_CHAT_MESSAGES_PER_MIN")
@@ -208,6 +225,9 @@ class Settings(BaseSettings):
 
     def allowed_upload_mime_type_set(self) -> set[str]:
         return {item.strip().lower() for item in self.allowed_upload_mime_types.split(",") if item.strip()}
+
+    def niche_banner_mime_type_set(self) -> set[str]:
+        return {item.strip().lower() for item in self.niche_banner_mime_types.split(",") if item.strip()}
 
     def cors_allow_origin_list(self) -> list[str]:
         configured = [item.strip() for item in self.cors_allow_origins.split(",") if item.strip()]

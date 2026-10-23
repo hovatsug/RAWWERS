@@ -81,6 +81,7 @@ from app.models.niche import (
     Badge,
     CertificationRecord,
     Niche,
+    NicheBanner,
     NicheTierPolicy,
     ProNiche,
     ProNicheSkill,

@@ -136,7 +136,11 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   // photographers
   approved_public: { label: "Live", tone: "positive" },
   ready_for_review: { label: "Ready for review", tone: "attention" },
-  pending: { label: "Pending", tone: "attention" }
+  pending: { label: "Pending", tone: "attention" },
+  // niche banners
+  image_set: { label: "Image set", tone: "positive" },
+  image_missing: { label: "Image missing", tone: "attention" },
+  text_only: { label: "Text only", tone: "info" }
 };
 
 export function statusLabel(status: string): string {

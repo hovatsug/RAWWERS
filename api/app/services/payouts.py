@@ -342,6 +342,7 @@ def payout_balance_view(db: Session, *, pro_user_id: uuid.UUID) -> dict:
         "pending_eur": money.pending,
         "available_eur": money.available,
         "held_eur": money.on_hold,
+        "requested_eur": money.requested,
         "reserved_eur": money.reserved,
         "paid_out_eur": money.paid_out,
         "lifetime_eur": money.lifetime,
@@ -416,8 +417,9 @@ def approve_payout_request(db: Session, *, payout_request_id: uuid.UUID, admin_u
     if row.status != PayoutRequestStatus.requested:
         raise APIError(code="invalid_state", message="Payout request is not in requested status", status_code=409)
     # Asked again now, of the same function the Wallet and the request limit
-    # ask: other payouts may have been approved since this one was made.
-    if _q2(row.amount_eur) > photographer_money(db, row.pro_user_id).available:
+    # ask: a refund since the request may have taken the money. Available
+    # already excludes this request's own amount (it is Requested).
+    if photographer_money(db, row.pro_user_id).available < 0:
         raise APIError(code="insufficient_balance", message="Requested amount exceeds what is available now", status_code=422)
 
     _allocate_payout_amount(db, payout=row)

@@ -8,7 +8,7 @@ approval and the transfer - asks `photographer_money` or reads the stamp.
 
 The buckets, and the invariant they must hold whatever happens:
 
-    available + reserved + paid_out + pending + on_hold == lifetime cash earned
+    available + requested + reserved + paid_out + pending + on_hold == lifetime cash earned
 
 available may be negative (money paid out that a later refund took back);
 the data layer says so, and only the photographer's screen shows 0 with the
@@ -103,7 +103,7 @@ def _settle(db, pro):
 
 
 def _holds(m) -> None:
-    assert m.available + m.reserved + m.paid_out + m.pending + m.on_hold == m.lifetime, m
+    assert m.available + m.requested + m.reserved + m.paid_out + m.pending + m.on_hold == m.lifetime, m
 
 
 def _money(db, pro):
@@ -325,12 +325,13 @@ def test_a_payout_moves_through_reserved_to_paid_out(db_session):
 
     row = _payout(db_session, pro, "60.00")
     m = _money(db_session, pro)
-    assert (m.available, m.reserved, m.paid_out) == (D("80.00"), D("0.00"), D("0.00"))  # requested only
+    # Asked for: out of Available at once, into Requested.
+    assert (m.available, m.requested, m.reserved, m.paid_out) == (D("20.00"), D("60.00"), D("0.00"), D("0.00"))
 
     approve_payout_request(db_session, payout_request_id=row.id, admin_user_id=ADMIN)
     db_session.commit()
     m = _money(db_session, pro)
-    assert (m.available, m.reserved, m.paid_out, m.withdrawable) == (D("20.00"), D("60.00"), D("0.00"), D("20.00"))
+    assert (m.available, m.requested, m.reserved, m.paid_out, m.withdrawable) == (D("20.00"), D("0.00"), D("60.00"), D("0.00"), D("20.00"))
 
     mark_payout_paid_manual(db_session, payout_request_id=row.id, admin_user_id=ADMIN, reference={"bank": "x"})
     db_session.commit()
@@ -345,11 +346,13 @@ def test_a_rejected_payout_frees_nothing_it_never_held(db_session):
     _settle(db_session, pro)
     row = _payout(db_session, pro, "60.00")
 
+    assert _money(db_session, pro).requested == D("60.00")
     reject_payout_request(db_session, payout_request_id=row.id, admin_user_id=ADMIN, reason="no")
     db_session.commit()
 
     m = _money(db_session, pro)
-    assert (m.available, m.reserved, m.paid_out) == (D("80.00"), D("0.00"), D("0.00"))
+    # Back where it was.
+    assert (m.available, m.requested, m.reserved, m.paid_out) == (D("80.00"), D("0.00"), D("0.00"), D("0.00"))
 
 
 def test_a_refund_after_payout_goes_negative_in_the_data_and_zero_on_screen(db_session):
@@ -386,6 +389,7 @@ def test_the_balance_route_shows_the_photographer_zero_and_the_adjustment(client
     body = client.get("/v1/pro/earnings/balance", headers={"X-User-Id": str(pro)}).json()
 
     assert body["withdrawable_eur"] == "0.00"
+    assert body["requested_eur"] == "0.00"
     assert body["adjustment_owed_eur"] == "80.00"
     assert body["paid_out_eur"] == "80.00"
 
@@ -415,16 +419,70 @@ def test_the_request_limit_is_what_can_be_withdrawn_not_what_was_earned(db_sessi
         create_payout_request(db_session, pro_user_id=pro, amount_eur=D("50.00"))
 
 
-def test_approval_re_checks_what_is_available_now(db_session):
+def test_the_invariant_holds_through_request_approve_process_pay_and_reject(db_session):
+    from app.services.payouts import execute_payout_request
+
+    from app.services.payouts import get_or_create_payout_account
+
+    pro = _pro(db_session)
+    # A payout account set up long ago: a request soon after an account
+    # change is frozen by the anomaly rule, which is not what this tests.
+    get_or_create_payout_account(db_session, pro_user_id=pro).updated_at = datetime.now(timezone.utc) - timedelta(days=30)
+    db_session.commit()
+    _earned(db_session, pro, gross="300.00")  # 240.00 cash
+    _settle(db_session, pro)
+    seen = []
+
+    paid = _payout(db_session, pro, "100.00", older=True)
+    seen.append(_money(db_session, pro))
+    approve_payout_request(db_session, payout_request_id=paid.id, admin_user_id=ADMIN)
+    db_session.commit()
+    seen.append(_money(db_session, pro))
+    execute_payout_request(db_session, payout_request_id=paid.id)  # manual account: processing
+    db_session.commit()
+    seen.append(_money(db_session, pro))
+    mark_payout_paid_manual(db_session, payout_request_id=paid.id, admin_user_id=ADMIN, reference={})
+    db_session.commit()
+    seen.append(_money(db_session, pro))
+    rejected = _payout(db_session, pro, "80.00")
+    seen.append(_money(db_session, pro))
+    reject_payout_request(db_session, payout_request_id=rejected.id, admin_user_id=ADMIN, reason="no")
+    db_session.commit()
+    seen.append(_money(db_session, pro))
+
+    # (available, requested, reserved, paid_out) at each step; _money checks the invariant every time.
+    assert [(m.available, m.requested, m.reserved, m.paid_out) for m in seen] == [
+        (D("140.00"), D("100.00"), D("0.00"), D("0.00")),
+        (D("140.00"), D("0.00"), D("100.00"), D("0.00")),
+        (D("140.00"), D("0.00"), D("100.00"), D("0.00")),
+        (D("140.00"), D("0.00"), D("0.00"), D("100.00")),
+        (D("60.00"), D("80.00"), D("0.00"), D("100.00")),
+        (D("140.00"), D("0.00"), D("0.00"), D("100.00")),
+    ]
+
+
+def test_a_second_request_cannot_ask_for_money_already_requested(db_session):
     pro = _pro(db_session)
     _earned(db_session, pro)
     _settle(db_session, pro)
-    first, second = _payout(db_session, pro, "60.00"), _payout(db_session, pro, "60.00")
-    approve_payout_request(db_session, payout_request_id=first.id, admin_user_id=ADMIN)
+    _payout(db_session, pro, "60.00")
+
+    with pytest.raises(APIError):
+        _payout(db_session, pro, "60.00")
+    assert _money(db_session, pro).withdrawable == D("20.00")
+
+
+def test_approval_re_checks_what_is_available_now(db_session):
+    """A refund after the request took the money: approving would overpay."""
+    pro = _pro(db_session)
+    gig = _earned(db_session, pro)
+    _settle(db_session, pro)
+    row = _payout(db_session, pro, "60.00")
+    reverse_earnings_entries_for_source(db_session, source_type=EarningsSourceType.gig_base, source_id=gig.id, reason="full_refund")
     db_session.commit()
 
     with pytest.raises(APIError) as refused:
-        approve_payout_request(db_session, payout_request_id=second.id, admin_user_id=ADMIN)
+        approve_payout_request(db_session, payout_request_id=row.id, admin_user_id=ADMIN)
     assert refused.value.code == "insufficient_balance"
 
 
@@ -602,3 +660,18 @@ def test_the_recompute_script_never_wipes_earnings_with_no_payment_on_record(db_
     unpaid: list = []
     assert script.plan(db_session, None, unpaid) == []
     assert [g.id for g, _ in unpaid] == [gig.id]
+
+
+def test_the_balance_route_shows_what_is_requested(client, db_session):
+    from app.models.admin import UserRole, UserRoleType
+
+    pro = _pro(db_session)
+    _earned(db_session, pro)
+    _settle(db_session, pro)
+    _payout(db_session, pro, "60.00")
+    db_session.add(UserRole(user_id=pro, role=UserRoleType.pro))
+    db_session.commit()
+
+    body = client.get("/v1/pro/earnings/balance", headers={"X-User-Id": str(pro)}).json()
+
+    assert (body["requested_eur"], body["withdrawable_eur"]) == ("60.00", "20.00")

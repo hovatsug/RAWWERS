@@ -16,6 +16,12 @@
 ///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Held Eur"
 ///         },
+///         "requested_eur": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "default": "0.00",
+///             "title": "Requested Eur"
+///         },
 ///         "reserved_eur": {
 ///             "type": "string",
 ///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -54,7 +60,7 @@
 ///         "withdrawable_eur"
 ///     ],
 ///     "title": "EarningsBalanceView",
-///     "description": "available + reserved + paid_out + pending + held == lifetime, always.\n\n`available_eur` is the real figure and may be negative - money paid out\nthat a later refund took back. A photographer's screen shows\n`withdrawable_eur` (never below 0) and `adjustment_owed_eur` instead."
+///     "description": "available + requested + reserved + paid_out + pending + held == lifetime, always.\n\n`available_eur` is the real figure and may be negative - money paid out\nthat a later refund took back. A photographer's screen shows\n`withdrawable_eur` (never below 0) and `adjustment_owed_eur` instead."
 /// }
 library earnings_balance_view;
 
@@ -78,6 +84,11 @@ abstract class EarningsBalanceView with _$EarningsBalanceView {
 
     /// heldEur
     @JsonKey(name: EarningsBalanceView.heldEurKey_) required String heldEur,
+
+    /// requestedEur
+    @Default('0.00')
+    @JsonKey(name: EarningsBalanceView.requestedEurKey_)
+    String requestedEur,
 
     /// reservedEur
     @JsonKey(name: EarningsBalanceView.reservedEurKey_)
@@ -111,6 +122,8 @@ abstract class EarningsBalanceView with _$EarningsBalanceView {
   static const String availableEurKey_ = r'available_eur';
 
   static const String heldEurKey_ = r'held_eur';
+
+  static const String requestedEurKey_ = r'requested_eur';
 
   static const String reservedEurKey_ = r'reserved_eur';
 

@@ -31,6 +31,7 @@ WalletData _wallet({
       pendingEur: '40.00',
       availableEur: available,
       heldEur: '10.00',
+      requestedEur: '30.00',
       reservedEur: '0.00',
       paidOutEur: '120.00',
       lifetimeEur: '420.00',
@@ -68,6 +69,8 @@ void main() {
 
     expect(find.text('Pending'), findsOneWidget);
     expect(find.text('On hold'), findsOneWidget);
+    expect(find.text('Requested'), findsOneWidget);
+    expect(find.text('€30.00'), findsOneWidget);
     expect(find.text('Reserved for payouts'), findsOneWidget);
     expect(find.text('Paid out'), findsOneWidget);
     expect(find.text('€120.00'), findsOneWidget);

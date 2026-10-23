@@ -17,7 +17,7 @@ from app.models.payouts import (
 
 
 class EarningsBalanceView(BaseModel):
-    """available + reserved + paid_out + pending + held == lifetime, always.
+    """available + requested + reserved + paid_out + pending + held == lifetime, always.
 
     `available_eur` is the real figure and may be negative - money paid out
     that a later refund took back. A photographer's screen shows
@@ -26,6 +26,8 @@ class EarningsBalanceView(BaseModel):
     pending_eur: Decimal
     available_eur: Decimal
     held_eur: Decimal
+    #: Asked for in a payout request not yet decided.
+    requested_eur: Decimal = Decimal("0.00")
     #: Allocated to a payout approved or processing - not yet paid.
     reserved_eur: Decimal
     paid_out_eur: Decimal = Decimal("0.00")

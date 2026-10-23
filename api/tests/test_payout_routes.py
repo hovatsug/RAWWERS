@@ -167,7 +167,9 @@ def test_approving_sets_the_money_aside_queues_the_transfer_and_is_audited(clien
     assert resp.status_code == 200, resp.text
     assert _payout(db_session, requested).status == PayoutRequestStatus.approved
     assert _allocated(db_session, requested) == Decimal("80.00")
-    assert _withdrawable(db_session, pro) == before - Decimal("80.00")
+    # Already out of what can be withdrawn since it was requested; approving
+    # moves it from Requested to Reserved, not out of Available again.
+    assert _withdrawable(db_session, pro) == before
     assert _executions(db_session, requested) == 1
     assert _audit(db_session, requested) == ["payout_approved"]
 
@@ -192,20 +194,16 @@ def test_approving_twice_sets_aside_and_transfers_once(client, db_session, pro, 
 
 
 def test_two_requests_cannot_both_be_paid_from_the_same_money(client, db_session, pro):
-    """Asking does not set money aside - two requests can each fit the
-    balance. Approving does, and refuses the one the balance no longer
-    covers, leaving nothing half-done behind."""
+    """Asking sets the money aside (Requested): a second request can only
+    ask for what is still available, so it is refused when asked - before
+    anything is approved or allocated."""
     first = _request(client, pro, "150.00").json()["id"]
-    second = _request(client, pro, "150.00").json()["id"]
-    assert _admin(client, f"/v1/admin/payouts/{first}/approve").status_code == 200
 
-    resp = _admin(client, f"/v1/admin/payouts/{second}/approve")
+    resp = _request(client, pro, "150.00")
 
     assert resp.status_code == 422, resp.text
-    assert _payout(db_session, second).status == PayoutRequestStatus.requested
-    assert _allocated(db_session, second) == 0, "no partial allocation left behind"
-    assert _executions(db_session, second) == 0
-    assert _audit(db_session, second) == []
+    assert db_session.query(PayoutRequest).filter(PayoutRequest.pro_user_id == uuid.UUID(str(pro))).count() == 1
+    assert _admin(client, f"/v1/admin/payouts/{first}/approve").status_code == 200
 
 
 def test_an_unknown_payout_is_not_found(client, db_session):
@@ -224,7 +222,8 @@ def test_rejecting_keeps_the_reason_audits_it_and_leaves_the_money_withdrawable(
     row = _payout(db_session, requested)
     assert row.status == PayoutRequestStatus.rejected and row.failure_reason == "Bank details do not match"
     assert _allocated(db_session, requested) == 0
-    assert _withdrawable(db_session, pro) == before
+    # Back in Available: it left when it was requested.
+    assert _withdrawable(db_session, pro) == before + Decimal("80.00")
     assert _audit(db_session, requested) == ["payout_rejected"]
 
 

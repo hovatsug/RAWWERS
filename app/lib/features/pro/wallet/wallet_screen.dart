@@ -96,6 +96,9 @@ class _BalanceCard extends StatelessWidget {
           // think earnings vanished between a shoot and a payout.
           _BalanceRow(label: 'Pending', amount: data.balance.pendingEur),
           _BalanceRow(label: 'On hold', amount: data.balance.heldEur),
+          // Asked for, not yet decided: out of what can be withdrawn the
+          // moment it is asked for, back again if the request is rejected.
+          _BalanceRow(label: 'Requested', amount: data.balance.requestedEur),
           _BalanceRow(label: 'Reserved for payouts', amount: data.balance.reservedEur),
           _BalanceRow(label: 'Paid out', amount: data.balance.paidOutEur),
         ],

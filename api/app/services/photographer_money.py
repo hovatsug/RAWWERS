@@ -22,11 +22,13 @@ them:
 
     pending   entries still in the settlement delay
     on_hold   entries held (a dispute, an admin hold)
+    requested asked for in a payout request not yet decided - out of
+              available the moment it is asked for, back if it is rejected
     reserved  allocated to a payout approved or processing - not yet paid
     paid_out  allocated to a payout that was paid
     available what is left, which may be negative
 
-    available + reserved + paid_out + pending + on_hold == lifetime
+    available + requested + reserved + paid_out + pending + on_hold == lifetime
 
 Negative `available` is money paid out that a later refund took back. It is
 never clamped here: admins see it as it is, and only the photographer's
@@ -203,6 +205,7 @@ class PhotographerMoney:
     lifetime: Decimal
     pending: Decimal
     on_hold: Decimal
+    requested: Decimal
     reserved: Decimal
     paid_out: Decimal
     #: May be negative. Never clamped here.
@@ -233,6 +236,13 @@ def photographer_money(db: Session, pro_user_id: uuid.UUID) -> PhotographerMoney
             .group_by(PayoutRequest.status)
         ).all()
     )
+    requested = _q2(
+        db.execute(
+            select(func.coalesce(func.sum(PayoutRequest.amount_eur), 0)).where(
+                PayoutRequest.pro_user_id == pro_user_id, PayoutRequest.status == PayoutRequestStatus.requested
+            )
+        ).scalar_one()
+    )
     lifetime = _q2(sum((Decimal(str(v)) for v in by_status.values()), ZERO))
     pending = _q2(by_status.get(EarningsEntryStatus.pending, 0))
     on_hold = _q2(by_status.get(EarningsEntryStatus.held, 0))
@@ -242,7 +252,8 @@ def photographer_money(db: Session, pro_user_id: uuid.UUID) -> PhotographerMoney
         lifetime=lifetime,
         pending=pending,
         on_hold=on_hold,
+        requested=requested,
         reserved=_q2(reserved),
         paid_out=paid_out,
-        available=_q2(lifetime - pending - on_hold - reserved - paid_out),
+        available=_q2(lifetime - pending - on_hold - requested - reserved - paid_out),
     )

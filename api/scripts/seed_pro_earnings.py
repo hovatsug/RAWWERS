@@ -58,6 +58,7 @@ from app.models.payouts import (  # noqa: E402
     EarningsSourceType,
     PayoutRequestStatus,
 )
+from app.services.photographer_money import booking_split  # noqa: E402
 from app.services.payouts import (  # noqa: E402
     MIN_PAYOUT_EUR,
     PAYOUT_REQUEST_LIMIT_7D,
@@ -118,10 +119,12 @@ def seed_earnings(db, *, gigs: list[Gig], settlement_days: int) -> tuple[int, in
             pro_user_id=gig.pro_user_id,
             source_type=EarningsSourceType.gig_base,
             source_id=gig.id,
-            # What the client paid. The fee and the net are the function's to
-            # compute, which is what makes the reconciliation check below a
-            # real check rather than a restatement of its own input.
+            # What the client paid, split the official way (15% and 5% each
+            # rounded, the photographer's cash the remainder) - the same
+            # split a real booking's earnings use. Without it this took a
+            # single rounded 20%, a few cents off the invoice on some gigs.
             gross_eur=gig.amount_minimum,
+            split=seed_split(db, gig),
             metadata={"gig_id": str(gig.id), "seeded": True},
         )
         if entry is None:
@@ -131,12 +134,39 @@ def seed_earnings(db, *, gigs: list[Gig], settlement_days: int) -> tuple[int, in
     return created, existing
 
 
-def check_reconciliation(db, *, gigs: list[Gig]) -> list[str]:
-    """Every entry's net must equal what the gig already says the pro earned.
+def seed_split(db, gig: Gig):
+    """The booking's own split of what was booked (seeded gigs carry no
+    payments, so the booked price stands in for what was paid)."""
+    return booking_split(db, gig, gig.amount_minimum)
 
-    The gig rows were written by a different script, at a different time,
-    from a different number. If the fee policy and the seeded amounts ever
-    disagree, this is where it surfaces instead of in someone's balance.
+
+def reseed_earnings(db, *, gigs: list[Gig]) -> list[tuple[Gig, Decimal, Decimal]]:
+    """Bring existing seeded entries for `gigs` to the official split.
+    Returns (gig, old net, new net) for each one changed."""
+    changed = []
+    for gig in gigs:
+        entry = db.execute(
+            select(EarningsLedgerEntry).where(
+                EarningsLedgerEntry.pro_user_id == gig.pro_user_id,
+                EarningsLedgerEntry.source_type == EarningsSourceType.gig_base,
+                EarningsLedgerEntry.source_id == gig.id,
+            )
+        ).scalar_one_or_none()
+        if entry is None:
+            continue
+        split = seed_split(db, gig)
+        if entry.net_eur == split.pro_cash and entry.gross_eur == split.gross:
+            continue
+        changed.append((gig, entry.net_eur, split.pro_cash))
+        entry.gross_eur, entry.platform_fee_eur, entry.net_eur = split.gross, split.gross - split.pro_cash, split.pro_cash
+    db.flush()
+    return changed
+
+
+def check_reconciliation(db, *, gigs: list[Gig]) -> list[str]:
+    """Every entry's net must equal what the booking earned by the official
+    split. If the fee policy and the seeded amounts ever disagree, this is
+    where it surfaces instead of in someone's balance.
     """
     problems = []
     by_gig = {gig.id: gig for gig in gigs}
@@ -147,10 +177,9 @@ def check_reconciliation(db, *, gigs: list[Gig]) -> list[str]:
         gig = by_gig.get(entry.source_id)
         if gig is None:
             continue
-        if entry.net_eur != gig.amount_pro_gross:
-            problems.append(
-                f"gig {gig.id}: ledger net {entry.net_eur} != gig amount_pro_gross {gig.amount_pro_gross}"
-            )
+        expected = seed_split(db, gig).pro_cash
+        if entry.net_eur != expected:
+            problems.append(f"gig {gig.id}: ledger net {entry.net_eur} != the booking's split {expected}")
     return problems
 
 
@@ -209,6 +238,10 @@ def seed_payouts(db, *, pro_ids: set[uuid.UUID]) -> dict[str, int]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="Write. Without it nothing is committed.")
+    parser.add_argument(
+        "--reseed", action="append", metavar="EMAIL", default=[],
+        help="Rewrite this seeded account's existing earnings to the official split, then stop. Repeatable.",
+    )
     args = parser.parse_args()
 
     assert_environment_is_seedable()
@@ -217,6 +250,22 @@ def main() -> int:
     try:
         policy = ensure_default_platform_fee_policy(db)
         pro_ids = _seed_domain_pro_ids(db)
+
+        if args.reseed:
+            ids = {a.user_id for a in db.execute(select(UserAccount).where(UserAccount.email.in_(args.reseed))).scalars()}
+            ids &= pro_ids
+            gigs = db.execute(select(Gig).where(Gig.status == GigStatus.completed, Gig.pro_user_id.in_(ids))).scalars().all()
+            changed = reseed_earnings(db, gigs=gigs)
+            for gig, old, new in changed[:10]:
+                print(f"  gig {gig.id}: {old} -> {new}")
+            print(f"reseeded {len(changed)} entr{'y' if len(changed) == 1 else 'ies'} for {len(ids)} account(s)")
+            if args.apply:
+                db.commit()
+                print("Written.")
+            else:
+                db.rollback()
+                print("Dry run. Nothing written. Re-run with --apply.")
+            return 0
 
         all_completed = db.execute(select(Gig).where(Gig.status == GigStatus.completed)).scalars().all()
         gigs = [g for g in all_completed if g.pro_user_id in pro_ids]
@@ -241,7 +290,7 @@ def main() -> int:
                 print(f"  {line}")
             db.rollback()
             return 1
-        print("reconciliation              : every net matches its gig's amount_pro_gross")
+        print("reconciliation              : every net matches its booking's split")
 
         settled = settle_due_earnings_entries(db, limit=10_000)
         print(f"entries settled to available: {settled}")

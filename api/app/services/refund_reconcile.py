@@ -38,7 +38,7 @@ from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, Str
 from app.services import stripe_service  # noqa: F401 - sets the API key and version
 from app.services.full_refund import is_fully_refunded, settle_full_refund
 from app.services.payment_intents import hold_refund_slot
-from app.services.payouts import adjust_earnings_for_partial_refund
+from app.services.photographer_money import record_gig_earnings
 
 logger = logging.getLogger(__name__)
 
@@ -216,13 +216,10 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
     if is_fully_refunded(db, gig):
         settle_full_refund(db, gig, reason=f"Refunded in full ({trigger})")
     else:
-        refunded = sum(
-            (p.amount_refunded or Decimal("0.00") for p in db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalars()),
-            Decimal("0.00"),
-        )
-        if refunded > 0:
-            # Never raises earnings back: a lower total is ignored there.
-            adjust_earnings_for_partial_refund(db, gig_id=gig.id, refunded_amount=refunded, reason="stripe_refund_share")
+        # Earnings follow the booking's final price net of refunds - the one
+        # function every earnings change goes through. A booking not yet
+        # completed has none; completion reads the refunds then.
+        record_gig_earnings(db, gig, lower_only=True)
     if back > 0:
         from app.services.proof_of_gigs import enqueue_raww_refund_reversal
 

@@ -150,7 +150,11 @@ def test_every_payment_must_be_refunded_first(db_session, stripe_truth):
     assert _finals(db_session, gig) == [True, True]
     earnings = _earnings(db_session, gig)
     assert earnings.status != EarningsEntryStatus.reversed, "the other payment still pays for most of it"
-    assert earnings.gross_eur == Decimal("60.00"), "80 earned, less the 20 refunded"
+    # The booking is priced 100 and the client paid 120: the 20 refunded was
+    # paid beyond the price, so the photographer's 80 is untouched. Earnings
+    # follow the final price net of refunds (photographer_money), no longer
+    # every refund's share of whatever was paid.
+    assert earnings.net_eur == Decimal("80.00"), "an overpayment refunded takes nothing from the photographer"
 
     _refunded(db_session, stripe_truth, gig, n=0)
     assert db_session.get(Gig, gig.id).status == GigStatus.refunded

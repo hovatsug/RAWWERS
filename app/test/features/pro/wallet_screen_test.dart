@@ -22,15 +22,20 @@ class _FakeWallet extends WalletController {
 
 WalletData _wallet({
   String withdrawable = '250.00',
+  String available = '250.00',
+  String adjustmentOwed = '0.00',
   PayoutAccountStatus accountStatus = PayoutAccountStatus.active,
 }) {
   return WalletData(
     balance: EarningsBalanceView(
       pendingEur: '40.00',
-      availableEur: '250.00',
+      availableEur: available,
       heldEur: '10.00',
       reservedEur: '0.00',
+      paidOutEur: '120.00',
+      lifetimeEur: '420.00',
       withdrawableEur: withdrawable,
+      adjustmentOwedEur: adjustmentOwed,
     ),
     ledger: const [],
     payouts: const [],
@@ -63,8 +68,20 @@ void main() {
 
     expect(find.text('Pending'), findsOneWidget);
     expect(find.text('On hold'), findsOneWidget);
-    expect(find.text('Reserved'), findsOneWidget);
+    expect(find.text('Reserved for payouts'), findsOneWidget);
+    expect(find.text('Paid out'), findsOneWidget);
+    expect(find.text('€120.00'), findsOneWidget);
     expect(find.text('€250.00'), findsWidgets);
+    expect(find.textContaining('Adjustment owed'), findsNothing);
+  });
+
+  testWidgets('a negative balance shows 0 to withdraw and the adjustment owed, never the negative', (tester) async {
+    await tester.pumpWidget(_wrap(_wallet(withdrawable: '0.00', available: '-21.84', adjustmentOwed: '21.84')));
+    await tester.pump();
+
+    expect(find.text('€0.00'), findsWidgets);
+    expect(find.textContaining('Adjustment owed: €21.84'), findsOneWidget);
+    expect(find.textContaining('-21.84'), findsNothing);
   });
 
   testWidgets('states the payout rules up front rather than after a rejection', (tester) async {

@@ -75,6 +75,17 @@ class Gig(Base):
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     amount_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_final: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # What the booking earned, split, stamped by photographer_money when its
+    # earnings are recorded and after every change: the final price net of
+    # refunds, 15% retained and 5% $RAWW credit each rounded, the
+    # photographer's cash the remainder. The invoice and the "All time" card
+    # read these. The deposit fields above are history and never change.
+    final_gross: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    final_platform_retained: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    final_pro_raww: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    final_client_raww: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    final_pro_cash: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    final_stamped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     entry_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     amount_platform_fee: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_pro_gross: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

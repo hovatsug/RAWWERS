@@ -30,6 +30,7 @@ from app.models.payouts import (
     PlatformFeePolicy,
 )
 from app.services.analytics import log_event
+from app.services.photographer_money import photographer_money
 from app.services.metrics import observe_business_event, observe_payout_volume, set_dispute_hold_amount, set_total_available_eur
 from app.services.notifications import NotificationSeverity, enqueue_notification
 from app.services.outbox import enqueue_outbox_event
@@ -64,15 +65,25 @@ def create_earnings_entry(
     source_id: uuid.UUID,
     gross_eur: Decimal,
     metadata: dict | None = None,
+    split=None,
 ) -> EarningsLedgerEntry | None:
+    """`split` (a commission.BookingSplit) for a booking's own earnings,
+    computed by photographer_money from the booking's stamped rates. Other
+    sources (extras, Studioverse) take their fee from the policy, through
+    the same rounding rule."""
+    from app.services.commission import split_with_rates
+
     gross = _q2(gross_eur)
     if gross <= Decimal("0.00"):
         return None
 
     policy = ensure_default_platform_fee_policy(db)
-    fee_percent = _fee_percent_for_source(policy, source_type)
-    fee = _q2(gross * Decimal(fee_percent) / Decimal("100"))
-    net = _q2(gross - fee)
+    if split is None:
+        fee_percent = _fee_percent_for_source(policy, source_type)
+        split = split_with_rates(gross, retained_percent=fee_percent, pro_raww_percent=0)
+    fee_percent = split.fee_percent
+    net = _q2(split.pro_cash)
+    fee = _q2(gross - net)
     now = datetime.now(timezone.utc)
     available_at = now + timedelta(days=max(0, int(policy.settlement_delay_days)))
 
@@ -244,60 +255,6 @@ def release_earnings_holds_for_source(db: Session, *, pro_user_id: uuid.UUID, so
     return count
 
 
-def adjust_earnings_for_partial_refund(
-    db: Session,
-    *,
-    gig_id: uuid.UUID,
-    refunded_amount: Decimal,
-    reason: str,
-) -> EarningsLedgerEntry | None:
-    """Reduce a photographer's earnings by a partial refund.
-
-    A full refund reverses the entry outright. A partial one must not: the
-    shoot happened, the client kept most of the photos, and the
-    photographer keeps the corresponding share. The platform fee is
-    recalculated on the reduced gross so the split stays honest rather
-    than the whole reduction coming out of the photographer's side.
-
-    Idempotent on the refunded total: replaying the same webhook, which
-    the outbox will do on retry, leaves the same numbers rather than
-    subtracting twice.
-    """
-    entry = db.execute(
-        select(EarningsLedgerEntry).where(
-            EarningsLedgerEntry.source_type == EarningsSourceType.gig_base,
-            EarningsLedgerEntry.source_id == gig_id,
-            EarningsLedgerEntry.status != EarningsEntryStatus.reversed,
-        )
-    ).scalars().first()
-    if not entry:
-        return None
-
-    already = _q2(Decimal(str((entry.meta or {}).get("refunded_total", "0.00"))))
-    total_refunded = _q2(refunded_amount)
-    if total_refunded <= already:
-        return entry
-
-    original_gross = _q2(Decimal(str((entry.meta or {}).get("original_gross_eur", entry.gross_eur))))
-    new_gross = _q2(max(Decimal("0.00"), original_gross - total_refunded))
-
-    fee_percent = Decimal(str((entry.meta or {}).get("fee_percent", "0")))
-    new_fee = _q2(new_gross * fee_percent / Decimal("100"))
-
-    entry.gross_eur = new_gross
-    entry.platform_fee_eur = new_fee
-    entry.net_eur = _q2(new_gross - new_fee)
-    entry.meta = {
-        **(entry.meta or {}),
-        "original_gross_eur": str(original_gross),
-        "refunded_total": str(total_refunded),
-        "last_adjustment_reason": reason,
-    }
-    db.flush()
-    refresh_earnings_balance_snapshot(db, pro_user_id=entry.pro_user_id)
-    return entry
-
-
 def reverse_earnings_entries_for_source(
     db: Session,
     *,
@@ -330,20 +287,15 @@ def reverse_earnings_entries_for_source(
 
 
 def refresh_earnings_balance_snapshot(db: Session, *, pro_user_id: uuid.UUID) -> EarningsBalanceSnapshot:
-    totals = db.execute(
-        select(
-            func.coalesce(func.sum(EarningsLedgerEntry.net_eur).filter(EarningsLedgerEntry.status == EarningsEntryStatus.pending), 0),
-            func.coalesce(func.sum(EarningsLedgerEntry.net_eur).filter(EarningsLedgerEntry.status == EarningsEntryStatus.available), 0),
-            func.coalesce(func.sum(EarningsLedgerEntry.net_eur).filter(EarningsLedgerEntry.status == EarningsEntryStatus.held), 0),
-        ).where(EarningsLedgerEntry.pro_user_id == pro_user_id)
-    ).one()
+    """A cached copy of photographer_money, for the finance metrics."""
+    money = photographer_money(db, pro_user_id)
     row = db.get(EarningsBalanceSnapshot, pro_user_id)
     if not row:
         row = EarningsBalanceSnapshot(pro_user_id=pro_user_id)
         db.add(row)
-    row.pending_eur = _q2(Decimal(str(totals[0] or 0)))
-    row.available_eur = _q2(Decimal(str(totals[1] or 0)))
-    row.held_eur = _q2(Decimal(str(totals[2] or 0)))
+    row.pending_eur = money.pending
+    row.available_eur = money.available
+    row.held_eur = money.on_hold
     row.updated_at = datetime.now(timezone.utc)
     db.flush()
     return row
@@ -382,15 +334,19 @@ def upsert_payout_account(
 
 
 def payout_balance_view(db: Session, *, pro_user_id: uuid.UUID) -> dict:
-    snapshot = refresh_earnings_balance_snapshot(db, pro_user_id=pro_user_id)
-    reserved = reserved_amount_for_pro(db, pro_user_id=pro_user_id)
-    withdrawable = max(Decimal("0.00"), _q2(snapshot.available_eur - reserved))
+    """photographer_money, as the routes return it. `available_eur` is the
+    real figure and may be negative (admins see it); the photographer's
+    screen uses `withdrawable_eur` and `adjustment_owed_eur`."""
+    money = photographer_money(db, pro_user_id)
     return {
-        "pending_eur": _q2(snapshot.pending_eur),
-        "available_eur": _q2(snapshot.available_eur),
-        "held_eur": _q2(snapshot.held_eur),
-        "reserved_eur": _q2(reserved),
-        "withdrawable_eur": withdrawable,
+        "pending_eur": money.pending,
+        "available_eur": money.available,
+        "held_eur": money.on_hold,
+        "reserved_eur": money.reserved,
+        "paid_out_eur": money.paid_out,
+        "lifetime_eur": money.lifetime,
+        "withdrawable_eur": money.withdrawable,
+        "adjustment_owed_eur": money.adjustment_owed,
     }
 
 
@@ -420,8 +376,7 @@ def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount_eur: De
     if int(recent_count) >= PAYOUT_REQUEST_LIMIT_7D:
         raise APIError(code="rate_limited", message="Payout request limit reached for this week", status_code=429)
 
-    balance = payout_balance_view(db, pro_user_id=pro_user_id)
-    if amount > balance["withdrawable_eur"]:
+    if amount > photographer_money(db, pro_user_id).withdrawable:
         raise APIError(code="validation_error", message="Requested amount exceeds withdrawable balance", status_code=422)
 
     row = PayoutRequest(
@@ -460,6 +415,10 @@ def approve_payout_request(db: Session, *, payout_request_id: uuid.UUID, admin_u
         raise APIError(code="not_found", message="Payout request not found", status_code=404)
     if row.status != PayoutRequestStatus.requested:
         raise APIError(code="invalid_state", message="Payout request is not in requested status", status_code=409)
+    # Asked again now, of the same function the Wallet and the request limit
+    # ask: other payouts may have been approved since this one was made.
+    if _q2(row.amount_eur) > photographer_money(db, row.pro_user_id).available:
+        raise APIError(code="insufficient_balance", message="Requested amount exceeds what is available now", status_code=422)
 
     _allocate_payout_amount(db, payout=row)
     row.status = PayoutRequestStatus.approved
@@ -575,19 +534,6 @@ def mark_payout_paid_manual(
     )
     observe_payout_volume(float(row.amount_eur))
     return row
-
-
-def reserved_amount_for_pro(db: Session, *, pro_user_id: uuid.UUID) -> Decimal:
-    total = db.execute(
-        select(func.coalesce(func.sum(PayoutAllocation.amount_eur), 0))
-        .select_from(PayoutAllocation)
-        .join(PayoutRequest, PayoutRequest.id == PayoutAllocation.payout_request_id)
-        .where(
-            PayoutRequest.pro_user_id == pro_user_id,
-            PayoutRequest.status.in_([PayoutRequestStatus.approved, PayoutRequestStatus.processing, PayoutRequestStatus.paid]),
-        )
-    ).scalar_one()
-    return _q2(Decimal(str(total or 0)))
 
 
 def list_pro_earnings_entries(

@@ -79,14 +79,25 @@ class _BalanceCard extends StatelessWidget {
               fontFeatures: RType.tabularFigures,
             ),
           ),
+          if (data.balance.adjustmentOwedEur != '0.00') ...[
+            const SizedBox(height: RSpace.s8),
+            // Money paid out that a refund later took back. The server holds
+            // the real (negative) balance; this screen shows 0 to withdraw
+            // and says plainly what is owed and where it comes from.
+            Text(
+              'Adjustment owed: €${data.balance.adjustmentOwedEur}. A booking was refunded after '
+              'its earnings were paid out; this comes off your next earnings.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: RSpace.s16),
-          // The other four buckets exist because money moves through stages -
+          // The other buckets exist because money moves through stages -
           // showing only the withdrawable figure would make a photographer
           // think earnings vanished between a shoot and a payout.
           _BalanceRow(label: 'Pending', amount: data.balance.pendingEur),
-          _BalanceRow(label: 'Available', amount: data.balance.availableEur),
           _BalanceRow(label: 'On hold', amount: data.balance.heldEur),
-          _BalanceRow(label: 'Reserved', amount: data.balance.reservedEur),
+          _BalanceRow(label: 'Reserved for payouts', amount: data.balance.reservedEur),
+          _BalanceRow(label: 'Paid out', amount: data.balance.paidOutEur),
         ],
       ),
     );

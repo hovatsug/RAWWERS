@@ -136,7 +136,6 @@ def split_booking(
     the arithmetic is describing rather than the platform helping itself to a
     stray cent.
     """
-    gross = _q2(gross)
     fee_percent = int(policy.fee_percent_gigs)
     retained_percent = int(policy.retained_percent)
     pro_raww_percent = int(policy.pro_raww_percent)
@@ -154,11 +153,30 @@ def split_booking(
     client_credit_percent = validate_client_credit_percent(
         int(client_credit_percent), maximum=max_client_credit_percent(policy)
     )
+    return split_with_rates(
+        gross,
+        retained_percent=retained_percent,
+        pro_raww_percent=pro_raww_percent,
+        client_credit_percent=client_credit_percent,
+    )
 
-    platform_total = _share(gross, fee_percent)
+
+def split_with_rates(
+    gross: Decimal, *, retained_percent: int, pro_raww_percent: int, client_credit_percent: int = 0
+) -> BookingSplit:
+    """The one rounding rule for a booking's money (the invoice method).
+
+    Retained, $RAWW credit and client credit are each a rounded percentage
+    of gross; the photographer's cash is the remainder. So EUR 52.43 is
+    7.86 + 2.62 + 41.95, and the platform's take is 10.48 - not a single 20%
+    rounded to 10.49, which is how earnings used to be computed and why
+    some wallets were a few cents off their invoices.
+    """
+    gross = _q2(gross)
     platform_retained = _share(gross, retained_percent)
     pro_raww = _share(gross, pro_raww_percent)
     client_raww = _share(gross, client_credit_percent)
+    platform_total = _q2(platform_retained + pro_raww)
 
     # Remainders, not independent percentages, so the shares always reconcile.
     pro_total = _q2(gross - platform_total)
@@ -172,7 +190,7 @@ def split_booking(
         pro_total=pro_total,
         pro_cash=pro_cash,
         client_raww=client_raww,
-        fee_percent=fee_percent,
+        fee_percent=retained_percent + pro_raww_percent,
         retained_percent=retained_percent,
         pro_raww_percent=pro_raww_percent,
         client_credit_percent=client_credit_percent,

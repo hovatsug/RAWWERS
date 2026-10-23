@@ -36,7 +36,7 @@ from app.models.admin import (
     UserRole,
     UserRoleType,
 )
-from app.models.gig import Gig, GigStatus, GigTransition, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
+from app.models.gig import Gig, GigStatus, GigTransition, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
 from app.models.learning import (
     Course,
     CourseLevel,
@@ -211,7 +211,7 @@ from app.services.disputes import (
     release_entitlement_hold,
 )
 from app.services.outbox import enqueue_outbox_event
-from app.services.payouts import create_earnings_entry, release_earnings_holds_for_source
+from app.services.payouts import release_earnings_holds_for_source
 from app.services.launch_ops import (
     create_invite_wave,
     generate_invite_codes,
@@ -221,6 +221,7 @@ from app.services.launch_ops import (
 )
 from app.services.proof_of_gigs import enqueue_raww_mint, create_raww_clawback, ensure_default_raww_config, list_raww_mints
 from app.services import available_now, presence
+from app.services.photographer_money import record_gig_earnings
 from app.services.pro_standing import latest_ban_action, list_open_bookings_for_review
 from app.services.auth_service import revoke_all_user_sessions
 from app.services.dispute_hold import leave_dispute_without_refund
@@ -1528,22 +1529,8 @@ def update_gig_status(
             payload={"gig_id": str(gig.id)},
             idempotency_key=f"raww:gig_completed:{gig.id}",
         )
-        succeeded_payments = list_succeeded_payments_for_gig(
-            db, gig.id, kinds=[StripePaymentKind.base, StripePaymentKind.difference]
-        )
-        if succeeded_payments:
-            gross_eur = sum((p.amount for p in succeeded_payments), Decimal("0.00"))
-            create_earnings_entry(
-                db,
-                pro_user_id=gig.pro_user_id,
-                source_type=EarningsSourceType.gig_base,
-                source_id=gig.id,
-                gross_eur=Decimal(str(gross_eur)),
-                metadata={
-                    "gig_id": str(gig.id),
-                    "payment_intent_ids": [p.stripe_payment_intent_id for p in succeeded_payments],
-                },
-            )
+        # The same function completion uses: the final price net of refunds.
+        record_gig_earnings(db, gig)
     db.commit()
     return {"gig_id": str(gig.id), "status": gig.status.value}
 

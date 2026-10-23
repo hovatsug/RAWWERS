@@ -22,9 +22,7 @@ from sqlalchemy.orm import Session
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, SelectionStatus
 from app.models.gig import Gig
 from app.models.payouts import VatStatus
-from app.services.commission import split_booking
 from app.services.tax import VatBreakdown, vat_breakdown
-from app.services.payouts import ensure_default_platform_fee_policy
 
 
 def _q2(amount: Decimal) -> Decimal:
@@ -124,33 +122,28 @@ class InvoiceAmounts:
 
 
 def invoice_amounts(db: Session, gig: Gig) -> InvoiceAmounts:
-    """What one gig's money divides into, from its own stamped rates."""
-    gross = _q2(gig.amount_final or gig.amount_minimum)
-    stamped = gig.retained_percent is not None and gig.pro_raww_percent is not None
+    """What one gig's money divides into.
 
-    if stamped:
-        retained_percent = int(gig.retained_percent)
-        pro_raww_percent = int(gig.pro_raww_percent)
-        client_credit_percent = int(gig.client_credit_percent or 0)
-        platform_retained = _q2(gross * Decimal(retained_percent) / Decimal(100))
-        pro_raww = _q2(gross * Decimal(pro_raww_percent) / Decimal(100))
-        client_raww = _q2(gross * Decimal(client_credit_percent) / Decimal(100))
-        # A remainder, for the same reason it is one in split_booking: the
-        # lines have to sum back to what the client paid, exactly.
-        pro_cash = _q2(gross - platform_retained - pro_raww - client_raww)
+    The split stamped on the booking when its earnings were recorded
+    (photographer_money), which is exactly what its earnings entry holds. A
+    booking not yet completed has no stamp: its current final price is
+    divided by the same function at the same stamped rates.
+    """
+    from app.services.photographer_money import booking_split, final_price
+
+    stamped = gig.retained_percent is not None and gig.pro_raww_percent is not None
+    if gig.final_stamped_at is not None:
+        gross = _q2(gig.final_gross)
+        platform_retained = _q2(gig.final_platform_retained)
+        pro_raww = _q2(gig.final_pro_raww)
+        client_raww = _q2(gig.final_client_raww)
+        pro_cash = _q2(gig.final_pro_cash)
+        split = booking_split(db, gig, gross)
     else:
-        split = split_booking(
-            gross=gross,
-            policy=ensure_default_platform_fee_policy(db),
-            client_credit_percent=0,
+        split = booking_split(db, gig, final_price(gig))
+        gross, platform_retained, pro_raww, client_raww, pro_cash = (
+            split.gross, split.platform_retained, split.pro_raww, split.client_raww, split.pro_cash,
         )
-        retained_percent = split.retained_percent
-        pro_raww_percent = split.pro_raww_percent
-        client_credit_percent = split.client_credit_percent
-        platform_retained = split.platform_retained
-        pro_raww = split.pro_raww
-        client_raww = split.client_raww
-        pro_cash = split.pro_cash
 
     return InvoiceAmounts(
         gross=gross,
@@ -158,9 +151,9 @@ def invoice_amounts(db: Session, gig: Gig) -> InvoiceAmounts:
         pro_raww=pro_raww,
         client_raww=client_raww,
         pro_cash=pro_cash,
-        retained_percent=retained_percent,
-        pro_raww_percent=pro_raww_percent,
-        client_credit_percent=client_credit_percent,
+        retained_percent=split.retained_percent,
+        pro_raww_percent=split.pro_raww_percent,
+        client_credit_percent=split.client_credit_percent,
         rates_were_stamped=stamped,
     )
 

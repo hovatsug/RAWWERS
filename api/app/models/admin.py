@@ -401,9 +401,16 @@ class MoneyAttentionItem(Base):
 
 
 class ProFaultEvent(Base):
-    """A photographer found at fault, recorded for review. Never an input to
-    ranking, rows or visibility. Written only on an explicit finding - a
-    refund alone is not one."""
+    """A photographer found at fault, written only on an explicit admin
+    finding - a refund alone is not one.
+
+    Ranking reads it in exactly one place, discovery_index's
+    `disputes_count` (distinct disputes found at fault), which feeds three
+    things and nothing else: the ranking score, the match score's dispute
+    penalty, and the "high_reliability" reason. Nothing else that ranks or
+    orders photographers reads it; tests/test_ranking_counts.py holds that.
+    Outside ranking, a lost chargeback reads it to decide whether the
+    photographer's earnings are reversed."""
 
     __tablename__ = "pro_fault_event"
     __table_args__ = (UniqueConstraint("dispute_id", "kind", name="uq_pro_fault_event_dispute_kind"),)

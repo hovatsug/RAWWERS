@@ -6,7 +6,7 @@ part of 'auth_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$authControllerHash() => r'95920e9db515195e974f7054380f2ad97fd0cc53';
+String _$authControllerHash() => r'ec73de1483a1875c77ec022f45e6277cdce66e7d';
 
 /// keepAlive, not auto-dispose: this is the session, and it must outlive any
 /// particular listener. Under auto-dispose the controller is torn down the

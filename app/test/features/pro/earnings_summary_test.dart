@@ -96,4 +96,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('predate itemised rates'), findsNothing);
   });
+
+  testWidgets('Booked, fees and cash earned add up, and RAWW credit sits below them', (tester) async {
+    await tester.pumpWidget(_wrap(_summary(gross: '52.43', platformFees: '10.48', proRaww: '2.62', proCash: '41.95')));
+    await tester.pumpAndSettle();
+
+    final booked = tester.getTopLeft(find.text('Booked')).dy;
+    final fees = tester.getTopLeft(find.text('Platform fees')).dy;
+    final cash = tester.getTopLeft(find.text('Cash earned')).dy;
+    final credit = tester.getTopLeft(find.text('Your RAWW credit')).dy;
+    expect(booked < fees && fees < cash, isTrue);
+    expect(credit > cash, isTrue, reason: 'the credit is not cash: it must not sit inside the sum');
+    expect(find.textContaining('Not withdrawable'), findsOneWidget);
+  });
 }

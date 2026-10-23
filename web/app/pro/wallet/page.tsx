@@ -59,8 +59,11 @@ export default function ProWalletPage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <Card>
-          <p className="text-xs uppercase text-neutral-500">Available</p>
-          <p className="mt-1 text-2xl font-semibold">{String(balanceQ.data?.ok ? (balanceQ.data.data as any).available_eur ?? "-" : "-")}</p>
+          <p className="text-xs uppercase text-neutral-500">Available to withdraw</p>
+          <p className="mt-1 text-2xl font-semibold">{String(balanceQ.data?.ok ? (balanceQ.data.data as any).withdrawable_eur ?? "-" : "-")}</p>
+          {balanceQ.data?.ok && (balanceQ.data.data as any).adjustment_owed_eur && (balanceQ.data.data as any).adjustment_owed_eur !== "0.00" ? (
+            <p className="mt-1 text-xs text-neutral-500">Adjustment owed {String((balanceQ.data.data as any).adjustment_owed_eur)}: a refund after a payout, taken from your next earnings.</p>
+          ) : null}
         </Card>
         <Card>
           <p className="text-xs uppercase text-neutral-500">Pending</p>

@@ -9,16 +9,14 @@ payment just succeeded).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import SYSTEM_USER_ID
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, ProofGalleryStatus, UpsellPurchase, UpsellPurchaseStatus
-from app.models.gig import Gig, GigStatus, StripePaymentKind
+from app.models.gig import Gig, GigStatus
 from app.models.media_rights import GigEntitlementType
-from app.models.payouts import EarningsSourceType
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.discovery_index import recompute_pro_public_index
@@ -31,9 +29,8 @@ from app.services.payment_intents import (
     base_payment_succeeded,
     difference_owed,
     difference_paid,
-    list_succeeded_payments_for_gig,
 )
-from app.services.payouts import create_earnings_entry
+from app.services.photographer_money import record_gig_earnings
 from app.services.proof_of_gigs import enqueue_raww_mint
 from app.services.reminders import cancel_proof_selection_reminders
 
@@ -118,17 +115,9 @@ def finalize_gallery_and_complete_gig(
     transition = transition_gig(gig, GigStatus.completed, SYSTEM_USER_ID, reason="Booking closed: selection submitted and payment settled")
     db.add(transition)
 
-    succeeded = list_succeeded_payments_for_gig(db, gig.id, kinds=[StripePaymentKind.base, StripePaymentKind.difference])
-    if succeeded:
-        gross_eur = sum((p.amount for p in succeeded), Decimal("0.00"))
-        create_earnings_entry(
-            db,
-            pro_user_id=gig.pro_user_id,
-            source_type=EarningsSourceType.gig_base,
-            source_id=gig.id,
-            gross_eur=Decimal(str(gross_eur)),
-            metadata={"gig_id": str(gig.id), "payment_intent_ids": [p.stripe_payment_intent_id for p in succeeded]},
-        )
+    # The final price net of refunds - not the sum of the payments, which
+    # credited a photographer the whole deposit for a cheaper selection.
+    record_gig_earnings(db, gig)
 
     enqueue_raww_mint(
         db,

@@ -21,6 +21,10 @@ import 'package:rawwers/features/pro/pricing/pricing_controller.dart';
 /// So the editor shows what a client actually pays at real photo counts,
 /// recomputed from the server as the entry price is typed - not a
 /// client-side approximation that could disagree with the invoice.
+/// The one honest line about earnings on this screen.
+const earningsDependOnSelection =
+    'Clients pay for the photos they select, so what you earn depends on their selection.';
+
 class PricingScreen extends ConsumerWidget {
   const PricingScreen({super.key});
 
@@ -49,7 +53,16 @@ class PricingScreen extends ConsumerWidget {
                 itemCount: value.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: RSpace.s12),
                 itemBuilder: (context, index) => index == 0
-                    ? const ClientCreditCard()
+                    ? const Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // How the money works, said once and plainly: a
+                          // package's price is a deposit, not what is earned.
+                          Text(earningsDependOnSelection),
+                          SizedBox(height: RSpace.s12),
+                          ClientCreditCard(),
+                        ],
+                      )
                     : _PackageRow(
                         package: value[index - 1],
                         onEdit: () => _openEditor(context, existing: value[index - 1]),

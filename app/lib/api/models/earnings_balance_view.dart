@@ -21,10 +21,28 @@
 ///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Reserved Eur"
 ///         },
+///         "paid_out_eur": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "default": "0.00",
+///             "title": "Paid Out Eur"
+///         },
+///         "lifetime_eur": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "default": "0.00",
+///             "title": "Lifetime Eur"
+///         },
 ///         "withdrawable_eur": {
 ///             "type": "string",
 ///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Withdrawable Eur"
+///         },
+///         "adjustment_owed_eur": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "default": "0.00",
+///             "title": "Adjustment Owed Eur"
 ///         }
 ///     },
 ///     "type": "object",
@@ -35,7 +53,8 @@
 ///         "reserved_eur",
 ///         "withdrawable_eur"
 ///     ],
-///     "title": "EarningsBalanceView"
+///     "title": "EarningsBalanceView",
+///     "description": "available + reserved + paid_out + pending + held == lifetime, always.\n\n`available_eur` is the real figure and may be negative - money paid out\nthat a later refund took back. A photographer's screen shows\n`withdrawable_eur` (never below 0) and `adjustment_owed_eur` instead."
 /// }
 library earnings_balance_view;
 
@@ -64,9 +83,24 @@ abstract class EarningsBalanceView with _$EarningsBalanceView {
     @JsonKey(name: EarningsBalanceView.reservedEurKey_)
     required String reservedEur,
 
+    /// paidOutEur
+    @Default('0.00')
+    @JsonKey(name: EarningsBalanceView.paidOutEurKey_)
+    String paidOutEur,
+
+    /// lifetimeEur
+    @Default('0.00')
+    @JsonKey(name: EarningsBalanceView.lifetimeEurKey_)
+    String lifetimeEur,
+
     /// withdrawableEur
     @JsonKey(name: EarningsBalanceView.withdrawableEurKey_)
     required String withdrawableEur,
+
+    /// adjustmentOwedEur
+    @Default('0.00')
+    @JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_)
+    String adjustmentOwedEur,
   }) = _EarningsBalanceView;
 
   factory EarningsBalanceView.fromJson(Map<String, dynamic> json) =>
@@ -80,5 +114,11 @@ abstract class EarningsBalanceView with _$EarningsBalanceView {
 
   static const String reservedEurKey_ = r'reserved_eur';
 
+  static const String paidOutEurKey_ = r'paid_out_eur';
+
+  static const String lifetimeEurKey_ = r'lifetime_eur';
+
   static const String withdrawableEurKey_ = r'withdrawable_eur';
+
+  static const String adjustmentOwedEurKey_ = r'adjustment_owed_eur';
 }

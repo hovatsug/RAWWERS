@@ -50,17 +50,23 @@ class _Summary extends StatelessWidget {
           ),
           const SizedBox(height: RSpace.s16),
 
+          // A sum that adds up: Booked, less fees (and anything given to
+          // clients), is the cash earned. The RAWW credit used to sit inside
+          // it as a plus line, though it is part of the fee and not cash, so
+          // the column did not add up to the total under it.
           _Row(label: 'Booked', amount: '€${summary.gross}', emphasised: true),
           const SizedBox(height: RSpace.s8),
           _Row(label: 'Platform fees', amount: '-€${summary.platformFees}'),
-          const SizedBox(height: RSpace.s8),
-          _Row(label: 'Your RAWW credit', amount: '€${summary.proRaww}'),
           if (summary.clientRaww != '0.00') ...[
             const SizedBox(height: RSpace.s8),
             _Row(label: 'Given to clients', amount: '-€${summary.clientRaww}'),
           ],
           const Divider(height: RSpace.s24),
           _Row(label: 'Cash earned', amount: '€${summary.proCash}', emphasised: true),
+          const SizedBox(height: RSpace.s16),
+          _Row(label: 'Your RAWW credit', amount: '€${summary.proRaww}'),
+          const SizedBox(height: RSpace.s4),
+          Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
 
           if (summary.averageGross != null) ...[
             const SizedBox(height: RSpace.s12),

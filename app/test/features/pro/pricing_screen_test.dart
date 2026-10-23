@@ -138,6 +138,12 @@ Future<void> _tapSave(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('says plainly that earnings depend on what the client selects', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pumpAndSettle();
+    expect(find.text(earningsDependOnSelection), findsOneWidget);
+  });
+
   testWidgets('a package shows the per-photo rate the curve is built from', (tester) async {
     _usePhoneSurface(tester);
     await tester.pumpWidget(_wrap());

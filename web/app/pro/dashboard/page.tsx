@@ -72,7 +72,8 @@ export default function ProDashboardPage() {
   const balance = balanceQ.data?.ok ? balanceQ.data.data : {};
   const threads = threadsQ.data?.ok ? ((threadsQ.data.data as any).items || []) : [];
   const pendingCount = Object.values(checks || {}).filter((v) => v === false).length;
-  const availableBalance = String((balance as any).available_eur ?? "—");
+  // Withdrawable, never the raw available figure, which can be negative.
+  const availableBalance = String((balance as any).withdrawable_eur ?? "—");
 
   return (
     <div className="relative space-y-5">

@@ -514,8 +514,10 @@ def create_or_get_refund_case_for_dispute(
 def record_photographer_fault(
     db: Session, *, dispute: Dispute, severity: str, note: str | None, recorded_by: uuid.UUID | None
 ) -> ProFaultEvent | None:
-    """An explicit finding that the photographer was at fault, kept for
-    review. Once per dispute. Nothing reads it for ranking or rows."""
+    """An explicit finding that the photographer was at fault, once per
+    dispute. Ranking reads it only through discovery_index's
+    `disputes_count` - the ranking score, the match score's dispute penalty
+    and the "high_reliability" reason (see ProFaultEvent)."""
     if not dispute.against_user_id:
         return None
     existing = db.execute(

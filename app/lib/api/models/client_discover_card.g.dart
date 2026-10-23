@@ -31,6 +31,9 @@ _ClientDiscoverCard _$ClientDiscoverCardFromJson(Map<String, dynamic> json) =>
           .toList(),
       portfolioPhotoCount: (json['portfolio_photo_count'] as num).toInt(),
       portfolioVideoCount: (json['portfolio_video_count'] as num).toInt(),
+      teaser: json['teaser'] == null
+          ? null
+          : PhotographerTeaser.fromJson(json['teaser'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$ClientDiscoverCardToJson(_ClientDiscoverCard instance) =>
@@ -56,4 +59,5 @@ Map<String, dynamic> _$ClientDiscoverCardToJson(_ClientDiscoverCard instance) =>
       'top_niches': instance.topNiches,
       'portfolio_photo_count': instance.portfolioPhotoCount,
       'portfolio_video_count': instance.portfolioVideoCount,
+      'teaser': instance.teaser,
     };

@@ -88,6 +88,7 @@ from app.models.niche import (
     ProNicheSkillEvent,
     UserBadge,
 )
+from app.models.meet import InterviewQuestion, ProInterviewAnswer
 from app.models.outbox import IdempotencyKey, OutboxEvent
 from app.models.ops import AbuseSignal, FeatureFlag, WebhookSecurityLog
 from app.models.risk import DeviceFingerprint, IpSignal, RiskAction, RiskEvent, RiskProfile, RiskRule, SessionSignal

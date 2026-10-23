@@ -185,6 +185,16 @@
 ///         "portfolio_video_count": {
 ///             "type": "integer",
 ///             "title": "Portfolio Video Count"
+///         },
+///         "teaser": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/PhotographerTeaser"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -277,6 +287,9 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
     /// portfolioVideoCount
     @JsonKey(name: ClientDiscoverCard.portfolioVideoCountKey_)
     required int portfolioVideoCount,
+
+    /// teaser
+    @JsonKey(name: ClientDiscoverCard.teaserKey_) PhotographerTeaser? teaser,
   }) = _ClientDiscoverCard;
 
   factory ClientDiscoverCard.fromJson(Map<String, dynamic> json) =>
@@ -323,4 +336,6 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
   static const String portfolioPhotoCountKey_ = r'portfolio_photo_count';
 
   static const String portfolioVideoCountKey_ = r'portfolio_video_count';
+
+  static const String teaserKey_ = r'teaser';
 }

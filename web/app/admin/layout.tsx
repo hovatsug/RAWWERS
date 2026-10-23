@@ -68,6 +68,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       items: [
         { href: "/admin/pricing", label: "Price caps" },
         { href: "/admin/niches", label: "Niche banners" },
+        { href: "/admin/interview-questions", label: "Interview questions" },
         { href: "/admin/accountability", label: "Accountability policy" },
         { href: "/admin/camera-models", label: "Camera reference" }
       ]

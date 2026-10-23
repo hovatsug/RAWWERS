@@ -157,6 +157,16 @@
 ///             "type": "boolean",
 ///             "default": false,
 ///             "title": "Is Guest View"
+///         },
+///         "meet": {
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/MeetThePhotographerView"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
 ///         }
 ///     },
 ///     "type": "object",
@@ -256,6 +266,10 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     @Default(false)
     @JsonKey(name: ClientProProfileResponse.isGuestViewKey_)
     bool isGuestView,
+
+    /// meet
+    @JsonKey(name: ClientProProfileResponse.meetKey_)
+    MeetThePhotographerView? meet,
   }) = _ClientProProfileResponse;
 
   factory ClientProProfileResponse.fromJson(Map<String, dynamic> json) =>
@@ -301,4 +315,6 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
   static const String nichesKey_ = r'niches';
 
   static const String isGuestViewKey_ = r'is_guest_view';
+
+  static const String meetKey_ = r'meet';
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
+import 'package:rawwers/api/models/teaser_kind.dart';
+import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_niche_banner.dart';
@@ -26,10 +28,12 @@ abstract final class _RowMetrics {
   static const cardWidth = 148.0;
   static const coverSize = 148.0;
 
-  /// Cover, gap, name, then the rate and the total it produces. 208 fitted
-  /// a name and one price line; the rate needs a line of its own, and a card
-  /// that clips its own price is worse than one that is a little taller.
-  static const rowHeight = 224.0;
+  /// Cover, gap, name, a line from their interview where they have one, then
+  /// the rate and the total it produces. 208 fitted a name and one price
+  /// line; the rate needs a line of its own, and the interview line another -
+  /// a card that clips its own price is worse than one that is a little
+  /// taller.
+  static const rowHeight = 244.0;
 
   static const gap = RSpace.s12;
   static const sidePadding = EdgeInsets.symmetric(horizontal: RSpace.s16);
@@ -129,6 +133,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final teaser = card.teaser;
 
     return InkWell(
       onTap: onTap,
@@ -140,7 +145,15 @@ class _Card extends StatelessWidget {
             SizedBox(
               height: _RowMetrics.coverSize,
               width: _RowMetrics.coverSize,
-              child: RNetworkPhoto(url: card.coverUrl, semanticLabel: card.displayName),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  RNetworkPhoto(url: card.coverUrl, semanticLabel: card.displayName),
+                  // Only where they have a video - never a placeholder.
+                  if (teaser?.kind == TeaserKind.video)
+                    const Positioned(right: RSpace.s8, bottom: RSpace.s8, child: VideoPlayBadge()),
+                ],
+              ),
             ),
             const SizedBox(height: RSpace.s8),
             Row(
@@ -159,6 +172,15 @@ class _Card extends StatelessWidget {
                 ],
               ],
             ),
+            // One line of their own words, where they published some.
+            if (teaser?.kind == TeaserKind.interview && (teaser?.line ?? '').isNotEmpty)
+              Text(
+                '“${teaser!.line}”',
+                key: const ValueKey('card-teaser'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+              ),
             // Price is the second thing anyone wants and the first thing that
             // must not be invented: a null price renders as nothing rather
             // than as a zero, which would read as free.

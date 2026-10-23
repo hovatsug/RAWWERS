@@ -25,6 +25,7 @@ import 'package:rawwers/features/client/pro_profile/availability_calendar.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/message_button.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
+import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/design/components/r_online_dot.dart';
 
 /// One photographer, in enough depth to decide whether to book them.
@@ -296,6 +297,13 @@ class _ProfileState extends State<_Profile> {
               ),
             ),
           ],
+          // Their own words (and, later, their video). Absent when they have
+          // published nothing - no heading, no placeholder.
+          if (profile.meet != null)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s8, RSpace.s16, RSpace.s16),
+              sliver: SliverToBoxAdapter(child: MeetSection(name: name, meet: profile.meet)),
+            ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               RSpace.s16,

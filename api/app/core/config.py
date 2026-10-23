@@ -134,6 +134,11 @@ class Settings(BaseSettings):
     niche_banner_min_contrast: float = Field(default=4.5, alias="NICHE_BANNER_MIN_CONTRAST")
     niche_banner_scrim_floor: float = Field(default=0.25, alias="NICHE_BANNER_SCRIM_FLOOR")
     niche_banner_scrim_ceiling: float = Field(default=0.85, alias="NICHE_BANNER_SCRIM_CEILING")
+    # "Meet the photographer". The presentation video's slot stays empty until
+    # this is on and videos exist; nothing produces one yet.
+    presentation_video_enabled: bool = Field(default=False, alias="PRESENTATION_VIDEO_ENABLED")
+    # The one line of a photographer's interview a Discover card may show.
+    interview_teaser_max_chars: int = Field(default=90, alias="INTERVIEW_TEASER_MAX_CHARS")
     rate_limit_public_read_per_min: int = Field(default=120, alias="RATE_LIMIT_PUBLIC_READ_PER_MIN")
     rate_limit_auth_mutation_per_min: int = Field(default=30, alias="RATE_LIMIT_AUTH_MUTATION_PER_MIN")
     rate_limit_chat_messages_per_min: int = Field(default=10, alias="RATE_LIMIT_CHAT_MESSAGES_PER_MIN")

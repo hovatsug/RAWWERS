@@ -74,6 +74,8 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
 from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
+from app.services.meet import meet_views
+from app.services.meet import teasers as meet_teasers
 from app.services.niche_banners import banner_views as niche_banner_views
 from app.services.media_urls import (
     ORIGINAL_FIRST,
@@ -488,6 +490,7 @@ def client_pro_profile(
         # client's decision.
         niches=profile_niches,
         is_guest_view=False,
+        meet=meet_views(db, [profile.user_id]).get(profile.user_id),
     )
     log_event(
         db_write,
@@ -1603,6 +1606,9 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
         expires_in=_media_url_ttl(),
     )
 
+    # Shown, never ranked: the rows were ordered before this was read.
+    teasers = meet_teasers(db, [idx.pro_user_id for idx in rows])
+
     cards: list[ClientDiscoverCard] = []
     for idx in rows:
         profile = profiles.get(idx.pro_user_id)
@@ -1627,6 +1633,7 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
                 top_niches=idx.top_niches or [],
                 portfolio_photo_count=idx.portfolio_photo_count,
                 portfolio_video_count=idx.portfolio_video_count,
+                teaser=teasers.get(idx.pro_user_id),
             )
         )
     return cards

@@ -9,6 +9,7 @@ export 'available_now_client.dart';
 export 'client_launch_client.dart';
 export 'communications_client.dart';
 export 'accountability_client.dart';
+export 'meet_client.dart';
 export 'discovery_client.dart';
 export 'disputes_client.dart';
 export 'gamification_client.dart';

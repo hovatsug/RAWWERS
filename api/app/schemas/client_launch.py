@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.models.niche import SkillTier
 
 from app.models.media_rights import GigConsentLevel
+from app.schemas.meet import MeetThePhotographerView, PhotographerTeaser
 from app.schemas.niche_banners import NicheBannerView
 from app.schemas.review import ReviewView
 
@@ -92,6 +93,9 @@ class ClientDiscoverCard(BaseModel):
     top_niches: list[dict] = Field(default_factory=list)
     portfolio_photo_count: int
     portfolio_video_count: int
+    # A taste of "Meet the photographer", only where they have one: a play
+    # badge for a video, or one line of their interview. Never sorts anything.
+    teaser: PhotographerTeaser | None = None
 
 
 class ClientDiscoverResponse(BaseModel):
@@ -226,7 +230,9 @@ class ClientProProfileResponse(BaseModel):
     # uses to render no tab bar at all rather than one redundant tab.
     niches: list[ClientProfileNiche] = Field(default_factory=list)
     is_guest_view: bool = False
-
+    # "Meet the photographer": their video and their own words. Null when
+    # there is nothing in it, so the section is absent rather than empty.
+    meet: MeetThePhotographerView | None = None
 
 class BookingDateWindow(BaseModel):
     start_at: datetime

@@ -11,6 +11,9 @@ import 'package:rawwers/api/models/skill_tier.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_photo_viewer.dart';
+import 'package:rawwers/api/models/meet_interview_item.dart';
+import 'package:rawwers/api/models/meet_the_photographer_view.dart';
+import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/pro_profile/availability_controller.dart';
 import 'package:rawwers/features/client/pro_profile/pro_profile_controller.dart';
@@ -32,8 +35,10 @@ ClientProProfileResponse _profile({
   List<ClientProfilePackage>? packages,
   List<ClientProfileNiche>? niches,
   bool online = false,
+  MeetThePhotographerView? meet,
 }) =>
     ClientProProfileResponse(
+      meet: meet,
       proUserId: _proId,
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
@@ -474,5 +479,36 @@ void _multiNicheTests() {
     await tester.drag(find.byType(PageView), const Offset(0, 300));
     await tester.pumpAndSettle();
     expect(find.byType(RPhotoViewer), findsNothing);
+  });
+
+  // --- Meet the photographer. ---
+
+  testWidgets('no section at all when the photographer has published nothing', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+    expect(find.byType(MeetSection), findsNothing);
+    expect(find.textContaining('Meet '), findsNothing);
+  });
+
+  testWidgets('their own words, each under its title, before the packages', (tester) async {
+    // Tall enough that the packages are built too: the list is lazy.
+    tester.view.physicalSize = const Size(1170, 9000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    const meet = MeetThePhotographerView(interview: [
+      MeetInterviewItem(questionId: 'q1', title: 'Who I am', answer: "I'm Alex, a portrait photographer in New York."),
+      MeetInterviewItem(questionId: 'q2', title: 'Working with me', answer: 'We start by talking, not posing.'),
+    ]);
+    await tester.pumpWidget(_wrap(_data(_profile(meet: meet))));
+    await tester.pump();
+    expect(find.text('Meet Alex Lens'), findsOneWidget);
+    expect(find.text('Who I am'), findsOneWidget);
+    expect(find.text('We start by talking, not posing.'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Working with me')).dy,
+      lessThan(tester.getTopLeft(find.text('Packages')).dy),
+      reason: 'the section sits above the packages',
+    );
   });
 }

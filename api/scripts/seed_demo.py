@@ -29,6 +29,12 @@ feature is visible in the app rather than present only in tests:
                   Simao switched on and online with the next three days
                   blocked (neither in Available now; Simao still in Online
                   now).
+  interviews      "Meet the photographer": Ines with all five answers
+                  published and Tomas with two, so their profiles have the
+                  section and their Discover cards a line of it; Daniel with
+                  a draft he never published, so his has neither. Alex Lens
+                  (pro1@rawwers.dev) is left without one to write it from the
+                  pro app.
   refunds         two bookings with Bruno Cardoso from a seed-only client,
                   paid in Stripe test mode: one refunded in full by the
                   client (the booking ends, its time is free again), one
@@ -1020,7 +1026,70 @@ def seed_refunds(db, *, dry_run: bool) -> list[str]:
     return lines
 
 
-STEPS = {"response_time": seed_response_time, "chat": seed_chat, "available_now": seed_available_now, "refunds": seed_refunds}
+# Invented words for demo photographers, in the shape the questions ask for;
+# no contact details. One entry per question, in the questions' order.
+INTERVIEWS = {
+    "ines.carvalho@rawwers.dev": (
+        [
+            "I'm Ines, a portrait and family photographer in Lisbon.",
+            "I work with people who say they hate being photographed. My photos are calm, warm and natural, never stiff.",
+            "We start with a coffee and a walk, so you forget the camera. I show you a few frames on the back of it as we go, "
+            "and you get your gallery within a week.",
+            "I trained in documentary photography and have photographed families in Lisbon for six years.",
+            "Have a look at my packages and send me a request. I'd love to hear what you have in mind.",
+        ],
+        True,
+    ),
+    "tomas.belmonte@rawwers.dev": (
+        [
+            "I'm Tomas, an events photographer in Lisbon.",
+            None,
+            "I move quietly through the room and work with the light that is there. You won't notice me until you see the photos.",
+            None,
+            None,
+        ],
+        True,
+    ),
+    "daniel.roque@rawwers.dev": (["I'm Daniel, still writing this.", None, None, None, None], False),
+}
+
+
+def seed_interviews(db, *, dry_run: bool) -> list[str]:
+    """Through the photographer's own routes: save the drafts, then publish
+    (or not). Re-running sets the same drafts and publishes again."""
+    api = _api()
+    lines = []
+    for email, (answers, publish) in INTERVIEWS.items():
+        pro_id = _user_id(db, email)
+        if pro_id is None:
+            lines.append(f"{email}: not in this database - skipped")
+            continue
+        if dry_run:
+            lines.append(f"{email}: would save {sum(a is not None for a in answers)} answers" + (" and publish" if publish else ", unpublished"))
+            continue
+        headers = _headers(db, pro_id)
+        items = api.get("/v1/pro/me/interview", headers=headers).json()["items"]
+        drafts = {item["question_id"]: answer for item, answer in zip(items, answers)}
+        resp = api.put("/v1/pro/me/interview", headers=headers, json={"answers": drafts})
+        if resp.status_code != 200:
+            raise RuntimeError(f"{email}: saving refused ({resp.status_code}): {resp.text}")
+        if publish:
+            resp = api.post("/v1/pro/me/interview/publish", headers=headers)
+            if resp.status_code != 200:
+                raise RuntimeError(f"{email}: publishing refused ({resp.status_code}): {resp.text}")
+        else:
+            api.post("/v1/pro/me/interview/unpublish", headers=headers)
+        lines.append(f"{email}: {sum(a is not None for a in answers)} answers, " + ("published" if publish else "draft only"))
+    return lines
+
+
+STEPS = {
+    "response_time": seed_response_time,
+    "chat": seed_chat,
+    "available_now": seed_available_now,
+    "interviews": seed_interviews,
+    "refunds": seed_refunds,
+}
 
 
 def main() -> int:

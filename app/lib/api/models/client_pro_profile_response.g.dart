@@ -38,6 +38,9 @@ _ClientProProfileResponse _$ClientProProfileResponseFromJson(
       ?.map((e) => ClientProfileNiche.fromJson(e as Map<String, dynamic>))
       .toList(),
   isGuestView: json['is_guest_view'] as bool? ?? false,
+  meet: json['meet'] == null
+      ? null
+      : MeetThePhotographerView.fromJson(json['meet'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$ClientProProfileResponseToJson(
@@ -63,4 +66,5 @@ Map<String, dynamic> _$ClientProProfileResponseToJson(
   'portfolio_preview': instance.portfolioPreview,
   'niches': instance.niches,
   'is_guest_view': instance.isGuestView,
+  'meet': instance.meet,
 };

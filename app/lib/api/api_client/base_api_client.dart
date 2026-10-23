@@ -57,6 +57,10 @@ class BaseApiClient {
     );
   }
 
+  MeetClient get meetClient {
+    return MeetClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   DiscoveryClient get discoveryClient {
     return DiscoveryClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

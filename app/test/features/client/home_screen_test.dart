@@ -19,6 +19,9 @@ import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/api/models/niche_banner_image_view.dart';
+import 'package:rawwers/api/models/photographer_teaser.dart';
+import 'package:rawwers/api/models/teaser_kind.dart';
+import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/api/models/niche_banner_style.dart';
 import 'package:rawwers/api/models/niche_banner_view.dart';
 import 'package:rawwers/design/components/r_niche_banner.dart';
@@ -46,8 +49,10 @@ ClientDiscoverCard _card(
   String? entryRate,
   int? entryPhotos,
   List<Map<String, dynamic>>? topNiches,
+  PhotographerTeaser? teaser,
 }) {
   return ClientDiscoverCard(
+    teaser: teaser,
     proUserId: 'pro-$name',
     displayName: name,
     coverUrl: cover ?? 'https://example.test/$name.jpg',
@@ -444,5 +449,26 @@ void _cardContentTests() {
       findsNothing,
       reason: 'a photographer with no completed work was labelled by the filler skill row',
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // "Meet the photographer" on the card: only where it exists.
+  // -------------------------------------------------------------------------
+
+  testWidgets('a card shows one line of the interview, a play badge for a video, and nothing otherwise', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('most_experienced', 'Most experienced', [
+          _card('Talks', teaser: const PhotographerTeaser(kind: TeaserKind.interview, line: "I'm Marco, a wedding photographer.")),
+          _card('Films', teaser: const PhotographerTeaser(kind: TeaserKind.video)),
+          _card('Quiet'),
+        ]),
+      ]),
+    );
+
+    expect(find.text('“I\'m Marco, a wedding photographer.”'), findsOneWidget);
+    expect(find.byKey(const ValueKey('card-teaser')), findsOneWidget, reason: 'only the card with an interview has a line');
+    expect(find.byType(VideoPlayBadge), findsOneWidget, reason: 'only the card with a video has a badge');
   });
 }

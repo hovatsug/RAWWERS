@@ -8,6 +8,7 @@ import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/findings/findings_card.dart';
+import 'package:rawwers/features/pro/interview/interview_controller.dart';
 import 'package:rawwers/features/pro/dashboard/dashboard_controller.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
@@ -39,6 +40,7 @@ class DashboardScreen extends ConsumerWidget {
     required this.availabilityPath,
     required this.listingPath,
     required this.onboardingPath,
+    required this.interviewPath,
     super.key,
   });
 
@@ -49,6 +51,7 @@ class DashboardScreen extends ConsumerWidget {
   final String availabilityPath;
   final String listingPath;
   final String onboardingPath;
+  final String interviewPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -86,6 +89,15 @@ class DashboardScreen extends ConsumerWidget {
                 actionLabel: 'Open',
                 onAction: () => context.push(listingPath),
                 child: _ListingBlock(onboardingPath: onboardingPath, pricingPath: pricingPath, profilePath: profilePath),
+              ),
+              const SizedBox(height: RSpace.s24),
+
+              _Section(
+                title: 'Meet the photographer',
+                subtitle: 'Optional: a few answers in your own words',
+                actionLabel: 'Edit',
+                onAction: () => context.push(interviewPath),
+                child: const _InterviewBlock(),
               ),
               const SizedBox(height: RSpace.s24),
 
@@ -453,5 +465,25 @@ class RTextLinkRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(onPressed: onPressed, child: Text(label));
+  }
+}
+
+
+/// Where their interview stands, in one line. Never a nudge to rank higher:
+/// it changes nothing about where they appear.
+class _InterviewBlock extends ConsumerWidget {
+  const _InterviewBlock();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final text = switch (ref.watch(interviewControllerProvider)) {
+      AsyncData(:final value) when !value.isPublished => 'Not on your profile. Clients see it only once you publish.',
+      AsyncData(:final value) when value.hasUnpublishedChanges => 'On your profile, with changes not published yet.',
+      AsyncData() => 'On your profile.',
+      AsyncError() => 'Could not load it.',
+      _ => '',
+    };
+    return Text(text, key: const ValueKey('interview-block'), style: theme.textTheme.bodyMedium);
   }
 }

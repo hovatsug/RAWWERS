@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/api_client/accountability_client.dart';
+import 'package:rawwers/api/api_client/meet_client.dart';
 import 'package:rawwers/api/api_client/ai_concierge_client.dart';
 import 'package:rawwers/api/api_client/auth_client.dart';
 import 'package:rawwers/api/api_client/client_launch_client.dart';
@@ -107,3 +108,6 @@ ReviewsClient reviewsClient(Ref ref) => ReviewsClient(ref.watch(dioProvider));
 
 @riverpod
 AccountabilityClient accountabilityClient(Ref ref) => AccountabilityClient(ref.watch(dioProvider));
+
+@riverpod
+MeetClient meetClient(Ref ref) => MeetClient(ref.watch(dioProvider));

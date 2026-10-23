@@ -324,6 +324,11 @@ export const admin = {
   liftBookingPause: (proId: string, note: string) =>
     adminFetch<unknown>(`pros/${proId}/booking-pause/lift`, { method: "POST", body: JSON.stringify({ note }) }),
   accountabilityPolicy: () => adminFetch<AccountabilityPolicy>("policies/accountability"),
+  interviewQuestions: () => adminFetch<InterviewQuestion[]>("interview-questions"),
+  createInterviewQuestion: (body: InterviewQuestionInput) =>
+    adminFetch<InterviewQuestion>("interview-questions", { method: "POST", body: JSON.stringify(body) }),
+  updateInterviewQuestion: (id: string, body: Partial<InterviewQuestionInput>) =>
+    adminFetch<InterviewQuestion>(`interview-questions/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   nicheBanners: () => adminFetch<NicheBannerList>("niche-banners"),
   nicheBanner: (slug: string) => adminFetch<NicheBannerDetail>(`niche-banners/${slug}`),
   editNicheBanner: (slug: string, body: { banner_style?: BannerStyle; banner_tagline?: string | null }) =>
@@ -527,3 +532,21 @@ export type BannerUploadCompleted = {
   placeholder: string;
   warnings: string[];
 };
+
+// ─── Meet the photographer ─────────────────────────────────────────────────
+
+export type InterviewQuestion = {
+  id: string;
+  key: string;
+  /** What the photographer is asked. */
+  prompt: string;
+  /** The heading clients read above the answer. */
+  title: string;
+  hint: string | null;
+  min_chars: number;
+  max_chars: number;
+  position: number;
+  is_active: boolean;
+};
+
+export type InterviewQuestionInput = Omit<InterviewQuestion, "id" | "key">;

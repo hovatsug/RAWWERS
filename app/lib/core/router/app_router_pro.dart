@@ -7,6 +7,7 @@ import 'package:rawwers/api/models/user_role_type.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
 import 'package:rawwers/core/launch/launch_screen.dart';
+import 'package:rawwers/features/pro/interview/interview_screen.dart';
 import 'package:rawwers/features/pro/availability/availability_screen.dart';
 import 'package:rawwers/features/pro/reviews/reviews_screen.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
@@ -92,6 +93,7 @@ abstract final class ProRoute {
   static const availability = '$dashboard/availability';
   static const listing = '$dashboard/listing';
   static const reviews = '$dashboard/reviews';
+  static const interview = '$dashboard/interview';
   static const onboarding = '$dashboard/getting-set-up';
   static const verifyEmail = '$dashboard/verify-email';
 
@@ -174,6 +176,7 @@ GoRouter proRouter(Ref ref) {
                   availabilityPath: ProRoute.availability,
                   listingPath: ProRoute.listing,
                   onboardingPath: ProRoute.onboarding,
+                  interviewPath: ProRoute.interview,
                 ),
                 routes: [
                   _editor('settings', (context, state) => const ProSettingsScreen(
@@ -198,6 +201,7 @@ GoRouter proRouter(Ref ref) {
                   _editor('availability', (context, state) => const AvailabilityScreen()),
                   _editor('verify-email', (context, state) => const VerifyEmailScreen()),
                   _editor('reviews', (context, state) => const ProReviewsScreen()),
+                  _editor('interview', (context, state) => const InterviewScreen()),
                   _editor('listing', (context, state) => const ListingPreviewScreen(
                         onboardingPath: ProRoute.onboarding,
                         pricingPath: ProRoute.pricing,

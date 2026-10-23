@@ -1,5 +1,9 @@
 """Whether a photographer may take bookings - one rule, asked by everyone.
 
+Two reasons they may not: a ban or a running suspension, and a booking pause
+an admin put on them (accountability). Neither is something they can switch
+off themselves.
+
 The discovery index (so Discover, the home rows, Available now and search),
 both booking-request routes and both answer paths (accept, confirm-slot) ask
 `booking_block_reason`. A banned photographer, or one suspended until a time
@@ -18,11 +22,15 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.accountability import BookingPause
 from app.models.admin import BanAction, BanActionType, MoneyAttentionItem, ProProfile
 from app.models.discovery import ProPublicIndex
 from app.models.gig import Gig, GigStatus
 
 SHUT_OUT = "shut_out"
+#: New bookings paused by an admin decision (accountability) - the
+#: photographer's own switch does not lift it.
+PAUSED = "paused"
 #: Paid bookings a ban leaves in the photographer's hands. Not completed
 #: (nothing left to deliver) and not payment_pending (the unpaid sweep ends
 #: those).
@@ -59,6 +67,11 @@ def booking_block_reason(db: Session, pro_user_id: uuid.UUID) -> str | None:
     """Why this photographer may not take bookings now, or None."""
     if is_shut_out(latest_ban_action(db, pro_user_id)):
         return SHUT_OUT
+    paused = db.execute(
+        select(BookingPause.id).where(BookingPause.pro_user_id == pro_user_id, BookingPause.lifted_at.is_(None))
+    ).first()
+    if paused:
+        return PAUSED
     return None
 
 

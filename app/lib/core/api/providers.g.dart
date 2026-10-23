@@ -361,5 +361,24 @@ final reviewsClientProvider = AutoDisposeProvider<ReviewsClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ReviewsClientRef = AutoDisposeProviderRef<ReviewsClient>;
+String _$accountabilityClientHash() =>
+    r'9339f685eaaab0c82027697eb1e3e03175530ef1';
+
+/// See also [accountabilityClient].
+@ProviderFor(accountabilityClient)
+final accountabilityClientProvider =
+    AutoDisposeProvider<AccountabilityClient>.internal(
+      accountabilityClient,
+      name: r'accountabilityClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$accountabilityClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AccountabilityClientRef = AutoDisposeProviderRef<AccountabilityClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

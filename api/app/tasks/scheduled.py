@@ -99,6 +99,20 @@ def raise_clients_owed_task() -> int:
         db.close()
 
 
+@celery_app.task(name="app.tasks.scheduled.apply_due_findings")
+def apply_due_findings_task() -> int:
+    """Confirmed findings whose window to respond has ended, put in effect."""
+    from app.services.accountability import apply_due_findings
+
+    db = SessionLocal()
+    try:
+        applied = apply_due_findings(db)
+        db.commit()
+        return applied
+    finally:
+        db.close()
+
+
 @celery_app.task(name="app.tasks.scheduled.purge_raw_access_ips")
 def purge_raw_access_ips_task() -> int:
     """Clients' raw IPs on download logs, past their retention period."""

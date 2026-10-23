@@ -130,7 +130,13 @@ def test_fault_events_are_read_in_one_place_only():
         for path in root.rglob("*.py")
         if "ProFaultEvent" in path.read_text()
     }
-    # The model, its registration, the one writer, and two readers: this
+    # The model, its registration, two writers, and two readers: this
     # count, and the lost-chargeback policy (a finding decides whether the
-    # photographer's earnings are reversed - services/chargebacks.py).
-    assert readers == {"models/admin.py", "db/base.py", "services/disputes.py", "services/discovery_index.py", "services/chargebacks.py"}
+    # photographer's earnings are reversed - services/chargebacks.py). The
+    # second writer, services/accountability.py, records non-delivery
+    # findings in effect as kind non_delivery_at_fault, which this count does
+    # not count: strikes, warnings and pauses never feed ranking.
+    assert readers == {
+        "models/admin.py", "db/base.py", "services/disputes.py", "services/discovery_index.py", "services/chargebacks.py",
+        "services/accountability.py",
+    }

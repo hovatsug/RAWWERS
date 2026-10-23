@@ -24,7 +24,8 @@ const KIND: Record<string, string> = {
   chargeback_lost: "Chargeback lost",
   pro_shut_out_booking: "Booking with a banned or suspended photographer",
   photographer_short_delivery: "Fewer photos delivered than included",
-  photographer_adjustment_owed: "Photographer owes back (paid out before a reduction)"
+  photographer_adjustment_owed: "Photographer owes back (paid out before a reduction)",
+  pro_suspension_review: "Suspension review (third finding, or severe)"
 };
 
 function dueLabel(dueAt: string | null): { text: string; overdue: boolean } | null {

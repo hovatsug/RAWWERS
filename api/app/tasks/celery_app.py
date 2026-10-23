@@ -98,6 +98,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.raise_clients_owed",
         "schedule": timedelta(hours=1),
     },
+    # Confirmed findings take effect only once the window to respond ends.
+    "apply-due-findings": {
+        "task": "app.tasks.scheduled.apply_due_findings",
+        "schedule": timedelta(minutes=15),
+    },
     # Clients' raw IPs on download logs, kept for chargeback evidence only.
     "purge-raw-access-ips": {
         "task": "app.tasks.scheduled.purge_raw_access_ips",
@@ -139,6 +144,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.purge_raw_access_ips": {"queue": "media"},
     "app.tasks.scheduled.relist_after_suspensions": {"queue": "media"},
     "app.tasks.scheduled.raise_clients_owed": {"queue": "media"},
+    "app.tasks.scheduled.apply_due_findings": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

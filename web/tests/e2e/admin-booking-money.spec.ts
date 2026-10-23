@@ -31,7 +31,7 @@ const MONEY = {
 
 type Recorded = { path: string; body: any };
 
-async function fakeAdmin(page: Page) {
+async function fakeAdmin(page: Page, overrides: Record<string, unknown> = {}) {
   const writes: Recorded[] = [];
   await page.addInitScript(() => {
     window.sessionStorage.setItem(
@@ -44,7 +44,7 @@ async function fakeAdmin(page: Page) {
     const path = new URL(req.url()).pathname.replace(/^\/api\/admin\//, "");
     const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
     if (req.method() === "GET") {
-      if (path === "gigs/gig-1/money") return json(MONEY);
+      if (path === "gigs/gig-1/money") return json({ ...MONEY, ...overrides });
       if (path === "money-attention" || path === "pros/review-queue" || path === "gear-verifications" || path === "payouts/queue") return json({ items: [] });
       if (path === "disputes") return json([]);
       return json({ error: { code: "not_found", message: `no fake for ${path}` } }, 404);
@@ -99,4 +99,31 @@ test("confirming sends exactly the reason, amount and note", async ({ page }) =>
   expect(writes[1].body.lines).toEqual([{ reason_code: "photographer_non_delivery", amount: "15.96" }]);
   expect(writes[1].body.note).toBe("6 of 20 photos never delivered");
   expect(typeof writes[1].body.idempotency_key).toBe("string");
+});
+
+test("a finding can be recorded only where a reduction may carry fault, and needs a note", async ({ page }) => {
+  const { writes } = await fakeAdmin(page, {
+    reductions: [
+      {
+        id: "red-1", created_at: "2026-10-23T08:00:00+00:00", source: "selection", from_amount: "79.74", to_amount: "52.43",
+        refund_amount: "27.31", note: "Repair", lines: [{ reason_code: "photographer_non_delivery", amount: "15.96", label: "Photos not delivered" }]
+      }
+    ]
+  });
+  await page.goto("/admin/bookings/gig-1");
+
+  const record = page.getByRole("button", { name: "Record finding" });
+  await expect(record).toBeDisabled();
+  await page.getByLabel(/What was found/).fill("14 of 20 delivered, no reason given");
+  await record.click();
+
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0]).toEqual({ path: "gigs/gig-1/findings", body: { note: "14 of 20 delivered, no reason given", severe: false, severe_note: null } });
+});
+
+test("no reduction that may carry fault, no way to record a finding", async ({ page }) => {
+  await fakeAdmin(page);
+  await page.goto("/admin/bookings/gig-1");
+  await expect(page.getByRole("heading", { name: "Reduce price" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record finding" })).toHaveCount(0);
 });

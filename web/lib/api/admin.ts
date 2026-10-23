@@ -230,6 +230,31 @@ export type ReductionPreview = {
   currency: string;
 };
 
+export type Finding = {
+  id: string;
+  gig_id: string;
+  status: "pending" | "confirmed" | "withdrawn" | string;
+  reason: string;
+  note: string;
+  severe: boolean;
+  severe_note: string | null;
+  created_at: string;
+  first_seen_at: string | null;
+  window_ends_at: string;
+  response: string | null;
+  decision_note: string | null;
+  consequence: string | null;
+  strike_number: number | null;
+};
+export type ProFindings = { strikes: number; pause: { reason: string; since: string } | null; items: Finding[] };
+export type AccountabilityPolicy = {
+  contest_window_days: number;
+  unseen_grace_days: number;
+  rolling_window_months: number;
+  pause_at: number;
+  suspension_review_at: number;
+};
+
 export const admin = {
   niches: () => adminFetch<AdminNiche[]>("niches"),
   priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
@@ -288,6 +313,19 @@ export const admin = {
       method: "POST",
       body: JSON.stringify({ lines, note, idempotency_key: idempotencyKey })
     }),
+  proFindings: (proId: string) => adminFetch<ProFindings>(`pros/${proId}/findings`),
+  recordFinding: (gigId: string, note: string, severe: boolean, severeNote: string | null) =>
+    adminFetch<Finding>(`gigs/${gigId}/findings`, {
+      method: "POST",
+      body: JSON.stringify({ note, severe, severe_note: severeNote })
+    }),
+  decideFinding: (id: string, decision: "confirm" | "withdraw", note: string) =>
+    adminFetch<Finding>(`findings/${id}/decision`, { method: "POST", body: JSON.stringify({ decision, note }) }),
+  liftBookingPause: (proId: string, note: string) =>
+    adminFetch<unknown>(`pros/${proId}/booking-pause/lift`, { method: "POST", body: JSON.stringify({ note }) }),
+  accountabilityPolicy: () => adminFetch<AccountabilityPolicy>("policies/accountability"),
+  saveAccountabilityPolicy: (body: Partial<AccountabilityPolicy>) =>
+    adminFetch<AccountabilityPolicy>("policies/accountability", { method: "PUT", body: JSON.stringify(body) }),
   moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[] }>("money-attention"),
   resolveMoneyAttention: (id: string, note: string) =>
     adminFetch<MoneyAttentionItem>(`money-attention/${id}/resolve`, { method: "POST", body: JSON.stringify({ note }) }),

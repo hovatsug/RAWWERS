@@ -67,6 +67,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       title: "Catalog & pricing",
       items: [
         { href: "/admin/pricing", label: "Price caps" },
+        { href: "/admin/accountability", label: "Accountability policy" },
         { href: "/admin/camera-models", label: "Camera reference" }
       ]
     }

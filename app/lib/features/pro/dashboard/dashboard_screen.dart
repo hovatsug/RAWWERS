@@ -7,6 +7,7 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/findings/findings_card.dart';
 import 'package:rawwers/features/pro/dashboard/dashboard_controller.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
@@ -73,6 +74,9 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               const _Identity(),
               const SizedBox(height: RSpace.s16),
+              // Findings first when there are any: a pause or a finding to
+              // answer matters more than anything below it.
+              const FindingsCard(),
               const AvailableNowCard(),
               const SizedBox(height: RSpace.s24),
 

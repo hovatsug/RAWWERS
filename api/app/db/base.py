@@ -212,6 +212,7 @@ from app.models.proof_of_gigs import (
     RawwMintEvent,
     RawwMultiplierPolicy,
 )
+from app.models.accountability import AccountabilityPolicy, BookingPause, PhotographerFinding  # noqa: F401
 from app.models.price_reduction import DeliveryReviewPolicy, PriceReduction, PriceReductionReason  # noqa: F401
 from app.models.payouts import (
     EarningsBalanceSnapshot,

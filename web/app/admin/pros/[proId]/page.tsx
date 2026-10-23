@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { admin, SKILL_TIERS, type NicheSkillRow, type SkillTier } from "@/lib/api/admin";
 import { humanise } from "@/app/admin/labels";
+import { Findings } from "./findings";
 import {
   AdminButton,
   ConfirmDialog,
@@ -188,6 +189,8 @@ export default function AdminProReviewPage() {
       </div>
 
       <NicheTiers proId={proId} name={name} />
+
+      <Findings proId={proId} />
 
       <ConfirmDialog
         open={dialog === "approve"}

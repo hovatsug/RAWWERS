@@ -49,6 +49,14 @@ class BaseApiClient {
     );
   }
 
+  AccountabilityClient get accountabilityClient {
+    return AccountabilityClient(
+      dio,
+      baseUrl: baseUrl,
+      errorLogger: errorLogger,
+    );
+  }
+
   DiscoveryClient get discoveryClient {
     return DiscoveryClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

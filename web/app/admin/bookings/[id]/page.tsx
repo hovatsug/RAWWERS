@@ -90,6 +90,10 @@ export default function AdminBookingMoneyPage() {
         </Panel>
       ) : null}
 
+      {data.reductions.some((r) => r.lines.some((l) => data.reasons.find((x) => x.code === l.reason_code)?.may_carry_fault)) ? (
+        <RecordFinding gigId={id} proId={data.photographer.pro_user_id} />
+      ) : null}
+
       <Panel className="mt-4">
         <h2 className="mb-2 text-sm font-semibold text-slate-200">Reduce price</h2>
         <div className="grid gap-3 md:grid-cols-3">
@@ -149,5 +153,47 @@ export default function AdminBookingMoneyPage() {
         </div>
       </Panel>
     </>
+  );
+}
+
+/**
+ * Recording fault is an admin's decision, never the system's: only here, on a
+ * booking whose price came down because photos were not delivered. The
+ * photographer is told and can respond; nothing takes effect before their
+ * window to respond ends.
+ */
+function RecordFinding({ gigId, proId }: { gigId: string; proId: string }) {
+  const [note, setNote] = useState("");
+  const [severe, setSevere] = useState(false);
+  const [severeNote, setSevereNote] = useState("");
+  const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | null>(null);
+  return (
+    <Panel className="mt-4">
+      <h2 className="mb-2 text-sm font-semibold text-slate-200">Record a finding</h2>
+      <FieldLabel htmlFor="finding-note">What was found (the photographer reads this)</FieldLabel>
+      <TextArea id="finding-note" value={note} onChange={(e) => setNote(e.target.value)} />
+      <label className="mt-2 flex items-center gap-2 text-sm text-slate-300">
+        <input type="checkbox" checked={severe} onChange={(e) => setSevere(e.target.checked)} /> Severe (skips to a suspension review)
+      </label>
+      {severe ? (
+        <>
+          <FieldLabel htmlFor="severe-note">Why it is severe</FieldLabel>
+          <TextArea id="severe-note" value={severeNote} onChange={(e) => setSevereNote(e.target.value)} />
+        </>
+      ) : null}
+      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      <AdminButton
+        className="mt-2"
+        disabled={!note.trim() || (severe && !severeNote.trim())}
+        onClick={async () => {
+          const res = await admin.recordFinding(gigId, note, severe, severe ? severeNote : null);
+          if (!res.ok) return setMessage({ tone: "error", text: res.error.message });
+          setMessage({ tone: "success", text: `Recorded. The photographer is told and can respond; see it on their page (${proId}).` });
+          setNote("");
+        }}
+      >
+        Record finding
+      </AdminButton>
+    </Panel>
   );
 }

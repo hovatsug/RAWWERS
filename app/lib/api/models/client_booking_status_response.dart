@@ -84,6 +84,14 @@
 ///             "default": false,
 ///             "title": "Short Notice"
 ///         },
+///         "refunds": {
+///             "type": "array",
+///             "items": {
+///                 "$ref": "#/components/schemas/ClientBookingRefund"
+///             },
+///             "default": [],
+///             "title": "Refunds"
+///         },
 ///         "pay_by": {
 ///             "anyOf": [
 ///                 {
@@ -175,6 +183,11 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
     @JsonKey(name: ClientBookingStatusResponse.shortNoticeKey_)
     bool shortNotice,
 
+    /// refunds
+    @Default(const [])
+    @JsonKey(name: ClientBookingStatusResponse.refundsKey_)
+    List<ClientBookingRefund> refunds,
+
     /// payBy
     @JsonKey(name: ClientBookingStatusResponse.payByKey_) DateTime? payBy,
 
@@ -210,6 +223,8 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
   static const String expiresAtKey_ = r'expires_at';
 
   static const String shortNoticeKey_ = r'short_notice';
+
+  static const String refundsKey_ = r'refunds';
 
   static const String payByKey_ = r'pay_by';
 

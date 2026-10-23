@@ -32,6 +32,12 @@
 ///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Due"
 ///         },
+///         "refund_amount": {
+///             "type": "string",
+///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "default": "0.00",
+///             "title": "Refund Amount"
+///         },
 ///         "next_photo_price": {
 ///             "anyOf": [
 ///                 {
@@ -113,6 +119,11 @@ abstract class SelectionQuoteResponse with _$SelectionQuoteResponse {
     @JsonKey(name: SelectionQuoteResponse.amountDueKey_)
     required String amountDue,
 
+    /// refundAmount
+    @Default('0.00')
+    @JsonKey(name: SelectionQuoteResponse.refundAmountKey_)
+    String refundAmount,
+
     /// nextPhotoPrice
     @JsonKey(name: SelectionQuoteResponse.nextPhotoPriceKey_)
     String? nextPhotoPrice,
@@ -146,6 +157,8 @@ abstract class SelectionQuoteResponse with _$SelectionQuoteResponse {
   static const String amountPaidKey_ = r'amount_paid';
 
   static const String amountDueKey_ = r'amount_due';
+
+  static const String refundAmountKey_ = r'refund_amount';
 
   static const String nextPhotoPriceKey_ = r'next_photo_price';
 

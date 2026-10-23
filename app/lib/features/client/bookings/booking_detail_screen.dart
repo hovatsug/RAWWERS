@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/api/models/client_booking_refund.dart';
 import 'package:rawwers/api/models/client_booking_status_response.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -122,6 +123,10 @@ class _Detail extends ConsumerWidget {
             const SizedBox(height: RSpace.s16),
             _PhotosPanel(bookingId: bookingId, booking: booking),
           ],
+          for (final refund in booking.refunds) ...[
+            const SizedBox(height: RSpace.s16),
+            _RefundCard(refund: refund),
+          ],
           if (reviewPanelFor(bookingId, booking) case final review?) ...[
             const SizedBox(height: RSpace.s16),
             review,
@@ -136,6 +141,38 @@ class _Detail extends ConsumerWidget {
               _TimelineRow(entry: entry),
               const SizedBox(height: RSpace.s12),
             ],
+        ],
+      ),
+    );
+  }
+}
+
+/// What paying now means, said before paying: the deposit is held against
+/// the package and the price is settled when the photos are chosen.
+const depositExplainer =
+    'Your deposit is held against your package. The final price is set when you choose your photos, '
+    'and any difference is refunded to you.';
+
+/// A refund because the price came down after paying, with the reasons in
+/// the words the server gives - shown as a refund, never as a change of
+/// price the client has to work out.
+class _RefundCard extends StatelessWidget {
+  const _RefundCard({required this.refund});
+
+  final ClientBookingRefund refund;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return RCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Refund of ${refund.currency} ${refund.amount}', style: theme.textTheme.titleSmall),
+          const SizedBox(height: RSpace.s4),
+          for (final reason in refund.reasons) Text(reason, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: RSpace.s4),
+          Text('It goes back to the card you paid with. Banks usually take a few days.', style: theme.textTheme.bodySmall),
         ],
       ),
     );
@@ -169,6 +206,8 @@ class _PayPanel extends ConsumerWidget {
                 : 'Your photographer accepted. We are holding this time for you until ${clockTime(context, payBy!)} - pay to confirm it.',
             style: theme.textTheme.bodyMedium,
           ),
+          const SizedBox(height: RSpace.s8),
+          Text(depositExplainer, style: theme.textTheme.bodySmall),
           if (progress case PaymentFailed(:final message)) ...[
             const SizedBox(height: RSpace.s12),
             Text(message, style: theme.textTheme.bodyMedium?.copyWith(color: RShade.shade600)),

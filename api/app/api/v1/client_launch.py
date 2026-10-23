@@ -803,6 +803,27 @@ def list_client_bookings(
     return ClientBookingListResponse(items=items, next_cursor=next_cursor)
 
 
+def _client_refunds(db: Session, gig) -> list[dict]:
+    """Each price reduction that refunded the client, in plain words."""
+    if gig is None:
+        return []
+    from app.models.price_reduction import PriceReduction, PriceReductionReason
+
+    wording = {r.code: r.client_wording for r in db.execute(select(PriceReductionReason)).scalars()}
+    rows = db.execute(
+        select(PriceReduction).where(PriceReduction.gig_id == gig.id, PriceReduction.refund_amount > 0).order_by(PriceReduction.created_at)
+    ).scalars().all()
+    return [
+        {
+            "amount": row.refund_amount,
+            "currency": row.currency,
+            "reasons": [wording.get(line["reason_code"], line["reason_code"].replace("_", " ")) for line in row.lines],
+            "at": row.created_at,
+        }
+        for row in rows
+    ]
+
+
 def _pay_by(gig) -> datetime | None:
     if gig is None or gig.status.value != "payment_pending":
         return None
@@ -897,6 +918,7 @@ def client_booking_status(
         ],
         next_actions=next_actions,
         review=review_view,
+        refunds=_client_refunds(db, gig),
     )
 
 

@@ -63,6 +63,7 @@ export 'client_booking_list_item.dart';
 export 'client_booking_list_response.dart';
 export 'client_booking_pay_request.dart';
 export 'client_booking_pay_response.dart';
+export 'client_booking_refund.dart';
 export 'client_booking_request_create_request.dart';
 export 'client_booking_request_create_response.dart';
 export 'client_booking_status_response.dart';

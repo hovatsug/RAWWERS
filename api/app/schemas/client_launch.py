@@ -291,6 +291,16 @@ class ClientAvailabilityResponse(BaseModel):
     days: list[ClientAvailabilityDay] = Field(default_factory=list)
 
 
+class ClientBookingRefund(BaseModel):
+    """A refund the client is getting because the price came down, with
+    the reasons in the words the admin-editable reason list gives them."""
+
+    amount: Decimal
+    currency: str
+    reasons: list[str]
+    at: datetime
+
+
 class ClientBookingStatusResponse(BaseModel):
     booking_id: uuid.UUID
     booking_status: str
@@ -312,6 +322,8 @@ class ClientBookingStatusResponse(BaseModel):
     # The terms it was requested on: a short-notice request is answered and
     # paid on a short clock, so the client's screens refresh while waiting.
     short_notice: bool = False
+    # Refunds from the price coming down after payment, oldest first.
+    refunds: list[ClientBookingRefund] = []
     # When the client has to pay by - set only while payment is due. The
     # same deadline the pay route enforces.
     pay_by: datetime | None = None

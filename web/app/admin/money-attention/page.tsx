@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { admin, type MoneyAttentionItem } from "@/lib/api/admin";
@@ -21,7 +22,9 @@ const KIND: Record<string, string> = {
   refund_outside_rawwers: "Refund made in Stripe",
   chargeback_evidence_due: "Chargeback: evidence due",
   chargeback_lost: "Chargeback lost",
-  pro_shut_out_booking: "Booking with a banned or suspended photographer"
+  pro_shut_out_booking: "Booking with a banned or suspended photographer",
+  photographer_short_delivery: "Fewer photos delivered than included",
+  photographer_adjustment_owed: "Photographer owes back (paid out before a reduction)"
 };
 
 function dueLabel(dueAt: string | null): { text: string; overdue: boolean } | null {
@@ -57,7 +60,19 @@ export default function AdminMoneyAttentionPage() {
       }
     },
     { header: "Amount", className: "tabular-nums", cell: (row) => <span className="font-semibold">{money(row.amount, row.currency)}</span> },
-    { header: "Details", cell: (row) => <p className="max-w-md whitespace-pre-line text-xs text-slate-400">{row.note}</p> },
+    {
+      header: "Details",
+      cell: (row) => (
+        <div>
+          <p className="max-w-md whitespace-pre-line text-xs text-slate-400">{row.note}</p>
+          {row.gig_id ? (
+            <Link href={`/admin/bookings/${row.gig_id}`} className="text-xs text-sky-300 underline">
+              Booking money
+            </Link>
+          ) : null}
+        </div>
+      )
+    },
     {
       header: "Stripe",
       cell: (row) => <p className="font-mono text-[11px] text-slate-500">{row.stripe_dispute_id ?? row.stripe_refund_id ?? "—"}</p>

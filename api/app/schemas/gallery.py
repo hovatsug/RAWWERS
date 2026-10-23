@@ -108,6 +108,9 @@ class SelectionQuoteResponse(BaseModel):
     amount_paid: Decimal
     # What submitting now would charge. Never negative.
     amount_due: Decimal
+    # What submitting now would refund: the client paid for more than they
+    # chose, and the difference comes back (price_reduction). Zero otherwise.
+    refund_amount: Decimal = Decimal("0.00")
     # What one more photo would add to amount_due - the change in the charge,
     # not the curve's price for that photo, so it is zero while the running
     # total is still under what was already paid. Null when the gallery holds

@@ -20,6 +20,11 @@ _ClientBookingStatusResponse _$ClientBookingStatusResponseFromJson(
       ? null
       : DateTime.parse(json['expires_at'] as String),
   shortNotice: json['short_notice'] as bool? ?? false,
+  refunds:
+      (json['refunds'] as List<dynamic>?)
+          ?.map((e) => ClientBookingRefund.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
   payBy: json['pay_by'] == null
       ? null
       : DateTime.parse(json['pay_by'] as String),
@@ -46,6 +51,7 @@ Map<String, dynamic> _$ClientBookingStatusResponseToJson(
   'proof_gallery_status': instance.proofGalleryStatus,
   'expires_at': instance.expiresAt?.toIso8601String(),
   'short_notice': instance.shortNotice,
+  'refunds': instance.refunds,
   'pay_by': instance.payBy?.toIso8601String(),
   'timeline': instance.timeline,
   'next_actions': instance.nextActions,

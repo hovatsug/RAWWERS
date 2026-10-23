@@ -39,9 +39,14 @@ class SelectionQuote:
     amount_total: Decimal
     # Collected when the booking was made.
     amount_paid: Decimal
-    # What submitting right now would charge. Never negative: a selection
-    # cheaper than the deposit does not refund, it just owes nothing.
+    # What submitting right now would charge. Never negative.
     amount_due: Decimal
+
+    # What submitting right now would refund: a selection cheaper than what
+    # was paid is refunded the difference, automatically (price_reduction).
+    # The final price is the curve's price at the number chosen - never below
+    # the minimum selection's, since fewer cannot be submitted.
+    refund_amount: Decimal
 
     # What adding one more photo would add to `amount_due`. Deliberately
     # defined as the change in the charge rather than as the curve's p(n+1):
@@ -142,6 +147,10 @@ def quote_selection(
         amount_total=total,
         amount_paid=(gig.amount_minimum + already_paid).quantize(_CENTS, rounding=ROUND_HALF_UP),
         amount_due=due,
+        refund_amount=max(
+            Decimal("0.00"),
+            (gig.amount_minimum + already_paid - total).quantize(_CENTS, rounding=ROUND_HALF_UP),
+        ) if is_curve_priced(gig) and selected_count >= MINIMUM_PHOTOS else Decimal("0.00"),
         next_photo_price=next_price,
         extras_count=extras,
     )

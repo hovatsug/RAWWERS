@@ -360,7 +360,40 @@ def create_raww_clawback(
     return row
 
 
+def _mint_value(db: Session, gig: Gig) -> Decimal:
+    """What a booking's $RAWW is minted on: its final price (the selection's,
+    once chosen) - not the deposit, which credited a cheaper selection as if
+    the whole package had been bought. Refunds then bring it down in
+    proportion (price_reduction.adjust_raww_to_value)."""
+    from app.services.photographer_money import final_price
+
+    return final_price(gig)
+
+
+def raww_partially_reversed(db: Session, mint: RawwMintEvent) -> int:
+    """$RAWW already taken back from this mint by proportional reversals."""
+    from app.models.reward import RewardLedgerEntry
+
+    total = db.execute(
+        select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
+            RewardLedgerEntry.user_id == mint.pro_user_id,
+            RewardLedgerEntry.reference_type == "raww_mint_partial_reversal",
+            RewardLedgerEntry.reference_id.like(f"{mint.id}:%"),
+        )
+    ).scalar_one()
+    return -int(total or 0)
+
+
 def reverse_raww_mints_for_refund(db: Session, *, gig_id: uuid.UUID, reason: str) -> int:
+    """A refund's effect on $RAWW. A partial refund brings the booking's mints
+    down in proportion to what it is still worth; only a booking refunded in
+    full loses them all (with its reviews' and extras')."""
+    from app.services.photographer_money import earned_gross
+    from app.services.price_reduction import adjust_raww_to_value
+
+    gig = db.get(Gig, gig_id)
+    if gig is not None and earned_gross(db, gig) > 0:
+        return adjust_raww_to_value(db, gig)
     review_ids = db.execute(select(Review.id).where(Review.gig_id == gig_id)).scalars().all()
     extra_ids = db.execute(select(ExtraImagePurchase.id).where(ExtraImagePurchase.gig_id == gig_id)).scalars().all()
 
@@ -448,7 +481,7 @@ def _resolve_context(db: Session, *, event_type: RawwIssuanceEventType, payload:
             pro_user_id=gig.pro_user_id,
             reference_type="gig",
             reference_id=gig.id,
-            eur_value=Decimal(str(gig.amount_minimum or 0)),
+            eur_value=_mint_value(db, gig),
             gig_id=gig.id,
             client_user_id=gig.client_user_id,
             niche_id=gig.niche_id,
@@ -467,7 +500,7 @@ def _resolve_context(db: Session, *, event_type: RawwIssuanceEventType, payload:
             pro_user_id=review.pro_user_id,
             reference_type="review",
             reference_id=review.id,
-            eur_value=Decimal(str(gig.amount_minimum or 0)),
+            eur_value=_mint_value(db, gig),
             gig_id=gig.id,
             client_user_id=review.client_user_id,
             niche_id=review.niche_id,
@@ -776,13 +809,15 @@ def _uuid_from_payload(payload: dict, key: str) -> uuid.UUID | None:
 def _reverse_mint_rows(db: Session, *, rows: list[RawwMintEvent], reason: str, extra_meta: dict) -> int:
     reversed_count = 0
     for row in rows:
-        if row.raww_awarded <= 0:
+        # Less anything a proportional reversal already took back.
+        left = int(row.raww_awarded) - raww_partially_reversed(db, row)
+        if left <= 0:
             row.status = RawwMintEventStatus.reversed
             continue
         adjustment = add_reward_entry(
             db,
             user_id=row.pro_user_id,
-            amount=-int(row.raww_awarded),
+            amount=-left,
             entry_type=RewardEntryType.adjustment,
             reference_type="raww_mint_reversal",
             reference_id=str(row.id),

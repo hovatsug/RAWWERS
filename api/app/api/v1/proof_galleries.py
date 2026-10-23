@@ -70,7 +70,8 @@ from app.services.gallery_completion import finalize_gallery_and_complete_gig
 from app.services.gig_state import require_gig_deliverable
 from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count, is_curve_priced
 from app.services.selection_quote import gallery_photo_count, quote_selection
-from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.price_reduction import apply_price_reduction, flag_short_delivery, selection_reduction_lines
+from app.services.payment_intents import create_or_get_gig_payment_intent, difference_paid
 
 settings = get_settings()
 router = APIRouter(tags=["proof_galleries"])
@@ -480,6 +481,7 @@ def get_selection_quote(
         amount_total=quote.amount_total,
         amount_paid=quote.amount_paid,
         amount_due=quote.amount_due,
+        refund_amount=quote.refund_amount,
         next_photo_price=quote.next_photo_price,
         extras_count=quote.extras_count,
         can_submit=quote.can_submit,
@@ -528,7 +530,25 @@ def submit_selection(
 
     difference_amount = Decimal("0.00")
     if curve_priced and quote:
-        gig.amount_final = quote.amount_total
+        charged = (gig.amount_minimum + difference_paid(db, gig)).quantize(Decimal("0.01"))
+        if quote.amount_total < charged:
+            # Fewer photos chosen than were paid for: the difference is
+            # refunded, by reason - what was never delivered, and what the
+            # client chose not to take - through the one reduction function.
+            delivered = gallery_photo_count(db, gallery.id)
+            lines = selection_reduction_lines(
+                db, gig, charged=charged, delivered=delivered, included=gallery.included_photos, new_total=quote.amount_total
+            )
+            apply_price_reduction(
+                db, gig, new_final=quote.amount_total, from_amount=charged, lines=lines, source="selection",
+                key=f"selection:{selection.id}", actor_user_id=user.user_id,
+                note=f"The client chose {selected_count} photos; the gallery held {delivered} of {gallery.included_photos} included.",
+            )
+            short = next((line for line in lines if line.reason_code == "photographer_non_delivery"), None)
+            if short is not None:
+                flag_short_delivery(db, gig, delivered=delivered, included=gallery.included_photos, amount=short.amount)
+        else:
+            gig.amount_final = quote.amount_total
         difference_amount = quote.amount_due
     difference_required = difference_amount > 0
 

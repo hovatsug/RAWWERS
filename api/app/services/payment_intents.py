@@ -31,8 +31,8 @@ def difference_owed(gig: Gig) -> Decimal:
     """What the curve says this booking owes beyond the deposit.
 
     Zero until a selection has been submitted, since `amount_final` is only
-    set then, and zero when the selection is cheaper than the deposit - that
-    does not refund, it just owes nothing.
+    set then, and zero when the selection is cheaper than the deposit - the
+    difference is then refunded (price_reduction), not owed.
     """
     if gig.amount_final is None:
         return Decimal("0.00")

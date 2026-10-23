@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/api/models/client_booking_refund.dart';
 import 'package:rawwers/api/models/client_booking_status_response.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/bookings/booking_detail_controller.dart';
@@ -15,6 +16,7 @@ ClientBookingStatusResponse _booking({
   bool shortNotice = false,
   DateTime? payBy,
   DateTime? expiresAt,
+  List<ClientBookingRefund> refunds = const [],
 }) =>
     ClientBookingStatusResponse(
       bookingId: _bookingId,
@@ -23,6 +25,7 @@ ClientBookingStatusResponse _booking({
       shortNotice: shortNotice,
       payBy: payBy,
       expiresAt: expiresAt,
+      refunds: refunds,
       timeline: timeline ??
           [
             {'at': '2026-09-10T09:00:00+00:00', 'from': 'pending', 'to': 'accepted', 'reason': 'Pro accepted'},
@@ -44,6 +47,9 @@ void main() {
 
     expect(find.text('Pay to confirm'), findsOneWidget);
     expect(find.text('Pay now'), findsOneWidget);
+    // Said before paying: the final price comes with the selection, and any
+    // difference is refunded.
+    expect(find.text(depositExplainer), findsOneWidget);
   });
 
   testWidgets('does not offer payment on a booking already paid for', (tester) async {
@@ -181,5 +187,27 @@ void main() {
     final time = TimeOfDay.fromDateTime(payBy).format(element);
     expect(find.textContaining('holding this time for you until $time'), findsOneWidget);
     expect(find.textContaining('24 hours'), findsNothing);
+  });
+
+  testWidgets('a refund from a lower price shows as a refund, with why in plain words', (tester) async {
+    await tester.pumpWidget(_wrap(_booking(
+      gigStatus: 'completed',
+      refunds: [
+        ClientBookingRefund(
+          amount: '27.31',
+          currency: 'EUR',
+          reasons: const [
+            'Fewer photos were delivered than your package included.',
+            'You chose fewer photos than your deposit covered.',
+          ],
+          at: DateTime.utc(2026, 9, 29),
+        ),
+      ],
+    )));
+    await tester.pump();
+
+    expect(find.text('Refund of EUR 27.31'), findsOneWidget);
+    expect(find.text('Fewer photos were delivered than your package included.'), findsOneWidget);
+    expect(find.text('You chose fewer photos than your deposit covered.'), findsOneWidget);
   });
 }

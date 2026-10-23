@@ -41,11 +41,12 @@ class _FakeLauncher implements PaymentSheetLauncher {
 /// A backend that prices ten photos or more at [amountDue] and records every
 /// mutation it is asked to make, in order.
 class _FakeBackend {
-  _FakeBackend({this.amountDue = '0.00', List<int> submitStatuses = const [200], List<int> saveStatuses = const [200]})
+  _FakeBackend({this.amountDue = '0.00', this.refund = '0.00', List<int> submitStatuses = const [200], List<int> saveStatuses = const [200]})
       : _submitStatuses = List.of(submitStatuses),
         _saveStatuses = List.of(saveStatuses);
 
   final String amountDue;
+  final String refund;
   final List<int> _submitStatuses;
   final List<int> _saveStatuses;
 
@@ -128,6 +129,7 @@ class _FakeBackend {
         'extras_count': 0,
         'can_submit': count >= 10,
         'photos_still_needed': count >= 10 ? 0 : 10 - count,
+        'refund_amount': count >= 10 ? refund : '0.00',
       };
 
   Map<String, dynamic> _submitted() => {
@@ -267,6 +269,20 @@ void main() {
     expect(backend.submits, 1);
     expect(_stillOnGallery(), isFalse);
     expect(find.text('Your selection is confirmed.'), findsOneWidget);
+  });
+
+  testWidgets('a selection cheaper than what was paid says the final price and the refund before confirming', (tester) async {
+    final launcher = _FakeLauncher([]);
+    final backend = _FakeBackend(refund: '27.31');
+    final container = await _open(tester, backend, launcher);
+    await _choose(tester, container, 10);
+
+    expect(find.textContaining("you'll be refunded EUR 27.31"), findsOneWidget, reason: 'the bar must say it before the tap');
+    await tester.tap(_barButton('Confirm selection'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("You'll be refunded EUR 27.31."), findsOneWidget);
+    expect(find.textContaining('Your final price is EUR 200.00.'), findsOneWidget);
+    expect(find.textContaining('No charge'), findsNothing);
   });
 
   testWidgets('declining the dialog changes nothing', (tester) async {

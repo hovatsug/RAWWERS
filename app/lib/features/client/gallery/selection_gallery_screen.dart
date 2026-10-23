@@ -291,7 +291,7 @@ class _PriceBar extends ConsumerWidget {
         title: const Text('Confirm your selection?'),
         content: Text(
           '${count == 1 ? '1 photo' : '$count photos'} chosen. '
-          '${owed ? 'You will be charged ${_money(quote.amountDue, quote.currency)}.' : 'No charge - this is covered by what you have already paid.'} '
+          '${owed ? 'You will be charged ${_money(quote.amountDue, quote.currency)}.' : _refundSentence(quote)} '
           'You cannot change your selection after this.',
         ),
         actions: [
@@ -307,6 +307,21 @@ class _PriceBar extends ConsumerWidget {
 }
 
 bool _nothingDue(SelectionQuoteResponse quote) => quote.amountDue == '0.00';
+
+/// The server's refund for a selection cheaper than what was paid, or null.
+String? _refundOf(SelectionQuoteResponse quote) {
+  final refund = quote.refundAmount;
+  return (refund == null || refund == '0.00') ? null : refund;
+}
+
+/// Said before confirming, never discovered after: the final price, and the
+/// difference coming back.
+String _refundSentence(SelectionQuoteResponse quote) {
+  final refund = _refundOf(quote);
+  if (refund == null) return 'No charge - this is covered by what you have already paid.';
+  return 'Your final price is ${_money(quote.amountTotal, quote.currency)}. '
+      "You'll be refunded ${_money(refund, quote.currency)}.";
+}
 
 /// The button says what it will do and what it will cost, so the number being
 /// committed to is on screen before the tap rather than discovered after it.
@@ -326,6 +341,8 @@ String _money(String amount, String currency) => '$currency $amount';
 
 String _totalLabel(SelectionQuoteResponse quote, bool failed) {
   if (failed) return 'Total unavailable - pull to refresh';
+  final refund = _refundOf(quote);
+  if (refund != null) return "Final price ${_money(quote.amountTotal, quote.currency)} - you'll be refunded ${_money(refund, quote.currency)}";
   if (quote.amountDue == '0.00') return 'Nothing more to pay';
   return '${_money(quote.amountDue, quote.currency)} to pay';
 }

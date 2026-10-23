@@ -207,6 +207,29 @@ export type MoneyAttentionItem = {
   resolved_at: string | null;
 };
 
+export type ReductionLine = { reason_code: string; amount: string };
+export type ReductionReason = { code: string; label: string; client_wording: string; may_carry_fault: boolean; is_active: boolean };
+export type BookingMoney = {
+  gig_id: string;
+  status: string;
+  currency: string;
+  deposit: { amount: string; platform_fee: string; pro_gross: string };
+  final_price: string;
+  final_split: { gross: string; platform_retained: string; pro_raww: string; client_raww: string; pro_cash: string; stamped_at: string | null } | null;
+  payments: { kind: string; amount: string; amount_refunded: string; status: string; payment_intent: string }[];
+  reductions: { id: string; created_at: string; source: string; from_amount: string; to_amount: string; refund_amount: string; note: string; lines: (ReductionLine & { label: string })[] }[];
+  reasons: ReductionReason[];
+  photographer: { pro_user_id: string; available: string; withdrawable: string; adjustment_owed: string };
+};
+export type ReductionPreview = {
+  from_amount: string;
+  to_amount: string;
+  client_refund: string;
+  photographer_cash_before: string;
+  photographer_cash_after: string;
+  currency: string;
+};
+
 export const admin = {
   niches: () => adminFetch<AdminNiche[]>("niches"),
   priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
@@ -257,6 +280,14 @@ export const admin = {
   rejectPayout: (id: string, reason: string) =>
     adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 
+  bookingMoney: (gigId: string) => adminFetch<BookingMoney>(`gigs/${gigId}/money`),
+  previewReduction: (gigId: string, lines: ReductionLine[]) =>
+    adminFetch<ReductionPreview>(`gigs/${gigId}/price-reductions/preview`, { method: "POST", body: JSON.stringify({ lines }) }),
+  reducePrice: (gigId: string, lines: ReductionLine[], note: string, idempotencyKey: string) =>
+    adminFetch<unknown>(`gigs/${gigId}/price-reductions`, {
+      method: "POST",
+      body: JSON.stringify({ lines, note, idempotency_key: idempotencyKey })
+    }),
   moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[] }>("money-attention"),
   resolveMoneyAttention: (id: string, note: string) =>
     adminFetch<MoneyAttentionItem>(`money-attention/${id}/resolve`, { method: "POST", body: JSON.stringify({ note }) }),

@@ -1671,9 +1671,11 @@ def list_money_attention(
     _: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db_session),
 ) -> dict:
-    """Money an admin has to act on: clients owed after a failed refund, and
-    refunds made outside RAWWERS."""
-    stmt = select(MoneyAttentionItem).order_by(MoneyAttentionItem.created_at.desc()).limit(500)
+    """Money an admin has to act on: clients owed (a refund that failed or
+    could not be issued, a price below what was paid), refunds made outside
+    RAWWERS, chargebacks, bookings needing a person. Oldest first: the
+    longest-waiting is the most urgent."""
+    stmt = select(MoneyAttentionItem).order_by(MoneyAttentionItem.created_at.asc()).limit(500)
     if status:
         stmt = stmt.where(MoneyAttentionItem.status == status)
     return {"items": [_money_attention_view(i) for i in db.execute(stmt).scalars()]}

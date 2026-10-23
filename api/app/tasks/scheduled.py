@@ -85,6 +85,20 @@ def relist_after_suspensions_task() -> int:
         db.close()
 
 
+@celery_app.task(name="app.tasks.scheduled.raise_clients_owed")
+def raise_clients_owed_task() -> int:
+    """Bookings whose client has kept more than the price, on "Money to act on"."""
+    from app.services.client_owed import raise_clients_owed
+
+    db = SessionLocal()
+    try:
+        raised = raise_clients_owed(db)
+        db.commit()
+        return raised
+    finally:
+        db.close()
+
+
 @celery_app.task(name="app.tasks.scheduled.purge_raw_access_ips")
 def purge_raw_access_ips_task() -> int:
     """Clients' raw IPs on download logs, past their retention period."""

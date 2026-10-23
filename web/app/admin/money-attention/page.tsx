@@ -37,7 +37,8 @@ function dueLabel(dueAt: string | null): { text: string; overdue: boolean } | nu
 
 function byUrgency(a: MoneyAttentionItem, b: MoneyAttentionItem): number {
   const due = (item: MoneyAttentionItem) => (item.due_at ? new Date(item.due_at).getTime() : Number.POSITIVE_INFINITY);
-  return due(a) - due(b) || b.created_at.localeCompare(a.created_at);
+  // Deadlines first; otherwise the longest-waiting first.
+  return due(a) - due(b) || a.created_at.localeCompare(b.created_at);
 }
 
 export default function AdminMoneyAttentionPage() {

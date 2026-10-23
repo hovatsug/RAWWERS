@@ -93,6 +93,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.relist_after_suspensions",
         "schedule": timedelta(minutes=10),
     },
+    # Any client still owed money - paid beyond the price, nothing refunding it.
+    "raise-clients-owed": {
+        "task": "app.tasks.scheduled.raise_clients_owed",
+        "schedule": timedelta(hours=1),
+    },
     # Clients' raw IPs on download logs, kept for chargeback evidence only.
     "purge-raw-access-ips": {
         "task": "app.tasks.scheduled.purge_raw_access_ips",
@@ -133,6 +138,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.reconcile_stuck_refunds": {"queue": "media"},
     "app.tasks.scheduled.purge_raw_access_ips": {"queue": "media"},
     "app.tasks.scheduled.relist_after_suspensions": {"queue": "media"},
+    "app.tasks.scheduled.raise_clients_owed": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

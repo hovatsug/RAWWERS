@@ -27,17 +27,17 @@ abstract final class RColorSchemes {
   static const light = ColorScheme(
     brightness: Brightness.light,
 
-    primary: RAccent.meter500,
+    primary: RAccent.meter700,
     onPrimary: RInk.i050,
     primaryContainer: RInk.i200,
     onPrimaryContainer: RInk.i950,
 
-    secondary: RAccent.meter500,
+    secondary: RAccent.meter700,
     onSecondary: RInk.i050,
     secondaryContainer: RInk.i200,
     onSecondaryContainer: RInk.i950,
 
-    tertiary: RAccent.meter500,
+    tertiary: RAccent.meter700,
     onTertiary: RInk.i050,
     tertiaryContainer: RInk.i200,
     onTertiaryContainer: RInk.i950,

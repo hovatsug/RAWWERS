@@ -39,6 +39,38 @@ abstract final class RAccent {
   /// AA normal-text comfortably (8.3:1), which meter500 itself can't
   /// guarantee for text this small.
   static const meter700 = Color(0xFF2C4F66);
+
+  /// The pro app's primary button on the dark header band, and nothing else.
+  /// One step lighter than meter500 so its dark label (RInk.i950) clears
+  /// 4.5:1 (4.52:1; meter500 gives 4.45:1). Same hue - not a second accent.
+  /// Brackets, needles and indicators on the band stay meter500.
+  static const meter500Band = Color(0xFF4B80A7);
+}
+
+/// The pro app's working ground: a warm grey under white-ish cards, readable
+/// outdoors, below the dark header band ("Contact sheet"). Body text on it:
+/// RInk.i950 at 17.1:1, RInk.i600 at 6.4:1.
+abstract final class RPaper {
+  static const paper = Color(0xFFF2F2F0);
+}
+
+/// The two signature motifs, sized once: the viewfinder frame (corner
+/// brackets around the one number that matters on a screen) and the exposure
+/// scale (ticks, a fill and a needle in place of a plain progress bar).
+abstract final class RMotif {
+  static const bracketArm = 16.0;
+  static const bracketStroke = 2.0;
+  static const scaleFill = 4.0;
+  static const scaleNeedle = 2.0;
+  static const scaleTickHeight = 8.0;
+  static const scaleTicks = 10;
+
+  /// The left edge that marks the one item needing action first.
+  static const attentionEdge = 3.0;
+
+  /// The active tab's underline.
+  static const tabIndicatorWidth = 20.0;
+  static const tabIndicatorHeight = 2.0;
 }
 
 /// A niche banner's own colours.
@@ -117,6 +149,16 @@ abstract final class RType {
   static const displaySm = 20.0;
   static const displayMd = 28.0;
   static const displayLg = 40.0;
+
+  /// The one number a screen is about (the pro app's withdrawable amount).
+  static const hero = 52.0;
+
+  /// Tab bar labels.
+  static const tab = 12.0;
+
+  /// Letter-spacing, as a fraction of the font size (multiply by it).
+  static const trackingSection = 0.14;
+  static const trackingHero = -0.01;
 
   static const lineHeightUi = 1.4;
   static const lineHeightDisplay = 1.15;

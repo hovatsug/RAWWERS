@@ -101,8 +101,10 @@ void main() {
     });
   }
 
-  test('both apps share one accent', () {
-    expect(buildProTheme().colorScheme.primary, buildClientTheme().colorScheme.primary);
-    expect(buildProTheme().colorScheme.primary, RAccent.meter500);
+  test('both apps share one accent hue, in the shade their ground needs', () {
+    // One accent, meter blue: meter500 on the client's dark, meter700 on the
+    // pro app's light paper, where meter500 would be 4.13:1 as text.
+    expect(buildClientTheme().colorScheme.primary, RAccent.meter500);
+    expect(buildProTheme().colorScheme.primary, RAccent.meter700);
   });
 }

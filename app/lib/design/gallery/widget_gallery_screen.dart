@@ -6,6 +6,11 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
 import 'package:rawwers/design/components/r_empty_state.dart';
+import 'package:rawwers/design/components/r_exposure_scale.dart';
+import 'package:rawwers/design/components/r_header_band.dart';
+import 'package:rawwers/design/components/r_section_label.dart';
+import 'package:rawwers/design/components/r_switch.dart';
+import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_image_tile.dart';
 import 'package:rawwers/design/components/r_input.dart';
@@ -48,9 +53,67 @@ class RWidgetGalleryScreen extends StatelessWidget {
                 _Swatch('ink-050', RInk.i050),
                 _Swatch('meter-500', RAccent.meter500),
                 _Swatch('meter-700', RAccent.meter700),
+                _Swatch('meter-500-band', RAccent.meter500Band),
+                _Swatch('paper', RPaper.paper),
                 _Swatch('develop-500', RDevelop.develop500),
                 _Swatch('shade-600', RShade.shade600),
               ],
+            ),
+          ),
+          // Contact sheet (pro): each primitive on the light paper and on the
+          // dark band, the two grounds it is used on.
+          _Section(
+            title: 'Contact sheet - on the dark band',
+            child: RHeaderBand(
+              padding: const EdgeInsets.all(RSpace.s16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const RSectionLabel('Available to withdraw'),
+                  const SizedBox(height: RSpace.s8),
+                  RViewfinderFrame(
+                    child: Text(
+                      '0.00',
+                      style: TextStyle(
+                        fontFamily: RType.fontFamily,
+                        fontSize: RType.hero,
+                        fontVariations: const [RType.weightSemibold],
+                        fontFeatures: RType.tabularFigures,
+                        letterSpacing: RType.hero * RType.trackingHero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: RSpace.s12),
+                  const RExposureScale(value: 0.7, semanticLabel: 'Example: 70 percent'),
+                  const SizedBox(height: RSpace.s12),
+                  ElevatedButton(onPressed: () {}, child: const Text('Primary on the band')),
+                ],
+              ),
+            ),
+          ),
+          _Section(
+            title: 'Contact sheet - on paper',
+            child: ColoredBox(
+              color: RPaper.paper,
+              child: Padding(
+                padding: const EdgeInsets.all(RSpace.s16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const RSectionLabel('Needs you'),
+                    const SizedBox(height: RSpace.s8),
+                    const RViewfinderFrame(child: Text('0.00')),
+                    const SizedBox(height: RSpace.s12),
+                    const RExposureScale(value: 0.4, semanticLabel: 'Example: 40 percent'),
+                    const SizedBox(height: RSpace.s12),
+                    Row(children: [
+                      RSwitch(value: true, onChanged: (_) {}, semanticLabel: 'Example on'),
+                      RSwitch(value: false, onChanged: (_) {}, semanticLabel: 'Example off'),
+                      const RSwitch(value: true, onChanged: null, semanticLabel: 'Example disabled'),
+                    ]),
+                  ],
+                ),
+              ),
             ),
           ),
           _Section(

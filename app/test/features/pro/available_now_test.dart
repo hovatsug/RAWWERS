@@ -57,6 +57,10 @@ class _Backend {
   final packageWrites = <Map<String, dynamic>>[];
   final toggles = <Map<String, dynamic>>[];
   bool switchedOn = false;
+
+  /// How many of the next loads fail, as a dropped connection or a 500 would.
+  int failLoads = 0;
+  int loads = 0;
   int prepMinutes = 120;
 
   Map<String, dynamic> _view() => {
@@ -78,6 +82,11 @@ class _Backend {
   Future<ResponseBody> handle(RequestOptions o) async {
     final path = o.uri.path;
     if (path == '/v1/pro/available-now' && o.method == 'GET') {
+      loads++;
+      if (failLoads > 0) {
+        failLoads--;
+        return jsonResponseBody('{"error":{"code":"internal_error","message":"boom"}}', 500);
+      }
       return jsonResponseBody(jsonEncode(_view()), 200);
     }
     if (path == '/v1/pro/available-now' && o.method == 'PUT') {
@@ -221,5 +230,29 @@ void main() {
 
     expect(backend.toggles.last['prep_minutes'], 90);
     expect(find.text('1.5 hours'), findsOneWidget, reason: 'the card shows what the server now holds');
+  });
+
+  // --- A load that fails is shown, never a card that silently disappears. ---
+
+  testWidgets('a load error shows a visible retry state, not nothing', (tester) async {
+    final backend = _Backend()..failLoads = 1;
+    await _pump(tester, backend, const AvailableNowCard());
+
+    expect(find.text('Available now'), findsOneWidget, reason: 'the card must say what failed to load');
+    expect(find.textContaining('Could not load'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(tester.getSize(find.byType(AvailableNowCard)).height, greaterThan(0), reason: 'the card vanished');
+  });
+
+  testWidgets('retry loads it again, and the switch comes back', (tester) async {
+    final backend = _Backend()..failLoads = 1;
+    await _pump(tester, backend, const AvailableNowCard());
+    expect(find.byType(SwitchListTile), findsNothing);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(backend.loads, 2);
+    expect(find.byType(SwitchListTile), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
   });
 }

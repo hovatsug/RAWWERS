@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/available_now_view.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
+import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/available_now/available_now_controller.dart';
@@ -31,9 +32,34 @@ class AvailableNowCard extends ConsumerWidget {
     final state = ref.watch(availableNowControllerProvider);
     return switch (state) {
       AsyncData(:final value) => _Card(view: value),
-      AsyncError() => const SizedBox.shrink(),
+      // Never nothing: a card that silently disappears reads as a feature
+      // that does not exist, and the photographer cannot switch on.
+      AsyncError() => _LoadFailed(onRetry: () => ref.invalidate(availableNowControllerProvider)),
       _ => const SizedBox(height: 72),
     };
+  }
+}
+
+class _LoadFailed extends StatelessWidget {
+  const _LoadFailed({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return RCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Available now', style: theme.textTheme.titleMedium),
+          const SizedBox(height: RSpace.s4),
+          Text('Could not load whether you are available now.', style: theme.textTheme.bodySmall),
+          const SizedBox(height: RSpace.s8),
+          RButton(label: 'Retry', variant: RButtonVariant.secondary, onPressed: onRetry),
+        ],
+      ),
+    );
   }
 }
 

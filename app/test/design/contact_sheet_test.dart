@@ -69,6 +69,13 @@ void main() {
       expect(shape.borderRadius, BorderRadius.circular(RRadius.control));
     });
 
+    test('outlined and text buttons are 4px rectangles too, never pills', () {
+      for (final style in [pro.outlinedButtonTheme.style!, pro.textButtonTheme.style!]) {
+        final shape = style.shape!.resolve({})! as RoundedRectangleBorder;
+        expect(shape.borderRadius, BorderRadius.circular(RRadius.control));
+      }
+    });
+
     test('an input boundary clears 3:1', () {
       final border = pro.inputDecorationTheme.enabledBorder! as OutlineInputBorder;
       expect(border.borderSide.color, RInk.i500);

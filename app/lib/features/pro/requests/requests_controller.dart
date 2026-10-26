@@ -147,10 +147,15 @@ class RequestsController extends _$RequestsController {
 /// What the Requests tab's badge shows: how many requests are waiting on an
 /// answer, and whether there are more than one page holds.
 class PendingRequests {
-  const PendingRequests(this.count, {this.more = false});
+  const PendingRequests(this.count, {this.more = false, this.items = const []});
 
   final int count;
   final bool more;
+
+  /// The waiting requests themselves, for the You tab's "Needs you" list.
+  /// Not part of equality: the badge and the list refetch only when the
+  /// count changes, exactly as before.
+  final List<BookingRequestListItem> items;
 
   String get label => more ? '$count+' : '$count';
 
@@ -195,8 +200,8 @@ class PendingRequestsController extends _$PendingRequestsController {
     switch (result) {
       case Ok(:final value):
         final now = DateTime.now();
-        final waiting = (value.items ?? const []).where((r) => r.expiresAt.isAfter(now)).length;
-        final pending = PendingRequests(waiting, more: value.nextCursor != null);
+        final open = (value.items ?? const []).where((r) => r.expiresAt.isAfter(now)).toList();
+        final pending = PendingRequests(open.length, more: value.nextCursor != null, items: open);
         if (before != null && before != pending) ref.invalidate(requestsControllerProvider);
         return pending;
       // A badge that cannot load keeps what it had rather than an error on

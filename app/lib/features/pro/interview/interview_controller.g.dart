@@ -7,7 +7,7 @@ part of 'interview_controller.dart';
 // **************************************************************************
 
 String _$interviewControllerHash() =>
-    r'3eb6bfd883b40e7ebd510df4336746d171afc6f5';
+    r'4d06a9a31cc77892f24496380abbdcdfd57f0b8b';
 
 /// The photographer's "Meet the photographer" interview: their drafts, what
 /// clients currently read, and whether the two differ - all the server's.

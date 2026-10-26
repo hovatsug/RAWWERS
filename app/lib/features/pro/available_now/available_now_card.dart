@@ -4,6 +4,7 @@ import 'package:rawwers/api/models/available_now_view.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/available_now/available_now_controller.dart';
 import 'package:rawwers/features/pro/pricing/pricing_controller.dart';
@@ -101,21 +102,37 @@ class _CardState extends ConsumerState<_Card> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Available now'),
-            subtitle: Text(
-              view.switchedOn && until != null
-                  ? 'Clients can book you at ${prepLabel(view.prepMinutes)}’ notice until ${TimeOfDay.fromDateTime(until.toLocal()).format(context)}. $listedOnlyWhileOpen'
-                  : 'Take bookings in the next day at short notice, for up to ${view.lastsHours} hours.',
-              style: theme.textTheme.bodySmall,
-            ),
-            value: view.switchedOn,
-            onChanged: _busy ? null : (on) => _set(on: on),
+          // The same control as before - on, off, busy - drawn as the pro
+          // app's rectangular switch.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Available now', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: RSpace.s4),
+                    Text(
+                      view.switchedOn && until != null
+                          ? 'Clients can book you at ${prepLabel(view.prepMinutes)}’ notice until ${TimeOfDay.fromDateTime(until.toLocal()).format(context)}. $listedOnlyWhileOpen'
+                          : 'Take bookings in the next day at short notice, for up to ${view.lastsHours} hours.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: RSpace.s8),
+              RSwitch(
+                value: view.switchedOn,
+                semanticLabel: 'Available now',
+                onChanged: _busy ? null : (on) => _set(on: on),
+              ),
+            ],
           ),
           Row(
             children: [
-              Text('Ready in about', style: theme.textTheme.bodySmall),
+              Flexible(child: Text('Ready in about', style: theme.textTheme.bodySmall)),
               const SizedBox(width: RSpace.s8),
               // The server's options - the minimum is a rule there, not here.
               DropdownButton<int>(

@@ -19,6 +19,7 @@ import 'package:rawwers/api/models/pro_package_view.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
+import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/available_now/available_now_card.dart';
 import 'package:rawwers/features/pro/pricing/pricing_screen.dart';
@@ -147,7 +148,7 @@ void main() {
     final backend = _Backend();
     await _pump(tester, backend, const AvailableNowCard());
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(RSwitch));
     await tester.pumpAndSettle();
 
     expect(find.text('Which packages can be booked at short notice?'), findsOneWidget);
@@ -169,7 +170,7 @@ void main() {
     final backend = _Backend();
     await _pump(tester, backend, const AvailableNowCard());
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(RSwitch));
     await tester.pumpAndSettle();
     // The button stays disabled with nothing chosen; dismiss the sheet.
     await tester.tapAt(const Offset(10, 10));
@@ -187,7 +188,7 @@ void main() {
     await _pump(tester, backend, const AvailableNowCard());
     expect(find.textContaining(listedOnlyWhileOpen), findsNothing);
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(RSwitch));
     await tester.pumpAndSettle();
 
     expect(find.text('Which packages can be booked at short notice?'), findsNothing);
@@ -247,12 +248,12 @@ void main() {
   testWidgets('retry loads it again, and the switch comes back', (tester) async {
     final backend = _Backend()..failLoads = 1;
     await _pump(tester, backend, const AvailableNowCard());
-    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.byType(RSwitch), findsNothing);
 
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(backend.loads, 2);
-    expect(find.byType(SwitchListTile), findsOneWidget);
+    expect(find.byType(RSwitch), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
   });
 }

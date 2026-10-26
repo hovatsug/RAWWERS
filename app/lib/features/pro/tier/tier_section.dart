@@ -8,7 +8,7 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_empty_state.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
-import 'package:rawwers/design/components/r_progress.dart';
+import 'package:rawwers/design/components/r_exposure_scale.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/tier/tier_breakdown.dart';
@@ -167,13 +167,15 @@ class _NicheCardState extends State<_NicheCard> {
                   padding: const EdgeInsets.symmetric(vertical: RSpace.s4),
                   child: Row(
                     children: [
-                      Text(
-                        _expanded
-                            ? 'Hide the rest'
-                            : '${remaining - 1} more ${remaining - 1 == 1 ? 'thing' : 'things'} after that',
-                        style: theme.textTheme.bodySmall?.copyWith(color: RAccent.meter500),
+                      Flexible(
+                        child: Text(
+                          _expanded
+                              ? 'Hide the rest'
+                              : '${remaining - 1} more ${remaining - 1 == 1 ? 'thing' : 'things'} after that',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
+                        ),
                       ),
-                      Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 18, color: RAccent.meter500),
+                      Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 18, color: theme.colorScheme.primary),
                     ],
                   ),
                 ),
@@ -268,7 +270,7 @@ class _ScoreBreakdown extends StatelessWidget {
           ],
         ),
         const SizedBox(height: RSpace.s8),
-        RProgressBar(value: shown / 100),
+        RExposureScale(value: shown / 100, semanticLabel: 'Score $shown out of 100'),
         if (formula != null) ...[
           const SizedBox(height: RSpace.s8),
           _FormulaRow(label: 'Shoots', value: formula.gigsPoints),

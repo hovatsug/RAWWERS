@@ -1,5 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:rawwers/features/pro/dashboard/next_shoot.dart';
 import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
+import 'package:rawwers/features/pro/requests/requests_controller.dart';
+import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
@@ -30,6 +33,11 @@ class DashboardController extends _$DashboardController {
     ref.invalidate(listingPreviewControllerProvider);
     ref.invalidate(portfolioControllerProvider);
     ref.invalidate(todayControllerProvider);
+    // The band's money and the You tab's lists read these.
+    ref.invalidate(walletControllerProvider);
+    ref.invalidate(nextShootProvider);
+    ref.invalidate(gigsControllerProvider);
+    ref.invalidate(pendingRequestsControllerProvider);
     await ref.read(tierStandingsControllerProvider.notifier).refresh();
   }
 

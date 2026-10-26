@@ -4,9 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/pro_listing_preview_response.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_section_label.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/dashboard/needs_you.dart';
+import 'package:rawwers/features/pro/dashboard/next_shoot.dart';
+import 'package:rawwers/features/pro/dashboard/you_band.dart';
 import 'package:rawwers/features/pro/findings/findings_card.dart';
 import 'package:rawwers/features/pro/interview/interview_controller.dart';
 import 'package:rawwers/features/pro/dashboard/dashboard_controller.dart';
@@ -14,7 +18,6 @@ import 'package:rawwers/features/pro/listing/listing_preview_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
 import 'package:rawwers/features/pro/tier/tier_section.dart';
-import 'package:rawwers/features/pro/today/today_section.dart';
 import 'package:rawwers/features/shared/discover/discover_card.dart';
 import 'package:rawwers/features/pro/available_now/available_now_card.dart';
 
@@ -41,6 +44,7 @@ class DashboardScreen extends ConsumerWidget {
     required this.listingPath,
     required this.onboardingPath,
     required this.interviewPath,
+    required this.walletPath,
     super.key,
   });
 
@@ -52,35 +56,47 @@ class DashboardScreen extends ConsumerWidget {
   final String listingPath;
   final String onboardingPath;
   final String interviewPath;
+  final String walletPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('You'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: () => context.push(settingsPath),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          // One refresh for the whole screen. Every block reads a shared
-          // provider, so a pull here is one round of calls rather than seven.
-          onRefresh: () => ref.read(dashboardControllerProvider.notifier).refreshAll(),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(RSpace.s16),
-            children: [
-              const _Identity(),
-              const SizedBox(height: RSpace.s16),
+      // No app bar: the dark band is the top of this screen, under the
+      // status bar, and carries the brand, the date and settings.
+      body: RefreshIndicator(
+        // One refresh for the whole screen. Every block reads a shared
+        // provider, so a pull here is one round of calls rather than seven.
+        onRefresh: () => ref.read(dashboardControllerProvider.notifier).refreshAll(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          children: [
+            YouBand(walletPath: walletPath, settingsPath: settingsPath),
+            Padding(
+              padding: const EdgeInsets.all(RSpace.s16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               // Findings first when there are any: a pause or a finding to
               // answer matters more than anything below it.
               const FindingsCard(),
               const AvailableNowCard(),
+              const SizedBox(height: RSpace.s24),
+
+              _Section(
+                title: 'Where you stand',
+                subtitle: 'Per niche, and what moves you up',
+                child: TierSection(chooseNichesPath: portfolioPath),
+              ),
+              const SizedBox(height: RSpace.s24),
+
+              const _Section(title: 'Next shoot', subtitle: 'The soonest shoot you have booked', child: NextShootCard()),
+              const SizedBox(height: RSpace.s24),
+
+              const _Section(title: 'Needs you', subtitle: 'Most urgent first', child: NeedsYou()),
+              const SizedBox(height: RSpace.s24),
+
+              const _Identity(),
               const SizedBox(height: RSpace.s24),
 
               _Section(
@@ -98,13 +114,6 @@ class DashboardScreen extends ConsumerWidget {
                 actionLabel: 'Edit',
                 onAction: () => context.push(interviewPath),
                 child: const _InterviewBlock(),
-              ),
-              const SizedBox(height: RSpace.s24),
-
-              _Section(
-                title: 'Where you stand',
-                subtitle: 'Per niche, and what moves you up',
-                child: TierSection(chooseNichesPath: portfolioPath),
               ),
               const SizedBox(height: RSpace.s24),
 
@@ -133,21 +142,16 @@ class DashboardScreen extends ConsumerWidget {
                 onAction: () => context.push(availabilityPath),
                 child: const _AvailabilityBlock(),
               ),
-              const SizedBox(height: RSpace.s24),
-
-              const _Section(
-                title: 'Today',
-                subtitle: 'Shoots and anything waiting on you',
-                child: TodaySection(),
-              ),
               const SizedBox(height: RSpace.s32),
 
               Center(
                 child: RTextLinkRow(label: 'Settings', onPressed: () => context.push(settingsPath)),
               ),
               const SizedBox(height: RSpace.s24),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -439,7 +443,8 @@ class _Section extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: theme.textTheme.titleLarge),
+                  Semantics(header: true, child: RSectionLabel(title)),
+                  const SizedBox(height: RSpace.s4),
                   Text(subtitle, style: theme.textTheme.bodySmall),
                 ],
               ),

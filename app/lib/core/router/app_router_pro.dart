@@ -177,6 +177,7 @@ GoRouter proRouter(Ref ref) {
                   listingPath: ProRoute.listing,
                   onboardingPath: ProRoute.onboarding,
                   interviewPath: ProRoute.interview,
+                  walletPath: ProRoute.wallet,
                 ),
                 routes: [
                   _editor('settings', (context, state) => const ProSettingsScreen(

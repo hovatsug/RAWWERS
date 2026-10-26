@@ -48,7 +48,7 @@ final requestsControllerProvider =
 typedef _$RequestsController =
     AutoDisposeAsyncNotifier<CursorPage<BookingRequestListItem>>;
 String _$pendingRequestsControllerHash() =>
-    r'f714e5d953ced1a8dbaff6eb8d36ab1b76cee1da';
+    r'd2d8a67ee939cae0d5981b6dfdef94b4992063a4';
 
 /// Requests waiting on the photographer, for the Requests tab's badge.
 ///

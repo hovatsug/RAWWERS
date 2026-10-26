@@ -35,6 +35,23 @@ ThemeData buildProTheme() {
         ),
       ),
     ),
+    // Every button is a 4px rectangle - no stadium shapes in Contact sheet -
+    // and text-sized accents are meter700.
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: RAccent.meter700,
+        minimumSize: const Size(rMinTouchTarget, rMinTouchTarget),
+        side: const BorderSide(color: RInk.i500),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.control)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: RAccent.meter700,
+        minimumSize: const Size(rMinTouchTarget, rMinTouchTarget),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.control)),
+      ),
+    ),
     cardTheme: CardThemeData(
       color: RInk.i050,
       elevation: 0,

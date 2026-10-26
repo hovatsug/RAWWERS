@@ -7,7 +7,7 @@ part of 'dashboard_controller.dart';
 // **************************************************************************
 
 String _$dashboardControllerHash() =>
-    r'5d58127927226d142198914bd895d2b95ac5b771';
+    r'62dab53c2ce11d8ecfd0f2d72f35c37e068a8337';
 
 /// Refreshing the dashboard, in one place.
 ///

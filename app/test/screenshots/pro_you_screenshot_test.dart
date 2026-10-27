@@ -6,50 +6,16 @@
 // compared and nothing is committed:
 //
 //   SCREENSHOT_DIR=/tmp/shots flutter test test/screenshots
-import 'dart:io';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/gig_status.dart';
 
 import '../features/pro/you_tab_fixtures.dart';
-
-final _dir = Platform.environment['SCREENSHOT_DIR'];
-
-Future<void> _loadFonts() async {
-  final archivo = FontLoader('Archivo')..addFont(rootBundle.load('assets/fonts/Archivo-Variable.ttf'));
-  await archivo.load();
-  final flutterRoot = File(Platform.resolvedExecutable).parent.parent.parent.parent.parent.parent.path;
-  final icons = File('$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
-  if (icons.existsSync()) {
-    final loader = FontLoader('MaterialIcons')..addFont(Future.value(ByteData.sublistView(icons.readAsBytesSync())));
-    await loader.load();
-  }
-}
-
-Future<void> _shoot(WidgetTester tester, String name, Widget app, {Size size = const Size(390, 844)}) async {
-  tester.view.physicalSize = size * 3;
-  tester.view.devicePixelRatio = 3;
-  addTearDown(tester.view.reset);
-  final key = GlobalKey();
-  await tester.pumpWidget(RepaintBoundary(key: key, child: app));
-  for (var i = 0; i < 10; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-  await tester.runAsync(() async {
-    final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 3);
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    File('$_dir/$name.png').writeAsBytesSync(bytes!.buffer.asUint8List());
-  });
-}
+import 'screenshot_support.dart';
 
 void main() {
   setUpAll(() async {
-    if (_dir != null) await _loadFonts();
+    if (screenshotDir != null) await loadScreenshotFonts();
   });
 
   final now = DateTime.now().toUtc();
@@ -72,13 +38,13 @@ void main() {
   for (final MapEntry(key: name, value: build) in busy.entries) {
     for (final scale in [1.0, 1.3]) {
       testWidgets('screenshot $name at $scale', (tester) async {
-        await _shoot(tester, '$name-${scale == 1.0 ? '1.0' : '1.3'}', build(scale));
-      }, skip: _dir == null);
+        await shoot(tester, '$name-${scale == 1.0 ? '1.0' : '1.3'}', build(scale));
+      }, skip: screenshotDir == null);
     }
   }
 
   // The whole scrolling page, top to bottom, at 1.0.
   testWidgets('screenshot you full page', (tester) async {
-    await _shoot(tester, 'you-full-page-1.0', busy['you']!(1.0), size: const Size(390, 2200));
-  }, skip: _dir == null);
+    await shoot(tester, 'you-full-page-1.0', busy['you']!(1.0), size: const Size(390, 2200));
+  }, skip: screenshotDir == null);
 }

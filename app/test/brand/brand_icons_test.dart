@@ -3,80 +3,11 @@
 // inside the safe circle, and the two flavors told apart.
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_test/flutter_test.dart';
 
-/// Just enough PNG to check an icon: 8-bit RGB or RGBA, not interlaced -
-/// what the generator writes.
-class _Png {
-  _Png._(this.width, this.height, this.hasAlpha, this._pixels);
-
-  factory _Png.read(String path) {
-    final bytes = File(path).readAsBytesSync();
-    final data = ByteData.sublistView(bytes);
-    var offset = 8;
-    late int width, height, colourType;
-    final idat = BytesBuilder();
-    while (offset < bytes.length) {
-      final length = data.getUint32(offset);
-      final type = String.fromCharCodes(bytes.sublist(offset + 4, offset + 8));
-      final body = bytes.sublist(offset + 8, offset + 8 + length);
-      if (type == 'IHDR') {
-        final h = ByteData.sublistView(body);
-        width = h.getUint32(0);
-        height = h.getUint32(4);
-        expect(body[8], 8, reason: '$path: 8-bit');
-        colourType = body[9];
-        expect(body[12], 0, reason: '$path: not interlaced');
-      } else if (type == 'IDAT') {
-        idat.add(body);
-      }
-      offset += 12 + length;
-    }
-    expect(colourType, anyOf(2, 6), reason: '$path: RGB or RGBA');
-    final channels = colourType == 6 ? 4 : 3;
-    final raw = ZLibCodec().decode(idat.takeBytes());
-    final stride = width * channels;
-    final out = Uint8List(height * stride);
-    for (var y = 0; y < height; y++) {
-      final filter = raw[y * (stride + 1)];
-      for (var x = 0; x < stride; x++) {
-        final v = raw[y * (stride + 1) + 1 + x];
-        final a = x >= channels ? out[y * stride + x - channels] : 0;
-        final b = y > 0 ? out[(y - 1) * stride + x] : 0;
-        final c = x >= channels && y > 0 ? out[(y - 1) * stride + x - channels] : 0;
-        final p = a + b - c;
-        final pa = (p - a).abs(), pb = (p - b).abs(), pc = (p - c).abs();
-        final paeth = pa <= pb && pa <= pc ? a : (pb <= pc ? b : c);
-        out[y * stride + x] = switch (filter) {
-          0 => v,
-          1 => v + a,
-          2 => v + b,
-          3 => v + ((a + b) >> 1),
-          4 => v + paeth,
-          _ => throw StateError('$path: filter $filter'),
-        } & 0xFF;
-      }
-    }
-    return _Png._(width, height, colourType == 6, out);
-  }
-
-  final int width;
-  final int height;
-  final bool hasAlpha;
-  final Uint8List _pixels;
-
-  int get _channels => hasAlpha ? 4 : 3;
-
-  String hexAt(int x, int y) {
-    final i = (y * width + x) * _channels;
-    return '#${[for (var k = 0; k < 3; k++) _pixels[i + k].toRadixString(16).padLeft(2, '0')].join().toUpperCase()}';
-  }
-
-  int alphaAt(int x, int y) => hasAlpha ? _pixels[(y * width + x) * 4 + 3] : 255;
-}
+import 'png_reader.dart';
 
 const _ios = 'ios/Runner/Assets.xcassets';
 const _android = 'android/app/src';
@@ -107,11 +38,11 @@ void main() {
         final contents = File('$set/Contents.json').readAsStringSync();
         for (final MapEntry(key: name, value: px) in iosSizes.entries) {
           expect(contents, contains('"$name"'), reason: 'Contents.json lists $name');
-          final png = _Png.read('$set/$name');
+          final png = Png.read('$set/$name');
           expect((png.width, png.height), (px, px), reason: name);
           expect(png.hasAlpha, isFalse, reason: '$name: the App Store rejects an icon with alpha');
         }
-        final master = _Png.read('$set/Icon-App-1024x1024@1x.png');
+        final master = Png.read('$set/Icon-App-1024x1024@1x.png');
         for (final (x, y) in [(0, 0), (1023, 0), (0, 1023), (1023, 1023), (512, 4)]) {
           expect(master.hexAt(x, y), ground, reason: 'not pre-rounded: the corner ($x, $y) is the ground');
         }
@@ -121,7 +52,7 @@ void main() {
         final res = '$_android/$flavor/res';
         for (final MapEntry(key: density, value: k) in _densities.entries) {
           for (final (name, dp) in [('ic_launcher', 48), ('ic_launcher_foreground', 108), ('ic_launcher_monochrome', 108)]) {
-            final png = _Png.read('$res/mipmap-$density/$name.png');
+            final png = Png.read('$res/mipmap-$density/$name.png');
             expect((png.width, png.height), ((dp * k).round(), (dp * k).round()), reason: '$density/$name');
           }
         }
@@ -134,7 +65,7 @@ void main() {
 
       test('Android: the foreground and monochrome artwork sit inside the 66dp safe circle', () {
         for (final layer in ['ic_launcher_foreground', 'ic_launcher_monochrome']) {
-          final png = _Png.read('$_android/$flavor/res/mipmap-xxxhdpi/$layer.png');
+          final png = Png.read('$_android/$flavor/res/mipmap-xxxhdpi/$layer.png');
           expect(png.hasAlpha, isTrue, reason: '$layer: a transparent layer');
           final radius = png.width * 33 / 108;
           final centre = png.width / 2;
@@ -167,9 +98,9 @@ void main() {
   });
 
   test('the pro icon is on paper, the client icon on ink', () {
-    expect(_Png.read('$_ios/AppIcon-pro.appiconset/Icon-App-1024x1024@1x.png').hexAt(8, 8), _token('paper'));
-    expect(_Png.read('$_ios/AppIcon-client.appiconset/Icon-App-1024x1024@1x.png').hexAt(8, 8), _token('i950'));
-    expect(_Png.read('$_android/pro/res/mipmap-xxxhdpi/ic_launcher.png').hexAt(8, 8), _token('paper'));
+    expect(Png.read('$_ios/AppIcon-pro.appiconset/Icon-App-1024x1024@1x.png').hexAt(8, 8), _token('paper'));
+    expect(Png.read('$_ios/AppIcon-client.appiconset/Icon-App-1024x1024@1x.png').hexAt(8, 8), _token('i950'));
+    expect(Png.read('$_android/pro/res/mipmap-xxxhdpi/ic_launcher.png').hexAt(8, 8), _token('paper'));
   });
 
   test('each flavor builds with its own set: the xcconfigs choose, the project does not override', () {
@@ -190,7 +121,7 @@ void main() {
       ('../web/public/icons/icon-192.png', 192),
       ('../web/public/icons/icon-512.png', 512),
     ]) {
-      final png = _Png.read(path);
+      final png = Png.read(path);
       expect((png.width, png.height), (px, px), reason: path);
     }
     expect(File('../web/app/icon.svg').existsSync(), isTrue);

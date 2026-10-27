@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ (API 31) replaces launch_background with the system splash:
+     the app's icon on a solid ground. Ground set to the launch ground (Ink
+     950) and the icon to the R mark's adaptive foreground, so the splash is
+     dark in light and dark mode alike. The wordmark cannot appear here: the
+     system crops the splash icon to a circle. -->
+<resources>
+    <style name="LaunchTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/launch_ground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+    </style>
+    <style name="NormalTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">@color/launch_ground</item>
+    </style>
+</resources>

@@ -20,6 +20,9 @@
          Flutter takes over - but LaunchTheme is moved too so the splash and
          the app don't disagree. -->
     <style name="NormalTheme" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- The launch ground, not ?android:colorBackground: this is what shows
+             between the splash and Flutter's first frame (/launch, dark in both
+             flavors), so anything else is a flash. -->
+        <item name="android:windowBackground">@color/launch_ground</item>
     </style>
 </resources>

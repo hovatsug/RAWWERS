@@ -4,6 +4,12 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## Earnings, balance and payout responses carry no currency, so the apps show everything as EUR — needed before the London closed beta
+
+`GET /v1/pro/earnings/balance`, the earnings ledger and summary, payout requests and the invoice name their amounts for one currency (`withdrawable_eur`, `pending_eur`, `amount_eur`, `gross_eur`...) and send no `currency` field. The pro app formats them all as EUR through one helper (`app/lib/core/money/eur.dart`), and payout requests are made in EUR. Gig and booking responses do send a `currency` (`GigResponse.currency`), but the screens still put "€" in front of their amounts - the app treats every amount as EUR.
+
+That is true of every booking today (Lisbon). A London photographer would see their GBP earnings as euros, and a payout request would be made in the wrong currency. Before the London closed beta the money responses need a currency (or a per-account currency the apps read once), the payout request needs one, and the apps need to format by it. The pro app's single formatter is where the display change lands; the server side (ledger, payouts, Stripe Connect payouts in GBP) is the larger part.
+
 ## `complete_photo_upload` is not idempotent
 
 `POST /v1/media/photos/{media_asset_id}/complete` only succeeds while the asset's status is still `uploading` or `created`; it transitions to `processing` on success and rejects a second call with a 409 `invalid_state` (`api/app/api/v1/media.py`, `complete_photo_upload`).

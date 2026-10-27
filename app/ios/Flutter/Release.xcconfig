@@ -4,3 +4,6 @@
 // Default so a non-flavored configuration still has a launch screen.
 // Debug-client/Debug-pro include this file first and then override it.
 LAUNCH_STORYBOARD_NAME = LaunchScreen
+
+// Default icon set for a non-flavored configuration; the flavors override it.
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon-client

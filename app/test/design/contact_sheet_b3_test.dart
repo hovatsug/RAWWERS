@@ -2,6 +2,7 @@
 // screen's headline number sits in it, and the tab bar is white with an
 // underline, never a pill.
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
@@ -115,6 +116,72 @@ void main() {
       expect(tester.getSemantics(find.ancestor(of: find.text('You'), matching: find.byType(InkWell)).first),
           matchesSemantics(label: 'You', isSelected: false, isButton: true, hasTapAction: true, isFocusable: true, hasSelectedState: true));
       semantics.dispose();
+    });
+
+    group('at large text sizes', () {
+      const five = [
+        RTabItem(label: 'You', icon: Icons.person_outline, selectedIcon: Icons.person),
+        RTabItem(label: 'Requests', icon: Icons.inbox_outlined, selectedIcon: Icons.inbox),
+        RTabItem(label: 'Messages', icon: Icons.chat_bubble_outline, selectedIcon: Icons.chat_bubble),
+        RTabItem(label: 'Gigs', icon: Icons.camera_alt_outlined, selectedIcon: Icons.camera_alt),
+        RTabItem(label: 'Wallet', icon: Icons.account_balance_wallet_outlined, selectedIcon: Icons.account_balance_wallet),
+      ];
+      const badgeKey = ValueKey('badge');
+      final withBadge = [
+        five[0],
+        RTabItem(
+          label: 'Requests',
+          icon: Icons.inbox_outlined,
+          selectedIcon: Icons.inbox,
+          iconBuilder: (context, selected) => const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.inbox), Text('3', key: badgeKey)]),
+        ),
+        ...five.skip(2),
+      ];
+
+      Future<void> pumpAt(WidgetTester tester, double scale, {double width = 390}) async {
+        tester.view.physicalSize = Size(width, 844) * 3;
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(MaterialApp(
+          theme: buildProTheme(),
+          builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)), child: child!),
+          home: Scaffold(bottomNavigationBar: RTabBar(items: withBadge, selectedIndex: 1, onSelected: (_) {})),
+        ));
+      }
+
+      double drawnSize(WidgetTester tester, String label) {
+        final text = tester.renderObject<RenderParagraph>(find.descendant(of: find.text(label), matching: find.byType(RichText)).first);
+        return text.textScaler.scale(RType.tab);
+      }
+
+      for (final scale in [1.3, 2.0]) {
+        testWidgets('labels stop growing at ${RType.tabMaxTextScale}x when the system asks for ${scale}x', (tester) async {
+          await pumpAt(tester, scale);
+          expect(drawnSize(tester, 'Messages'), RType.tab * RType.tabMaxTextScale);
+        });
+      }
+
+      for (final width in [390.0, 320.0]) {
+        testWidgets('neighbouring labels never touch at 1.3, ${width.toInt()}pt wide', (tester) async {
+          await pumpAt(tester, 1.3, width: width);
+          final labels = ['You', 'Requests', 'Messages', 'Gigs', 'Wallet'];
+          for (var i = 0; i + 1 < labels.length; i++) {
+            final right = tester.getRect(find.text(labels[i])).right;
+            final left = tester.getRect(find.text(labels[i + 1])).left;
+            expect(left - right, greaterThanOrEqualTo(RMotif.tabLabelGap), reason: '${labels[i]} | ${labels[i + 1]}');
+          }
+          expect(tester.takeException(), isNull);
+        });
+      }
+
+      testWidgets('icons, badges and targets still follow the system size', (tester) async {
+        await pumpAt(tester, 1.3);
+        expect(tester.getSize(find.byIcon(Icons.person_outline)), const Size(24, 24));
+        final badge = tester.renderObject<RenderParagraph>(find.descendant(of: find.byKey(badgeKey), matching: find.byType(RichText)));
+        expect(badge.textScaler.scale(10), 13, reason: 'the badge is not clamped');
+        final target = find.ancestor(of: find.text('You'), matching: find.byType(InkWell)).first;
+        expect(tester.getSize(target).height, greaterThanOrEqualTo(rMinTouchTarget));
+      });
     });
 
     test('its words clear AA on white', () {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/design/tokens.dart';
 
 /// What a package costs, in the order the pricing model actually works.
@@ -73,18 +74,13 @@ class RPackagePrice extends StatelessWidget {
   /// for a whole price list rather than one package.
   final String? maxTotal;
 
-  String get _symbol => switch (currency.toUpperCase()) {
-        'EUR' => '€',
-        'GBP' => '£',
-        'USD' => r'$',
-        _ => '$currency ',
-      };
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final money = RMoney.of(context);
+    String price(String amount) => money.format(amount, currency: currency);
 
-    if (density == RPackagePriceDensity.card) return _card(theme);
+    if (density == RPackagePriceDensity.card) return _card(theme, price);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +90,7 @@ class RPackagePrice extends StatelessWidget {
           TextSpan(
             children: [
               TextSpan(
-                text: '$_symbol$entryRate',
+                text: price(entryRate),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontFeatures: RType.tabularFigures,
                   fontWeight: FontWeight.w600,
@@ -106,7 +102,7 @@ class RPackagePrice extends StatelessWidget {
         ),
         const SizedBox(height: RSpace.s4),
         Text(
-          'minimum $minimumPhotos photos · from $_symbol$startingTotal',
+          'minimum $minimumPhotos photos · from ${price(startingTotal)}',
           style: theme.textTheme.bodySmall?.copyWith(
             // onSurfaceVariant, not outline. `outline` is the card's own
             // hairline border colour - one step from the card fill by design -
@@ -144,7 +140,8 @@ class RPackagePrice extends StatelessWidget {
               Flexible(
                 child: Text(
                   'Price per photo drops as you choose more',
-                  style: theme.textTheme.bodySmall?.copyWith(color: RAccent.meter500),
+                  // The theme's accent: meter700 on a light card, meter500 on dark.
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
                 ),
               ),
             ],
@@ -158,7 +155,7 @@ class RPackagePrice extends StatelessWidget {
   /// profile card uses, condensed. Built here rather than in the two card
   /// widgets because the ordering is the fix: this bug existed in five
   /// separate implementations before it had one.
-  Widget _card(ThemeData theme) {
+  Widget _card(ThemeData theme, String Function(String) price) {
     final range = maxTotal != null && maxTotal != startingTotal;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +165,7 @@ class RPackagePrice extends StatelessWidget {
           TextSpan(
             children: [
               TextSpan(
-                text: '$_symbol$entryRate',
+                text: price(entryRate),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontFeatures: RType.tabularFigures,
                   fontWeight: FontWeight.w600,
@@ -182,8 +179,8 @@ class RPackagePrice extends StatelessWidget {
         ),
         Text(
           range
-              ? 'from $_symbol$startingTotal to $_symbol$maxTotal'
-              : 'from $_symbol$startingTotal',
+              ? 'from ${price(startingTotal)} to ${price(maxTotal!)}'
+              : 'from ${price(startingTotal)}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodySmall?.copyWith(

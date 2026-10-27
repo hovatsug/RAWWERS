@@ -1,0 +1,49 @@
+{
+  "_source": "app.services.commission.split_with_rates at 18% retained + 2% RAWW credit, totalled as app.services.invoices.summarise_invoices does",
+  "scenarios": [
+    {
+      "name": "no client credit",
+      "bookings": 3,
+      "gross": "2310.00",
+      "platform_fees": "462.00",
+      "pro_raww": "46.20",
+      "client_raww": "0.00",
+      "pro_cash": "1848.00",
+      "average_gross": "770.00",
+      "reconstructed": 0
+    },
+    {
+      "name": "client credit",
+      "bookings": 3,
+      "gross": "3453.99",
+      "platform_fees": "690.80",
+      "pro_raww": "69.08",
+      "client_raww": "130.30",
+      "pro_cash": "2632.89",
+      "average_gross": "1151.33",
+      "reconstructed": 0
+    },
+    {
+      "name": "a price reduction (final price below the booked one)",
+      "bookings": 3,
+      "gross": "450.88",
+      "platform_fees": "90.18",
+      "pro_raww": "9.02",
+      "client_raww": "13.27",
+      "pro_cash": "347.43",
+      "average_gross": "150.29",
+      "reconstructed": 0
+    },
+    {
+      "name": "one large booking with credit",
+      "bookings": 1,
+      "gross": "1234567.89",
+      "platform_fees": "246913.58",
+      "pro_raww": "24691.36",
+      "client_raww": "86419.75",
+      "pro_cash": "901234.56",
+      "average_gross": "1234567.89",
+      "reconstructed": 0
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rawwers/core/money/eur.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/pro_profile_update_request.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/core/api/api_call.dart';
@@ -131,7 +131,7 @@ class _EditorState extends ConsumerState<_Editor> {
                 // Never phrased as a failing. Zero is a normal choice and the
                 // client is never told a photographer gives nothing.
                 ? 'You keep your full payment.'
-                : 'On a ${eur('1,000')} booking your client gets ${eur('${_percent * 10}')} in credit.',
+                : 'On a ${RMoney.of(context).format('1000')} booking your client gets ${RMoney.of(context).format('${_percent * 10}')} in credit.',
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           if (_error != null) ...[

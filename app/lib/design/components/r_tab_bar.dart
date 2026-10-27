@@ -76,15 +76,26 @@ class _Tab extends StatelessWidget {
                   child: item.iconBuilder?.call(context, selected) ?? Icon(selected ? item.selectedIcon : item.icon),
                 ),
                 const SizedBox(height: RSpace.s4),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: RType.fontFamily,
-                    fontSize: RType.tab,
-                    fontVariations: [selected ? RType.weightSemibold : RType.weightRegular],
-                    color: selected ? RInk.i950 : RInk.i600,
+                // Half the gap each side, so two labels are never closer than
+                // RMotif.tabLabelGap; capped in size, and shrunk rather than
+                // cut if a long word still does not fit.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: RMotif.tabLabelGap / 2),
+                  child: MediaQuery.withClampedTextScaling(
+                    maxScaleFactor: RType.tabMaxTextScale,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: RType.fontFamily,
+                          fontSize: RType.tab,
+                          fontVariations: [selected ? RType.weightSemibold : RType.weightRegular],
+                          color: selected ? RInk.i950 : RInk.i600,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: RSpace.s4),

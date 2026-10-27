@@ -1,9 +1,10 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/design/components/r_amount_row.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
-import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/api/models/earnings_ledger_item_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_request_view.dart';
@@ -44,7 +45,7 @@ class WalletScreen extends ConsumerWidget {
                 // The headline number, on the band under the title.
                 RHeaderBand(
                   padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s8, RSpace.s16, RSpace.s24),
-                  child: RBandHero(label: 'Available to withdraw', value: eur(value.balance.withdrawableEur)),
+                  child: RBandHero(label: 'Available to withdraw', value: RMoney.of(context).format(value.balance.withdrawableEur)),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(RSpace.s16),
@@ -83,6 +84,7 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final money = RMoney.of(context);
     return RCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +98,7 @@ class _BalanceCard extends StatelessWidget {
             // the real (negative) balance; this screen shows 0 to withdraw
             // and says plainly what is owed and where it comes from.
             Text(
-              'Adjustment owed: ${eur(data.balance.adjustmentOwedEur)}. A booking was refunded after '
+              'Adjustment owed: ${money.format(data.balance.adjustmentOwedEur)}. A booking was refunded after '
               'its earnings were paid out; this comes off your next earnings.',
               style: theme.textTheme.bodySmall,
             ),
@@ -105,40 +107,13 @@ class _BalanceCard extends StatelessWidget {
           // The other buckets exist because money moves through stages -
           // showing only the withdrawable figure would make a photographer
           // think earnings vanished between a shoot and a payout.
-          _BalanceRow(label: 'Pending', amount: data.balance.pendingEur),
-          _BalanceRow(label: 'On hold', amount: data.balance.heldEur),
+          RAmountRow(label: 'Pending', amount: money.format(data.balance.pendingEur)),
+          RAmountRow(label: 'On hold', amount: money.format(data.balance.heldEur)),
           // Asked for, not yet decided: out of what can be withdrawn the
           // moment it is asked for, back again if the request is rejected.
-          _BalanceRow(label: 'Requested', amount: data.balance.requestedEur),
-          _BalanceRow(label: 'Reserved for payouts', amount: data.balance.reservedEur),
-          _BalanceRow(label: 'Paid out', amount: data.balance.paidOutEur),
-        ],
-      ),
-    );
-  }
-}
-
-class _BalanceRow extends StatelessWidget {
-  const _BalanceRow({required this.label, required this.amount});
-
-  final String label;
-  final String amount;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: RSpace.s4),
-      child: Row(
-        children: [
-          Text(label, style: theme.textTheme.bodySmall),
-          const Spacer(),
-          Text(
-            eur(amount),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontFeatures: RType.tabularFigures,
-            ),
-          ),
+          RAmountRow(label: 'Requested', amount: money.format(data.balance.requestedEur)),
+          RAmountRow(label: 'Reserved for payouts', amount: money.format(data.balance.reservedEur)),
+          RAmountRow(label: 'Paid out', amount: money.format(data.balance.paidOutEur)),
         ],
       ),
     );
@@ -174,14 +149,14 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
     if (parsed < PayoutRules.minimum) {
       setState(
         () => _error =
-            'The minimum payout is ${eur(PayoutRules.minimum.toStringAsFixed(2))}.',
+            'The minimum payout is ${RMoney.of(context).format(PayoutRules.minimum.toStringAsFixed(2))}.',
       );
       return;
     }
     if (parsed > widget.data.withdrawable) {
       setState(
         () => _error =
-            'You can withdraw up to ${eur(widget.data.withdrawable.toStringAsFixed(2))}.',
+            'You can withdraw up to ${RMoney.of(context).format(widget.data.withdrawable.toStringAsFixed(2))}.',
       );
       return;
     }
@@ -231,7 +206,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
           ] else ...[
             const SizedBox(height: RSpace.s12),
             RInput(
-              label: 'Amount ($eurSymbol)',
+              label: 'Amount (${RMoney.symbolFor(null)})',
               controller: _amount,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -250,7 +225,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
             ),
             const SizedBox(height: RSpace.s8),
             Text(
-              'Minimum ${eur(PayoutRules.minimum.toStringAsFixed(2))}. '
+              'Minimum ${RMoney.of(context).format(PayoutRules.minimum.toStringAsFixed(2))}. '
               'Up to ${PayoutRules.requestsPer7Days} requests every 7 days.',
               style: theme.textTheme.bodySmall,
             ),
@@ -328,7 +303,7 @@ class _PayoutHistory extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    eur(payout.amountEur),
+                    RMoney.of(context).format(payout.amountEur),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontFeatures: RType.tabularFigures,
                     ),
@@ -386,7 +361,7 @@ class _Ledger extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      eur(entry.netEur),
+                      RMoney.of(context).format(entry.netEur),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontFeatures: RType.tabularFigures,
                       ),

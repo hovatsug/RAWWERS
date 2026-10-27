@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rawwers/core/money/eur.dart';
+import 'package:rawwers/core/format/money.dart';
+import 'package:rawwers/design/components/r_amount_row.dart';
 import 'package:rawwers/api/models/invoice_summary_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
@@ -39,6 +40,7 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final money = RMoney.of(context);
 
     return RCard(
       child: Column(
@@ -51,27 +53,25 @@ class _Summary extends StatelessWidget {
           ),
           const SizedBox(height: RSpace.s16),
 
-          // A sum that adds up: Booked, less fees (and anything given to
-          // clients), is the cash earned. The RAWW credit used to sit inside
-          // it as a plus line, though it is part of the fee and not cash, so
-          // the column did not add up to the total under it.
-          _Row(label: 'Booked', amount: eur(summary.gross), emphasised: true),
-          const SizedBox(height: RSpace.s8),
-          _Row(label: 'Platform fees', amount: '-${eur(summary.platformFees)}'),
-          if (summary.clientRaww != '0.00') ...[
-            const SizedBox(height: RSpace.s8),
-            _Row(label: 'Given to clients', amount: '-${eur(summary.clientRaww)}'),
-          ],
-          const Divider(height: RSpace.s24),
-          _Row(label: 'Cash earned', amount: eur(summary.proCash), emphasised: true),
-          const SizedBox(height: RSpace.s16),
-          _Row(label: 'Your RAWW credit', amount: eur(summary.proRaww)),
+          // A sum that adds up: Booked, less the platform's whole fee and
+          // anything given to clients, is the cash earned - to the cent, as
+          // the server splits it (platform_fees already holds the RAWW
+          // credit, which is part of the fee). The RAWW credit sits under
+          // the total, apart from the sum, because it is not cash.
+          RAmountRow(label: 'Booked', amount: money.format(summary.gross)),
+          RAmountRow(label: 'Platform fees', amount: money.minus(summary.platformFees)),
+          if (summary.clientRaww != '0.00')
+            RAmountRow(label: 'Given to clients', amount: money.minus(summary.clientRaww)),
+          const Divider(height: RSpace.s16),
+          RAmountRow(label: 'Cash earned', amount: money.format(summary.proCash), total: true),
+          const SizedBox(height: RSpace.s12),
+          RAmountRow(label: 'Your RAWW credit', amount: money.format(summary.proRaww)),
           const SizedBox(height: RSpace.s4),
           Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
 
           if (summary.averageGross != null) ...[
             const SizedBox(height: RSpace.s12),
-            Text('Averaging ${eur(summary.averageGross!)} a booking', style: muted),
+            Text('Averaging ${money.format(summary.averageGross!)} a booking', style: muted),
           ],
 
           if (summary.reconstructed > 0) ...[
@@ -86,26 +86,6 @@ class _Summary extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.amount, this.emphasised = false});
-
-  final String label;
-  final String amount;
-  final bool emphasised;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = emphasised ? theme.textTheme.titleMedium : theme.textTheme.bodyMedium;
-    return Row(
-      children: [
-        Expanded(child: Text(label, style: style)),
-        Text(amount, style: style?.copyWith(fontFeatures: RType.tabularFigures)),
-      ],
     );
   }
 }

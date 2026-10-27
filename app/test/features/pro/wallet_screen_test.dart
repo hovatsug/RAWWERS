@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/design/components/r_amount_row.dart';
 import 'package:rawwers/features/pro/wallet/summary_controller.dart';
 import 'package:rawwers/api/models/invoice_summary_view.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
@@ -52,12 +54,12 @@ WalletData _wallet({
   );
 }
 
-Widget _wrap(WalletData data) => ProviderScope(
+Widget _wrap(WalletData data, {InvoiceSummaryView? summary}) => ProviderScope(
       overrides: [
         walletControllerProvider.overrideWith(() => _FakeWallet(data)),
         // The all-time summary above the ledger is its own request. Without
         // this override it reaches the network and the test hangs.
-        earningsSummaryProvider.overrideWith((ref) async => _summary()),
+        earningsSummaryProvider.overrideWith((ref) async => summary ?? _summary()),
       ],
       child: MaterialApp(theme: buildProTheme(), home: const WalletScreen()),
     );
@@ -138,6 +140,35 @@ void main() {
     expect(find.descendant(of: find.byType(RViewfinderFrame), matching: find.text('€250.00')), findsOneWidget);
     expect(find.text('Where your money is'), findsOneWidget);
     expect(find.byType(RViewfinderFrame), findsOneWidget, reason: 'one frame per screen');
+  });
+  testWidgets('both money cards use one row: 15 on both sides, tabular amounts, only the total heavier', (tester) async {
+    tester.view.physicalSize = const Size(390, 2400) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    const summary = InvoiceSummaryView(
+      bookings: 3,
+      gross: '2310.00',
+      platformFees: '462.00',
+      proRaww: '46.20',
+      clientRaww: '23.10',
+      proCash: '1824.90',
+    );
+    await tester.pumpWidget(_wrap(_wallet(), summary: summary));
+    await tester.pumpAndSettle();
+
+    final rows = {for (final row in tester.widgetList<RAmountRow>(find.byType(RAmountRow))) row.label: row};
+    for (final label in ['Pending', 'On hold', 'Requested', 'Paid out', 'Booked', 'Platform fees', 'Given to clients', 'Cash earned']) {
+      expect(rows, contains(label), reason: '$label is not on the shared row');
+      final row = find.byWidget(rows[label]!);
+      final labelStyle = tester.widget<Text>(find.descendant(of: row, matching: find.text(label))).style!;
+      final amountStyle = tester.widget<Text>(find.descendant(of: row, matching: find.text(rows[label]!.amount))).style!;
+      expect(labelStyle.fontSize, RType.body, reason: label);
+      expect(amountStyle.fontSize, RType.body, reason: label);
+      expect(amountStyle.fontFeatures, RType.tabularFigures, reason: label);
+      final heavy = label == 'Cash earned';
+      expect(amountStyle.fontVariations, [heavy ? RType.weightSemibold : RType.weightRegular], reason: label);
+      expect(labelStyle.fontVariations, [heavy ? RType.weightSemibold : RType.weightRegular], reason: label);
+    }
   });
 }
 

@@ -108,6 +108,9 @@ abstract final class RMotif {
   /// The active tab's underline.
   static const tabIndicatorWidth = 20.0;
   static const tabIndicatorHeight = 2.0;
+
+  /// The least space between two tab labels.
+  static const tabLabelGap = 4.0;
 }
 
 /// A niche banner's own colours.
@@ -193,6 +196,12 @@ abstract final class RType {
 
   /// Tab bar labels.
   static const tab = 12.0;
+
+  /// The most a tab label grows with the system text size. Five labels
+  /// share a phone's width; past this they would run into each other, and
+  /// the icons above them carry the meaning anyway. Labels only - icons,
+  /// badges and touch targets follow the system setting.
+  static const tabMaxTextScale = 1.2;
 
   /// Letter-spacing, as a fraction of the font size (multiply by it).
   static const trackingSection = 0.14;

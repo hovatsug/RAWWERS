@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/pro_niche_pricing_preview_response.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
 import 'package:rawwers/design/components/r_switch_tile.dart';
@@ -156,7 +157,7 @@ class _PackageRow extends ConsumerWidget {
             // The per-photo rate is the number the curve is built from;
             // the bundle total is what a client sees first.
             Text(
-              '${package.currency} ${package.price} per photo · '
+              '${RMoney.of(context).format(package.price, currency: package.currency)} per photo · '
               '${package.includedPhotos} included',
               style: theme.textTheme.bodyMedium,
             ),
@@ -415,7 +416,7 @@ class _CurveTable extends StatelessWidget {
           if (!preview.withinCap) ...[
             const Divider(height: RSpace.s24),
             Text(
-              _capMessage(preview),
+              _capMessage(preview, RMoney.of(context)),
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),
           ],
@@ -426,12 +427,12 @@ class _CurveTable extends StatelessWidget {
 
   /// Named limits, not "invalid": a photographer over the cap needs to know
   /// what number would work, while they are still typing.
-  String _capMessage(ProNichePricingPreviewResponse preview) {
+  String _capMessage(ProNichePricingPreviewResponse preview, RMoney money) {
     final max = preview.entryPriceMax;
     if (max != null) {
-      return 'At your current tier this niche is capped at ${preview.currency} $max per photo. '
+      return 'At your current tier this niche is capped at ${money.format(max, currency: preview.currency)} per photo. '
           'Saving will be refused above that.';
     }
-    return 'The minimum for this niche at your tier is ${preview.currency} ${preview.entryPriceMin} per photo.';
+    return 'The minimum for this niche at your tier is ${money.format(preview.entryPriceMin, currency: preview.currency)} per photo.';
   }
 }

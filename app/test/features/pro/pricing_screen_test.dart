@@ -149,7 +149,7 @@ void main() {
     await tester.pumpWidget(_wrap());
     await tester.pump();
 
-    expect(find.textContaining('EUR 12.00 per photo'), findsOneWidget);
+    expect(find.textContaining('€12.00 per photo'), findsOneWidget);
     expect(find.textContaining('10 included'), findsOneWidget);
   });
 
@@ -187,7 +187,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // "Invalid" would leave the pro guessing at a number that works.
-    expect(find.textContaining('capped at EUR 20.00'), findsOneWidget);
+    expect(find.textContaining('capped at €20.00'), findsOneWidget);
   });
 
   testWidgets('the curve waits for a shoot type and a price', (tester) async {
@@ -262,6 +262,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('Could not load your pricing.'), findsOneWidget);
+  });
+
+  testWidgets('a package is priced in its own currency', (tester) async {
+    await tester.pumpWidget(_wrap(packages: () => _FakePackages([_package().copyWith(currency: 'GBP')])));
+    await tester.pump();
+    expect(find.textContaining('£12.00 per photo'), findsOneWidget);
+    expect(find.textContaining('GBP'), findsNothing, reason: 'the code is not written beside the amount');
   });
 }
 

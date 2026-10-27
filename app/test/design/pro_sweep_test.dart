@@ -42,6 +42,25 @@ void main() {
     expect(offenders, isEmpty, reason: offenders.join('\n'));
   });
 
+  test('no amount written beside a raw currency code: money goes through RMoney', () {
+    final offenders = _offenders(
+      RegExp(r'\$\{[^}]*currency\}\s*\$|\beur\(|\$_symbol'),
+      roots: ['lib/features/pro', 'lib/features/shared', 'lib/design/components'],
+    );
+    expect(offenders, isEmpty, reason: offenders.join('\n'));
+  });
+
+  test('no date or time formatted outside RDates in a pro or shared screen', () {
+    final offenders = _offenders(
+      RegExp(
+        r'DateFormat\(|MaterialLocalizations\.of\(context\)\.format|TimeOfDay[^;]*\.format\(|'
+        r'\.(day|month|year|hour|minute|weekday)\}|_months\b|_weekdays?\b|_monthNames\b|\b(AM|PM)\b',
+      ),
+      roots: ['lib/features/pro', 'lib/features/shared'],
+    );
+    expect(offenders, isEmpty, reason: 'use RDates (lib/core/format/dates.dart):\n${offenders.join('\n')}');
+  });
+
   test('no raw TextStyle in a pro screen: text styles come from the theme', () {
     final offenders = _offenders(RegExp(r'\bTextStyle\('));
     expect(offenders, isEmpty, reason: offenders.join('\n'));

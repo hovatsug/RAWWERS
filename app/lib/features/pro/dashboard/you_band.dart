@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
-import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
 import 'package:rawwers/design/components/r_section_label.dart';
@@ -145,6 +145,7 @@ class _Money extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final balance = data.balance;
+    final money = RMoney.of(context);
     final canRequest =
         data.account.status == PayoutAccountStatus.active &&
         data.payoutBlockedReason == null;
@@ -154,7 +155,7 @@ class _Money extends StatelessWidget {
       children: [
         RBandHero(
           label: 'Available to withdraw',
-          value: eur(balance.withdrawableEur),
+          value: money.format(balance.withdrawableEur),
           valueKey: YouBand.amountKey,
           sortKey: const OrdinalSortKey(0),
         ),
@@ -163,7 +164,7 @@ class _Money extends StatelessWidget {
           container: true,
           sortKey: const OrdinalSortKey(3),
           child: Text(
-            '${eur(balance.pendingEur)} pending · ${eur(balance.heldEur)} on hold',
+            '${money.format(balance.pendingEur)} pending · ${money.format(balance.heldEur)} on hold',
             style: theme.textTheme.bodySmall?.copyWith(
               fontFeatures: RType.tabularFigures,
             ),
@@ -174,7 +175,7 @@ class _Money extends StatelessWidget {
           Semantics(
             container: true,
             sortKey: const OrdinalSortKey(1),
-            child: Text(_whyNot(data), style: theme.textTheme.bodySmall),
+            child: Text(_whyNot(data, money), style: theme.textTheme.bodySmall),
           ),
         ],
         if (canRequest) ...[
@@ -196,12 +197,12 @@ class _Money extends StatelessWidget {
 /// Why there is no "Request payout", in one line, from the Wallet's own
 /// rules: its minimum (PayoutRules.minimum, the figure the Wallet itself
 /// checks), or its own refusal message for anything else.
-String _whyNot(WalletData data) {
+String _whyNot(WalletData data, RMoney money) {
   if (data.account.status != PayoutAccountStatus.active) {
     return 'Payouts need a verified account. Set it up in the Wallet.';
   }
   if (data.withdrawable < PayoutRules.minimum) {
-    return 'Payouts start at ${eur(PayoutRules.minimum.toStringAsFixed(2))}.';
+    return 'Payouts start at ${money.format(PayoutRules.minimum.toStringAsFixed(2))}.';
   }
   return data.payoutBlockedReason ?? '';
 }

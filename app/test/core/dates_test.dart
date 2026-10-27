@@ -1,5 +1,5 @@
-// Every date and time in the pro app goes through RDates: the device locale
-// decides the order and the clock; the words are the app's (English).
+// Every date and time in the pro app goes through RDates: one family, day
+// first and 24-hour on every device; the words are the app's (English).
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -33,18 +33,27 @@ void main() {
     expect(RDates.forLocale(const Locale('pt')).time(_at), '21:05');
   });
 
-  group('en-US: month first, 12-hour', () {
+  // Never month first, never AM/PM: a phone set to en-US reads the same
+  // family as everyone else.
+  group('en-US: still day first, 24-hour', () {
     final d = RDates.forLocale(const Locale('en', 'US'));
-    test('date', () => expect(d.date(_at), 'Oct 26, 2026'));
-    test('day and date', () => expect(d.dayDate(_at), 'Mon, Oct 26'));
-    test('time', () => expect(d.time(_at), '9:05 PM'));
+    test('date', () => expect(d.date(_at), '26 Oct 2026'));
+    test('day and date', () => expect(d.dayDate(_at), 'Mon 26 Oct'));
+    test('time', () => expect(d.time(_at), '21:05'));
     test('noon and midnight', () {
-      expect(d.time(DateTime(2026, 1, 1, 12, 0)), '12:00 PM');
-      expect(d.time(DateTime(2026, 1, 1, 0, 30)), '12:30 AM');
+      expect(d.time(DateTime(2026, 1, 1, 12, 0)), '12:00');
+      expect(d.time(DateTime(2026, 1, 1, 0, 30)), '00:30');
     });
-    test('a time of day', () => expect(d.timeOfDay(const TimeOfDay(hour: 9, minute: 0)), '9:00 AM'));
-    test('a numeric day', () => expect(d.numericDay(_at), '10/26'));
-    test('day and month', () => expect(d.dayMonth(_at), 'Oct 26'));
+    test('a time of day', () => expect(d.timeOfDay(const TimeOfDay(hour: 9, minute: 0)), '09:00'));
+    test('a time range', () => expect(d.timeRange(DateTime(2026, 10, 27, 10), DateTime(2026, 10, 27, 11)), '10:00–11:00'));
+    test('a numeric day', () => expect(d.numericDay(_at), '26/10'));
+    test('day and month', () => expect(d.dayMonth(_at), '26 Oct'));
+  });
+
+  group('pt-PT: the short day with its weekday', () {
+    final d = RDates.forLocale(const Locale('pt', 'PT'));
+    test('Tue 27 Oct', () => expect(d.dayDate(DateTime(2026, 10, 27, 10)), 'Tue 27 Oct'));
+    test('a time range', () => expect(d.timeRange(DateTime(2026, 10, 27, 10), DateTime(2026, 10, 27, 11)), '10:00–11:00'));
   });
 
   test('times in UTC are shown in the device\'s local time', () {
@@ -76,7 +85,7 @@ void main() {
       shown = RDates.of(context).time(_at);
       return const SizedBox();
     }));
-    expect(shown, '9:05 PM');
+    expect(shown, '21:05', reason: 'an en-US device still reads 24-hour');
   });
 
   test('no pro or shared screen builds a date or time by hand', () {

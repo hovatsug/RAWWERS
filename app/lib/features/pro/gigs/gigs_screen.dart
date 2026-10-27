@@ -4,9 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/core/paging/cursor_page.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
-import 'package:rawwers/design/components/r_button.dart';
+import 'package:rawwers/design/components/r_filter_bar.dart';
 import 'package:rawwers/core/router/app_router_pro.dart';
-import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
 import 'package:rawwers/features/pro/gigs/widgets/gig_card.dart';
 
@@ -67,21 +66,11 @@ class _FilterBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: RSpace.s16, vertical: RSpace.s8),
-      child: Row(
-        children: [
-          for (final filter in GigsFilter.values) ...[
-            RFilterChip(
-              label: filter.label,
-              selected: filter == selected,
-              onPressed: () => ref.read(gigsFilterControllerProvider.notifier).select(filter),
-            ),
-            const SizedBox(width: RSpace.s8),
-          ],
-        ],
-      ),
+    return RFilterBar<GigsFilter>(
+      values: GigsFilter.values,
+      selected: selected,
+      label: (filter) => filter.label,
+      onSelected: (filter) => ref.read(gigsFilterControllerProvider.notifier).select(filter),
     );
   }
 }

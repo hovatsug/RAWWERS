@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/public_review_view.dart';
 import 'package:rawwers/design/tokens.dart';
 
@@ -95,9 +96,5 @@ class ReviewContent extends StatelessWidget {
   }
 }
 
-String reviewDate(DateTime at) {
-  final local = at.toLocal();
-  return '${local.day} ${_months[local.month - 1]} ${local.year}';
-}
-
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/// A review's date, as every dated record reads: "27 Oct 2026".
+String reviewDate(DateTime at) => RDates.forLocale(WidgetsBinding.instance.platformDispatcher.locale).date(at);

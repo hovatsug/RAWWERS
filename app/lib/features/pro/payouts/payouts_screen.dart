@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rawwers/core/money/eur.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/connect_status_response.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -72,14 +72,15 @@ class _Balance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final money = RMoney.of(context);
     return RCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(eur(balance.withdrawableEur), style: theme.textTheme.headlineSmall),
+          Text(money.format(balance.withdrawableEur), style: theme.textTheme.headlineSmall),
           Text('ready to withdraw', style: theme.textTheme.bodySmall),
           const Divider(height: RSpace.s24),
-          _Line(label: 'Earned, still settling', value: eur(balance.pendingEur)),
+          _Line(label: 'Earned, still settling', value: money.format(balance.pendingEur)),
           const SizedBox(height: RSpace.s4),
           // "Pending" should read as when, not whether.
           Text(
@@ -88,7 +89,7 @@ class _Balance extends StatelessWidget {
           ),
           if (balance.heldEur != '0.00') ...[
             const SizedBox(height: RSpace.s12),
-            _Line(label: 'On hold', value: eur(balance.heldEur)),
+            _Line(label: 'On hold', value: money.format(balance.heldEur)),
           ],
         ],
       ),

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/design/components/r_button.dart';
+import 'package:rawwers/design/components/r_filter_bar.dart';
 import 'package:rawwers/api/models/booking_request_list_item.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/api/models/gig_status.dart';
@@ -246,5 +249,18 @@ void main() {
 
       expect(find.text('Nothing scheduled today.'), findsOneWidget);
     });
+  });
+
+  testWidgets('the filters are the shared bar, from the left gutter', (tester) async {
+    await tester.pumpWidget(_wrapGigs(const CursorPage(items: [])));
+    await tester.pump();
+    expect(find.byType(RFilterBar<GigsFilter>), findsOneWidget);
+    expect(tester.getTopLeft(find.byType(RFilterChip).first).dx, RSpace.s16);
+  });
+
+  testWidgets('a gig is shown in the currency the server sent, not assumed EUR', (tester) async {
+    await tester.pumpWidget(_wrapGigs(CursorPage(items: [_gig(id: 'g1', proGross: '1350.00').copyWith(currency: 'GBP')])));
+    await tester.pump();
+    expect(find.text('£1,350.00'), findsOneWidget);
   });
 }

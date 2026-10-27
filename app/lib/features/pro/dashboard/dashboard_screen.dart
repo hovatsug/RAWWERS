@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/pro_listing_preview_response.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -369,7 +370,7 @@ class _PricingBlock extends ConsumerWidget {
                       // The cheapest complete booking, not the per-photo
                       // rate. Naming it plainly so a photographer is not
                       // surprised by what clients see.
-                      : 'Clients see "from ${value.card.currency} ${value.card.minPrice}" '
+                      : 'Clients see "from ${RMoney.of(context).format(value.card.minPrice!, currency: value.card.currency)}" '
                           'for your smallest booking',
                   style: theme.textTheme.bodyMedium,
                 ),

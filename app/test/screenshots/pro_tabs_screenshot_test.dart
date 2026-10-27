@@ -203,7 +203,7 @@ const _summary = InvoiceSummaryView(
   platformFees: '462.00',
   proRaww: '46.20',
   clientRaww: '23.10',
-  proCash: '1778.70',
+  proCash: '1824.90',
   averageGross: '165.00',
 );
 

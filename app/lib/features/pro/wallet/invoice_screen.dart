@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rawwers/core/money/eur.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_invoice_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -50,17 +50,13 @@ class _Invoice extends StatelessWidget {
 
   final GigInvoiceView invoice;
 
-  String get _symbol => switch (invoice.currency.toUpperCase()) {
-        'EUR' => eurSymbol,
-        'GBP' => '£',
-        'USD' => r'$',
-        _ => '${invoice.currency} ',
-      };
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final date = invoice.issuedAt;
+    final money = RMoney.of(context);
+    String amount(String value) => money.format(value, currency: invoice.currency);
+    String minus(String value) => money.minus(value, currency: invoice.currency);
 
     return ListView(
       padding: const EdgeInsets.all(RSpace.s16),
@@ -70,7 +66,7 @@ class _Invoice extends StatelessWidget {
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: RSpace.s4),
-        Text('$_symbol${invoice.clientTotal}', style: theme.textTheme.headlineMedium),
+        Text(amount(invoice.clientTotal), style: theme.textTheme.headlineMedium),
         Text(
           'What your client paid',
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -83,26 +79,26 @@ class _Invoice extends StatelessWidget {
               _Line(
                 label: 'Platform fee',
                 detail: '${invoice.retainedPercent}% of the booking',
-                amount: '-$_symbol${invoice.platformRetained}',
+                amount: minus(invoice.platformRetained),
               ),
               const SizedBox(height: RSpace.s12),
               _Line(
                 label: 'Your RAWW credit',
                 detail: '${invoice.proRawwPercent}% back to you',
-                amount: '$_symbol${invoice.proRaww}',
+                amount: amount(invoice.proRaww),
               ),
               if (invoice.clientCreditPercent > 0) ...[
                 const SizedBox(height: RSpace.s12),
                 _Line(
                   label: 'Credit to your client',
                   detail: '${invoice.clientCreditPercent}%, from your share',
-                  amount: '-$_symbol${invoice.clientRaww}',
+                  amount: minus(invoice.clientRaww),
                 ),
               ],
               const Divider(height: RSpace.s24),
               _Line(
                 label: 'Your cash',
-                amount: '$_symbol${invoice.proCash}',
+                amount: amount(invoice.proCash),
                 emphasised: true,
               ),
             ],
@@ -117,18 +113,18 @@ class _Invoice extends StatelessWidget {
           child: Column(
             children: [
               if (invoice.vatAmount != null && invoice.vatNetAmount != null) ...[
-                _Line(label: 'Before VAT', amount: '$_symbol${invoice.vatNetAmount}'),
+                _Line(label: 'Before VAT', amount: amount(invoice.vatNetAmount!)),
                 const SizedBox(height: RSpace.s12),
                 _Line(
                   label: 'VAT',
                   detail: '${invoice.vatRatePercent}%'
                       '${invoice.vatNumber == null ? '' : ' · ${invoice.vatNumber}'}',
-                  amount: '$_symbol${invoice.vatAmount}',
+                  amount: amount(invoice.vatAmount!),
                 ),
                 const Divider(height: RSpace.s24),
                 _Line(
                   label: 'Total paid',
-                  amount: '$_symbol${invoice.clientTotal}',
+                  amount: amount(invoice.clientTotal),
                   emphasised: true,
                 ),
               ] else

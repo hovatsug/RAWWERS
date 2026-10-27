@@ -97,6 +97,10 @@ class RFilterChip extends StatelessWidget {
 /// A tappable inline text link. Always underlined - the accent color alone
 /// (~4.1-4.5:1 against the two theme backgrounds, see RAccent doc comment)
 /// isn't reliably AA-compliant for body-sized text on its own.
+///
+/// The accent is the theme's: meter700 on the pro app's light surfaces,
+/// meter500 on a dark one (the client app, the pro app's band). Meter 500 is
+/// never text on light.
 class RTextLink extends StatelessWidget {
   const RTextLink({required this.label, required this.onPressed, super.key});
 
@@ -114,7 +118,7 @@ class RTextLink extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: RAccent.meter500,
+                  color: Theme.of(context).colorScheme.primary,
                   decoration: TextDecoration.underline,
                 ),
           ),

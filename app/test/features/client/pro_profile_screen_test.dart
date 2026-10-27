@@ -175,7 +175,7 @@ void main() {
     // figure. This test previously asserted a bare "€180.00" - the entry rate
     // rendered as the package price, which is the bug.
     expect(find.textContaining('/photo'), findsOneWidget);
-    expect(find.text('minimum 15 photos · from €2405.88'), findsOneWidget);
+    expect(find.text('minimum 15 photos · from €2,405.88'), findsOneWidget);
     expect(find.text('1 hour 30 min · 15 photos included'), findsOneWidget);
     expect(find.text('Proofs in 3 days, finals in 7'), findsOneWidget);
   });
@@ -207,7 +207,7 @@ void main() {
     await tester.pump();
     await tester.scrollUntilVisible(find.text('Portrait session'), 200);
 
-    expect(find.textContaining('2405.88'), findsOneWidget);
+    expect(find.textContaining('2,405.88'), findsOneWidget);
     expect(find.textContaining('2700'), findsNothing, reason: 'the total was computed locally');
   });
 

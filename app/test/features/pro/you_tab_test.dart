@@ -14,7 +14,7 @@ import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/dashboard/needs_you.dart';
 import 'package:rawwers/features/pro/dashboard/you_band.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
-import 'package:rawwers/core/money/eur.dart';
+import 'package:rawwers/core/format/money.dart';
 
 import 'you_tab_fixtures.dart';
 
@@ -75,7 +75,7 @@ void main() {
     testWidgets('below the minimum: no Request payout, and one line saying why, from the Wallet\'s own minimum', (tester) async {
       await _pump(tester, youTab(walletData: wallet(withdrawable: '12.00')));
       expect(find.text('Request payout'), findsNothing);
-      expect(find.text('Payouts start at ${eur(PayoutRules.minimum.toStringAsFixed(2))}.'), findsOneWidget);
+      expect(find.text('Payouts start at ${RMoney.ofDevice().format(PayoutRules.minimum.toStringAsFixed(2))}.'), findsOneWidget);
     });
 
     testWidgets('any other refusal: the Wallet\'s own message, word for word', (tester) async {

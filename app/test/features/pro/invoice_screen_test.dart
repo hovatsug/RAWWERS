@@ -62,10 +62,10 @@ void main() {
     await tester.pumpWidget(_wrap(_invoice()));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('1490.00'), findsOneWidget);
+    expect(find.textContaining('1,490.00'), findsOneWidget);
     expect(find.textContaining('223.50'), findsOneWidget);
     expect(find.textContaining('74.50'), findsOneWidget);
-    expect(find.textContaining('1192.00'), findsOneWidget);
+    expect(find.textContaining('1,192.00'), findsOneWidget);
   });
 
   testWidgets('an unrecorded photo count says so instead of showing zero', (tester) async {
@@ -132,7 +132,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Before VAT'), findsOneWidget);
-    expect(find.textContaining('1241.67'), findsOneWidget);
+    expect(find.textContaining('1,241.67'), findsOneWidget);
     expect(find.textContaining('248.33'), findsOneWidget);
     expect(find.textContaining('GB123456789'), findsOneWidget);
   });

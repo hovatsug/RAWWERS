@@ -52,6 +52,10 @@ abstract final class RAccent {
 /// RInk.i950 at 17.1:1, RInk.i600 at 6.4:1.
 abstract final class RPaper {
   static const paper = Color(0xFFF2F2F0);
+
+  /// What sits on paper: cards, sheets and dialogs. Pure white, told apart
+  /// from the paper by a hairline. Body text on it: RInk.i950 at 19.2:1.
+  static const card = Color(0xFFFFFFFF);
 }
 
 /// The two signature motifs, sized once: the viewfinder frame (corner

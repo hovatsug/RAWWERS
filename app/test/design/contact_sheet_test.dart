@@ -17,10 +17,11 @@ void main() {
     final pairs = <(String, Color, Color, double)>[
       ('body text on paper', RInk.i950, RPaper.paper, 4.5),
       ('secondary text on paper', RInk.i600, RPaper.paper, 4.5),
-      ('body text on a card', RInk.i950, RInk.i050, 4.5),
-      ('secondary text on a card', RInk.i600, RInk.i050, 4.5),
+      ('body text on a card', RInk.i950, RPaper.card, 4.5),
+      ('secondary text on a card', RInk.i600, RPaper.card, 4.5),
       ('link (meter700) on paper', RAccent.meter700, RPaper.paper, 4.5),
-      ('link (meter700) on a card', RAccent.meter700, RInk.i050, 4.5),
+      ('link (meter700) on a card', RAccent.meter700, RPaper.card, 4.5),
+      ('error text on a card', RShade.shade600, RPaper.card, 4.5),
       ('primary button label on its fill', RInk.i050, RAccent.meter700, 4.5),
       ('band text', RInk.i050, RInk.i950, 4.5),
       ('band meta', RInk.i400, RInk.i950, 4.5),
@@ -30,7 +31,8 @@ void main() {
       ('status chip label on the stopped fill', RInk.i050, RShade.shade600, 4.5),
       ('brackets and needle on the band', RAccent.meter500, RInk.i950, 3.0),
       ('scale fill and needle on paper', RAccent.meter700, RPaper.paper, 3.0),
-      ('input border on a card', RInk.i500, RInk.i050, 3.0),
+      ('input border on a card', RInk.i500, RPaper.card, 3.0),
+      ('switch and control edges on a card', RInk.i500, RPaper.card, 3.0),
       ('input border on paper', RInk.i500, RPaper.paper, 3.0),
     ];
     for (final (what, fg, bg, min) in pairs) {
@@ -53,8 +55,19 @@ void main() {
 
     test('the scaffold is paper, not white', () => expect(pro.scaffoldBackgroundColor, RPaper.paper));
 
-    test('cards are the light surface with a hairline border', () {
-      expect(pro.cardTheme.color, RInk.i050);
+    test('a card is told apart from paper by its hairline, not by colour alone', () {
+      // White on #F2F2F0 is 1.12:1: the edge is the hairline's job. Cards are
+      // not controls, so the hairline is not held to 3:1 - controls are.
+      final shape = pro.cardTheme.shape! as RoundedRectangleBorder;
+      expect(shape.side.style, BorderStyle.solid);
+      expect(shape.side.width, greaterThan(0));
+    });
+
+    test('cards, sheets and dialogs are white, the card with a hairline border', () {
+      expect(pro.cardTheme.color, RPaper.card);
+      expect(pro.dialogTheme.backgroundColor, RPaper.card);
+      expect(pro.bottomSheetTheme.backgroundColor, RPaper.card);
+      expect(pro.bottomSheetTheme.modalBackgroundColor, RPaper.card);
       final shape = pro.cardTheme.shape! as RoundedRectangleBorder;
       expect(shape.side.color, RInk.i200);
       expect(shape.borderRadius, BorderRadius.circular(RRadius.surface));

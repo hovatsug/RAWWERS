@@ -52,8 +52,14 @@ ThemeData buildProTheme() {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.control)),
       ),
     ),
+    dialogTheme: const DialogThemeData(backgroundColor: RPaper.card, surfaceTintColor: Color(0x00000000)),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: RPaper.card,
+      modalBackgroundColor: RPaper.card,
+      surfaceTintColor: Color(0x00000000),
+    ),
     cardTheme: CardThemeData(
-      color: RInk.i050,
+      color: RPaper.card,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(RRadius.surface),
@@ -62,7 +68,7 @@ ThemeData buildProTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: RInk.i050,
+      fillColor: RPaper.card,
       // A field's edge is a control boundary, so it clears 3:1 (i500 on the
       // card and on paper); i200 did not.
       border: OutlineInputBorder(

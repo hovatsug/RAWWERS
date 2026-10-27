@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/design/components/r_tab_bar.dart';
 import 'package:rawwers/features/pro/messages/pro_messages_controller.dart';
 import 'package:rawwers/features/pro/requests/requests_controller.dart';
 
@@ -22,23 +23,25 @@ class ProShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: RTabBar(
         selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => navigationShell.goBranch(index),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'You'),
-          NavigationDestination(
-            icon: RequestsTabIcon(Icons.inbox_outlined),
-            selectedIcon: RequestsTabIcon(Icons.inbox),
+        onSelected: (index) => navigationShell.goBranch(index),
+        items: [
+          const RTabItem(label: 'You', icon: Icons.person_outline, selectedIcon: Icons.person),
+          RTabItem(
             label: 'Requests',
+            icon: Icons.inbox_outlined,
+            selectedIcon: Icons.inbox,
+            iconBuilder: (context, selected) => RequestsTabIcon(selected ? Icons.inbox : Icons.inbox_outlined),
           ),
-          NavigationDestination(
-            icon: MessagesTabIcon(Icons.chat_bubble_outline),
-            selectedIcon: MessagesTabIcon(Icons.chat_bubble),
+          RTabItem(
             label: 'Messages',
+            icon: Icons.chat_bubble_outline,
+            selectedIcon: Icons.chat_bubble,
+            iconBuilder: (context, selected) => MessagesTabIcon(selected ? Icons.chat_bubble : Icons.chat_bubble_outline),
           ),
-          NavigationDestination(icon: Icon(Icons.camera_alt_outlined), selectedIcon: Icon(Icons.camera_alt), label: 'Gigs'),
-          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
+          const RTabItem(label: 'Gigs', icon: Icons.camera_alt_outlined, selectedIcon: Icons.camera_alt),
+          const RTabItem(label: 'Wallet', icon: Icons.account_balance_wallet_outlined, selectedIcon: Icons.account_balance_wallet),
         ],
       ),
     );

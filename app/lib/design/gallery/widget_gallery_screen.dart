@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:rawwers/design/components/r_band_hero.dart';
 import 'package:rawwers/design/components/r_button.dart';
+import 'package:rawwers/design/components/r_tab_bar.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
@@ -89,6 +91,25 @@ class RWidgetGalleryScreen extends StatelessWidget {
                   ElevatedButton(onPressed: () {}, child: const Text('Primary on the band')),
                 ],
               ),
+            ),
+          ),
+          _Section(
+            title: 'Contact sheet - a headline on the band',
+            child: const RHeaderBand(
+              padding: EdgeInsets.all(RSpace.s16),
+              child: RBandHero(label: 'Example headline', value: '0.00'),
+            ),
+          ),
+          _Section(
+            title: 'Contact sheet - tab bar',
+            child: RTabBar(
+              selectedIndex: 1,
+              onSelected: (_) {},
+              items: const [
+                RTabItem(label: 'One', icon: Icons.circle_outlined, selectedIcon: Icons.circle),
+                RTabItem(label: 'Two', icon: Icons.circle_outlined, selectedIcon: Icons.circle),
+                RTabItem(label: 'Three', icon: Icons.circle_outlined, selectedIcon: Icons.circle),
+              ],
             ),
           ),
           _Section(

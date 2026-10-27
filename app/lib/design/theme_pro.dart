@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:rawwers/design/color_scheme.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/design/typography.dart';
@@ -34,6 +35,22 @@ ThemeData buildProTheme() {
           fontVariations: const [RType.weightMedium],
         ),
       ),
+    ),
+    // Every screen's title bar is the dark band: the client app's dark,
+    // light text, light status bar, actions in meter500 (graphics, 4.45:1),
+    // and the band's dark hairline. A screen with a headline number puts it
+    // in an RHeaderBand directly under this.
+    appBarTheme: AppBarTheme(
+      backgroundColor: RInk.i950,
+      foregroundColor: RInk.i050,
+      surfaceTintColor: const Color(0x00000000),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+      iconTheme: const IconThemeData(color: RInk.i050),
+      actionsIconTheme: const IconThemeData(color: RAccent.meter500),
+      titleTextStyle: textTheme.titleLarge?.copyWith(color: RInk.i050),
+      shape: const Border(bottom: BorderSide(color: RInk.i800)),
     ),
     // Every button is a 4px rectangle - no stadium shapes in Contact sheet -
     // and text-sized accents are meter700.

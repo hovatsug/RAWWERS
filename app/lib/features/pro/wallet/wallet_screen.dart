@@ -1,6 +1,9 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/design/components/r_header_band.dart';
+import 'package:rawwers/design/components/r_band_hero.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/api/models/earnings_ledger_item_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_request_view.dart';
@@ -36,8 +39,18 @@ class WalletScreen extends ConsumerWidget {
             onRefresh: notifier.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(RSpace.s16),
+              padding: EdgeInsets.zero,
               children: [
+                // The headline number, on the band under the title.
+                RHeaderBand(
+                  padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s8, RSpace.s16, RSpace.s24),
+                  child: RBandHero(label: 'Available to withdraw', value: eur(value.balance.withdrawableEur)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(RSpace.s16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 _BalanceCard(data: value),
                 const SizedBox(height: RSpace.s16),
                 // What the balance does not say: how it got there. The
@@ -49,6 +62,9 @@ class WalletScreen extends ConsumerWidget {
                 _PayoutHistory(payouts: value.payouts),
                 const SizedBox(height: RSpace.s24),
                 _Ledger(entries: value.ledger),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -71,14 +87,9 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Available to withdraw', style: theme.textTheme.bodyMedium),
-          const SizedBox(height: RSpace.s4),
-          Text(
-            '€${data.balance.withdrawableEur}',
-            style: theme.textTheme.displaySmall?.copyWith(
-              fontFeatures: RType.tabularFigures,
-            ),
-          ),
+          // The withdrawable figure is the band's headline above; this card
+          // is where the rest of the money is.
+          Text('Where your money is', style: theme.textTheme.titleMedium),
           if (data.balance.adjustmentOwedEur != '0.00') ...[
             const SizedBox(height: RSpace.s8),
             // Money paid out that a refund later took back. The server holds

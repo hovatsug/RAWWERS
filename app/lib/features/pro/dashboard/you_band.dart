@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/core/money/eur.dart';
+import 'package:rawwers/design/components/r_band_hero.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
 import 'package:rawwers/design/components/r_section_label.dart';
-import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 
@@ -88,12 +88,6 @@ class YouBand extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: RSpace.s16),
-                // Said with the amount ("Available to withdraw, €41.95"), so
-                // a screen reader does not hear the label twice or out of order.
-                const ExcludeSemantics(
-                  child: RSectionLabel('Available to withdraw'),
-                ),
-                const SizedBox(height: RSpace.s8),
                 switch (wallet) {
                   AsyncData(:final value) => _Money(
                     data: value,
@@ -102,24 +96,30 @@ class YouBand extends ConsumerWidget {
                   AsyncError() => Semantics(
                     container: true,
                     sortKey: const OrdinalSortKey(0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            'Could not load your balance.',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () =>
-                              ref.invalidate(walletControllerProvider),
-                          child: Text(
-                            'Retry',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface,
-                              decoration: TextDecoration.underline,
+                        const RSectionLabel('Available to withdraw'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Could not load your balance.',
+                                style: theme.textTheme.bodyMedium,
+                              ),
                             ),
-                          ),
+                            TextButton(
+                              onPressed: () =>
+                                  ref.invalidate(walletControllerProvider),
+                              child: Text(
+                                'Retry',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -155,40 +155,11 @@ class _Money extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Semantics(
-          container: true,
+        RBandHero(
+          label: 'Available to withdraw',
+          value: eur(balance.withdrawableEur),
+          valueKey: YouBand.amountKey,
           sortKey: const OrdinalSortKey(0),
-          label: 'Available to withdraw, ${eur(balance.withdrawableEur)}',
-          excludeSemantics: true,
-          // The frame spans the band at one height - the hero line at the
-          // reader's text size - so it never changes with the amount. Only
-          // the number itself scales down to fit, never the frame.
-          child: RViewfinderFrame(
-            fullWidth: true,
-            child: SizedBox(
-              height:
-                  MediaQuery.textScalerOf(context).scale(RType.hero) *
-                  RType.lineHeightDisplay,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  eur(balance.withdrawableEur),
-                  key: YouBand.amountKey,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontFamily: RType.fontFamily,
-                    fontSize: RType.hero,
-                    fontVariations: const [RType.weightSemibold],
-                    fontFeatures: RType.tabularFigures,
-                    letterSpacing: RType.hero * RType.trackingHero,
-                    height: RType.lineHeightDisplay,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
         const SizedBox(height: RSpace.s8),
         Semantics(

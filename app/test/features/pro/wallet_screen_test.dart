@@ -7,6 +7,9 @@ import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_account_view.dart';
 import 'package:rawwers/api/models/payout_method.dart';
+import 'package:rawwers/design/components/r_band_hero.dart';
+import 'package:rawwers/design/components/r_header_band.dart';
+import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 import 'package:rawwers/features/pro/wallet/wallet_screen.dart';
@@ -126,6 +129,15 @@ void main() {
 
     expect(find.text('Nothing earned yet.'), findsOneWidget);
     expect(find.text('Earnings'), findsOneWidget);
+  });
+
+  testWidgets('the withdrawable amount is the headline on the band, framed, and only there', (tester) async {
+    await tester.pumpWidget(_wrap(_wallet(withdrawable: '250.00')));
+    await tester.pump();
+    expect(find.descendant(of: find.byType(RHeaderBand), matching: find.byType(RBandHero)), findsOneWidget);
+    expect(find.descendant(of: find.byType(RViewfinderFrame), matching: find.text('€250.00')), findsOneWidget);
+    expect(find.text('Where your money is'), findsOneWidget);
+    expect(find.byType(RViewfinderFrame), findsOneWidget, reason: 'one frame per screen');
   });
 }
 

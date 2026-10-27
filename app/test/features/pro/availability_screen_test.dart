@@ -126,6 +126,15 @@ Future<void> _scrollTo(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  // These read the working hours the way a UK or Portuguese phone shows them;
+  // the formats themselves are tested in test/core/dates_test.dart.
+  setUp(() {
+    final dispatcher = TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher;
+    dispatcher.localeTestValue = const Locale('en', 'GB');
+    dispatcher.localesTestValue = const [Locale('en', 'GB')];
+  });
+  tearDown(() => TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.clearAllTestValues());
+
   testWidgets('a day with no rule reads as not working, not as blank', (tester) async {
     await tester.pumpWidget(_wrap());
     await tester.pump();
@@ -187,7 +196,7 @@ void main() {
 
     await _scrollTo(tester, find.text('honeymoon'));
     // Stored as 01/10 to 04/10 exclusive; the pro is away through the 3rd.
-    expect(find.text('01/10/2026 – 03/10/2026'), findsOneWidget);
+    expect(find.text('1 Oct 2026 – 3 Oct 2026'), findsOneWidget);
   });
 
   testWidgets('lead time shows the saved choice in days, not hours', (tester) async {

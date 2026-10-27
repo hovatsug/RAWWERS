@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/available_now_view.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -115,7 +116,7 @@ class _CardState extends ConsumerState<_Card> {
                     const SizedBox(height: RSpace.s4),
                     Text(
                       view.switchedOn && until != null
-                          ? 'Clients can book you at ${prepLabel(view.prepMinutes)}’ notice until ${TimeOfDay.fromDateTime(until.toLocal()).format(context)}. $listedOnlyWhileOpen'
+                          ? 'Clients can book you at ${prepLabel(view.prepMinutes)}’ notice until ${RDates.of(context).time(until)}. $listedOnlyWhileOpen'
                           : 'Take bookings in the next day at short notice, for up to ${view.lastsHours} hours.',
                       style: theme.textTheme.bodySmall,
                     ),

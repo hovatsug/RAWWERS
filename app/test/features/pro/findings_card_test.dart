@@ -46,6 +46,14 @@ Future<_Fake> _pump(WidgetTester tester, MyFindingsResponse data) async {
 }
 
 void main() {
+  // Dates as a UK or Portuguese phone shows them (see test/core/dates_test.dart).
+  setUp(() {
+    final dispatcher = TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher;
+    dispatcher.localeTestValue = const Locale('en', 'GB');
+    dispatcher.localesTestValue = const [Locale('en', 'GB')];
+  });
+  tearDown(() => TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.clearAllTestValues());
+
   testWidgets('nothing to say, nothing shown', (tester) async {
     await _pump(tester, const MyFindingsResponse(strikes: 0, items: []));
     expect(find.text('Findings on your account'), findsNothing);

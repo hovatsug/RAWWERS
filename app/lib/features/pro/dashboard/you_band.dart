@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
@@ -33,7 +34,6 @@ class YouBand extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wallet = ref.watch(walletControllerProvider);
-    final loc = MaterialLocalizations.of(context);
 
     return RHeaderBand(
       child: Builder(
@@ -68,7 +68,7 @@ class YouBand extends ConsumerWidget {
                       const SizedBox(width: RSpace.s8),
                       Expanded(
                         child: Text(
-                          loc.formatMediumDate(DateTime.now()),
+                          RDates.of(context).dayDate(DateTime.now()),
                           style: theme.textTheme.bodySmall,
                           textAlign: TextAlign.end,
                           maxLines: 1,

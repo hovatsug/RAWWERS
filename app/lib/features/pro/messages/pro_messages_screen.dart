@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/chat_thread_summary.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -106,7 +107,7 @@ class _ThreadCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(_relative(at), style: theme.textTheme.bodySmall),
+                Text(RDates.of(context).relative(at), style: theme.textTheme.bodySmall),
                 if (unread > 0) ...[
                   const SizedBox(height: RSpace.s4),
                   Semantics(label: '$unread unread', child: Badge(label: Text('$unread'))),
@@ -118,12 +119,4 @@ class _ThreadCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _relative(DateTime at) {
-  final delta = DateTime.now().difference(at.toLocal());
-  if (delta.inMinutes < 1) return 'now';
-  if (delta.inHours < 1) return '${delta.inMinutes}m';
-  if (delta.inDays < 1) return '${delta.inHours}h';
-  return '${delta.inDays}d';
 }

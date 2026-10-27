@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/booking_request_list_item.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/api/models/gig_status.dart';
@@ -98,8 +99,6 @@ class _RequestItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final loc = MaterialLocalizations.of(context);
-    final start = request.requestedStart.toLocal();
     final seconds = request.secondsUntilExpiry;
     return InkWell(
       onTap: () => context.go(ProRoute.requests),
@@ -110,7 +109,7 @@ class _RequestItem extends ConsumerWidget {
             Text('Booking request', style: theme.textTheme.titleMedium),
             const SizedBox(height: RSpace.s4),
             Text(
-              '${loc.formatMediumDate(start)} · ${loc.formatTimeOfDay(TimeOfDay.fromDateTime(start))}',
+              RDates.of(context).dateTime(request.requestedStart),
               style: theme.textTheme.bodyMedium,
             ),
             if (seconds != null) ...[
@@ -135,7 +134,7 @@ class _ProofsItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final shot = gig.scheduledStart?.toLocal();
+    final shot = gig.scheduledStart;
     return InkWell(
       onTap: () => context.push(ProRoute.gigDelivery, extra: gig),
       child: RCard(
@@ -145,7 +144,7 @@ class _ProofsItem extends StatelessWidget {
             Text('Proofs to send', style: theme.textTheme.titleMedium),
             if (shot != null) ...[
               const SizedBox(height: RSpace.s4),
-              Text('Shot on ${MaterialLocalizations.of(context).formatMediumDate(shot)}', style: theme.textTheme.bodyMedium),
+              Text('Shot on ${RDates.of(context).date(shot)}', style: theme.textTheme.bodyMedium),
             ],
           ],
         ),

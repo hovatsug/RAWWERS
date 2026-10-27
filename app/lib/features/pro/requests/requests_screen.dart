@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/booking_request_list_item.dart';
 import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -111,7 +112,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_dateRange(request), style: theme.textTheme.titleMedium),
+          Text(_dateRange(RDates.of(context), request), style: theme.textTheme.titleMedium),
           if (request.locationText != null) ...[
             const SizedBox(height: RSpace.s4),
             Text(request.locationText!, style: theme.textTheme.bodyMedium),
@@ -161,14 +162,8 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
   }
 }
 
-String _dateRange(BookingRequestListItem request) {
-  final start = request.requestedStart.toLocal();
-  final end = request.requestedEnd.toLocal();
-  final date = '${start.day}/${start.month}/${start.year}';
-  final from = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
-  final to = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
-  return '$date · $from–$to';
-}
+String _dateRange(RDates dates, BookingRequestListItem request) =>
+    '${dates.date(request.requestedStart)} · ${dates.timeRange(request.requestedStart, request.requestedEnd)}';
 
 String _emptyTitle(RequestsFilter filter) => switch (filter) {
       RequestsFilter.pending => 'Nothing waiting on you',

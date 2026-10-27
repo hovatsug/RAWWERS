@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/availability_exception_view.dart';
 import 'package:rawwers/api/models/availability_rule_item.dart';
 import 'package:rawwers/api/models/availability_rule_view.dart';
@@ -111,7 +112,7 @@ class _DayRow extends ConsumerWidget {
           if (on)
             TextButton(
               onPressed: () => _editHours(context, ref),
-              child: Text(_hoursLabel(rule!.startLocal, rule!.endLocal)),
+              child: Text(_hoursLabel(RDates.of(context), rule!.startLocal, rule!.endLocal)),
             )
           else
             Text('Not working', style: theme.textTheme.bodySmall),
@@ -125,14 +126,12 @@ class _DayRow extends ConsumerWidget {
   }
 
   /// "09:00:00" reads as a duration; a photographer reads "09:00".
-  String _short(String time) => time.length >= 5 ? time.substring(0, 5) : time;
-
   /// A shift ending at or before it starts runs into the next morning.
   /// Said outright, because "20:00 - 02:00" on its own reads as a
   /// data-entry mistake, and a photographer glancing at their week needs
   /// to tell a night shift from a typo without doing the arithmetic.
-  String _hoursLabel(String start, String end) {
-    final label = '${_short(start)} – ${_short(end)}';
+  String _hoursLabel(RDates dates, String start, String end) {
+    final label = '${dates.timeOfDay(_parse(start))} – ${dates.timeOfDay(_parse(end))}';
     return _wrapsMidnight(start, end) ? '$label (next day)' : label;
   }
 
@@ -216,8 +215,8 @@ class _DayRow extends ConsumerWidget {
 
   int _minutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
-  String _api(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
+  // The API's own format, not something a person reads.
+  String _api(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00'; // wire format
 }
 
 class _BlockedTime extends ConsumerWidget {
@@ -313,7 +312,7 @@ class _BlockedRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_range(from, to), style: theme.textTheme.bodyMedium),
+                Text(_range(RDates.of(context), from, to), style: theme.textTheme.bodyMedium),
                 if (item.reason != null)
                   Text(item.reason!, style: theme.textTheme.bodySmall),
               ],
@@ -325,13 +324,11 @@ class _BlockedRow extends StatelessWidget {
     );
   }
 
-  String _range(DateTime from, DateTime to) {
-    final f = _day(from);
-    final t = _day(to);
+  String _range(RDates dates, DateTime from, DateTime to) {
+    final f = dates.date(from);
+    final t = dates.date(to);
     return f == t ? f : '$f – $t';
   }
-
-  String _day(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
 
 class _LeadTime extends ConsumerWidget {

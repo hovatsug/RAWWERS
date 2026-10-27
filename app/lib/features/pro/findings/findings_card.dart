@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/finding_view.dart';
 import 'package:rawwers/api/models/my_findings_response.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -91,7 +92,7 @@ class _FindingTileState extends ConsumerState<_FindingTile> {
         Text(f.reason, style: theme.textTheme.titleSmall),
         Text(f.note, style: theme.textTheme.bodyMedium),
         const SizedBox(height: RSpace.s4),
-        Text(_statusLine(f), style: theme.textTheme.bodySmall),
+        Text(_statusLine(RDates.of(context), f), style: theme.textTheme.bodySmall),
         if (f.response != null) Text('You said: ${f.response}', style: theme.textTheme.bodySmall),
         if (pending && f.response == null)
           Align(
@@ -102,8 +103,8 @@ class _FindingTileState extends ConsumerState<_FindingTile> {
     );
   }
 
-  String _statusLine(FindingView f) {
-    final by = _date(DateTime.parse(f.windowEndsAt));
+  String _statusLine(RDates dates, FindingView f) {
+    final by = dates.dayMonth(DateTime.parse(f.windowEndsAt));
     return switch (f.status) {
       'pending' => 'Nothing takes effect before $by. You can respond until then.',
       'withdrawn' => 'Withdrawn. No strike.',
@@ -139,10 +140,4 @@ class _FindingTileState extends ConsumerState<_FindingTile> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
     }
   }
-}
-
-String _date(DateTime value) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  final local = value.toLocal();
-  return '${local.day} ${months[local.month - 1]}';
 }

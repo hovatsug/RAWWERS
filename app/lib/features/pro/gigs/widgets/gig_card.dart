@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
@@ -31,7 +32,7 @@ class GigCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    gig.scheduledStart != null ? _scheduleLine(gig.scheduledStart!) : 'Not scheduled yet',
+                    gig.scheduledStart != null ? _scheduleLine(RDates.of(context), gig.scheduledStart!) : 'Not scheduled yet',
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
@@ -67,9 +68,4 @@ class GigCard extends StatelessWidget {
   }
 }
 
-String _scheduleLine(DateTime utc) {
-  final local = utc.toLocal();
-  final date = '${local.day}/${local.month}/${local.year}';
-  final time = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-  return '$date · $time';
-}
+String _scheduleLine(RDates dates, DateTime at) => '${dates.date(at)} · ${dates.time(at)}';

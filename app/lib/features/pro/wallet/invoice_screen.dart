@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_invoice_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
@@ -64,7 +65,7 @@ class _Invoice extends StatelessWidget {
       padding: const EdgeInsets.all(RSpace.s16),
       children: [
         Text(
-          '${date.day} ${_months[date.month - 1]} ${date.year}',
+          RDates.of(context).date(date),
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: RSpace.s4),
@@ -221,5 +222,3 @@ class _Line extends StatelessWidget {
     );
   }
 }
-
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

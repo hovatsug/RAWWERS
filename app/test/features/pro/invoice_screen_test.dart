@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/gig_invoice_view.dart';
+import 'package:rawwers/design/components/r_amount_row.dart';
+import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/wallet/invoice_controller.dart';
 import 'package:rawwers/features/pro/wallet/invoice_screen.dart';
@@ -62,11 +68,69 @@ void main() {
     await tester.pumpWidget(_wrap(_invoice()));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('1,490.00'), findsOneWidget);
-    expect(find.textContaining('223.50'), findsOneWidget);
+    // The client total twice: the headline, and the first row of the sum.
+    expect(find.textContaining('1,490.00'), findsNWidgets(2));
+    // The platform's whole fee (retained 223.50 + RAWW credit 74.50), as the
+    // Wallet's "Platform fees" counts it, and the credit on its own below.
+    expect(find.textContaining('298.00'), findsOneWidget);
+    expect(find.textContaining('20% of the booking'), findsOneWidget);
     expect(find.textContaining('74.50'), findsOneWidget);
     expect(find.textContaining('1,192.00'), findsOneWidget);
   });
+
+  testWidgets('the RAWW credit sits below Your cash, outside the sum, and says it is not cash', (tester) async {
+    await tester.pumpWidget(_wrap(_invoice()));
+    await tester.pumpAndSettle();
+
+    final cash = tester.getTopLeft(find.text('Your cash')).dy;
+    final credit = tester.getTopLeft(find.text('Your RAWW credit')).dy;
+    final divider = tester.getTopLeft(find.byType(Divider).first).dy;
+    expect(credit, greaterThan(cash), reason: 'the credit is not cash: it must not sit inside the sum');
+    expect(cash, greaterThan(divider));
+    expect(find.textContaining('Gear credit, part of the platform fee. Not withdrawable.'), findsOneWidget);
+    expect(tester.widget<RAmountRow>(find.widgetWithText(RAmountRow, 'Your RAWW credit')).amount, isNot(startsWith('-')));
+  });
+
+  testWidgets('no RAWW credit row when the booking earned none', (tester) async {
+    await tester.pumpWidget(_wrap(GigInvoiceView.fromJson({..._json(_invoice()), 'pro_raww': '0.00', 'pro_raww_percent': 0})));
+    await tester.pumpAndSettle();
+    expect(find.text('Your RAWW credit'), findsNothing);
+  });
+
+  // The rows a photographer can see in the money card must add up: the
+  // booking, less the platform's fee and any credit given to the client, is
+  // Your cash - read back off the screen, as written for the device's
+  // locale. The scenarios are the server's own split
+  // (test/fixtures/invoice_scenarios.json, from split_with_rates), so they
+  // are the arithmetic the real invoice is given.
+  final scenarios = (jsonDecode(File('test/fixtures/invoice_scenarios.json').readAsStringSync())
+      as Map<String, dynamic>)['scenarios'] as List<dynamic>;
+  for (final locale in const [Locale('en', 'GB'), Locale('pt', 'PT')]) {
+    for (final raw in scenarios.cast<Map<String, dynamic>>()) {
+      testWidgets('the visible rows sum to Your cash: ${raw['name']}, $locale', (tester) async {
+        tester.platformDispatcher.localeTestValue = locale;
+        addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+        await tester.pumpWidget(_wrap(GigInvoiceView.fromJson({..._json(_invoice()), ...raw})));
+        await tester.pumpAndSettle();
+
+        final rows = {
+          for (final row in tester.widgetList<RAmountRow>(
+            find.descendant(of: find.byType(RCard).first, matching: find.byType(RAmountRow)),
+          ))
+            row.label: _readBack(row.amount, locale),
+        };
+        final inTheSum = ['Booked', 'Platform fee', if (rows.containsKey('Credit to your client')) 'Credit to your client'];
+        final sum = inTheSum.map((label) => rows[label]!).reduce((a, b) => a + b);
+        expect(sum, rows['Your cash'], reason: 'shown: $rows');
+        expect(rows['Your cash'], Decimal.parse(raw['pro_cash'] as String));
+        expect(rows.containsKey('Credit to your client'), raw['client_credit_percent'] != 0);
+        expect(rows.containsKey('Your RAWW credit'), raw['pro_raww_percent'] != 0);
+        if (rows.containsKey('Your RAWW credit')) {
+          expect(rows['Your RAWW credit'], Decimal.parse(raw['pro_raww'] as String));
+        }
+      });
+    }
+  }
 
   testWidgets('an unrecorded photo count says so instead of showing zero', (tester) async {
     // A completed gig with no submitted selection has an unknown count.
@@ -103,6 +167,7 @@ void main() {
   });
 
   testWidgets('a reconstructed split is labelled as one', (tester) async {
+    _tall(tester);
     // Gigs predating the stamped rates have their split rebuilt from current
     // rates. That is a fair fallback and a bad thing to present as a record.
     await tester.pumpWidget(_wrap(_invoice(ratesWereStamped: false)));
@@ -112,6 +177,7 @@ void main() {
   });
 
   testWidgets('a recorded split carries no such disclaimer', (tester) async {
+    _tall(tester);
     await tester.pumpWidget(_wrap(_invoice(ratesWereStamped: true)));
     await tester.pumpAndSettle();
     expect(find.textContaining('predates itemised rates'), findsNothing);
@@ -186,4 +252,21 @@ void main() {
       reason: 'a number appeared in the platform commission VAT line: $texts',
     );
   });
+}
+
+Map<String, dynamic> _json(GigInvoiceView invoice) => jsonDecode(jsonEncode(invoice.toJson())) as Map<String, dynamic>;
+
+/// An amount as the screen wrote it, back to a number.
+Decimal _readBack(String shown, Locale locale) {
+  final pt = locale.languageCode == 'pt';
+  final digits = shown.replaceAll(RegExp(pt ? r'[^0-9,\-]' : r'[^0-9.\-]'), '');
+  return Decimal.parse(pt ? digits.replaceAll(',', '.') : digits);
+}
+
+/// A viewport the whole invoice fits in, so a line at the end is built (and
+/// its absence means something).
+void _tall(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 4000);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
 }

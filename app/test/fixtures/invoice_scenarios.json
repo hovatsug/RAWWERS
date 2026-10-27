@@ -1,0 +1,60 @@
+{
+  "_source": "app.services.commission.split_with_rates, the split build_invoice sends (client_total = gross)",
+  "scenarios": [
+    {
+      "name": "no credit (no RAWW credit, no client credit)",
+      "client_total": "1490.00",
+      "platform_retained": "298.00",
+      "pro_raww": "0.00",
+      "client_raww": "0.00",
+      "pro_cash": "1192.00",
+      "retained_percent": 20,
+      "pro_raww_percent": 0,
+      "client_credit_percent": 0
+    },
+    {
+      "name": "RAWW credit",
+      "client_total": "1490.00",
+      "platform_retained": "268.20",
+      "pro_raww": "29.80",
+      "client_raww": "0.00",
+      "pro_cash": "1192.00",
+      "retained_percent": 18,
+      "pro_raww_percent": 2,
+      "client_credit_percent": 0
+    },
+    {
+      "name": "RAWW credit and client credit",
+      "client_total": "3453.99",
+      "platform_retained": "621.72",
+      "pro_raww": "69.08",
+      "client_raww": "172.70",
+      "pro_cash": "2590.49",
+      "retained_percent": 18,
+      "pro_raww_percent": 2,
+      "client_credit_percent": 5
+    },
+    {
+      "name": "a reduced final price",
+      "client_total": "1137.43",
+      "platform_retained": "204.74",
+      "pro_raww": "22.75",
+      "client_raww": "34.12",
+      "pro_cash": "875.82",
+      "retained_percent": 18,
+      "pro_raww_percent": 2,
+      "client_credit_percent": 3
+    },
+    {
+      "name": "a seven-figure booking",
+      "client_total": "1234567.89",
+      "platform_retained": "222222.22",
+      "pro_raww": "24691.36",
+      "client_raww": "86419.75",
+      "pro_cash": "901234.56",
+      "retained_percent": 18,
+      "pro_raww_percent": 2,
+      "client_credit_percent": 7
+    }
+  ]
+}

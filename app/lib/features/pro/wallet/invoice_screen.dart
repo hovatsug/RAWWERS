@@ -1,8 +1,10 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_invoice_view.dart';
+import 'package:rawwers/design/components/r_amount_row.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
@@ -11,9 +13,11 @@ import 'package:rawwers/features/pro/wallet/invoice_controller.dart';
 
 /// What one gig actually paid, line by line.
 ///
-/// Every figure is the server's. Nothing on this screen is added up locally,
-/// including the total - the invoice reconciles server-side and repeating the
-/// arithmetic here would only create a second answer to compare against.
+/// Every figure is the server's, and the total is never recomputed here - the
+/// invoice reconciles server-side. The one sum on screen is the platform's
+/// whole fee, retained plus RAWW credit, the same two server figures the
+/// Wallet's "Platform fees" adds (summarise_invoices), so the rows a
+/// photographer reads add up to Your cash.
 class InvoiceScreen extends ConsumerWidget {
   const InvoiceScreen({required this.gigId, super.key});
 
@@ -55,6 +59,7 @@ class _Invoice extends StatelessWidget {
     final theme = Theme.of(context);
     final date = invoice.issuedAt;
     final money = RMoney.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     String amount(String value) => money.format(value, currency: invoice.currency);
     String minus(String value) => money.minus(value, currency: invoice.currency);
 
@@ -73,34 +78,38 @@ class _Invoice extends StatelessWidget {
         ),
         const SizedBox(height: RSpace.s24),
 
+        // A sum that adds up, as the Wallet's All time card does: the
+        // booking, less the platform's fee and any credit given to the
+        // client, is Your cash. The RAWW credit is part of that fee and not
+        // cash, so it sits under the total, apart from the sum.
         RCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Line(
+              RAmountRow(label: 'Booked', amount: amount(invoice.clientTotal)),
+              RAmountRow(
                 label: 'Platform fee',
-                detail: '${invoice.retainedPercent}% of the booking',
-                amount: minus(invoice.platformRetained),
+                detail: '${invoice.retainedPercent + invoice.proRawwPercent}% of the booking',
+                amount: minus((Decimal.parse(invoice.platformRetained) + Decimal.parse(invoice.proRaww)).toStringAsFixed(2)),
               ),
-              const SizedBox(height: RSpace.s12),
-              _Line(
-                label: 'Your RAWW credit',
-                detail: '${invoice.proRawwPercent}% back to you',
-                amount: amount(invoice.proRaww),
-              ),
-              if (invoice.clientCreditPercent > 0) ...[
-                const SizedBox(height: RSpace.s12),
-                _Line(
+              if (invoice.clientCreditPercent > 0)
+                RAmountRow(
                   label: 'Credit to your client',
                   detail: '${invoice.clientCreditPercent}%, from your share',
                   amount: minus(invoice.clientRaww),
                 ),
+              const Divider(height: RSpace.s16),
+              RAmountRow(label: 'Your cash', amount: amount(invoice.proCash), total: true),
+              if (invoice.proRawwPercent > 0) ...[
+                const SizedBox(height: RSpace.s12),
+                RAmountRow(
+                  label: 'Your RAWW credit',
+                  detail: '${invoice.proRawwPercent}% of the booking',
+                  amount: amount(invoice.proRaww),
+                ),
+                const SizedBox(height: RSpace.s4),
+                Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
               ],
-              const Divider(height: RSpace.s24),
-              _Line(
-                label: 'Your cash',
-                amount: amount(invoice.proCash),
-                emphasised: true,
-              ),
             ],
           ),
         ),
@@ -113,22 +122,21 @@ class _Invoice extends StatelessWidget {
           child: Column(
             children: [
               if (invoice.vatAmount != null && invoice.vatNetAmount != null) ...[
-                _Line(label: 'Before VAT', amount: amount(invoice.vatNetAmount!)),
-                const SizedBox(height: RSpace.s12),
-                _Line(
+                RAmountRow(label: 'Before VAT', amount: amount(invoice.vatNetAmount!)),
+                RAmountRow(
                   label: 'VAT',
                   detail: '${invoice.vatRatePercent}%'
                       '${invoice.vatNumber == null ? '' : ' · ${invoice.vatNumber}'}',
                   amount: amount(invoice.vatAmount!),
                 ),
-                const Divider(height: RSpace.s24),
-                _Line(
+                const Divider(height: RSpace.s16),
+                RAmountRow(
                   label: 'Total paid',
                   amount: amount(invoice.clientTotal),
-                  emphasised: true,
+                  total: true,
                 ),
               ] else
-                _Line(
+                RAmountRow(
                   label: 'VAT',
                   detail: switch (invoice.vatStatus) {
                     'registered' => 'No rate is configured for your country yet.',
@@ -146,7 +154,7 @@ class _Invoice extends StatelessWidget {
         const SizedBox(height: RSpace.s16),
 
         RCard(
-          child: _Line(
+          child: RAmountRow(
             label: "RAWWERS' VAT on its fee",
             // Deliberately not a number. It depends on where RAWWERS
             // incorporates, which is undecided, and a plausible figure here
@@ -158,7 +166,7 @@ class _Invoice extends StatelessWidget {
         const SizedBox(height: RSpace.s16),
 
         RCard(
-          child: _Line(
+          child: RAmountRow(
             label: 'Photos delivered',
             // Never a zero. A completed gig with no recorded selection has an
             // unknown count, and printing 0 would tell a photographer they
@@ -175,46 +183,6 @@ class _Invoice extends StatelessWidget {
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
-      ],
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({
-    required this.label,
-    required this.amount,
-    this.detail,
-    this.emphasised = false,
-  });
-
-  final String label;
-  final String amount;
-  final String? detail;
-  final bool emphasised;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = emphasised ? theme.textTheme.titleMedium : theme.textTheme.bodyMedium;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: style),
-              if (detail != null)
-                Text(
-                  detail!,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-            ],
-          ),
-        ),
-        Text(amount, style: style?.copyWith(fontFeatures: RType.tabularFigures)),
       ],
     );
   }

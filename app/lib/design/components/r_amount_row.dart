@@ -6,11 +6,14 @@ import 'package:rawwers/design/tokens.dart';
 /// The same size on both sides (body, 15) so a card's rows read as one
 /// column of figures; the amount in tabular figures so the digits line up
 /// from row to row; and only a [total] in the heavier weight, so the eye
-/// lands on the line the others add up to.
+/// lands on the line the others add up to. A [detail] (a rate, a reason)
+/// sits under the label, small and muted.
 class RAmountRow extends StatelessWidget {
-  const RAmountRow({required this.label, required this.amount, this.total = false, super.key});
+  const RAmountRow({required this.label, required this.amount, this.detail, this.total = false, super.key});
 
   final String label;
+
+  final String? detail;
 
   /// Already formatted (RMoney).
   final String amount;
@@ -29,7 +32,17 @@ class RAmountRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Expanded(child: Text(label, style: labelStyle)),
+          Expanded(
+            child: detail == null
+                ? Text(label, style: labelStyle)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: labelStyle),
+                      Text(detail!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+          ),
           const SizedBox(width: RSpace.s12),
           Text(amount, style: amountStyle),
         ],

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Input } from "@/design-system/primitives";
 import { auth } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/store";
+import { Logo } from "@/components/logo";
+import { brand } from "@/lib/brand";
 
 const Schema = z.object({ email: z.string().email(), password: z.string().min(8) });
 
@@ -37,6 +39,7 @@ export default function LoginPage() {
 
   return (
     <Card className="space-y-3">
+      <Logo width={brand.signInLogoWidth} ground="dark" />
       <h1 className="text-xl font-semibold">Login</h1>
       <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />

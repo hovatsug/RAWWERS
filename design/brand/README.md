@@ -17,6 +17,10 @@ Don't edit these files by hand: change a token or a proportion in
 | `icon-monochrome.svg` | Android themed icon (the launcher recolours it). |
 | `exports/logo-primary-on-light@2x.png` | For e-mail templates. |
 
+The four logo files are also copied to `app/assets/brand/` (drawn by
+`RLogo`, sized from the generated `app/lib/design/brand.dart`) and
+`web/public/brand/` (the admin's login and sidebar).
+
 ## Colours (tokens)
 
 | Use | Token | Hex |
@@ -37,7 +41,8 @@ colour outside this set.
   20px (top, bottom) from the word. The same proportions at every size.
 - Clear space: the height of the R on every side, kept free of other text
   and edges.
-- Minimum size: the two-colour logo 120px wide; below that, the mono one.
+- Minimum size: the two-colour logo 120px wide; below that, the mono one
+  (`LOGO_MIN_PRIMARY_WIDTH` in the generator; `RLogo` switches on its own).
   The icon mark at any size the platforms ask for.
 
 ## Don't

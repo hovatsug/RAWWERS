@@ -6,7 +6,9 @@ import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
+import 'package:rawwers/design/brand.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
+import 'package:rawwers/design/components/r_logo.dart';
 import 'package:rawwers/design/components/r_section_label.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
@@ -53,14 +55,9 @@ class YouBand extends ConsumerWidget {
                   sortKey: const OrdinalSortKey(2),
                   child: Row(
                     children: [
-                      // Plain text for now; the logo replaces it.
-                      Text(
-                        'RAWWERS',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontVariations: const [RType.weightSemibold],
-                          letterSpacing: RType.label * RType.trackingSection,
-                        ),
-                      ),
+                      // The smallest two-colour logo: on the dark band, so
+                      // the corners keep their Meter.
+                      const RLogo(tone: RLogoTone.primaryOnDark, width: RBrand.logoMinPrimaryWidth),
                       const SizedBox(width: RSpace.s8),
                       Text(
                         'PRO',

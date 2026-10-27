@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
+import 'package:rawwers/features/shared/auth/auth_logo.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -78,6 +79,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const AuthLogo(),
               // `newPassword` is the hint that makes the OS offer to save a
               // generated password; `password` would only offer to fill an
               // existing one, which is the wrong prompt on a sign-up form.

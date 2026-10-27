@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/api/models/password_reset_request.dart';
+import 'package:rawwers/features/shared/auth/auth_logo.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -66,6 +67,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const AuthLogo(),
               if (_sent) ...[
                 Text(
                   "If that email has an account, we've sent a code to reset the password.",

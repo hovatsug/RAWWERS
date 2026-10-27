@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/design/components/r_logo.dart';
 import 'package:rawwers/design/gallery/widget_gallery_screen.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/design/theme_pro.dart';
@@ -59,5 +60,11 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows the logo in all four tones: two-colour on both grounds, and mono under the minimum width', (tester) async {
+    await _pumpGalleryAt(tester, theme: buildProTheme(), size: _largePhone);
+    final drawn = tester.widgetList<RLogo>(find.byType(RLogo)).map((logo) => logo.drawn).toSet();
+    expect(drawn, RLogoTone.values.toSet());
   });
 }

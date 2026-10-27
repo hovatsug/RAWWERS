@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
+import 'package:rawwers/features/shared/auth/auth_logo.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -70,6 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const AuthLogo(),
               if (carriedMessage != null) ...[
                 Text(carriedMessage, style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: RSpace.s16),

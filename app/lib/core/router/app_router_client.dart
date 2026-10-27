@@ -93,7 +93,7 @@ GoRouter clientRouter(Ref ref) {
       return (isAuthRoute || isLaunch) ? ClientRoute.discover : null;
     },
     routes: [
-      GoRoute(path: ClientRoute.launch, builder: (context, state) => const LaunchScreen(title: 'RAWWERS')),
+      GoRoute(path: ClientRoute.launch, builder: (context, state) => const LaunchScreen()),
       GoRoute(
         path: ClientRoute.login,
         builder: (context, state) => const LoginScreen(registerPath: ClientRoute.register, forgotPasswordPath: ClientRoute.forgotPassword),

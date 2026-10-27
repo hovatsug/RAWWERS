@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { brand } from "@/lib/brand";
+import { Logo } from "@/components/logo";
 import { admin } from "@/lib/api/admin";
 import { isOpenDispute } from "@/app/admin/labels";
 
@@ -82,8 +84,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#08080F] text-slate-200 md:flex">
       <aside className="border-b border-white/10 md:sticky md:top-0 md:h-screen md:w-56 md:flex-none md:border-b-0 md:border-r">
         <div className="px-4 py-4">
-          <Link href="/admin" className="text-sm font-semibold tracking-wide text-slate-50">
-            RAWWERS admin
+          <Link href="/admin" aria-label="RAWWERS admin" className="inline-flex items-end gap-2 text-slate-50">
+            <Logo width={brand.logoMinPrimaryWidth} ground="dark" />
+            <span className="text-xs font-medium lowercase tracking-wide text-slate-400">admin</span>
           </Link>
         </div>
         <nav aria-label="Admin" className="flex gap-6 overflow-x-auto px-4 pb-4 md:block md:space-y-5 md:overflow-visible">

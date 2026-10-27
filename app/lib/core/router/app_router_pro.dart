@@ -140,7 +140,7 @@ GoRouter proRouter(Ref ref) {
     routes: [
       GoRoute(
         path: ProRoute.launch,
-        builder: (context, state) => const LaunchScreen(title: 'RAWWERS Pro'),
+        builder: (context, state) => const LaunchScreen(),
       ),
       GoRoute(
         path: ProRoute.login,

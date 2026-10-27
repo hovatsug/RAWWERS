@@ -6,6 +6,7 @@ import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
+import 'package:rawwers/features/shared/auth/auth_logo.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -81,6 +82,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const AuthLogo(),
               RInput(
                 label: 'Code',
                 controller: _code,

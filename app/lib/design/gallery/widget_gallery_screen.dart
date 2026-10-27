@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:rawwers/design/brand.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_tab_bar.dart';
@@ -17,6 +18,7 @@ import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_image_tile.dart';
 import 'package:rawwers/design/components/r_input.dart';
+import 'package:rawwers/design/components/r_logo.dart';
 import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
@@ -61,6 +63,38 @@ class RWidgetGalleryScreen extends StatelessWidget {
                 _Swatch('paper', RPaper.paper),
                 _Swatch('develop-500', RDevelop.develop500),
                 _Swatch('shade-600', RShade.shade600),
+              ],
+            ),
+          ),
+          // The logo on its two grounds, at the launch-screen size and either
+          // side of the minimum width, where the one-colour version takes over.
+          _Section(
+            title: 'Logo (two-colour, and mono under ${RBrand.logoMinPrimaryWidth.round()} wide)',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (ground, tone) in const [
+                  (RInk.i950, RLogoTone.primaryOnDark),
+                  (RPaper.paper, RLogoTone.primaryOnLight),
+                ])
+                  ColoredBox(
+                    color: ground,
+                    child: Padding(
+                      padding: const EdgeInsets.all(RSpace.s16),
+                      child: Wrap(
+                        spacing: RSpace.s24,
+                        runSpacing: RSpace.s16,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          RLogo(tone: tone, width: RBrand.launchLogoWidth),
+                          // Either side of the switch: the smallest two-colour
+                          // logo, and one point under it, mono.
+                          RLogo(tone: tone, width: RBrand.logoMinPrimaryWidth),
+                          RLogo(tone: tone, width: RBrand.logoMinPrimaryWidth - 1),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

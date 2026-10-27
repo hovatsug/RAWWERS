@@ -8,6 +8,7 @@ import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_exposure_scale.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
+import 'package:rawwers/design/components/r_logo.dart';
 import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -34,7 +35,10 @@ void main() {
   group('the band', () {
     testWidgets('carries the brand, the label and the withdrawable amount, framed', (tester) async {
       await _pump(tester, youTab());
-      expect(find.descendant(of: find.byType(RHeaderBand), matching: find.text('RAWWERS')), findsOneWidget);
+      // The logo, not the name typed out: two-colour, for the dark band.
+      final logo = tester.widget<RLogo>(find.descendant(of: find.byType(RHeaderBand), matching: find.byType(RLogo)));
+      expect(logo.drawn, RLogoTone.primaryOnDark);
+      expect(find.descendant(of: find.byType(RHeaderBand), matching: find.text('RAWWERS')), findsNothing);
       expect(find.descendant(of: find.byType(RHeaderBand), matching: find.text('PRO')), findsOneWidget);
       expect(find.text('AVAILABLE TO WITHDRAW'), findsOneWidget);
       expect(find.descendant(of: find.byType(RViewfinderFrame), matching: find.text('€41.95')), findsOneWidget);

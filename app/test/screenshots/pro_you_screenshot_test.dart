@@ -65,6 +65,7 @@ void main() {
           textScale: scale,
         ),
     'you-below-minimum': (scale) => youTab(walletData: wallet(withdrawable: '41.95'), textScale: scale),
+    'you-available-on': (scale) => youTab(walletData: wallet(withdrawable: '412.50'), availableNowOn: true, textScale: scale),
     'you-errors': (scale) => youTab(walletFails: true, availableNowFails: true, textScale: scale),
   };
 

@@ -24,7 +24,11 @@ import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 /// A screen reader hears the amount first, then the payout action, then the
 /// rest of the band.
 class YouBand extends ConsumerWidget {
-  const YouBand({required this.walletPath, required this.settingsPath, super.key});
+  const YouBand({
+    required this.walletPath,
+    required this.settingsPath,
+    super.key,
+  });
 
   final String walletPath;
   final String settingsPath;
@@ -86,25 +90,44 @@ class YouBand extends ConsumerWidget {
                 const SizedBox(height: RSpace.s16),
                 // Said with the amount ("Available to withdraw, €41.95"), so
                 // a screen reader does not hear the label twice or out of order.
-                const ExcludeSemantics(child: RSectionLabel('Available to withdraw')),
+                const ExcludeSemantics(
+                  child: RSectionLabel('Available to withdraw'),
+                ),
                 const SizedBox(height: RSpace.s8),
                 switch (wallet) {
-                  AsyncData(:final value) => _Money(data: value, walletPath: walletPath),
+                  AsyncData(:final value) => _Money(
+                    data: value,
+                    walletPath: walletPath,
+                  ),
                   AsyncError() => Semantics(
-                      container: true,
-                  sortKey: const OrdinalSortKey(0),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text('Could not load your balance.', style: theme.textTheme.bodyMedium)),
-                          TextButton(
-                            onPressed: () => ref.invalidate(walletControllerProvider),
-                            child: Text('Retry', style: TextStyle(color: theme.colorScheme.onSurface, decoration: TextDecoration.underline)),
+                    container: true,
+                    sortKey: const OrdinalSortKey(0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Could not load your balance.',
+                            style: theme.textTheme.bodyMedium,
                           ),
-                        ],
-                      ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              ref.invalidate(walletControllerProvider),
+                          child: Text(
+                            'Retry',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
                   // The height the amount will take, so nothing jumps.
-                  _ => const SizedBox(height: RType.hero + RSpace.s24 + RSpace.s32),
+                  _ => const SizedBox(
+                    height: RType.hero + RSpace.s24 + RSpace.s32,
+                  ),
                 },
               ],
             ),
@@ -125,34 +148,43 @@ class _Money extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final balance = data.balance;
-    final canRequest = data.account.status == PayoutAccountStatus.active && data.payoutBlockedReason == null;
+    final canRequest =
+        data.account.status == PayoutAccountStatus.active &&
+        data.payoutBlockedReason == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Semantics(
           container: true,
-                  sortKey: const OrdinalSortKey(0),
+          sortKey: const OrdinalSortKey(0),
           label: 'Available to withdraw, ${eur(balance.withdrawableEur)}',
           excludeSemantics: true,
+          // The frame spans the band at one height - the hero line at the
+          // reader's text size - so it never changes with the amount. Only
+          // the number itself scales down to fit, never the frame.
           child: RViewfinderFrame(
-            child: FittedBox(
-              // Only the hero number may scale down: a long amount at a large
-              // text size shrinks rather than clipping or wrapping.
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                eur(balance.withdrawableEur),
-                key: YouBand.amountKey,
-                maxLines: 1,
-                style: TextStyle(
-                  fontFamily: RType.fontFamily,
-                  fontSize: RType.hero,
-                  fontVariations: const [RType.weightSemibold],
-                  fontFeatures: RType.tabularFigures,
-                  letterSpacing: RType.hero * RType.trackingHero,
-                  height: RType.lineHeightDisplay,
-                  color: theme.colorScheme.onSurface,
+            fullWidth: true,
+            child: SizedBox(
+              height:
+                  MediaQuery.textScalerOf(context).scale(RType.hero) *
+                  RType.lineHeightDisplay,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  eur(balance.withdrawableEur),
+                  key: YouBand.amountKey,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontFamily: RType.fontFamily,
+                    fontSize: RType.hero,
+                    fontVariations: const [RType.weightSemibold],
+                    fontFeatures: RType.tabularFigures,
+                    letterSpacing: RType.hero * RType.trackingHero,
+                    height: RType.lineHeightDisplay,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
             ),
@@ -161,17 +193,27 @@ class _Money extends StatelessWidget {
         const SizedBox(height: RSpace.s8),
         Semantics(
           container: true,
-                  sortKey: const OrdinalSortKey(3),
+          sortKey: const OrdinalSortKey(3),
           child: Text(
             '${eur(balance.pendingEur)} pending · ${eur(balance.heldEur)} on hold',
-            style: theme.textTheme.bodySmall?.copyWith(fontFeatures: RType.tabularFigures),
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontFeatures: RType.tabularFigures,
+            ),
           ),
         ),
+        if (!canRequest) ...[
+          const SizedBox(height: RSpace.s8),
+          Semantics(
+            container: true,
+            sortKey: const OrdinalSortKey(1),
+            child: Text(_whyNot(data), style: theme.textTheme.bodySmall),
+          ),
+        ],
         if (canRequest) ...[
           const SizedBox(height: RSpace.s16),
           Semantics(
             container: true,
-                  sortKey: const OrdinalSortKey(1),
+            sortKey: const OrdinalSortKey(1),
             child: ElevatedButton(
               onPressed: () => context.go(walletPath),
               child: const Text('Request payout'),
@@ -181,4 +223,17 @@ class _Money extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Why there is no "Request payout", in one line, from the Wallet's own
+/// rules: its minimum (PayoutRules.minimum, the figure the Wallet itself
+/// checks), or its own refusal message for anything else.
+String _whyNot(WalletData data) {
+  if (data.account.status != PayoutAccountStatus.active) {
+    return 'Payouts need a verified account. Set it up in the Wallet.';
+  }
+  if (data.withdrawable < PayoutRules.minimum) {
+    return 'Payouts start at ${eur(PayoutRules.minimum.toStringAsFixed(2))}.';
+  }
+  return data.payoutBlockedReason ?? '';
 }

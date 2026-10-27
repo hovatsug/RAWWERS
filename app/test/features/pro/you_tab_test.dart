@@ -13,6 +13,8 @@ import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/dashboard/needs_you.dart';
 import 'package:rawwers/features/pro/dashboard/you_band.dart';
+import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
+import 'package:rawwers/core/money/eur.dart';
 
 import 'you_tab_fixtures.dart';
 
@@ -70,14 +72,50 @@ void main() {
       expect(find.text('The Wallet'), findsOneWidget);
     });
 
-    testWidgets('no Request payout below the minimum - the Wallet says why, as before', (tester) async {
+    testWidgets('below the minimum: no Request payout, and one line saying why, from the Wallet\'s own minimum', (tester) async {
       await _pump(tester, youTab(walletData: wallet(withdrawable: '12.00')));
       expect(find.text('Request payout'), findsNothing);
+      expect(find.text('Payouts start at ${eur(PayoutRules.minimum.toStringAsFixed(2))}.'), findsOneWidget);
     });
 
-    testWidgets('no Request payout without a verified payout account', (tester) async {
+    testWidgets('any other refusal: the Wallet\'s own message, word for word', (tester) async {
+      final data = walletWithRecentPayouts(withdrawable: '250.00', count: PayoutRules.requestsPer7Days);
+      await _pump(tester, youTab(walletData: data));
+      expect(find.text('Request payout'), findsNothing);
+      expect(find.text(data.payoutBlockedReason!), findsOneWidget);
+    });
+
+    testWidgets('no Request payout without a verified payout account, and it says where to set one up', (tester) async {
       await _pump(tester, youTab(walletData: wallet(withdrawable: '250.00', account: PayoutAccountStatus.notSet)));
       expect(find.text('Request payout'), findsNothing);
+      expect(find.text('Payouts need a verified account. Set it up in the Wallet.'), findsOneWidget);
+    });
+
+    testWidgets('the frame is the full content width and never changes size with the amount', (tester) async {
+      await _pump(tester, youTab(walletData: wallet(withdrawable: '41.95')));
+      final short = tester.getRect(find.byKey(RViewfinderFrame.bracketsKey));
+      final amount = tester.getRect(find.byKey(YouBand.amountKey));
+      final band = tester.getRect(find.byType(RHeaderBand));
+      expect(short.width, band.width - 2 * RSpace.s16, reason: 'the frame spans the band\'s content width');
+      expect(amount.left, short.left + RSpace.s12, reason: 'the amount sits left, inside the frame\'s padding');
+
+      expect(short.height, closeTo(RType.hero * RType.lineHeightDisplay + 2 * RSpace.s12, 0.01));
+    });
+
+    testWidgets('a long amount keeps the same frame and scales the number down', (tester) async {
+      await _pump(tester, youTab(walletData: wallet(withdrawable: '123456789.00')));
+      final frame = tester.getRect(find.byKey(RViewfinderFrame.bracketsKey));
+      final band = tester.getRect(find.byType(RHeaderBand));
+      expect(frame.width, band.width - 2 * RSpace.s16);
+      expect(frame.height, closeTo(RType.hero * RType.lineHeightDisplay + 2 * RSpace.s12, 0.01), reason: 'a long amount resized the frame');
+      expect(tester.getRect(find.byKey(YouBand.amountKey)).right, lessThanOrEqualTo(frame.right));
+    });
+
+    testWidgets('the balance retry has a 44px target', (tester) async {
+      await _pump(tester, youTab(walletFails: true));
+      final retry = find.descendant(of: find.byType(RHeaderBand), matching: find.widgetWithText(TextButton, 'Retry'));
+      expect(tester.getSize(retry).height, greaterThanOrEqualTo(rMinTouchTarget));
+      expect(tester.getSize(retry).width, greaterThanOrEqualTo(rMinTouchTarget));
     });
 
     testWidgets('a balance that fails to load says so and offers a retry, never a zero', (tester) async {

@@ -9,7 +9,7 @@ import 'package:rawwers/design/tokens.dart';
 /// the child. Their colour is the accent of wherever they sit: meter700 on
 /// paper, meter500 on the dark band.
 class RViewfinderFrame extends StatelessWidget {
-  const RViewfinderFrame({required this.child, this.color, this.gap = RSpace.s12, super.key});
+  const RViewfinderFrame({required this.child, this.color, this.gap = RSpace.s12, this.fullWidth = false, super.key});
 
   final Widget child;
   final Color? color;
@@ -17,13 +17,20 @@ class RViewfinderFrame extends StatelessWidget {
   /// Space between the brackets and the child.
   final double gap;
 
+  /// Span the width it is given rather than hug the child: the frame then
+  /// keeps one size whatever is inside it.
+  final bool fullWidth;
+
   static const bracketsKey = ValueKey('viewfinder-brackets');
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Padding(padding: EdgeInsets.all(gap), child: child),
+        Padding(
+          padding: EdgeInsets.all(gap),
+          child: fullWidth ? SizedBox(width: double.infinity, child: child) : child,
+        ),
         Positioned.fill(
           child: ExcludeSemantics(
             child: CustomPaint(

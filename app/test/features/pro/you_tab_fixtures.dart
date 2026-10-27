@@ -15,6 +15,7 @@ import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_account_view.dart';
 import 'package:rawwers/api/models/payout_method.dart';
 import 'package:rawwers/api/models/pro_niche_skill_list_response.dart';
+import 'package:rawwers/api/models/payout_request_view.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/paging/cursor_page.dart';
@@ -54,6 +55,28 @@ WalletData wallet({
         updatedAt: DateTime.utc(2026, 9, 1),
       ),
     );
+
+/// A wallet that has used up its payout requests for the week.
+WalletData walletWithRecentPayouts({required String withdrawable, required int count}) {
+  final base = wallet(withdrawable: withdrawable);
+  return WalletData(
+    balance: base.balance,
+    ledger: base.ledger,
+    payouts: [
+      for (var i = 0; i < count; i++)
+        PayoutRequestView.fromJson({
+          'id': 'p$i',
+          'pro_user_id': 'pro-me',
+          'amount_eur': '50.00',
+          'status': 'requested',
+          'requested_at': DateTime.now().toUtc().subtract(Duration(days: i + 1)).toIso8601String(),
+          'created_at': DateTime.now().toUtc().subtract(Duration(days: i + 1)).toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }),
+    ],
+    account: base.account,
+  );
+}
 
 GigResponse gig({required String id, required GigStatus status, required DateTime start, String location = 'Alfama, Lisbon'}) => GigResponse(
       id: id,
@@ -134,14 +157,14 @@ class FakeStandings extends TierStandingsController {
 
 /// Only Available now is served over HTTP; every other route answers 404, so
 /// a block nobody faked shows its own error state rather than reaching out.
-Future<ResponseBody> backend(RequestOptions o, {bool availableNowFails = false}) async {
+Future<ResponseBody> backend(RequestOptions o, {bool availableNowFails = false, bool availableNowOn = false}) async {
   if (o.uri.path == '/v1/pro/available-now' && o.method == 'GET') {
     if (availableNowFails) return jsonResponseBody('{"error":{"code":"internal_error","message":"boom"}}', 500);
     return jsonResponseBody(
       jsonEncode({
-        'switched_on': false,
-        'available_until': null,
-        'effective': false,
+        'switched_on': availableNowOn,
+        'available_until': availableNowOn ? DateTime.now().toUtc().add(const Duration(hours: 3)).toIso8601String() : null,
+        'effective': availableNowOn,
         'prep_minutes': 120,
         'prep_options_minutes': [90, 120, 180],
         'eligible_package_ids': ['pkg-1'],
@@ -160,10 +183,11 @@ Widget youTab({
   List<GigResponse> gigs = const [],
   List<BookingRequestListItem> pending = const [],
   bool availableNowFails = false,
+  bool availableNowOn = false,
   double textScale = 1.0,
 }) {
   final dio = Dio(BaseOptions(baseUrl: 'https://example.invalid'))
-    ..httpClientAdapter = FakeHttpClientAdapter((o) => backend(o, availableNowFails: availableNowFails));
+    ..httpClientAdapter = FakeHttpClientAdapter((o) => backend(o, availableNowFails: availableNowFails, availableNowOn: availableNowOn));
   final router = GoRouter(
     initialLocation: '/dashboard',
     routes: [

@@ -22,6 +22,13 @@ ThemeData buildProTheme() {
     textTheme: textTheme,
     colorScheme: RColorSchemes.light,
     dividerColor: RInk.i200,
+    // The floating "Add a package" / "Add photos" button: the primary
+    // button's colours and 4px corners, not Material's grey 16px default.
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: RAccent.meter700,
+      foregroundColor: RInk.i050,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.control)),
+    ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: RAccent.meter700,

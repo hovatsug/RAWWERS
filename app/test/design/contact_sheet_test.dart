@@ -89,6 +89,14 @@ void main() {
       }
     });
 
+    test('the floating "Add" button is a 4px meter700 control with a light label, like the primary button', () {
+      final fab = pro.floatingActionButtonTheme;
+      expect(fab.backgroundColor, RAccent.meter700);
+      expect(fab.foregroundColor, RInk.i050);
+      // FloatingActionButton.extended takes this shape too.
+      expect(fab.shape! as RoundedRectangleBorder, RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.control)));
+    });
+
     test('an input boundary clears 3:1', () {
       final border = pro.inputDecorationTheme.enabledBorder! as OutlineInputBorder;
       expect(border.borderSide.color, RInk.i500);
@@ -114,5 +122,6 @@ void main() {
     expect(button.backgroundColor!.resolve({}), RAccent.meter700);
     expect((button.shape!.resolve({})! as RoundedRectangleBorder).borderRadius, BorderRadius.circular(RRadius.surface));
     expect(client.navigationBarTheme.backgroundColor, RInk.i950);
+    expect(client.floatingActionButtonTheme, const FloatingActionButtonThemeData());
   });
 }

@@ -6,6 +6,7 @@ import 'package:rawwers/api/models/payout_account_view.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
+import 'package:rawwers/design/components/r_switch_tile.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
@@ -319,16 +320,14 @@ class _NotificationChannels extends ConsumerWidget {
       AsyncData(:final value) => RCard(
           child: Column(
             children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('In-app'),
+              RSwitchTile(
+                title: 'In-app',
                 subtitle: Text('Booking requests and gig updates.', style: theme.textTheme.bodySmall),
                 value: value.channelInappEnabled,
                 onChanged: (on) => _save(context, notifier.setChannel(inApp: on)),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Email'),
+              RSwitchTile(
+                title: 'Email',
                 // Honest: the outbox drains but no provider is configured,
                 // so nothing is delivered yet. See docs/BACKEND_GAPS.md.
                 subtitle: Text('Not being delivered yet — we are still setting this up.', style: theme.textTheme.bodySmall),
@@ -361,9 +360,8 @@ class _PresenceVisibility extends ConsumerWidget {
 
     return switch (visible) {
       AsyncData(:final value) => RCard(
-          child: SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Show when I\u2019m online'),
+          child: RSwitchTile(
+            title: 'Show when I\u2019m online',
             subtitle: Text(
               value ? presenceNotice : 'Clients do not see when you are online. Your assistant still waits for you while your app is open.',
               style: theme.textTheme.bodySmall,
@@ -427,9 +425,9 @@ class _LoadingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          RSkeleton(width: 160),
+          RSkeleton(width: RSize.lineShort),
           SizedBox(height: RSpace.s12),
-          RSkeleton(width: 240),
+          RSkeleton(width: RSize.lineLong),
         ],
       ),
     );

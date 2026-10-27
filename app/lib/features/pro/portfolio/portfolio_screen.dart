@@ -77,7 +77,7 @@ class PortfolioScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 240), SizedBox(height: RSpace.s16), RSkeleton(width: 200)],
+                children: [RSkeleton(width: RSize.lineLong), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineMedium)],
               ),
             ),
         },
@@ -222,7 +222,7 @@ class _EmptyPortfolio extends StatelessWidget {
       padding: const EdgeInsets.all(RSpace.s32),
       child: Column(
         children: [
-          Icon(Icons.photo_library_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant),
+          Icon(Icons.photo_library_outlined, size: RIcon.empty, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: RSpace.s16),
           Text('Nothing here yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: RSpace.s8),
@@ -337,7 +337,7 @@ class _NicheTaggerState extends ConsumerState<_NicheTagger> {
               ],
             ),
           AsyncError() => const Text('Could not load the list of niches.'),
-          _ => const RSkeleton(width: 240),
+          _ => const RSkeleton(width: RSize.lineLong),
         },
         const SizedBox(height: RSpace.s24),
         if (_error != null) ...[

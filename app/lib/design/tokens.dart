@@ -58,6 +58,39 @@ abstract final class RPaper {
   static const card = Color(0xFFFFFFFF);
 }
 
+/// Fixed sizes that are not spacing: placeholders while something loads,
+/// small images and narrow columns. Named so a screen never holds a number.
+abstract final class RSize {
+  // A loading placeholder's line widths and block heights.
+  static const lineShort = 160.0;
+  static const lineMedium = 200.0;
+  static const lineLong = 240.0;
+  static const lineWide = 280.0;
+  static const blockRow = 72.0;
+  static const blockCard = 96.0;
+  static const blockPanel = 120.0;
+  static const blockList = 160.0;
+  static const blockTall = 220.0;
+
+  /// A small photo in a list row.
+  static const thumbnail = 40.0;
+
+  /// A narrow label column, such as "25 photos" beside a price.
+  static const labelColumn = 72.0;
+
+  /// A divider's thickness.
+  static const hairline = 1.0;
+}
+
+/// Icon sizes: inline beside text, in a control, and the large one an empty
+/// state leads with.
+abstract final class RIcon {
+  static const inline = 16.0;
+  static const control = 20.0;
+  static const standard = 24.0;
+  static const empty = 48.0;
+}
+
 /// The two signature motifs, sized once: the viewfinder frame (corner
 /// brackets around the one number that matters on a screen) and the exposure
 /// scale (ticks, a fill and a needle in place of a plain progress bar).
@@ -110,6 +143,7 @@ abstract final class RShade {
 /// One 8px grid. Infrastructure, not visual identity - deliberately not
 /// trying to be clever here.
 abstract final class RSpace {
+  static const s2 = 2.0;
   static const s4 = 4.0;
   static const s8 = 8.0;
   static const s12 = 12.0;

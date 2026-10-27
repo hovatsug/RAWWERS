@@ -12,6 +12,7 @@ import 'package:rawwers/design/components/r_exposure_scale.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
 import 'package:rawwers/design/components/r_section_label.dart';
 import 'package:rawwers/design/components/r_switch.dart';
+import 'package:rawwers/design/components/r_switch_tile.dart';
 import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_image_tile.dart';
@@ -19,6 +20,7 @@ import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
+import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/design/tokens.dart';
 
 // A 1x1 placeholder pixel - the gallery has no real photos to show, and
@@ -114,7 +116,10 @@ class RWidgetGalleryScreen extends StatelessWidget {
           ),
           _Section(
             title: 'Contact sheet - on paper',
-            child: ColoredBox(
+            // The pro app's own theme, so chips and labels draw as they do there.
+            child: Theme(
+              data: buildProTheme(),
+              child: ColoredBox(
               color: RPaper.paper,
               child: Padding(
                 padding: const EdgeInsets.all(RSpace.s16),
@@ -132,9 +137,26 @@ class RWidgetGalleryScreen extends StatelessWidget {
                       RSwitch(value: false, onChanged: (_) {}, semanticLabel: 'Example off'),
                       const RSwitch(value: true, onChanged: null, semanticLabel: 'Example disabled'),
                     ]),
+                    RSwitchTile(
+                      title: 'A setting',
+                      subtitle: const Text('The whole row turns it on and off.'),
+                      value: true,
+                      onChanged: (_) {},
+                    ),
+                    const SizedBox(height: RSpace.s12),
+                    const Wrap(
+                      spacing: RSpace.s8,
+                      runSpacing: RSpace.s8,
+                      children: [
+                        RStatusChip(label: 'Rookie', kind: RStatusChipKind.positive),
+                        RStatusChip(label: 'REQUESTED', kind: RStatusChipKind.inProgress),
+                        RStatusChip(label: 'CANCELLED', kind: RStatusChipKind.stopped),
+                      ],
+                    ),
                   ],
                 ),
               ),
+            ),
             ),
           ),
           _Section(

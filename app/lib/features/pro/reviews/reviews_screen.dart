@@ -76,7 +76,7 @@ class _Reviews extends ConsumerWidget {
           message: 'Could not load your reviews.',
           onRetry: () => ref.invalidate(proReviewsProvider(proUserId)),
         ),
-      _ => const Padding(padding: EdgeInsets.all(RSpace.s16), child: RSkeleton(height: 120)),
+      _ => const Padding(padding: EdgeInsets.all(RSpace.s16), child: RSkeleton(height: RSize.blockPanel)),
     };
   }
 }

@@ -51,7 +51,7 @@ class GearScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 220), SizedBox(height: RSpace.s16), RSkeleton(width: 180)],
+                children: [RSkeleton(width: RSize.lineMedium), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineShort)],
               ),
             ),
         },

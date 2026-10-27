@@ -94,7 +94,7 @@ class DeliveryGalleryScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 220), SizedBox(height: RSpace.s16), RSkeleton(width: 180)],
+                children: [RSkeleton(width: RSize.lineMedium), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineShort)],
               ),
             ),
         },
@@ -219,11 +219,11 @@ class _Uploads extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(RRadius.photo),
                       child: Image.file(
                         File(path),
-                        width: 40,
-                        height: 40,
+                        width: RSize.thumbnail,
+                        height: RSize.thumbnail,
                         fit: BoxFit.cover,
                         cacheWidth: 120,
-                        errorBuilder: (_, _, _) => const SizedBox(width: 40, height: 40),
+                        errorBuilder: (_, _, _) => const SizedBox(width: RSize.thumbnail, height: RSize.thumbnail),
                       ),
                     ),
                     const SizedBox(width: RSpace.s8),
@@ -285,7 +285,7 @@ class _EmptyGallery extends StatelessWidget {
       padding: const EdgeInsets.all(RSpace.s32),
       child: Column(
         children: [
-          Icon(Icons.collections_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant),
+          Icon(Icons.collections_outlined, size: RIcon.empty, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: RSpace.s16),
           Text('No proofs yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: RSpace.s8),

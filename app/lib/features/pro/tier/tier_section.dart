@@ -37,7 +37,7 @@ class TierSection extends ConsumerWidget {
     return switch (standings) {
       AsyncLoading() => const Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [RSkeleton(height: 132), SizedBox(height: RSpace.s12), RSkeleton(height: 132)],
+          children: [RSkeleton(height: RSize.blockPanel), SizedBox(height: RSpace.s12), RSkeleton(height: RSize.blockPanel)],
         ),
       AsyncError() => RErrorState(
           message: 'Could not load where you stand.',
@@ -139,7 +139,7 @@ class _NicheCardState extends State<_NicheCard> {
           Text(_tierMeaning(standing.skill.tier), style: theme.textTheme.bodySmall),
 
           const SizedBox(height: RSpace.s16),
-          const Divider(height: 1),
+          const Divider(height: RSize.hairline),
           const SizedBox(height: RSpace.s16),
 
           if (!progress.thresholdsKnown)
@@ -175,7 +175,7 @@ class _NicheCardState extends State<_NicheCard> {
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
                         ),
                       ),
-                      Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 18, color: theme.colorScheme.primary),
+                      Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: RIcon.inline, color: theme.colorScheme.primary),
                     ],
                   ),
                 ),
@@ -218,7 +218,7 @@ class _RequirementRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 5),
+          padding: const EdgeInsets.only(top: RSpace.s4),
           child: Icon(
             emphasised ? Icons.radio_button_unchecked : Icons.circle_outlined,
             size: emphasised ? 16 : 12,
@@ -298,7 +298,7 @@ class _FormulaRow extends StatelessWidget {
         ? 'not available'
         : '${subtracts ? '−' : '+'}${value! == value!.roundToDouble() ? value!.toStringAsFixed(0) : value!.toStringAsFixed(1)}';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: RSpace.s2),
       child: Row(
         children: [
           Expanded(child: Text(label, style: theme.textTheme.bodySmall)),

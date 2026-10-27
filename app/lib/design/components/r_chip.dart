@@ -13,7 +13,9 @@ enum RStatusChipKind {
   /// "still going".
   inProgress,
 
-  /// DELIVERED, CLOSED - outline in RDevelop.develop500.
+  /// DELIVERED, CLOSED - outline in RDevelop.develop500 on a dark ground;
+  /// on a light one (the pro app's paper) filled develop500 with a light
+  /// label, since green text on paper is too faint to read.
   positive,
 
   /// CANCELLED, DISPUTED - filled, not outline (unlike the other two
@@ -30,9 +32,11 @@ class RStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final light = Theme.of(context).brightness == Brightness.light;
 
     final (Color borderColor, Color textColor, Color? fill) = switch (kind) {
       RStatusChipKind.inProgress => (onSurface.withValues(alpha: 0.4), onSurface, null),
+      RStatusChipKind.positive when light => (RDevelop.develop500, RInk.i050, RDevelop.develop500),
       RStatusChipKind.positive => (RDevelop.develop500, RDevelop.develop500, null),
       RStatusChipKind.stopped => (RShade.shade600, RInk.i050, RShade.shade600),
     };

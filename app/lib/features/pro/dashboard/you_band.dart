@@ -113,10 +113,7 @@ class YouBand extends ConsumerWidget {
                                   ref.invalidate(walletControllerProvider),
                               child: Text(
                                 'Retry',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  decoration: TextDecoration.underline,
-                                ),
+                                style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onSurface, decoration: TextDecoration.underline),
                               ),
                             ),
                           ],

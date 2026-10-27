@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/api/models/connect_status_response.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -44,7 +45,7 @@ class PayoutsScreen extends ConsumerWidget {
               switch (balance) {
                 AsyncData(:final value) => _Balance(balance: value),
                 AsyncError() => const _Unavailable('Could not load your earnings.'),
-                _ => const RCard(child: RSkeleton(width: 180)),
+                _ => const RCard(child: RSkeleton(width: RSize.lineShort)),
               },
               const SizedBox(height: RSpace.s24),
               switch (status) {
@@ -53,7 +54,7 @@ class PayoutsScreen extends ConsumerWidget {
                     message: 'Could not check your payout setup.',
                     onRetry: () => ref.invalidate(connectStatusControllerProvider),
                   ),
-                _ => const RCard(child: RSkeleton(width: 220)),
+                _ => const RCard(child: RSkeleton(width: RSize.lineMedium)),
               },
             ],
           ),
@@ -75,10 +76,10 @@ class _Balance extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('€${balance.withdrawableEur}', style: theme.textTheme.headlineSmall),
+          Text(eur(balance.withdrawableEur), style: theme.textTheme.headlineSmall),
           Text('ready to withdraw', style: theme.textTheme.bodySmall),
           const Divider(height: RSpace.s24),
-          _Line(label: 'Earned, still settling', value: '€${balance.pendingEur}'),
+          _Line(label: 'Earned, still settling', value: eur(balance.pendingEur)),
           const SizedBox(height: RSpace.s4),
           // "Pending" should read as when, not whether.
           Text(
@@ -87,7 +88,7 @@ class _Balance extends StatelessWidget {
           ),
           if (balance.heldEur != '0.00') ...[
             const SizedBox(height: RSpace.s12),
-            _Line(label: 'On hold', value: '€${balance.heldEur}'),
+            _Line(label: 'On hold', value: eur(balance.heldEur)),
           ],
         ],
       ),
@@ -195,7 +196,7 @@ class _ConnectSectionState extends ConsumerState<_ConnectSection> {
             // point of showing them is that they are actionable.
             for (final key in due)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.only(top: RSpace.s2),
                 child: Text('· ${requirementLabel(key)}', style: theme.textTheme.bodySmall),
               ),
           ],

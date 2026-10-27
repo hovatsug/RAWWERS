@@ -36,11 +36,11 @@ class ProProfileEditScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RSkeleton(width: 200),
+                  RSkeleton(width: RSize.lineMedium),
                   SizedBox(height: RSpace.s16),
-                  RSkeleton(width: 280),
+                  RSkeleton(width: RSize.lineWide),
                   SizedBox(height: RSpace.s16),
-                  RSkeleton(width: 240),
+                  RSkeleton(width: RSize.lineLong),
                 ],
               ),
             ),

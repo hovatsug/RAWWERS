@@ -78,7 +78,7 @@ class GearVerificationScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 240), SizedBox(height: RSpace.s16), RSkeleton(width: 200)],
+                children: [RSkeleton(width: RSize.lineLong), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineMedium)],
               ),
             ),
         },
@@ -190,7 +190,7 @@ class _Line extends StatelessWidget {
       children: [
         Icon(
           done ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-          size: 20,
+          size: RIcon.control,
           color: done ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: RSpace.s12),

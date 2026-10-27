@@ -117,6 +117,6 @@ class _InlineSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(height: 160, child: PagedListSkeleton(itemCount: 1));
+    return const SizedBox(height: RSize.blockList, child: PagedListSkeleton(itemCount: 1));
   }
 }

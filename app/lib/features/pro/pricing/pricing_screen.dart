@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/pro_niche_pricing_preview_response.dart';
 import 'package:rawwers/api/models/pro_package_view.dart';
+import 'package:rawwers/design/components/r_switch_tile.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
@@ -77,7 +78,7 @@ class PricingScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 220), SizedBox(height: RSpace.s16), RSkeleton(width: 180)],
+                children: [RSkeleton(width: RSize.lineMedium), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineShort)],
               ),
             ),
         },
@@ -112,7 +113,7 @@ class _NoPackages extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.sell_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant),
+          Icon(Icons.sell_outlined, size: RIcon.empty, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: RSpace.s16),
           Text('No pricing set', style: theme.textTheme.titleMedium),
           const SizedBox(height: RSpace.s8),
@@ -164,10 +165,8 @@ class _PackageRow extends ConsumerWidget {
             if (package.isActive)
               // Only matters while "Available now" is on: then this package
               // can be booked within the next day at the preparation time.
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: const Text('Can be booked at short notice'),
+              RSwitchTile(
+                title: 'Can be booked at short notice',
                 subtitle: const Text('When you are Available now'),
                 value: package.shortNoticeOk,
                 onChanged: (ok) async {
@@ -299,7 +298,7 @@ class _PackageEditorState extends ConsumerState<_PackageEditor> {
               ],
             ),
           AsyncError() => const Text('Could not load the list of shoot types.'),
-          _ => const RSkeleton(width: 200),
+          _ => const RSkeleton(width: RSize.lineMedium),
         },
         const SizedBox(height: RSpace.s16),
         RInput(
@@ -369,7 +368,7 @@ class _CurvePreview extends ConsumerWidget {
       AsyncError() => RCard(
           child: Text('Could not work out the price.', style: theme.textTheme.bodySmall),
         ),
-      _ => const RCard(child: RSkeleton(width: 200)),
+      _ => const RCard(child: RSkeleton(width: RSize.lineMedium)),
     };
   }
 
@@ -397,7 +396,7 @@ class _CurveTable extends StatelessWidget {
               child: Row(
                 children: [
                   SizedBox(
-                    width: 72,
+                    width: RSize.labelColumn,
                     child: Text('${point.photoCount} photos', style: theme.textTheme.bodySmall),
                   ),
                   Expanded(

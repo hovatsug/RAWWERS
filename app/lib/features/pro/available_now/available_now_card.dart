@@ -37,7 +37,7 @@ class AvailableNowCard extends ConsumerWidget {
       // Never nothing: a card that silently disappears reads as a feature
       // that does not exist, and the photographer cannot switch on.
       AsyncError() => _LoadFailed(onRetry: () => ref.invalidate(availableNowControllerProvider)),
-      _ => const SizedBox(height: 72),
+      _ => const SizedBox(height: RSize.blockRow),
     };
   }
 }

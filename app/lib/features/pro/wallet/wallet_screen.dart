@@ -96,7 +96,7 @@ class _BalanceCard extends StatelessWidget {
             // the real (negative) balance; this screen shows 0 to withdraw
             // and says plainly what is owed and where it comes from.
             Text(
-              'Adjustment owed: €${data.balance.adjustmentOwedEur}. A booking was refunded after '
+              'Adjustment owed: ${eur(data.balance.adjustmentOwedEur)}. A booking was refunded after '
               'its earnings were paid out; this comes off your next earnings.',
               style: theme.textTheme.bodySmall,
             ),
@@ -134,7 +134,7 @@ class _BalanceRow extends StatelessWidget {
           Text(label, style: theme.textTheme.bodySmall),
           const Spacer(),
           Text(
-            '€$amount',
+            eur(amount),
             style: theme.textTheme.bodyMedium?.copyWith(
               fontFeatures: RType.tabularFigures,
             ),
@@ -174,14 +174,14 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
     if (parsed < PayoutRules.minimum) {
       setState(
         () => _error =
-            'The minimum payout is €${PayoutRules.minimum.toStringAsFixed(2)}.',
+            'The minimum payout is ${eur(PayoutRules.minimum.toStringAsFixed(2))}.',
       );
       return;
     }
     if (parsed > widget.data.withdrawable) {
       setState(
         () => _error =
-            'You can withdraw up to €${widget.data.withdrawable.toStringAsFixed(2)}.',
+            'You can withdraw up to ${eur(widget.data.withdrawable.toStringAsFixed(2))}.',
       );
       return;
     }
@@ -231,7 +231,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
           ] else ...[
             const SizedBox(height: RSpace.s12),
             RInput(
-              label: 'Amount (€)',
+              label: 'Amount ($eurSymbol)',
               controller: _amount,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -240,7 +240,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
             ),
             if (_error != null) ...[
               const SizedBox(height: RSpace.s8),
-              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+              Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
             ],
             const SizedBox(height: RSpace.s12),
             RButton(
@@ -250,7 +250,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
             ),
             const SizedBox(height: RSpace.s8),
             Text(
-              'Minimum €${PayoutRules.minimum.toStringAsFixed(2)}. '
+              'Minimum ${eur(PayoutRules.minimum.toStringAsFixed(2))}. '
               'Up to ${PayoutRules.requestsPer7Days} requests every 7 days.',
               style: theme.textTheme.bodySmall,
             ),
@@ -328,7 +328,7 @@ class _PayoutHistory extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '€${payout.amountEur}',
+                    eur(payout.amountEur),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontFeatures: RType.tabularFigures,
                     ),
@@ -386,7 +386,7 @@ class _Ledger extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '€${entry.netEur}',
+                      eur(entry.netEur),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontFeatures: RType.tabularFigures,
                       ),

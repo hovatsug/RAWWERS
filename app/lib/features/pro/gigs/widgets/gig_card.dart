@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_response.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -52,7 +53,7 @@ class GigCard extends StatelessWidget {
                 Text(
                   // Money arrives as a decimal string and is rendered as one -
                   // never parsed to a double on the way to the screen.
-                  '€${gig.amountProGross}',
+                  eur(gig.amountProGross),
                   style: theme.textTheme.titleMedium?.copyWith(fontFeatures: RType.tabularFigures),
                 ),
               ],

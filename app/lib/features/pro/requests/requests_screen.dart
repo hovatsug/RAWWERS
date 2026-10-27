@@ -132,7 +132,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
           ],
           if (_error != null) ...[
             const SizedBox(height: RSpace.s12),
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
           ],
           if (seconds != null) ...[
             const SizedBox(height: RSpace.s16),

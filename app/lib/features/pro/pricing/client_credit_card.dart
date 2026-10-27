@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/api/models/pro_profile_update_request.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
 import 'package:rawwers/core/api/api_call.dart';
@@ -33,7 +34,7 @@ class ClientCreditCard extends ConsumerWidget {
     return switch (profile) {
       AsyncData(:final ProProfileView value) => _Editor(profile: value),
       AsyncError() => const SizedBox.shrink(),
-      _ => const RCard(child: RSkeleton(height: 72)),
+      _ => const RCard(child: RSkeleton(height: RSize.blockRow)),
     };
   }
 }
@@ -130,7 +131,7 @@ class _EditorState extends ConsumerState<_Editor> {
                 // Never phrased as a failing. Zero is a normal choice and the
                 // client is never told a photographer gives nothing.
                 ? 'You keep your full payment.'
-                : 'On a €1,000 booking your client gets €${(_percent * 10)} in credit.',
+                : 'On a ${eur('1,000')} booking your client gets ${eur('${_percent * 10}')} in credit.',
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           if (_error != null) ...[

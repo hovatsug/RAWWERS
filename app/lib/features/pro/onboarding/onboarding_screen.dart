@@ -89,7 +89,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 240), SizedBox(height: RSpace.s16), RSkeleton(width: 200)],
+                children: [RSkeleton(width: RSize.lineLong), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineMedium)],
               ),
             ),
         },

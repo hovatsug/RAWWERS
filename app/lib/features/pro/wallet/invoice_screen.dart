@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_invoice_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -35,7 +36,7 @@ class InvoiceScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 200), SizedBox(height: RSpace.s16), RSkeleton(height: 180)],
+                children: [RSkeleton(width: RSize.lineMedium), SizedBox(height: RSpace.s16), RSkeleton(height: RSize.blockList)],
               ),
             ),
         },
@@ -50,7 +51,7 @@ class _Invoice extends StatelessWidget {
   final GigInvoiceView invoice;
 
   String get _symbol => switch (invoice.currency.toUpperCase()) {
-        'EUR' => '€',
+        'EUR' => eurSymbol,
         'GBP' => '£',
         'USD' => r'$',
         _ => '${invoice.currency} ',

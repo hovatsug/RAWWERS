@@ -72,7 +72,7 @@ class ListingPreviewScreen extends ConsumerWidget {
               padding: EdgeInsets.all(RSpace.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [RSkeleton(width: 240), SizedBox(height: RSpace.s16), RSkeleton(width: 300)],
+                children: [RSkeleton(width: RSize.lineLong), SizedBox(height: RSpace.s16), RSkeleton(width: RSize.lineWide)],
               ),
             ),
         },

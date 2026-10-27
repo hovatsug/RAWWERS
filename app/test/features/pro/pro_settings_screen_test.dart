@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/design/components/r_switch_tile.dart';
+import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/api/models/notification_digest_mode.dart';
 import 'package:rawwers/api/models/notification_preference_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
@@ -165,10 +167,10 @@ void main() {
     await tester.pumpWidget(_wrap(prefs: () => prefs));
     await tester.pump();
 
-    // Scrolled to by a text target: `find.byType(Switch).first` throws
-    // inside scrollUntilVisible while no Switch is built yet.
+    // Scrolled to by a text target: `find.byType(RSwitch).first` throws
+    // inside scrollUntilVisible while no switch is built yet.
     await _scrollTo(tester, find.text('In-app'));
-    await tester.tap(find.byType(Switch).first);
+    await tester.tap(find.byType(RSwitch).first);
     await tester.pump();
 
     expect(prefs.lastInApp, isFalse);
@@ -209,6 +211,6 @@ void main() {
     await tester.scrollUntilVisible(find.text('Show when I\u2019m online'), 300);
 
     expect(find.text(presenceNotice), findsOneWidget);
-    expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Show when I\u2019m online')).value, isTrue);
+    expect(tester.widget<RSwitchTile>(find.widgetWithText(RSwitchTile, 'Show when I\u2019m online')).value, isTrue);
   });
 }

@@ -7,6 +7,7 @@ import 'package:rawwers/design/components/r_exposure_scale.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
 import 'package:rawwers/design/components/r_section_label.dart';
 import 'package:rawwers/design/components/r_switch.dart';
+import 'package:rawwers/design/components/r_switch_tile.dart';
 import 'package:rawwers/design/components/r_viewfinder_frame.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -197,6 +198,62 @@ void main() {
       await _pump(tester, RSwitch(value: false, onChanged: (_) {}, semanticLabel: 'x'));
       final off = tester.widget<DecoratedBox>(find.byKey(RSwitch.trackKey)).decoration as BoxDecoration;
       expect(off.border!.top.color, RInk.i500, reason: 'an off switch still needs a 3:1 boundary');
+    });
+  });
+
+  group('RSwitchTile', () {
+    Future<List<bool>> pumpTile(WidgetTester tester, {bool enabled = true}) async {
+      final changes = <bool>[];
+      await _pump(
+        tester,
+        RSwitchTile(
+          title: 'Show when I\u2019m online',
+          subtitle: const Text('Clients see a dot'),
+          value: false,
+          onChanged: enabled ? changes.add : null,
+        ),
+      );
+      return changes;
+    }
+
+    testWidgets('a tap anywhere on the row toggles it, as a Material tile does', (tester) async {
+      final changes = await pumpTile(tester);
+      await tester.tap(find.text('Clients see a dot'));
+      expect(changes, [true]);
+      await tester.tap(find.byType(RSwitch));
+      expect(changes, [true, true]);
+    });
+
+    testWidgets('disabled: neither the row nor the switch does anything', (tester) async {
+      final changes = await pumpTile(tester, enabled: false);
+      await tester.tap(find.text('Clients see a dot'), warnIfMissed: false);
+      await tester.tap(find.byType(RSwitch), warnIfMissed: false);
+      expect(changes, isEmpty);
+    });
+
+    testWidgets('the switch is named by the title, once, for a screen reader', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpTile(tester);
+      expect(
+        tester.getSemantics(find.byType(RSwitch)),
+        matchesSemantics(
+          label: 'Show when I\u2019m online',
+          hasToggledState: true,
+          isToggled: false,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+          isFocusable: true,
+        ),
+      );
+      expect(find.bySemanticsLabel('Show when I\u2019m online'), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('keeps the rectangular switch, not a Material one', (tester) async {
+      await pumpTile(tester);
+      expect(find.byType(Switch), findsNothing);
+      expect(find.byType(RSwitch), findsOneWidget);
     });
   });
 

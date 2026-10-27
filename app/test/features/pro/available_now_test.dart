@@ -12,6 +12,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/design/components/r_switch_tile.dart';
 import 'package:rawwers/api/api_client/available_now_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/api/models/me_response.dart';
@@ -202,7 +203,7 @@ void main() {
     final backend = _Backend();
     await _pump(tester, backend, const SizedBox(height: 2000, child: PricingScreen()));
 
-    await tester.tap(find.widgetWithText(SwitchListTile, 'Can be booked at short notice'));
+    await tester.tap(find.widgetWithText(RSwitchTile, 'Can be booked at short notice'));
     await tester.pumpAndSettle();
 
     final [write] = backend.packageWrites;

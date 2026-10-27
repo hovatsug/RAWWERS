@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/api/models/earnings_ledger_item_view.dart';
 import 'package:rawwers/api/models/payout_account_view.dart';
@@ -65,8 +66,8 @@ class WalletData {
           'You can request again once one of them falls outside the window.';
     }
     if (withdrawable < PayoutRules.minimum) {
-      return 'You need at least €${PayoutRules.minimum.toStringAsFixed(2)} available to request a payout. '
-          'You have €${withdrawable.toStringAsFixed(2)}.';
+      return 'You need at least ${eur(PayoutRules.minimum.toStringAsFixed(2))} available to request a payout. '
+          'You have ${eur(withdrawable.toStringAsFixed(2))}.';
     }
     return null;
   }

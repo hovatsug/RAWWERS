@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/money/eur.dart';
 import 'package:rawwers/api/models/invoice_summary_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
@@ -24,7 +25,7 @@ class EarningsSummaryCard extends ConsumerWidget {
       // An error here hides the summary rather than the whole Wallet. The
       // balance and the ledger are separate requests and still worth showing.
       AsyncError() => const SizedBox.shrink(),
-      _ => const RCard(child: RSkeleton(height: 120)),
+      _ => const RCard(child: RSkeleton(height: RSize.blockPanel)),
     };
   }
 }
@@ -54,23 +55,23 @@ class _Summary extends StatelessWidget {
           // clients), is the cash earned. The RAWW credit used to sit inside
           // it as a plus line, though it is part of the fee and not cash, so
           // the column did not add up to the total under it.
-          _Row(label: 'Booked', amount: '€${summary.gross}', emphasised: true),
+          _Row(label: 'Booked', amount: eur(summary.gross), emphasised: true),
           const SizedBox(height: RSpace.s8),
-          _Row(label: 'Platform fees', amount: '-€${summary.platformFees}'),
+          _Row(label: 'Platform fees', amount: '-${eur(summary.platformFees)}'),
           if (summary.clientRaww != '0.00') ...[
             const SizedBox(height: RSpace.s8),
-            _Row(label: 'Given to clients', amount: '-€${summary.clientRaww}'),
+            _Row(label: 'Given to clients', amount: '-${eur(summary.clientRaww)}'),
           ],
           const Divider(height: RSpace.s24),
-          _Row(label: 'Cash earned', amount: '€${summary.proCash}', emphasised: true),
+          _Row(label: 'Cash earned', amount: eur(summary.proCash), emphasised: true),
           const SizedBox(height: RSpace.s16),
-          _Row(label: 'Your RAWW credit', amount: '€${summary.proRaww}'),
+          _Row(label: 'Your RAWW credit', amount: eur(summary.proRaww)),
           const SizedBox(height: RSpace.s4),
           Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
 
           if (summary.averageGross != null) ...[
             const SizedBox(height: RSpace.s12),
-            Text('Averaging €${summary.averageGross} a booking', style: muted),
+            Text('Averaging ${eur(summary.averageGross!)} a booking', style: muted),
           ],
 
           if (summary.reconstructed > 0) ...[

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/api/models/availability_exception_view.dart';
 import 'package:rawwers/api/models/availability_location_mode.dart';
 import 'package:rawwers/api/models/availability_rule_item.dart';
@@ -145,6 +146,18 @@ void main() {
     expect(find.text('Not working'), findsNWidgets(6));
   });
 
+  testWidgets('each day\'s switch is named by its day for a screen reader', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    expect(
+      tester.getSemantics(find.byType(RSwitch).at(1)),
+      matchesSemantics(label: 'Tuesday', hasToggledState: true, isToggled: false, hasEnabledState: true, isEnabled: true, hasTapAction: true, isFocusable: true),
+    );
+    semantics.dispose();
+  });
+
   testWidgets('turning a day on sends a real IANA timezone', (tester) async {
     // DateTime.now().timeZoneName returns an abbreviation like "WEST", which
     // the backend rejects with a 422 - every save would have failed.
@@ -152,7 +165,7 @@ void main() {
     await tester.pumpWidget(_wrap(hours: () => hours));
     await tester.pump();
 
-    await tester.tap(find.byType(Switch).at(1));
+    await tester.tap(find.byType(RSwitch).at(1));
     await tester.pumpAndSettle();
 
     final added = hours.lastSent!.firstWhere((r) => r.weekday == 1);
@@ -167,7 +180,7 @@ void main() {
     await tester.pumpWidget(_wrap(hours: () => hours));
     await tester.pump();
 
-    await tester.tap(find.byType(Switch).first);
+    await tester.tap(find.byType(RSwitch).first);
     await tester.pumpAndSettle();
 
     expect(hours.lastSent!.map((r) => r.weekday).toList()..sort(), [2, 4]);

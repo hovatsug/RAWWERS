@@ -169,7 +169,7 @@ class _Identity extends ConsumerWidget {
     final profile = ref.watch(proProfileControllerProvider);
 
     return switch (profile) {
-      AsyncLoading() => const RSkeleton(height: 96),
+      AsyncLoading() => const RSkeleton(height: RSize.blockCard),
       AsyncError() => RCard(
           child: Text('Could not load your profile.', style: theme.textTheme.bodyMedium),
         ),
@@ -222,7 +222,7 @@ class _BookableState extends StatelessWidget {
       children: [
         Icon(
           accepting ? Icons.check_circle_outline : Icons.pause_circle_outline,
-          size: 18,
+          size: RIcon.inline,
           color: accepting ? RDevelop.develop500 : theme.colorScheme.outline,
         ),
         const SizedBox(width: RSpace.s8),
@@ -257,7 +257,7 @@ class _ListingBlock extends ConsumerWidget {
     final preview = ref.watch(listingPreviewControllerProvider);
 
     return switch (preview) {
-      AsyncLoading() => const RSkeleton(height: 220),
+      AsyncLoading() => const RSkeleton(height: RSize.blockTall),
       AsyncError() => RCard(child: Text('Could not load your card.', style: theme.textTheme.bodyMedium)),
       AsyncData(:final ProListingPreviewResponse value) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -288,7 +288,7 @@ class _ListingBlock extends ConsumerWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.remove_circle_outline, size: 16, color: theme.colorScheme.error),
+                      Icon(Icons.remove_circle_outline, size: RIcon.inline, color: theme.colorScheme.error),
                       const SizedBox(width: RSpace.s8),
                       Expanded(
                         child: Text(
@@ -321,7 +321,7 @@ class _PortfolioBlock extends ConsumerWidget {
     final portfolio = ref.watch(portfolioControllerProvider);
 
     return switch (portfolio) {
-      AsyncLoading() => const RSkeleton(height: 88),
+      AsyncLoading() => const RSkeleton(height: RSize.blockCard),
       AsyncError() => RCard(child: Text('Could not load your portfolio.', style: theme.textTheme.bodyMedium)),
       AsyncData(:final value) => RCard(
           child: Row(
@@ -356,7 +356,7 @@ class _PricingBlock extends ConsumerWidget {
     final preview = ref.watch(listingPreviewControllerProvider);
 
     return switch (preview) {
-      AsyncLoading() => const RSkeleton(height: 72),
+      AsyncLoading() => const RSkeleton(height: RSize.blockRow),
       AsyncData(:final ProListingPreviewResponse value) => RCard(
           child: Row(
             children: [
@@ -377,7 +377,7 @@ class _PricingBlock extends ConsumerWidget {
             ],
           ),
         ),
-      _ => const RSkeleton(height: 72),
+      _ => const RSkeleton(height: RSize.blockRow),
     };
   }
 }
@@ -391,7 +391,7 @@ class _AvailabilityBlock extends ConsumerWidget {
     final preview = ref.watch(listingPreviewControllerProvider);
 
     return switch (preview) {
-      AsyncLoading() => const RSkeleton(height: 72),
+      AsyncLoading() => const RSkeleton(height: RSize.blockRow),
       AsyncData(:final ProListingPreviewResponse value) => RCard(
           child: Row(
             children: [
@@ -410,7 +410,7 @@ class _AvailabilityBlock extends ConsumerWidget {
             ],
           ),
         ),
-      _ => const RSkeleton(height: 72),
+      _ => const RSkeleton(height: RSize.blockRow),
     };
   }
 }

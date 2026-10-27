@@ -56,7 +56,7 @@ class _UpgradeToProScreenState extends ConsumerState<UpgradeToProScreen> {
               const _Point(text: 'Earnings convert toward gear - cameras, lenses, the kit you actually need.'),
               const SizedBox(height: RSpace.s32),
               if (_error != null) ...[
-                Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+                Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
                 const SizedBox(height: RSpace.s16),
               ],
               RButton(label: 'Set up my pro account', onPressed: _submitting ? null : _upgrade, loading: _submitting),

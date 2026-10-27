@@ -4,6 +4,7 @@ import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/availability_exception_view.dart';
 import 'package:rawwers/api/models/availability_rule_item.dart';
 import 'package:rawwers/api/models/availability_rule_view.dart';
+import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
@@ -88,7 +89,7 @@ class _WorkingHours extends ConsumerWidget {
           message: 'Could not load your working hours.',
           onRetry: () => ref.invalidate(workingHoursControllerProvider),
         ),
-      _ => const RCard(child: RSkeleton(width: 240)),
+      _ => const RCard(child: RSkeleton(width: RSize.lineLong)),
     };
   }
 }
@@ -116,7 +117,8 @@ class _DayRow extends ConsumerWidget {
             )
           else
             Text('Not working', style: theme.textTheme.bodySmall),
-          Switch(
+          RSwitch(
+            semanticLabel: _weekdayNames[weekday],
             value: on,
             onChanged: (enabled) => _toggle(context, ref, enabled),
           ),
@@ -250,7 +252,7 @@ class _BlockedTime extends ConsumerWidget {
           message: 'Could not load your time off.',
           onRetry: () => ref.invalidate(blockedTimeControllerProvider),
         ),
-      _ => const RCard(child: RSkeleton(width: 200)),
+      _ => const RCard(child: RSkeleton(width: RSize.lineMedium)),
     };
   }
 
@@ -370,7 +372,7 @@ class _LeadTime extends ConsumerWidget {
           message: 'Could not load your notice period.',
           onRetry: () => ref.invalidate(schedulingPolicyControllerProvider),
         ),
-      _ => const RCard(child: RSkeleton(width: 180)),
+      _ => const RCard(child: RSkeleton(width: RSize.lineShort)),
     };
   }
 

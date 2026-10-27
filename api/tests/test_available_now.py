@@ -486,10 +486,13 @@ def test_every_way_of_making_a_request_uses_the_one_deadline(client, db_session,
     start, end = _slot_in(72)
     assert _request(client, pro, pro.client_id, start, end).status_code == 200
     second = _second_client(db_session)
+    # Its own slot from _slot_in, not the first one plus two hours: started
+    # at 21:00 local, that ran 23:00-00:00, past the day's 23:59 end.
+    later_start, later_end = _slot_in(74)
     resp = client.post(
         f"/v1/pros/{pro.id}/booking-requests",
         headers={"X-User-Id": second},
-        json={"package_id": pro.package_id, "requested_start": (start + timedelta(hours=2)).isoformat(), "requested_end": (end + timedelta(hours=2)).isoformat()},
+        json={"package_id": pro.package_id, "requested_start": later_start.isoformat(), "requested_end": later_end.isoformat()},
     )
     assert resp.status_code == 200, resp.text
 

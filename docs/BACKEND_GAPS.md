@@ -6,9 +6,25 @@ Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.
 
 ## Earnings, balance and payout responses carry no currency, so the apps show everything as EUR — needed before the London closed beta
 
-`GET /v1/pro/earnings/balance`, the earnings ledger and summary, payout requests and the invoice name their amounts for one currency (`withdrawable_eur`, `pending_eur`, `amount_eur`, `gross_eur`...) and send no `currency` field. The pro app formats them all as EUR through one helper (`app/lib/core/money/eur.dart`), and payout requests are made in EUR. Gig and booking responses do send a `currency` (`GigResponse.currency`), but the screens still put "€" in front of their amounts - the app treats every amount as EUR.
+`GET /v1/pro/earnings/balance`, the earnings ledger and summary, payout requests and the invoice name their amounts for one currency (`withdrawable_eur`, `pending_eur`, `amount_eur`, `gross_eur`...) and send no `currency` field. The apps format money through one helper, `RMoney` (`app/lib/core/format/money.dart`), which uses the currency a response carries and falls back to EUR (`RMoney.fallbackCurrency`, the one place EUR is assumed) for these responses, which carry none; payout requests are made in EUR. Gig and booking responses do send a `currency` (`GigResponse.currency`), but the screens still put "€" in front of their amounts - the app treats every amount as EUR.
 
 That is true of every booking today (Lisbon). A London photographer would see their GBP earnings as euros, and a payout request would be made in the wrong currency. Before the London closed beta the money responses need a currency (or a per-account currency the apps read once), the payout request needs one, and the apps need to format by it. The pro app's single formatter is where the display change lands; the server side (ledger, payouts, Stripe Connect payouts in GBP) is the larger part.
+
+## London beta prerequisite: GB photographers on a PT/EUR platform — unverified
+
+Found in Stage 1 (2026-10-28), not addressed there. The platform's Stripe account is Portuguese and settles in EUR. Every connected account is created with `DEFAULT_CONNECT_COUNTRY` (`PT`) unless a country is passed (`ensure_connect_account`, `app/services/stripe_connect.py`), and every payout is a transfer with `currency="eur"` hard-coded (`execute_payout_request`, `app/services/payouts.py`). Nothing has tried a GB connected account on this platform: whether Stripe lets a PT platform onboard and transfer to a GB Express account, in which currency the photographer is paid, and who bears the conversion are all unverified. Needed before the London closed beta, together with the currency entry above: a test-mode GB account taken through onboarding and one transfer, and a decision on EUR-only transfers.
+
+## Stripe calls from the API can stall for 10-20 seconds — needed before the beta, not now
+
+Seen during the Stage 1 gate run (2026-10-28), from the dev stack on the owner's network. `GET /v1/pro/payouts/connect/status`, which reads the account from Stripe live, took 24.5 s, 19.9 s, 13.3 s and 11.7 s on cold calls, against 0.45-0.9 s warm; the time was all in the Stripe request (the API's own work was about 5 ms). A bare `curl` from the Mac to `api.stripe.com` took 9.3 s for the TLS handshake on 1 of 6 tries with the machine idle. `POST /v1/pro/payouts/connect/onboarding-link` stalled the same way (10.5 s).
+
+Our code sets no timeout and no retry on the Stripe client (`stripe` is used with the library's defaults in `app/services/stripe_connect.py` and `app/services/payouts.py`), so a stalled call holds a request worker for as long as the library waits. The pro app gives up after 15 s (`defaultReceiveTimeout`, `app/lib/core/api/dio_client.dart`) and shows "Couldn't check your payout setup", although the API usually answers a few seconds later and stores the result.
+
+Before the beta: a server-side timeout on Stripe calls well under the app's, and one retry for idempotent reads (Account.retrieve) and for calls that carry an idempotency key (Transfer.create already does); then revisit the app's 15 s receive timeout together with it, so the app waits a little longer than the API's timeout plus its retry, and no longer. Not a Stage 1 change: test mode, one photographer, and Try again recovers.
+
+## The fee policy has no admin screen, and its API replaces every field
+
+Found writing the Stage 1 loop (2026-10-28). `settlement_delay_days` lives on `platform_fee_policy` with the platform fee percentages. The web admin has no page for it; the only way to change it is `PUT /v1/admin/finance/fee-policy`, which takes and writes all five fields at once, so changing the delay through it means re-sending every fee percentage, and a typo changes a fee. The Stage 1 loop therefore changes the one column on the dev database directly (`docs/STAGE1_LOOP.md`, step 0.4). Wanted: an admin screen, or a PATCH that changes only the fields sent, before anyone changes the policy in production.
 
 ## `complete_photo_upload` is not idempotent
 
@@ -371,7 +387,9 @@ by a system transition when the selection is submitted and payment has
 settled. Not a hole in the loop - the photographer is credited either way -
 but any logic keyed on `final_delivered` is dead.
 
-## Stripe Connect: verified against real Stripe, with two blockers found
+## Stripe Connect: verified against real Stripe — both blockers RESOLVED in Stage 1 (2026-10-28)
+
+**Resolved.** The return goes to two static pages the API serves (`GET /v1/payouts/connect/return` and `/refresh`, `app/services/connect_return.py`), which hand over to the pro app through `rawwerspro://payouts/...`, registered by the pro flavor only (iOS `Info-Pro.plist`, Android `src/pro`). The app opens the hosted link in the in-app browser (`url_launcher`) and treats the return link as a hint: it re-asks the server, which reads Stripe. `CONNECT_RETURN_URL`/`CONNECT_REFRESH_URL` are refused unless http(s) with a host, and unless https in production. A real onboarding in test mode moved pro1 to `active` (charges, payouts and details all true; stored by the live status read), and a real Connect `account.updated` was forwarded, signature-checked and applied by the worker. What follows is the history.
 
 Connect is now enabled in test mode (Express). What follows is what was
 actually run, not what was inferred.
@@ -413,7 +431,7 @@ to `active`. That transition needs a human to finish Stripe's form in a
 browser; everything downstream of it - the event arriving, being applied,
 and the row moving - is proven above with a real event.
 
-### Where Connect onboarding should return to - open decision
+### ~~Where Connect onboarding should return to - open decision~~ — DECIDED: option 1, served by the API, handing over to the app's scheme
 
 Stripe requires http(s), so the return has to land on the web first. Two
 options:
@@ -534,7 +552,7 @@ fix is not "drop in an icon", it is "split the set per flavor first", the same
 shape as the launch-storyboard split already done in `Client.xcconfig` /
 `Pro.xcconfig`.
 
-## Flutter payouts needs `url_launcher`
+## ~~Flutter payouts needs `url_launcher`~~ — FIXED in Stage 1 (`url_launcher` 6.3.2, in-app browser; the clipboard is kept only for when nothing can open the link)
 
 The payouts screen takes an `openUrl` callback rather than opening the
 hosted Stripe URL itself, because opening an external browser needs

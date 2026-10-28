@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/design/components/r_tab_bar.dart';
+import 'package:rawwers/features/pro/payouts/payout_links.dart';
 import 'package:rawwers/features/pro/messages/pro_messages_controller.dart';
 import 'package:rawwers/features/pro/requests/requests_controller.dart';
 
@@ -21,6 +22,12 @@ class ProShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Signed in from here on: a return from Stripe's payout setup, or
+    // coming back to the app, re-asks the server where setup stands.
+    return PayoutReturnListener(child: _scaffold());
+  }
+
+  Widget _scaffold() {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: RTabBar(

@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The pro flavor only: rawwerspro://payouts/... brings a photographer
+         back from Stripe's payout setup (the API's return pages hand over
+         to it). Merged into main's MainActivity. The app treats the link as
+         a hint and asks the server for the status. -->
+    <application>
+        <activity android:name=".MainActivity" tools:node="merge">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rawwerspro" android:host="payouts" />
+            </intent-filter>
+        </activity>
+    </application>
+    <!-- Android 11+: lets url_launcher find a browser for Stripe's https form. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+</manifest>

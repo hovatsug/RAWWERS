@@ -7,3 +7,4 @@ LAUNCH_STORYBOARD_NAME = LaunchScreen
 
 // Default icon set for a non-flavored configuration; the flavors override it.
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon-client
+INFOPLIST_FILE = Runner/Info.plist

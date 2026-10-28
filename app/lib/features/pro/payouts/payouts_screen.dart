@@ -10,6 +10,7 @@ import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/payouts/payout_links.dart';
 import 'package:rawwers/features/pro/payouts/payouts_controller.dart';
 
 /// Getting paid.
@@ -19,13 +20,9 @@ import 'package:rawwers/features/pro/payouts/payouts_controller.dart';
 class PayoutsScreen extends ConsumerWidget {
   const PayoutsScreen({this.openUrl, super.key});
 
-  /// How a hosted Stripe URL gets opened.
-  ///
-  /// Injected rather than called directly: opening an external browser
-  /// needs url_launcher, which is not yet a dependency of this project.
-  /// Until it is, the fallback copies the link to the clipboard - poor,
-  /// but honest, and it keeps the flow testable without pretending the
-  /// browser handoff works.
+  /// How a hosted Stripe URL gets opened. By default the device's in-app
+  /// browser (PayoutLinkPlatform); a test may pass its own. When nothing
+  /// can open it, the link is copied to the clipboard instead.
   final Future<bool> Function(String url)? openUrl;
 
   @override
@@ -133,7 +130,8 @@ class _ConnectSectionState extends ConsumerState<_ConnectSection> {
       return;
     }
 
-    final opened = await widget.openUrl?.call(outcome.url!) ?? false;
+    final open = widget.openUrl ?? (url) => ref.read(payoutLinkPlatformProvider).open(Uri.parse(url));
+    final opened = await open(outcome.url!);
     if (!mounted) return;
 
     if (!opened) {

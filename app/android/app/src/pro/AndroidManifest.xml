@@ -12,6 +12,9 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="rawwerspro" android:host="payouts" />
             </intent-filter>
+            <!-- app_links receives the link; Flutter must not also hand it to
+                 the router, which has no route for it (as on iOS). -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
         </activity>
     </application>
     <!-- Android 11+: lets url_launcher find a browser for Stripe's https form. -->

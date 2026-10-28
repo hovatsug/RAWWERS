@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/connect_status_response.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
@@ -18,15 +19,20 @@ import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/payouts/payout_links.dart';
 import 'package:rawwers/features/pro/payouts/payouts_controller.dart';
+import 'package:rawwers/features/pro/messages/pro_messages_controller.dart';
 import 'package:rawwers/features/pro/payouts/payouts_screen.dart';
+import 'package:rawwers/features/pro/pro_shell.dart';
+import 'package:rawwers/features/pro/requests/requests_controller.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
-/// Info-Pro.plist with its URL types removed, to compare with Info.plist.
-String _withoutUrlTypes(String plist) =>
-    plist.replaceFirst(RegExp(r'\t<key>CFBundleURLTypes</key>\n\t<array>[\s\S]*?\n\t</array>\n'), '');
+/// Info-Pro.plist without its two additions (the URL type and Flutter's
+/// deep-linking switch), to compare with Info.plist.
+String _withoutProAdditions(String plist) => plist
+    .replaceFirst(RegExp(r'\t<key>CFBundleURLTypes</key>\n\t<array>[\s\S]*?\n\t</array>\n'), '')
+    .replaceFirst('\t<key>FlutterDeepLinkingEnabled</key>\n\t<false/>\n', '');
 
 class _FakePlatform implements PayoutLinkPlatform {
   final links = StreamController<Uri>.broadcast();
@@ -92,6 +98,16 @@ class _FakeBalance extends EarningsBalanceController {
       );
 }
 
+class _NoPending extends PendingRequestsController {
+  @override
+  Future<PendingRequests> build() async => const PendingRequests(0);
+}
+
+class _NoUnread extends ProUnreadController {
+  @override
+  Future<int> build() async => 0;
+}
+
 final _account = PayoutAccountView(
   proUserId: 'pro-1',
   payoutMethod: PayoutMethod.stripeConnect,
@@ -133,13 +149,18 @@ void main() {
       expect(proAppScheme, 'rawwerspro');
     });
 
-    test('iOS: Info-Pro.plist is Info.plist plus one URL type, rawwerspro', () {
+    test('iOS: Info-Pro.plist is Info.plist plus one URL type, rawwerspro, and Flutter deep linking off', () {
       final client = _read('ios/Runner/Info.plist');
       final pro = _read('ios/Runner/Info-Pro.plist');
       expect(client, isNot(contains('CFBundleURLTypes')), reason: 'the client app registers no scheme');
       expect(RegExp('CFBundleURLTypes').allMatches(pro).length, 1);
       expect(pro, contains('<string>$proAppScheme</string>'));
-      expect(_withoutUrlTypes(pro), client, reason: 'the two plists may differ only by the URL type');
+      // Unset means on: Flutter would also hand the link to the router,
+      // which has no route for it and shows its error page.
+      expect(pro, contains('\t<key>FlutterDeepLinkingEnabled</key>\n\t<false/>\n'),
+          reason: 'app_links alone receives the link');
+      expect(_withoutProAdditions(pro), client,
+          reason: 'the two plists may differ only by the URL type and the deep-linking switch');
     });
 
     test('iOS: each flavor\'s xcconfig chooses its plist; the project does not override it', () {
@@ -158,6 +179,11 @@ void main() {
       expect(filter, contains('android.intent.category.BROWSABLE'));
       expect(filter, contains('android:scheme="$proAppScheme"'));
       expect(filter, contains('android:host="payouts"'));
+      expect(
+        pro,
+        contains('<meta-data android:name="flutter_deeplinking_enabled" android:value="false" />'),
+        reason: 'as on iOS: app_links alone receives the link',
+      );
       expect(_read('android/app/src/main/AndroidManifest.xml'), isNot(contains(proAppScheme)));
       final client = File('android/app/src/client/AndroidManifest.xml');
       if (client.existsSync()) expect(client.readAsStringSync(), isNot(contains(proAppScheme)));
@@ -258,6 +284,66 @@ void main() {
 
       expect(counts.connect, before.$1 + 1);
       expect(counts.wallet, before.$2 + 1);
+    });
+  });
+
+  group('with the router running', () {
+    testWidgets('a return link leaves the current page where it is and re-reads the status once', (tester) async {
+      final platform = _FakePlatform();
+      final counts = _Counts();
+      final router = GoRouter(
+        initialLocation: '/you/payouts',
+        routes: [
+          StatefulShellRoute.indexedStack(
+            builder: (context, state, shell) => ProShell(navigationShell: shell),
+            branches: [
+              for (final name in ['you', 'requests', 'messages', 'gigs', 'wallet'])
+                StatefulShellBranch(routes: [
+                  GoRoute(
+                    path: '/$name',
+                    builder: (context, state) => Text('page $name'),
+                    routes: [
+                      GoRoute(
+                        path: 'payouts',
+                        builder: (context, state) => Consumer(
+                          builder: (context, ref, _) {
+                            ref.watch(connectStatusControllerProvider);
+                            ref.watch(walletControllerProvider);
+                            ref.watch(payoutAccountProvider);
+                            return const Text('payouts page');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ]),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          payoutLinkPlatformProvider.overrideWithValue(platform),
+          connectStatusControllerProvider.overrideWith(() => _CountingConnect(counts)),
+          walletControllerProvider.overrideWith(() => _CountingWallet(counts)),
+          payoutAccountProvider.overrideWith((ref) async => _account),
+          pendingRequestsControllerProvider.overrideWith(_NoPending.new),
+          proUnreadControllerProvider.overrideWith(_NoUnread.new),
+        ],
+        child: MaterialApp.router(theme: buildProTheme(), routerConfig: router),
+      ));
+      await tester.pump();
+      await tester.pump();
+      final before = counts.connect;
+
+      platform.links.add(Uri.parse('rawwerspro://payouts/return'));
+      await tester.pumpAndSettle();
+
+      expect(router.routerDelegate.currentConfiguration.uri.toString(), '/you/payouts');
+      expect(find.text('payouts page'), findsOneWidget);
+      expect(find.textContaining('GoException'), findsNothing);
+      expect(counts.connect, before + 1, reason: 'exactly one re-read');
     });
   });
 

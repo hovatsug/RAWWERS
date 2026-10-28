@@ -1,7 +1,9 @@
 from functools import lru_cache
 from uuid import UUID
 
-from pydantic import Field
+from urllib.parse import urlsplit
+
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,10 +52,13 @@ class Settings(BaseSettings):
     # Express accounts take a country at creation that cannot be changed
     # later; used only when a photographer's own country is unknown.
     default_connect_country: str = Field(default="PT", alias="DEFAULT_CONNECT_COUNTRY")
-    # Where Stripe returns the photographer after hosted onboarding. A deep
-    # link the pro app handles, not a web page.
-    connect_return_url: str = Field(default="rawwerspro://payouts/return", alias="CONNECT_RETURN_URL")
-    connect_refresh_url: str = Field(default="rawwerspro://payouts/refresh", alias="CONNECT_REFRESH_URL")
+    # Where Stripe returns the photographer after hosted onboarding: the API's
+    # own static pages (app/services/connect_return.py), which hand over to
+    # the pro app. Stripe refuses a custom scheme, so these are http(s) -
+    # https in production (see _connect_urls_are_web_addresses). Dev points
+    # them at an address the simulator can reach.
+    connect_return_url: str = Field(default="http://localhost:8000/v1/payouts/connect/return", alias="CONNECT_RETURN_URL")
+    connect_refresh_url: str = Field(default="http://localhost:8000/v1/payouts/connect/refresh", alias="CONNECT_REFRESH_URL")
     stripe_webhook_secret: str = Field(default="", alias="STRIPE_WEBHOOK_SECRET")
     stripe_api_version: str = Field(default=STRIPE_API_VERSION, alias="STRIPE_API_VERSION")
     stripe_webhook_allow_unverified: bool = Field(default=False, alias="STRIPE_WEBHOOK_ALLOW_UNVERIFIED")
@@ -239,6 +244,27 @@ class Settings(BaseSettings):
         if configured:
             return configured
         return [self.app_public_url, "http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @model_validator(mode="after")
+    def _connect_urls_are_web_addresses(self) -> "Settings":
+        """Refuse, at startup, a Connect return URL Stripe or a phone cannot use.
+
+        Stripe rejects anything but http(s) ("Not a valid URL") - the old
+        rawwerspro:// default meant no onboarding link could be created at
+        all, and only showed up as a 502 when a photographer tapped. In
+        production a photographer's browser must also land on https.
+        """
+        production = self.app_env.lower() in {"prod", "production"}
+        for name, value in (("CONNECT_RETURN_URL", self.connect_return_url), ("CONNECT_REFRESH_URL", self.connect_refresh_url)):
+            parts = urlsplit(value or "")
+            if parts.scheme not in {"http", "https"} or not parts.hostname:
+                raise ValueError(
+                    f"{name} must be an http:// or https:// address with a host (Stripe refuses anything else); got {value!r}"
+                )
+            if production and parts.scheme != "https":
+                raise ValueError(f"{name} must use https:// when APP_ENV is production; got {value!r}")
+        return self
+
 
 
 @lru_cache

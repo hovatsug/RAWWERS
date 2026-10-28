@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -52,6 +53,7 @@ from app.schemas.payouts import (
     PayoutRequestView,
 )
 from app.models.payouts import TaxProfile, VatStatus
+from app.services.connect_return import PAGE_HEADERS, REFRESH_PAGE, RETURN_PAGE
 from app.services.invoices import build_invoice, summarise_invoices
 from app.services.tax import DEFAULT_COUNTRY, ensure_uk_tax_rule, tax_profile_for, tax_rule_for
 from app.services.audit import add_admin_audit_log
@@ -364,6 +366,27 @@ def create_my_connect_onboarding_link(
         refresh_url=settings.connect_refresh_url,
     )
     return ConnectOnboardingLinkResponse(url=url, stripe_account_id=row.stripe_connect_account_id)
+
+
+@router.get("/payouts/connect/return", response_class=HTMLResponse, include_in_schema=False)
+def connect_return_page() -> HTMLResponse:
+    """Where Stripe sends a photographer who finished (or left) onboarding.
+
+    No login: Stripe redirects a browser, which carries no token. Static:
+    the request is never read, so nothing in the address reaches the page.
+    The app re-reads the account's status from the server when it opens.
+    """
+    return HTMLResponse(RETURN_PAGE, headers=PAGE_HEADERS)
+
+
+@router.get("/payouts/connect/refresh", response_class=HTMLResponse, include_in_schema=False)
+def connect_refresh_page() -> HTMLResponse:
+    """Where Stripe sends a photographer whose onboarding link expired.
+
+    A new link needs the photographer's login, which this browser does not
+    have, so the page sends them back to the app to ask for one there.
+    """
+    return HTMLResponse(REFRESH_PAGE, headers=PAGE_HEADERS)
 
 
 @router.get("/pro/payouts/connect/status", response_model=ConnectStatusResponse)

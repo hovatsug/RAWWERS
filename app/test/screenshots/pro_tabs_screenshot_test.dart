@@ -38,6 +38,7 @@ import 'package:rawwers/features/pro/gigs/gigs_controller.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/messages/pro_messages_controller.dart';
 import 'package:rawwers/features/pro/messages/pro_messages_screen.dart';
+import 'package:rawwers/features/pro/payouts/payout_links.dart';
 import 'package:rawwers/features/pro/portfolio/niches_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
@@ -319,7 +320,21 @@ class _Visible extends PresenceVisibilityController {
 
 // --- Assembly ---------------------------------------------------------------
 
+/// The real ProShell listens for payout return links; a screenshot has no
+/// app_links plugin to listen to.
+class _NoLinks implements PayoutLinkPlatform {
+  @override
+  Future<bool> open(Uri url) async => false;
+
+  @override
+  Future<void> closeBrowser() async {}
+
+  @override
+  Stream<Uri> get incoming => const Stream.empty();
+}
+
 List<Override> get _overrides => [
+      payoutLinkPlatformProvider.overrideWithValue(_NoLinks()),
       requestsControllerProvider.overrideWith(_Requests.new),
       pendingRequestsControllerProvider.overrideWith(_Pending.new),
       gigsControllerProvider.overrideWith(_Gigs.new),

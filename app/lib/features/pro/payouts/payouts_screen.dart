@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/connect_status_response.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
+import 'package:rawwers/api/models/payout_setup_state.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
@@ -25,6 +26,17 @@ class PayoutsScreen extends ConsumerWidget {
   /// can open it, the link is copied to the clipboard instead.
   final Future<bool> Function(String url)? openUrl;
 
+  /// Everything on the screen, asked again: the earnings as well as the
+  /// setup, so a failed earnings load does not outlive the retry.
+  static Future<void> _refresh(WidgetRef ref) async {
+    ref.invalidate(earningsBalanceControllerProvider);
+    try {
+      await ref.read(connectStatusControllerProvider.notifier).refresh();
+    } on Object {
+      // The setup section shows its own error state.
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(connectStatusControllerProvider);
@@ -34,7 +46,7 @@ class PayoutsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Payouts')),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => ref.read(connectStatusControllerProvider.notifier).refresh(),
+          onRefresh: () => _refresh(ref),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(RSpace.s16),
@@ -45,11 +57,20 @@ class PayoutsScreen extends ConsumerWidget {
                 _ => const RCard(child: RSkeleton(width: RSize.lineShort)),
               },
               const SizedBox(height: RSpace.s24),
+              // A failed read shows the error, never the last answer: coming
+              // back from Stripe with no connection must not leave yesterday's
+              // "Continue setup" on screen as if it were current.
               switch (status) {
-                AsyncData(:final value) => _ConnectSection(status: value, openUrl: openUrl),
+                AsyncData(:final value) => _ConnectSection(
+                    status: value,
+                    checking: status.isLoading,
+                    openUrl: openUrl,
+                    onCheckAgain: () => _refresh(ref),
+                  ),
                 AsyncError() => RErrorState(
-                    message: 'Could not check your payout setup.',
-                    onRetry: () => ref.invalidate(connectStatusControllerProvider),
+                    message: 'Couldn\'t check your payout setup. Check your connection and try again.',
+                    retryLabel: 'Try again',
+                    onRetry: () => _refresh(ref),
                   ),
                 _ => const RCard(child: RSkeleton(width: RSize.lineMedium)),
               },
@@ -95,10 +116,20 @@ class _Balance extends StatelessWidget {
 }
 
 class _ConnectSection extends ConsumerStatefulWidget {
-  const _ConnectSection({required this.status, required this.openUrl});
+  const _ConnectSection({
+    required this.status,
+    required this.checking,
+    required this.openUrl,
+    required this.onCheckAgain,
+  });
 
   final ConnectStatusResponse status;
+
+  /// The status is being asked again. Its last answer stays on screen, but
+  /// nothing can be started from it until the new one arrives.
+  final bool checking;
   final Future<bool> Function(String url)? openUrl;
+  final Future<void> Function() onCheckAgain;
 
   @override
   ConsumerState<_ConnectSection> createState() => _ConnectSectionState();
@@ -150,24 +181,13 @@ class _ConnectSectionState extends ConsumerState<_ConnectSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final status = widget.status;
-    final due = [...?status.currentlyDue, ...?status.pastDue];
-
-    final (title, body, action) = switch (status.accountStatus) {
-      'active' => ('Set up', 'Withdrawals will reach your bank.', null),
-      'pending_verification' when status.detailsSubmitted =>
-        ('Stripe is checking your details', 'Nothing more to do for now.', 'Check again'),
-      'pending_verification' => ('Not finished yet', 'Stripe still needs a few things from you.', 'Continue setup'),
-      'disabled' => (
-          'Stripe cannot pay out yet',
-          status.disabledReason ?? 'Stripe has paused payouts on this account.',
-          'Fix this'
-        ),
-      _ => (
-          'You cannot be paid yet',
-          'Set up payouts so money from finished shoots can reach your bank. '
-              'Stripe handles this and asks for your ID.',
-          'Set up payouts'
-        ),
+    final state = status.setupState;
+    final copy = setupCopy(state);
+    // What is due only helps while there is something to do about it.
+    final rows = switch (state) {
+      PayoutSetupState.inProgress || PayoutSetupState.actionNeeded =>
+        requirementRows([...?status.currentlyDue, ...?status.pastDue]),
+      _ => const <String>[],
     };
 
     return RCard(
@@ -176,27 +196,31 @@ class _ConnectSectionState extends ConsumerState<_ConnectSection> {
         children: [
           Row(
             children: [
-              Expanded(child: Text(title, style: theme.textTheme.titleSmall)),
+              Expanded(child: Text(copy.title, style: theme.textTheme.titleSmall)),
               RStatusChip(
-                label: status.accountStatus == 'active' ? 'Ready' : 'Not ready',
-                kind: status.accountStatus == 'active'
-                    ? RStatusChipKind.positive
-                    : RStatusChipKind.inProgress,
+                label: switch (state) {
+                  PayoutSetupState.ready => 'Ready',
+                  PayoutSetupState.disabled => 'Stopped',
+                  _ => 'Not ready',
+                },
+                kind: switch (state) {
+                  PayoutSetupState.ready => RStatusChipKind.positive,
+                  PayoutSetupState.disabled => RStatusChipKind.stopped,
+                  _ => RStatusChipKind.inProgress,
+                },
               ),
             ],
           ),
           const SizedBox(height: RSpace.s8),
-          Text(body, style: theme.textTheme.bodySmall),
-          if (due.isNotEmpty) ...[
+          Text(copy.body, style: theme.textTheme.bodySmall),
+          if (rows.isNotEmpty) ...[
             const SizedBox(height: RSpace.s12),
-            Text('Still needed:', style: theme.textTheme.bodyMedium),
+            Text('Still needed', style: theme.textTheme.bodyMedium),
             const SizedBox(height: RSpace.s4),
-            // Raw requirement keys read as a database schema; the whole
-            // point of showing them is that they are actionable.
-            for (final key in due)
+            for (final row in rows)
               Padding(
                 padding: const EdgeInsets.only(top: RSpace.s2),
-                child: Text('· ${requirementLabel(key)}', style: theme.textTheme.bodySmall),
+                child: Text('· $row', style: theme.textTheme.bodySmall),
               ),
           ],
           if (_error != null) ...[
@@ -211,15 +235,62 @@ class _ConnectSectionState extends ConsumerState<_ConnectSection> {
               style: theme.textTheme.bodySmall,
             ),
           ],
-          if (action != null) ...[
+          if (copy.action != null) ...[
             const SizedBox(height: RSpace.s16),
-            RButton(label: action, onPressed: _starting ? null : _start, loading: _starting),
+            RButton(
+              label: copy.action!,
+              loading: _starting || widget.checking,
+              onPressed: _starting || widget.checking
+                  ? null
+                  // Under review there is nothing to fill in: the button asks
+                  // Stripe again rather than opening its form.
+                  : state == PayoutSetupState.underReview
+                      ? widget.onCheckAgain
+                      : _start,
+            ),
           ],
         ],
       ),
     );
   }
 }
+
+/// What the screen says for each setup state the server reports: a title,
+/// what it means, and the one thing to do next (none when there is
+/// nothing the photographer can do here).
+({String title, String body, String? action}) setupCopy(PayoutSetupState state) => switch (state) {
+      PayoutSetupState.notStarted => (
+          title: 'You can\'t be paid yet',
+          body: 'Set up payouts so money from finished shoots can reach your bank. '
+              'Stripe handles this and asks for your ID.',
+          action: 'Set up payouts',
+        ),
+      PayoutSetupState.inProgress => (
+          title: 'Setup isn\'t finished',
+          body: 'Stripe still needs a few details. You can pick up where you left off.',
+          action: 'Continue setup',
+        ),
+      PayoutSetupState.underReview => (
+          title: 'Stripe is checking your details',
+          body: 'This usually takes a few minutes, sometimes a day or two. Nothing to do for now.',
+          action: 'Check again',
+        ),
+      PayoutSetupState.actionNeeded => (
+          title: 'Stripe needs something else from you',
+          body: 'Open Stripe to add what is missing.',
+          action: 'Fix this',
+        ),
+      PayoutSetupState.ready => (
+          title: 'Payouts are set up',
+          body: 'Withdrawals go to the bank account you gave Stripe.',
+          action: null,
+        ),
+      PayoutSetupState.disabled => (
+          title: 'Stripe can\'t pay out to this account',
+          body: 'Contact us and we\'ll look into it with Stripe.',
+          action: null,
+        ),
+    };
 
 class _Line extends StatelessWidget {
   const _Line({required this.label, required this.value});

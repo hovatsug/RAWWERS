@@ -21,6 +21,7 @@ from app.models.payouts import (
     PayoutMethod,
     PayoutRequest,
     PayoutRequestStatus,
+    PayoutSetupState,
     PlatformFeePolicy,
 )
 from app.schemas.media import CurrentUser
@@ -61,7 +62,7 @@ from app.services.stripe_connect import (
     connect_status,
     create_onboarding_link,
     ensure_connect_account,
-    status_from_account,
+    setup_from_account,
 )
 from app.services.authz import get_user_roles
 from app.models.admin import UserRoleType
@@ -406,20 +407,21 @@ def get_my_connect_status(
     db.commit()
 
     if not row.stripe_connect_account_id:
-        return ConnectStatusResponse(account_status=row.status.value)
+        return ConnectStatusResponse(account_status=row.status.value, setup_state=PayoutSetupState.not_started)
 
     live = connect_status(stripe_account_id=row.stripe_connect_account_id)
-    derived = status_from_account(live)
+    setup = setup_from_account(live)
     # Reconciled here as well as by webhook, so a dropped event self-heals
     # the next time the photographer opens the screen.
-    if row.status != derived:
-        row.status = derived
+    if row.status != setup.status:
+        row.status = setup.status
         row.updated_at = datetime.now(timezone.utc)
         db.commit()
 
     return ConnectStatusResponse(
         stripe_account_id=live["stripe_account_id"],
-        account_status=derived.value,
+        account_status=setup.status.value,
+        setup_state=setup.state,
         charges_enabled=live["charges_enabled"],
         payouts_enabled=live["payouts_enabled"],
         details_submitted=live["details_submitted"],

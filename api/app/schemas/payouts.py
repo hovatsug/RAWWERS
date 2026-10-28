@@ -13,6 +13,7 @@ from app.models.payouts import (
     PayoutAccountStatus,
     PayoutMethod,
     PayoutRequestStatus,
+    PayoutSetupState,
 )
 
 
@@ -178,6 +179,10 @@ class ConnectOnboardingLinkResponse(BaseModel):
 class ConnectStatusResponse(BaseModel):
     stripe_account_id: str | None = None
     account_status: str
+    # Where setup stands, worked out by the same function as account_status
+    # (stripe_connect.setup_from_account). The app shows this; it never
+    # works the state out from the Stripe flags itself.
+    setup_state: PayoutSetupState
     charges_enabled: bool = False
     payouts_enabled: bool = False
     details_submitted: bool = False

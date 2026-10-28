@@ -105,16 +105,27 @@ class _PayoutReturnListenerState extends ConsumerState<PayoutReturnListener> {
   StreamSubscription<Uri>? _links;
   late final AppLifecycleListener _lifecycle;
 
+  /// The re-read in flight. Coming back by the return link also resumes
+  /// the app, so the two arrive together (3 ms apart in the simulator);
+  /// they share one re-read rather than asking Stripe twice.
+  Future<void>? _refetching;
+
+  Future<void> _refetch() {
+    if (!mounted) return Future.value();
+    return _refetching ??= refetchPayoutStatus(ref).whenComplete(() => _refetching = null);
+  }
+
   @override
   void initState() {
     super.initState();
     final platform = ref.read(payoutLinkPlatformProvider);
     _links = platform.incoming.listen((uri) async {
       if (!isPayoutReturn(uri)) return;
+      final refetched = _refetch();
       await platform.closeBrowser();
-      if (mounted) await refetchPayoutStatus(ref);
+      await refetched;
     }, onError: (Object _) {});
-    _lifecycle = AppLifecycleListener(onResume: () => refetchPayoutStatus(ref));
+    _lifecycle = AppLifecycleListener(onResume: _refetch);
   }
 
   @override

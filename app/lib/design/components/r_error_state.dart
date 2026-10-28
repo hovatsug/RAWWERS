@@ -7,10 +7,13 @@ import 'package:rawwers/design/tokens.dart';
 /// forward direction. An error is stopped, not a call to action, even
 /// though the retry button beside it is.
 class RErrorState extends StatelessWidget {
-  const RErrorState({required this.message, this.onRetry, super.key});
+  const RErrorState({required this.message, this.onRetry, this.retryLabel = 'Retry', super.key});
 
   final String message;
   final VoidCallback? onRetry;
+
+  /// The retry button's words, where a screen says it differently.
+  final String retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +29,7 @@ class RErrorState extends StatelessWidget {
             Text(message, style: theme.textTheme.bodyLarge, textAlign: TextAlign.center),
             if (onRetry != null) ...[
               const SizedBox(height: RSpace.s16),
-              RButton(label: 'Retry', onPressed: onRetry),
+              RButton(label: retryLabel, onPressed: onRetry),
             ],
           ],
         ),

@@ -44,6 +44,23 @@ class PayoutAccountStatus(str, enum.Enum):
     disabled = "disabled"
 
 
+class PayoutSetupState(str, enum.Enum):
+    """Where a photographer's payout setup stands, as the app shows it.
+
+    Not stored: worked out from the Stripe account on every status read, by
+    the same function that gives the stored PayoutAccountStatus
+    (stripe_connect.setup_from_account), so the two cannot disagree. ready
+    is exactly the stored active.
+    """
+
+    not_started = "not_started"
+    in_progress = "in_progress"
+    under_review = "under_review"
+    action_needed = "action_needed"
+    ready = "ready"
+    disabled = "disabled"
+
+
 class PayoutRequestStatus(str, enum.Enum):
     requested = "requested"
     approved = "approved"

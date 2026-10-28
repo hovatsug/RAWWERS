@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import NamedTuple
 
 import stripe
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import APIError
-from app.models.payouts import PayoutAccount, PayoutAccountStatus, PayoutMethod
+from app.models.payouts import PayoutAccount, PayoutAccountStatus, PayoutMethod, PayoutSetupState
 from app.services.payouts import get_or_create_payout_account
 
 settings = get_settings()
@@ -135,26 +136,64 @@ def is_onboarding_reason(disabled_reason: str | None) -> bool:
     return disabled_reason.startswith(_NOT_YET_REASONS)
 
 
-def status_from_account(payload: dict) -> PayoutAccountStatus:
-    """The single mapping from a Stripe account to our status.
+class ConnectSetup(NamedTuple):
+    """What one Stripe account means to us: the status we store, which
+    gates payouts, and the setup state the app shows."""
 
-    Both callers go through here - the account.updated webhook and the live
-    status read - so the two cannot disagree. They previously each had their
-    own copy and did disagree, in opposite directions, on the same account.
+    status: PayoutAccountStatus
+    state: PayoutSetupState
 
-    Accepts either shape: a raw Stripe account (disabled_reason nested under
-    `requirements`) or the flattened dict `connect_status` returns (it at the
-    top level). Reading only the nested spelling meant the live-read path
-    could never see a disabled_reason at all.
+
+def setup_from_account(payload: dict) -> ConnectSetup:
+    """The single mapping from a Stripe account to our status and setup state.
+
+    Every caller goes through here - the account.updated webhook and the
+    live status read - so the stored status and what the app shows cannot
+    disagree. They previously each had their own copy and did disagree, in
+    opposite directions, on the same account.
+
+    Ready means details_submitted and payouts_enabled, and is exactly the
+    stored active (owner's decision after the Stage 1 gate run,
+    2026-10-28). charges_enabled is not part of it: photographers are paid
+    by transfer, and Stripe may never enable charges on a transfers-only
+    Express account. Short of ready, in order:
+
+    - disabled: a disabled_reason that is not about unfinished onboarding
+      (rejected.*, listed, ...);
+    - in_progress: the onboarding form is not submitted yet;
+    - action_needed: submitted, and Stripe lists something currently or
+      past due;
+    - under_review: submitted, nothing due, payouts not on yet.
+
+    Accepts either shape: a raw Stripe account (requirements nested) or the
+    flattened dict `connect_status` returns (at the top level). Reading only
+    the nested spelling meant the live-read path could never see a
+    disabled_reason at all.
     """
-    if payload.get("charges_enabled") and payload.get("payouts_enabled") and payload.get("details_submitted"):
-        return PayoutAccountStatus.active
+    if payload.get("details_submitted") and payload.get("payouts_enabled"):
+        return ConnectSetup(PayoutAccountStatus.active, PayoutSetupState.ready)
 
     requirements = payload.get("requirements") or {}
     disabled_reason = requirements.get("disabled_reason") or payload.get("disabled_reason")
     if disabled_reason and not is_onboarding_reason(disabled_reason):
-        return PayoutAccountStatus.disabled
-    return PayoutAccountStatus.pending_verification
+        return ConnectSetup(PayoutAccountStatus.disabled, PayoutSetupState.disabled)
+
+    pending = PayoutAccountStatus.pending_verification
+    if not payload.get("details_submitted"):
+        return ConnectSetup(pending, PayoutSetupState.in_progress)
+
+    due = [
+        *(requirements.get("currently_due") or payload.get("currently_due") or []),
+        *(requirements.get("past_due") or payload.get("past_due") or []),
+    ]
+    if due:
+        return ConnectSetup(pending, PayoutSetupState.action_needed)
+    return ConnectSetup(pending, PayoutSetupState.under_review)
+
+
+def status_from_account(payload: dict) -> PayoutAccountStatus:
+    """The stored status, read off the one mapping (setup_from_account)."""
+    return setup_from_account(payload).status
 
 
 def _readable(exc: Exception) -> str:

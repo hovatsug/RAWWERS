@@ -16,6 +16,9 @@
 ///             "type": "string",
 ///             "title": "Account Status"
 ///         },
+///         "setup_state": {
+///             "$ref": "#/components/schemas/PayoutSetupState"
+///         },
 ///         "charges_enabled": {
 ///             "type": "boolean",
 ///             "default": false,
@@ -59,7 +62,8 @@
 ///     },
 ///     "type": "object",
 ///     "required": [
-///         "account_status"
+///         "account_status",
+///         "setup_state"
 ///     ],
 ///     "title": "ConnectStatusResponse"
 /// }
@@ -82,6 +86,10 @@ abstract class ConnectStatusResponse with _$ConnectStatusResponse {
     /// accountStatus
     @JsonKey(name: ConnectStatusResponse.accountStatusKey_)
     required String accountStatus,
+
+    /// setupState
+    @JsonKey(name: ConnectStatusResponse.setupStateKey_)
+    required PayoutSetupState setupState,
 
     /// chargesEnabled
     @Default(false)
@@ -116,6 +124,8 @@ abstract class ConnectStatusResponse with _$ConnectStatusResponse {
   static const String stripeAccountIdKey_ = r'stripe_account_id';
 
   static const String accountStatusKey_ = r'account_status';
+
+  static const String setupStateKey_ = r'setup_state';
 
   static const String chargesEnabledKey_ = r'charges_enabled';
 

@@ -88,18 +88,48 @@ class ConnectStatusController extends _$ConnectStatusController {
 
 /// What Stripe is still waiting for, in words a photographer can act on.
 ///
-/// The API returns requirement keys like `individual.id_number`. Left raw
+/// The API returns requirement keys like `individual.dob.day`. Left raw
 /// they read as a database schema; the point of showing them at all is
-/// that they are actionable.
-String requirementLabel(String key) => switch (key) {
-      'individual.id_number' => 'Your ID number',
-      'individual.verification.document' => 'A photo of your ID',
-      'individual.verification.additional_document' => 'A second document',
-      'individual.address.line1' => 'Your address',
-      'individual.dob.day' || 'individual.dob.month' || 'individual.dob.year' => 'Your date of birth',
-      'external_account' => 'Your bank account',
-      'business_profile.url' => 'A website or social profile',
-      'business_profile.mcc' => 'What kind of work you do',
-      'tos_acceptance.date' || 'tos_acceptance.ip' => 'Accepting Stripe\'s terms',
-      _ => key.split('.').last.replaceAll('_', ' '),
-    };
+/// that they are actionable. Related keys share one label (the three parts
+/// of a date of birth are one thing to fill in), and a key not listed here
+/// gets a plain catch-all rather than its own name.
+String requirementLabel(String key) {
+  for (final (prefix, label) in _requirementLabels) {
+    if (key == prefix || key.startsWith('$prefix.')) return label;
+  }
+  return _otherRequirement;
+}
+
+/// One row per thing to do, in the order Stripe first lists it: the keys
+/// mapped to labels, then duplicates dropped. Stripe lists a key in both
+/// currently_due and past_due once it is overdue, and splits one field
+/// into several keys.
+List<String> requirementRows(Iterable<String> keys) => {for (final key in keys) requirementLabel(key)}.toList();
+
+const _otherRequirement = 'Other details in Stripe\'s form';
+
+/// Most specific first: a key takes the first entry it starts with.
+const _requirementLabels = [
+  ('individual.first_name', 'Your name'),
+  ('individual.last_name', 'Your name'),
+  ('individual.full_name_aliases', 'Your name'),
+  ('individual.dob', 'Your date of birth'),
+  ('individual.address', 'Your home address'),
+  ('individual.registered_address', 'Your home address'),
+  ('individual.email', 'Your email address'),
+  ('individual.phone', 'Your phone number'),
+  ('individual.id_number', 'Your ID number'),
+  ('individual.ssn_last_4', 'Your ID number'),
+  ('individual.verification.additional_document', 'A second identity document'),
+  ('individual.verification.document', 'A photo of your ID'),
+  ('individual.verification.proof_of_liveness', 'A quick selfie check'),
+  ('individual.political_exposure', 'A question about public office'),
+  ('individual.nationality', 'Your nationality'),
+  ('external_account', 'Your bank account'),
+  ('business_profile.url', 'A website or social profile'),
+  ('business_profile.product_description', 'A short description of your work'),
+  ('business_profile.mcc', 'What kind of work you do'),
+  ('business_profile.support_phone', 'A phone number clients can reach you on'),
+  ('business_type', 'Whether you work as an individual or a company'),
+  ('tos_acceptance', 'Accepting Stripe\'s terms'),
+];

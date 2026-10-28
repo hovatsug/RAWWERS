@@ -14,6 +14,7 @@ import 'package:rawwers/api/models/connect_status_response.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_account_view.dart';
+import 'package:rawwers/api/models/payout_setup_state.dart';
 import 'package:rawwers/api/models/payout_method.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/theme_pro.dart';
@@ -67,7 +68,7 @@ class _CountingConnect extends ConnectStatusController {
   @override
   Future<ConnectStatusResponse> build() async {
     counts.connect++;
-    return const ConnectStatusResponse(accountStatus: 'not_set');
+    return const ConnectStatusResponse(accountStatus: 'not_set', setupState: PayoutSetupState.notStarted);
   }
 
   @override
@@ -262,6 +263,45 @@ void main() {
 
       expect(platform.closed, 0);
       expect((counts.connect, counts.wallet, counts.account), before);
+    });
+
+    testWidgets('the return link and the resume that comes with it share one re-read', (tester) async {
+      // Coming back by the link also resumes the app: in the simulator the
+      // two arrived 3 ms apart and the status was read from Stripe twice.
+      final platform = _FakePlatform();
+      final counts = _Counts();
+      await tester.pumpWidget(_app(platform, counts));
+      await tester.pump();
+      final before = (counts.connect, counts.wallet, counts.account);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      platform.links.add(Uri.parse('rawwerspro://payouts/return'));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect((counts.connect, counts.wallet, counts.account), (before.$1 + 1, before.$2 + 1, before.$3 + 1));
+      expect(platform.closed, 1);
+    });
+
+    testWidgets('a later return asks again', (tester) async {
+      // Sharing a re-read is only for ones that overlap.
+      final platform = _FakePlatform();
+      final counts = _Counts();
+      await tester.pumpWidget(_app(platform, counts));
+      await tester.pump();
+      final before = counts.connect;
+
+      platform.links.add(Uri.parse('rawwerspro://payouts/return'));
+      await tester.pumpAndSettle();
+      platform.links.add(Uri.parse('rawwerspro://payouts/refresh'));
+      await tester.pumpAndSettle();
+
+      expect(counts.connect, before + 2);
     });
 
     testWidgets('switching back to the app asks the server again', (tester) async {

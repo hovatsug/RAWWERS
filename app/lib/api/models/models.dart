@@ -220,6 +220,7 @@ export 'payout_method.dart';
 export 'payout_request_create_request.dart';
 export 'payout_request_status.dart';
 export 'payout_request_view.dart';
+export 'payout_setup_state.dart';
 export 'photo_upload_create_request.dart';
 export 'photo_upload_create_response.dart';
 export 'photographer_teaser.dart';

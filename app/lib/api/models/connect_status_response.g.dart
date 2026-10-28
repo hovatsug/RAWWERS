@@ -11,6 +11,7 @@ _ConnectStatusResponse _$ConnectStatusResponseFromJson(
 ) => _ConnectStatusResponse(
   stripeAccountId: json['stripe_account_id'] as String?,
   accountStatus: json['account_status'] as String,
+  setupState: PayoutSetupState.fromJson(json['setup_state'] as String),
   chargesEnabled: json['charges_enabled'] as bool? ?? false,
   payoutsEnabled: json['payouts_enabled'] as bool? ?? false,
   detailsSubmitted: json['details_submitted'] as bool? ?? false,
@@ -28,6 +29,7 @@ Map<String, dynamic> _$ConnectStatusResponseToJson(
 ) => <String, dynamic>{
   'stripe_account_id': instance.stripeAccountId,
   'account_status': instance.accountStatus,
+  'setup_state': instance.setupState,
   'charges_enabled': instance.chargesEnabled,
   'payouts_enabled': instance.payoutsEnabled,
   'details_submitted': instance.detailsSubmitted,

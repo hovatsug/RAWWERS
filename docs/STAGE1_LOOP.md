@@ -81,19 +81,36 @@ The key in `api/.env` must be a test key (it starts with `sk_test_`). Check with
 >
 > Earnings normally wait `settlement_delay_days` (7) before they can be withdrawn. For the loop we set it to 0 on the dev database, so the booking's earning can be paid out the same evening.
 
-The web admin has **no screen** for the fee policy: only an API endpoint (`PUT /v1/admin/finance/fee-policy`) that replaces *every* fee field at once, which is how a fee gets changed by accident. So change the one column, on dev, directly:
+The web admin has **no screen** for the fee policy. Its API (`PUT /v1/admin/finance/fee-policy`) replaces **every** fee field it takes, so changing only the delay safely means: read the whole policy, save it, change that one field, send every field back, and read it again to check. `docs/stage1-loop/fee_policy_delay.py` does exactly that, and `restore` (step 12.1) puts the saved values back the same way.
+
+- **Safeguards:** it accepts only a dev API (localhost or a `.local` host), and it refuses to run twice without a restore in between.
+- **What it asks for:** the admin password (`Passw0rd!`), which is not echoed. The admin API key is read from `web/.env.local` into the environment, so it never appears on a command line. No key, password or token is ever printed.
+- **The saved copy:** `~/.rawwers/fee-policy-before-stage1-loop.json`, outside the repo. It holds only fee percentages and day counts, no secrets.
+
+First, the whole row as it is now (one row; this includes three columns the API does not touch). Keep this output: step 12.1 compares against it.
 
     cd api
-    # what it is now - write it down (7 on 2026-10-28)
-    docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select settlement_delay_days from platform_fee_policy"
-    # set it to 0
-    docker compose exec -T postgres psql -U postgres -d rawwers -c "update platform_fee_policy set settlement_delay_days = 0"
-    # check
-    docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select settlement_delay_days, fee_percent_gigs from platform_fee_policy"
+    docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select id, fee_percent_gigs, fee_percent_extras, fee_percent_studioverse, settlement_delay_days, dispute_hold_days, retained_percent, pro_raww_percent, max_client_credit_percent from platform_fee_policy"
 
-**Expect:** the last line is `0|20` - the delay is 0, the platform fee is untouched at 20.
+**Expect:** one line, `<id>|20|20|20|7|14|15|5|10` on 2026-10-29.
 
-Do this **before step 7**: an earning's "available from" time is fixed when it is recorded (when the client confirms their selection), from the delay in force at that moment. An earning recorded while the delay was 7 keeps its 7 days.
+Then set the delay to 0 (from the repo root):
+
+    cd ..
+    RAWWERS_ADMIN_API_KEY="$(grep -E '^ADMIN_API_KEY=' web/.env.local | cut -d= -f2-)" \
+      python3 -I docs/stage1-loop/fee_policy_delay.py set0
+
+**Expect:**
+
+    Password for admin@rawwers.dev:
+    before: fee_percent_gigs=20, fee_percent_extras=20, fee_percent_studioverse=20, settlement_delay_days=7, dispute_hold_days=14
+    saved to /Users/<you>/.rawwers/fee-policy-before-stage1-loop.json
+    now: fee_percent_gigs=20, fee_percent_extras=20, fee_percent_studioverse=20, settlement_delay_days=0, dispute_hold_days=14
+    OK: settlement_delay_days is 0, every other field unchanged.
+
+Any line starting `STOP:` means nothing more was changed after that point. Read the message, and do not carry on with the loop until it is resolved.
+
+Do this **before step 6**: an earning's "available from" time is fixed when it is recorded (when the client confirms their selection), from the delay in force at that moment. An earning recorded while the delay was 7 keeps its 7 days.
 
 ### 0.5 The simulators
 
@@ -349,12 +366,18 @@ Do **not** click **Mark paid…**: that is for manual bank transfers, where no m
 
 ## 12. Put dev back
 
-**12.1 Restore the settlement delay** to the value you wrote down in 0.4 (7):
+**12.1 Restore the fee policy** to exactly what was saved in 0.4 (from the repo root):
 
-    docker compose exec -T postgres psql -U postgres -d rawwers -c "update platform_fee_policy set settlement_delay_days = 7"
-    docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select settlement_delay_days, fee_percent_gigs from platform_fee_policy"
+    RAWWERS_ADMIN_API_KEY="$(grep -E '^ADMIN_API_KEY=' web/.env.local | cut -d= -f2-)" \
+      python3 -I docs/stage1-loop/fee_policy_delay.py restore
 
-**Expect:** `7|20`.
+**Expect:** the `saved`, `before restore` and `now` lines, then `OK: the fee policy is back to the saved values.` The `now` line must match `saved` field for field. If it says `STOP: since the save, these changed too: ...`, something else changed the policy during the loop: it has not overwritten it. Report that and do not fix it by hand.
+
+Then the whole row again, from `api/`:
+
+    docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select id, fee_percent_gigs, fee_percent_extras, fee_percent_studioverse, settlement_delay_days, dispute_hold_days, retained_percent, pro_raww_percent, max_client_credit_percent from platform_fee_policy"
+
+**Expect:** exactly the line you kept from 0.4.
 
 **12.2** Stop `stripe listen` (Ctrl-C) and the web admin's `npm run dev`.
 

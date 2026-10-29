@@ -24,7 +24,7 @@ Before the beta: a server-side timeout on Stripe calls well under the app's, and
 
 ## The fee policy has no admin screen, and its API replaces every field
 
-Found writing the Stage 1 loop (2026-10-28). `settlement_delay_days` lives on `platform_fee_policy` with the platform fee percentages. The web admin has no page for it; the only way to change it is `PUT /v1/admin/finance/fee-policy`, which takes and writes all five fields at once, so changing the delay through it means re-sending every fee percentage, and a typo changes a fee. The Stage 1 loop therefore changes the one column on the dev database directly (`docs/STAGE1_LOOP.md`, step 0.4). Wanted: an admin screen, or a PATCH that changes only the fields sent, before anyone changes the policy in production.
+Found writing the Stage 1 loop (2026-10-28). `settlement_delay_days` lives on `platform_fee_policy` with the platform fee percentages. The web admin has no page for it; the only way to change it is `PUT /v1/admin/finance/fee-policy`, which takes and writes all five fields at once, so changing the delay through it means re-sending every fee percentage, and a typo changes a fee. The Stage 1 loop therefore goes through a script, `docs/stage1-loop/fee_policy_delay.py` (`docs/STAGE1_LOOP.md`, steps 0.4 and 12.1). It reads the policy, saves it, sends every field back with only the delay changed, checks the result, and restores the saved values the same way. Wanted: an admin screen, or a PATCH that changes only the fields sent, before anyone changes the policy in production.
 
 ## The bookable grid is wrong on the two clock-change nights — fix before 2027-03-28, before the first clock change after launch
 

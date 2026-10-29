@@ -26,6 +26,37 @@ Before the beta: a server-side timeout on Stripe calls well under the app's, and
 
 Found writing the Stage 1 loop (2026-10-28). `settlement_delay_days` lives on `platform_fee_policy` with the platform fee percentages. The web admin has no page for it; the only way to change it is `PUT /v1/admin/finance/fee-policy`, which takes and writes all five fields at once, so changing the delay through it means re-sending every fee percentage, and a typo changes a fee. The Stage 1 loop therefore changes the one column on the dev database directly (`docs/STAGE1_LOOP.md`, step 0.4). Wanted: an admin screen, or a PATCH that changes only the fields sent, before anyone changes the policy in production.
 
+## The bookable grid is wrong on the two clock-change nights — fix before 2027-03-28, before the first clock change after launch
+
+Booking logic, not Stage 1. Found 2026-10-29 by running a test at every hour of the day. `_candidates` (`app/services/bookable_time.py:557-561`) lays out a package's interval grid by adding the step to a Lisbon-time `datetime` (`start += step`). Python adds those as wall-clock hours, so on the nights the clocks change the grid is wrong. For a one-hour package on an all-day rule:
+
+```
+spring, 2027-03-28 (01:00 UTC: 01:00 -> 02:00 local)
+  offered 00:00-01:00 UTC = 00:00 -> 02:00 local   one hour   right
+  offered 01:00-01:00 UTC = 02:00 -> 02:00 local   ZERO       wrong
+  never   01:00-02:00 UTC = 02:00 -> 03:00 local              a real hour, not offered
+autumn, 2027-10-31 (01:00 UTC: 02:00 -> 01:00 local)
+  offered 00:00-02:00 UTC = 01:00 summer -> 02:00 winter   TWO hours, sold as one
+  never   00:00-01:00 UTC and 01:00-02:00 UTC              the repeated 01:00 hour, not offered
+```
+
+`check_offered` builds the same grid, so a client can't ask for the hours left out, and the calendar can show a zero-length slot (whether a request for one gets past the other checks is untested) and a two-hour slot sold as one hour. Every calendar, request and confirm path uses it. Twice a year, for anyone whose working hours include the night.
+
+The fix: step the grid in real time (UTC), and decide what a window means when it straddles the change. This is the same root cause as "DST: a shift crossing spring-forward books an hour that does not exist" below, which describes it for the older slot generator; fixing one should fix both.
+
+Pinned by `test_the_grid_on_the_clock_change_nights` (`api/tests/test_available_now.py`), `xfail(strict=True)` on both nights. When the API is fixed it passes, and strict turns that into a failure. Then remove the marker, and also the move past the change in `_slot_from` in the same file, which keeps the other tests off these hours meanwhile.
+
+## Test debt: tests that build times from the wall clock
+
+Found 2026-10-29, while making `tests/test_available_now.py` independent of the hour it runs at. That file's slot helper is now checked at every 10-minute clock time over a year. These tests build times from `datetime.now()` some other way, without that helper, and were not checked or changed. Each could fail at some hour, near midnight or around a clock change, the way the one-deadline test did at 22:xx:
+
+- `tests/test_bookable_time.py:256` (`_too_soon`: next hour after now + 3 h; an all-day rule ends 23:59)
+- `tests/test_live_rows.py:368` and `:404` (now + 5 h and + 3 h, rounded down to the hour, in UTC)
+- `tests/test_ai_concierge_v1.py:71` (a rule for today's weekday, 08:00-21:00 UTC)
+- `tests/test_pro_availability_and_listing.py:103`, `:303` and `:519` (10:00 UTC some days ahead; the start of today, UTC)
+- `tests/test_scheduling_v1.py:147` (compares by the first 13 characters of an ISO time)
+- `tests/test_test_clock.py:23` and `:44` (03:00 UTC today; noon Lisbon today)
+
 ## `complete_photo_upload` is not idempotent
 
 `POST /v1/media/photos/{media_asset_id}/complete` only succeeds while the asset's status is still `uploading` or `created`; it transitions to `processing` on success and rejects a second call with a 409 `invalid_state` (`api/app/api/v1/media.py`, `complete_photo_upload`).

@@ -18,7 +18,7 @@ and keeps those terms if the toggle changes afterwards.
 import json
 import time
 import uuid
-from datetime import datetime, time as dtime, timedelta, timezone
+from datetime import date, datetime, time as dtime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -70,15 +70,39 @@ def _available(client, db_session, pro):
     return resp.json()
 
 
-def _slot_in(hours: int):
-    """A one-hour slot on the hour, about `hours` ahead, inside one local
-    day - the all-day rule ends at 23:59, so 23:00 is moved to midnight."""
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def _slot_from(moment: datetime, *, around_change: bool = True):
+    """The first one-hour slot on the hour after `moment`, inside one local
+    day - the all-day rule ends at 23:59, so 23:00 is moved to midnight.
+
+    Hours are counted in UTC: added to a Lisbon time they are wall-clock
+    hours, and on the spring DST day 00:00 + 1h + 1h gave 02:00-02:00.
+
+    On the two clock-change nights the API's grid is wrong for the starts
+    next to the change (01:00 UTC, the EU rule): in spring the one at the
+    change, in autumn that one and the hour before (docs/BACKEND_GAPS.md,
+    "The bookable grid is wrong on the two clock-change nights";
+    test_the_grid_on_the_clock_change_nights). These tests are not about
+    that, so such a start is moved to the hour after the change, unless
+    `around_change` is False."""
     tz = ZoneInfo(TZ)
-    start = (datetime.now(timezone.utc) + timedelta(hours=hours)).astimezone(tz)
-    start = start.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-    if start.hour == 23:
+    start = moment.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    change = start.replace(hour=1)
+    before, after = (change - timedelta(seconds=1)).astimezone(tz).utcoffset(), change.astimezone(tz).utcoffset()
+    wrong = () if before == after else (change,) if after > before else (change - timedelta(hours=1), change)
+    if around_change and start in wrong:
+        start = change + timedelta(hours=1)
+    if start.astimezone(tz).hour == 23:
         start += timedelta(hours=1)
-    return start.astimezone(timezone.utc), (start + timedelta(hours=1)).astimezone(timezone.utc)
+    return start, start + timedelta(hours=1)
+
+
+def _slot_in(hours: int, *, around_change: bool = True):
+    """A one-hour slot on the hour, about `hours` ahead (see _slot_from)."""
+    return _slot_from(_now() + timedelta(hours=hours), around_change=around_change)
 
 
 def _offered(client, pro, start) -> bool:
@@ -274,7 +298,10 @@ def test_short_notice_covers_only_the_next_24_hours(client, db_session):
 def test_preparation_time_is_still_notice(client, db_session):
     pro = _short_notice_pro(db_session)
     _available(client, db_session, pro)  # prep 2h by default
-    start, end = _slot_in(0)  # within the hour: less than the preparation time
+    # Within two hours: less than the preparation time. Not moved past a
+    # clock change - the autumn night has no right slot that soon, and the
+    # wrong one is refused too.
+    start, end = _slot_in(0, around_change=False)
 
     assert _offered(client, pro, start) is False
     assert _request(client, pro, pro.client_id, start, end).status_code == 409
@@ -486,9 +513,12 @@ def test_every_way_of_making_a_request_uses_the_one_deadline(client, db_session,
     start, end = _slot_in(72)
     assert _request(client, pro, pro.client_id, start, end).status_code == 200
     second = _second_client(db_session)
-    # Its own slot from _slot_in, not the first one plus two hours: started
-    # at 21:00 local, that ran 23:00-00:00, past the day's 23:59 end.
-    later_start, later_end = _slot_in(74)
+    # The next slot after the first one ends, not the first one plus two
+    # hours (started at 21:00 local, that ran 23:00-00:00, past the day's
+    # 23:59 end) and not _slot_in(74) (started at 22:00 local, both moved
+    # past 23:00 and the two touched, inside the 15-minute buffer).
+    later_start, later_end = _slot_from(end)
+    assert later_start - end >= timedelta(hours=1)
     resp = client.post(
         f"/v1/pros/{pro.id}/booking-requests",
         headers={"X-User-Id": second},
@@ -822,3 +852,39 @@ def test_the_calendar_is_never_served_stale_across_a_toggle(client, db_session):
     assert _offered(client, pro, start) is True
     _toggle(client, pro, on=False)
     assert _offered(client, pro, start) is False
+
+
+# --- the clock-change nights -------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="The API steps the grid in wall-clock hours (docs/BACKEND_GAPS.md, the clock-change nights). "
+    "Once it is fixed this passes, strict turns that into a failure: remove the marker and the skip in _slot_from.",
+)
+@pytest.mark.parametrize("night", [date(2027, 3, 28), date(2027, 10, 31)], ids=["spring", "autumn"])
+def test_the_grid_on_the_clock_change_nights(db_session, night):
+    """Every real hour around the change is offered as one hour, and the
+    wrong windows are not. Today bookable_time._candidates adds wall-clock
+    hours to a Lisbon time: in spring it lays out 02:00-02:00 (zero length)
+    and never 02:00-03:00; in autumn 01:00 summer time to 02:00 winter time
+    (two hours) and never the repeated 01:00."""
+    from app.core.errors import APIError
+    from app.services.bookable_time import check_offered, shape_for_package
+
+    pro = _short_notice_pro(db_session)
+    shape = shape_for_package(db_session, db_session.get(ProPackage, uuid.UUID(pro.package_id)))
+    change = datetime.combine(night, dtime(1), tzinfo=timezone.utc)
+
+    def offered(start, end):
+        try:
+            check_offered(db_session, pro_user_id=pro.uuid, shape=shape, start_at_utc=start, end_at_utc=end)
+        except APIError:
+            return False
+        return True
+
+    # 23:00 local is never offered: the all-day rule ends at 23:59.
+    hours = [h for h in (change + timedelta(hours=k) for k in range(-2, 3)) if h.astimezone(ZoneInfo(TZ)).hour != 23]
+    assert [h for h in hours if not offered(h, h + timedelta(hours=1))] == [], "real hours not offered"
+    wrong = [(change, change), (change - timedelta(hours=1), change + timedelta(hours=1))]
+    assert [w for w in wrong if offered(*w)] == [], "wrong windows offered"

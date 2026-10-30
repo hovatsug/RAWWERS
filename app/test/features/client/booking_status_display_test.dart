@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/api/models/booking_request_status.dart';
+import 'package:rawwers/api/models/gig_status.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 import 'package:rawwers/features/client/bookings/booking_status_display.dart';
 
@@ -33,7 +35,10 @@ void main() {
   });
 
   test('finished work reads as positive, stopped work as stopped', () {
-    expect(BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'delivered').kind, RStatusChipKind.positive);
+    expect(BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'completed').kind, RStatusChipKind.positive);
+    expect(BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'final_delivered').kind, RStatusChipKind.positive);
+    expect(BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'refunded').kind, RStatusChipKind.stopped);
+    expect(BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'cancelled_by_pro').kind, RStatusChipKind.stopped);
     expect(BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'disputed').kind, RStatusChipKind.stopped);
   });
 
@@ -47,5 +52,31 @@ void main() {
   test('an unrecognised gig status defers to the booking status', () {
     final display = BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'teleported');
     expect(display.label, 'Accepted');
+  });
+
+  // The statuses come from the generated API client (`GigStatus`,
+  // `BookingRequestStatus`, built from the server's OpenAPI schema), not from
+  // a list copied here: a status the server adds fails this until it is mapped.
+  test('every gig status the server can send has its own label', () {
+    final unmapped = [
+      for (final status in GigStatus.values)
+        if (BookingStatusDisplay.forGig(status.toJson()) == null) status.toJson(),
+    ];
+    expect(unmapped, isEmpty);
+  });
+
+  test('every booking request status the server can send has its own label', () {
+    final unmapped = [
+      for (final status in BookingRequestStatus.values)
+        if (BookingStatusDisplay.forBooking(status.toJson()) == null) status.toJson(),
+    ];
+    expect(unmapped, isEmpty);
+  });
+
+  test('a completed booking reads Completed, not the request it started as', () {
+    // Seen in the Stage 1 loop (2026-10-30): the gig was completed, the chip said "Accepted".
+    final display = BookingStatusDisplay.from(bookingStatus: 'accepted', gigStatus: 'completed', paymentStatus: 'succeeded');
+    expect(display.label, 'Completed');
+    expect(display.kind, RStatusChipKind.positive);
   });
 }

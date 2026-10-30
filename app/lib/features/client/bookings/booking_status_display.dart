@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:rawwers/design/components/r_chip.dart';
 
 /// Turns the booking/gig/payment status triple into one thing a client can read.
@@ -34,42 +35,51 @@ class BookingStatusDisplay {
     final canPay = bookingStatus == 'accepted' && gigStatus == 'payment_pending';
 
     if (gigStatus != null) {
-      final display = _fromGig(gigStatus);
+      final display = forGig(gigStatus);
       if (display != null) return BookingStatusDisplay(label: display.$1, kind: display.$2, canPay: canPay);
     }
 
-    final display = _fromBooking(bookingStatus);
+    final display = forBooking(bookingStatus) ?? (_humanise(bookingStatus), RStatusChipKind.inProgress);
     return BookingStatusDisplay(label: display.$1, kind: display.$2, canPay: canPay);
   }
 
-  static (String, RStatusChipKind)? _fromGig(String status) {
+  /// One line per value of the server's `GigStatus`. This used to list
+  /// statuses the server never sends (`delivered`, `closed`, ...) and miss the
+  /// ones it does, so a completed booking matched nothing, fell back to its
+  /// request's status and read "Accepted". The test checks every value of the
+  /// generated `GigStatus` has a line here, so a new server status fails it.
+  @visibleForTesting
+  static (String, RStatusChipKind)? forGig(String status) {
     return switch (status) {
+      'draft' || 'requested' => ('Waiting on the photographer', RStatusChipKind.inProgress),
+      'accepted' => ('Accepted', RStatusChipKind.inProgress),
       'payment_pending' => ('Payment due', RStatusChipKind.inProgress),
       'paid' => ('Paid', RStatusChipKind.inProgress),
       'scheduled' => ('Scheduled', RStatusChipKind.inProgress),
       'shoot_done' => ('Shoot done', RStatusChipKind.inProgress),
-      'gallery_uploaded' => ('Proofs ready', RStatusChipKind.inProgress),
-      'awaiting_selection' => ('Choose your photos', RStatusChipKind.inProgress),
-      'selected' => ('Selection sent', RStatusChipKind.inProgress),
-      'difference_charged' => ('Extras charged', RStatusChipKind.inProgress),
-      'awaiting_review' => ('Leave a review', RStatusChipKind.inProgress),
-      'reviewed' => ('Reviewed', RStatusChipKind.inProgress),
-      'delivered' => ('Delivered', RStatusChipKind.positive),
-      'closed' => ('Closed', RStatusChipKind.positive),
-      'cancelled' => ('Cancelled', RStatusChipKind.stopped),
+      'proofs_delivered' => ('Photos ready', RStatusChipKind.inProgress),
+      'selection_pending' => ('Choose your photos', RStatusChipKind.inProgress),
+      'final_delivered' => ('Photos delivered', RStatusChipKind.positive),
+      'completed' => ('Completed', RStatusChipKind.positive),
+      'cancelled_by_client' => ('Cancelled by you', RStatusChipKind.stopped),
+      'cancelled_by_pro' => ('Cancelled by the photographer', RStatusChipKind.stopped),
+      'refunded' => ('Refunded', RStatusChipKind.stopped),
       'disputed' => ('Disputed', RStatusChipKind.stopped),
       _ => null,
     };
   }
 
-  static (String, RStatusChipKind) _fromBooking(String status) {
+  /// One line per value of the server's `BookingRequestStatus`, checked the
+  /// same way.
+  @visibleForTesting
+  static (String, RStatusChipKind)? forBooking(String status) {
     return switch (status) {
       'pending' => ('Waiting on the photographer', RStatusChipKind.inProgress),
       'accepted' => ('Accepted', RStatusChipKind.inProgress),
       'declined' => ('Declined', RStatusChipKind.stopped),
       'expired' => ('Expired', RStatusChipKind.stopped),
       'cancelled' => ('Cancelled', RStatusChipKind.stopped),
-      _ => (_humanise(status), RStatusChipKind.inProgress),
+      _ => null,
     };
   }
 }

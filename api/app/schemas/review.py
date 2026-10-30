@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.review import ReviewStatus
 
@@ -14,6 +14,14 @@ class CreateReviewRequest(BaseModel):
     text: str | None = None
     would_book_again: bool = True
     video_media_asset_id: uuid.UUID | None = None
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _no_tags_is_an_empty_list(cls, value):
+        # The client app sends `"tags": null` when no tag was picked, and every
+        # review it posted was refused with a 422 (Stage 1 loop, 2026-10-30).
+        # Null, omitted and [] all mean "no tags".
+        return [] if value is None else value
 
 
 class ReviewReplyView(BaseModel):

@@ -1,6 +1,8 @@
 import uuid
 from decimal import Decimal
 
+import pytest
+
 from app.models.discovery import ProPublicIndex
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
@@ -64,6 +66,30 @@ def test_only_one_review_per_gig(client, db_session, monkeypatch):
         json={"rating": 4, "tags": ["creative"], "would_book_again": True},
     )
     assert second.status_code == 409
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [{"tags": None}, {}, {"tags": []}],
+    ids=["tags-null", "tags-omitted", "tags-empty"],
+)
+def test_a_review_without_tags_is_accepted(client, db_session, monkeypatch, tags):
+    """The client app sends `"tags": null` when no tag was picked: all three
+    forms of "no tags" are a review with no tags, not a 422."""
+    monkeypatch.setattr("app.api.v1.reviews.rebuild_pro_index.delay", lambda *_args, **_kwargs: None)
+    client_id = str(uuid.uuid4())
+    gig = _create_gig(db_session, client_id, str(uuid.uuid4()), status=GigStatus.completed)
+
+    resp = client.post(
+        f"/v1/gigs/{gig.id}/review",
+        headers={"X-User-Id": client_id},
+        json={"rating": 5, "text": None, "would_book_again": True, "video_media_asset_id": None, **tags},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["tags"] == []
+    stored = db_session.query(Review).filter_by(gig_id=gig.id).one()
+    assert stored.tags == []
 
 
 def test_client_cannot_attach_foreign_video_media_asset(client, db_session, monkeypatch):

@@ -268,6 +268,212 @@ Step 0.4 (delay 0) must be done before this step.
 
 ---
 
+## 6b. More photos than the package includes (optional: two bookings)
+
+Run the loop twice. **Booking 1** takes exactly what the package includes, so nothing more is charged. **Booking 2** takes more, so the client pays a second, smaller charge at selection (a *difference* payment). Each booking goes through steps 2 to 11. Only steps 5 and 6 change, as described below.
+
+The fee policy stays at a delay of 0 (step 0.4) through **both** bookings. Restore it (12.1) only after booking 2.
+
+**Uploads.** Delivery uploads normally count against a limit of 30 per hour. For this loop, `api/.env` sets `RATE_LIMIT_UPLOADS_PER_HOUR=200` (dev only, untracked, set 2026-10-30). Step 12.3 removes it. Check it is active (from `api/`):
+
+    docker compose exec -T api python -c "from app.services.rate_limit import RATE_LIMIT_RULES as r; print(r['uploads'])"
+
+**Expect:** `(200, 3600)`.
+
+### 6b.1 The package and its price
+
+Alex has one package. Book it both times.
+
+| | |
+|---|---|
+| Package | **Portraits Starter** (60 min) |
+| Price per photo (entry rate) | €4.80 (the package's `price`) |
+| Photos included | 20 |
+| Niche and tier | portraits, rookie (the tier only sets which per-photo prices Alex may charge; the curve belongs to the niche) |
+| Curve | exponential, k = 0.08, floor 15% of €4.80 = **€0.72** |
+
+The price of the n-th photo:
+
+- photos 1 to 10: €4.80 each;
+- photo n > 10: the larger of €0.72 and 4.80 × e^(-0.08 × (n - 10)).
+
+The total for N photos adds the unrounded prices of photos 1 to N and rounds once, to the cent, at the end. The client pays the total for 20 when booking. At selection the app charges *total(N) - total(20)*. Choosing fewer than 20 refunds the difference instead.
+
+Photos 1 to 10 come to 10 × 4.80 = **48.00**. From photo 11 on:
+
+| n | e^(-0.08(n-10)) | 4.80 × that | price of photo n | running total | rounded |
+|---|---|---|---|---|---|
+| 11 | 0.923116 | 4.430958 | 4.430958 | 52.430958 | 52.43 |
+| 12 | 0.852144 | 4.090290 | 4.090290 | 56.521249 | 56.52 |
+| 13 | 0.786628 | 3.775814 | 3.775814 | 60.297062 | 60.30 |
+| 14 | 0.726149 | 3.485515 | 3.485515 | 63.782578 | 63.78 |
+| 15 | 0.670320 | 3.217536 | 3.217536 | 67.000114 | 67.00 |
+| 16 | 0.618783 | 2.970160 | 2.970160 | 69.970274 | 69.97 |
+| 17 | 0.571209 | 2.741804 | 2.741804 | 72.712078 | 72.71 |
+| 18 | 0.527292 | 2.531004 | 2.531004 | 75.243081 | 75.24 |
+| 19 | 0.486752 | 2.336411 | 2.336411 | 77.579492 | 77.58 |
+| **20** | 0.449329 | 2.156779 | 2.156779 | 79.736271 | **79.74** (paid at booking) |
+| 21 | 0.414783 | 1.990958 | 1.990958 | 81.727229 | 81.73 |
+| 22 | 0.382893 | 1.837886 | 1.837886 | 83.565115 | 83.57 |
+| 23 | 0.353455 | 1.696582 | 1.696582 | 85.261698 | 85.26 |
+| 24 | 0.326280 | 1.566143 | 1.566143 | 86.827841 | 86.83 |
+| 25 | 0.301194 | 1.445732 | 1.445732 | 88.273573 | 88.27 |
+| 26 | 0.278037 | 1.334579 | 1.334579 | 89.608152 | 89.61 |
+| 27 | 0.256661 | 1.231972 | 1.231972 | 90.840124 | 90.84 |
+| 28 | 0.236928 | 1.137253 | 1.137253 | 91.977377 | 91.98 |
+| 29 | 0.218712 | 1.049817 | 1.049817 | 93.027194 | 93.03 |
+| **30** | 0.201897 | 0.969103 | 0.969103 | 93.996297 | **94.00** |
+| 31 | 0.186374 | 0.894595 | 0.894595 | 94.890892 | 94.89 |
+| 32 | 0.172045 | 0.825815 | 0.825815 | 95.716708 | 95.72 |
+| 33 | 0.158817 | 0.762324 | 0.762324 | 96.479031 | 96.48 |
+| 34 | 0.146607 | 0.703713 | **0.72 (floor)** | 97.199031 | 97.20 |
+| 35 | 0.135335 | 0.649609 | 0.72 (floor) | 97.919031 | 97.92 |
+| 36 | 0.124930 | 0.599665 | 0.72 (floor) | 98.639031 | 98.64 |
+| 37 | 0.115325 | 0.553561 | 0.72 (floor) | 99.359031 | 99.36 |
+| 38 | 0.106459 | 0.511001 | 0.72 (floor) | 100.079031 | 100.08 |
+| 39 | 0.098274 | 0.471713 | 0.72 (floor) | 100.799031 | 100.80 |
+| **40** | 0.090718 | 0.435446 | 0.72 (floor) | 101.519031 | **101.52** |
+
+These are the server's own numbers: on 2026-10-30, `compute_total_for_photo_count` in the dev API returned 79.74, 86.83, 94.00 and 101.52 for 20, 24, 30 and 40 photos.
+
+### 6b.2 The fee on extra photos, and Alex's net
+
+Alex's bookings are priced by the curve. Extra photos are therefore **not** a separate "extra images" purchase. They are a second payment on the same booking (`difference`), and the booking earns **one** entry (`gig_base`) for its whole final price. That entry is split at the rates stored on the booking when Alex accepted it: **20%** = 15% kept by the platform + 5% returned to Alex as $RAWW credit. Client credit is 0% (Alex's setting).
+
+The policy's separate `fee_percent_extras` (20%) applies only to older bookings priced without the curve. It is not used here. An `extra_images` earnings entry for these bookings is a failure (6b.6).
+
+Rounding: 15% and 5% of the whole final price are each rounded to the cent, and Alex's cash is the remainder.
+
+| Photos chosen | Final price | Already paid | **Charged at selection** | 15% kept | 5% $RAWW to Alex | Fee (20%) | **Alex's net (cash)** | of which from the extras |
+|---|---|---|---|---|---|---|---|---|
+| 20 (booking 1) | 79.74 | 79.74 | **0.00** | 11.96 | 3.99 | 15.95 | **63.79** | - |
+| 30 (booking 2) | 94.00 | 79.74 | **14.26** | 14.10 | 4.70 | 18.80 | **75.20** | 11.41 |
+| 40 (booking 2) | 101.52 | 79.74 | **21.78** | 15.23 | 5.08 | 20.31 | **81.21** | 17.42 |
+
+Step by step:
+
+- **20:** 79.74 × 15% = 11.961 → 11.96; × 5% = 3.987 → 3.99; 79.74 - 11.96 - 3.99 = **63.79**.
+- **30:** photos 21 to 30 = 1.990958 + 1.837886 + 1.696582 + 1.566143 + 1.445732 + 1.334579 + 1.231972 + 1.137253 + 1.049817 + 0.969103 = 14.260025. Total 79.736271 + 14.260025 = 93.996297 → **94.00**. Charge 94.00 - 79.74 = **14.26**. Split: 94.00 × 15% = 14.10; × 5% = 4.70; 94.00 - 14.10 - 4.70 = **75.20**.
+- **40:** photos 31 to 33 = 0.894595 + 0.825815 + 0.762324 = 2.482734. Photos 34 to 40 hit the floor: 7 × 0.72 = 5.04. Total 93.996297 + 2.482734 + 5.04 = 101.519031 → **101.52**. Charge 101.52 - 79.74 = **21.78**. Split: 101.52 × 15% = 15.228 → 15.23; × 5% = 5.076 → 5.08; 101.52 - 15.23 - 5.08 = **81.21**.
+- The extras' share of Alex's net is net(N) - 63.79, which is 80% of the charge: 14.26 × 0.8 = 11.408 → 11.41; 21.78 × 0.8 = 17.424 → 17.42.
+
+### 6b.3 Booking 1: deliver about 24, choose exactly 20
+
+**Step 5:** add **24** photos. Wait until none says **Processing**, then **Send to client**.
+
+**Step 6:** choose **exactly 20**.
+
+**Expect on the selection screen:** **20 chosen** · **Nothing more to pay** · **One more adds EUR 1.99** · button **Confirm selection**.
+
+Do not choose 19: the screen would read **Final price EUR 77.58 - you'll be refunded EUR 2.16**, and a refund would start.
+
+After **Confirm selection**, run the checks (from `api/`; each reads the latest booking of pro1):
+
+    G="with g as (select g.* from gig g join user_account u on u.user_id = g.pro_user_id where u.email = 'pro1@rawwers.dev' order by g.created_at desc limit 1)"
+    docker compose exec -T postgres psql -U postgres -d rawwers -At \
+      -c "$G select (select count(*) from proof_gallery_item i join proof_gallery pg on pg.id = i.gallery_id where pg.gig_id = g.id) as delivered, (select count(*) from client_selection_item si join client_selection cs on cs.id = si.selection_id join proof_gallery pg on pg.id = cs.gallery_id where pg.gig_id = g.id and cs.status = 'submitted') as chosen from g" \
+      -c "$G select g.status, g.amount_minimum, g.amount_final, g.final_gross, g.final_platform_retained, g.final_pro_raww, g.final_pro_cash from g" \
+      -c "$G select sp.kind, sp.status, sp.amount, sp.amount_refunded from stripe_payment sp, g where sp.gig_id = g.id order by sp.created_at" \
+      -c "$G select e.source_type, e.status, e.gross_eur, e.platform_fee_eur, e.net_eur, e.metadata->>'fee_percent', e.available_at <= now() from earnings_ledger_entry e, g where e.pro_user_id = g.pro_user_id and (e.source_id = g.id or e.metadata->>'gig_id' = g.id::text)"
+
+**Expect** exactly these four blocks, one line each:
+
+    24|20
+    completed|79.74|79.74|79.74|11.96|3.99|63.79
+    base|succeeded|79.74|0.00
+    gig_base|pending|79.74|15.95|63.79|20|t
+
+**`stripe listen`:** one `--> payment_intent.succeeded` / `<-- [200]` at step 4, and **nothing** at step 6.
+
+Then continue with steps 7 to 11, using the amounts in 6b.5.
+
+### 6b.4 Booking 2: deliver all 40, choose 30 or 40
+
+**Step 5:** add **40** photos. Wait until none says **Processing**, then **Send to client**.
+
+**Step 6:** choose **30** (10 extras) or all **40** (20 extras).
+
+**Expect on the selection screen:**
+
+| Chosen | Lines | Button |
+|---|---|---|
+| 30 | **30 chosen** · **EUR 14.26 to pay** · **One more adds EUR 0.89** | **Pay EUR 14.26** |
+| 40 | **40 chosen** · **EUR 21.78 to pay** (no "One more" line: there is no 41st photo) | **Pay EUR 21.78** |
+
+**6b.4.1** Tap the button and confirm. Then, **before paying**, run the checks from 6b.3.
+
+**Expect (30 / 40):**
+
+    40|30                                   40|40
+    paid|79.74|94.00||||                    paid|79.74|101.52||||
+    base|succeeded|79.74|0.00               base|succeeded|79.74|0.00
+    (no earnings line yet)                  (no earnings line yet)
+
+A third line `difference|pending|14.26|0.00` (or `21.78`) may already be there: the charge is created when you confirm and is not yet paid. That is fine.
+
+**6b.4.2** In Stripe's sheet, pay with **`4000 0000 0000 0077`** (as in step 4). The screen reads **Your selection is locked in** until the payment clears, then the booking shows **View your photos**.
+
+**`stripe listen`:** a second `--> payment_intent.succeeded` / `<-- [200]`.
+
+**6b.4.3** Run the checks again.
+
+**Expect (30):**
+
+    40|30
+    completed|79.74|94.00|94.00|14.10|4.70|75.20
+    base|succeeded|79.74|0.00
+    difference|succeeded|14.26|0.00
+    gig_base|pending|94.00|18.80|75.20|20|t
+
+**Expect (40):**
+
+    40|40
+    completed|79.74|101.52|101.52|15.23|5.08|81.21
+    base|succeeded|79.74|0.00
+    difference|succeeded|21.78|0.00
+    gig_base|pending|101.52|20.31|81.21|20|t
+
+Then continue with steps 7 to 11.
+
+### 6b.5 Payouts: €50 after each booking
+
+Payouts start at €50.00. The figures below are checked against the dev database on 2026-10-30.
+
+| When | Ready to withdraw (after step 8 settles) | Payout to request (step 9.2) | Left after it is paid |
+|---|---|---|---|
+| Before booking 1 | €41.95 (the 2026-09-23 booking; no payout requests yet) | - | - |
+| After booking 1 | 41.95 + 63.79 = **€105.74** | **€105.74** (all of it) | €0.00 |
+| After booking 2, chose 30 | **€75.20** | **€75.20** | €0.00 |
+| After booking 2, chose 40 | **€81.21** | **€81.21** | €0.00 |
+
+Each booking clears €50 on its own, so neither payout depends on the old balance. Withdrawing everything each time makes the next check exact: after booking 2, ready to withdraw is that booking's net and nothing else.
+
+If you request only €50.00 after booking 1, €55.74 stays. Ready to withdraw after booking 2 is then 55.74 + 75.20 = €130.94, or 55.74 + 81.21 = €136.95.
+
+The platform's Stripe **test** balance had €2,804.50 available on 2026-10-30, so the transfers have funds.
+
+Ready to withdraw, as stored (from `api/`):
+
+    docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select coalesce(sum(e.net_eur) filter (where e.status = 'available'), 0) from earnings_ledger_entry e join user_account u on u.user_id = e.pro_user_id where u.email = 'pro1@rawwers.dev'"
+
+This sums every settled earning, including those already paid out. So it reads **41.95** before booking 1, **105.74** after booking 1, and **180.94** (30) or **186.95** (40) after booking 2, whatever was withdrawn. The app's **ready to withdraw** is this sum minus what was paid out or requested.
+
+### 6b.6 STOP if
+
+Stop at the first of these. Report the step, what you saw, the query output and the time:
+
+- The selection screen shows a different amount from 6b.3 or 6b.4 (for example, anything but **Pay EUR 14.26** for 30). The app and the server price from one function, so any difference is a bug.
+- Booking 1 at 20 photos asks for any payment, or mentions a refund.
+- The amount Stripe charges differs from the button.
+- More than one `difference` line, any line `failed` or with `amount_refunded` above 0.00, or any `charge.refunded` / `refund.*` event in `stripe listen`.
+- Any `extra_images` earnings line, or more than one earnings line for the booking. Extras would then be paid twice.
+- The earnings `gross_eur` differs from `amount_final`, or the net differs from the 6b.2 table.
+- The booking is still `paid` a minute after the difference payment's `<-- [200]`, or `stripe listen` shows anything other than `[200]`.
+- Ready to withdraw, after step 8, differs from 6b.5.
+- A payout ends `failed` (step 10).
+
+---
+
 ## 7. Review (the client)
 
 **7.1** In the booking, tap **Leave a review**, choose a rating, optionally write **What was it like?**, tap **Post review**.
@@ -380,6 +586,15 @@ Then the whole row again, from `api/`:
 **Expect:** exactly the line you kept from 0.4.
 
 **12.2** Stop `stripe listen` (Ctrl-C) and the web admin's `npm run dev`.
+
+**12.3 Put the upload limit back** (only if 6b raised it). Before the loop, `api/.env` did not set `RATE_LIMIT_UPLOADS_PER_HOUR`, so the code default of 30 applied. Remove the two lines added on 2026-10-30, reload the API, and check (from `api/`):
+
+    sed -i '' -e '/^# Stage 1 loop only (2026-10-30)/d' -e '/^RATE_LIMIT_UPLOADS_PER_HOUR=200$/d' .env
+    grep -c '^RATE_LIMIT_UPLOADS_PER_HOUR' .env
+    docker compose up -d api
+    docker compose exec -T api python -c "from app.services.rate_limit import RATE_LIMIT_RULES as r; print(r['uploads'])"
+
+**Expect:** `0`, then (once `api` is healthy again) `(30, 3600)`. Use `up -d`, not `restart`: `restart` does not re-read `.env`.
 
 Nothing else was changed outside the apps' own flows.
 

@@ -2096,3 +2096,11 @@ The client's Booking screen lists **History** from `timeline` in `GET /v1/client
 **What it should also show:** payment (each `stripe_payment` that succeeded, base and difference, and refunds), delivery (the gallery sent to the client), the selection, and completion, from `gig_transition`, `stripe_payment` and the gallery's own dates, merged into the one timeline in time order.
 
 The status chip at the top was a separate bug, fixed: it read the gig's status from a list of names the server never sends, so a completed booking showed "Accepted".
+
+## No dependency lockfile; pin before production - LOGGED
+
+Found 2026-10-30. `api/` has no `poetry.lock`: the Dockerfile copies only `pyproject.toml`, and `poetry install` resolves the caret ranges afresh on every build. Two builds of the same commit can install different versions, and nothing records which ones a running image has. Seen on 2026-10-30: two `runtime` builds of the same `pyproject.toml` had pydantic 2.13 and 2.14.
+
+**Pin before production:** commit a `poetry.lock` (or an exported, hashed requirements file) and copy it into the image with `pyproject.toml`, so every build installs the same versions.
+
+**Found alongside:** `httpx` was a dev-only dependency while `app/services/warmup.py` imports it, so the `runtime` image failed at start with `ModuleNotFoundError`. Dev never showed it, because dev builds the `dev` stage. Fixed by moving `httpx` into the main dependencies; [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) now builds the `runtime` stage and imports the app before each deploy.

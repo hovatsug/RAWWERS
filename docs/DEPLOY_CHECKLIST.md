@@ -74,6 +74,12 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 ## 2. Deploying
 
+- [ ] **The production image starts.** Build the `runtime` stage, which installs no dev dependencies, and import the app in it with the environment's settings (from the repo root; `deploy/.env.prod` is the file `deploy/compose.prod.yml` uses, use the staging one for staging):
+
+      docker build --target runtime -t rawwers-api-runtime-check api
+      docker run --rm --env-file deploy/.env.prod rawwers-api-runtime-check python -c "import app.main; print('ok')"
+
+  Expect `ok`. Without the settings the import stops at the first required one (`Field required`), which says nothing about the image. Dev builds the `dev` stage (`BUILD_TARGET=dev`), which has every dev dependency too, so a production-only dependency that is missing never shows there: `httpx` was dev-only while the start-up warmup imported it, and the production image could not start. See [No dependency lockfile](BACKEND_GAPS.md#no-dependency-lockfile-pin-before-production---logged).
 - [ ] **Build `api` and `worker` together** - `docker compose build api worker`. They are separate images from one Dockerfile; building only `api` leaves webhooks, outbox effects and photo processing on the old code with nothing failing. See [Rebuilding `api` does not rebuild `worker`](BACKEND_GAPS.md#rebuilding-api-does-not-rebuild-worker).
 - [ ] **Use `deploy/compose.prod.yml` / `compose.staging.yml`**, never the `deploy/docker-compose.*` pair beside them: those are stale copies, and the prod one has no `beat` service. See [stale duplicates](BACKEND_GAPS.md#deploydocker-composeprodstagingyml-are-stale-duplicates---logged).
   **Open question:** `make deploy` in `api/` is a second path - it rsyncs `api/` to the server and runs `docker compose up -d --build` with `api/docker-compose.yml`, not either file above. Which one production actually uses needs confirming; until then, check the server's running services against this list rather than assuming.

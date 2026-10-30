@@ -2086,3 +2086,13 @@ A per-photographer cache of "has a bookable start" was considered and not added,
 **What it affects.** The client's raw IP now kept on their downloads for chargeback evidence (`media_access_log.ip_address`) - a client who later files a chargeback could have made it say anything, which weakens the evidence. Also every IP hash: share-view fingerprints, risk and abuse signals, referral-farm and share-view-farm rules, which an abuser can rotate at will.
 
 **Fix, not yet approved.** One helper, used everywhere, that trusts `X-Forwarded-For` only when the socket address is a configured proxy (`TRUSTED_PROXY_IPS`), and then takes the rightmost address that is not a trusted proxy. Production needs its real front (load balancer, Cloudflare or a reverse proxy) named in that setting, or the socket address is used. Until then, a stored IP is evidence only to the extent the header was not set by the client.
+
+## A booking's history shows only the request's changes - LOGGED
+
+Product gap, found in the Stage 1 loop (2026-10-30); not for now.
+
+The client's Booking screen lists **History** from `timeline` in `GET /v1/client/bookings/{id}`, which is built only from `booking_request_transition`: sent, then accepted (or declined, expired, cancelled). Everything after that happens on the gig and its payments and is never listed. A completed booking's history therefore ends at "Accepted", although it was then paid, delivered, chosen from, charged for extras and completed.
+
+**What it should also show:** payment (each `stripe_payment` that succeeded, base and difference, and refunds), delivery (the gallery sent to the client), the selection, and completion, from `gig_transition`, `stripe_payment` and the gallery's own dates, merged into the one timeline in time order.
+
+The status chip at the top was a separate bug, fixed: it read the gig's status from a list of names the server never sends, so a completed booking showed "Accepted".

@@ -10,6 +10,7 @@ import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
 import 'package:rawwers/core/money/payout_request_money.dart';
+import 'package:rawwers/features/pro/wallet/summary_controller.dart';
 
 part 'wallet_controller.g.dart';
 
@@ -118,6 +119,10 @@ class WalletController extends _$WalletController {
   }
 
   Future<void> refresh() async {
+    // The All time card is its own request. Reloading only the wallet left it
+    // on the figure from when the Wallet first opened: after a booking
+    // completed it still said "1 completed booking" (Stage 1 loop, 2026-10-30).
+    ref.invalidate(earningsSummaryProvider);
     ref.invalidateSelf();
     await future;
   }

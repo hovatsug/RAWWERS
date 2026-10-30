@@ -170,8 +170,34 @@ void main() {
       expect(labelStyle.fontVariations, [heavy ? RType.weightSemibold : RType.weightRegular], reason: label);
     }
   });
-}
 
+  testWidgets('pulling the Wallet down reloads the All time card too', (tester) async {
+    // A booking completes while the Wallet is open: the balance reloaded on a
+    // pull, the All time card kept its first answer.
+    var fetches = 0;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        walletControllerProvider.overrideWith(() => _FakeWallet(_wallet())),
+        earningsSummaryProvider.overrideWith((ref) async {
+          fetches++;
+          return fetches == 1
+              ? const InvoiceSummaryView(bookings: 1, gross: '52.43', platformFees: '10.48', proRaww: '2.62', clientRaww: '0.00', proCash: '41.95')
+              : const InvoiceSummaryView(bookings: 2, gross: '139.26', platformFees: '27.84', proRaww: '6.96', clientRaww: '0.00', proCash: '111.42');
+        }),
+      ],
+      child: MaterialApp(theme: buildProTheme(), home: const WalletScreen()),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('1 completed booking'), findsOneWidget);
+
+    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+
+    expect(fetches, 2);
+    expect(find.text('2 completed bookings'), findsOneWidget);
+    expect(find.text('€139.26'), findsOneWidget);
+  });
+}
 
 /// A photographer with no completed work, so the summary card renders nothing
 /// and these tests stay about the balance and the payout form.

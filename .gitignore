@@ -47,3 +47,6 @@ __pycache__/
 
 # Third-party SDKs (Adobe Lightroom Classic, DNG): used locally, never committed - their licences do not allow redistribution here.
 /SDKs/
+
+# The Lightroom plug-in built by lightroom/build.sh (published by hand, never committed).
+/lightroom/build/

@@ -289,6 +289,11 @@ def revoke_all_user_sessions(db: Session, user_id: uuid.UUID) -> None:
     for row in rows:
         if row.revoked_at is None:
             row.revoked_at = now
+    # A paired Lightroom stops too: a password reset, a sign-out everywhere
+    # or a ban would mean little if a desktop could still deliver.
+    from app.services.delivery_access import revoke_all_delivery_tokens
+
+    revoke_all_delivery_tokens(db, user_id, reason="all_sessions_ended")
 
 
 def decode_access(token: str) -> dict:

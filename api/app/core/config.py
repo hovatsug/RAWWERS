@@ -160,6 +160,12 @@ class Settings(BaseSettings):
     # Proofs only: a wedding is 400-1000 photos, so a delivery cannot share
     # the 30 an hour every other upload counts against.
     rate_limit_delivery_uploads_per_hour: int = Field(default=2000, alias="RATE_LIMIT_DELIVERY_UPLOADS_PER_HOUR")
+    # Per delivery token (a paired Lightroom), on top of the hourly bucket: a
+    # token that leaks can add at most this many photos a day before it is
+    # revoked (owner's decision 1).
+    rate_limit_delivery_token_uploads_per_day: int = Field(default=5000, alias="RATE_LIMIT_DELIVERY_TOKEN_UPLOADS_PER_DAY")
+    # The newest Lightroom plugin; an older one is told an update is available.
+    lightroom_plugin_latest_version: str = Field(default="1.0.0", alias="LIGHTROOM_PLUGIN_LATEST_VERSION")
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")
     admin_ip_allowlist: str = Field(default="", alias="ADMIN_IP_ALLOWLIST")
     admin_api_keys: str = Field(default="", alias="ADMIN_API_KEYS")

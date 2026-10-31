@@ -44,6 +44,13 @@ from app.schemas.gallery import (
 )
 from app.schemas.media import CurrentUser
 from app.services.audit import add_admin_audit_log
+from app.services.gallery_items import (
+    OPEN_GALLERY_STATUSES,
+    has_ready_watermark_preview,
+    is_in_gallery,
+    lock_gallery,
+)
+from app.services.gallery_items import next_sort_order as gallery_next_sort_order
 from app.services.authz import get_user_roles
 from app.services.analytics import log_event
 from app.services.reminders import cancel_proof_selection_reminders, schedule_proof_selection_reminders
@@ -147,7 +154,10 @@ def add_gallery_items(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> ProofGalleryResponse:
-    gallery = db.get(ProofGallery, gallery_id)
+    # Locked: the worker attaches deliveries on its own (gallery_items), and
+    # this is the app's fallback for the same photos. Whichever comes second
+    # finds the photo there instead of colliding with it.
+    gallery = lock_gallery(db, gallery_id)
     if not gallery:
         raise APIError(code="not_found", message="Gallery not found", status_code=404)
     if gallery.pro_user_id != user.user_id:
@@ -155,14 +165,13 @@ def add_gallery_items(
     # Photos go into a gallery that is still being put together or is open for
     # selection, on a booking that can still take them. Not after the selection is
     # made, and not for a booking that has been cancelled, refunded or disputed.
-    if gallery.status not in {ProofGalleryStatus.draft, ProofGalleryStatus.published}:
+    if gallery.status not in OPEN_GALLERY_STATUSES:
         raise APIError(code="invalid_state", message="This gallery is closed to new photos", status_code=409)
     require_gig_deliverable(db.get(Gig, gallery.gig_id))
 
     next_sort_order = body.sort_order_optional
     if next_sort_order is None:
-        max_sort = db.execute(select(func.max(ProofGalleryItem.sort_order)).where(ProofGalleryItem.gallery_id == gallery_id)).scalar_one()
-        next_sort_order = (max_sort or 0) + 1
+        next_sort_order = gallery_next_sort_order(db, gallery_id)
 
     for media_asset_id in body.media_asset_ids:
         asset = db.get(MediaAsset, media_asset_id)
@@ -180,23 +189,10 @@ def add_gallery_items(
                 status_code=409,
             )
 
-        wm_obj = db.execute(
-            select(MediaObject).where(
-                MediaObject.media_asset_id == asset.id,
-                MediaObject.variant == MediaVariant.watermark_preview,
-                MediaObject.status == ObjectStatus.ready,
-            )
-        ).scalar_one_or_none()
-        if not wm_obj:
+        if not has_ready_watermark_preview(db, asset.id):
             raise APIError(code="validation_error", message="Each item needs ready watermark_preview variant", status_code=422)
 
-        exists = db.execute(
-            select(ProofGalleryItem).where(
-                ProofGalleryItem.gallery_id == gallery_id,
-                ProofGalleryItem.media_asset_id == media_asset_id,
-            )
-        ).scalar_one_or_none()
-        if exists:
+        if is_in_gallery(db, gallery_id, media_asset_id):
             continue
 
         db.add(

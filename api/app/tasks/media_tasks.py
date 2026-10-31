@@ -16,6 +16,7 @@ from app.db.session import SessionLocal
 from app.models.admin import ProProfile
 from app.models.media import MediaAsset, MediaObject, MediaStatus, MediaVariant, ObjectStatus
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind
+from app.services.gallery_items import attach_delivered_proof
 from app.services.photo_uploads import max_photo_bytes
 from app.services.storage import (
     derivative_cache_control,
@@ -175,6 +176,14 @@ def process_photo_variants(self, media_asset_id: str) -> None:
         )
         original_obj.status = ObjectStatus.ready
         asset.status = MediaStatus.ready
+        # A delivery joins its gallery in the same commit that makes it ready,
+        # so a photo that failed never joins. Never at the photo's expense:
+        # a problem attaching leaves it processed, for the app's own attach.
+        try:
+            with db.begin_nested():
+                attach_delivered_proof(db, asset)
+        except Exception:
+            logger.exception("attach_delivered_proof_failed", extra={"media_asset_id": media_asset_id})
         db.commit()
     except Exception as exc:
         db.rollback()

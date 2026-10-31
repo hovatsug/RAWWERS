@@ -7,7 +7,9 @@
 //   - no money figure is ever computed locally, so the screen cannot show a
 //     price nobody is charged;
 //   - the minimum-10 gate reads the same in both views;
-//   - a locked gallery does not appear to accept taps.
+//   - a locked gallery does not appear to accept taps;
+//   - tapping a thumbnail ticks it; the corner button or a long press opens
+//     it full screen, and the tick is the same fact there.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,11 +27,15 @@ import 'package:rawwers/features/client/gallery/selection_gallery_screen.dart';
 /// Stands in for the backend. Records what it was asked, so a test can prove
 /// the app asked rather than guessed.
 class _FakeSelection extends SelectionController {
-  _FakeSelection({required this.itemCount, this.locked = false, this.quoteFails = false});
+  _FakeSelection({required this.itemCount, this.locked = false, this.quoteFails = false, this.amountDueFor});
 
   final int itemCount;
   final bool locked;
   final bool quoteFails;
+
+  /// The server's amount due for a count; by default free until 20, then
+  /// 8.00 a photo.
+  final String Function(int count)? amountDueFor;
 
   /// Every selected_count the screen asked the server to price.
   final List<int> quotedCounts = [];
@@ -76,7 +82,7 @@ class _FakeSelection extends SelectionController {
         amountTotal: '200.00',
         amountPaid: '200.00',
         // Free until 20, then 8.00 a photo - enough to tell the two apart.
-        amountDue: count <= 20 ? '0.00' : '${(count - 20) * 8}.00',
+        amountDue: amountDueFor?.call(count) ?? (count <= 20 ? '0.00' : '${(count - 20) * 8}.00'),
         nextPhotoPrice: count >= itemCount ? null : (count < 20 ? '0.00' : '8.00'),
         extrasCount: 0,
         canSubmit: count >= 10,
@@ -106,8 +112,9 @@ Future<_FakeSelection> _pump(
   int itemCount = 12,
   bool locked = false,
   bool quoteFails = false,
+  String Function(int count)? amountDueFor,
 }) async {
-  final fake = _FakeSelection(itemCount: itemCount, locked: locked, quoteFails: quoteFails);
+  final fake = _FakeSelection(itemCount: itemCount, locked: locked, quoteFails: quoteFails, amountDueFor: amountDueFor);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [selectionControllerProvider('g1').overrideWith(() => fake)],
@@ -121,10 +128,14 @@ Future<_FakeSelection> _pump(
   return fake;
 }
 
+final _expand = find.byKey(const ValueKey('r-image-tile-expand'));
+
 Future<void> _openViewer(WidgetTester tester) async {
-  await tester.tap(find.byType(RImageTile).first);
+  await tester.tap(_expand.first);
   await tester.pumpAndSettle();
 }
+
+List<RImageTile> _tiles(WidgetTester tester) => tester.widgetList<RImageTile>(find.byType(RImageTile)).toList();
 
 void main() {
   testWidgets('a photo chosen full screen is already chosen in the grid', (tester) async {
@@ -225,6 +236,7 @@ void main() {
 
     final tile = tester.widget<RImageTile>(find.byType(RImageTile).first);
     expect(tile.onTap, isNull, reason: 'a locked gallery must not look tappable');
+    expect(tile.selectable, isFalse, reason: 'an empty ring invites a tap that does nothing');
 
     fake.toggle('asset-0');
     await tester.pumpAndSettle();
@@ -237,5 +249,121 @@ void main() {
     await _openViewer(tester);
     final viewer = tester.widget<RPhotoViewer>(find.byType(RPhotoViewer));
     expect(viewer.urls.first, 'https://example.test/0-wm.jpg');
+  });
+
+  group('tapping thumbnails', () {
+    // A phone's height, so a few rows sit above the price bar.
+    setUp(() {
+      final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+      view.physicalSize = const Size(1200, 2400);
+      view.devicePixelRatio = 2;
+    });
+    tearDown(() {
+      final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+      view.resetPhysicalSize();
+      view.resetDevicePixelRatio();
+    });
+
+    Finder photo(int number) =>
+        find.byWidgetPredicate((w) => w is RImageTile && (w.semanticLabel?.startsWith('Photo $number,') ?? false));
+
+    testWidgets('a tap ticks a photo and a second tap unticks it, without leaving the grid', (tester) async {
+      await _pump(tester);
+
+      await tester.tap(find.byType(RImageTile).at(2));
+      await tester.pumpAndSettle();
+      expect(find.byType(RPhotoViewer), findsNothing, reason: 'a tap on the thumbnail opened full screen');
+      expect([for (final t in _tiles(tester)) t.selected].indexOf(true), 2);
+      expect(find.text('9 more to continue'), findsOneWidget);
+
+      await tester.tap(find.byType(RImageTile).at(2));
+      await tester.pumpAndSettle();
+      expect(_tiles(tester).every((t) => !t.selected), isTrue);
+    });
+
+    testWidgets('a photo ticked in the grid is already chosen full screen', (tester) async {
+      await _pump(tester);
+      await tester.tap(find.byType(RImageTile).first);
+      await tester.pumpAndSettle();
+
+      await _openViewer(tester);
+      expect(find.byType(RPhotoViewer), findsOneWidget);
+      expect(find.text('Chosen'), findsOneWidget);
+      expect(find.text('1 chosen'), findsOneWidget);
+    });
+
+    testWidgets('a long press opens the photo full screen too', (tester) async {
+      await _pump(tester);
+      await tester.longPress(find.byType(RImageTile).at(3));
+      await tester.pumpAndSettle();
+      final viewer = tester.widget<RPhotoViewer>(find.byType(RPhotoViewer));
+      expect(viewer.initialIndex, 3);
+      expect(_tiles(tester).every((t) => !t.selected), isTrue, reason: 'a long press also ticked it');
+    });
+
+    testWidgets('the expand button opens the photo it is on, and ticks nothing', (tester) async {
+      await _pump(tester);
+      await tester.tap(_expand.at(4));
+      await tester.pumpAndSettle();
+      expect(tester.widget<RPhotoViewer>(find.byType(RPhotoViewer)).initialIndex, 4);
+      expect(find.text('Choose'), findsOneWidget);
+    });
+
+    testWidgets('unticked tiles show an empty ring; ticked ones the check', (tester) async {
+      await _pump(tester);
+      expect(_tiles(tester).every((t) => t.selectable), isTrue);
+      expect(find.byIcon(Icons.check), findsNothing);
+      await tester.tap(find.byType(RImageTile).first);
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('a screen reader hears which photo and whether it is selected', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester);
+      await tester.tap(find.byType(RImageTile).at(11));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel('Photo 1, not selected'), findsOneWidget);
+      expect(find.bySemanticsLabel('Photo 12, selected'), findsOneWidget);
+      final node = tester.getSemantics(find.byType(RImageTile).at(11));
+      expect(
+        node.getSemanticsData().customSemanticsActionIds,
+        isNotEmpty,
+        reason: 'no way to open full screen without seeing the corner button',
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('a submitted gallery can still be looked at full screen', (tester) async {
+      await _pump(tester, locked: true);
+      await _openViewer(tester);
+      expect(find.byType(RPhotoViewer), findsOneWidget);
+      final choose = tester.widget<ElevatedButton>(
+        find.ancestor(of: find.text('Choose'), matching: find.byType(ElevatedButton)),
+      );
+      expect(choose.onPressed, isNull, reason: 'a locked gallery accepted a choice full screen');
+    });
+
+    testWidgets('30 of 40 on a 20-photo package shows the server\'s EUR 14.26', (tester) async {
+      // The Stage 1 loop's booking 2: the figure is the server's, the app
+      // only shows it. Picked by tapping thumbnails, as a client would.
+      await _pump(tester, itemCount: 40, amountDueFor: (count) => count == 30 ? '14.26' : '0.00');
+      for (var n = 1; n <= 30; n++) {
+        await tester.scrollUntilVisible(photo(n), 100, scrollable: find.byType(Scrollable).first);
+        await tester.tap(photo(n));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.text('30 chosen'), findsOneWidget);
+      expect(find.text('EUR 14.26 to pay'), findsOneWidget);
+      expect(find.text('Pay EUR 14.26'), findsOneWidget);
+    });
+
+    testWidgets('hundreds of photos build only the tiles on screen', (tester) async {
+      await _pump(tester, itemCount: 400);
+      expect(find.byType(RImageTile).evaluate().length, lessThan(60));
+    });
   });
 }

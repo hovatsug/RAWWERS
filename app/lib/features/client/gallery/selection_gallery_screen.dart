@@ -19,7 +19,9 @@ import 'package:rawwers/core/images/disk_cached_image.dart';
 /// held to a higher standard than elsewhere:
 ///
 ///   - What is ticked is one fact, shared by the grid and the full-screen
-///     viewer. Neither owns a copy.
+///     viewer. Neither owns a copy. Tapping a thumbnail ticks it; the corner
+///     button or a long press opens it full screen, where it can be ticked
+///     too.
 ///   - Every figure comes from the server. Nothing here multiplies a price by
 ///     a count; the curve, the deposit already paid and the clamp at zero are
 ///     backend rules, and an app that approximates them eventually shows a
@@ -60,10 +62,18 @@ class SelectionGalleryScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final item = value.items[index];
                     final id = item.mediaAssetId;
+                    final selected = value.isSelected(id);
                     return RImageTile(
                       image: DiskCachedImage(item.thumbnailUrl ?? item.watermarkPreviewUrl ?? ''),
-                      selected: value.isSelected(id),
-                      onTap: value.frozen ? null : () => _openViewer(context, ref, index),
+                      selected: selected,
+                      selectable: !value.frozen,
+                      semanticLabel: 'Photo ${index + 1}, ${selected ? 'selected' : 'not selected'}',
+                      // Frozen (submitted, or confirming) ticks nothing; the
+                      // photos can still be looked at full screen.
+                      onTap: value.frozen
+                          ? null
+                          : () => ref.read(selectionControllerProvider(galleryId).notifier).toggle(id),
+                      onExpand: () => _openViewer(context, ref, index),
                     );
                   },
                 ),

@@ -17,7 +17,8 @@ mixin _$PhotoUploadCreateResponse {
 
 /// mediaAssetId
 @JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) String get mediaAssetId;/// upload
-@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) UploadPayload get upload;
+@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) UploadPayload? get upload;/// duplicate
+@JsonKey(name: PhotoUploadCreateResponse.duplicateKey_) bool get duplicate;
 /// Create a copy of PhotoUploadCreateResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $PhotoUploadCreateResponseCopyWith<PhotoUploadCreateResponse> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoUploadCreateResponse&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.upload, upload) || other.upload == upload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoUploadCreateResponse&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.upload, upload) || other.upload == upload)&&(identical(other.duplicate, duplicate) || other.duplicate == duplicate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mediaAssetId,upload);
+int get hashCode => Object.hash(runtimeType,mediaAssetId,upload,duplicate);
 
 @override
 String toString() {
-  return 'PhotoUploadCreateResponse(mediaAssetId: $mediaAssetId, upload: $upload)';
+  return 'PhotoUploadCreateResponse(mediaAssetId: $mediaAssetId, upload: $upload, duplicate: $duplicate)';
 }
 
 
@@ -50,11 +51,11 @@ abstract mixin class $PhotoUploadCreateResponseCopyWith<$Res>  {
   factory $PhotoUploadCreateResponseCopyWith(PhotoUploadCreateResponse value, $Res Function(PhotoUploadCreateResponse) _then) = _$PhotoUploadCreateResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) UploadPayload upload
+@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) UploadPayload? upload,@JsonKey(name: PhotoUploadCreateResponse.duplicateKey_) bool duplicate
 });
 
 
-$UploadPayloadCopyWith<$Res> get upload;
+$UploadPayloadCopyWith<$Res>? get upload;
 
 }
 /// @nodoc
@@ -67,20 +68,24 @@ class _$PhotoUploadCreateResponseCopyWithImpl<$Res>
 
 /// Create a copy of PhotoUploadCreateResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? mediaAssetId = null,Object? upload = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? mediaAssetId = null,Object? upload = freezed,Object? duplicate = null,}) {
   return _then(_self.copyWith(
 mediaAssetId: null == mediaAssetId ? _self.mediaAssetId : mediaAssetId // ignore: cast_nullable_to_non_nullable
-as String,upload: null == upload ? _self.upload : upload // ignore: cast_nullable_to_non_nullable
-as UploadPayload,
+as String,upload: freezed == upload ? _self.upload : upload // ignore: cast_nullable_to_non_nullable
+as UploadPayload?,duplicate: null == duplicate ? _self.duplicate : duplicate // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of PhotoUploadCreateResponse
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$UploadPayloadCopyWith<$Res> get upload {
-  
-  return $UploadPayloadCopyWith<$Res>(_self.upload, (value) {
+$UploadPayloadCopyWith<$Res>? get upload {
+    if (_self.upload == null) {
+    return null;
+  }
+
+  return $UploadPayloadCopyWith<$Res>(_self.upload!, (value) {
     return _then(_self.copyWith(upload: value));
   });
 }
@@ -165,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)  UploadPayload upload)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)  UploadPayload? upload, @JsonKey(name: PhotoUploadCreateResponse.duplicateKey_)  bool duplicate)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PhotoUploadCreateResponse() when $default != null:
-return $default(_that.mediaAssetId,_that.upload);case _:
+return $default(_that.mediaAssetId,_that.upload,_that.duplicate);case _:
   return orElse();
 
 }
@@ -186,10 +191,10 @@ return $default(_that.mediaAssetId,_that.upload);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)  UploadPayload upload)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)  UploadPayload? upload, @JsonKey(name: PhotoUploadCreateResponse.duplicateKey_)  bool duplicate)  $default,) {final _that = this;
 switch (_that) {
 case _PhotoUploadCreateResponse():
-return $default(_that.mediaAssetId,_that.upload);case _:
+return $default(_that.mediaAssetId,_that.upload,_that.duplicate);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +211,10 @@ return $default(_that.mediaAssetId,_that.upload);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)  UploadPayload upload)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_)  String mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)  UploadPayload? upload, @JsonKey(name: PhotoUploadCreateResponse.duplicateKey_)  bool duplicate)?  $default,) {final _that = this;
 switch (_that) {
 case _PhotoUploadCreateResponse() when $default != null:
-return $default(_that.mediaAssetId,_that.upload);case _:
+return $default(_that.mediaAssetId,_that.upload,_that.duplicate);case _:
   return null;
 
 }
@@ -221,13 +226,15 @@ return $default(_that.mediaAssetId,_that.upload);case _:
 
 @jsonSerializable
 class _PhotoUploadCreateResponse extends PhotoUploadCreateResponse {
-  const _PhotoUploadCreateResponse({@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) required this.mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_) required this.upload}): super._();
+  const _PhotoUploadCreateResponse({@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) required this.mediaAssetId, @JsonKey(name: PhotoUploadCreateResponse.uploadKey_) required this.upload, @JsonKey(name: PhotoUploadCreateResponse.duplicateKey_) this.duplicate = false}): super._();
   factory _PhotoUploadCreateResponse.fromJson(Map<String, dynamic> json) => _$PhotoUploadCreateResponseFromJson(json);
 
 /// mediaAssetId
 @override@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) final  String mediaAssetId;
 /// upload
-@override@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) final  UploadPayload upload;
+@override@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) final  UploadPayload? upload;
+/// duplicate
+@override@JsonKey(name: PhotoUploadCreateResponse.duplicateKey_) final  bool duplicate;
 
 /// Create a copy of PhotoUploadCreateResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -242,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoUploadCreateResponse&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.upload, upload) || other.upload == upload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoUploadCreateResponse&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId)&&(identical(other.upload, upload) || other.upload == upload)&&(identical(other.duplicate, duplicate) || other.duplicate == duplicate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mediaAssetId,upload);
+int get hashCode => Object.hash(runtimeType,mediaAssetId,upload,duplicate);
 
 @override
 String toString() {
-  return 'PhotoUploadCreateResponse(mediaAssetId: $mediaAssetId, upload: $upload)';
+  return 'PhotoUploadCreateResponse(mediaAssetId: $mediaAssetId, upload: $upload, duplicate: $duplicate)';
 }
 
 
@@ -262,11 +269,11 @@ abstract mixin class _$PhotoUploadCreateResponseCopyWith<$Res> implements $Photo
   factory _$PhotoUploadCreateResponseCopyWith(_PhotoUploadCreateResponse value, $Res Function(_PhotoUploadCreateResponse) _then) = __$PhotoUploadCreateResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) UploadPayload upload
+@JsonKey(name: PhotoUploadCreateResponse.mediaAssetIdKey_) String mediaAssetId,@JsonKey(name: PhotoUploadCreateResponse.uploadKey_) UploadPayload? upload,@JsonKey(name: PhotoUploadCreateResponse.duplicateKey_) bool duplicate
 });
 
 
-@override $UploadPayloadCopyWith<$Res> get upload;
+@override $UploadPayloadCopyWith<$Res>? get upload;
 
 }
 /// @nodoc
@@ -279,11 +286,12 @@ class __$PhotoUploadCreateResponseCopyWithImpl<$Res>
 
 /// Create a copy of PhotoUploadCreateResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? mediaAssetId = null,Object? upload = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? mediaAssetId = null,Object? upload = freezed,Object? duplicate = null,}) {
   return _then(_PhotoUploadCreateResponse(
 mediaAssetId: null == mediaAssetId ? _self.mediaAssetId : mediaAssetId // ignore: cast_nullable_to_non_nullable
-as String,upload: null == upload ? _self.upload : upload // ignore: cast_nullable_to_non_nullable
-as UploadPayload,
+as String,upload: freezed == upload ? _self.upload : upload // ignore: cast_nullable_to_non_nullable
+as UploadPayload?,duplicate: null == duplicate ? _self.duplicate : duplicate // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -291,9 +299,12 @@ as UploadPayload,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$UploadPayloadCopyWith<$Res> get upload {
-  
-  return $UploadPayloadCopyWith<$Res>(_self.upload, (value) {
+$UploadPayloadCopyWith<$Res>? get upload {
+    if (_self.upload == null) {
+    return null;
+  }
+
+  return $UploadPayloadCopyWith<$Res>(_self.upload!, (value) {
     return _then(_self.copyWith(upload: value));
   });
 }

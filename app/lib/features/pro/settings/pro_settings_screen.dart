@@ -35,6 +35,7 @@ class ProSettingsScreen extends ConsumerWidget {
     this.payoutsPath,
     this.availabilityPath,
     this.reviewsPath,
+    this.connectLightroomPath,
     super.key,
   });
 
@@ -49,6 +50,9 @@ class ProSettingsScreen extends ConsumerWidget {
   final String? payoutsPath;
   final String? availabilityPath;
   final String? reviewsPath;
+
+  /// Pairing the Lightroom Classic plug-in.
+  final String? connectLightroomPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -188,6 +192,17 @@ class ProSettingsScreen extends ConsumerWidget {
                 )
               else
                 const _PayoutStatus(),
+              if (connectLightroomPath != null) ...[
+                const SizedBox(height: RSpace.s24),
+                _SectionLabel('Delivering photos'),
+                RCard(
+                  child: _NavRow(
+                    label: 'Connect Lightroom',
+                    detail: 'Deliver straight from Lightroom Classic, and see connected devices',
+                    onTap: () => context.push(connectLightroomPath!),
+                  ),
+                ),
+              ],
               const SizedBox(height: RSpace.s24),
               _SectionLabel('Notifications'),
               const _NotificationChannels(),

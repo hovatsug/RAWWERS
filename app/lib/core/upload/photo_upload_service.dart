@@ -190,7 +190,13 @@ class PhotoUploadService {
       );
       switch (result) {
         case Ok(:final value):
-          return Ok((value.mediaAssetId, value.upload));
+          // Null only for a delivery that named its gallery and hash and is
+          // already there (the Lightroom plug-in's path). This app names
+          // neither, so it always gets a URL; if not, it is the server's
+          // fault, not a retry.
+          final upload = value.upload;
+          if (upload == null) return const Err(ServerError('The server gave no upload address.'));
+          return Ok((value.mediaAssetId, upload));
         case Err(:final failure):
           lastFailure = failure;
       }

@@ -28,6 +28,30 @@
 ///                     "type": "null"
 ///                 }
 ///             ]
+///         },
+///         "gallery_id": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "uuid"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Gallery Id"
+///         },
+///         "sha256": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "pattern": "^[0-9a-fA-F]{64}$"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Sha256"
 ///         }
 ///     },
 ///     "type": "object",
@@ -63,6 +87,12 @@ abstract class PhotoUploadCreateRequest with _$PhotoUploadCreateRequest {
     /// visibility
     @JsonKey(name: PhotoUploadCreateRequest.visibilityKey_)
     MediaVisibility? visibility,
+
+    /// galleryId
+    @JsonKey(name: PhotoUploadCreateRequest.galleryIdKey_) String? galleryId,
+
+    /// sha256
+    @JsonKey(name: PhotoUploadCreateRequest.sha256Key_) String? sha256,
   }) = _PhotoUploadCreateRequest;
 
   factory PhotoUploadCreateRequest.fromJson(Map<String, dynamic> json) =>
@@ -75,4 +105,8 @@ abstract class PhotoUploadCreateRequest with _$PhotoUploadCreateRequest {
   static const String fileNameKey_ = r'file_name';
 
   static const String visibilityKey_ = r'visibility';
+
+  static const String galleryIdKey_ = r'gallery_id';
+
+  static const String sha256Key_ = r'sha256';
 }

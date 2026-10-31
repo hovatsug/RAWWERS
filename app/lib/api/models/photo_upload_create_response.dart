@@ -7,7 +7,19 @@
 ///             "title": "Media Asset Id"
 ///         },
 ///         "upload": {
-///             "$ref": "#/components/schemas/UploadPayload"
+///             "anyOf": [
+///                 {
+///                     "$ref": "#/components/schemas/UploadPayload"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ]
+///         },
+///         "duplicate": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Duplicate"
 ///         }
 ///     },
 ///     "type": "object",
@@ -35,7 +47,12 @@ abstract class PhotoUploadCreateResponse with _$PhotoUploadCreateResponse {
 
     /// upload
     @JsonKey(name: PhotoUploadCreateResponse.uploadKey_)
-    required UploadPayload upload,
+    required UploadPayload? upload,
+
+    /// duplicate
+    @Default(false)
+    @JsonKey(name: PhotoUploadCreateResponse.duplicateKey_)
+    bool duplicate,
   }) = _PhotoUploadCreateResponse;
 
   factory PhotoUploadCreateResponse.fromJson(Map<String, dynamic> json) =>
@@ -44,4 +61,6 @@ abstract class PhotoUploadCreateResponse with _$PhotoUploadCreateResponse {
   static const String mediaAssetIdKey_ = r'media_asset_id';
 
   static const String uploadKey_ = r'upload';
+
+  static const String duplicateKey_ = r'duplicate';
 }

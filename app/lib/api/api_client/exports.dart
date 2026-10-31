@@ -26,5 +26,6 @@ export 'search_client.dart';
 export 'scheduling_client.dart';
 export 'webhooks_client.dart';
 export 'payouts_client.dart';
+export 'lightroom_client.dart';
 export 'i18n_client.dart';
 export 'default_client.dart';

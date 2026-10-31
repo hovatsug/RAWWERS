@@ -110,6 +110,25 @@ final payoutsClientProvider = AutoDisposeProvider<PayoutsClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PayoutsClientRef = AutoDisposeProviderRef<PayoutsClient>;
+String _$lightroomClientHash() => r'38db434fb7315fbcc3346c69f878ad380bd8cb11';
+
+/// Pairing the Lightroom plug-in: a code, and the devices already paired.
+///
+/// Copied from [lightroomClient].
+@ProviderFor(lightroomClient)
+final lightroomClientProvider = AutoDisposeProvider<LightroomClient>.internal(
+  lightroomClient,
+  name: r'lightroomClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$lightroomClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LightroomClientRef = AutoDisposeProviderRef<LightroomClient>;
 String _$clientLaunchClientHash() =>
     r'1274e255f7c1aaa3c07ac5a26446e9bdad20d770';
 

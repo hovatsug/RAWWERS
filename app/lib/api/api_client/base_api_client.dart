@@ -133,6 +133,10 @@ class BaseApiClient {
     return PayoutsClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
+  LightroomClient get lightroomClient {
+    return LightroomClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   I18nClient get i18nClient {
     return I18nClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

@@ -16,6 +16,7 @@ import 'package:rawwers/features/pro/gear_verification/gear_verification_screen.
 import 'package:rawwers/features/pro/listing/listing_preview_screen.dart';
 import 'package:rawwers/features/pro/onboarding/onboarding_screen.dart';
 import 'package:rawwers/features/pro/payouts/payouts_screen.dart';
+import 'package:rawwers/features/pro/lightroom/connect_lightroom_screen.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
 import 'package:rawwers/features/pro/profile/pro_profile_edit_screen.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
@@ -90,6 +91,7 @@ abstract final class ProRoute {
   static const portfolio = '$dashboard/portfolio';
   static const pricing = '$dashboard/pricing';
   static const payouts = '$dashboard/payouts';
+  static const connectLightroom = '$dashboard/connect-lightroom';
   static const availability = '$dashboard/availability';
   static const listing = '$dashboard/listing';
   static const reviews = '$dashboard/reviews';
@@ -192,6 +194,7 @@ GoRouter proRouter(Ref ref) {
                         payoutsPath: ProRoute.payouts,
                         availabilityPath: ProRoute.availability,
                         reviewsPath: ProRoute.reviews,
+                        connectLightroomPath: ProRoute.connectLightroom,
                       )),
                   _editor('profile', (context, state) => const ProProfileEditScreen()),
                   _editor('gear', (context, state) => const GearScreen()),
@@ -199,6 +202,7 @@ GoRouter proRouter(Ref ref) {
                   _editor('portfolio', (context, state) => const PortfolioScreen()),
                   _editor('pricing', (context, state) => const PricingScreen()),
                   _editor('payouts', (context, state) => const PayoutsScreen()),
+                  _editor('connect-lightroom', (context, state) => const ConnectLightroomScreen()),
                   _editor('availability', (context, state) => const AvailabilityScreen()),
                   _editor('verify-email', (context, state) => const VerifyEmailScreen()),
                   _editor('reviews', (context, state) => const ProReviewsScreen()),

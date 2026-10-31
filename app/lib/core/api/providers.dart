@@ -21,6 +21,7 @@ import 'package:rawwers/core/download/photo_saver.dart';
 import 'package:rawwers/core/download/saved_photos.dart';
 import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
+import 'package:rawwers/api/api_client/lightroom_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/core/api/dio_client.dart';
 import 'package:rawwers/core/api/session.dart';
@@ -47,6 +48,10 @@ GigsClient gigsClient(Ref ref) => GigsClient(ref.watch(dioProvider));
 
 @riverpod
 PayoutsClient payoutsClient(Ref ref) => PayoutsClient(ref.watch(dioProvider));
+
+/// Pairing the Lightroom plug-in: a code, and the devices already paired.
+@riverpod
+LightroomClient lightroomClient(Ref ref) => LightroomClient(ref.watch(dioProvider));
 
 @riverpod
 ClientLaunchClient clientLaunchClient(Ref ref) => ClientLaunchClient(ref.watch(dioProvider));

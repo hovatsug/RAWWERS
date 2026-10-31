@@ -15,6 +15,8 @@ _PhotoUploadCreateRequest _$PhotoUploadCreateRequestFromJson(
   visibility: json['visibility'] == null
       ? null
       : MediaVisibility.fromJson(json['visibility'] as String),
+  galleryId: json['gallery_id'] as String?,
+  sha256: json['sha256'] as String?,
 );
 
 Map<String, dynamic> _$PhotoUploadCreateRequestToJson(
@@ -24,4 +26,6 @@ Map<String, dynamic> _$PhotoUploadCreateRequestToJson(
   'content_type': instance.contentType,
   'file_name': instance.fileName,
   'visibility': instance.visibility,
+  'gallery_id': instance.galleryId,
+  'sha256': instance.sha256,
 };

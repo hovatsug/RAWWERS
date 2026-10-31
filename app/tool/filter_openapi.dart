@@ -14,6 +14,9 @@ import 'dart:io';
 const _excludedTags = {
   'prints_fulfillment', 'store', 'studioverse', 'repairs',
   'legacy_shoot', 'courses', 'referrals_rewards', 'admin',
+  // The Lightroom plug-in's own API (/v1/delivery/*), called with a delivery
+  // token. Neither app calls it; the pro app pairs through /v1/pro/lightroom.
+  'delivery',
 };
 
 const _excludedPathPrefixes = ['/v1/admin/'];

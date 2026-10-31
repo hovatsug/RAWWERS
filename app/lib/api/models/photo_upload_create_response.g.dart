@@ -10,7 +10,10 @@ _PhotoUploadCreateResponse _$PhotoUploadCreateResponseFromJson(
   Map<String, dynamic> json,
 ) => _PhotoUploadCreateResponse(
   mediaAssetId: json['media_asset_id'] as String,
-  upload: UploadPayload.fromJson(json['upload'] as Map<String, dynamic>),
+  upload: json['upload'] == null
+      ? null
+      : UploadPayload.fromJson(json['upload'] as Map<String, dynamic>),
+  duplicate: json['duplicate'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$PhotoUploadCreateResponseToJson(
@@ -18,4 +21,5 @@ Map<String, dynamic> _$PhotoUploadCreateResponseToJson(
 ) => <String, dynamic>{
   'media_asset_id': instance.mediaAssetId,
   'upload': instance.upload,
+  'duplicate': instance.duplicate,
 };

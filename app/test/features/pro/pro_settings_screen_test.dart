@@ -89,6 +89,7 @@ Widget _wrap({
   NotificationPreferencesController Function()? prefs,
   PayoutAccountView? payout,
   String? gearVerificationPath,
+  String? connectLightroomPath,
 }) =>
     ProviderScope(
       overrides: [
@@ -99,7 +100,11 @@ Widget _wrap({
       ],
       child: MaterialApp(
         theme: buildProTheme(),
-        home: ProSettingsScreen(verifyEmailPath: '/verify', gearVerificationPath: gearVerificationPath),
+        home: ProSettingsScreen(
+          verifyEmailPath: '/verify',
+          gearVerificationPath: gearVerificationPath,
+          connectLightroomPath: connectLightroomPath,
+        ),
       ),
     );
 
@@ -196,6 +201,22 @@ void main() {
     await _scrollTo(tester, find.text('Verify your gear'));
     expect(find.text('Verify your gear'), findsOneWidget);
     expect(find.text('Prove your camera and lens to go live'), findsOneWidget);
+  });
+
+  testWidgets('offers Connect Lightroom when the app wires it', (tester) async {
+    await tester.pumpWidget(_wrap(connectLightroomPath: '/connect-lightroom'));
+    await tester.pump();
+
+    await _scrollTo(tester, find.text('Connect Lightroom'));
+    expect(find.text('Connect Lightroom'), findsOneWidget);
+    expect(find.text('Deliver straight from Lightroom Classic, and see connected devices'), findsOneWidget);
+  });
+
+  testWidgets('no Connect Lightroom row when nothing is wired to it', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    expect(find.text('Connect Lightroom'), findsNothing);
   });
 
   testWidgets('no gear verification row when nothing is wired to it', (tester) async {

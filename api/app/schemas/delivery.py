@@ -13,6 +13,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.media import UploadPayload
+
 # --- the pro app -------------------------------------------------------------------
 
 
@@ -62,3 +64,78 @@ class DeliveryMeResponse(BaseModel):
     device_id: uuid.UUID
     update_available: bool | None = None
     latest_version: str
+
+
+# --- delivering ----------------------------------------------------------------------
+
+
+class DeliveryGigView(BaseModel):
+    """One gig that can take photos, as the plugin's client picker shows it.
+
+    About the client: a first name and last initial, nothing more.
+    """
+
+    gig_id: uuid.UUID
+    #: Null until the first photo starts: the gallery is made then.
+    gallery_id: uuid.UUID | None = None
+    #: "Ana S." - first name and last initial.
+    client_name: str
+    shoot_starts_at: datetime | None = None
+    #: The same moment as seconds since 1970, for Lightroom's LrDate.
+    shoot_starts_at_epoch: int | None = None
+    package_title: str | None = None
+    niche_name: str | None = None
+    included_photos: int
+    #: "waiting_for_photos" or "in_progress".
+    delivery_state: str
+    #: Photos already in the gallery, and photos still processing for it.
+    photos_in_gallery: int
+    photos_processing: int
+
+
+class DeliveryGigsResponse(BaseModel):
+    items: list[DeliveryGigView]
+
+
+class DeliveryUploadRequest(BaseModel):
+    file_name: str = Field(min_length=1, max_length=255)
+    #: JPEG only: the plugin exports JPEG, and the client downloads this file.
+    content_type: str = Field(pattern=r"^image/jpeg$")
+    byte_size: int = Field(gt=0)
+    sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+
+
+class DeliveryUploadResponse(BaseModel):
+    media_asset_id: uuid.UUID
+    gallery_id: uuid.UUID
+    #: This file is in the gallery already (same SHA-256): nothing to send.
+    duplicate: bool = False
+    #: A presigned PUT for the whole file; null when `duplicate`.
+    upload: UploadPayload | None = None
+    #: Send it in parts instead (POST .../multipart) - large files, so a
+    #: dropped connection costs one part, not the whole file.
+    use_multipart: bool = False
+
+
+class DeliveryCompleteRequest(BaseModel):
+    byte_size: int = Field(gt=0)
+    #: Must be the hash declared when the upload started.
+    sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+
+
+class DeliveryFailedPhoto(BaseModel):
+    media_asset_id: uuid.UUID
+    file_name: str | None = None
+    reason: str | None = None
+
+
+class DeliveryStatusResponse(BaseModel):
+    gallery_id: uuid.UUID
+    gig_id: uuid.UUID
+    #: "draft" while the photographer is still delivering; anything else
+    #: means it was sent from the app and takes no more photos from here.
+    gallery_status: str
+    photos_in_gallery: int
+    uploading: int
+    processing: int
+    failed: list[DeliveryFailedPhoto]

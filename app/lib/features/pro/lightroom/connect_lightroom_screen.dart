@@ -119,7 +119,7 @@ class _PairingCodeCard extends ConsumerWidget {
                 Clipboard.setData(ClipboardData(text: code.code));
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied.')));
               },
-              icon: const Icon(Icons.copy, size: 18),
+              icon: const Icon(Icons.copy, size: RIcon.inline),
               label: const Text('Copy code'),
             ),
           ] else

@@ -8,7 +8,7 @@ import math
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageCms, ImageDraw, ImageFont
 from sqlalchemy import select
 
 from app.core.config import get_settings
@@ -83,7 +83,7 @@ def process_photo_variants(self, media_asset_id: str) -> None:
             asset.meta = {**asset.meta, "failure_reason": "The file that arrived does not match its SHA-256. Upload it again."}
             db.commit()
             return
-        image = Image.open(io.BytesIO(blob)).convert("RGB")
+        image = decode_as_srgb(blob)
 
         # The watermarked preview first, and on its own: it is the one variant
         # delivery waits for (a gallery item needs a ready watermark_preview),
@@ -201,6 +201,41 @@ def process_photo_variants(self, media_asset_id: str) -> None:
         logger.exception("process_photo_variants_failed", extra={"media_asset_id": media_asset_id})
     finally:
         db.close()
+
+
+_SRGB = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB"))
+
+
+def decode_as_srgb(blob: bytes) -> Image.Image:
+    """The original's pixels in sRGB, for everything made from it.
+
+    Previews, thumbnails and the web copy are saved without a colour profile,
+    which every browser and phone reads as sRGB. An Adobe RGB or ProPhoto
+    export read as sRGB looks washed out, so a photo with any other embedded
+    profile is converted first (owner's decision 6). The original itself is
+    never touched: it is the client's final download, profile and all.
+
+    A profile that cannot be read is treated as none, as before: a photo is
+    never failed over its colour profile.
+    """
+    image = Image.open(io.BytesIO(blob))
+    icc = image.info.get("icc_profile")
+    if icc:
+        try:
+            source = ImageCms.ImageCmsProfile(io.BytesIO(icc))
+            if "srgb" not in ImageCms.getProfileDescription(source).lower():
+                if image.mode not in {"RGB", "CMYK", "L"}:
+                    image = image.convert("RGB")
+                return ImageCms.profileToProfile(
+                    image,
+                    source,
+                    _SRGB,
+                    renderingIntent=ImageCms.Intent.PERCEPTUAL,
+                    outputMode="RGB",
+                )
+        except (ImageCms.PyCMSError, OSError, ValueError):
+            logger.warning("photo_colour_profile_unreadable")
+    return image.convert("RGB")
 
 
 def _upload_all(objects: list[tuple[str, bytes]], cache_control: str) -> None:
@@ -378,7 +413,7 @@ def _load_source_image(db, media_asset_id: str):
     if not original_obj:
         return asset, None, None
     blob = download_object_bytes(original_obj.storage_key, max_bytes=max_photo_bytes(asset.purpose))
-    image = Image.open(io.BytesIO(blob)).convert("RGB")
+    image = decode_as_srgb(blob)
     return asset, original_obj, image
 
 

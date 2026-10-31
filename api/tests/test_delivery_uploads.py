@@ -337,6 +337,7 @@ def _jpeg() -> bytes:
 def store(monkeypatch):
     objects: dict[str, bytes] = {}
     monkeypatch.setattr(tasks, "download_object_bytes", lambda key, max_bytes=0: objects[key])
+    monkeypatch.setattr(tasks, "object_size", lambda key: len(objects[key]) if key in objects else None)
     monkeypatch.setattr(tasks, "upload_object_bytes", lambda key, payload, *_a, **_k: objects.__setitem__(key, payload))
     monkeypatch.setattr(tasks, "_watermark_text", lambda db, asset: "RAWWERS • Test")
     return objects
@@ -396,3 +397,73 @@ def test_a_file_that_does_not_match_its_hash_fails_and_is_not_processed(db_sessi
     assert asset.status == MediaStatus.failed
     assert "does not match" in asset.meta["failure_reason"]
     assert not any(key.endswith("_watermark_preview.jpg") for key in store), "nothing was made from it"
+
+
+# --- a delivery may be a full-size export, up to 50 MB -----------------------------
+#
+# Decision 5: delivered proofs are the client's final download, so they may be
+# up to 50 MB once the worker had been tried on a 60 MP JPEG (2026-10-31: about
+# 7 s and 760 MB of memory per photo). Every other photo keeps 25 MB.
+
+
+def test_each_purpose_has_its_own_size_limit():
+    from app.services.photo_uploads import max_photo_bytes
+
+    assert max_photo_bytes(MediaPurpose.proof) == 50_000_000
+    assert max_photo_bytes(MediaPurpose.other) == 25_000_000
+    assert max_photo_bytes(MediaPurpose.portfolio_reel) == 25_000_000
+    assert max_photo_bytes(MediaPurpose.gear_evidence) == 150_000_000
+
+
+@pytest.mark.parametrize(("purpose", "byte_size", "ok"), [
+    ("proof", 49_000_000, True),
+    ("proof", 51_000_000, False),
+    ("other", 30_000_000, False),
+    ("other", 24_000_000, True),
+])
+def test_completing_an_upload_checks_its_purposes_limit(client, purpose, byte_size, ok):
+    pro = uuid.uuid4()
+    asset_id = _create(client, pro, purpose=purpose).json()["media_asset_id"]
+    done = client.post(f"/v1/media/photos/{asset_id}/complete", headers=_h(pro), json={"byte_size": byte_size})
+    assert (done.status_code == 200) is ok, done.text
+
+
+@pytest.mark.parametrize(("byte_size", "ok"), [(45_000_000, True), (60_000_000, False)])
+def test_a_large_delivery_can_be_sent_in_parts_up_to_the_limit(client, byte_size, ok):
+    pro = uuid.uuid4()
+    asset_id = _create(client, pro).json()["media_asset_id"]
+    started = client.post(f"/v1/media/photos/{asset_id}/multipart", headers=_h(pro), json={"byte_size": byte_size})
+    assert (started.status_code == 200) is ok, started.text
+
+
+def test_a_stored_file_over_the_limit_fails_at_once_without_being_downloaded(db_session, store, monkeypatch):
+    asset_id = _processing_asset(db_session, store, checksum=lambda data: None)
+    monkeypatch.setattr(tasks, "object_size", lambda key: 50_000_001)
+
+    def no_download(*_a, **_k):
+        raise AssertionError("an oversized file was downloaded")
+
+    monkeypatch.setattr(tasks, "download_object_bytes", no_download)
+
+    _run(asset_id)
+
+    db_session.expire_all()
+    asset = db_session.get(MediaAsset, asset_id)
+    assert asset.status == MediaStatus.failed
+    assert "larger than 50 MB" in asset.meta["failure_reason"]
+
+
+def test_the_worker_downloads_a_delivery_with_the_delivery_limit(db_session, store, monkeypatch):
+    asset_id = _processing_asset(db_session, store, checksum=lambda data: None)
+    limits = []
+    real = tasks.download_object_bytes
+
+    def recording(key, max_bytes=0):
+        limits.append(max_bytes)
+        return real(key, max_bytes=max_bytes)
+
+    monkeypatch.setattr(tasks, "download_object_bytes", recording)
+
+    _run(asset_id)
+
+    assert limits == [50_000_000]

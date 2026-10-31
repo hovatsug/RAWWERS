@@ -63,7 +63,7 @@ from app.services.storage import (
     list_uploaded_parts,
     object_size,
 )
-from app.services.photo_uploads import begin_photo_upload
+from app.services.photo_uploads import begin_photo_upload, max_photo_bytes
 from app.tasks.media_tasks import process_photo_variants
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -263,7 +263,7 @@ def complete_photo_upload(
         raise APIError(code="invalid_state", message="Photo upload cannot be completed from current state", status_code=409)
     if asset.purpose == MediaPurpose.gear_evidence:
         return _complete_gear_evidence(db, asset)
-    if body.byte_size and body.byte_size > settings.max_upload_bytes:
+    if body.byte_size and body.byte_size > _max_bytes_for(asset):
         raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
 
     asset.status = MediaStatus.processing
@@ -315,7 +315,7 @@ def refresh_photo_upload_url(
 
 
 def _max_bytes_for(asset: MediaAsset) -> int:
-    return settings.gear_evidence_max_bytes if asset.purpose == MediaPurpose.gear_evidence else settings.max_upload_bytes
+    return max_photo_bytes(asset.purpose)
 
 
 def _multipart_state(asset: MediaAsset) -> dict:

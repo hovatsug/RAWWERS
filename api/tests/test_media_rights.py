@@ -263,7 +263,7 @@ def test_derivative_generation_job_creates_media_derivative(db_session, monkeypa
     image.save(payload, format="JPEG")
     blob = payload.getvalue()
 
-    monkeypatch.setattr("app.tasks.media_tasks.download_object_bytes", lambda key: blob)
+    monkeypatch.setattr("app.tasks.media_tasks.download_object_bytes", lambda key, **_: blob)
     monkeypatch.setattr("app.tasks.media_tasks.upload_object_bytes", lambda key, payload, content_type="image/jpeg", **_: None)
 
     generate_watermarked_preview(str(asset.id))

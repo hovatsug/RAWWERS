@@ -21,10 +21,22 @@ from app.models.media import (
     MediaVisibility,
     ObjectStatus,
 )
+from app.core.config import get_settings
 from app.schemas.media import PhotoUploadCreateResponse, UploadPayload
 from app.services.storage import create_presigned_put, generate_photo_storage_key
 
 UPLOAD_URL_TTL_SECONDS = 900
+
+
+def max_photo_bytes(purpose: MediaPurpose) -> int:
+    """The largest file a photo of this purpose may be: checked when an
+    upload starts and completes, and by the worker against what is stored."""
+    settings = get_settings()
+    if purpose == MediaPurpose.gear_evidence:
+        return settings.gear_evidence_max_bytes
+    if purpose == MediaPurpose.proof:
+        return settings.delivery_max_upload_bytes
+    return settings.max_upload_bytes
 
 
 def begin_photo_upload(

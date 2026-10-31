@@ -105,6 +105,11 @@ class Settings(BaseSettings):
     presence_heartbeat_min_interval_seconds: int = Field(default=50, alias="PRESENCE_HEARTBEAT_MIN_INTERVAL_SECONDS")
     max_review_text_length: int = Field(default=2000, alias="MAX_REVIEW_TEXT_LENGTH")
     max_upload_bytes: int = Field(default=25_000_000, alias="MAX_UPLOAD_BYTES")
+    # A delivered proof is the client's final download, a full-size export:
+    # a 60 MP JPEG at high quality runs past 25 MB. Measured 2026-10-31 on a
+    # 60 MP frame: about 7 s and 760 MB of worker memory, whatever its file
+    # size, since the decoded pixels dominate.
+    delivery_max_upload_bytes: int = Field(default=50_000_000, alias="DELIVERY_MAX_UPLOAD_BYTES")
     # Gear evidence is a camera file, not a photo. Real ones are 16-58 MB, so the
     # 25 MB photo cap would refuse a Sony A7 III's (25.6 MB) outright.
     gear_evidence_max_bytes: int = Field(default=150_000_000, alias="GEAR_EVIDENCE_MAX_BYTES")

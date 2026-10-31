@@ -53,6 +53,9 @@ class _Store:
     def download(self, key, max_bytes=0):
         return self.objects[key]
 
+    def size(self, key):
+        return len(self.objects[key]) if key in self.objects else None
+
     def upload(self, key, payload, content_type="image/jpeg", cache_control=None):
         if any(key.endswith(s) for s in self.fail_suffixes):
             raise ConnectionError("R2 unreachable")
@@ -90,6 +93,7 @@ def store(monkeypatch):
     monkeypatch.setattr(tasks.process_photo_variants, "retry", retry)
     s = _Store()
     monkeypatch.setattr(tasks, "download_object_bytes", s.download)
+    monkeypatch.setattr(tasks, "object_size", s.size)
     monkeypatch.setattr(tasks, "upload_object_bytes", s.upload)
     monkeypatch.setattr(tasks, "_watermark_text", lambda db, asset: "RAWWERS • Test")
     return s

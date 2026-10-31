@@ -224,11 +224,15 @@ def test_a_whole_file_is_assembled_from_r2s_own_list_and_then_completes_as_usual
 def test_size_limits_follow_the_purpose(client, db_session, r2):
     user = str(uuid.uuid4())
     raw = _create(client, user)["media_asset_id"]
-    photo = _create(client, user, purpose="proof")["media_asset_id"]
+    proof = _create(client, user, purpose="proof")["media_asset_id"]
+    photo = _create(client, user, purpose="other")["media_asset_id"]
 
     assert _start(client, user, raw, 140 * MiB).status_code == 200, "a big RAW is what gear evidence is"
     assert _start(client, user, raw, 151 * 1000 * 1000).status_code == 422
-    assert _start(client, user, photo, 26 * 1000 * 1000).status_code == 422, "a photo keeps the photo limit"
+    # A delivered proof is a full-size export, up to 50 MB (decision 5).
+    assert _start(client, user, proof, 26 * 1000 * 1000).status_code == 200
+    assert _start(client, user, proof, 51 * 1000 * 1000).status_code == 422
+    assert _start(client, user, photo, 26 * 1000 * 1000).status_code == 422, "any other photo keeps the photo limit"
 
 
 def test_only_the_owner_can_touch_the_parts(client, db_session, r2):

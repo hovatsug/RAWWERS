@@ -16,10 +16,12 @@ from app.db.session import SessionLocal
 from app.models.admin import ProProfile
 from app.models.media import MediaAsset, MediaObject, MediaStatus, MediaVariant, ObjectStatus
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind
+from app.services.photo_uploads import max_photo_bytes
 from app.services.storage import (
     derivative_cache_control,
     download_object_bytes,
     generate_variant_key,
+    object_size,
     upload_object_bytes,
 )
 from app.tasks.celery_app import celery_app
@@ -55,7 +57,21 @@ def process_photo_variants(self, media_asset_id: str) -> None:
             db.commit()
             return
 
-        blob = download_object_bytes(original_obj.storage_key)
+        # What is stored, not what the uploader said it sent: a presigned PUT
+        # does not bound the body. Too large is final, so not retried - three
+        # retries would only download it three more times.
+        limit = max_photo_bytes(asset.purpose)
+        stored = object_size(original_obj.storage_key)
+        if stored is not None and stored > limit:
+            asset.status = MediaStatus.failed
+            original_obj.status = ObjectStatus.failed
+            asset.meta = {
+                **asset.meta,
+                "failure_reason": f"This photo is larger than {limit // 1_000_000} MB. Export it smaller and upload it again.",
+            }
+            db.commit()
+            return
+        blob = download_object_bytes(original_obj.storage_key, max_bytes=limit)
         # The hash a delivery declared is what makes a second upload of the
         # same file a duplicate; a file that does not match it is not the
         # file that was declared, and nothing is made from it. Not retried:
@@ -352,7 +368,7 @@ def _load_source_image(db, media_asset_id: str):
     ).scalar_one_or_none()
     if not original_obj:
         return asset, None, None
-    blob = download_object_bytes(original_obj.storage_key)
+    blob = download_object_bytes(original_obj.storage_key, max_bytes=max_photo_bytes(asset.purpose))
     image = Image.open(io.BytesIO(blob)).convert("RGB")
     return asset, original_obj, image
 

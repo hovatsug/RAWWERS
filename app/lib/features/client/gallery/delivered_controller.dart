@@ -97,7 +97,12 @@ class DeliveredController extends _$DeliveredController {
   /// step a URL that has already expired, which is a failure landing right
   /// after they paid. The endpoint allows 20 generations a minute, far more
   /// than hand-paced use.
-  Future<String?> freshLinkFor(String assetId) async {
+  Future<String?> freshLinkFor(String assetId) async => (await freshLinks())?[assetId];
+
+  /// Every link the server will mint now, by asset id, or null if it would
+  /// not answer. One call covers the whole gallery, which is what lets "save
+  /// all" stay far inside the endpoint's limit.
+  Future<Map<String, String>?> freshLinks() async {
     final galleries = ref.read(proofGalleriesClientProvider);
     final result = await apiCall(
       () => galleries.getDownloadLinksV1ProofGalleriesGalleryIdDownloadsGet(
@@ -107,7 +112,10 @@ class DeliveredController extends _$DeliveredController {
       ),
     );
     return switch (result) {
-      Ok(:final value) => value.urls[assetId] as String?,
+      Ok(:final value) => {
+          for (final MapEntry(:key, :value) in value.urls.entries)
+            if (value case final String url when url.isNotEmpty) key: url,
+        },
       Err() => null,
     };
   }

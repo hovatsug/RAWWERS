@@ -325,6 +325,26 @@ final photoSaverProvider = AutoDisposeProvider<PhotoSaver>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PhotoSaverRef = AutoDisposeProviderRef<PhotoSaver>;
+String _$savedPhotosHash() => r'd42f605d3b7983d4ecb604a72c075e2f505b4f42';
+
+/// Which delivered photos this device has saved. Kept alive: one file, read
+/// once, shared by the single-photo save and "save all".
+///
+/// Copied from [savedPhotos].
+@ProviderFor(savedPhotos)
+final savedPhotosProvider = Provider<SavedPhotos>.internal(
+  savedPhotos,
+  name: r'savedPhotosProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$savedPhotosHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SavedPhotosRef = ProviderRef<SavedPhotos>;
 String _$proofGalleriesClientHash() =>
     r'ac0a52f113b5470ab8889a8f5598399be11d8c07';
 

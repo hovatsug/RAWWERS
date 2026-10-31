@@ -18,6 +18,7 @@ import 'package:rawwers/api/api_client/available_now_client.dart';
 import 'package:rawwers/api/api_client/presence_client.dart';
 import 'package:rawwers/api/api_client/scheduling_client.dart';
 import 'package:rawwers/core/download/photo_saver.dart';
+import 'package:rawwers/core/download/saved_photos.dart';
 import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
@@ -99,6 +100,11 @@ PhotoSaver photoSaver(Ref ref) => PhotoSaver(
       library: const GalPhotoLibrary(),
       tempDirectory: getTemporaryDirectory,
     );
+
+/// Which delivered photos this device has saved. Kept alive: one file, read
+/// once, shared by the single-photo save and "save all".
+@Riverpod(keepAlive: true)
+SavedPhotos savedPhotos(Ref ref) => FileSavedPhotos(getApplicationSupportDirectory);
 
 @riverpod
 ProofGalleriesClient proofGalleriesClient(Ref ref) => ProofGalleriesClient(ref.watch(dioProvider));

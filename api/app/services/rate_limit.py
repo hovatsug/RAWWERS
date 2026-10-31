@@ -21,6 +21,7 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     "referral_claims": (settings.rate_limit_referral_claims_per_day, 86400),
     "payments": (settings.rate_limit_payments_per_hour, 3600),
     "uploads": (settings.rate_limit_uploads_per_hour, 3600),
+    "delivery_uploads": (settings.rate_limit_delivery_uploads_per_hour, 3600),
     "admin": (settings.rate_limit_admin_per_min, 60),
     "notifications_email": (settings.rate_limit_notifications_email_per_day, 86400),
     "notifications_inapp": (settings.rate_limit_notifications_inapp_per_day, 86400),

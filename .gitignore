@@ -44,3 +44,6 @@ __pycache__/
 .env.*
 !.env.example
 !.env.*.example
+
+# Third-party SDKs (Adobe Lightroom Classic, DNG): used locally, never committed - their licences do not allow redistribution here.
+/SDKs/

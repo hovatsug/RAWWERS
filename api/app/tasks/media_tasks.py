@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import functools
@@ -55,6 +56,16 @@ def process_photo_variants(self, media_asset_id: str) -> None:
             return
 
         blob = download_object_bytes(original_obj.storage_key)
+        # The hash a delivery declared is what makes a second upload of the
+        # same file a duplicate; a file that does not match it is not the
+        # file that was declared, and nothing is made from it. Not retried:
+        # the bytes will not change.
+        if asset.checksum and hashlib.sha256(blob).hexdigest() != asset.checksum:
+            asset.status = MediaStatus.failed
+            original_obj.status = ObjectStatus.failed
+            asset.meta = {**asset.meta, "failure_reason": "The file that arrived does not match its SHA-256. Upload it again."}
+            db.commit()
+            return
         image = Image.open(io.BytesIO(blob)).convert("RGB")
 
         # The watermarked preview first, and on its own: it is the one variant

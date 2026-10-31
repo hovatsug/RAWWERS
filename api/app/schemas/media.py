@@ -24,6 +24,11 @@ class PhotoUploadCreateRequest(BaseModel):
     # Mirrors MuxUploadCreateRequest. Omitted means "the default for this
     # purpose", which is public for portfolio work and owner_only otherwise.
     visibility: MediaVisibility | None = None
+    #: Delivery only: the gallery this proof is for. With `sha256`, the same
+    #: file sent to the same gallery again is the photo already there.
+    gallery_id: uuid.UUID | None = None
+    #: The SHA-256 of the file, hex. Checked against the bytes that arrive.
+    sha256: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
 
 
 class UploadPayload(BaseModel):
@@ -36,7 +41,10 @@ class UploadPayload(BaseModel):
 
 class PhotoUploadCreateResponse(BaseModel):
     media_asset_id: uuid.UUID
-    upload: UploadPayload
+    #: Null only when `duplicate`: the file is already there, nothing to send.
+    upload: UploadPayload | None
+    #: This file was already sent to this gallery; `media_asset_id` is that photo.
+    duplicate: bool = False
 
 
 class MultipartStartRequest(BaseModel):

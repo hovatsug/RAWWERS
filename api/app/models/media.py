@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -83,7 +83,12 @@ class MediaAsset(Base):
     visibility: Mapped[MediaVisibility] = mapped_column(Enum(MediaVisibility, name="media_visibility", native_enum=False, length=64), nullable=False, default=MediaVisibility.owner_only)
     content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     byte_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    #: SHA-256 of the original, lowercase hex, as the uploader declared it;
+    #: the worker checks it against the bytes that arrived.
     checksum: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The gallery a delivered proof was uploaded for. With `checksum`, one
+    #: live photo per file per gallery (the index below).
+    delivery_gallery_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("proof_gallery.id"), nullable=True)
     meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     niche_tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -121,4 +126,13 @@ class WebhookEvent(Base):
 
 Index("ix_media_asset_owner_created", MediaAsset.owner_user_id, MediaAsset.created_at.desc())
 Index("ix_media_asset_provider_asset", MediaAsset.provider, MediaAsset.provider_asset_id)
+# A failed or deleted photo does not hold its file's place: the same file can
+# be sent again.
+Index(
+    "ux_media_asset_delivery_file",
+    MediaAsset.delivery_gallery_id,
+    MediaAsset.checksum,
+    unique=True,
+    postgresql_where=text("delivery_gallery_id IS NOT NULL AND checksum IS NOT NULL AND status NOT IN ('failed', 'deleted')"),
+)
 Index("ux_webhook_provider_external", WebhookEvent.provider, WebhookEvent.external_event_id, unique=True)

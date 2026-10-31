@@ -152,6 +152,9 @@ class Settings(BaseSettings):
     rate_limit_referral_claims_per_day: int = Field(default=3, alias="RATE_LIMIT_REFERRAL_CLAIMS_PER_DAY")
     rate_limit_payments_per_hour: int = Field(default=10, alias="RATE_LIMIT_PAYMENTS_PER_HOUR")
     rate_limit_uploads_per_hour: int = Field(default=30, alias="RATE_LIMIT_UPLOADS_PER_HOUR")
+    # Proofs only: a wedding is 400-1000 photos, so a delivery cannot share
+    # the 30 an hour every other upload counts against.
+    rate_limit_delivery_uploads_per_hour: int = Field(default=2000, alias="RATE_LIMIT_DELIVERY_UPLOADS_PER_HOUR")
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")
     admin_ip_allowlist: str = Field(default="", alias="ADMIN_IP_ALLOWLIST")
     admin_api_keys: str = Field(default="", alias="ADMIN_API_KEYS")

@@ -4,11 +4,14 @@ import uuid
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db_session, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.models.gallery import ProofGallery, ProofGalleryStatus
+from app.models.gig import Gig
 from app.models.media import (
     MediaAsset,
     MediaKind,
@@ -43,6 +46,7 @@ from app.schemas.media import (
     UploadPayload,
 )
 from app.services.discovery_index import recompute_pro_public_index
+from app.services.gig_state import require_gig_deliverable
 from app.services.feature_flags import is_feature_enabled
 from app.services.mux import MuxClient
 from app.services.rate_limit import enforce_named_rate_limit
@@ -126,14 +130,79 @@ def _complete_gear_evidence(db: Session, asset: MediaAsset) -> CompletePhotoUplo
     return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
 
 
+def _enforce_upload_rate(purpose: MediaPurpose, user_id: uuid.UUID, *, creating: bool = False) -> None:
+    """A delivery counts against its own bucket; everything else against the
+    30 an hour, and a new upload also against the per-minute mutation limit.
+
+    A delivery is 400-1000 photos, so it cannot share the 30 - and at two
+    files at a time the per-minute limit alone would cap it below its own.
+    """
+    if purpose == MediaPurpose.proof:
+        enforce_named_rate_limit("delivery_uploads", principal=str(user_id))
+        return
+    enforce_named_rate_limit("uploads", principal=str(user_id))
+    if creating:
+        enforce_named_rate_limit("auth_mutation", principal=str(user_id))
+
+
+def _delivery_gallery_id(db: Session, body: PhotoUploadCreateRequest, user: CurrentUser) -> uuid.UUID | None:
+    """The gallery a proof is uploaded for, checked as attaching to it is."""
+    if body.gallery_id is None:
+        if body.sha256:
+            raise APIError(code="validation_error", message="A file's hash needs the gallery it is for", status_code=422)
+        return None
+    if body.purpose != MediaPurpose.proof:
+        raise APIError(code="validation_error", message="Only a delivery is uploaded for a gallery", status_code=422)
+    gallery = db.get(ProofGallery, body.gallery_id)
+    if not gallery:
+        raise APIError(code="not_found", message="Gallery not found", status_code=404)
+    if gallery.pro_user_id != user.user_id:
+        raise APIError(code="forbidden", message="Only the gallery's photographer can upload to it", status_code=403)
+    if gallery.status not in {ProofGalleryStatus.draft, ProofGalleryStatus.published}:
+        raise APIError(code="invalid_state", message="This gallery is closed to new photos", status_code=409)
+    require_gig_deliverable(db.get(Gig, gallery.gig_id))
+    return gallery.id
+
+
+def _live_delivery_duplicate(db: Session, gallery_id: uuid.UUID, checksum: str) -> MediaAsset | None:
+    """The photo this file already is in this gallery, unless it failed or was deleted."""
+    return db.execute(
+        select(MediaAsset).where(
+            MediaAsset.delivery_gallery_id == gallery_id,
+            MediaAsset.checksum == checksum,
+            MediaAsset.status.not_in([MediaStatus.failed, MediaStatus.deleted]),
+        )
+    ).scalar_one_or_none()
+
+
+def _answer_with_existing(db: Session, asset: MediaAsset, user: CurrentUser) -> PhotoUploadCreateResponse:
+    """A file already sent: nothing to send again, or - if its bytes never
+    finished arriving - a fresh URL for the same original."""
+    _ensure_owner(user.user_id, asset.owner_user_id)
+    if asset.status not in {MediaStatus.uploading, MediaStatus.created}:
+        return PhotoUploadCreateResponse(media_asset_id=asset.id, upload=None, duplicate=True)
+    original = db.execute(
+        select(MediaObject).where(MediaObject.media_asset_id == asset.id, MediaObject.variant == MediaVariant.original)
+    ).scalar_one()
+    return PhotoUploadCreateResponse(
+        media_asset_id=asset.id,
+        upload=UploadPayload(
+            method="PUT",
+            url=create_presigned_put(storage_key=original.storage_key, content_type=asset.content_type),
+            headers={"Content-Type": asset.content_type},
+            storage_key=original.storage_key,
+            expires_in=900,
+        ),
+    )
+
+
 @router.post("/photos/uploads", response_model=PhotoUploadCreateResponse)
 def create_photo_upload(
     body: PhotoUploadCreateRequest,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> PhotoUploadCreateResponse:
-    enforce_named_rate_limit("uploads", principal=str(user.user_id))
-    enforce_named_rate_limit("auth_mutation", principal=str(user.user_id))
+    _enforce_upload_rate(body.purpose, user.user_id, creating=True)
     if body.purpose not in {
         MediaPurpose.proof,
         MediaPurpose.other,
@@ -147,14 +216,31 @@ def create_photo_upload(
     elif body.content_type.lower() not in settings.allowed_upload_mime_type_set():
         raise APIError(code="validation_error", message="Unsupported content_type", status_code=422)
 
-    asset, started = begin_photo_upload(
-        db,
-        owner_user_id=user.user_id,
-        purpose=body.purpose,
-        visibility=_default_visibility(body.purpose, body.visibility),
-        content_type=body.content_type,
-        file_name=body.file_name,
-    )
+    gallery_id = _delivery_gallery_id(db, body, user)
+    checksum = body.sha256.lower() if body.sha256 else None
+    if checksum:
+        existing = _live_delivery_duplicate(db, gallery_id, checksum)
+        if existing:
+            return _answer_with_existing(db, existing, user)
+
+    try:
+        with db.begin_nested():
+            asset, started = begin_photo_upload(
+                db,
+                owner_user_id=user.user_id,
+                purpose=body.purpose,
+                visibility=_default_visibility(body.purpose, body.visibility),
+                content_type=body.content_type,
+                file_name=body.file_name,
+                delivery_gallery_id=gallery_id,
+                checksum=checksum,
+            )
+    except IntegrityError:
+        # The same file, sent twice at once: the other one got there first.
+        winner = _live_delivery_duplicate(db, gallery_id, checksum) if checksum else None
+        if winner is None:
+            raise
+        return _answer_with_existing(db, winner, user)
     if body.purpose == MediaPurpose.portfolio_reel:
         recompute_pro_public_index(db, user.user_id)
     db.commit()
@@ -217,8 +303,8 @@ def refresh_photo_upload_url(
     must not be reused after a failed PUT, so this signs a new one - for the
     same key.
     """
-    enforce_named_rate_limit("uploads", principal=str(user.user_id))
     asset, original = _uploading_original(db, media_asset_id, user)
+    _enforce_upload_rate(asset.purpose, user.user_id)
     return UploadPayload(
         method="PUT",
         url=create_presigned_put(storage_key=original.storage_key, content_type=asset.content_type),
@@ -252,8 +338,8 @@ def start_multipart_upload(
     layout rather than starting over: that is how an interrupted upload picks
     up where it stopped.
     """
-    enforce_named_rate_limit("uploads", principal=str(user.user_id))
     asset, original = _uploading_original(db, media_asset_id, user)
+    _enforce_upload_rate(asset.purpose, user.user_id)
     if body.byte_size > _max_bytes_for(asset):
         raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
     existing = (asset.meta or {}).get("multipart")

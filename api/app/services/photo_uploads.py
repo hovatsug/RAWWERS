@@ -35,6 +35,8 @@ def begin_photo_upload(
     visibility: MediaVisibility,
     content_type: str,
     file_name: str | None,
+    delivery_gallery_id: uuid.UUID | None = None,
+    checksum: str | None = None,
 ) -> tuple[MediaAsset, PhotoUploadCreateResponse]:
     """Flushes the asset; the caller commits."""
     storage_key = generate_photo_storage_key(str(owner_user_id), file_name)
@@ -47,6 +49,8 @@ def begin_photo_upload(
         visibility=visibility,
         content_type=content_type,
         meta={"file_name": file_name} if file_name else {},
+        delivery_gallery_id=delivery_gallery_id,
+        checksum=checksum,
     )
     db.add(asset)
     db.flush()
@@ -62,4 +66,3 @@ def begin_photo_upload(
             expires_in=UPLOAD_URL_TTL_SECONDS,
         ),
     )
-

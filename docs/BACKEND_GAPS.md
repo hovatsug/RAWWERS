@@ -2104,3 +2104,15 @@ Found 2026-10-30. `api/` has no `poetry.lock`: the Dockerfile copies only `pypro
 **Pin before production:** commit a `poetry.lock` (or an exported, hashed requirements file) and copy it into the image with `pyproject.toml`, so every build installs the same versions.
 
 **Found alongside:** `httpx` was a dev-only dependency while `app/services/warmup.py` imports it, so the `runtime` image failed at start with `ModuleNotFoundError`. Dev never showed it, because dev builds the `dev` stage. Fixed by moving `httpx` into the main dependencies; [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) now builds the `runtime` stage and imports the app before each deploy.
+
+## Lightroom deliveries join the gallery in the order they finish processing - LOGGED
+
+Found building the Lightroom plug-in (2026-10-31); not for now. A delivery joins its gallery on the server when its processing finishes (step 2 of the Lightroom plan), after the photos already there. The plug-in sends three photos at once and processing takes a few seconds each, so a wedding's photos land in roughly, not exactly, the order Lightroom exported them, and the client's gallery shows them in that order. The phone's attach has the same property. **Fix, not yet approved:** the upload names its place (the export's position, or the capture time from the file), stored on the photo and used as the gallery's sort order, with the photos already there kept before them.
+
+## Starts that are never finished stay as uploading photos - LOGGED
+
+Found with the Lightroom simulator's leaked-token check (2026-10-31). Starting an upload makes a photo in `uploading`; one never finished - a dropped export, or a leaked token that only starts uploads - stays so, and counts in the delivery's status as "uploading". It never joins a gallery and is never shown to a client, and the daily cap per device bounds how many a leaked token can make (5000). Nothing cleans them up; this is the same gap as [Upload resume survives a dropped connection, not a killed app](#upload-resume-survives-a-dropped-connection-not-a-killed-app---logged), now reachable from a second client. **Fix, not yet approved:** a sweep that deletes photos left in `uploading` for more than a day, with their objects.
+
+## The telephony webhook answers a malformed body with a 500 - LOGGED
+
+Found by the delivery token's route sweep (`tests/test_delivery_scope.py`, 2026-10-31). `POST /v1/webhooks/telephony` (app/api/v1/communications.py) calls `TelephonyWebhookRequest.model_validate_json` on the raw body and lets a validation error escape, so an empty or malformed body is a 500 instead of a 422. No data is touched; it is noise in the error logs and a cheap way to fill them. **Fix:** catch `ValidationError` and answer 422.

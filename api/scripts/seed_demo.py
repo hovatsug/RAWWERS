@@ -832,12 +832,12 @@ def _admin_headers(db) -> dict[str, str]:
     return headers
 
 
-def _refund_demo_request(api, db, pro_id: uuid.UUID, index: int) -> BookingRequest:
+def _refund_demo_request(api, db, pro_id: uuid.UUID, index: int, *, tag: str = REFUNDS_TAG, client: SeedUser = REFUNDS_CLIENT) -> BookingRequest:
     """The demo's booking request #index, made by the seed-only client
     through the real route the first time."""
     tagged = db.execute(
         select(BookingRequest).where(
-            BookingRequest.pro_user_id == pro_id, BookingRequest.notes == f"{REFUNDS_TAG} #{index}"
+            BookingRequest.pro_user_id == pro_id, BookingRequest.notes == f"{tag} #{index}"
         )
     ).scalars().first()
     if tagged is not None:
@@ -846,7 +846,7 @@ def _refund_demo_request(api, db, pro_id: uuid.UUID, index: int) -> BookingReque
         select(ProPackage).where(ProPackage.pro_user_id == pro_id, ProPackage.is_active.is_(True)).order_by(ProPackage.created_at)
     ).scalars().first()
     niche_slug = db.execute(select(Niche.slug).where(Niche.id == package.niche_id)).scalar_one()
-    headers = _headers(db, REFUNDS_CLIENT.user_id)
+    headers = _headers(db, client.user_id)
     start_at, end_at = _first_open_window(api, headers, pro_id, package.id)
     resp = api.post(
         "/v1/client/bookings/request",
@@ -856,11 +856,11 @@ def _refund_demo_request(api, db, pro_id: uuid.UUID, index: int) -> BookingReque
             "niche_slug": niche_slug,
             "date_window": {"start_at": start_at, "end_at": end_at},
             "package_id": str(package.id),
-            "notes": f"{REFUNDS_TAG} #{index}",
+            "notes": f"{tag} #{index}",
         },
     )
     if resp.status_code != 200:
-        raise RuntimeError(f"refunds demo #{index}: booking request refused ({resp.status_code}): {resp.text}")
+        raise RuntimeError(f"{tag} #{index}: booking request refused ({resp.status_code}): {resp.text}")
     db.expire_all()
     return db.get(BookingRequest, uuid.UUID(resp.json()["booking_id"]))
 
@@ -903,7 +903,7 @@ def _deliver_stripe_events(db, payment_intent_id: str, types: set[str], *, since
     return len(events)
 
 
-def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str]):
+def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str], *, tag: str = REFUNDS_TAG, client: SeedUser = REFUNDS_CLIENT):
     """Booking #index taken as far as paid: requested by the seed-only
     client, accepted by the photographer, paid with Stripe's test card in
     test mode - each through the real route or Stripe's own API."""
@@ -912,7 +912,7 @@ def _paid_demo_gig(api, db, pro_id: uuid.UUID, index: int, lines: list[str]):
     from app.models.gig import GigStatus, StripePayment, StripePaymentKind
     from app.services import stripe_service  # noqa: F401 - sets the API key
 
-    request = _refund_demo_request(api, db, pro_id, index)
+    request = _refund_demo_request(api, db, pro_id, index, tag=tag, client=client)
     gig = _refund_demo_gig(db, request)
     if gig is None:
         resp = api.post(f"/v1/booking-requests/{request.id}/accept", headers=_headers(db, pro_id))
@@ -1083,7 +1083,57 @@ def seed_interviews(db, *, dry_run: bool) -> list[str]:
     return lines
 
 
+LIGHTROOM_TAG = "[demo:lightroom]"
+LIGHTROOM_PRO_EMAIL = "pro1@rawwers.dev"
+LIGHTROOM_CLIENT = SeedUser(
+    user_id=uuid.UUID("00000000-0000-0000-0000-0000000f0001"),
+    email="seed.lightroom@rawwers.dev",
+    password="Passw0rd!",
+    display_name="Marta Ribeiro",
+    roles=(UserRoleType.client,),
+)
+
+
+def seed_lightroom(db, *, dry_run: bool) -> list[str]:
+    """One booking with pro1 that the Lightroom plug-in can deliver into:
+    paid, shot, its photos not yet sent - so it is in the plug-in's client
+    picker (and the simulator's `gigs`) as "Marta R.".
+
+    Requested by a seed-only client, accepted and paid in Stripe test mode
+    through the real routes. A booking can only be made for a time still to
+    come, and "shot" means its start has passed, so its start, end and slot
+    are then moved back two days - the one value set by hand. Re-running
+    keeps the one booking; once its photos are sent from the app it drops
+    out of the picker, as a real one would."""
+    from app.models.booking import ConfirmedSlot
+    from app.models.gig import GigStatus
+
+    pro_id = _user_id(db, LIGHTROOM_PRO_EMAIL)
+    if pro_id is None:
+        return [f"{LIGHTROOM_PRO_EMAIL}: missing - run the base seed first"]
+    if dry_run:
+        return ["would book and pay one booking with pro1 in Stripe test mode, then move its shoot two days back"]
+    _upsert_user(db, LIGHTROOM_CLIENT)
+    db.commit()
+    api = _api()
+    _ensure_working_hours(api, db, pro_id)
+    lines: list[str] = []
+    gig = _paid_demo_gig(api, db, pro_id, 1, lines, tag=LIGHTROOM_TAG, client=LIGHTROOM_CLIENT)
+    if gig.status in {GigStatus.paid, GigStatus.scheduled} and gig.scheduled_start and gig.scheduled_start > datetime.now(timezone.utc):
+        length = (gig.scheduled_end or gig.scheduled_start + timedelta(hours=1)) - gig.scheduled_start
+        start = (datetime.now(timezone.utc) - timedelta(days=2)).replace(minute=0, second=0, microsecond=0)
+        gig.scheduled_start, gig.scheduled_end = start, start + length
+        slot = db.execute(select(ConfirmedSlot).where(ConfirmedSlot.gig_id == gig.id)).scalar_one_or_none()
+        if slot is not None:
+            slot.start_at_utc, slot.end_at_utc = start, start + length
+        db.commit()
+        lines.append(f"shoot moved back to {start:%Y-%m-%d %H:%M} UTC")
+    lines.append(f"gig {gig.id} is {gig.status.value}")
+    return lines
+
+
 STEPS = {
+    "lightroom": seed_lightroom,
     "response_time": seed_response_time,
     "chat": seed_chat,
     "available_now": seed_available_now,

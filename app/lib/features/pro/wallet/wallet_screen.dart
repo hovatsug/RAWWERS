@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/design/components/r_amount_row.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
@@ -12,20 +13,49 @@ import 'package:rawwers/core/paging/paged_list_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/router/app_router_pro.dart';
+import 'package:rawwers/api/models/earnings_entry_status.dart';
 import 'package:rawwers/api/models/earnings_source_type.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/wallet/earnings_summary_card.dart';
+import 'package:rawwers/features/pro/wallet/pending_availability.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 
-class WalletScreen extends ConsumerWidget {
-  const WalletScreen({super.key});
+class WalletScreen extends ConsumerStatefulWidget {
+  const WalletScreen({this.clock = DateTime.now, super.key});
+
+  /// When "now" is, for how long pending earnings have left. A parameter so a
+  /// test can stand at a chosen moment.
+  final DateTime Function() clock;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends ConsumerState<WalletScreen> {
+  /// Built again on coming back to the app, so "in about 5 hours" is not
+  /// left from the morning. No timer: the figure moves in hours and days, and
+  /// opening the screen or pulling it down builds it anyway.
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onResume: () => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final wallet = ref.watch(walletControllerProvider);
     final notifier = ref.read(walletControllerProvider.notifier);
+    final now = widget.clock();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Wallet')),
@@ -52,7 +82,7 @@ class WalletScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                _BalanceCard(data: value),
+                _BalanceCard(data: value, now: now),
                 const SizedBox(height: RSpace.s16),
                 // What the balance does not say: how it got there. The
                 // balance is a position; this is the history behind it.
@@ -62,7 +92,7 @@ class WalletScreen extends ConsumerWidget {
                 const SizedBox(height: RSpace.s24),
                 _PayoutHistory(payouts: value.payouts),
                 const SizedBox(height: RSpace.s24),
-                _Ledger(entries: value.ledger),
+                _Ledger(entries: value.ledger, now: now),
                     ],
                   ),
                 ),
@@ -77,14 +107,16 @@ class WalletScreen extends ConsumerWidget {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.data});
+  const _BalanceCard({required this.data, required this.now});
 
   final WalletData data;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final money = RMoney.of(context);
+    final next = nextPending(data.ledger, pendingEur: data.balance.pendingEur);
     return RCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,6 +140,17 @@ class _BalanceCard extends StatelessWidget {
           // showing only the withdrawable figure would make a photographer
           // think earnings vanished between a shoot and a payout.
           RAmountRow(label: 'Pending', amount: money.format(data.balance.pendingEur)),
+          if (next != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: RSpace.s8),
+              child: Text(
+                switch (whenAvailable(next.availableAt, now, RDates.of(context))) {
+                  final phrase? => 'Next: ${money.format(next.netEur)} available $phrase.',
+                  null => 'Next: ${money.format(next.netEur)} is being released. Pull down to refresh.',
+                },
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
           RAmountRow(label: 'On hold', amount: money.format(data.balance.heldEur)),
           // Asked for, not yet decided: out of what can be withdrawn the
           // moment it is asked for, back again if the request is rejected.
@@ -319,9 +362,10 @@ class _PayoutHistory extends StatelessWidget {
 }
 
 class _Ledger extends StatelessWidget {
-  const _Ledger({required this.entries});
+  const _Ledger({required this.entries, required this.now});
 
   final List<EarningsLedgerItemView> entries;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
@@ -354,7 +398,9 @@ class _Ledger extends StatelessWidget {
                             style: theme.textTheme.bodyMedium,
                           ),
                           Text(
-                            entry.status.name,
+                            entry.status == EarningsEntryStatus.pending
+                                ? pendingLine(entry.availableAt, now, RDates.of(context))
+                                : entry.status.name,
                             style: theme.textTheme.bodySmall,
                           ),
                         ],

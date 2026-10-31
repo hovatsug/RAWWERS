@@ -6,7 +6,7 @@ part of 'wallet_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$walletControllerHash() => r'489e6fbccdfabd0089ac09d2ab7eed2ce787998f';
+String _$walletControllerHash() => r'25df23042964ca6a1d144c39310cdd76dc01aacb';
 
 /// See also [WalletController].
 @ProviderFor(WalletController)

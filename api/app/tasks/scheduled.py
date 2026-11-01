@@ -125,3 +125,17 @@ def purge_raw_access_ips_task() -> int:
         return cleared
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.remove_unfinished_uploads")
+def remove_unfinished_uploads_task() -> int:
+    """Uploads started and never finished, after about a day (owner's decision 4)."""
+    from app.services.unfinished_uploads import remove_unfinished_uploads
+
+    db = SessionLocal()
+    try:
+        removed = remove_unfinished_uploads(db)
+        db.commit()
+        return removed
+    finally:
+        db.close()

@@ -108,6 +108,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.purge_raw_access_ips",
         "schedule": timedelta(days=1),
     },
+    # Uploads started and never finished, after about a day: an export killed
+    # half way holds the file's place and, in parts, storage.
+    "remove-unfinished-uploads": {
+        "task": "app.tasks.scheduled.remove_unfinished_uploads",
+        "schedule": timedelta(hours=1),
+    },
 }
 celery_app.conf.task_routes = {
     # Its own queue, served by the worker-photos processes: a photographer's
@@ -145,6 +151,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.relist_after_suspensions": {"queue": "media"},
     "app.tasks.scheduled.raise_clients_owed": {"queue": "media"},
     "app.tasks.scheduled.apply_due_findings": {"queue": "media"},
+    "app.tasks.scheduled.remove_unfinished_uploads": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

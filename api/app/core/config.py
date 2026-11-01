@@ -166,6 +166,8 @@ class Settings(BaseSettings):
     rate_limit_delivery_token_uploads_per_day: int = Field(default=5000, alias="RATE_LIMIT_DELIVERY_TOKEN_UPLOADS_PER_DAY")
     # The newest Lightroom plugin; an older one is told an update is available.
     lightroom_plugin_latest_version: str = Field(default="1.0.0", alias="LIGHTROOM_PLUGIN_LATEST_VERSION")
+    # Uploads started and untouched this long are removed (owner's decision 4).
+    unfinished_upload_max_age_hours: int = Field(default=24, alias="UNFINISHED_UPLOAD_MAX_AGE_HOURS")
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")
     admin_ip_allowlist: str = Field(default="", alias="ADMIN_IP_ALLOWLIST")
     admin_api_keys: str = Field(default="", alias="ADMIN_API_KEYS")

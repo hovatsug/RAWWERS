@@ -117,7 +117,7 @@ local function loadGigs( p )
 	end
 	p.rawwersGigItems = items
 	if #items == 0 then
-		p.rawwersGigNote = 'No gigs are waiting for photos. A booking appears here once it is paid and shot, until you send its gallery from the RAWWERS Pro app.'
+		p.rawwersGigNote = 'No gigs are waiting for photos. A booking appears here once it is paid, until you send its gallery from the RAWWERS Pro app. Press Refresh after a new booking.'
 	else
 		p.rawwersGigNote = ''
 	end

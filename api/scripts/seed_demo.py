@@ -1101,8 +1101,9 @@ def seed_lightroom(db, *, dry_run: bool) -> list[str]:
 
     Requested by a seed-only client, accepted and paid in Stripe test mode
     through the real routes. A booking can only be made for a time still to
-    come, and "shot" means its start has passed, so its start, end and slot
-    are then moved back two days - the one value set by hand. Re-running
+    come, and delivering after the shoot is the usual case, so its start, end
+    and slot are then moved back two days - the one value set by hand (the
+    picker lists a paid booking whatever its date). Re-running
     keeps the one booking; once its photos are sent from the app it drops
     out of the picker, as a real one would."""
     from app.models.booking import ConfirmedSlot

@@ -22,7 +22,7 @@ from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatu
 from app.models.gig import Gig, GigStatus
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
 from app.services import rate_limit
-from app.services.delivery_gigs import client_short_name
+from app.services.delivery_gigs import client_label, client_short_name
 
 SHA = "ab" * 32
 NOW = datetime.now(timezone.utc)
@@ -202,16 +202,30 @@ def test_no_delivery_route_returns_a_field_outside_its_own_list(client, db_sessi
 
 @pytest.mark.parametrize(
     "case",
-    ["future_shoot", "cancelled", "completed", "refunded", "sent_to_client", "selection_made", "other_photographer"],
+    [
+        "not_accepted",
+        "accepted_not_paid",
+        "payment_pending",
+        "cancelled",
+        "completed",
+        "refunded",
+        "disputed",
+        "sent_to_client",
+        "selection_made",
+        "other_photographer",
+    ],
 )
 def test_gigs_that_cannot_take_photos_from_here_are_not_listed(client, db_session, case):
     pro = _pro(db_session)
     other = _pro(db_session)
     kwargs = {
-        "future_shoot": {"starts": NOW + timedelta(days=3)},
+        "not_accepted": {"status": GigStatus.requested},
+        "accepted_not_paid": {"status": GigStatus.accepted},
+        "payment_pending": {"status": GigStatus.payment_pending},
         "cancelled": {"status": GigStatus.cancelled_by_client},
         "completed": {"status": GigStatus.completed},
         "refunded": {"status": GigStatus.refunded},
+        "disputed": {"status": GigStatus.disputed},
         "sent_to_client": {"gallery_status": ProofGalleryStatus.published},
         "selection_made": {"gallery_status": ProofGalleryStatus.selection_submitted},
         "other_photographer": {},
@@ -220,6 +234,54 @@ def test_gigs_that_cannot_take_photos_from_here_are_not_listed(client, db_sessio
     token = _token(client, pro)
 
     assert client.get("/v1/delivery/gigs", headers=_h(token)).json()["items"] == []
+
+
+@pytest.mark.parametrize("status", [GigStatus.paid, GigStatus.scheduled])
+def test_a_paid_booking_whose_shoot_is_still_to_come_is_listed(client, db_session, status):
+    # The pro app may make, fill and send a gallery for a paid booking at any
+    # time (require_gig_deliverable has no date rule), so the plug-in may too.
+    pro = _pro(db_session)
+    gig = _gig(db_session, pro, status=status, starts=NOW + timedelta(days=7))
+    (item,) = client.get("/v1/delivery/gigs", headers=_h(_token(client, pro))).json()["items"]
+    assert item["gig_id"] == str(gig.id)
+    assert _start(client, _token(client, pro), gig.id).status_code == 200
+
+
+def test_another_photographers_booking_never_appears_whatever_its_date(client, db_session):
+    pro = _pro(db_session)
+    other = _pro(db_session)
+    for starts in (NOW - timedelta(days=2), NOW + timedelta(days=7), None):
+        _gig(db_session, other, starts=starts)
+    mine = _gig(db_session, pro, starts=NOW + timedelta(days=7))
+    items = client.get("/v1/delivery/gigs", headers=_h(_token(client, pro))).json()["items"]
+    assert [i["gig_id"] for i in items] == [str(mine.id)]
+
+
+@pytest.mark.parametrize(
+    ("name", "email", "shown"),
+    [
+        (None, "marta.ribeiro@example.test", "marta R."),
+        ("", "gustall@example.test", "gustall"),
+        ("   ", "ana_silva@example.test", "ana S."),
+        ("ana@example.test", "ana@example.test", "ana"),
+        (None, "marta.1990@example.test", "marta"),
+        (None, "12345@example.test", "Client #{short}"),
+        (None, None, "Client #{short}"),
+    ],
+)
+def test_a_client_with_no_name_is_listed_by_email_then_by_booking(client, db_session, name, email, shown):
+    pro = _pro(db_session)
+    client_id = uuid.uuid4()
+    db_session.add(UserAccount(user_id=client_id, display_name=name, email=email))
+    db_session.commit()
+    gig = _gig(db_session, pro, client_id=client_id)
+
+    (item,) = client.get("/v1/delivery/gigs", headers=_h(_token(client, pro))).json()["items"]
+
+    assert item["gig_id"] == str(gig.id)
+    assert item["client_name"] == shown.format(short=str(gig.id)[:6])
+    if email:
+        assert email not in item["client_name"]
 
 
 def test_a_shoot_marked_done_is_listed_even_before_its_start(client, db_session):
@@ -251,15 +313,23 @@ def test_the_soonest_shoot_comes_first(client, db_session):
         ("Ana Maria Silva", "Ana S."),
         ("ana silva", "ana S."),
         ("Ana", "Ana"),
-        (None, "Client"),
-        ("", "Client"),
-        ("ana@example.test", "Client"),
-        ("+351 910 000 001", "Client"),
-        ("Ana 2nd", "Client"),
+        (None, None),
+        ("", None),
+        ("ana@example.test", None),
+        ("+351 910 000 001", None),
+        ("Ana 2nd", None),
     ],
 )
 def test_a_client_is_a_first_name_and_an_initial(name, shown):
     assert client_short_name(name) == shown
+
+
+def test_the_label_is_never_blank():
+    booking = uuid.UUID("3461c57d-e526-4b24-ab40-ab8f9f0efc7a")
+    assert client_label("Ana Maria Silva", "x@example.test", booking) == "Ana S."
+    assert client_label(None, "ana.maria.silva@example.test", booking) == "ana S."
+    assert client_label("", "", booking) == "Client #3461c5"
+    assert client_label(None, "not-an-email", booking) == "Client #3461c5"
 
 
 # --- uploading -------------------------------------------------------------------------

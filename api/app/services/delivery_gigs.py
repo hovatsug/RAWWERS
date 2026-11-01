@@ -2,7 +2,10 @@
 
 The plugin's client picker needs to tell one booking from another, nothing
 more: the client's first name and last initial, the shoot date, the package
-or niche, how many photos it includes, and how far the delivery has got.
+or niche, how many photos it includes, and how far the delivery has got. A
+client with no usable name is shown by the start of their email address, cut
+the same way, and failing that by the booking ("Client #3461c5"): a row is
+never dropped or left blank.
 Everything returned is built here, field by field - no model is handed out
 whole - so nothing else about the client (email, phone, address, messages,
 payments) and nothing about money can leak through a field added to a model
@@ -21,23 +24,38 @@ from app.core.errors import APIError
 from app.models.admin import UserAccount
 from app.models.booking import ConfirmedSlot
 from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatus
-from app.models.gig import Gig, GigStatus
+from app.models.gig import Gig
 from app.models.media import MediaAsset, MediaStatus
 from app.schemas.delivery import DeliveryGigView
 from app.services.gig_state import GALLERY_DELIVERABLE_STATUSES
 
 _NOT_A_NAME = re.compile(r"[@\d]")
+_EMAIL_SEPARATORS = re.compile(r"[._+\-]+")
 
 
-def client_short_name(display_name: str | None) -> str:
-    """'Ana Maria Silva' -> 'Ana S.'. A name that looks like an email address
-    or a phone number is not shown at all."""
+def client_short_name(display_name: str | None) -> str | None:
+    """'Ana Maria Silva' -> 'Ana S.'. None for no name, or one that looks like
+    an email address or a phone number."""
     parts = (display_name or "").split()
     if not parts or any(_NOT_A_NAME.search(part) for part in parts):
-        return "Client"
+        return None
     if len(parts) == 1:
         return parts[0][:40]
     return f"{parts[0][:40]} {parts[-1][0].upper()}."
+
+
+def _email_name(email: str | None) -> str | None:
+    """'ana.maria.silva@x' -> 'ana S.': the part before the @, split where a
+    name would be, without the pieces that hold digits."""
+    if not email or "@" not in email:
+        return None
+    words = [w for w in _EMAIL_SEPARATORS.split(email.split("@", 1)[0]) if w and not _NOT_A_NAME.search(w)]
+    return client_short_name(" ".join(words))
+
+
+def client_label(display_name: str | None, email: str | None, gig_id: uuid.UUID) -> str:
+    """The client as the picker shows them: never blank, never their email."""
+    return client_short_name(display_name) or _email_name(email) or f"Client #{str(gig_id)[:6]}"
 
 
 def _shoot_start(db: Session, gig: Gig) -> datetime | None:
@@ -45,14 +63,6 @@ def _shoot_start(db: Session, gig: Gig) -> datetime | None:
         return gig.scheduled_start
     slot = db.execute(select(ConfirmedSlot.start_at_utc).where(ConfirmedSlot.gig_id == gig.id)).scalar_one_or_none()
     return slot
-
-
-def _is_shot(gig: Gig, start: datetime | None, now: datetime) -> bool:
-    """Confirmed and shot: marked done, or its start has passed. A booking
-    with no recorded start is offered rather than hidden."""
-    if gig.status == GigStatus.shoot_done or start is None:
-        return True
-    return start <= now
 
 
 def _counts(db: Session, gallery_id: uuid.UUID | None) -> tuple[int, int]:
@@ -68,10 +78,12 @@ def _counts(db: Session, gallery_id: uuid.UUID | None) -> tuple[int, int]:
 
 
 def deliverable_gigs(db: Session, pro_user_id: uuid.UUID) -> list[DeliveryGigView]:
-    """The photographer's gigs that can receive photos from the plugin:
-    paid and still open, shot, and not yet sent to the client. A gallery in
-    progress can take more. Soonest shoot first."""
-    now = datetime.now(timezone.utc)
+    """The photographer's gigs that can receive photos from the plugin: paid
+    and still open (paid, scheduled, shoot_done), and not yet sent to the
+    client. A gallery in progress can take more. A shoot still to come is
+    listed too: the pro app may make, fill and send a gallery for a paid
+    booking at any time, and nothing here is sent to the client. Soonest
+    shoot first."""
     rows = db.execute(
         select(Gig, ProofGallery)
         .outerjoin(ProofGallery, ProofGallery.gig_id == Gig.id)
@@ -82,8 +94,6 @@ def deliverable_gigs(db: Session, pro_user_id: uuid.UUID) -> list[DeliveryGigVie
         if gallery is not None and gallery.status != ProofGalleryStatus.draft:
             continue
         start = _shoot_start(db, gig)
-        if not _is_shot(gig, start, now):
-            continue
         meta = gig.meta or {}
         snapshot = meta.get("pricing_snapshot") if isinstance(meta.get("pricing_snapshot"), dict) else {}
         included = gallery.included_photos if gallery is not None else snapshot.get("included_photos")
@@ -95,7 +105,7 @@ def deliverable_gigs(db: Session, pro_user_id: uuid.UUID) -> list[DeliveryGigVie
                 DeliveryGigView(
                     gig_id=gig.id,
                     gallery_id=gallery.id if gallery else None,
-                    client_name=client_short_name(client.display_name if client else None),
+                    client_name=client_label(client.display_name if client else None, client.email if client else None, gig.id),
                     shoot_starts_at=start,
                     shoot_starts_at_epoch=int(start.timestamp()) if start else None,
                     package_title=snapshot.get("package_title") if isinstance(snapshot.get("package_title"), str) else None,

@@ -11,12 +11,28 @@
 ///         "max_devices": {
 ///             "type": "integer",
 ///             "title": "Max Devices"
+///         },
+///         "plugin_download_url": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Plugin Download Url"
+///         },
+///         "plugin_latest_version": {
+///             "type": "string",
+///             "title": "Plugin Latest Version"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
 ///         "items",
-///         "max_devices"
+///         "max_devices",
+///         "plugin_latest_version"
 ///     ],
 ///     "title": "DeliveryDevicesResponse"
 /// }
@@ -39,6 +55,14 @@ abstract class DeliveryDevicesResponse with _$DeliveryDevicesResponse {
     /// maxDevices
     @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)
     required int maxDevices,
+
+    /// pluginDownloadUrl
+    @JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_)
+    String? pluginDownloadUrl,
+
+    /// pluginLatestVersion
+    @JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_)
+    required String pluginLatestVersion,
   }) = _DeliveryDevicesResponse;
 
   factory DeliveryDevicesResponse.fromJson(Map<String, dynamic> json) =>
@@ -47,4 +71,8 @@ abstract class DeliveryDevicesResponse with _$DeliveryDevicesResponse {
   static const String itemsKey_ = r'items';
 
   static const String maxDevicesKey_ = r'max_devices';
+
+  static const String pluginDownloadUrlKey_ = r'plugin_download_url';
+
+  static const String pluginLatestVersionKey_ = r'plugin_latest_version';
 }

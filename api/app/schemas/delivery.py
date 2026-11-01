@@ -38,6 +38,11 @@ class DeliveryDeviceView(BaseModel):
 class DeliveryDevicesResponse(BaseModel):
     items: list[DeliveryDeviceView]
     max_devices: int
+    #: Where to download the plug-in (LIGHTROOM_PLUGIN_DOWNLOAD_URL); null
+    #: while it is unset, and the app hides its button.
+    plugin_download_url: str | None = None
+    #: The newest plug-in (LIGHTROOM_PLUGIN_LATEST_VERSION).
+    plugin_latest_version: str
 
 
 # --- the plugin --------------------------------------------------------------------

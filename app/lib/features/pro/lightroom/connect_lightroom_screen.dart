@@ -8,6 +8,7 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/lightroom/connect_lightroom_controller.dart';
+import 'package:rawwers/features/pro/lightroom/plugin_download_link.dart';
 
 /// Settings > Connect Lightroom: a one-time code for the Lightroom Classic
 /// plug-in, and the devices already connected, each with Revoke.
@@ -37,6 +38,12 @@ class ConnectLightroomScreen extends ConsumerWidget {
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: RSpace.s16),
+              // Only while the server has an address for it (owner's
+              // decision 5): hosting comes with the deploy plan.
+              if (devices.valueOrNull?.pluginDownloadUrl case final String url) ...[
+                _PluginDownloadCard(url: url, version: devices.valueOrNull!.pluginLatestVersion),
+                const SizedBox(height: RSpace.s16),
+              ],
               const _PairingCodeCard(),
               const SizedBox(height: RSpace.s24),
               Text('Connected devices', style: theme.textTheme.titleMedium),
@@ -71,6 +78,54 @@ class ConnectLightroomScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PluginDownloadCard extends ConsumerWidget {
+  const _PluginDownloadCard({required this.url, required this.version});
+
+  final String url;
+  final String version;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return RCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('The plug-in', style: theme.textTheme.titleMedium),
+          const SizedBox(height: RSpace.s8),
+          Text(
+            'RAWWERS for Lightroom Classic, version $version. Download it on the Mac with Lightroom, '
+            'then add it in File > Plug-in Manager.',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: RSpace.s12),
+          RButton(
+            label: 'Download the plug-in',
+            variant: RButtonVariant.secondary,
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final opened = await ref.read(pluginDownloadOpenerProvider).open(Uri.parse(url));
+              if (!opened) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Could not open the link. Copy it and open it on your Mac.')),
+                );
+              }
+            },
+          ),
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: url));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied.')));
+            },
+            icon: const Icon(Icons.link, size: RIcon.inline),
+            label: const Text('Copy link'),
+          ),
+        ],
       ),
     );
   }

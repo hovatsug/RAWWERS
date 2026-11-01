@@ -17,7 +17,9 @@ mixin _$DeliveryDevicesResponse {
 
 /// items
 @JsonKey(name: DeliveryDevicesResponse.itemsKey_) List<DeliveryDeviceView> get items;/// maxDevices
-@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) int get maxDevices;
+@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) int get maxDevices;/// pluginDownloadUrl
+@JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_) String? get pluginDownloadUrl;/// pluginLatestVersion
+@JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_) String get pluginLatestVersion;
 /// Create a copy of DeliveryDevicesResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +32,16 @@ $DeliveryDevicesResponseCopyWith<DeliveryDevicesResponse> get copyWith => _$Deli
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeliveryDevicesResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.maxDevices, maxDevices) || other.maxDevices == maxDevices));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeliveryDevicesResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.maxDevices, maxDevices) || other.maxDevices == maxDevices)&&(identical(other.pluginDownloadUrl, pluginDownloadUrl) || other.pluginDownloadUrl == pluginDownloadUrl)&&(identical(other.pluginLatestVersion, pluginLatestVersion) || other.pluginLatestVersion == pluginLatestVersion));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),maxDevices);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),maxDevices,pluginDownloadUrl,pluginLatestVersion);
 
 @override
 String toString() {
-  return 'DeliveryDevicesResponse(items: $items, maxDevices: $maxDevices)';
+  return 'DeliveryDevicesResponse(items: $items, maxDevices: $maxDevices, pluginDownloadUrl: $pluginDownloadUrl, pluginLatestVersion: $pluginLatestVersion)';
 }
 
 
@@ -50,7 +52,7 @@ abstract mixin class $DeliveryDevicesResponseCopyWith<$Res>  {
   factory $DeliveryDevicesResponseCopyWith(DeliveryDevicesResponse value, $Res Function(DeliveryDevicesResponse) _then) = _$DeliveryDevicesResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: DeliveryDevicesResponse.itemsKey_) List<DeliveryDeviceView> items,@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) int maxDevices
+@JsonKey(name: DeliveryDevicesResponse.itemsKey_) List<DeliveryDeviceView> items,@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) int maxDevices,@JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_) String? pluginDownloadUrl,@JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_) String pluginLatestVersion
 });
 
 
@@ -67,11 +69,13 @@ class _$DeliveryDevicesResponseCopyWithImpl<$Res>
 
 /// Create a copy of DeliveryDevicesResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? maxDevices = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? maxDevices = null,Object? pluginDownloadUrl = freezed,Object? pluginLatestVersion = null,}) {
   return _then(_self.copyWith(
 items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<DeliveryDeviceView>,maxDevices: null == maxDevices ? _self.maxDevices : maxDevices // ignore: cast_nullable_to_non_nullable
-as int,
+as int,pluginDownloadUrl: freezed == pluginDownloadUrl ? _self.pluginDownloadUrl : pluginDownloadUrl // ignore: cast_nullable_to_non_nullable
+as String?,pluginLatestVersion: null == pluginLatestVersion ? _self.pluginLatestVersion : pluginLatestVersion // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -156,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: DeliveryDevicesResponse.itemsKey_)  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)  int maxDevices)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: DeliveryDevicesResponse.itemsKey_)  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)  int maxDevices, @JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_)  String? pluginDownloadUrl, @JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_)  String pluginLatestVersion)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DeliveryDevicesResponse() when $default != null:
-return $default(_that.items,_that.maxDevices);case _:
+return $default(_that.items,_that.maxDevices,_that.pluginDownloadUrl,_that.pluginLatestVersion);case _:
   return orElse();
 
 }
@@ -177,10 +181,10 @@ return $default(_that.items,_that.maxDevices);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: DeliveryDevicesResponse.itemsKey_)  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)  int maxDevices)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: DeliveryDevicesResponse.itemsKey_)  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)  int maxDevices, @JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_)  String? pluginDownloadUrl, @JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_)  String pluginLatestVersion)  $default,) {final _that = this;
 switch (_that) {
 case _DeliveryDevicesResponse():
-return $default(_that.items,_that.maxDevices);case _:
+return $default(_that.items,_that.maxDevices,_that.pluginDownloadUrl,_that.pluginLatestVersion);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +201,10 @@ return $default(_that.items,_that.maxDevices);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: DeliveryDevicesResponse.itemsKey_)  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)  int maxDevices)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: DeliveryDevicesResponse.itemsKey_)  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_)  int maxDevices, @JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_)  String? pluginDownloadUrl, @JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_)  String pluginLatestVersion)?  $default,) {final _that = this;
 switch (_that) {
 case _DeliveryDevicesResponse() when $default != null:
-return $default(_that.items,_that.maxDevices);case _:
+return $default(_that.items,_that.maxDevices,_that.pluginDownloadUrl,_that.pluginLatestVersion);case _:
   return null;
 
 }
@@ -212,7 +216,7 @@ return $default(_that.items,_that.maxDevices);case _:
 
 @jsonSerializable
 class _DeliveryDevicesResponse extends DeliveryDevicesResponse {
-  const _DeliveryDevicesResponse({@JsonKey(name: DeliveryDevicesResponse.itemsKey_) required final  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) required this.maxDevices}): _items = items,super._();
+  const _DeliveryDevicesResponse({@JsonKey(name: DeliveryDevicesResponse.itemsKey_) required final  List<DeliveryDeviceView> items, @JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) required this.maxDevices, @JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_) this.pluginDownloadUrl, @JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_) required this.pluginLatestVersion}): _items = items,super._();
   factory _DeliveryDevicesResponse.fromJson(Map<String, dynamic> json) => _$DeliveryDevicesResponseFromJson(json);
 
 /// items
@@ -226,6 +230,10 @@ class _DeliveryDevicesResponse extends DeliveryDevicesResponse {
 
 /// maxDevices
 @override@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) final  int maxDevices;
+/// pluginDownloadUrl
+@override@JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_) final  String? pluginDownloadUrl;
+/// pluginLatestVersion
+@override@JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_) final  String pluginLatestVersion;
 
 /// Create a copy of DeliveryDevicesResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -240,16 +248,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeliveryDevicesResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.maxDevices, maxDevices) || other.maxDevices == maxDevices));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeliveryDevicesResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.maxDevices, maxDevices) || other.maxDevices == maxDevices)&&(identical(other.pluginDownloadUrl, pluginDownloadUrl) || other.pluginDownloadUrl == pluginDownloadUrl)&&(identical(other.pluginLatestVersion, pluginLatestVersion) || other.pluginLatestVersion == pluginLatestVersion));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),maxDevices);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),maxDevices,pluginDownloadUrl,pluginLatestVersion);
 
 @override
 String toString() {
-  return 'DeliveryDevicesResponse(items: $items, maxDevices: $maxDevices)';
+  return 'DeliveryDevicesResponse(items: $items, maxDevices: $maxDevices, pluginDownloadUrl: $pluginDownloadUrl, pluginLatestVersion: $pluginLatestVersion)';
 }
 
 
@@ -260,7 +268,7 @@ abstract mixin class _$DeliveryDevicesResponseCopyWith<$Res> implements $Deliver
   factory _$DeliveryDevicesResponseCopyWith(_DeliveryDevicesResponse value, $Res Function(_DeliveryDevicesResponse) _then) = __$DeliveryDevicesResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: DeliveryDevicesResponse.itemsKey_) List<DeliveryDeviceView> items,@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) int maxDevices
+@JsonKey(name: DeliveryDevicesResponse.itemsKey_) List<DeliveryDeviceView> items,@JsonKey(name: DeliveryDevicesResponse.maxDevicesKey_) int maxDevices,@JsonKey(name: DeliveryDevicesResponse.pluginDownloadUrlKey_) String? pluginDownloadUrl,@JsonKey(name: DeliveryDevicesResponse.pluginLatestVersionKey_) String pluginLatestVersion
 });
 
 
@@ -277,11 +285,13 @@ class __$DeliveryDevicesResponseCopyWithImpl<$Res>
 
 /// Create a copy of DeliveryDevicesResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? maxDevices = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? maxDevices = null,Object? pluginDownloadUrl = freezed,Object? pluginLatestVersion = null,}) {
   return _then(_DeliveryDevicesResponse(
 items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<DeliveryDeviceView>,maxDevices: null == maxDevices ? _self.maxDevices : maxDevices // ignore: cast_nullable_to_non_nullable
-as int,
+as int,pluginDownloadUrl: freezed == pluginDownloadUrl ? _self.pluginDownloadUrl : pluginDownloadUrl // ignore: cast_nullable_to_non_nullable
+as String?,pluginLatestVersion: null == pluginLatestVersion ? _self.pluginLatestVersion : pluginLatestVersion // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

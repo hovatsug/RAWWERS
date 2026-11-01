@@ -170,6 +170,9 @@ class Settings(BaseSettings):
     # The oldest plugin still supported, raised only for a breaking change; an
     # older one is refused (426) until it is updated. Never above the newest.
     lightroom_plugin_min_version: str = Field(default="1.0.0", alias="LIGHTROOM_PLUGIN_MIN_VERSION")
+    # Where the pro app's Connect Lightroom screen downloads the plugin; empty
+    # hides its button (owner's decision 5). https only.
+    lightroom_plugin_download_url: str = Field(default="", alias="LIGHTROOM_PLUGIN_DOWNLOAD_URL")
     # Uploads started and untouched this long are removed (owner's decision 4).
     unfinished_upload_max_age_hours: int = Field(default=24, alias="UNFINISHED_UPLOAD_MAX_AGE_HOURS")
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_not_banned
+from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import UserRoleType
 from app.schemas.media import CurrentUser
@@ -44,12 +45,21 @@ def create_pairing_code(user: CurrentUser = Depends(require_not_banned), db: Ses
     return PairingCodeResponse(code=code, expires_at=expires_at, valid_minutes=int(PAIRING_CODE_TTL.total_seconds() // 60))
 
 
+def plugin_download_url() -> str | None:
+    """LIGHTROOM_PLUGIN_DOWNLOAD_URL when it is an https address; the app
+    opens it, so nothing else is handed out (owner's decision 5)."""
+    url = get_settings().lightroom_plugin_download_url.strip()
+    return url if url.startswith("https://") and len(url) > len("https://") else None
+
+
 @router.get("/devices", response_model=DeliveryDevicesResponse)
 def list_devices(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> DeliveryDevicesResponse:
     _require_pro(db, user)
     return DeliveryDevicesResponse(
         items=[DeliveryDeviceView.model_validate(row, from_attributes=True) for row in active_tokens(db, user.user_id)],
         max_devices=MAX_ACTIVE_DEVICES,
+        plugin_download_url=plugin_download_url(),
+        plugin_latest_version=get_settings().lightroom_plugin_latest_version,
     )
 
 

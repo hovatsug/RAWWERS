@@ -4,9 +4,12 @@
 // What matters: the code is shown large, with how long it lasts and where to
 // type it; asking again replaces it; each device shows its name and last use;
 // Revoke asks first, then calls the server and the device leaves the list;
-// the screen is reachable from Settings (pro_settings_screen_test.dart).
+// the screen is reachable from Settings (pro_settings_screen_test.dart); the
+// plug-in's download button shows only while the server has an address for it
+// (owner's decision 5), opens it, and can copy it.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/api_client/lightroom_client.dart';
@@ -17,6 +20,7 @@ import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/lightroom/connect_lightroom_controller.dart';
 import 'package:rawwers/features/pro/lightroom/connect_lightroom_screen.dart';
+import 'package:rawwers/features/pro/lightroom/plugin_download_link.dart';
 import 'package:retrofit/retrofit.dart';
 
 DeliveryDeviceView _device(String id, String name) => DeliveryDeviceView(
@@ -30,9 +34,10 @@ DeliveryDeviceView _device(String id, String name) => DeliveryDeviceView(
 
 /// The server, as the generated client sees it.
 class _FakeClient implements LightroomClient {
-  _FakeClient(this.devices);
+  _FakeClient(this.devices, {this.downloadUrl});
 
   List<DeliveryDeviceView> devices;
+  String? downloadUrl;
   int codesIssued = 0;
   final revoked = <String>[];
   int? revokeStatus;
@@ -66,7 +71,12 @@ class _FakeClient implements LightroomClient {
     ProgressCallback? onReceiveProgress,
     Map<String, dynamic>? extras,
   }) async {
-    final body = DeliveryDevicesResponse(items: List.of(devices), maxDevices: 3);
+    final body = DeliveryDevicesResponse(
+      items: List.of(devices),
+      maxDevices: 3,
+      pluginDownloadUrl: downloadUrl,
+      pluginLatestVersion: '1.2.0',
+    );
     return HttpResponse(body, _ok(body));
   }
 
@@ -95,11 +105,31 @@ class _FakeClient implements LightroomClient {
   }
 }
 
-Future<_FakeClient> _pump(WidgetTester tester, {List<DeliveryDeviceView>? devices}) async {
-  final client = _FakeClient(devices ?? [_device('1', 'Studio iMac'), _device('2', 'MacBook Pro')]);
+/// The browser, as the screen sees it.
+class _FakeOpener implements PluginDownloadOpener {
+  final opened = <Uri>[];
+  bool works = true;
+
+  @override
+  Future<bool> open(Uri url) async {
+    opened.add(url);
+    return works;
+  }
+}
+
+Future<_FakeClient> _pump(
+  WidgetTester tester, {
+  List<DeliveryDeviceView>? devices,
+  String? downloadUrl,
+  _FakeOpener? opener,
+}) async {
+  final client = _FakeClient(devices ?? [_device('1', 'Studio iMac'), _device('2', 'MacBook Pro')], downloadUrl: downloadUrl);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [lightroomClientProvider.overrideWithValue(client)],
+      overrides: [
+        lightroomClientProvider.overrideWithValue(client),
+        pluginDownloadOpenerProvider.overrideWithValue(opener ?? _FakeOpener()),
+      ],
       child: MaterialApp(theme: buildProTheme(), home: const ConnectLightroomScreen()),
     ),
   );
@@ -183,6 +213,49 @@ void main() {
 
     expect(find.text('Studio iMac'), findsOneWidget);
     expect(find.textContaining('revoked'), findsNothing);
+  });
+
+  testWidgets('with no download address there is no download button', (tester) async {
+    await _pump(tester);
+    expect(find.text('Download the plug-in'), findsNothing);
+    expect(find.text('Copy link'), findsNothing);
+  });
+
+  testWidgets('with an address, the button says which version and opens it', (tester) async {
+    final opener = _FakeOpener();
+    await _pump(tester, downloadUrl: 'https://downloads.example.test/rawwers-lightroom-1.2.0.zip', opener: opener);
+
+    expect(find.textContaining('version 1.2.0'), findsOneWidget);
+    await tester.tap(find.text('Download the plug-in'));
+    await tester.pumpAndSettle();
+
+    expect(opener.opened, [Uri.parse('https://downloads.example.test/rawwers-lightroom-1.2.0.zip')]);
+  });
+
+  testWidgets('the link can be copied, to open it on the Mac', (tester) async {
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String?;
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    await _pump(tester, downloadUrl: 'https://downloads.example.test/a.zip');
+
+    await tester.tap(find.text('Copy link'));
+    await tester.pumpAndSettle();
+
+    expect(copied, 'https://downloads.example.test/a.zip');
+    expect(find.text('Link copied.'), findsOneWidget);
+  });
+
+  testWidgets('a link that will not open says so', (tester) async {
+    final opener = _FakeOpener()..works = false;
+    await _pump(tester, downloadUrl: 'https://downloads.example.test/a.zip', opener: opener);
+
+    await tester.tap(find.text('Download the plug-in'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Could not open the link'), findsOneWidget);
   });
 
   test('a device already gone counts as revoked', () async {

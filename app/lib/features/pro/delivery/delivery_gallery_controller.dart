@@ -276,6 +276,10 @@ class DeliveryUploadController extends _$DeliveryUploadController {
         visibility: MediaVisibility.clientOnly,
         contentType: _contentTypeFor(file.name),
         fileName: file.name,
+        // With its SHA-256 (the service hashes it): the same file sent to
+        // this gallery again is the photo already there, as from Lightroom.
+        // Not loaded yet: sent without, as older versions of the app did.
+        galleryId: ref.read(deliveryGalleryControllerProvider(gig)).valueOrNull?.gallery.id,
         onSendProgress: (sent, total) {
           final current = state[key];
           if (current is! DeliveryUploadUploading) return;

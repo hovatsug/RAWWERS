@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -102,7 +103,9 @@ class _Backend {
     calls.add('${o.method} ${o.path}');
 
     if (o.path == '/v1/media/photos/uploads') {
+      createBodies.add(Map<String, dynamic>.from(jsonDecode(jsonEncode(o.data)) as Map));
       final assetId = 'asset-${calls.where((c) => c.contains('/uploads')).length}';
+      if (alreadyThere) return jsonResponseBody(jsonEncode({'media_asset_id': assetId, 'upload': null, 'duplicate': true}), 200);
       return jsonResponseBody(
         jsonEncode({
           'media_asset_id': assetId,
@@ -173,6 +176,12 @@ class _Backend {
         'updated_at': '2026-09-23T10:00:00Z',
         'objects': <dynamic>[],
       };
+
+  /// What each upload start asked for.
+  final createBodies = <Map<String, dynamic>>[];
+
+  /// Answer every upload start with "this file is in the gallery already".
+  var alreadyThere = false;
 
   Map<String, dynamic> _galleryJson() => {
         'id': 'gal-1',
@@ -252,6 +261,30 @@ Future<({ProviderContainer container, _Backend backend, _ControllableBackoff bac
 }
 
 void main() {
+  test("a phone delivery names its gallery and the file's SHA-256, so a repeat is caught", () async {
+    final t = await _setup([_file('a.jpg')]);
+    t.backend.readyAssets.add('asset-1');
+
+    await t.container.read(deliveryUploadControllerProvider(_gig).notifier).pickAndUpload();
+    await _settle();
+
+    expect(t.backend.createBodies.single['gallery_id'], 'gal-1');
+    expect(t.backend.createBodies.single['sha256'], sha256.convert(Uint8List(8)).toString());
+  });
+
+  test('a file the gallery already has is not sent again, and ends up in the gallery', () async {
+    final t = await _setup([_file('a.jpg')]);
+    t.backend
+      ..alreadyThere = true
+      ..readyAssets.add('asset-1');
+
+    await t.container.read(deliveryUploadControllerProvider(_gig).notifier).pickAndUpload();
+    await _settle();
+
+    expect(t.backend.calls.where((c) => c.contains('/complete')), isEmpty, reason: 'nothing was sent, so nothing to complete');
+    expect(t.container.read(deliveryUploadControllerProvider(_gig)), isEmpty, reason: 'not left as a failed row');
+  });
+
   test('a photo whose watermark is already ready attaches on the first try', () async {
     final t = await _setup([_file('a.jpg')]);
     t.backend.readyAssets.add('asset-1');

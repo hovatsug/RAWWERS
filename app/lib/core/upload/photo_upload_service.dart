@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:rawwers/api/api_client/media_client.dart';
 import 'package:rawwers/api/models/complete_photo_upload_request.dart';
@@ -118,16 +119,31 @@ class PhotoUploadService {
     CancelToken? cancelToken,
     void Function(int sent, int total)? onSendProgress,
     int maxAttempts = 3,
+    String? galleryId,
   }) async {
+    // A delivery names its gallery and the file's SHA-256, so the server's
+    // duplicate check covers it (the Lightroom plug-in's): the same file sent
+    // to the same gallery again is the photo already there, and a create
+    // retried after a lost answer finds the photo the first one made. Hashed
+    // from the same [openFile] the upload then reads, a piece at a time, and
+    // checked by the server against the bytes that arrive.
+    final sha = galleryId == null ? null : await sha256OfStream(openFile());
+    if (cancelToken?.isCancelled ?? false) return const Err(NetworkError());
+
     final created = await _create(
       purpose: purpose,
       contentType: contentType,
       fileName: fileName,
       visibility: visibility,
       maxAttempts: maxAttempts,
+      galleryId: galleryId,
+      sha256: sha,
     );
     if (created case Err(:final failure)) return Err(failure);
-    final (mediaAssetId, firstUpload) = (created as Ok<(String, UploadPayload)>).value;
+    final (mediaAssetId, maybeUpload) = (created as Ok<(String, UploadPayload?)>).value;
+    // Already in the gallery: nothing to send, and nothing to complete.
+    if (maybeUpload == null) return Ok(mediaAssetId);
+    final firstUpload = maybeUpload;
 
     if (cancelToken?.isCancelled ?? false) return const Err(NetworkError());
 
@@ -166,13 +182,16 @@ class PhotoUploadService {
   }
 
   /// Creates the asset. Only this request is retried here - once an asset
-  /// exists, every later attempt works on it.
-  Future<Result<(String, UploadPayload)>> _create({
+  /// exists, every later attempt works on it. The payload is null only for a
+  /// delivery the gallery already holds.
+  Future<Result<(String, UploadPayload?)>> _create({
     required MediaPurpose purpose,
     required String contentType,
     String? fileName,
     MediaVisibility? visibility,
     required int maxAttempts,
+    String? galleryId,
+    String? sha256,
   }) async {
     ApiFailure? lastFailure;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -183,6 +202,8 @@ class PhotoUploadService {
             contentType: contentType,
             fileName: fileName,
             visibility: visibility,
+            galleryId: galleryId,
+            sha256: sha256,
           ),
           authorization: null,
           xMinusUserMinusId: null,
@@ -191,11 +212,12 @@ class PhotoUploadService {
       switch (result) {
         case Ok(:final value):
           // Null only for a delivery that named its gallery and hash and is
-          // already there (the Lightroom plug-in's path). This app names
-          // neither, so it always gets a URL; if not, it is the server's
+          // already there. Anything else without an address is the server's
           // fault, not a retry.
           final upload = value.upload;
-          if (upload == null) return const Err(ServerError('The server gave no upload address.'));
+          if (upload == null && !(sha256 != null && value.duplicate)) {
+            return const Err(ServerError('The server gave no upload address.'));
+          }
           return Ok((value.mediaAssetId, upload));
         case Err(:final failure):
           lastFailure = failure;
@@ -443,4 +465,26 @@ Stream<Uint8List> _slice(Stream<Uint8List> source, int start, int end) async* {
     position = chunkEnd;
     if (position >= end) break;
   }
+}
+
+/// The SHA-256 of [bytes], hex, read a piece at a time: a 50 MB file is never
+/// held whole to hash it.
+Future<String> sha256OfStream(Stream<List<int>> bytes) async {
+  final digest = _DigestSink();
+  final input = sha256.startChunkedConversion(digest);
+  await for (final piece in bytes) {
+    input.add(piece);
+  }
+  input.close();
+  return digest.value.toString();
+}
+
+class _DigestSink implements Sink<Digest> {
+  late Digest value;
+
+  @override
+  void add(Digest data) => value = data;
+
+  @override
+  void close() {}
 }

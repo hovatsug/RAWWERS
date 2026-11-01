@@ -87,7 +87,7 @@ local function handle( method, url, headers, body )
 		end
 		server.nextId = server.nextId + 1
 		local id = 'asset-' .. server.nextId
-		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, position = data.position }
+		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, position = data.position, exportId = data.export_id }
 		server.bySha[ data.sha256 ] = id
 		return respond( 200, { media_asset_id = id, gallery_id = 'gal-1', duplicate = false, use_multipart = false,
 			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
@@ -239,6 +239,29 @@ test( 'each photo is sent with its place in the export, so the gallery keeps tha
 	local places = {}
 	for _, asset in pairs( server.assets ) do places[ asset.name:match( 'IMG_%d' ) ] = asset.position end
 	eq( places, { IMG_9 = 1, IMG_2 = 2, IMG_5 = 3 } )
+end )
+
+test( 'each export names itself, so a later export goes after the earlier ones in the gallery', function()
+	newServer()
+	freshKeychain()
+	export { 'IMG_1.jpg', 'IMG_2.jpg' }
+	local first = {}
+	for _, asset in pairs( server.assets ) do first[ asset.exportId or 'none' ] = true end
+	export { 'IMG_3.jpg', 'IMG_4.jpg' }
+	local names, second = {}, {}
+	for _, asset in pairs( server.assets ) do
+		names[ #names + 1 ] = asset.exportId
+		if asset.name:match( 'IMG_[34]%.jpg$' ) then second[ asset.exportId or 'none' ] = true end
+	end
+	eq( #names, 4 )
+	local firstId, secondId = next( first ), next( second )
+	ok( firstId and secondId, 'both exports were sent' )
+	ok( next( first, firstId ) == nil, 'one export, one name' )
+	ok( next( second, secondId ) == nil, 'one export, one name' )
+	ok( firstId ~= 'none' and secondId ~= 'none', 'every photo names its export' )
+	ok( firstId ~= secondId, 'two exports, two names' )
+	-- What the server accepts: letters, digits, dot, dash, underscore; 64 at most.
+	for _, id in ipairs { firstId, secondId } do ok( id:match( '^[%w._-]+$' ) and #id <= 64, id ) end
 end )
 
 test( 'storage never sees the token', function()

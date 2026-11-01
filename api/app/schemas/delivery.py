@@ -111,6 +111,9 @@ class DeliveryUploadRequest(BaseModel):
     #: The n-th photo of the export (from 1): the gallery is in this order,
     #: whatever order processing finishes in.
     position: int | None = Field(default=None, ge=1, le=1_000_000, strict=True)
+    #: The export this photo is part of, named by the plug-in: a later export
+    #: goes after the earlier ones in the gallery, each in its own order.
+    export_id: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
 
 
 class DeliveryUploadResponse(BaseModel):

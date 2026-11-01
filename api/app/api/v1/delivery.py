@@ -57,7 +57,13 @@ from app.services.delivery_access import (
     update_available,
 )
 from app.services.delivery_gigs import deliverable_gigs, own_gig
-from app.services.gallery_items import DELIVERY_POSITION_KEY
+from app.services.gallery_items import (
+    DELIVERY_EXPORT_KEY,
+    DELIVERY_EXPORT_NUMBER_KEY,
+    DELIVERY_POSITION_KEY,
+    export_number,
+    lock_gallery,
+)
 from app.services.gig_state import require_gig_deliverable
 from app.services.photo_uploads import max_photo_bytes
 from app.services.rate_limit import enforce_named_rate_limit
@@ -225,12 +231,17 @@ def start_upload(
         db=db,
     )
     if body.position is not None and not started.duplicate:
-        # The first position stays: a file sent again, or resumed, is the
-        # photo it was the first time.
+        # The first place stays: a file sent again, or resumed - even from a
+        # later export - is the photo it was the first time.
+        lock_gallery(db, gallery.id)
         asset = db.get(MediaAsset, started.media_asset_id)
         if asset is not None and DELIVERY_POSITION_KEY not in (asset.meta or {}):
-            asset.meta = {**(asset.meta or {}), DELIVERY_POSITION_KEY: body.position}
-            db.commit()
+            place = {DELIVERY_POSITION_KEY: body.position}
+            if body.export_id is not None:
+                place[DELIVERY_EXPORT_KEY] = body.export_id
+                place[DELIVERY_EXPORT_NUMBER_KEY] = export_number(db, gallery.id, body.export_id)
+            asset.meta = {**(asset.meta or {}), **place}
+        db.commit()
     large = body.byte_size > MULTIPART_THRESHOLD_BYTES
     return DeliveryUploadResponse(
         media_asset_id=started.media_asset_id,

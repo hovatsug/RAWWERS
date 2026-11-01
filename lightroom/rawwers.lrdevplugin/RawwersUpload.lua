@@ -9,7 +9,7 @@ SHA-256) with "duplicate", so a second run after a lost connection or a
 crash sends only what is missing. A large file sent in parts asks which
 parts storage already holds and sends the rest.
 
-`file` is { name, size, sha256, position, readAll(), readRange(offset, length) },
+`file` is { name, size, sha256, position, exportId, readAll(), readRange(offset, length) },
 given by RawwersLightroom.lua; tests give their own.
 
 Plain Lua 5.1: no Lightroom calls.

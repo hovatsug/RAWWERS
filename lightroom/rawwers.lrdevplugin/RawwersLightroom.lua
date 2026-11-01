@@ -10,6 +10,7 @@ the versions noted, so in Lightroom Classic 13, 14 and 15 alike):
   LrDigest.SHA256.init / :update / :digest                  4.0
   LrTasks.sleep / LrTasks.startAsyncTask                    1.3
   LrDate.timeFromPosixDate / LrDate.formatShortDate         1.3
+  LrDate.currentTime                                        1.3
   LrFileUtils.fileAttributes / LrFileUtils.delete            1.3
 Files are read with Lua's own io library, as Adobe's remote_control sample does.
 ]]
@@ -70,6 +71,15 @@ function Lightroom.api( baseUrl, opts )
 		token = opts.token,
 		isCanceled = opts.isCanceled,
 	}
+end
+
+--- A name for one export, sent with each of its photos: the gallery keeps
+--- each export together, after the ones before it. It only has to differ
+--- from this Mac's other exports (milliseconds, and a random number for two
+--- started in the same one); the server checks it is letters, digits, dot,
+--- dash or underscore, 64 at most.
+function Lightroom.newExportId()
+	return string.format( 'lr-%.0f-%d', math.floor( LrDate.currentTime() * 1000 ), math.random( 1, 2147483646 ) )
 end
 
 function Lightroom.formatDate( epoch )

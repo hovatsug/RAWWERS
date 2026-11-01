@@ -30,6 +30,7 @@ import os
 import ssl
 import sys
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -185,14 +186,15 @@ def cmd_gigs(_args) -> None:
               f"{gig.get('package_title') or gig.get('niche_name') or '-'}  {gig['included_photos']} included  {state}")
 
 
-def _deliver(gig: str, path: Path, auth: str, position: int) -> tuple[str, str, str | None]:
+def _deliver(gig: str, path: Path, auth: str, position: int, export_id: str) -> tuple[str, str, str | None]:
     """One photo, as RawwersUpload.deliver: start, PUT or parts, finish.
-    `position` is its place in the export (from 1), as the plug-in sends it."""
+    `position` is its place in the export (from 1) and `export_id` the
+    export's name, as the plug-in sends them."""
     data = path.read_bytes()
     sha = hashlib.sha256(data).hexdigest()
     started = call("POST", f"/v1/delivery/gigs/{gig}/uploads",
                    {"file_name": path.name, "content_type": "image/jpeg", "byte_size": len(data), "sha256": sha,
-                    "position": position}, auth=auth)
+                    "position": position, "export_id": export_id}, auth=auth)
     if started.status == 401:
         return path.name, "reauth", started.message()
     if not started.ok:
@@ -240,12 +242,15 @@ def cmd_upload(args) -> None:
         files = files[: args.stop_after]
         print(f"Sending the first {len(files)} only, as if the export were killed there.")
     results, stopped = [], threading.Event()
+    # One name per run, as the plug-in names each export: a second run goes
+    # after the first in the gallery.
+    export_id = f"sim-{int(time.time() * 1000)}"
 
     def one(numbered: tuple[int, Path]):
         position, path = numbered
         if stopped.is_set():
             return path.name, "not sent", None
-        result = _deliver(args.gig, path, auth, position)
+        result = _deliver(args.gig, path, auth, position, export_id)
         if result[1] == "reauth":
             stopped.set()
         print(f"  {result[1]:<9} {result[0]}" + (f": {result[2]}" if result[1] in ("failed", "reauth") else ""), flush=True)

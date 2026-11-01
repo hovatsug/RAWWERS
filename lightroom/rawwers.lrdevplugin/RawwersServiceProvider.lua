@@ -287,6 +287,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	local isCanceled = function() return progress:isCanceled() end
 	local api = Lightroom.api( base, { token = token, isCanceled = isCanceled } )
 	local results, small, done = {}, {}, 0
+	local exportId = Lightroom.newExportId()
 
 	local pipeline = Pipeline.new {
 		workers = Pipeline.DEFAULT_WORKERS,
@@ -297,6 +298,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 			local file = Lightroom.renderedFile( job.path )
 			if not file then return { state = 'failed', name = job.name, message = 'The exported file could not be read.' } end
 			file.position = job.position
+			file.exportId = exportId
 			local width, height = Checks.jpegSize( file.head )
 			local problem = Checks.problem( file.size, width, height )
 			local result

@@ -2137,3 +2137,11 @@ Built 2026-11-01 (owner's decision): a client's originals - `GET /v1/proof-galle
 - **No admin screen releases a hold.** Resolving the "Client reported a problem" item does not release the earning; that is `POST /v1/admin/holds/{id}/release` (the report carries `earnings_hold_id`).
 - **A booking with no niche is not gated**: it cannot be reviewed (a review belongs to a niche), so gating it would leave reporting a problem as the only way to the photos. Every booking made through the booking flow has a niche.
 - **Bookings completed before the gate are gated from now on**: a client who downloaded before has to rate (or report) to download again.
+
+## Account deletion does not exist - LOGGED (launch requirement)
+
+Found during the marketing-consent discovery (2026-11-01). There is no way to delete an account outside development (`DELETE /v1/dev/test-accounts/me` is dev-only, for `@rawwers.test` accounts). It is a launch requirement: Apple requires in-app account deletion for any app that lets people create an account. When it is built it must, among the rest, **withdraw every marketing consent the account has given** (the per-photo records of the closed-beta marketing consent: status withdrawn, withdrawal date set, nothing deleted), so content using those photos falls under the take-down rule. Not hooked into anything now, by the owner's decision.
+
+## Marketing use of a client's video review - LOGGED (follow-up)
+
+MVP_SPEC C11 step 3 has an explicit consent toggle on a client's video review ("profile only / profile + marketing"). Not in the closed-beta marketing-consent batch, by the owner's decision: it waits for the lawyer's wording. Video reviews themselves have no upload in the app yet.

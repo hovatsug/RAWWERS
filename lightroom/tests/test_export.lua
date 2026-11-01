@@ -84,7 +84,7 @@ local function handle( method, url, headers, body )
 		end
 		server.nextId = server.nextId + 1
 		local id = 'asset-' .. server.nextId
-		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size }
+		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, position = data.position }
 		server.bySha[ data.sha256 ] = id
 		return respond( 200, { media_asset_id = id, gallery_id = 'gal-1', duplicate = false, use_multipart = false,
 			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
@@ -227,6 +227,15 @@ test( 'an export uploads every photo, says so, and cleans up the rendered files'
 	has( summary.body, '3 photos uploaded' )
 	has( summary.body, '0 skipped' )
 	for _, r in ipairs( renditions ) do eq( r.failures, {} ) end
+end )
+
+test( 'each photo is sent with its place in the export, so the gallery keeps that order', function()
+	newServer()
+	freshKeychain()
+	export { 'IMG_9.jpg', 'IMG_2.jpg', 'IMG_5.jpg' }
+	local places = {}
+	for _, asset in pairs( server.assets ) do places[ asset.name:match( 'IMG_%d' ) ] = asset.position end
+	eq( places, { IMG_9 = 1, IMG_2 = 2, IMG_5 = 3 } )
 end )
 
 test( 'storage never sees the token', function()

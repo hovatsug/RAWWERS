@@ -103,6 +103,9 @@ class DeliveryUploadRequest(BaseModel):
     content_type: str = Field(pattern=r"^image/jpeg$")
     byte_size: int = Field(gt=0)
     sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+    #: The n-th photo of the export (from 1): the gallery is in this order,
+    #: whatever order processing finishes in.
+    position: int | None = Field(default=None, ge=1, le=1_000_000, strict=True)
 
 
 class DeliveryUploadResponse(BaseModel):

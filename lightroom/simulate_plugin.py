@@ -185,12 +185,14 @@ def cmd_gigs(_args) -> None:
               f"{gig.get('package_title') or gig.get('niche_name') or '-'}  {gig['included_photos']} included  {state}")
 
 
-def _deliver(gig: str, path: Path, auth: str) -> tuple[str, str, str | None]:
-    """One photo, as RawwersUpload.deliver: start, PUT or parts, finish."""
+def _deliver(gig: str, path: Path, auth: str, position: int) -> tuple[str, str, str | None]:
+    """One photo, as RawwersUpload.deliver: start, PUT or parts, finish.
+    `position` is its place in the export (from 1), as the plug-in sends it."""
     data = path.read_bytes()
     sha = hashlib.sha256(data).hexdigest()
     started = call("POST", f"/v1/delivery/gigs/{gig}/uploads",
-                   {"file_name": path.name, "content_type": "image/jpeg", "byte_size": len(data), "sha256": sha}, auth=auth)
+                   {"file_name": path.name, "content_type": "image/jpeg", "byte_size": len(data), "sha256": sha,
+                    "position": position}, auth=auth)
     if started.status == 401:
         return path.name, "reauth", started.message()
     if not started.ok:
@@ -239,17 +241,18 @@ def cmd_upload(args) -> None:
         print(f"Sending the first {len(files)} only, as if the export were killed there.")
     results, stopped = [], threading.Event()
 
-    def one(path: Path):
+    def one(numbered: tuple[int, Path]):
+        position, path = numbered
         if stopped.is_set():
             return path.name, "not sent", None
-        result = _deliver(args.gig, path, auth)
+        result = _deliver(args.gig, path, auth, position)
         if result[1] == "reauth":
             stopped.set()
         print(f"  {result[1]:<9} {result[0]}" + (f": {result[2]}" if result[1] in ("failed", "reauth") else ""), flush=True)
         return result
 
     with ThreadPoolExecutor(WORKERS) as pool:
-        results = list(pool.map(one, files))
+        results = list(pool.map(one, enumerate(files, start=1)))
     counts = {state: sum(1 for _, s, _ in results if s == state) for state in ("uploaded", "skipped", "failed", "reauth", "not sent")}
     print(f"\n{counts['uploaded']} uploaded, {counts['skipped']} skipped (already in the gallery), "
           f"{counts['failed']} failed, {counts['not sent']} not sent")

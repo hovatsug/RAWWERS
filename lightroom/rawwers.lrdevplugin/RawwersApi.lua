@@ -122,6 +122,9 @@ function Api:gigs() return self:request( 'GET', '/v1/delivery/gigs' ) end
 function Api:startUpload( gigId, file )
 	return self:request( 'POST', '/v1/delivery/gigs/' .. gigId .. '/uploads', {
 		file_name = file.name, content_type = 'image/jpeg', byte_size = file.size, sha256 = file.sha256,
+		-- The n-th photo of this export: the gallery is put in this order,
+		-- whatever order the uploads finish in.
+		position = file.position,
 	} )
 end
 

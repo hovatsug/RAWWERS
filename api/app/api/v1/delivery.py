@@ -51,6 +51,7 @@ from app.schemas.media import (
 )
 from app.services.delivery_access import authenticate, exchange_pairing_code, photographer_name, update_available
 from app.services.delivery_gigs import deliverable_gigs, own_gig
+from app.services.gallery_items import DELIVERY_POSITION_KEY
 from app.services.gig_state import require_gig_deliverable
 from app.services.photo_uploads import max_photo_bytes
 from app.services.rate_limit import enforce_named_rate_limit
@@ -207,6 +208,13 @@ def start_upload(
         user=_as_photographer(device),
         db=db,
     )
+    if body.position is not None and not started.duplicate:
+        # The first position stays: a file sent again, or resumed, is the
+        # photo it was the first time.
+        asset = db.get(MediaAsset, started.media_asset_id)
+        if asset is not None and DELIVERY_POSITION_KEY not in (asset.meta or {}):
+            asset.meta = {**(asset.meta or {}), DELIVERY_POSITION_KEY: body.position}
+            db.commit()
     large = body.byte_size > MULTIPART_THRESHOLD_BYTES
     return DeliveryUploadResponse(
         media_asset_id=started.media_asset_id,

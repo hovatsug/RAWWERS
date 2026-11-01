@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatus
@@ -38,6 +38,46 @@ def next_sort_order(db: Session, gallery_id) -> int:
     """After the last photo in the gallery. Call with the gallery locked."""
     last = db.execute(select(func.max(ProofGalleryItem.sort_order)).where(ProofGalleryItem.gallery_id == gallery_id)).scalar_one()
     return (last or 0) + 1
+
+
+#: Where a delivery's export position is kept (`MediaAsset.meta`): the n-th
+#: photo of the Lightroom export that sent it (owner's decision 3).
+DELIVERY_POSITION_KEY = "delivery_position"
+
+
+def delivery_position(asset: MediaAsset) -> int | None:
+    value = (asset.meta or {}).get(DELIVERY_POSITION_KEY)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def place_for_delivery(db: Session, gallery_id, position: int | None) -> int:
+    """The place for a delivery, in export order. Call with the gallery locked.
+
+    Processing finishes in any order, so the place is chosen as the photo
+    joins: just before the first delivered photo with a later position, the
+    photos from there on moving down one; with none, or no position, after
+    everything. Photos the phone added keep their order, and the same
+    position twice keeps the order they arrived.
+    """
+    if position is None:
+        return next_sort_order(db, gallery_id)
+    later = db.execute(
+        select(func.min(ProofGalleryItem.sort_order))
+        .join(MediaAsset, MediaAsset.id == ProofGalleryItem.media_asset_id)
+        .where(
+            ProofGalleryItem.gallery_id == gallery_id,
+            MediaAsset.meta[DELIVERY_POSITION_KEY].as_integer() > position,
+        )
+    ).scalar_one()
+    if later is None:
+        return next_sort_order(db, gallery_id)
+    db.execute(
+        update(ProofGalleryItem)
+        .where(ProofGalleryItem.gallery_id == gallery_id, ProofGalleryItem.sort_order >= later)
+        .values(sort_order=ProofGalleryItem.sort_order + 1)
+        .execution_options(synchronize_session="fetch")
+    )
+    return later
 
 
 def has_ready_watermark_preview(db: Session, asset_id) -> bool:
@@ -82,6 +122,7 @@ def attach_delivered_proof(db: Session, asset: MediaAsset) -> bool:
         return False
     if not has_ready_watermark_preview(db, asset.id) or is_in_gallery(db, gallery.id, asset.id):
         return False
-    db.add(ProofGalleryItem(gallery_id=gallery.id, media_asset_id=asset.id, sort_order=next_sort_order(db, gallery.id)))
+    sort_order = place_for_delivery(db, gallery.id, delivery_position(asset))
+    db.add(ProofGalleryItem(gallery_id=gallery.id, media_asset_id=asset.id, sort_order=sort_order))
     db.flush()
     return True

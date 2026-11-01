@@ -296,6 +296,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 		process = function( job )
 			local file = Lightroom.renderedFile( job.path )
 			if not file then return { state = 'failed', name = job.name, message = 'The exported file could not be read.' } end
+			file.position = job.position
 			local width, height = Checks.jpegSize( file.head )
 			local problem = Checks.problem( file.size, width, height )
 			local result
@@ -317,11 +318,11 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	pipeline:start()
 
 	local renderFailures = {}
-	for _, rendition in exportContext:renditions { stopIfCanceled = true } do
+	for position, rendition in exportContext:renditions { stopIfCanceled = true } do
 		local rendered, pathOrMessage = rendition:waitForRender()
 		if progress:isCanceled() then break end
 		if rendered then
-			local queued = pipeline:add { rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ) }
+			local queued = pipeline:add { rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ), position = position }
 			if not queued then
 				LrFileUtils.delete( pathOrMessage )
 				break

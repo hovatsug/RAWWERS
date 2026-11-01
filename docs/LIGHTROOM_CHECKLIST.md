@@ -6,7 +6,7 @@ Click by click, on the Mac with Lightroom Classic 15 and the pro simulator (or a
 - The dev API and photo worker run the branch's code, with migrations `0074` and `0075` applied.
 - pro1 has a paid booking whose shoot time has passed, not yet sent to the client (the gig list shows it). If not, book one through the loop in `docs/STAGE1_LOOP.md` up to step 3.
 - 40 JPEG photos in Lightroom (any 40; a collection named `RAWWERS test` makes it quicker).
-- Build the plug-in from the repo root: `lightroom/build.sh --version 1.0.0 --api-url http://localhost:8000`. It runs the tests first and writes `lightroom/build/rawwers.lrplugin`.
+- Build the plug-in from the repo root: `lightroom/build.sh --version 1.0.0 --target dev`. It runs the tests first and writes `lightroom/build/rawwers.lrplugin`, pointing at the dev API on this Mac (`http://localhost:8000`; set `RAWWERS_LIGHTROOM_API_URL_DEV` for another dev machine).
 
 Write down anything that differs from **Expect**, with a screenshot.
 

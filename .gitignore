@@ -50,3 +50,4 @@ __pycache__/
 
 # The Lightroom plug-in built by lightroom/build.sh (published by hand, never committed).
 /lightroom/build/
+/lightroom/build.env

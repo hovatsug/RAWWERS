@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
@@ -12,13 +13,18 @@ from app.core.errors import APIError
 from app.models.gig import Gig, GigStatus
 from app.models.niche import Niche
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose
-from app.models.review import Review, ReviewReply, ReviewStatus
+from app.models.review import ProblemReport, Review, ReviewReply, ReviewStatus
+from app.models.admin import MoneyAttentionItem
+from app.models.payouts import EarningsHoldReason, EarningsSourceType
+from app.services.payouts import create_earnings_hold
 from app.models.admin import UserRole, UserRoleType
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.media import CurrentUser
 from app.schemas.review import (
     CreateReviewReplyRequest,
+    CreateProblemReportRequest,
     CreateReviewRequest,
+    ProblemReportView,
     ModerateReviewActionRequest,
     ProReviewsResponse,
     PublicReviewView,
@@ -27,6 +33,7 @@ from app.schemas.review import (
     ReviewView,
 )
 from app.services.abuse import detect_review_fraud, strip_html
+from app.services.download_gate import rating_allowed
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
 from app.services.niche_skills import enqueue_niche_skill_recalc, recompute_pro_niche_skills
@@ -56,7 +63,7 @@ def create_review_for_gig(
         raise APIError(code="not_found", message="Gig not found", status_code=404)
     if gig.client_user_id != user.user_id:
         raise APIError(code="forbidden", message="Only the gig client can review this gig", status_code=403)
-    if not _is_reviewable_gig(gig):
+    if not _is_reviewable_gig(db, gig):
         raise APIError(code="invalid_state", message="Gig is not reviewable yet", status_code=409)
     if not gig.niche_id:
         raise APIError(code="validation_error", message="Gig has no niche and cannot be reviewed", status_code=409)
@@ -114,6 +121,63 @@ def create_review_for_gig(
 
     rebuild_pro_index.delay(str(gig.pro_user_id))
     return build_review_view(db, review, None)
+
+
+@router.post("/gigs/{gig_id}/problem-report", response_model=ProblemReportView)
+def report_a_problem(
+    gig_id: uuid.UUID,
+    body: CreateProblemReportRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProblemReportView:
+    """"Report a problem": the other way past the review gate. Unlocks the
+    originals at once, holds the photographer's earning for this booking
+    through the existing earnings hold - released by an admin, never by a
+    date - and raises it to an admin as a money-attention item."""
+    enforce_named_rate_limit("reviews", principal=str(user.user_id))
+    gig = db.get(Gig, gig_id)
+    if not gig:
+        raise APIError(code="not_found", message="Gig not found", status_code=404)
+    if gig.client_user_id != user.user_id:
+        raise APIError(code="forbidden", message="Only the gig client can report a problem with it", status_code=403)
+    if not rating_allowed(db, gig):
+        raise APIError(code="invalid_state", message="Your photos have not been delivered yet", status_code=409)
+    if db.execute(select(ProblemReport.id).where(ProblemReport.gig_id == gig.id)).first():
+        raise APIError(code="already_exists", message="A problem has already been reported for this booking", status_code=409)
+
+    note = strip_html(body.note).strip() if body.note else None
+    hold = create_earnings_hold(
+        db,
+        pro_user_id=gig.pro_user_id,
+        reason=EarningsHoldReason.client_reported_problem,
+        amount_eur=None,
+        source_type=EarningsSourceType.gig_base.value,
+        source_id=gig.id,
+        created_by_admin_id=None,
+    )
+    report = ProblemReport(
+        gig_id=gig.id,
+        client_user_id=gig.client_user_id,
+        pro_user_id=gig.pro_user_id,
+        reason=body.reason,
+        note=note or None,
+        earnings_hold_id=hold.id,
+    )
+    db.add(report)
+    db.add(
+        MoneyAttentionItem(
+            kind="client_reported_problem",
+            gig_id=gig.id,
+            client_user_id=gig.client_user_id,
+            amount=gig.amount_pro_gross or Decimal("0.00"),
+            currency=gig.currency or "EUR",
+            note=f"{body.reason.value}: {note}" if note else body.reason.value,
+        )
+    )
+    log_event(db, event_name="client.problem_reported", user_id=user.user_id, properties={"gig_id": str(gig.id), "reason": body.reason.value})
+    db.commit()
+    db.refresh(report)
+    return ProblemReportView(id=report.id, gig_id=report.gig_id, reason=report.reason, note=report.note, created_at=report.created_at)
 
 
 @router.get("/pros/{pro_user_id}/reviews", response_model=ProReviewsResponse)
@@ -244,8 +308,10 @@ def moderate_review(
     return build_review_view(db, review, reply)
 
 
-def _is_reviewable_gig(gig: Gig) -> bool:
-    if gig.status in {GigStatus.completed, GigStatus.final_delivered}:
+def _is_reviewable_gig(db: Session, gig: Gig) -> bool:
+    # The selection paid and the photos delivered (download_gate): every
+    # review is tied to a real paid booking.
+    if rating_allowed(db, gig):
         return True
     if gig.status == GigStatus.paid and settings.app_env.lower() in {"dev", "development"}:
         return bool((gig.meta or {}).get("reviewable_override"))

@@ -14,6 +14,7 @@ from app.models.media import (
     MediaVisibility,
     ObjectStatus,
 )
+from tests.delivered import rate
 
 
 class DummyStripePI:
@@ -281,6 +282,7 @@ def test_download_endpoint_only_returns_unlocked_originals(client, db_session, m
     )
     client.post(f"/v1/proof-galleries/{gallery_id}/selections/submit", headers={"X-User-Id": client_id})
 
+    rate(db_session, gig)  # the review gate comes after payment
     downloads = client.get(f"/v1/proof-galleries/{gallery_id}/downloads", headers={"X-User-Id": client_id})
     assert downloads.status_code == 200
     urls = downloads.json()["urls"]

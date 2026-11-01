@@ -13,6 +13,7 @@ from app.services.package_pricing import MINIMUM_PHOTOS, compute_package_total
 from sqlalchemy import select
 
 from tests.test_booking_close import DummyStripePI, _ensure_account, _select_photos
+from tests.delivered import rate
 from tests.test_selection_pricing_regimes import _curve_gig
 
 
@@ -202,6 +203,7 @@ def test_download_links_outlive_a_share_sheet(client, db_session, monkeypatch):
     for payment in db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalars():
         payment.status = PaymentStatus.succeeded
     db_session.commit()
+    rate(db_session, gig)  # the review gate comes after payment
 
     resp = client.get(f"/v1/proof-galleries/{gallery.id}/downloads", headers={"X-User-Id": client_id})
     assert resp.status_code == 200, resp.text
@@ -229,6 +231,7 @@ def test_download_links_cost_a_fixed_number_of_queries(client, db_session, monke
     for payment in db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalars():
         payment.status = PaymentStatus.succeeded
     db_session.commit()
+    rate(db_session, gig)  # the review gate comes after payment
 
     counter, stop = _count_queries(db_session)
     try:

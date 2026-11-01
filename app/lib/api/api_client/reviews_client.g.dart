@@ -384,6 +384,120 @@ class _ReviewsClient implements ReviewsClient {
     return httpResponse;
   }
 
+  @override
+  Future<HttpResponse<ProblemReportView>>
+  reportAProblemV1GigsGigIdProblemReportPost({
+    required CreateProblemReportRequest requestBody,
+    required String gigId,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['reviews'],
+      'summary': 'Report A Problem',
+      'description':
+          '"Report a problem": the other way past the review gate. Unlocks the\noriginals at once, holds the photographer\'s earning for this booking\nthrough the existing earnings hold - released by an admin, never by a\ndate - and raises it to an admin as a money-attention item.',
+      'operationId': 'report_a_problem_v1_gigs__gig_id__problem_report_post',
+      'parameters': [
+        {
+          'name': 'gig_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gig Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              '\$ref': '#/components/schemas/CreateProblemReportRequest',
+            },
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ProblemReportView'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    final _data = <String, dynamic>{};
+    _data.addAll(requestBody.toJson());
+    final _options = _setStreamType<HttpResponse<ProblemReportView>>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/gigs/${gigId}/problem-report',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProblemReportView _value;
+    try {
+      _value = ProblemReportView.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
   RequestOptions _setStreamType<T>(RequestOptions requestOptions) {
     if (T != dynamic &&
         !(requestOptions.responseType == ResponseType.bytes ||

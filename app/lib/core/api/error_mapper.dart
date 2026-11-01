@@ -41,6 +41,11 @@ ApiFailure _mapBadResponse(DioException exception) {
     return Validation(_parseValidationErrors(data));
   }
   if (status == 401) return const Unauthorized();
+  // The review gate is a 403 the app has to tell apart: it is answered with
+  // a rating sheet, not "not allowed".
+  if (status == 403 && _envelopeCode(data) == reviewRequiredCode) {
+    return BusinessError(reviewRequiredCode, _envelopeMessage(data) ?? 'Rate your photographer to unlock your photos.', status: 403);
+  }
   if (status == 403) return const Forbidden();
   if (status == 404) return const NotFound();
   if (status == 429) return const RateLimited();

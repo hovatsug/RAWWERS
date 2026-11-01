@@ -10,6 +10,7 @@ from app.models.niche import Niche
 from app.models.review import ProReputation, Review, ReviewStatus
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.reputation import recompute_pro_reputation
+from tests.delivered import deliver
 
 
 def _create_gig(db_session, client_id: str, pro_id: str, status: GigStatus = GigStatus.completed) -> Gig:
@@ -28,6 +29,10 @@ def _create_gig(db_session, client_id: str, pro_id: str, status: GigStatus = Gig
     db_session.add(gig)
     db_session.commit()
     db_session.refresh(gig)
+    if status in {GigStatus.completed, GigStatus.final_delivered}:
+        # A completed booking is one whose photos were paid for and released:
+        # only those can be rated (the review gate).
+        deliver(db_session, gig)
     return gig
 
 

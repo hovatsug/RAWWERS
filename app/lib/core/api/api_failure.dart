@@ -48,7 +48,15 @@ final class BusinessError extends ApiFailure {
   final int? status;
 }
 
+/// The server's code for the review gate: originals wait for a star rating
+/// or a reported problem (api/app/services/download_gate.py).
+const reviewRequiredCode = 'review_required';
+
 extension ApiFailureX on ApiFailure {
+  /// The client has to rate the photographer, or report a problem, before
+  /// their originals are released.
+  bool get isReviewRequired => this is BusinessError && (this as BusinessError).code == reviewRequiredCode;
+
   /// The server judged the request itself invalid (HTTP 422), whether by
   /// FastAPI's own validation or by a deliberate rule with a message.
   ///

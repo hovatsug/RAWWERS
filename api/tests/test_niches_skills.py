@@ -10,6 +10,7 @@ from app.models.niche import CertificationRecord, Niche, ProNicheSkill, SkillTie
 from app.models.review import Review, ReviewStatus
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.niche_skills import recompute_pro_niche_skill
+from tests.delivered import deliver
 from tests.live_pro import make_live
 
 
@@ -177,6 +178,7 @@ def test_review_is_niche_scoped_to_gig(client, db_session, monkeypatch):
     db_session.add(gig)
     db_session.commit()
     db_session.refresh(gig)
+    deliver(db_session, gig)  # only a paid, delivered booking can be rated
 
     resp = client.post(
         f"/v1/gigs/{gig.id}/review",

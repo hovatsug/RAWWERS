@@ -50,6 +50,29 @@ void main() {
     expect(failure.isInvalidRequest, isTrue);
   });
 
+  test("the review gate's 403 keeps its code, so the app can offer the rating", () {
+    final failure = mapDioException(
+      _bad(403, {
+        'error': {'code': 'review_required', 'message': 'Rate your photographer to unlock your photos, or report a problem.'},
+      }),
+    );
+
+    expect(failure, isA<BusinessError>());
+    expect(failure.isReviewRequired, isTrue);
+    expect((failure as BusinessError).status, 403);
+  });
+
+  test('every other 403 is still Forbidden', () {
+    final failure = mapDioException(
+      _bad(403, {
+        'error': {'code': 'forbidden', 'message': 'Only client or admin can download originals'},
+      }),
+    );
+
+    expect(failure, isA<Forbidden>());
+    expect(failure.isReviewRequired, isFalse);
+  });
+
   test('other envelope errors are unchanged', () {
     final failure = mapDioException(
       _bad(409, {

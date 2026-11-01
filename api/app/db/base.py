@@ -161,7 +161,7 @@ from app.models.media_rights import (
     MediaDerivative,
     ShareLink,
 )
-from app.models.review import ProReputation, Review, ReviewReply
+from app.models.review import ProblemReport, ProReputation, Review, ReviewReply  # noqa: F401
 from app.models.repair import (
     GearBenefitOverride,
     GearBenefitPolicy,

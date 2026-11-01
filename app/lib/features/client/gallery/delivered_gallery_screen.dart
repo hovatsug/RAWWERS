@@ -13,6 +13,7 @@ import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/gallery/delivered_controller.dart';
 import 'package:rawwers/features/client/gallery/save_all_controller.dart';
+import 'package:rawwers/features/client/gallery/unlock_panel.dart';
 import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// The photographs a client has paid for.
@@ -43,6 +44,7 @@ class DeliveredGalleryScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Your photos')),
       body: SafeArea(
         child: switch (state) {
+          AsyncData(:final value) when value.locked => _Locked(galleryId: galleryId, gigId: value.gigId!),
           AsyncData(:final value) when value.isEmpty => const REmptyState(
               title: 'Nothing here yet',
               body: 'Once your selection is complete and paid for, your photos appear here.',
@@ -119,6 +121,38 @@ class DeliveredGalleryScreen extends ConsumerWidget {
           assetId: value.photos[current].assetId,
         ),
       ),
+    );
+  }
+}
+
+/// The review gate: paid for, waiting for a rating or a reported problem.
+/// Previews are not shown here - the server released no files - and the
+/// rating is one tap. "Save all" asks through the same sheet, then carries
+/// on saving once the photos are unlocked.
+class _Locked extends ConsumerWidget {
+  const _Locked({required this.galleryId, required this.gigId});
+
+  final String galleryId;
+  final String gigId;
+
+  Future<void> _saveAll(BuildContext context, WidgetRef ref) async {
+    final unlocked = await showUnlockSheet(context, galleryId: galleryId, gigId: gigId);
+    if (!unlocked) return;
+    final photos = await ref.read(deliveredControllerProvider(galleryId).future);
+    if (photos.locked || photos.photos.isEmpty) return;
+    await ref.read(saveAllControllerProvider(galleryId).notifier).start([for (final p in photos.photos) p.assetId]);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.all(RSpace.s24),
+      children: [
+        const SizedBox(height: RSpace.s24),
+        UnlockPanel(galleryId: galleryId, gigId: gigId),
+        const SizedBox(height: RSpace.s24),
+        RButton(label: 'Save all to Photos', variant: RButtonVariant.secondary, onPressed: () => _saveAll(context, ref)),
+      ],
     );
   }
 }

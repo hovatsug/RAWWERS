@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.models.review import ReviewStatus
+from app.models.review import ProblemReportReason, ReviewStatus
 
 
 class CreateReviewRequest(BaseModel):
@@ -22,6 +22,19 @@ class CreateReviewRequest(BaseModel):
         # review it posted was refused with a 422 (Stage 1 loop, 2026-10-30).
         # Null, omitted and [] all mean "no tags".
         return [] if value is None else value
+
+
+class CreateProblemReportRequest(BaseModel):
+    reason: ProblemReportReason
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class ProblemReportView(BaseModel):
+    id: uuid.UUID
+    gig_id: uuid.UUID
+    reason: ProblemReportReason
+    note: str | None
+    created_at: datetime
 
 
 class ReviewReplyView(BaseModel):

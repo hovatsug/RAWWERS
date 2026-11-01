@@ -30,6 +30,9 @@ class EarningsHoldReason(str, enum.Enum):
     refund_risk = "refund_risk"
     compliance = "compliance"
     manual = "manual"
+    #: The client used "Report a problem" before downloading (review gate):
+    #: held until an admin looks, whatever its settlement date.
+    client_reported_problem = "client_reported_problem"
 
 
 class PayoutMethod(str, enum.Enum):

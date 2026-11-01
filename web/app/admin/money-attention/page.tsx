@@ -25,7 +25,11 @@ const KIND: Record<string, string> = {
   pro_shut_out_booking: "Booking with a banned or suspended photographer",
   photographer_short_delivery: "Fewer photos delivered than included",
   photographer_adjustment_owed: "Photographer owes back (paid out before a reduction)",
-  pro_suspension_review: "Suspension review (third finding, or severe)"
+  pro_suspension_review: "Suspension review (third finding, or severe)",
+  // "Report a problem" before downloading: the photographer's earning for
+  // the booking is on hold. Resolving this item does not release it; the
+  // hold is released through POST /v1/admin/holds/{id}/release (no screen yet).
+  client_reported_problem: "Client reported a problem (earning on hold)"
 };
 
 function dueLabel(dueAt: string | null): { text: string; overdue: boolean } | null {

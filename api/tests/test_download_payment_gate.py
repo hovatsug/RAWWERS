@@ -85,6 +85,14 @@ class FakeStripe:
         return self.pis[pi_id]
 
 
+@pytest.fixture(autouse=True)
+def rated(monkeypatch):
+    """These tests are about payment: every booking here counts as rated, so
+    the review gate that follows payment never answers first. The gate is
+    tests/test_review_gate.py's (which uses fake_stripe, not this)."""
+    monkeypatch.setattr("app.services.download_gate.has_rated_or_reported", lambda db, gig: True)
+
+
 @pytest.fixture
 def fake_stripe(monkeypatch) -> FakeStripe:
     fake = FakeStripe()

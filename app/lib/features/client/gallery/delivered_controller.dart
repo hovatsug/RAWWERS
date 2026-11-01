@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/models/gallery_item_view.dart';
 import 'package:rawwers/core/api/api_call.dart';
+import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
 
@@ -22,14 +23,27 @@ class DeliveredPhoto {
 }
 
 class DeliveredState {
-  const DeliveredState({required this.photos});
+  const DeliveredState({required this.photos, this.locked = false, this.gigId});
+
+  /// The review gate: paid for, but the originals wait until the client rates
+  /// the photographer or reports a problem. The server refuses the files, so
+  /// [photos] is empty; the screen offers the rating instead.
+  const DeliveredState.locked({required String this.gigId})
+      : photos = const [],
+        locked = true;
 
   /// Only what the server unlocked. The gallery holds everything the
   /// photographer uploaded; the chosen, paid-for ones are the client's, and
   /// the rest are not theirs to see here.
   final List<DeliveredPhoto> photos;
 
-  bool get isEmpty => photos.isEmpty;
+  /// See [DeliveredState.locked].
+  final bool locked;
+
+  /// The booking, for rating it or reporting a problem.
+  final String? gigId;
+
+  bool get isEmpty => photos.isEmpty && !locked;
 }
 
 /// Which photos are the client's, in the order they were shot.
@@ -83,10 +97,12 @@ class DeliveredController extends _$DeliveredController {
       ),
     )) {
       Ok(:final value) => value.urls,
+      Err(:final failure) when failure.isReviewRequired => null,
       Err(:final failure) => throw failure,
     };
+    if (links == null) return DeliveredState.locked(gigId: detail.gallery.gigId);
 
-    return DeliveredState(photos: crossGalleryWithLinks(detail.items, links));
+    return DeliveredState(photos: crossGalleryWithLinks(detail.items, links), gigId: detail.gallery.gigId);
   }
 
   /// Mint a link for one photo, now.

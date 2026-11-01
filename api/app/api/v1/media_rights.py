@@ -45,6 +45,7 @@ from app.schemas.media_rights import (
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
 from app.services.authz import get_user_roles
+from app.services.download_gate import require_review_or_report
 from app.services.feature_flags import is_feature_enabled
 from app.services.media_rights import (
     can_manage_share_links,
@@ -662,6 +663,8 @@ def _enforce_client_access(
             unlocked = set(unlocked_final_asset_ids(db, gallery=gallery))
             if media_asset_id not in unlocked:
                 raise APIError(code="forbidden", message="Asset is not unlocked for final delivery", status_code=403)
+        # Paid for, and then the review gate (owner's decision, 2026-11-01).
+        require_review_or_report(db, gig)
 
 
 def _available_derivative_kinds(db: Session, media_asset_id: uuid.UUID) -> list[MediaDerivativeKind]:

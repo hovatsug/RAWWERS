@@ -319,3 +319,6 @@ export 'verification_status.dart';
 export 'verify_email_confirm_request.dart';
 export 'verify_email_request.dart';
 export 'webhook_ack_response.dart';
+export 'create_problem_report_request.dart';
+export 'problem_report_view.dart';
+export 'problem_report_reason.dart';

@@ -27,12 +27,15 @@ import 'package:rawwers/api/models/gallery_item_view.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/download/photo_saver.dart';
 import 'package:rawwers/core/download/saved_photos.dart';
+import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_image_tile.dart';
 import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/gallery/delivered_controller.dart';
 import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
+import 'package:rawwers/api/models/problem_report_reason.dart';
 import 'package:rawwers/features/client/gallery/save_all_controller.dart';
+import 'package:rawwers/features/client/gallery/unlock_controller.dart';
 
 class _FakeDelivered extends DeliveredController {
   _FakeDelivered(this._photos, {Map<String, String>? freshLinks}) : _freshLinks = freshLinks;
@@ -136,7 +139,131 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
+/// The review gate: locked until the fake unlock controller is told a
+/// rating or a report went through, then the photos appear - as the real one
+/// does by invalidating the delivered controller.
+class _GatedDelivered extends _FakeDelivered {
+  _GatedDelivered(super.photos, this.unlocked);
+  final ValueNotifier<bool> unlocked;
+
+  @override
+  Future<DeliveredState> build(String galleryId) async =>
+      unlocked.value ? DeliveredState(photos: _photos, gigId: 'gig-1') : const DeliveredState.locked(gigId: 'gig-1');
+}
+
+class _FakeUnlock extends UnlockController {
+  _FakeUnlock(this.unlocked, {this.problem});
+  final ValueNotifier<bool> unlocked;
+  final String? problem;
+  final ratings = <int>[];
+  final reports = <(ProblemReportReason, String?)>[];
+
+  @override
+  bool build(String galleryId) => false;
+
+  @override
+  Future<String?> rate({required String gigId, required int stars}) async {
+    ratings.add(stars);
+    if (problem != null) return problem;
+    unlocked.value = true;
+    ref.invalidate(deliveredControllerProvider(galleryId));
+    return null;
+  }
+
+  @override
+  Future<String?> report({required String gigId, required ProblemReportReason reason, String? note}) async {
+    reports.add((reason, note));
+    unlocked.value = true;
+    ref.invalidate(deliveredControllerProvider(galleryId));
+    return null;
+  }
+}
+
+Future<(_FakeUnlock, _FakeSaver)> _pumpGated(WidgetTester tester, {String? problem}) async {
+  final unlocked = ValueNotifier(false);
+  final unlock = _FakeUnlock(unlocked, problem: problem);
+  final saver = _FakeSaver();
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        deliveredControllerProvider('g1').overrideWith(() => _GatedDelivered([_photo(0), _photo(1)], unlocked)),
+        unlockControllerProvider('g1').overrideWith(() => unlock),
+        photoSaverProvider.overrideWithValue(saver),
+        savedPhotosProvider.overrideWithValue(_MemorySaved()),
+        openAppSettingsProvider.overrideWithValue(() async => true),
+      ],
+      child: MaterialApp(theme: buildClientTheme(), home: const DeliveredGalleryScreen(galleryId: 'g1')),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return (unlock, saver);
+}
+
 void main() {
+  group('the review gate', () {
+    testWidgets('locked photos ask for a rating and show no files', (tester) async {
+      await _pumpGated(tester);
+      expect(find.text('Rate your photographer to unlock your photos'), findsOneWidget);
+      expect(find.byType(RImageTile), findsNothing);
+      expect(find.text('Report a problem'), findsOneWidget);
+    });
+
+    testWidgets('one tap on a star unlocks the photos at once', (tester) async {
+      final (unlock, _) = await _pumpGated(tester);
+
+      await tester.tap(find.byKey(const ValueKey('unlock-star-1')));
+      await tester.pumpAndSettle();
+
+      expect(unlock.ratings, [1]);
+      expect(find.byType(RImageTile), findsNWidgets(2));
+      expect(find.text('Rate your photographer to unlock your photos'), findsNothing);
+    });
+
+    testWidgets('a refused rating says why and stays locked', (tester) async {
+      await _pumpGated(tester, problem: 'Your photos have not been delivered yet');
+
+      await tester.tap(find.byKey(const ValueKey('unlock-star-5')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your photos have not been delivered yet'), findsOneWidget);
+      expect(find.byType(RImageTile), findsNothing);
+    });
+
+    testWidgets('reporting a problem sends the reason and note, and unlocks', (tester) async {
+      final (unlock, _) = await _pumpGated(tester);
+
+      await tester.tap(find.text('Report a problem'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(RButton, 'Send and unlock my photos'), findsOneWidget);
+      // No reason chosen: nothing to send yet.
+      expect(tester.widget<RButton>(find.widgetWithText(RButton, 'Send and unlock my photos')).onPressed, isNull);
+
+      await tester.tap(find.text('Photos are missing'));
+      await tester.enterText(find.byType(TextField).last, 'Only 12 of 20');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(RButton, 'Send and unlock my photos'));
+      await tester.pumpAndSettle();
+
+      expect(unlock.reports, [(ProblemReportReason.photosMissing, 'Only 12 of 20')]);
+      expect(find.byType(RImageTile), findsNWidgets(2));
+    });
+
+    testWidgets('"Save all" while locked shows the same sheet, then carries on saving', (tester) async {
+      final (unlock, saver) = await _pumpGated(tester);
+
+      await tester.tap(find.widgetWithText(RButton, 'Save all to Photos'));
+      await tester.pumpAndSettle();
+      // The sheet: the same rating, above the screen's own.
+      expect(find.text('Rate your photographer to unlock your photos'), findsNWidgets(2));
+
+      await tester.tap(find.byKey(const ValueKey('unlock-star-4')).last);
+      await tester.pumpAndSettle();
+
+      expect(unlock.ratings, [4]);
+      expect(saver.saved, hasLength(2), reason: 'the save went on once the photos unlocked');
+    });
+  });
+
   // The rule is tested on the function that implements it, not through a
   // fake controller. An earlier version of this test overrode build() and
   // handed the screen a pre-filtered list, so it passed happily against a

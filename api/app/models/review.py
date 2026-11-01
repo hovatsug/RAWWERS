@@ -48,6 +48,36 @@ class Review(Base):
     __table_args__ = (CheckConstraint("rating >= 1 AND rating <= 5", name="ck_review_rating_1_5"),)
 
 
+class ProblemReportReason(str, enum.Enum):
+    """What "Report a problem" offers, in the app's order."""
+
+    photos_missing = "photos_missing"
+    wrong_photos = "wrong_photos"
+    quality = "quality"
+    not_as_agreed = "not_as_agreed"
+    other = "other"
+
+
+class ProblemReport(Base):
+    """A client's "Report a problem" on a delivered booking: the other way
+    past the review gate. One per booking. It unlocks the originals, holds
+    the photographer's earning for the booking (`earnings_hold_id`) and is
+    raised to an admin as a money-attention item."""
+
+    __tablename__ = "problem_report"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    gig_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("gig.id"), nullable=False, unique=True, index=True)
+    client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    reason: Mapped[ProblemReportReason] = mapped_column(
+        Enum(ProblemReportReason, name="problem_report_reason", native_enum=False, length=64), nullable=False
+    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    earnings_hold_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("earnings_hold.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
 class ReviewReply(Base):
     __tablename__ = "review_reply"
 

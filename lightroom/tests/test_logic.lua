@@ -58,6 +58,7 @@ test( 'only network errors and 5xx are retried; 401 asks to connect again', func
 	eq( Retry.classify( nil, 'networkConnectionLost' ), 'retry' )
 	eq( Retry.classify( nil, 'cancelled' ), 'cancelled' )
 	eq( Retry.classify( 401 ), 'reauth' )
+	eq( Retry.classify( 426 ), 'outdated' )
 	for _, status in ipairs { 400, 403, 404, 409, 413, 422, 429 } do
 		eq( Retry.classify( status ), 'refused', 'never retried: ' .. status )
 	end
@@ -343,6 +344,13 @@ test( 'a revoked device mid-photo is "connect again", not a failure', function()
 	eq( Upload.deliver( a, 'gig', file( 10 ) ).state, 'reauth' )
 end )
 
+test( 'a plug-in the server no longer supports is "update", not a failure', function()
+	local a = fakeApi { startUpload = { ok = false, outcome = 'outdated', message = 'This RAWWERS plug-in (1.0.0) is too old.' } }
+	local r = Upload.deliver( a, 'gig', file( 10 ) )
+	eq( r.state, 'outdated' )
+	eq( r.message, 'This RAWWERS plug-in (1.0.0) is too old.' )
+end )
+
 test( 'a file that changed size since it was hashed is not sent', function()
 	local a = fakeApi { startUpload = { ok = true, data = { media_asset_id = 'm1', upload = { url = 'u', headers = {} } } } }
 	local f = file( 10 )
@@ -528,6 +536,38 @@ test( 'all uploaded reads as done', function()
 	local title, body = Summary.build( { { state = 'uploaded', name = 'a.jpg' } } )
 	eq( title, 'RAWWERS: delivery uploaded' )
 	has( body, '1 photo uploaded' )
+end )
+
+test( 'a plug-in too old stops the rest too', function()
+	local s = scheduler()
+	local started = 0
+	local p = Pipeline.new {
+		workers = 1, spawn = s.spawn, sleep = s.sleep,
+		process = function( job )
+			started = started + 1
+			return { state = job.n == 1 and 'outdated' or 'uploaded' }
+		end,
+	}
+	local reason
+	s.run( function()
+		p:start()
+		for n = 1, 6 do p:add { n = n } end
+		local _, why = p:finish()
+		reason = why
+	end )
+	eq( reason, 'outdated' )
+	eq( started, 1 )
+end )
+
+test( 'a plug-in too old ends with where to get the new one, and nothing lost', function()
+	local title, body = Summary.build(
+		{ { state = 'outdated', name = 'a.jpg', message = 'This RAWWERS plug-in (1.0.0) is too old. Download version 2.0.0.' } },
+		{ notSent = 3 }, 'outdated' )
+	eq( title, 'RAWWERS: update the plug-in' )
+	has( body, 'This RAWWERS plug-in (1.0.0) is too old. Download version 2.0.0.' )
+	has( body, 'Settings > Connect Lightroom' )
+	has( body, 'already uploaded are skipped' )
+	ok( not body:find( '1 failed', 1, true ), 'counted as a failure' )
 end )
 
 test( 'a revoked device ends with how to connect again', function()

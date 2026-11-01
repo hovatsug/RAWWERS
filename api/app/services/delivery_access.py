@@ -202,6 +202,11 @@ def _version(value: str | None) -> tuple[int, ...] | None:
     return tuple(int(part) for part in value.strip().split("."))
 
 
+def _older(a: tuple[int, ...], b: tuple[int, ...]) -> bool:
+    width = max(len(a), len(b))
+    return a + (0,) * (width - len(a)) < b + (0,) * (width - len(b))
+
+
 def update_available(plugin_version: str | None) -> bool | None:
     """Whether a newer plugin exists; None when the plugin did not say which
     it is (decision 10)."""
@@ -209,5 +214,46 @@ def update_available(plugin_version: str | None) -> bool | None:
     latest = _version(get_settings().lightroom_plugin_latest_version)
     if current is None or latest is None:
         return None
-    width = max(len(current), len(latest))
-    return current + (0,) * (width - len(current)) < latest + (0,) * (width - len(latest))
+    return _older(current, latest)
+
+
+def _minimum() -> tuple[int, ...] | None:
+    """The oldest plugin still supported - never above the newest, so a
+    minimum set too high cannot refuse the very plugin it points people to."""
+    settings = get_settings()
+    minimum = _version(settings.lightroom_plugin_min_version)
+    latest = _version(settings.lightroom_plugin_latest_version)
+    if minimum is not None and latest is not None and _older(latest, minimum):
+        return latest
+    return minimum
+
+
+def plugin_supported(plugin_version: str | None) -> bool:
+    """False for a plugin older than LIGHTROOM_PLUGIN_MIN_VERSION, which is
+    raised only for a breaking change (owner's decision 7).
+
+    A plugin that does not say its version is not refused: every RAWWERS
+    plugin sends it, so its absence is not an old plugin, and the token alone
+    decides what the caller may do."""
+    current, minimum = _version(plugin_version), _minimum()
+    if current is None or minimum is None:
+        return True
+    return not _older(current, minimum)
+
+
+def require_supported_plugin(plugin_version: str | None) -> None:
+    """A 426 that says where the new plugin is. Nothing is revoked: updating
+    the plugin is all it takes."""
+    if plugin_supported(plugin_version):
+        return
+    settings = get_settings()
+    minimum = ".".join(str(part) for part in _minimum() or ())
+    raise APIError(
+        code="plugin_outdated",
+        message=(
+            f"This RAWWERS plug-in ({plugin_version.strip()}) is too old: version {minimum} or newer is needed. "
+            f"Get version {settings.lightroom_plugin_latest_version} from Settings > Connect Lightroom in the RAWWERS Pro app."
+        ),
+        status_code=426,
+        details={"minimum_version": minimum, "latest_version": settings.lightroom_plugin_latest_version},
+    )

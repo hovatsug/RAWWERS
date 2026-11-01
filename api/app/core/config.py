@@ -164,8 +164,12 @@ class Settings(BaseSettings):
     # token that leaks can add at most this many photos a day before it is
     # revoked (owner's decision 1).
     rate_limit_delivery_token_uploads_per_day: int = Field(default=5000, alias="RATE_LIMIT_DELIVERY_TOKEN_UPLOADS_PER_DAY")
-    # The newest Lightroom plugin; an older one is told an update is available.
+    # The newest Lightroom plugin, raised on every released build; an older
+    # one is told an update is available (owner's decision 7).
     lightroom_plugin_latest_version: str = Field(default="1.0.0", alias="LIGHTROOM_PLUGIN_LATEST_VERSION")
+    # The oldest plugin still supported, raised only for a breaking change; an
+    # older one is refused (426) until it is updated. Never above the newest.
+    lightroom_plugin_min_version: str = Field(default="1.0.0", alias="LIGHTROOM_PLUGIN_MIN_VERSION")
     # Uploads started and untouched this long are removed (owner's decision 4).
     unfinished_upload_max_age_hours: int = Field(default=24, alias="UNFINISHED_UPLOAD_MAX_AGE_HOURS")
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")

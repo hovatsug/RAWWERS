@@ -75,6 +75,9 @@ local function handle( method, url, headers, body )
 	if headerValue( headers, 'Authorization' ) ~= 'Bearer ' .. server.token or server.revoked then
 		return respond( 401, { error = { code = 'delivery_token_revoked', message = 'This device was disconnected. Connect Lightroom again with a new pairing code.' } } )
 	end
+	if server.minimum then
+		return respond( 426, { error = { code = 'plugin_outdated', message = 'This RAWWERS plug-in (1.0.0) is too old: version ' .. server.minimum .. ' or newer is needed.' } } )
+	end
 	local data = body and body ~= '' and Json.decode( body ) or {}
 	local gig = path:match( '^/v1/delivery/gigs/([^/]+)/uploads$' )
 	if gig and method == 'POST' then
@@ -281,6 +284,20 @@ test( 'a revoked device stops the export and asks for a new code', function()
 	eq( summary.title, 'RAWWERS: connect again' )
 	has( summary.body, 'Settings > Connect Lightroom' )
 	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], '', 'the dead token was kept' )
+	local asked = 0
+	for _, call in ipairs( server.calls ) do if call.url:find( '/uploads$' ) then asked = asked + 1 end end
+	ok( asked <= 3, 'kept trying after the refusal: ' .. asked )
+end )
+
+test( 'a plug-in too old stops the export, says where to get the new one, and keeps the connection', function()
+	newServer()
+	freshKeychain()
+	server.minimum = '2.0.0'
+	export { 'IMG_1.jpg', 'IMG_2.jpg', 'IMG_3.jpg', 'IMG_4.jpg', 'IMG_5.jpg' }
+	local summary = dialogs[ #dialogs ]
+	eq( summary.title, 'RAWWERS: update the plug-in' )
+	has( summary.body, 'version 2.0.0 or newer is needed' )
+	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], 'rwd_good', 'the connection was dropped' )
 	local asked = 0
 	for _, call in ipairs( server.calls ) do if call.url:find( '/uploads$' ) then asked = asked + 1 end end
 	ok( asked <= 3, 'kept trying after the refusal: ' .. asked )

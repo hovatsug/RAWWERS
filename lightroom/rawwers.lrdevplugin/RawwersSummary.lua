@@ -10,11 +10,12 @@ local function plural( n, one, many ) return n == 1 and ( '1 ' .. one ) or ( n .
 --- results: list of { state, name, message }; warnings: { small = {names},
 --- notSent = n }. Returns title, body.
 function Summary.build( results, warnings, stopReason )
-	local counts = { uploaded = 0, skipped = 0, failed = 0, reauth = 0, cancelled = 0 }
-	local failed = {}
+	local counts = { uploaded = 0, skipped = 0, failed = 0, reauth = 0, outdated = 0, cancelled = 0 }
+	local failed, outdatedMessage = {}, nil
 	for _, r in ipairs( results ) do
 		counts[ r.state ] = ( counts[ r.state ] or 0 ) + 1
 		if r.state == 'failed' then failed[ #failed + 1 ] = r end
+		if r.state == 'outdated' and r.message then outdatedMessage = r.message end
 	end
 	warnings = warnings or {}
 
@@ -38,6 +39,10 @@ function Summary.build( results, warnings, stopReason )
 	if stopReason == 'reauth' then
 		lines[ #lines + 1 ] = ''
 		lines[ #lines + 1 ] = 'This Mac is no longer connected to RAWWERS. Get a new pairing code in the RAWWERS Pro app (Settings > Connect Lightroom), connect again in the Export dialog, and export again.'
+	elseif stopReason == 'outdated' then
+		lines[ #lines + 1 ] = ''
+		lines[ #lines + 1 ] = outdatedMessage or 'This RAWWERS plug-in is too old for the server.'
+		lines[ #lines + 1 ] = 'Download the new plug-in from the RAWWERS Pro app (Settings > Connect Lightroom), install it in Lightroom\'s Plug-in Manager, and export again: the photos already uploaded are skipped, and this Mac stays connected.'
 	elseif stopReason == 'cancelled' then
 		lines[ #lines + 1 ] = ''
 		lines[ #lines + 1 ] = 'Export cancelled. Export again to send the rest: the ones already uploaded are skipped.'
@@ -51,6 +56,8 @@ function Summary.build( results, warnings, stopReason )
 	local title
 	if stopReason == 'reauth' then
 		title = 'RAWWERS: connect again'
+	elseif stopReason == 'outdated' then
+		title = 'RAWWERS: update the plug-in'
 	elseif #failed > 0 then
 		title = 'RAWWERS: ' .. plural( #failed, 'photo', 'photos' ) .. ' did not upload'
 	else

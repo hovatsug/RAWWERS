@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select, text
 
+from app.core.config import get_settings
 from app.models.admin import ProProfile, UserAccount, UserRole, UserRoleType
 from app.models.delivery_access import DeliveryPairingCode, DeliveryToken
 from app.schemas.media import CurrentUser
@@ -233,7 +234,10 @@ def test_the_plugin_learns_who_it_is_connected_as(client, db_session):
 
 
 @pytest.mark.parametrize(("version", "flag"), [("0.9.0", "true"), ("1.0.0", "false"), ("1.0", "false")])
-def test_an_older_plugin_is_told_an_update_is_available(client, db_session, version, flag):
+def test_an_older_plugin_is_told_an_update_is_available(client, db_session, monkeypatch, version, flag):
+    # Only the newest version is under test here; 0.9.0 is below the minimum
+    # supported (1.0.0), which test_plugin_versions.py covers.
+    monkeypatch.setattr(get_settings(), "lightroom_plugin_min_version", "0.0.0")
     token = _token(client, _pro(db_session))
     me = client.get("/v1/delivery/me", headers=_bearer(token, version=version))
     assert me.headers["X-Rawwers-Update-Available"] == flag

@@ -23,6 +23,7 @@ Upload.PART_URL_BATCH = 20
 local function failure( name, result )
 	local state = 'failed'
 	if result.outcome == 'reauth' then state = 'reauth' end
+	if result.outcome == 'outdated' then state = 'outdated' end
 	if result.outcome == 'cancelled' then state = 'cancelled' end
 	return { state = state, name = name, message = result.message, code = result.code }
 end
@@ -89,7 +90,7 @@ end
 
 --- Delivers one photo. Returns { state, name, message, gallery_id, media_asset_id }
 --- with state 'uploaded', 'skipped' (already in the gallery), 'failed',
---- 'reauth' (connect again) or 'cancelled'.
+--- 'reauth' (connect again), 'outdated' (update the plug-in) or 'cancelled'.
 function Upload.deliver( api, gigId, file )
 	local started = api:startUpload( gigId, file )
 	if not started.ok then return failure( file.name, started ) end

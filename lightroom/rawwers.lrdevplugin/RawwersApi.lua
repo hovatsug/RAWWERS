@@ -77,7 +77,7 @@ end
 
 --- One API call, with retries. Returns a result table:
 ---   { ok = true, status, data }
----   { ok = false, outcome = 'refused' | 'reauth' | 'retry' | 'cancelled', status, message, code }
+---   { ok = false, outcome = 'refused' | 'reauth' | 'outdated' | 'retry' | 'cancelled', status, message, code }
 function Api:request( method, path, body )
 	local headers = {
 		{ field = Api.VERSION_HEADER, value = self.plugin_version },

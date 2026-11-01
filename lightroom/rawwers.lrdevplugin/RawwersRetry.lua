@@ -3,7 +3,8 @@
 A network error and a 5xx are worth another try: a dropped Wi-Fi, a server
 restarting. A 4xx is the server's answer and is never repeated: the plugin
 shows the server's message instead. A 401 means the device is no longer
-connected (revoked, expired) and asks for a new pairing code. The number of
+connected (revoked, expired) and asks for a new pairing code; a 426, that
+this plug-in is older than the server supports and must be updated. The number of
 tries is fixed, so the plugin never loops on an error.
 
 Plain Lua 5.1: no Lightroom calls.
@@ -16,7 +17,7 @@ local Retry = {}
 --- export.
 Retry.delays = { 2, 5, 15, 30 }
 
---- 'ok', 'retry', 'reauth', 'refused' or 'cancelled', for one answer.
+--- 'ok', 'retry', 'reauth', 'outdated', 'refused' or 'cancelled', for one answer.
 --- `errorCode` is Lightroom's network error code (LrHttp's info.error.errorCode)
 --- when the request never got an answer.
 function Retry.classify( status, errorCode )
@@ -27,6 +28,7 @@ function Retry.classify( status, errorCode )
 	if type( status ) ~= 'number' then return 'retry' end
 	if status >= 200 and status < 300 then return 'ok' end
 	if status == 401 then return 'reauth' end
+	if status == 426 then return 'outdated' end
 	if status >= 500 then return 'retry' end
 	return 'refused'
 end

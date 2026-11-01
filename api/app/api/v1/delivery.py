@@ -49,7 +49,13 @@ from app.schemas.media import (
     PhotoUploadCreateRequest,
     UploadPayload,
 )
-from app.services.delivery_access import authenticate, exchange_pairing_code, photographer_name, update_available
+from app.services.delivery_access import (
+    authenticate,
+    exchange_pairing_code,
+    photographer_name,
+    require_supported_plugin,
+    update_available,
+)
 from app.services.delivery_gigs import deliverable_gigs, own_gig
 from app.services.gallery_items import DELIVERY_POSITION_KEY
 from app.services.gig_state import require_gig_deliverable
@@ -87,6 +93,8 @@ def require_delivery_device(
     plugin_version: str | None = Header(default=None, alias=PLUGIN_VERSION_HEADER),
     db: Session = Depends(get_db_session),
 ) -> DeliveryDevice:
+    # Before the token: with a plugin this old, connecting again would not help.
+    require_supported_plugin(plugin_version)
     raw = authorization.split(" ", 1)[1].strip() if authorization and authorization.lower().startswith("bearer ") else None
     token = authenticate(db, raw, plugin_version=plugin_version)
     _say_if_outdated(response, plugin_version)
@@ -101,10 +109,18 @@ def _request_ip(request: Request) -> str:
 
 
 @router.post("/pair", response_model=PairResponse)
-def pair(body: PairRequest, request: Request, response: Response, db: Session = Depends(get_db_session)) -> PairResponse:
+def pair(
+    body: PairRequest,
+    request: Request,
+    response: Response,
+    header_version: str | None = Header(default=None, alias=PLUGIN_VERSION_HEADER),
+    db: Session = Depends(get_db_session),
+) -> PairResponse:
     """A pairing code from the pro app, for a delivery token."""
     enforce_named_rate_limit("delivery_pair_all", principal="all")
     enforce_named_rate_limit("delivery_pair_ip", principal=_request_ip(request))
+    # Before the code is spent, so the updated plugin can still use it.
+    require_supported_plugin(body.plugin_version or header_version)
     token, device = exchange_pairing_code(db, code=body.code, device_name=body.device_name, plugin_version=body.plugin_version)
     name = photographer_name(db, device.pro_user_id)
     db.commit()

@@ -9,8 +9,9 @@ what has really been sent.
 
 `spawn(fn)` starts a task (LrTasks.startAsyncTask) and `sleep(seconds)`
 yields (LrTasks.sleep); tests give a small scheduler of their own. A
-'reauth' result stops every worker: the device is no longer connected, and
-trying the rest would only repeat the same refusal.
+'reauth' result (the device is no longer connected) or an 'outdated' one
+(this plug-in must be updated) stops every worker: trying the rest would only
+repeat the same refusal.
 
 Plain Lua 5.1: no Lightroom calls.
 ]]
@@ -44,7 +45,7 @@ function Pipeline:pending()
 	return ( self.tail - self.head + 1 ) + self.inFlight
 end
 
---- Why no more photos should start: 'cancelled', 'reauth' or nil.
+--- Why no more photos should start: 'cancelled', 'reauth', 'outdated' or nil.
 function Pipeline:stopReason()
 	if self.stopped then return self.stopped end
 	if self.isCanceled() then return 'cancelled' end
@@ -66,7 +67,7 @@ function Pipeline:start()
 					self.inFlight = self.inFlight - 1
 					self.results[ #self.results + 1 ] = { job = job, result = result }
 					if self.onResult then self.onResult( job, result ) end
-					if result and result.state == 'reauth' then self.stopped = 'reauth' end
+					if result and ( result.state == 'reauth' or result.state == 'outdated' ) then self.stopped = result.state end
 				elseif self.closed then
 					break
 				else

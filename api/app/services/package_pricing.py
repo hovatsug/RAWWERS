@@ -5,10 +5,18 @@ feature, not merged.
 
 The curve is a continuous per-photo price function p(n), not a stepped
 bracket table - no discontinuity in the marginal rate at a boundary.
-Photos 1-10 are always priced at exactly the entry rate each (the
-minimum bundle never decays); the curve only shapes photos beyond the
-10th, and is always floored at a niche-configured fraction of the
-entry rate so per-photo price never reaches zero. Totals are computed
+Photos up to the anchor are always priced at exactly the entry rate each;
+the curve only shapes photos beyond it, and is always floored at a
+niche-configured fraction of the entry rate so per-photo price never
+reaches zero.
+
+The anchor is the package's size (owner's decision, 2026-11-01): a package
+of N photos costs N x the entry rate, and extras decay from the (N+1)th.
+Every booking stores the anchor and the curve's shape when it is made
+(`pricing_snapshot["curve"]`), so editing a niche's curve afterwards changes
+no booking already made. Bookings made before that carry no stored curve
+and keep the behaviour they were made under: anchor 10, the niche's curve
+as it is now. `package_anchor` is the one place the anchor is decided. Totals are computed
 numerically (summing p(i) for i in 1..n) rather than via a closed form,
 since the floor's max() makes the per-photo function piecewise.
 """
@@ -16,6 +24,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -26,7 +35,10 @@ from app.core.errors import APIError
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.package_pricing import NichePackagePriceCap, PackageCurveType, PackageDecayCurve
 
+# The platform's own lower limit on a selection, whatever the package; and
+# the anchor of every booking made before the anchor was stored with it.
 MINIMUM_PHOTOS = 10
+LEGACY_ANCHOR = MINIMUM_PHOTOS
 
 # Photo counts the curve is sampled at when showing someone what the
 # decay actually does. Shared by the public preview and the pro-side one
@@ -102,12 +114,31 @@ def get_curve_for_niche(db: Session, niche_id: uuid.UUID) -> PackageDecayCurve |
     return db.execute(select(PackageDecayCurve).where(PackageDecayCurve.niche_id == niche_id)).scalar_one_or_none()
 
 
+def package_anchor(included_photos: int) -> int:
+    """The last photo priced at the full entry rate: the package's size. The
+    one place this is decided. At least 1, since a package's size is not
+    bounded where it is saved."""
+    return max(1, int(included_photos))
+
+
+def minimum_selection_for(included_photos: int) -> int:
+    """The fewest photos a client may submit: the package's size, never below
+    the platform's own lower limit."""
+    return max(MINIMUM_PHOTOS, int(included_photos))
+
+
 def price_at_photo(
-    n: int, entry_rate: Decimal, *, curve_type: PackageCurveType, shape_param: Decimal | None, floor_pct: Decimal
+    n: int,
+    entry_rate: Decimal,
+    *,
+    curve_type: PackageCurveType,
+    shape_param: Decimal | None,
+    floor_pct: Decimal,
+    anchor: int = LEGACY_ANCHOR,
 ) -> Decimal:
-    """p(n): the price of the n-th photo. Photos 1-10 always cost exactly
-    entry_rate - the curve only shapes photos beyond the minimum bundle."""
-    if n <= MINIMUM_PHOTOS or curve_type == PackageCurveType.flat:
+    """p(n): the price of the n-th photo. Photos up to the anchor always cost
+    exactly entry_rate - the curve only shapes photos beyond it."""
+    if n <= anchor or curve_type == PackageCurveType.flat:
         return entry_rate
 
     floor = entry_rate * floor_pct
@@ -115,9 +146,9 @@ def price_at_photo(
     entry = float(entry_rate)
 
     if curve_type == PackageCurveType.power:
-        raw = entry * ((n / 10.0) ** (-shape))
+        raw = entry * ((n / float(anchor)) ** (-shape))
     elif curve_type == PackageCurveType.exponential:
-        raw = entry * math.exp(-shape * (n - MINIMUM_PHOTOS))
+        raw = entry * math.exp(-shape * (n - anchor))
     else:
         raw = entry
 
@@ -131,52 +162,144 @@ def compute_total_for_photo_count(
     curve_type: PackageCurveType = PackageCurveType.flat,
     shape_param: Decimal | None = None,
     floor_pct: Decimal = Decimal("1.0000"),
+    anchor: int = LEGACY_ANCHOR,
 ) -> Decimal:
     """Total for `photo_count` photos at `entry_rate`, computed numerically
     as the sum of p(1)..p(photo_count) under the given curve."""
     if photo_count <= 0:
         return Decimal("0.00")
 
-    if photo_count <= MINIMUM_PHOTOS or curve_type == PackageCurveType.flat:
+    if photo_count <= anchor or curve_type == PackageCurveType.flat:
         total = entry_rate * photo_count
     else:
-        total = entry_rate * MINIMUM_PHOTOS
-        for n in range(MINIMUM_PHOTOS + 1, photo_count + 1):
-            total += price_at_photo(n, entry_rate, curve_type=curve_type, shape_param=shape_param, floor_pct=floor_pct)
+        total = entry_rate * anchor
+        for n in range(anchor + 1, photo_count + 1):
+            total += price_at_photo(
+                n, entry_rate, curve_type=curve_type, shape_param=shape_param, floor_pct=floor_pct, anchor=anchor
+            )
 
     return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def compute_package_total(db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal, photo_count: int) -> Decimal:
-    curve = get_curve_for_niche(db, niche_id)
-    if not curve:
-        return compute_total_for_photo_count(entry_rate, photo_count)
-    return compute_total_for_photo_count(
-        entry_rate, photo_count, curve_type=curve.curve_type, shape_param=curve.shape_param, floor_pct=curve.floor_pct
-    )
+@dataclass(frozen=True)
+class PricingCurve:
+    """Everything a photo count is priced by, apart from the entry rate."""
+
+    anchor: int
+    curve_type: PackageCurveType = PackageCurveType.flat
+    shape_param: Decimal | None = None
+    floor_pct: Decimal = Decimal("1.0000")
+
+    def total(self, entry_rate: Decimal, photo_count: int) -> Decimal:
+        return compute_total_for_photo_count(
+            entry_rate,
+            photo_count,
+            curve_type=self.curve_type,
+            shape_param=self.shape_param,
+            floor_pct=self.floor_pct,
+            anchor=self.anchor,
+        )
+
+    def as_snapshot(self) -> dict:
+        return {
+            "anchor": self.anchor,
+            "curve_type": self.curve_type.value,
+            "shape_param": None if self.shape_param is None else str(self.shape_param),
+            "floor_pct": str(self.floor_pct),
+        }
+
+    @classmethod
+    def from_snapshot(cls, value) -> PricingCurve | None:
+        if not isinstance(value, dict) or not isinstance(value.get("anchor"), int) or isinstance(value.get("anchor"), bool):
+            return None
+        shape = value.get("shape_param")
+        return cls(
+            anchor=value["anchor"],
+            curve_type=PackageCurveType(value["curve_type"]),
+            shape_param=None if shape is None else Decimal(shape),
+            floor_pct=Decimal(value["floor_pct"]),
+        )
+
+
+def niche_curve(db: Session, niche_id: uuid.UUID, *, anchor: int) -> PricingCurve:
+    """The niche's curve as an admin has it now, from `anchor`. No curve row
+    prices every photo at the entry rate."""
+    row = get_curve_for_niche(db, niche_id)
+    if not row:
+        return PricingCurve(anchor=anchor)
+    return PricingCurve(anchor=anchor, curve_type=row.curve_type, shape_param=row.shape_param, floor_pct=row.floor_pct)
+
+
+def package_curve(db: Session, *, niche_id: uuid.UUID, included_photos: int) -> PricingCurve:
+    """What a booking of this package would be priced by, if made now."""
+    return niche_curve(db, niche_id, anchor=package_anchor(included_photos))
+
+
+def booking_pricing_snapshot(db: Session, *, niche_id: uuid.UUID, included_photos: int) -> dict:
+    """What a new booking stores so that its prices never move afterwards: the
+    curve (anchor and shape) and the fewest photos its client may submit."""
+    return {
+        "curve": package_curve(db, niche_id=niche_id, included_photos=included_photos).as_snapshot(),
+        "minimum_selection": minimum_selection_for(included_photos),
+    }
+
+
+def _gig_snapshot(gig) -> dict:
+    snapshot = (getattr(gig, "meta", None) or {}).get("pricing_snapshot")
+    return snapshot if isinstance(snapshot, dict) else {}
+
+
+def gig_curve(db: Session, gig) -> PricingCurve:
+    """The curve this booking is priced by: the one stored when it was made,
+    or, for a booking made before curves were stored, the niche's curve now
+    from photo 10 - exactly as it was priced until then."""
+    stored = PricingCurve.from_snapshot(_gig_snapshot(gig).get("curve"))
+    if stored is not None:
+        return stored
+    return niche_curve(db, gig.niche_id, anchor=LEGACY_ANCHOR)
+
+
+def gig_total(db: Session, gig, photo_count: int) -> Decimal:
+    """What `photo_count` photos come to on this booking."""
+    return gig_curve(db, gig).total(gig.entry_rate, photo_count)
+
+
+def gig_minimum_selection(gig) -> int:
+    """The fewest photos this booking's client may submit, as agreed when it
+    was made; 10 for a booking made before that was stored."""
+    stored = _gig_snapshot(gig).get("minimum_selection")
+    if isinstance(stored, int) and not isinstance(stored, bool):
+        return stored
+    return MINIMUM_PHOTOS
+
+
+def compute_package_total(
+    db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal, photo_count: int, anchor: int = LEGACY_ANCHOR
+) -> Decimal:
+    """`photo_count` photos at `entry_rate` on the niche's curve as it is now,
+    from `anchor`. A booking is priced by gig_total, never by this."""
+    return niche_curve(db, niche_id, anchor=anchor).total(entry_rate, photo_count)
 
 
 def compute_minimum_amount(
     db: Session, *, niche_id: uuid.UUID, entry_rate: Decimal, included_photos: int
 ) -> Decimal:
-    """What a booking charges up front: the curve total for the photos the
-    package already includes.
+    """What a booking charges up front: the smallest selection its client may
+    submit, priced from the package's own anchor.
 
-    This used to be the curve total for MINIMUM_PHOTOS (10) regardless of what
-    the package included, which meant a client who selected exactly the photos
-    their package promised still owed a difference charge for everything past
-    the tenth. Basing it on `included_photos` makes that difference exactly
-    zero, which is what "included" has to mean.
+    For a package of 10 or more that is the package itself, every photo at the
+    entry rate (owner's decision: N photos cost N x the rate), so choosing
+    exactly what was included owes nothing more. A package under the
+    platform's 10 still has to be chosen up to 10: those photos are past its
+    anchor and decay, and are collected here rather than as a difference the
+    client owes just to reach the minimum - which is also what makes this the
+    honest "from" price on Discover.
 
-    Deliberately the curve total rather than `included_photos * entry_rate`:
-    photos past the tenth are priced by the decay curve, so charging them flat
-    up front would collect more than `amount_final` ever comes to, and
-    `difference_amount` clamps at zero - the client would overpay at checkout
-    with nothing to reconcile it against.
+    It used to be the curve total for max(10, included) from photo 10, so the
+    included photos past the tenth were already decayed.
     """
-    return compute_package_total(
-        db, niche_id=niche_id, entry_rate=entry_rate, photo_count=max(MINIMUM_PHOTOS, included_photos)
-    )
+    curve = package_curve(db, niche_id=niche_id, included_photos=included_photos)
+    return curve.total(entry_rate, minimum_selection_for(included_photos))
 
 
 def is_curve_priced(gig) -> bool:
@@ -243,10 +366,10 @@ def enforce_entry_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier
         )
 
 
-def enforce_minimum_selection_count(photo_count: int) -> None:
-    if photo_count < MINIMUM_PHOTOS:
+def enforce_minimum_selection_count(photo_count: int, minimum: int = MINIMUM_PHOTOS) -> None:
+    if photo_count < minimum:
         raise APIError(
             code="validation_error",
-            message=f"Minimum selection is {MINIMUM_PHOTOS} photos",
+            message=f"Minimum selection is {minimum} photos",
             status_code=422,
         )

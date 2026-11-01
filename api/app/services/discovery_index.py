@@ -23,7 +23,7 @@ from app.services.pro_standing import booking_block_reason
 from app.services.niche_skills import get_top_niches_for_index
 from app.services.niche_skills import get_niche_tier_map_for_index, get_verified_niches_for_index
 from app.services.response_time import bucket_for, response_median_minutes
-from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
+from app.services.package_pricing import compute_minimum_amount, minimum_selection_for
 from app.services.niche_skills import recompute_pro_niche_skills
 from app.services.search_indexing import enqueue_pro_index_upsert
 
@@ -52,9 +52,8 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     # the filter becoming meaningful for the first time rather than a side
     # effect.
     #
-    # compute_minimum_amount() rather than entry_rate * photos: photos past
-    # the tenth follow the niche's decay curve, so multiplying overstates a
-    # portrait package by EUR 1,679 while looking correct on flat niches.
+    # compute_minimum_amount(), the one definition of what a booking of the
+    # package charges up front (its included photos at the entry rate).
     package_minimums = [
         compute_minimum_amount(
             db,
@@ -77,7 +76,7 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     if package_minimums:
         cheapest = packages[package_minimums.index(min_price)]
         min_entry_rate = cheapest.price
-        min_entry_photos = max(MINIMUM_PHOTOS, cheapest.included_photos)
+        min_entry_photos = minimum_selection_for(cheapest.included_photos)
 
     currency = packages[0].currency if packages else "EUR"
 

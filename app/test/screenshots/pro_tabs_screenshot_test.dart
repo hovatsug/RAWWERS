@@ -344,7 +344,7 @@ List<Override> get _overrides => [
       earningsSummaryProvider.overrideWith((ref) async => _summary),
       packagesControllerProvider.overrideWith(_Packages.new),
       nichesControllerProvider.overrideWith(_Niches.new),
-      pricingPreviewProvider(nicheId: 'niche-portraits', entryPrice: '12.00').overrideWith((ref) async => _preview),
+      pricingPreviewProvider(nicheId: 'niche-portraits', entryPrice: '12.00', includedPhotos: 10).overrideWith((ref) async => _preview),
       portfolioControllerProvider.overrideWith(_Portfolio.new),
       portfolioUploadControllerProvider.overrideWith(_Uploads.new),
       proProfileControllerProvider.overrideWith(_Profile.new),

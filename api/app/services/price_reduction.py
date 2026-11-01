@@ -95,14 +95,14 @@ def selection_reduction_lines(db: Session, gig: Gig, *, charged: Decimal, delive
     and the price of what was delivered was not delivered; the rest, down to
     the selection's price, the client chose not to take. Prices from the same
     curve the selection quote charges by."""
-    from app.services.package_pricing import MINIMUM_PHOTOS, compute_package_total
+    from app.services.package_pricing import MINIMUM_PHOTOS, gig_total
 
     lines: list[ReductionLine] = []
     floor = new_total
     if delivered < included:
         delivered_price = max(
             new_total,
-            _q2(compute_package_total(db, niche_id=gig.niche_id, entry_rate=gig.entry_rate, photo_count=max(delivered, MINIMUM_PHOTOS))),
+            _q2(gig_total(db, gig, max(delivered, MINIMUM_PHOTOS))),
         )
         if charged > delivered_price:
             lines.append(ReductionLine("photographer_non_delivery", _q2(charged - delivered_price)))

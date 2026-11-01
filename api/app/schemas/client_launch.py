@@ -150,16 +150,12 @@ class ClientProfilePackage(BaseModel):
     # What a photograph costs. The figure that should lead any price display,
     # because it is the one the whole pricing model is built from.
     entry_rate: Decimal
-    # The smallest selection this package can be booked with.
+    # The fewest photos a client may submit: the package's size, never below
+    # the platform's 10.
     minimum_photos: int
-    # What that smallest selection actually costs.
-    #
-    # Deliberately not entry_rate * minimum_photos. Photos past the tenth are
-    # priced by the niche's decay curve, so multiplying is right only for flat
-    # niches - it happens to match on real estate and food, and overstates a
-    # portrait package by EUR 1,679. It comes from compute_minimum_amount(),
-    # the same function the booking path charges from, so this card and the
-    # invoice cannot disagree.
+    # What booking the package charges: its included photos at the entry rate.
+    # From compute_minimum_amount(), the same function the booking path
+    # charges from, so this card and the invoice cannot disagree.
     starting_total: Decimal
     extra_photo_price: Decimal
     proofs_sla_days: int

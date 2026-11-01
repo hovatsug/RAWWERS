@@ -111,18 +111,18 @@ def test_compute_minimum_amount_is_the_included_photos_through_the_curve(db_sess
     weddings = get_active_niche_by_slug(db_session, "weddings")
     entry = Decimal("2.00")
 
+    # Owner's decision (2026-11-01): a package of N photos costs N x the entry
+    # rate, the curve starting after it - so the included photos never decay.
     for included in (10, 25, 60):
-        expected = compute_package_total(db_session, niche_id=weddings.id, entry_rate=entry, photo_count=included)
         assert (
             compute_minimum_amount(db_session, niche_id=weddings.id, entry_rate=entry, included_photos=included)
-            == expected
+            == entry * included
         )
 
-    # A package including fewer than the platform minimum still collects for
-    # the minimum, since that is the smallest selection anyone can submit.
-    assert compute_minimum_amount(
-        db_session, niche_id=weddings.id, entry_rate=entry, included_photos=3
-    ) == compute_package_total(db_session, niche_id=weddings.id, entry_rate=entry, photo_count=MINIMUM_PHOTOS)
+    # A package under the platform's 10 decays after its own size, and still
+    # collects for the 10 its client must choose: 3 x 2.00, then photos 4-10
+    # on the weddings curve from photo 3 (power 0.35): 16.63.
+    assert compute_minimum_amount(db_session, niche_id=weddings.id, entry_rate=entry, included_photos=3) == Decimal("16.63")
 
 
 def test_p_of_10_equals_entry_rate_for_every_curve_type():

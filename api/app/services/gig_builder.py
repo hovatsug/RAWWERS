@@ -21,7 +21,7 @@ from app.models.niche import Niche
 from app.services.bookable_time import request_preset
 from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.deadlines import pay_deadline_for_request
-from app.services.package_pricing import compute_minimum_amount
+from app.services.package_pricing import booking_pricing_snapshot, compute_minimum_amount
 
 
 def find_gig_for_request(db: Session, booking_request_id: uuid.UUID) -> Gig | None:
@@ -71,6 +71,9 @@ def build_gig_for_request(
         "finals_sla_days": package.finals_sla_days,
         "addons": package.addons,
         "booking_request_id": str(request.id),
+        # The curve's anchor and shape and the minimum selection, fixed now:
+        # an admin editing the niche's curve later changes no booking made.
+        **booking_pricing_snapshot(db, niche_id=package.niche_id, included_photos=package.included_photos),
     }
     niche = db.get(Niche, package.niche_id)
     if niche:

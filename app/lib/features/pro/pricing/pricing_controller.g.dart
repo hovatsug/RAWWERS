@@ -6,7 +6,7 @@ part of 'pricing_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pricingPreviewHash() => r'9b7a1f865d9ab299fb12a8cac32765ca51fd0552';
+String _$pricingPreviewHash() => r'111c7adf6d77ced1cc63a434cc4511144fe38799';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -32,7 +32,9 @@ class _SystemHash {
 /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
 /// is still typing.
 ///
-/// Keyed on (niche, price) so the curve recomputes as the number changes.
+/// Keyed on (niche, price, photos included) so the curve recomputes as either
+/// number changes: the per-photo price tapers only after the photos the
+/// package includes.
 /// The public preview endpoint reads existing packages and 404s for a pro
 /// pricing something for the first time; this one takes the proposed rate
 /// as a parameter and reports the cap rather than enforcing it.
@@ -44,7 +46,9 @@ const pricingPreviewProvider = PricingPreviewFamily();
 /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
 /// is still typing.
 ///
-/// Keyed on (niche, price) so the curve recomputes as the number changes.
+/// Keyed on (niche, price, photos included) so the curve recomputes as either
+/// number changes: the per-photo price tapers only after the photos the
+/// package includes.
 /// The public preview endpoint reads existing packages and 404s for a pro
 /// pricing something for the first time; this one takes the proposed rate
 /// as a parameter and reports the cap rather than enforcing it.
@@ -55,7 +59,9 @@ class PricingPreviewFamily
   /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
   /// is still typing.
   ///
-  /// Keyed on (niche, price) so the curve recomputes as the number changes.
+  /// Keyed on (niche, price, photos included) so the curve recomputes as either
+  /// number changes: the per-photo price tapers only after the photos the
+  /// package includes.
   /// The public preview endpoint reads existing packages and 404s for a pro
   /// pricing something for the first time; this one takes the proposed rate
   /// as a parameter and reports the cap rather than enforcing it.
@@ -66,7 +72,9 @@ class PricingPreviewFamily
   /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
   /// is still typing.
   ///
-  /// Keyed on (niche, price) so the curve recomputes as the number changes.
+  /// Keyed on (niche, price, photos included) so the curve recomputes as either
+  /// number changes: the per-photo price tapers only after the photos the
+  /// package includes.
   /// The public preview endpoint reads existing packages and 404s for a pro
   /// pricing something for the first time; this one takes the proposed rate
   /// as a parameter and reports the cap rather than enforcing it.
@@ -75,15 +83,24 @@ class PricingPreviewFamily
   PricingPreviewProvider call({
     required String nicheId,
     required String entryPrice,
+    required int includedPhotos,
   }) {
-    return PricingPreviewProvider(nicheId: nicheId, entryPrice: entryPrice);
+    return PricingPreviewProvider(
+      nicheId: nicheId,
+      entryPrice: entryPrice,
+      includedPhotos: includedPhotos,
+    );
   }
 
   @override
   PricingPreviewProvider getProviderOverride(
     covariant PricingPreviewProvider provider,
   ) {
-    return call(nicheId: provider.nicheId, entryPrice: provider.entryPrice);
+    return call(
+      nicheId: provider.nicheId,
+      entryPrice: provider.entryPrice,
+      includedPhotos: provider.includedPhotos,
+    );
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -104,7 +121,9 @@ class PricingPreviewFamily
 /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
 /// is still typing.
 ///
-/// Keyed on (niche, price) so the curve recomputes as the number changes.
+/// Keyed on (niche, price, photos included) so the curve recomputes as either
+/// number changes: the per-photo price tapers only after the photos the
+/// package includes.
 /// The public preview endpoint reads existing packages and 404s for a pro
 /// pricing something for the first time; this one takes the proposed rate
 /// as a parameter and reports the cap rather than enforcing it.
@@ -115,30 +134,37 @@ class PricingPreviewProvider
   /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
   /// is still typing.
   ///
-  /// Keyed on (niche, price) so the curve recomputes as the number changes.
+  /// Keyed on (niche, price, photos included) so the curve recomputes as either
+  /// number changes: the per-photo price tapers only after the photos the
+  /// package includes.
   /// The public preview endpoint reads existing packages and 404s for a pro
   /// pricing something for the first time; this one takes the proposed rate
   /// as a parameter and reports the cap rather than enforcing it.
   ///
   /// Copied from [pricingPreview].
-  PricingPreviewProvider({required String nicheId, required String entryPrice})
-    : this._internal(
-        (ref) => pricingPreview(
-          ref as PricingPreviewRef,
-          nicheId: nicheId,
-          entryPrice: entryPrice,
-        ),
-        from: pricingPreviewProvider,
-        name: r'pricingPreviewProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$pricingPreviewHash,
-        dependencies: PricingPreviewFamily._dependencies,
-        allTransitiveDependencies:
-            PricingPreviewFamily._allTransitiveDependencies,
-        nicheId: nicheId,
-        entryPrice: entryPrice,
-      );
+  PricingPreviewProvider({
+    required String nicheId,
+    required String entryPrice,
+    required int includedPhotos,
+  }) : this._internal(
+         (ref) => pricingPreview(
+           ref as PricingPreviewRef,
+           nicheId: nicheId,
+           entryPrice: entryPrice,
+           includedPhotos: includedPhotos,
+         ),
+         from: pricingPreviewProvider,
+         name: r'pricingPreviewProvider',
+         debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+             ? null
+             : _$pricingPreviewHash,
+         dependencies: PricingPreviewFamily._dependencies,
+         allTransitiveDependencies:
+             PricingPreviewFamily._allTransitiveDependencies,
+         nicheId: nicheId,
+         entryPrice: entryPrice,
+         includedPhotos: includedPhotos,
+       );
 
   PricingPreviewProvider._internal(
     super._createNotifier, {
@@ -149,10 +175,12 @@ class PricingPreviewProvider
     required super.from,
     required this.nicheId,
     required this.entryPrice,
+    required this.includedPhotos,
   }) : super.internal();
 
   final String nicheId;
   final String entryPrice;
+  final int includedPhotos;
 
   @override
   Override overrideWith(
@@ -172,6 +200,7 @@ class PricingPreviewProvider
         debugGetCreateSourceHash: null,
         nicheId: nicheId,
         entryPrice: entryPrice,
+        includedPhotos: includedPhotos,
       ),
     );
   }
@@ -186,7 +215,8 @@ class PricingPreviewProvider
   bool operator ==(Object other) {
     return other is PricingPreviewProvider &&
         other.nicheId == nicheId &&
-        other.entryPrice == entryPrice;
+        other.entryPrice == entryPrice &&
+        other.includedPhotos == includedPhotos;
   }
 
   @override
@@ -194,6 +224,7 @@ class PricingPreviewProvider
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, nicheId.hashCode);
     hash = _SystemHash.combine(hash, entryPrice.hashCode);
+    hash = _SystemHash.combine(hash, includedPhotos.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -208,6 +239,9 @@ mixin PricingPreviewRef
 
   /// The parameter `entryPrice` of this provider.
   String get entryPrice;
+
+  /// The parameter `includedPhotos` of this provider.
+  int get includedPhotos;
 }
 
 class _PricingPreviewProviderElement
@@ -219,6 +253,8 @@ class _PricingPreviewProviderElement
   String get nicheId => (origin as PricingPreviewProvider).nicheId;
   @override
   String get entryPrice => (origin as PricingPreviewProvider).entryPrice;
+  @override
+  int get includedPhotos => (origin as PricingPreviewProvider).includedPhotos;
 }
 
 String _$packagesControllerHash() =>

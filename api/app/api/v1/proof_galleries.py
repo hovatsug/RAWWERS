@@ -75,7 +75,7 @@ from app.services.stripe_service import PAYMENT_METHODS
 from app.services.disputes import upsert_delivery_sla_snapshot
 from app.services.gallery_completion import finalize_gallery_and_complete_gig
 from app.services.gig_state import require_gig_deliverable
-from app.services.package_pricing import compute_package_total, enforce_minimum_selection_count, is_curve_priced
+from app.services.package_pricing import MINIMUM_PHOTOS, enforce_minimum_selection_count, is_curve_priced
 from app.services.selection_quote import gallery_photo_count, quote_selection
 from app.services.price_reduction import apply_price_reduction, flag_short_delivery, selection_reduction_lines
 from app.services.payment_intents import create_or_get_gig_payment_intent, difference_paid
@@ -506,8 +506,6 @@ def submit_selection(
     selected_count = db.execute(
         select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
     ).scalar_one()
-    enforce_minimum_selection_count(selected_count)
-
     gig = db.get(Gig, gallery.gig_id)
     curve_priced = is_curve_priced(gig)
 
@@ -522,6 +520,8 @@ def submit_selection(
     # difference charge and once as flat extras - and the booking could not
     # close until both were paid.
     quote = quote_selection(db, gig=gig, gallery=gallery, selected_count=selected_count) if gig else None
+    # The quote's minimum, so the screen and the refusal name one number.
+    enforce_minimum_selection_count(selected_count, quote.minimum_photos if quote else MINIMUM_PHOTOS)
     extras_count = quote.extras_count if quote else 0
 
     difference_amount = Decimal("0.00")

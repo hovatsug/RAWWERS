@@ -172,9 +172,12 @@ def test_reindex_updates_price_and_portfolio_counts(db_session):
 
     # The starting total, not the per-photo rate. This asserted 80.00 - the
     # entry rate - which is what every client-facing screen then rendered as
-    # the price of a booking. 800.00 is what the cheapest complete booking
-    # actually costs: ten photos at 80.00, the flat minimum bundle.
-    assert idx.min_package_price == Decimal("800.00")
+    # the price of a booking. It is what the cheapest complete booking
+    # actually costs: package A's 5 photos at 80.00, then photos 6-10 (the
+    # platform's minimum selection) decaying from its 5th on the portraits
+    # curve - 400.00 + 316.67. (800.00, ten at full price, before the curve
+    # started at the package's size: owner's decision, 2026-11-01.)
+    assert idx.min_package_price == Decimal("716.67")
     assert idx.max_package_price == Decimal("1500.00")
     assert idx.portfolio_photo_count == 1
     assert idx.portfolio_video_count == 1

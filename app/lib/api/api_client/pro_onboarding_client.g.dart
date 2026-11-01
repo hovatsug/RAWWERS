@@ -2278,6 +2278,7 @@ class _ProOnboardingClient implements ProOnboardingClient {
     required String nicheId,
     required dynamic entryPrice,
     String currency = 'EUR',
+    required int? includedPhotos,
     required String? authorization,
     required String? xMinusUserMinusId,
     CancelToken? cancelToken,
@@ -2325,6 +2326,22 @@ class _ProOnboardingClient implements ProOnboardingClient {
             'default': 'EUR',
             'title': 'Currency',
           },
+        },
+        {
+          'name': 'included_photos',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'integer', 'maximum': 10000, 'minimum': 1},
+              {'type': 'null'},
+            ],
+            'description':
+                'Photos the package includes: the curve decays after them (10 if not given)',
+            'title': 'Included Photos',
+          },
+          'description':
+              'Photos the package includes: the curve decays after them (10 if not given)',
         },
         {
           'name': 'Authorization',
@@ -2378,6 +2395,7 @@ class _ProOnboardingClient implements ProOnboardingClient {
     final queryParameters = <String, dynamic>{
       r'entry_price': entryPrice.toJson(),
       r'currency': currency,
+      r'included_photos': includedPhotos,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{

@@ -210,6 +210,7 @@ class _PackageEditorState extends ConsumerState<_PackageEditor> {
   /// and redrawing the curve mid-number would show a photographer the
   /// price of "1" on the way to typing "12".
   String _previewPrice = '';
+  int _previewIncluded = 10;
 
   @override
   void initState() {
@@ -221,6 +222,7 @@ class _PackageEditorState extends ConsumerState<_PackageEditor> {
     _extra = TextEditingController(text: e?.extraPhotoPrice ?? '');
     _duration = TextEditingController(text: (e?.durationMinutes ?? 60).toString());
     _previewPrice = e?.price ?? '';
+    _previewIncluded = e?.includedPhotos ?? 10;
     _nicheId = e?.nicheId;
   }
 
@@ -230,6 +232,13 @@ class _PackageEditorState extends ConsumerState<_PackageEditor> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// A number the server accepts, or the curve stays as it was: an empty or
+  /// half-typed field must not blank the preview.
+  void _previewIncludedFrom(String value) {
+    final photos = int.tryParse(value.trim());
+    if (photos != null && photos >= 1) setState(() => _previewIncluded = photos);
   }
 
   Future<void> _save() async {
@@ -312,17 +321,29 @@ class _PackageEditorState extends ConsumerState<_PackageEditor> {
         Padding(
           padding: const EdgeInsets.only(top: RSpace.s4),
           child: Text(
-            'The first 10 photos always cost this each. Beyond that the '
+            'Each photo the package includes costs this. Beyond those the '
             'per-photo price tapers.',
             style: theme.textTheme.bodySmall,
           ),
         ),
         const SizedBox(height: RSpace.s16),
-        _CurvePreview(nicheId: _nicheId, nicheSlug: _nicheSlug, entryPrice: _previewPrice),
+        _CurvePreview(
+          nicheId: _nicheId,
+          nicheSlug: _nicheSlug,
+          entryPrice: _previewPrice,
+          includedPhotos: _previewIncluded,
+        ),
         const SizedBox(height: RSpace.s16),
         Row(
           children: [
-            Expanded(child: RInput(label: 'Photos included', controller: _included, keyboardType: TextInputType.number)),
+            Expanded(
+              child: RInput(
+                label: 'Photos included',
+                controller: _included,
+                keyboardType: TextInputType.number,
+                onSubmitted: _previewIncludedFrom,
+              ),
+            ),
             const SizedBox(width: RSpace.s12),
             Expanded(child: RInput(label: 'Minutes', controller: _duration, keyboardType: TextInputType.number)),
           ],
@@ -344,11 +365,17 @@ class _PackageEditorState extends ConsumerState<_PackageEditor> {
 /// invoice, and a client-side approximation that rounded differently would
 /// be a photographer quoting one price and the platform charging another.
 class _CurvePreview extends ConsumerWidget {
-  const _CurvePreview({required this.nicheId, required this.nicheSlug, required this.entryPrice});
+  const _CurvePreview({
+    required this.nicheId,
+    required this.nicheSlug,
+    required this.entryPrice,
+    required this.includedPhotos,
+  });
 
   final String? nicheId;
   final String? nicheSlug;
   final String entryPrice;
+  final int includedPhotos;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -362,7 +389,9 @@ class _CurvePreview extends ConsumerWidget {
       );
     }
 
-    final preview = ref.watch(pricingPreviewProvider(nicheId: nicheId!, entryPrice: entryPrice));
+    final preview = ref.watch(
+      pricingPreviewProvider(nicheId: nicheId!, entryPrice: entryPrice, includedPhotos: includedPhotos),
+    );
 
     return switch (preview) {
       AsyncData(:final value) => _CurveTable(preview: value),

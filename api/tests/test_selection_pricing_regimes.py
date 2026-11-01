@@ -33,18 +33,22 @@ def _latest_selection(db_session, gallery_id):
 
 
 def _curve_gig(db_session, client_id: str, pro_id: str, *, included_photos: int):
-    """A curve-priced booking built the way the booking endpoints now build one.
+    """A curve-priced booking made before bookings stored their curve
+    (meta has no pricing_snapshot): priced from photo 10 on the niche's curve
+    as it is now, its upfront charge the curve total for its included photos
+    - what the booking endpoints charged until 2026-11-01. Such bookings keep
+    exactly that behaviour; tests/test_package_anchor.py covers the ones made
+    since.
 
     `test_booking_close._create_gig_with_curve` hardcodes amount_minimum to
-    10 x entry_rate - the value this change replaces - so reusing it here
-    would exercise the old basis and quietly pass. This mirrors what
-    pro_onboarding and scheduling actually do.
+    10 x entry_rate, an older basis still, so reusing it here would exercise
+    the wrong one and quietly pass.
     """
     ensure_initial_niches(db_session)
     niche = get_active_niche_by_slug(db_session, "portraits")
     entry_rate = Decimal("2.00")
-    amount_minimum = compute_minimum_amount(
-        db_session, niche_id=niche.id, entry_rate=entry_rate, included_photos=included_photos
+    amount_minimum = compute_package_total(
+        db_session, niche_id=niche.id, entry_rate=entry_rate, photo_count=max(10, included_photos)
     )
 
     gig = Gig(
@@ -175,14 +179,13 @@ def test_amount_minimum_covers_the_included_photos_not_just_ten(db_session):
     entry = Decimal("10.00")
 
     minimum = compute_minimum_amount(db_session, niche_id=niche.id, entry_rate=entry, included_photos=20)
-    curve_for_20 = compute_package_total(db_session, niche_id=niche.id, entry_rate=entry, photo_count=20)
     curve_for_10 = compute_package_total(db_session, niche_id=niche.id, entry_rate=entry, photo_count=10)
 
-    assert minimum == curve_for_20
     assert minimum > curve_for_10, "the old basis undercharged for the included photos"
-    # And not the flat reading, which would collect more than amount_final
-    # ever comes to and leave the client overpaid with nothing to reconcile.
-    assert minimum < entry * 20
+    # Owner's decision (2026-11-01): a package of N photos costs N x the
+    # entry rate. The booking stores its curve from photo N, so amount_final
+    # for N photos is this same figure and nothing is overpaid.
+    assert minimum == entry * 20
 
 
 def test_a_curve_gig_unlocks_every_photo_it_charged_for(client, db_session, monkeypatch):

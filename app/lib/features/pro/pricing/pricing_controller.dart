@@ -163,7 +163,9 @@ class PackagesController extends _$PackagesController {
 /// What a client would pay at 10/25/50/100/200 photos, for a price the pro
 /// is still typing.
 ///
-/// Keyed on (niche, price) so the curve recomputes as the number changes.
+/// Keyed on (niche, price, photos included) so the curve recomputes as either
+/// number changes: the per-photo price tapers only after the photos the
+/// package includes.
 /// The public preview endpoint reads existing packages and 404s for a pro
 /// pricing something for the first time; this one takes the proposed rate
 /// as a parameter and reports the cap rather than enforcing it.
@@ -172,12 +174,14 @@ Future<ProNichePricingPreviewResponse> pricingPreview(
   Ref ref, {
   required String nicheId,
   required String entryPrice,
+  required int includedPhotos,
 }) async {
   final client = ref.read(proOnboardingClientProvider);
   final result = await apiCall(
     () => client.getMyNichePricingPreviewV1ProMePricingNichesNicheIdGet(
       nicheId: nicheId,
       entryPrice: entryPrice,
+      includedPhotos: includedPhotos,
       authorization: null,
       xMinusUserMinusId: null,
     ),

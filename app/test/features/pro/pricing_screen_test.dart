@@ -59,7 +59,7 @@ class _FakeNiches extends NichesController {
       ];
 }
 
-ProPackageView _package({String price = '12.00'}) => ProPackageView(
+ProPackageView _package({String price = '12.00', int included = 10}) => ProPackageView(
       id: 'pkg-1',
       proUserId: 'pro-1',
       nicheId: 'niche-portraits',
@@ -67,7 +67,7 @@ ProPackageView _package({String price = '12.00'}) => ProPackageView(
       durationMinutes: 60,
       price: price,
       currency: 'EUR',
-      includedPhotos: 10,
+      includedPhotos: included,
       extraPhotoPrice: '8.00',
       proofsSlaDays: 3,
       finalsSlaDays: 7,
@@ -93,6 +93,13 @@ ProNichePricingPreviewResponse _preview({bool withinCap = true, String? max = '2
       ],
     );
 
+final _previewFor20 = _preview().copyWith(
+  curve: const [
+    ProPricingCurvePoint(photoCount: 10, total: '120.00', perPhoto: '12.00'),
+    ProPricingCurvePoint(photoCount: 25, total: '296.85', perPhoto: '11.87'),
+  ],
+);
+
 Widget _wrap({
   PackagesController Function()? packages,
   ProNichePricingPreviewResponse? preview,
@@ -105,8 +112,12 @@ Widget _wrap({
         // network and the test hangs on a pending timer.
         proProfileControllerProvider.overrideWith(() => _FakeProfile(_creditProfile())),
         nichesControllerProvider.overrideWith(_FakeNiches.new),
-        pricingPreviewProvider(nicheId: 'niche-portraits', entryPrice: '12.00')
+        pricingPreviewProvider(nicheId: 'niche-portraits', entryPrice: '12.00', includedPhotos: 10)
             .overrideWith((ref) async => preview ?? _preview()),
+        // The same price with 20 included: the taper starts after photo 20,
+        // so 20 photos cost 20 x 12.00.
+        pricingPreviewProvider(nicheId: 'niche-portraits', entryPrice: '12.00', includedPhotos: 20)
+            .overrideWith((ref) async => _previewFor20),
       ],
       child: MaterialApp(theme: buildProTheme(), home: const PricingScreen()),
     );
@@ -188,6 +199,60 @@ void main() {
 
     // "Invalid" would leave the pro guessing at a number that works.
     expect(find.textContaining('capped at €20.00'), findsOneWidget);
+  });
+
+  testWidgets('says the included photos cost the full price, not a fixed 10', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+
+    await tester.tap(find.text('Mini session'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Each photo the package includes costs this'), findsOneWidget);
+    expect(find.textContaining('first 10'), findsNothing);
+  });
+
+  testWidgets('a package of 20 shows the curve that starts after photo 20', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(packages: () => _FakePackages([_package(included: 20)])));
+    await tester.pump();
+
+    await tester.tap(find.text('Mini session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('EUR 296.85'), findsOneWidget);
+  });
+
+  testWidgets('changing the photos included redraws the curve from that size', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+    await tester.tap(find.text('Mini session'));
+    await tester.pumpAndSettle();
+    expect(find.text('EUR 268.67'), findsOneWidget);
+
+    await tester.enterText(_fieldNamed('Photos included'), '20');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('EUR 296.85'), findsOneWidget);
+    expect(find.text('EUR 268.67'), findsNothing);
+  });
+
+  testWidgets('a half-typed photo count leaves the curve as it was', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(packages: () => _FakePackages([_package(included: 20)])));
+    await tester.pump();
+    await tester.tap(find.text('Mini session'));
+    await tester.pumpAndSettle();
+
+    for (final typed in ['', '0']) {
+      await tester.enterText(_fieldNamed('Photos included'), typed);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.text('EUR 296.85'), findsOneWidget, reason: 'after typing "$typed"');
+    }
   });
 
   testWidgets('the curve waits for a shoot type and a price', (tester) async {

@@ -27,14 +27,16 @@ class PackageDecayCurve(Base):
     Continuous per-photo price function, not a stepped bracket table, so
     the marginal rate never jumps at a boundary:
 
-        power:       p(n) = max(floor, p0 * (n/10) ** (-shape_param))
-        exponential: p(n) = max(floor, p0 * exp(-shape_param * (n-10)))
+        power:       p(n) = max(floor, p0 * (n/A) ** (-shape_param))
+        exponential: p(n) = max(floor, p0 * exp(-shape_param * (n-A)))
         flat:        p(n) = p0
 
-    p0 is the photographer's entry_rate; floor = floor_pct * p0. Photos
-    1-10 are always priced at exactly p0 each (the minimum bundle never
-    decays); the curve only shapes photos beyond the 10th. shape_param
-    is "a" for power, "k" for exponential, and unused (null) for flat.
+    p0 is the photographer's entry_rate; floor = floor_pct * p0; A is the
+    anchor, the package's size (10 for bookings made before it was stored).
+    Photos 1-A are always priced at exactly p0 each; the curve only shapes
+    photos beyond the A-th. shape_param is "a" for power, "k" for
+    exponential, and unused (null) for flat. A booking stores the shape it
+    was made under, so editing a row here changes no booking already made.
     """
 
     __tablename__ = "package_decay_curve"

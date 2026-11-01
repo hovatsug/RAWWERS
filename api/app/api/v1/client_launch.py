@@ -73,7 +73,7 @@ from app.services.cache import cache_get_json, cache_set_json, get_public_index_
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.client_launch import MatchInput, ensure_client_role, evaluate_client_city_access, match_candidates
 from app.services.feature_flags import is_feature_enabled
-from app.services.package_pricing import MINIMUM_PHOTOS, compute_minimum_amount
+from app.services.package_pricing import compute_minimum_amount, minimum_selection_for
 from app.services.meet import meet_views
 from app.services.meet import teasers as meet_teasers
 from app.services.niche_banners import banner_views as niche_banner_views
@@ -454,7 +454,7 @@ def client_pro_profile(
                 currency=item.currency,
                 included_photos=item.included_photos,
                 entry_rate=item.price,
-                minimum_photos=max(MINIMUM_PHOTOS, item.included_photos),
+                minimum_photos=minimum_selection_for(item.included_photos),
                 starting_total=compute_minimum_amount(
                     db,
                     niche_id=item.niche_id,

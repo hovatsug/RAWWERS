@@ -36,7 +36,7 @@ from app.services.abuse import detect_scraping_activity
 from app.services.authz import enforce_not_banned
 from app.services.cache import cache_get_json, cache_set_json, get_public_index_version, get_redis_client
 from app.services.niche_catalog import ensure_initial_niches
-from app.services.package_pricing import PRICING_PREVIEW_PHOTO_COUNTS, compute_package_total
+from app.services.package_pricing import PRICING_PREVIEW_PHOTO_COUNTS, compute_package_total, package_anchor
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services.response_time import ResponseBucket, client_label
 from app.services.storage import create_presigned_get
@@ -374,7 +374,9 @@ def get_niche_pricing_preview(
             entry_price=p.price,
             currency=p.currency,
             price_at_photo_count={
-                str(count): compute_package_total(db, niche_id=niche_id, entry_rate=p.price, photo_count=count)
+                str(count): compute_package_total(
+                    db, niche_id=niche_id, entry_rate=p.price, photo_count=count, anchor=package_anchor(p.included_photos)
+                )
                 for count in PRICING_PREVIEW_PHOTO_COUNTS
             },
         )

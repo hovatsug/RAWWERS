@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.models.gallery import ProofGallery
 from app.models.gig import Gig
-from app.services.package_pricing import MINIMUM_PHOTOS, compute_package_total, is_curve_priced
+from app.services.package_pricing import MINIMUM_PHOTOS, gig_minimum_selection, gig_total, is_curve_priced
 from app.services.payment_intents import difference_paid
 
 _CENTS = Decimal("0.01")
@@ -99,9 +99,7 @@ def _amount_due_for(
         return Decimal("0.00"), Decimal("0.00"), 0
 
     if is_curve_priced(gig):
-        total = compute_package_total(
-            db, niche_id=gig.niche_id, entry_rate=gig.entry_rate, photo_count=photo_count
-        )
+        total = gig_total(db, gig, photo_count)
         due = max(
             Decimal("0.00"), (total - gig.amount_minimum - already_paid).quantize(_CENTS, rounding=ROUND_HALF_UP)
         )
@@ -111,6 +109,18 @@ def _amount_due_for(
     due = (_extra_unit_price(db, gig=gig, gallery=gallery) * Decimal(extras)).quantize(_CENTS, rounding=ROUND_HALF_UP)
     total = (gig.amount_minimum + due).quantize(_CENTS, rounding=ROUND_HALF_UP)
     return total, due, extras
+
+
+def selection_minimum(gig: Gig, *, delivered: int) -> int:
+    """The fewest photos the client may submit: the package's size, as agreed
+    at booking (10 for a booking made before that was stored). A gallery that
+    holds fewer than that lowers it to what it holds, never below the
+    platform's 10 - a client cannot be asked for photos that were not
+    delivered, and choosing all of them is refunded the shortfall as before."""
+    required = gig_minimum_selection(gig)
+    if delivered < required:
+        return max(MINIMUM_PHOTOS, delivered)
+    return required
 
 
 def quote_selection(
@@ -128,6 +138,9 @@ def quote_selection(
     for a photo that does not exist.
     """
     already_paid = difference_paid(db, gig) if is_curve_priced(gig) else Decimal("0.00")
+    minimum = selection_minimum(
+        gig, delivered=max_photos if max_photos is not None else gallery_photo_count(db, gallery.id)
+    )
     total, due, extras = _amount_due_for(
         db, gig=gig, gallery=gallery, photo_count=selected_count, already_paid=already_paid
     )
@@ -142,7 +155,7 @@ def quote_selection(
     return SelectionQuote(
         selected_count=selected_count,
         included_photos=gallery.included_photos,
-        minimum_photos=MINIMUM_PHOTOS,
+        minimum_photos=minimum,
         currency=gallery.currency or gig.currency or "EUR",
         amount_total=total,
         amount_paid=(gig.amount_minimum + already_paid).quantize(_CENTS, rounding=ROUND_HALF_UP),
@@ -150,7 +163,7 @@ def quote_selection(
         refund_amount=max(
             Decimal("0.00"),
             (gig.amount_minimum + already_paid - total).quantize(_CENTS, rounding=ROUND_HALF_UP),
-        ) if is_curve_priced(gig) and selected_count >= MINIMUM_PHOTOS else Decimal("0.00"),
+        ) if is_curve_priced(gig) and selected_count >= minimum else Decimal("0.00"),
         next_photo_price=next_price,
         extras_count=extras,
     )

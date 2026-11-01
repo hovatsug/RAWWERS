@@ -1487,6 +1487,7 @@ abstract class ProOnboardingClient {
     @Path("niche_id") required String nicheId,
     @Query("entry_price") required dynamic entryPrice,
     @Query("currency") String currency = 'EUR',
+    @Query("included_photos") required int? includedPhotos,
     @Header("Authorization") required String? authorization,
     @Header("X-User-Id") required String? xMinusUserMinusId,
     @CancelRequest() CancelToken? cancelToken,
@@ -1535,6 +1536,22 @@ abstract class ProOnboardingClient {
             'default': 'EUR',
             'title': 'Currency',
           },
+        },
+        {
+          'name': 'included_photos',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'integer', 'maximum': 10000, 'minimum': 1},
+              {'type': 'null'},
+            ],
+            'description':
+                'Photos the package includes: the curve decays after them (10 if not given)',
+            'title': 'Included Photos',
+          },
+          'description':
+              'Photos the package includes: the curve decays after them (10 if not given)',
         },
         {
           'name': 'Authorization',

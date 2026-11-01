@@ -92,6 +92,7 @@ from app.services.package_pricing import (
     compute_package_total,
     enforce_entry_price_cap,
     get_price_cap,
+    package_anchor,
     resolve_pro_tier_for_niche,
 )
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
@@ -822,6 +823,9 @@ def get_my_niche_pricing_preview(
     niche_id: uuid.UUID,
     entry_price: Decimal = Query(..., gt=0, description="Proposed entry rate per photo"),
     currency: str = Query("EUR", min_length=3, max_length=3),
+    included_photos: int | None = Query(
+        None, ge=1, le=10_000, description="Photos the package includes: the curve decays after them (10 if not given)"
+    ),
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> ProNichePricingPreviewResponse:
@@ -848,7 +852,9 @@ def get_my_niche_pricing_preview(
 
     curve = []
     for count in PRICING_PREVIEW_PHOTO_COUNTS:
-        total = compute_package_total(db, niche_id=niche.id, entry_rate=entry, photo_count=count)
+        total = compute_package_total(
+            db, niche_id=niche.id, entry_rate=entry, photo_count=count, anchor=package_anchor(included_photos or 10)
+        )
         curve.append(
             ProPricingCurvePoint(
                 photo_count=count,

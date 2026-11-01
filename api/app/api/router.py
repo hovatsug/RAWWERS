@@ -1,5 +1,8 @@
 from fastapi import APIRouter
 
+from app.core.config import get_settings
+from app.services.telephony import telephony_webhook_mounted
+
 from app.api.v1.admin import router as admin_router
 from app.api.v1.ai_concierge import router as ai_concierge_router
 from app.api.v1.presence import router as presence_router
@@ -11,6 +14,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.chats import router as chats_router
 from app.api.v1.client_launch import router as client_launch_router
 from app.api.v1.communications import router as communications_router
+from app.api.v1.communications import telephony_webhook_router
 from app.api.v1.admin_reviews import router as admin_reviews_router
 from app.api.v1.admin_price_reductions import router as admin_price_reductions_router
 from app.api.v1.accountability import router as accountability_router
@@ -52,6 +56,8 @@ api_router.include_router(presence_router)
 api_router.include_router(available_now_router)
 api_router.include_router(client_launch_router)
 api_router.include_router(communications_router)
+if telephony_webhook_mounted(get_settings()):
+    api_router.include_router(telephony_webhook_router)
 api_router.include_router(admin_reviews_router)
 api_router.include_router(admin_price_reductions_router)
 api_router.include_router(accountability_router)

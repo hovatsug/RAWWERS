@@ -62,6 +62,23 @@ class GenericTelephonyProvider(TelephonyProvider):
         return bool(signature) and signature == settings.telephony_webhook_secret
 
 
+def has_real_provider(settings) -> bool:
+    """A provider other than the mock, with the secret its webhook signature
+    is checked against."""
+    provider = (settings.telephony_provider or "mock").strip().lower()
+    return provider != "mock" and bool(settings.telephony_webhook_secret)
+
+
+def telephony_webhook_mounted(settings) -> bool:
+    """Whether `POST /v1/webhooks/telephony` exists at all (owner's decision,
+    2026-11-01): never in production unless a real provider is configured.
+    With the mock provider the webhook checks no signature, so anyone who knew
+    a call's id could set its status. Outside production it stays, for the
+    mock call flow. The rest of the phone-call channel is kept either way."""
+    production = (settings.app_env or "").strip().lower() in {"prod", "production"}
+    return has_real_provider(settings) or not production
+
+
 def get_telephony_provider() -> TelephonyProvider:
     provider_name = (settings.telephony_provider or "mock").strip().lower()
     if provider_name == "mock":

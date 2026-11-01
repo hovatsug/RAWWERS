@@ -54,6 +54,8 @@ from app.tasks.call_tasks import execute_outbound_call_task
 
 settings = get_settings()
 router = APIRouter(tags=["communications"])
+# Mounted only where telephony_webhook_mounted() allows (app/api/router.py).
+telephony_webhook_router = APIRouter(tags=["communications"])
 
 
 @router.put("/me/contact", response_model=UserContactView)
@@ -305,7 +307,7 @@ def request_outbound_call(
     return _call_view(call)
 
 
-@router.post("/webhooks/telephony")
+@telephony_webhook_router.post("/webhooks/telephony")
 async def telephony_webhook(
     request: Request,
     db: Session = Depends(get_db_session),

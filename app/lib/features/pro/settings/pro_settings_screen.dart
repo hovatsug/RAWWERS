@@ -14,6 +14,7 @@ import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
 import 'package:rawwers/features/pro/presence/presence_visibility_controller.dart';
+import 'package:rawwers/features/pro/marketing/marketing_cards.dart';
 
 /// Everything about the account that is not the work itself.
 ///
@@ -203,6 +204,9 @@ class ProSettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+              const SizedBox(height: RSpace.s24),
+              _SectionLabel('RAWWERS marketing'),
+              const MarketingAgreementCard(),
               const SizedBox(height: RSpace.s24),
               _SectionLabel('Notifications'),
               const _NotificationChannels(),

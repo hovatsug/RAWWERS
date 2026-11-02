@@ -248,7 +248,7 @@ class _DeliveryGalleryControllerProviderElement
 }
 
 String _$deliveryUploadControllerHash() =>
-    r'08ad7b4a4ec49233c57c3eff4318fc514f3cd977';
+    r'6cdad8eb2f2eef7a439834e45d8e3fcb2515abce';
 
 abstract class _$DeliveryUploadController
     extends BuildlessAutoDisposeNotifier<Map<String, DeliveryUploadItem>> {

@@ -17,6 +17,7 @@ import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_controller.dart';
+import 'package:rawwers/features/pro/marketing/marketing_cards.dart';
 
 /// Delivering a shoot.
 ///
@@ -50,6 +51,12 @@ class DeliveryGalleryScreen extends ConsumerWidget {
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(child: _Status(detail: value, gig: gig)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(RSpace.s16, 0, RSpace.s16, RSpace.s16),
+                      child: BookingMarketingCard(gigId: gig.id),
+                    ),
+                  ),
                   if (uploads.isNotEmpty) SliverToBoxAdapter(child: _Uploads(gig: gig, uploads: uploads)),
                   if (value.items.isEmpty)
                     const SliverToBoxAdapter(child: _EmptyGallery())

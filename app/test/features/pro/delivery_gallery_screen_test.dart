@@ -12,6 +12,7 @@ import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_controller.dart';
 import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
+import '../../support/fake_marketing.dart';
 
 /// Publishing is the moment a client is told their photos are ready, and
 /// there is no unsend. These cover that it never happens by accident.
@@ -103,6 +104,7 @@ Widget _wrap({
 }) =>
     ProviderScope(
       overrides: [
+        ...marketingOverrides(gigId: _gig.id),
         deliveryGalleryControllerProvider(_gig).overrideWith(gallery ?? () => _FakeGallery(_detail())),
         deliveryUploadControllerProvider(_gig).overrideWith(() => uploadsController ?? _FakeUploads(uploads)),
       ],

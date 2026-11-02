@@ -79,3 +79,30 @@ class WithdrawMarketingConsentResponse(BaseModel):
 class RenewMarketingConsentRequest(BaseModel):
     consent_ids: list[uuid.UUID] = Field(min_length=1, max_length=500)
     term_months: int = 12
+
+
+class ProMarketingAgreementView(BaseModel):
+    opted_in: bool
+    #: The clause shown, and the version a change is recorded under.
+    wording_version: str
+    wording_text: str
+    #: When the photographer last changed it; null if never.
+    recorded_at: datetime | None = None
+
+
+class UpdateProMarketingAgreementRequest(BaseModel):
+    opted_in: bool
+
+
+class BookingMarketingSettingsView(BaseModel):
+    allow_marketing: bool
+    includes_children: bool
+    #: A client has granted consent on this booking: no further changes.
+    locked: bool
+    #: The photographer's account-level opt-in.
+    opted_in: bool
+
+
+class UpdateBookingMarketingSettingsRequest(BaseModel):
+    allow_marketing: bool | None = None
+    includes_children: bool | None = None

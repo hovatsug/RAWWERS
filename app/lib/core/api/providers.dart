@@ -22,6 +22,7 @@ import 'package:rawwers/core/download/saved_photos.dart';
 import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/lightroom_client.dart';
+import 'package:rawwers/api/api_client/marketing_consent_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/core/api/dio_client.dart';
 import 'package:rawwers/core/api/session.dart';
@@ -116,6 +117,9 @@ ProofGalleriesClient proofGalleriesClient(Ref ref) => ProofGalleriesClient(ref.w
 
 @riverpod
 ReviewsClient reviewsClient(Ref ref) => ReviewsClient(ref.watch(dioProvider));
+
+@riverpod
+MarketingConsentClient marketingConsentClient(Ref ref) => MarketingConsentClient(ref.watch(dioProvider));
 
 @riverpod
 AccountabilityClient accountabilityClient(Ref ref) => AccountabilityClient(ref.watch(dioProvider));

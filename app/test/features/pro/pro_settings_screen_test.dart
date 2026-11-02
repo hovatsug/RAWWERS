@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/design/components/r_switch_tile.dart';
-import 'package:rawwers/design/components/r_switch.dart';
 import 'package:rawwers/api/models/notification_digest_mode.dart';
 import 'package:rawwers/api/models/notification_preference_view.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
@@ -14,6 +13,7 @@ import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
 import 'package:rawwers/features/pro/settings/settings_controller.dart';
 import 'package:rawwers/features/pro/presence/presence_visibility_controller.dart';
+import '../../support/fake_marketing.dart';
 
 /// Settings is where a photographer checks the two things they worry about:
 /// am I live, and where is my money going. These assert it answers both in
@@ -34,18 +34,22 @@ class _FailingProfile extends ProProfileController {
 }
 
 class _FakePrefs extends NotificationPreferencesController {
-  _FakePrefs(this._prefs);
+  _FakePrefs(this._prefs, [List<bool?>? sent]) : _sent = sent ?? [];
 
   final NotificationPreferenceView _prefs;
 
-  bool? lastInApp;
+  /// Shared by every instance one test makes: the list scrolls a card out
+  /// of view and builds it again, and each build needs a fresh notifier.
+  final List<bool?> _sent;
+
+  bool? get lastInApp => _sent.isEmpty ? null : _sent.last;
 
   @override
   Future<NotificationPreferenceView> build() async => _prefs;
 
   @override
   Future<String?> setChannel({bool? email, bool? inApp}) async {
-    lastInApp = inApp;
+    _sent.add(inApp);
     state = AsyncData(
       _prefs.copyWith(
         channelInappEnabled: inApp ?? _prefs.channelInappEnabled,
@@ -93,6 +97,7 @@ Widget _wrap({
 }) =>
     ProviderScope(
       overrides: [
+        ...marketingOverrides(),
         proProfileControllerProvider.overrideWith(profile ?? () => _FakeProfile(_profile())),
         notificationPreferencesControllerProvider.overrideWith(prefs ?? () => _FakePrefs(_prefs)),
         payoutAccountProvider.overrideWith((ref) async => payout ?? _payout),
@@ -168,14 +173,17 @@ void main() {
   });
 
   testWidgets('toggling a channel sends the change', (tester) async {
-    final prefs = _FakePrefs(_prefs);
-    await tester.pumpWidget(_wrap(prefs: () => prefs));
+    final sent = <bool?>[];
+    final prefs = _FakePrefs(_prefs, sent);
+    await tester.pumpWidget(_wrap(prefs: () => _FakePrefs(_prefs, sent)));
     await tester.pump();
 
     // Scrolled to by a text target: `find.byType(RSwitch).first` throws
     // inside scrollUntilVisible while no switch is built yet.
     await _scrollTo(tester, find.text('In-app'));
-    await tester.tap(find.byType(RSwitch).first);
+    // The In-app tile itself (the whole tile toggles): the screen has other
+    // switches above it now.
+    await tester.tap(find.text('In-app'));
     await tester.pump();
 
     expect(prefs.lastInApp, isFalse);

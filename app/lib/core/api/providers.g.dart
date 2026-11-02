@@ -400,6 +400,26 @@ final reviewsClientProvider = AutoDisposeProvider<ReviewsClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ReviewsClientRef = AutoDisposeProviderRef<ReviewsClient>;
+String _$marketingConsentClientHash() =>
+    r'63ab8187943418900527fb80da8bbe2bc0af0c97';
+
+/// See also [marketingConsentClient].
+@ProviderFor(marketingConsentClient)
+final marketingConsentClientProvider =
+    AutoDisposeProvider<MarketingConsentClient>.internal(
+      marketingConsentClient,
+      name: r'marketingConsentClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$marketingConsentClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef MarketingConsentClientRef =
+    AutoDisposeProviderRef<MarketingConsentClient>;
 String _$accountabilityClientHash() =>
     r'9339f685eaaab0c82027697eb1e3e03175530ef1';
 

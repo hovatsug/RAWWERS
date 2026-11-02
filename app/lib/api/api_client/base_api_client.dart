@@ -144,4 +144,12 @@ class BaseApiClient {
   DefaultClient get defaultClient {
     return DefaultClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
+
+  MarketingConsentClient get marketingConsentClient {
+    return MarketingConsentClient(
+      dio,
+      baseUrl: baseUrl,
+      errorLogger: errorLogger,
+    );
+  }
 }

@@ -216,6 +216,15 @@ from app.models.proof_of_gigs import (
 )
 from app.models.accountability import AccountabilityPolicy, BookingPause, PhotographerFinding  # noqa: F401
 from app.models.delivery_access import DeliveryPairingCode, DeliveryToken  # noqa: F401
+from app.models.marketing_consent import (  # noqa: F401
+    BookingMarketingSetting,
+    MarketingConsent,
+    MarketingContentUse,
+    MarketingContentUseConsent,
+    MarketingOriginalAccess,
+    MarketingWording,
+    ProMarketingAgreement,
+)
 from app.models.price_reduction import DeliveryReviewPolicy, PriceReduction, PriceReductionReason  # noqa: F401
 from app.models.payouts import (
     EarningsBalanceSnapshot,

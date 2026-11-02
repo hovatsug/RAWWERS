@@ -209,6 +209,11 @@ class Settings(BaseSettings):
     media_watermark_include_pro_name: bool = Field(default=False, alias="MEDIA_WATERMARK_INCLUDE_PRO_NAME")
     share_view_fingerprint_pepper: str = Field(default="dev-share-fingerprint-pepper", alias="SHARE_VIEW_FINGERPRINT_PEPPER")
     reward_balance_floor: int = Field(default=-5000, alias="REWARD_BALANCE_FLOOR")
+    #: Marketing-use consent (closed beta): the RAW credit (reward points) a
+    #: client earns for a 12-month grant; 6 months earns half, 24 one and a
+    #: half. Once per booking, at most this many grants a month per client.
+    marketing_consent_credit_points: int = Field(default=100, alias="MARKETING_CONSENT_CREDIT_POINTS")
+    marketing_consent_monthly_cap: int = Field(default=3, alias="MARKETING_CONSENT_MONTHLY_CAP")
     dispute_window_days: int = Field(default=30, alias="DISPUTE_WINDOW_DAYS")
     dispute_open_limit_30d: int = Field(default=3, alias="DISPUTE_OPEN_LIMIT_30D")
     dispute_messages_per_day: int = Field(default=10, alias="DISPUTE_MESSAGES_PER_DAY")

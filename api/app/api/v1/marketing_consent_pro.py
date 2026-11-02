@@ -33,7 +33,7 @@ def _require_pro(db: Session, user: CurrentUser) -> None:
 
 
 def _agreement_view(db: Session, pro_user_id) -> ProMarketingAgreementView:
-    wording = mc.active_wording(db, MarketingWordingAudience.photographer)
+    wording = mc.active_wording(db, MarketingWordingAudience.photographer, mc.user_language(db, pro_user_id))
     latest = db.execute(
         select(ProMarketingAgreement)
         .where(ProMarketingAgreement.pro_user_id == pro_user_id)

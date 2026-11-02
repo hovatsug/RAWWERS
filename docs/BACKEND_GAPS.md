@@ -2149,7 +2149,7 @@ MVP_SPEC C11 step 3 has an explicit consent toggle on a client's video review ("
 ## Marketing-use consent (closed beta): what is left - LOGGED
 
 Built 2026-11-02 (4ce5797 to the commit that logs this), beside the older four-level gig consent: per-photo, append-only consent records are the only authority for RAWWERS's own marketing; the older level keeps working for a photographer's own marketing and content packs, no longer grants RAWWERS anything (`can_use_for_marketing(actor="rawwers")` is always false) and pays points only for the photographer's part, once per booking, with the new credit reduced by its net points. Not done:
-- **No reviewed wording, so it is off in production.** Both active wordings are the seeded drafts. There is no admin route or screen to add a wording version: today that is a `marketing_wording` row inserted by hand (new version, `is_draft` false, made the active one).
+- **No reviewed wording yet, so it is off in production.** Both wordings shown are the seeded drafts. Admin > Marketing wording now creates versions (EN or PT) and publishes a reviewed one ("reviewed by" and a note required, logged); a lawyer writes the text.
 - **Renewal prompts are in-app only.** Email waits for Brevo (`enqueue_notification` already queues an email event, which nothing sends while no provider is configured).
 - **The admin library filters by photographer user id**, not by name: no search.
 - **Photographers are credited by display name** (owner, 2026-11-02); there is no handle field yet.

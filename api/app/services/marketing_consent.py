@@ -27,6 +27,7 @@ from app.models.marketing_consent import (
     MarketingWording,
     MarketingWordingAudience,
     ProMarketingAgreement,
+    WORDING_LANGUAGES,
 )
 from app.models.reward import RewardEntryType, RewardLedgerEntry
 from app.services.download_gate import has_rated_or_reported, rating_allowed
@@ -61,17 +62,95 @@ def allowed_scopes() -> frozenset[str]:
 def ensure_default_wordings(db: Session) -> None:
     """The draft placeholder for each audience, active, if none exists yet."""
     for audience, (version, text) in DRAFT_WORDING.items():
-        if db.execute(select(MarketingWording.version).where(MarketingWording.audience == audience)).first():
+        if db.execute(select(MarketingWording.version).where(MarketingWording.audience == audience, MarketingWording.language == "en")).first():
             continue
-        db.add(MarketingWording(version=version, audience=audience, text=text, is_draft=True, is_active=True))
+        db.add(MarketingWording(version=version, audience=audience, language="en", text=text, is_draft=True, is_active=True))
     db.flush()
 
 
-def active_wording(db: Session, audience: MarketingWordingAudience) -> MarketingWording | None:
-    ensure_default_wordings(db)
+def _active(db: Session, audience: MarketingWordingAudience, language: str) -> MarketingWording | None:
     return db.execute(
-        select(MarketingWording).where(MarketingWording.audience == audience, MarketingWording.is_active.is_(True))
+        select(MarketingWording).where(
+            MarketingWording.audience == audience, MarketingWording.language == language, MarketingWording.is_active.is_(True)
+        )
     ).scalars().first()
+
+
+def active_wording(db: Session, audience: MarketingWordingAudience, language: str = "en") -> MarketingWording | None:
+    """The wording shown in `language`, or the English one when that language
+    has none published - or, in production, only a draft."""
+    ensure_default_wordings(db)
+    wording = _active(db, audience, language) if language != "en" else None
+    if wording is not None and not (_production() and wording.is_draft):
+        return wording
+    return _active(db, audience, "en")
+
+
+def user_language(db: Session, user_id) -> str:
+    """"pt" for someone whose app language is Portuguese, "en" otherwise."""
+    from app.services.i18n import get_user_locale_preference
+
+    locale = (get_user_locale_preference(db, user_id=user_id) or "").lower()
+    return "pt" if locale.startswith("pt") else "en"
+
+
+class WordingRefused(Exception):
+    def __init__(self, message: str, *, status_code: int = 422):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+
+
+def create_wording(db: Session, *, audience: MarketingWordingAudience, language: str, text: str, actor_user_id) -> MarketingWording:
+    """A new version, a draft until published. Versions are never edited: a
+    change is a new version."""
+    if language not in WORDING_LANGUAGES:
+        raise WordingRefused("Language must be EN or PT")
+    ensure_default_wordings(db)
+    text = (text or "").strip()
+    if not text:
+        raise WordingRefused("Paste the wording")
+    count = db.execute(
+        select(func.count()).select_from(MarketingWording).where(MarketingWording.audience == audience, MarketingWording.language == language)
+    ).scalar_one()
+    row = MarketingWording(
+        version=f"{audience.value}-{language}-{count + 1}-{uuid.uuid4().hex[:6]}", audience=audience, language=language,
+        text=text, is_draft=True, is_active=False, created_by_user_id=actor_user_id,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def publish_wording(db: Session, version: str, *, reviewed_by: str, note: str, actor_user_id) -> MarketingWording:
+    """Make a reviewed version the one shown for its audience and language.
+    It needs who reviewed it and a note; once published it is never edited."""
+    row = db.get(MarketingWording, version)
+    if row is None:
+        raise WordingRefused("Version not found", status_code=404)
+    reviewed_by, note = (reviewed_by or "").strip(), (note or "").strip()
+    if not reviewed_by:
+        raise WordingRefused("Say who reviewed it")
+    if not note:
+        raise WordingRefused("Add a note")
+    if row.version in {version for version, _text in DRAFT_WORDING.values()}:
+        raise WordingRefused("The placeholder cannot be published; paste the reviewed text as a new version", status_code=409)
+    if row.published_at is not None or row.reviewed_by is not None:
+        raise WordingRefused("This version was already published; create a new version for any change", status_code=409)
+    for other in db.execute(
+        select(MarketingWording).where(
+            MarketingWording.audience == row.audience, MarketingWording.language == row.language, MarketingWording.is_active.is_(True)
+        )
+    ).scalars():
+        other.is_active = False
+    row.is_draft = False
+    row.is_active = True
+    row.reviewed_by = reviewed_by
+    row.review_note = note
+    row.published_at = datetime.now(timezone.utc)
+    row.published_by_user_id = actor_user_id
+    db.flush()
+    return row
 
 
 def _production() -> bool:
@@ -101,7 +180,7 @@ def record_pro_agreement(db: Session, pro_user_id, *, opted_in: bool) -> ProMark
     """A photographer's account-level choice, recorded with the wording they
     were shown and when. Turning it off stops new offers; it withdraws
     nothing already granted."""
-    wording = active_wording(db, MarketingWordingAudience.photographer)
+    wording = active_wording(db, MarketingWordingAudience.photographer, user_language(db, pro_user_id))
     row = ProMarketingAgreement(pro_user_id=pro_user_id, opted_in=opted_in, wording_version=wording.version)
     db.add(row)
     db.flush()
@@ -217,7 +296,7 @@ def offer_for(db: Session, gig: Gig) -> Offer:
     return Offer(
         True,
         None,
-        wording=active_wording(db, MarketingWordingAudience.client),
+        wording=active_wording(db, MarketingWordingAudience.client, user_language(db, gig.client_user_id)),
         photo_ids=photos,
         photographer_credit=photographer_credit(db, gig.pro_user_id),
     )
@@ -378,7 +457,7 @@ def renew(db: Session, client_user_id, consent_ids: list[uuid.UUID], term_months
         raise MarketingConsentRefused("Choose 6, 12 or 24 months")
     if not feature_enabled(db):
         raise MarketingConsentRefused("Not available", status_code=409)
-    wording = active_wording(db, MarketingWordingAudience.client)
+    wording = active_wording(db, MarketingWordingAudience.client, user_language(db, client_user_id))
     rows = db.execute(
         select(MarketingConsent).where(
             MarketingConsent.id.in_(consent_ids),

@@ -240,6 +240,19 @@ export type MarketingUse = {
   consents: { id: string; status: string; ends_at: string }[];
 };
 
+export type MarketingWording = {
+  version: string;
+  audience: "client" | "photographer" | string;
+  language: "en" | "pt" | string;
+  text: string;
+  status: "draft" | "reviewed" | "published" | string;
+  in_use: boolean;
+  reviewed_by: string | null;
+  review_note: string | null;
+  created_at: string;
+  published_at: string | null;
+};
+
 export type MarketingTakeDown = {
   use_id: string;
   content_name: string;
@@ -405,6 +418,14 @@ export const admin = {
   marketingUses: () => adminFetch<{ items: MarketingUse[] }>("marketing/uses"),
   marketingExpiring: () => adminFetch<{ items: MarketingUse[] }>("marketing/expiring"),
   marketingTakeDowns: () => adminFetch<{ items: MarketingTakeDown[] }>("marketing/take-down"),
+  marketingWordings: () => adminFetch<{ items: MarketingWording[] }>("marketing/wordings"),
+  createMarketingWording: (body: { audience: string; language: string; text: string }) =>
+    adminFetch<MarketingWording>("marketing/wordings", { method: "POST", body: JSON.stringify(body) }),
+  publishMarketingWording: (version: string, body: { reviewed_by: string; note: string }) =>
+    adminFetch<MarketingWording>(`marketing/wordings/${encodeURIComponent(version)}/publish`, {
+      method: "POST",
+      body: JSON.stringify(body)
+    }),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

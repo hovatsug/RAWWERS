@@ -179,3 +179,34 @@ class MarketingTakeDownView(BaseModel):
 
 class MarketingTakeDownResponse(BaseModel):
     items: list[MarketingTakeDownView]
+
+
+class MarketingWordingView(BaseModel):
+    version: str
+    audience: str
+    language: str
+    text: str
+    #: draft (never reviewed), reviewed (published before, now replaced) or
+    #: published (the one shown now).
+    status: str
+    #: Shown now, even if it is still the seeded draft.
+    in_use: bool
+    reviewed_by: str | None = None
+    review_note: str | None = None
+    created_at: datetime
+    published_at: datetime | None = None
+
+
+class MarketingWordingsResponse(BaseModel):
+    items: list[MarketingWordingView]
+
+
+class CreateMarketingWordingRequest(BaseModel):
+    audience: str = Field(pattern="^(client|photographer)$")
+    language: str = Field(pattern="^(en|pt)$")
+    text: str = Field(min_length=1, max_length=20000)
+
+
+class PublishMarketingWordingRequest(BaseModel):
+    reviewed_by: str = Field(default="", max_length=300)
+    note: str = Field(default="", max_length=2000)

@@ -23,13 +23,19 @@ from app.models.marketing_consent import (
     MarketingContentUse,
     MarketingContentUseConsent,
     MarketingOriginalAccess,
+    MarketingWording,
+    MarketingWordingAudience,
 )
 from app.models.media import MediaObject, MediaVariant, ObjectStatus
 from app.schemas.marketing_consent import (
     AdminMarketingConsentsResponse,
     AdminMarketingConsentView,
     MarketingOriginalLinkResponse,
+    CreateMarketingWordingRequest,
     MarketingTakeDownResponse,
+    MarketingWordingsResponse,
+    MarketingWordingView,
+    PublishMarketingWordingRequest,
     MarketingTakeDownView,
     MarketingUseConsentView,
     MarketingUsesResponse,
@@ -192,3 +198,67 @@ def list_marketing_take_downs(_: CurrentUser = Depends(require_admin), db: Sessi
             )
         )
     return MarketingTakeDownResponse(items=sorted(items, key=lambda i: (i.take_down_by, i.content_name)))
+
+
+# --- wording versions --------------------------------------------------------------------------
+
+
+def _wording_view(row: MarketingWording) -> MarketingWordingView:
+    status = "published" if row.is_active and not row.is_draft else "reviewed" if not row.is_draft else "draft"
+    return MarketingWordingView(
+        version=row.version, audience=row.audience.value, language=row.language, text=row.text, status=status,
+        in_use=row.is_active, reviewed_by=row.reviewed_by, review_note=row.review_note, created_at=row.created_at,
+        published_at=row.published_at,
+    )
+
+
+def _refused(refused: mc.WordingRefused) -> APIError:
+    code = {404: "not_found", 409: "invalid_state"}.get(refused.status_code, "validation_error")
+    return APIError(code=code, message=refused.message, status_code=refused.status_code)
+
+
+@router.get("/wordings", response_model=MarketingWordingsResponse)
+def list_marketing_wordings(_: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> MarketingWordingsResponse:
+    mc.ensure_default_wordings(db)
+    rows = db.execute(
+        select(MarketingWording).order_by(MarketingWording.audience, MarketingWording.language, MarketingWording.created_at.desc())
+    ).scalars().all()
+    db.commit()
+    return MarketingWordingsResponse(items=[_wording_view(r) for r in rows])
+
+
+@router.post("/wordings", response_model=MarketingWordingView)
+def create_marketing_wording(
+    body: CreateMarketingWordingRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> MarketingWordingView:
+    """A new version, as a draft. There is no editing: a change is a new version."""
+    try:
+        row = mc.create_wording(db, audience=MarketingWordingAudience(body.audience), language=body.language, text=body.text, actor_user_id=actor.user_id)
+    except mc.WordingRefused as refused:
+        raise _refused(refused)
+    add_admin_audit_log(
+        db, actor_user_id=actor.user_id, target_type="marketing_wording", target_id=row.version,
+        action="marketing_wording_created", reason=None, metadata={"audience": body.audience, "language": body.language},
+    )
+    db.commit()
+    return _wording_view(row)
+
+
+@router.post("/wordings/{version}/publish", response_model=MarketingWordingView)
+def publish_marketing_wording(
+    version: str, body: PublishMarketingWordingRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> MarketingWordingView:
+    """Publish a reviewed version: "reviewed by" and a note are required, and
+    the publishing is logged with the admin and the time. It replaces the
+    version shown for its audience and language."""
+    try:
+        row = mc.publish_wording(db, version, reviewed_by=body.reviewed_by, note=body.note, actor_user_id=actor.user_id)
+    except mc.WordingRefused as refused:
+        raise _refused(refused)
+    add_admin_audit_log(
+        db, actor_user_id=actor.user_id, target_type="marketing_wording", target_id=row.version,
+        action="marketing_wording_published", reason=body.note.strip(),
+        metadata={"reviewed_by": row.reviewed_by, "audience": row.audience.value, "language": row.language},
+    )
+    db.commit()
+    return _wording_view(row)

@@ -62,6 +62,10 @@ class MarketingConsentStatus(str, enum.Enum):
     expired = "expired"
 
 
+#: The languages a wording is written in.
+WORDING_LANGUAGES = ("en", "pt")
+
+
 class MarketingWordingAudience(str, enum.Enum):
     client = "client"
     photographer = "photographer"
@@ -80,12 +84,20 @@ class MarketingWording(Base):
     audience: Mapped[MarketingWordingAudience] = mapped_column(
         Enum(MarketingWordingAudience, name="marketing_wording_audience", native_enum=False, length=32), nullable=False
     )
+    #: "en" or "pt".
+    language: Mapped[str] = mapped_column(Text, nullable=False, default="en")
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    #: A placeholder nobody has legally reviewed.
+    #: Not legally reviewed. Cleared only by publishing with "reviewed by".
     is_draft: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    #: The one shown now, per audience.
+    #: The one shown now, per audience and language.
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    #: Who reviewed it (free text: the lawyer), and the admin's note.
+    reviewed_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
 class ProMarketingAgreement(Base):

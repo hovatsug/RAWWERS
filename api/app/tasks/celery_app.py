@@ -114,6 +114,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.remove_unfinished_uploads",
         "schedule": timedelta(hours=1),
     },
+    # Marketing-use consent: expiries, and the 30-day renewal prompts.
+    "marketing-consent-daily": {
+        "task": "app.tasks.scheduled.marketing_consent_daily",
+        "schedule": timedelta(days=1),
+    },
 }
 celery_app.conf.task_routes = {
     # Its own queue, served by the worker-photos processes: a photographer's
@@ -152,6 +157,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.raise_clients_owed": {"queue": "media"},
     "app.tasks.scheduled.apply_due_findings": {"queue": "media"},
     "app.tasks.scheduled.remove_unfinished_uploads": {"queue": "media"},
+    "app.tasks.scheduled.marketing_consent_daily": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

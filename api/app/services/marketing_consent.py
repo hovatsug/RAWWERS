@@ -9,7 +9,7 @@ from __future__ import annotations
 import calendar
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -412,3 +412,69 @@ def renew(db: Session, client_user_id, consent_ids: list[uuid.UUID], term_months
     db.add_all(renewed)
     db.flush()
     return renewed
+
+
+# --- the daily job ---------------------------------------------------------------------------
+
+#: How long before its end a permission prompts the client to renew.
+RENEWAL_PROMPT_DAYS = 30
+
+
+def expire_due(db: Session, *, now: datetime | None = None, limit: int = 1000) -> int:
+    """Active consents past their end date become expired. The status
+    changes; nothing is deleted."""
+    now = now or datetime.now(timezone.utc)
+    rows = db.execute(
+        select(MarketingConsent)
+        .where(MarketingConsent.status == MarketingConsentStatus.active.value, MarketingConsent.ends_at <= now)
+        .order_by(MarketingConsent.ends_at.asc())
+        .limit(limit)
+    ).scalars().all()
+    for row in rows:
+        row.status = MarketingConsentStatus.expired.value
+        row.expired_at = now
+    db.flush()
+    return len(rows)
+
+
+def send_renewal_prompts(db: Session, *, now: datetime | None = None) -> int:
+    """An in-app prompt to the client, once, for active permissions ending
+    within RENEWAL_PROMPT_DAYS and not already renewed: one notification per
+    client per run, naming how many photos. Email comes later (Brevo).
+    Returns how many clients were prompted."""
+    from app.services.notifications import enqueue_notification
+
+    now = now or datetime.now(timezone.utc)
+    renewed = select(MarketingConsent.renews_consent_id).where(MarketingConsent.renews_consent_id.is_not(None))
+    rows = db.execute(
+        select(MarketingConsent).where(
+            MarketingConsent.status == MarketingConsentStatus.active.value,
+            MarketingConsent.renewal_prompted_at.is_(None),
+            MarketingConsent.ends_at > now,
+            MarketingConsent.ends_at <= now + timedelta(days=RENEWAL_PROMPT_DAYS),
+            MarketingConsent.id.not_in(renewed),
+        )
+    ).scalars().all()
+    by_client: dict[uuid.UUID, list[MarketingConsent]] = {}
+    for row in rows:
+        by_client.setdefault(row.client_user_id, []).append(row)
+    for client_user_id, consents in by_client.items():
+        first_end = min(c.ends_at for c in consents)
+        count = len(consents)
+        enqueue_notification(
+            db,
+            user_id=client_user_id,
+            notification_type="marketing_consent.renewal",
+            payload={
+                "title": "Your photos' marketing permission ends soon",
+                "body": f"RAWWERS may feature {count} {'photo' if count == 1 else 'photos'} of yours until "
+                f"{first_end.strftime('%d %b %Y')}. Renew to keep them featured, or let them end.",
+                "action": {"label": "Review", "url": "/account/marketing-permissions"},
+            },
+            reference_type="marketing_consent",
+            reference_id=f"{client_user_id}:{now.date().isoformat()}",
+        )
+        for consent in consents:
+            consent.renewal_prompted_at = now
+    db.flush()
+    return len(by_client)

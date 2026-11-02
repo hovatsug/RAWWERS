@@ -127,6 +127,22 @@ def purge_raw_access_ips_task() -> int:
         db.close()
 
 
+@celery_app.task(name="app.tasks.scheduled.marketing_consent_daily")
+def marketing_consent_daily_task() -> dict:
+    """Marketing-use consent: mark the ended ones expired, and prompt clients
+    whose permissions end within 30 days (owner's decision, 2026-11-01)."""
+    from app.services.marketing_consent import expire_due, send_renewal_prompts
+
+    db = SessionLocal()
+    try:
+        expired = expire_due(db)
+        prompted = send_renewal_prompts(db)
+        db.commit()
+        return {"expired": expired, "prompted": prompted}
+    finally:
+        db.close()
+
+
 @celery_app.task(name="app.tasks.scheduled.remove_unfinished_uploads")
 def remove_unfinished_uploads_task() -> int:
     """Uploads started and never finished, after about a day (owner's decision 4)."""

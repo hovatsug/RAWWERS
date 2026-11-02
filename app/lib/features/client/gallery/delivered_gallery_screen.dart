@@ -14,6 +14,7 @@ import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/client/gallery/delivered_controller.dart';
 import 'package:rawwers/features/client/gallery/save_all_controller.dart';
 import 'package:rawwers/features/client/gallery/unlock_panel.dart';
+import 'package:rawwers/features/client/marketing/marketing_offer.dart';
 import 'package:rawwers/core/images/disk_cached_image.dart';
 
 /// The photographs a client has paid for.
@@ -52,6 +53,8 @@ class DeliveredGalleryScreen extends ConsumerWidget {
             ),
           AsyncData(:final value) => Column(
               children: [
+                // After the rating: the optional marketing card, when offered.
+                if (value.gigId case final gigId?) MarketingOfferCard(gigId: gigId),
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async => ref.invalidate(deliveredControllerProvider(galleryId)),

@@ -7,9 +7,12 @@ import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/tokens.dart';
 
 class AccountScreen extends ConsumerWidget {
-  const AccountScreen({required this.verifyEmailPath, super.key});
+  const AccountScreen({required this.verifyEmailPath, this.marketingPermissionsPath, super.key});
 
   final String verifyEmailPath;
+
+  /// Photos the client has let RAWWERS feature; null hides the link.
+  final String? marketingPermissionsPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,6 +31,10 @@ class AccountScreen extends ConsumerWidget {
             if (me?.email != null) Text(me!.email!, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: RSpace.s16),
             RTextLink(label: 'Verify email', onPressed: () => context.push(verifyEmailPath)),
+            if (marketingPermissionsPath case final path?) ...[
+              const SizedBox(height: RSpace.s12),
+              RTextLink(label: 'Marketing permissions', onPressed: () => context.push(path)),
+            ],
             const Spacer(),
             RButton(label: 'Log out', onPressed: () => ref.read(authControllerProvider.notifier).logout()),
           ],

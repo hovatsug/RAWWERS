@@ -36,6 +36,8 @@ import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
 import 'package:rawwers/api/models/problem_report_reason.dart';
 import 'package:rawwers/features/client/gallery/save_all_controller.dart';
 import 'package:rawwers/features/client/gallery/unlock_controller.dart';
+import 'package:rawwers/api/models/marketing_consent_offer_response.dart';
+import 'package:rawwers/features/client/marketing/marketing_consent_controllers.dart';
 
 class _FakeDelivered extends DeliveredController {
   _FakeDelivered(this._photos, {Map<String, String>? freshLinks}) : _freshLinks = freshLinks;
@@ -151,6 +153,11 @@ class _GatedDelivered extends _FakeDelivered {
       unlocked.value ? DeliveredState(photos: _photos, gigId: 'gig-1') : const DeliveredState.locked(gigId: 'gig-1');
 }
 
+class _NotOffered extends MarketingOfferController {
+  @override
+  Future<MarketingConsentOfferResponse> build(String gigId) async => const MarketingConsentOfferResponse(offered: false, reason: 'rate_first');
+}
+
 class _FakeUnlock extends UnlockController {
   _FakeUnlock(this.unlocked, {this.problem});
   final ValueNotifier<bool> unlocked;
@@ -188,6 +195,9 @@ Future<(_FakeUnlock, _FakeSaver)> _pumpGated(WidgetTester tester, {String? probl
       overrides: [
         deliveredControllerProvider('g1').overrideWith(() => _GatedDelivered([_photo(0), _photo(1)], unlocked)),
         unlockControllerProvider('g1').overrideWith(() => unlock),
+        // Once unlocked the screen asks whether to offer the marketing card;
+        // not offered here (tested in marketing_consent_test.dart).
+        marketingOfferControllerProvider('gig-1').overrideWith(_NotOffered.new),
         photoSaverProvider.overrideWithValue(saver),
         savedPhotosProvider.overrideWithValue(_MemorySaved()),
         openAppSettingsProvider.overrideWithValue(() async => true),

@@ -21,6 +21,7 @@ import 'package:rawwers/features/shared/auth/register_screen.dart';
 import 'package:rawwers/features/shared/auth/reset_password_screen.dart';
 import 'package:rawwers/features/shared/auth/verify_email_screen.dart';
 import 'package:rawwers/features/client/discover/discover_freshness.dart';
+import 'package:rawwers/features/client/marketing/marketing_permissions_screen.dart';
 
 part 'app_router_client.g.dart';
 
@@ -51,6 +52,7 @@ abstract final class ClientRoute {
 
   /// Opened from Account, so it hangs off Account and back returns there.
   static const verifyEmail = '$account/verify-email';
+  static const marketingPermissions = '$account/marketing-permissions';
 
   /// Nested under Discover so the bottom nav stays put and back returns to
   /// the results the client was browsing, at the scroll position they left.
@@ -186,9 +188,13 @@ GoRouter clientRouter(Ref ref) {
             routes: [
               GoRoute(
                 path: ClientRoute.account,
-                builder: (context, state) => const AccountScreen(verifyEmailPath: ClientRoute.verifyEmail),
+                builder: (context, state) => const AccountScreen(
+                  verifyEmailPath: ClientRoute.verifyEmail,
+                  marketingPermissionsPath: ClientRoute.marketingPermissions,
+                ),
                 routes: [
                   GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),
+                  GoRoute(path: 'marketing-permissions', builder: (context, state) => const MarketingPermissionsScreen()),
                 ],
               ),
             ],

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -106,3 +106,76 @@ class BookingMarketingSettingsView(BaseModel):
 class UpdateBookingMarketingSettingsRequest(BaseModel):
     allow_marketing: bool | None = None
     includes_children: bool | None = None
+
+
+class AdminMarketingConsentView(BaseModel):
+    id: uuid.UUID
+    media_asset_id: uuid.UUID
+    thumbnail_url: str | None = None
+    gig_id: uuid.UUID
+    #: The client's first name only.
+    client_first_name: str
+    pro_user_id: uuid.UUID
+    photographer_credit: str
+    scope: str
+    term_months: int
+    granted_at: datetime
+    ends_at: datetime
+    status: str
+    withdrawn_at: datetime | None = None
+    expired_at: datetime | None = None
+    #: How many recorded uses include it.
+    uses: int = 0
+
+
+class AdminMarketingConsentsResponse(BaseModel):
+    items: list[AdminMarketingConsentView]
+
+
+class MarketingOriginalLinkResponse(BaseModel):
+    url: str
+    expires_in_seconds: int
+
+
+class RecordMarketingUseRequest(BaseModel):
+    content_name: str = Field(min_length=1, max_length=300)
+    used_on: date
+    consent_ids: list[uuid.UUID] = Field(min_length=1, max_length=500)
+    #: On a channel RAWWERS owns (its site, its social accounts): taken down
+    #: within 30 days of a consent ending.
+    owned_channel: bool = True
+
+
+class MarketingUseConsentView(BaseModel):
+    id: uuid.UUID
+    status: str
+    ends_at: datetime
+
+
+class MarketingUseView(BaseModel):
+    id: uuid.UUID
+    content_name: str
+    used_on: date
+    owned_channel: bool
+    #: The earliest end date of its consents, renewals followed.
+    retire_by: date
+    consents: list[MarketingUseConsentView]
+
+
+class MarketingUsesResponse(BaseModel):
+    items: list[MarketingUseView]
+
+
+class MarketingTakeDownView(BaseModel):
+    use_id: uuid.UUID
+    content_name: str
+    used_on: date
+    consent_id: uuid.UUID
+    #: withdrawn or expired.
+    reason: str
+    ended_at: datetime
+    take_down_by: date
+
+
+class MarketingTakeDownResponse(BaseModel):
+    items: list[MarketingTakeDownView]

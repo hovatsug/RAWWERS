@@ -55,7 +55,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     },
     {
       title: "Moderation",
-      items: [{ href: "/admin/reviews", label: "Reviews" }]
+      items: [
+        { href: "/admin/reviews", label: "Reviews" },
+        { href: "/admin/marketing", label: "Marketing library" }
+      ]
     },
     {
       title: "Money",

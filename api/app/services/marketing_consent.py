@@ -478,3 +478,33 @@ def send_renewal_prompts(db: Session, *, now: datetime | None = None) -> int:
             consent.renewal_prompted_at = now
     db.flush()
     return len(by_client)
+
+
+# --- the admin content library -----------------------------------------------------------------
+
+#: How long after a used consent ends the content must be down, on channels
+#: RAWWERS owns.
+TAKE_DOWN_DAYS_OWNED = 30
+
+
+def renewal_of(db: Session, consent: MarketingConsent) -> MarketingConsent | None:
+    """The active record that renews this one, if any (following renewals of
+    renewals to the latest)."""
+    current = consent
+    latest = None
+    for _ in range(50):  # a chain of renewals; bounded
+        nxt = db.execute(
+            select(MarketingConsent)
+            .where(MarketingConsent.renews_consent_id == current.id, MarketingConsent.status == MarketingConsentStatus.active.value)
+            .order_by(MarketingConsent.ends_at.desc())
+        ).scalars().first()
+        if nxt is None:
+            return latest
+        latest = current = nxt
+    return latest
+
+
+def effective_end(db: Session, consent: MarketingConsent) -> datetime:
+    """When this permission really ends: its own end, or its renewal's."""
+    renewed = renewal_of(db, consent)
+    return renewed.ends_at if renewed is not None else consent.ends_at

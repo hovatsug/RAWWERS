@@ -212,6 +212,44 @@ export type MoneyAttentionItem = {
 
 export type HoldOutcome = "release" | "keep";
 
+/** Marketing-use consent (closed beta): one photo a client let RAWWERS feature. */
+export type MarketingConsentRow = {
+  id: string;
+  media_asset_id: string;
+  thumbnail_url: string | null;
+  gig_id: string;
+  client_first_name: string;
+  pro_user_id: string;
+  photographer_credit: string;
+  scope: string;
+  term_months: number;
+  granted_at: string;
+  ends_at: string;
+  status: "active" | "withdrawn" | "expired" | string;
+  withdrawn_at: string | null;
+  expired_at: string | null;
+  uses: number;
+};
+
+export type MarketingUse = {
+  id: string;
+  content_name: string;
+  used_on: string;
+  owned_channel: boolean;
+  retire_by: string;
+  consents: { id: string; status: string; ends_at: string }[];
+};
+
+export type MarketingTakeDown = {
+  use_id: string;
+  content_name: string;
+  used_on: string;
+  consent_id: string;
+  reason: "withdrawn" | "expired" | string;
+  ended_at: string;
+  take_down_by: string;
+};
+
 export type ReductionLine = { reason_code: string; amount: string };
 export type ReductionReason = { code: string; label: string; client_wording: string; may_carry_fault: boolean; is_active: boolean };
 export type BookingMoney = {
@@ -356,6 +394,17 @@ export const admin = {
       method: "POST",
       body: JSON.stringify(holdOutcome ? { note, hold_outcome: holdOutcome } : { note })
     }),
+  marketingConsents: (filters: { status?: string; pro_user_id?: string }) => {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as [string, string][]).toString();
+    return adminFetch<{ items: MarketingConsentRow[] }>(`marketing/consents${query ? `?${query}` : ""}`);
+  },
+  marketingOriginal: (consentId: string) =>
+    adminFetch<{ url: string; expires_in_seconds: number }>(`marketing/consents/${consentId}/original`, { method: "POST" }),
+  recordMarketingUse: (body: { content_name: string; used_on: string; consent_ids: string[] }) =>
+    adminFetch<MarketingUse>("marketing/uses", { method: "POST", body: JSON.stringify(body) }),
+  marketingUses: () => adminFetch<{ items: MarketingUse[] }>("marketing/uses"),
+  marketingExpiring: () => adminFetch<{ items: MarketingUse[] }>("marketing/expiring"),
+  marketingTakeDowns: () => adminFetch<{ items: MarketingTakeDown[] }>("marketing/take-down"),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

@@ -254,6 +254,40 @@ def upsert_extra_image_purchase_snapshot(
     return row
 
 
+#: The older four-level consent pays only for the photographer's own use
+#: (owner, 2026-11-02): RAWWERS's own use is the per-photo marketing consent's,
+#: with its own credit - one reward per booking. A level that includes
+#: RAWWERS is worth what the photographer's part alone is worth.
+_PHOTOGRAPHER_PART = {
+    ConsentRewardLevel.none: None,
+    ConsentRewardLevel.pro_marketing_only: ConsentRewardLevel.pro_marketing_only,
+    ConsentRewardLevel.rawwers_marketing_only: None,
+    ConsentRewardLevel.both_pro_and_rawwers: ConsentRewardLevel.pro_marketing_only,
+}
+
+
+def _consent_points(db: Session, level: ConsentRewardLevel) -> int:
+    part = _PHOTOGRAPHER_PART.get(level)
+    if part is None:
+        return 0
+    policy = db.execute(select(ConsentRewardPolicy).where(ConsentRewardPolicy.consent_level == part)).scalar_one_or_none()
+    return int(policy.points_award) if policy else 0
+
+
+def net_consent_points(db: Session, *, gig_id: uuid.UUID, client_user_id: uuid.UUID) -> int:
+    """What the older consent has paid on this booking, net of clawbacks."""
+    return int(
+        db.execute(
+            select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
+                RewardLedgerEntry.user_id == client_user_id,
+                RewardLedgerEntry.reference_type.in_(["consent_reward", "consent_clawback"]),
+                RewardLedgerEntry.reference_id.like(f"{gig_id}:%"),
+            )
+        ).scalar_one()
+        or 0
+    )
+
+
 def maybe_award_consent_points(
     db: Session,
     *,
@@ -268,7 +302,12 @@ def maybe_award_consent_points(
         return None
 
     policy = db.execute(select(ConsentRewardPolicy).where(ConsentRewardPolicy.consent_level == level)).scalar_one_or_none()
-    if not policy or int(policy.points_award) <= 0:
+    points = _consent_points(db, level)
+    if not policy or points <= 0:
+        return None
+    # Once per booking: a change of level pays nothing more while the booking
+    # still holds consent points.
+    if net_consent_points(db, gig_id=gig_id, client_user_id=client_user_id) > 0:
         return None
 
     month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -286,7 +325,7 @@ def maybe_award_consent_points(
     entry = add_reward_entry(
         db,
         user_id=client_user_id,
-        amount=int(policy.points_award),
+        amount=points,
         entry_type=RewardEntryType.earn,
         reference_type="consent_reward",
         reference_id=f"{gig_id}:{level.value}",
@@ -298,7 +337,7 @@ def maybe_award_consent_points(
             db,
             event_name="client.consent.reward_awarded",
             user_id=client_user_id,
-            properties={"gig_id": str(gig_id), "consent_level": level.value, "points": policy.points_award},
+            properties={"gig_id": str(gig_id), "consent_level": level.value, "points": points},
         )
     return entry
 
@@ -340,9 +379,10 @@ def maybe_clawback_consent_points(
     if datetime.now(timezone.utc) > cutoff:
         return None
 
-    from_points = int(from_policy.points_award)
-    to_points = int(to_policy.points_award) if to_policy else 0
-    delta = max(0, from_points - to_points)
+    from_points = _consent_points(db, ConsentRewardLevel(from_level))
+    to_points = _consent_points(db, ConsentRewardLevel(to_level)) if to_policy else 0
+    # Never more than the booking still holds: only what was paid comes back.
+    delta = min(max(0, from_points - to_points), net_consent_points(db, gig_id=gig_id, client_user_id=client_user_id))
     if delta <= 0:
         return None
 

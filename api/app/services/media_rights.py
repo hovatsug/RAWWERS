@@ -118,8 +118,8 @@ def can_use_for_marketing(db: Session, *, gig_id: uuid.UUID, actor: str, channel
     allowed = False
     if actor == "pro":
         allowed = consent.consent_level in {GigConsentLevel.pro_marketing_only, GigConsentLevel.both_pro_and_rawwers}
-    elif actor == "rawwers":
-        allowed = consent.consent_level in {GigConsentLevel.rawwers_marketing_only, GigConsentLevel.both_pro_and_rawwers}
+    # RAWWERS's own use is never granted here (owner, 2026-11-02): only the
+    # per-photo marketing consents (services/marketing_consent.py) grant it.
     if not allowed:
         return False
 

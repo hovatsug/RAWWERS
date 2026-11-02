@@ -269,15 +269,7 @@ def _credit(db: Session, gig: Gig, client_user_id, term_months: int) -> RewardLe
     ).scalar_one()
     if this_month >= settings.marketing_consent_monthly_cap:
         return None
-    older = db.execute(
-        select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
-            RewardLedgerEntry.user_id == client_user_id,
-            RewardLedgerEntry.reference_type == "consent_reward",
-            RewardLedgerEntry.entry_type == RewardEntryType.earn,
-            RewardLedgerEntry.reference_id.like(f"{gig.id}:%"),
-        )
-    ).scalar_one()
-    amount = credit_for_term(term_months) - int(older or 0)
+    amount = credit_for_term(term_months) - _older_consent_points(db, gig, client_user_id)
     if amount <= 0:
         return None
     return add_reward_entry(
@@ -290,6 +282,14 @@ def _credit(db: Session, gig: Gig, client_user_id, term_months: int) -> RewardLe
         metadata={"term_months": term_months},
         min_balance_floor=settings.reward_balance_floor,
     )
+
+
+def _older_consent_points(db: Session, gig: Gig, client_user_id) -> int:
+    """What the older four-level consent has paid on this booking, net of
+    its clawbacks: the new credit is reduced by it, one reward per booking."""
+    from app.services.client_rewards_pricing import net_consent_points
+
+    return max(0, net_consent_points(db, gig_id=gig.id, client_user_id=client_user_id))
 
 
 #: The reward ledger's reference for a marketing-consent credit; the booking

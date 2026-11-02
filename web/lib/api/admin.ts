@@ -205,7 +205,12 @@ export type MoneyAttentionItem = {
   due_at: string | null;
   created_at: string;
   resolved_at: string | null;
+  /** True while the item holds a photographer's earning (a reported
+   *  problem): it is released or kept on hold, never just closed. */
+  hold_open?: boolean | null;
 };
+
+export type HoldOutcome = "release" | "keep";
 
 export type ReductionLine = { reason_code: string; amount: string };
 export type ReductionReason = { code: string; label: string; client_wording: string; may_carry_fault: boolean; is_active: boolean };
@@ -346,8 +351,11 @@ export const admin = {
   saveAccountabilityPolicy: (body: Partial<AccountabilityPolicy>) =>
     adminFetch<AccountabilityPolicy>("policies/accountability", { method: "PUT", body: JSON.stringify(body) }),
   moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[] }>("money-attention"),
-  resolveMoneyAttention: (id: string, note: string) =>
-    adminFetch<MoneyAttentionItem>(`money-attention/${id}/resolve`, { method: "POST", body: JSON.stringify({ note }) }),
+  resolveMoneyAttention: (id: string, note: string, holdOutcome?: HoldOutcome) =>
+    adminFetch<MoneyAttentionItem>(`money-attention/${id}/resolve`, {
+      method: "POST",
+      body: JSON.stringify(holdOutcome ? { note, hold_outcome: holdOutcome } : { note })
+    }),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

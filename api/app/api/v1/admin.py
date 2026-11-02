@@ -212,6 +212,7 @@ from app.services.disputes import (
 )
 from app.services.outbox import enqueue_outbox_event
 from app.services.payouts import release_earnings_holds_for_source
+from app.services.hold_decisions import HOLD_OUTCOMES, open_hold_for_item, release_to_settlement_date
 from app.services.launch_ops import (
     create_invite_wave,
     generate_invite_codes,
@@ -1646,8 +1647,11 @@ def create_admin_refund(
     return _refund_case_view(refund_cases[0])
 
 
-def _money_attention_view(item: MoneyAttentionItem) -> dict:
+def _money_attention_view(item: MoneyAttentionItem, *, hold_open: bool | None = None) -> dict:
     return {
+        # True while a hold this item is about is still on (a reported
+        # problem's): the item then has to be released or kept, not closed.
+        "hold_open": hold_open,
         "id": str(item.id),
         "kind": item.kind,
         "status": item.status,
@@ -1678,7 +1682,12 @@ def list_money_attention(
     stmt = select(MoneyAttentionItem).order_by(MoneyAttentionItem.created_at.asc()).limit(500)
     if status:
         stmt = stmt.where(MoneyAttentionItem.status == status)
-    return {"items": [_money_attention_view(i) for i in db.execute(stmt).scalars()]}
+    return {
+        "items": [
+            _money_attention_view(i, hold_open=open_hold_for_item(db, i) is not None if i.kind == "client_reported_problem" else None)
+            for i in db.execute(stmt).scalars()
+        ]
+    }
 
 
 @router.post("/money-attention/{item_id}/resolve")
@@ -1694,6 +1703,34 @@ def resolve_money_attention(
     note = str((body or {}).get("note") or "").strip()
     if not note:
         raise APIError(code="validation_error", message="Say what was done", status_code=422)
+    outcome = (body or {}).get("hold_outcome")
+    hold = open_hold_for_item(db, item)
+    if hold is None and outcome is not None:
+        raise APIError(code="validation_error", message="This item has no hold to release or keep", status_code=422)
+    if hold is not None:
+        # A photographer's earning is on hold: say what happens to it.
+        if outcome not in HOLD_OUTCOMES:
+            raise APIError(
+                code="validation_error",
+                message="This item holds the photographer's earning: release the hold or keep it on hold",
+                status_code=422,
+            )
+        audit = {"hold_id": str(hold.id), "gig_id": str(item.gig_id), "kind": item.kind}
+        if outcome == "keep":
+            when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            item.note = f"{item.note or ''}\nKept on hold ({when}): {note}".strip()
+            add_admin_audit_log(
+                db, actor_user_id=actor.user_id, target_type="money_attention", target_id=str(item.id),
+                action="earnings_hold_kept", reason=note, metadata=audit,
+            )
+            db.commit()
+            return _money_attention_view(item, hold_open=True)
+        release_to_settlement_date(db, hold)
+        add_admin_audit_log(
+            db, actor_user_id=actor.user_id, target_type="money_attention", target_id=str(item.id),
+            action="earnings_hold_released", reason=note, metadata=audit,
+        )
+        note = f"hold released: {note}"
     item.status = "resolved"
     item.resolved_by_user_id = actor.user_id
     item.resolved_at = datetime.now(timezone.utc)
@@ -1703,7 +1740,7 @@ def resolve_money_attention(
         action="money_attention_resolved", reason=note, metadata={"kind": item.kind, "amount": str(item.amount)},
     )
     db.commit()
-    return _money_attention_view(item)
+    return _money_attention_view(item, hold_open=False if hold is not None else None)
 
 
 @router.get("/refunds", response_model=list[RefundCaseView])

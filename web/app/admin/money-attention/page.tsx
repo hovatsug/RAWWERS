@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { admin, type MoneyAttentionItem } from "@/lib/api/admin";
+import { admin, type HoldOutcome, type MoneyAttentionItem } from "@/lib/api/admin";
 import { AdminButton, ConfirmDialog, DataTable, PageHeader, StatusBadge, money, type Column } from "@/app/admin/_components/ui";
 
 /**
@@ -49,6 +49,8 @@ function byUrgency(a: MoneyAttentionItem, b: MoneyAttentionItem): number {
 export default function AdminMoneyAttentionPage() {
   const queryClient = useQueryClient();
   const [closing, setClosing] = useState<MoneyAttentionItem | null>(null);
+  // An item holding a photographer's earning is released or kept, never closed.
+  const [deciding, setDeciding] = useState<{ item: MoneyAttentionItem; outcome: HoldOutcome } | null>(null);
   const query = useQuery({ queryKey: ["admin", "money-attention"], queryFn: () => admin.moneyAttention() });
   const items = query.data?.ok ? [...query.data.data.items].filter((i) => i.status === "open").sort(byUrgency) : undefined;
 
@@ -86,7 +88,15 @@ export default function AdminMoneyAttentionPage() {
     {
       header: "",
       className: "w-px whitespace-nowrap text-right",
-      cell: (row) => <AdminButton onClick={() => setClosing(row)}>Close…</AdminButton>
+      cell: (row) =>
+        row.hold_open ? (
+          <div className="flex justify-end gap-2">
+            <AdminButton onClick={() => setDeciding({ item: row, outcome: "release" })}>Release hold…</AdminButton>
+            <AdminButton onClick={() => setDeciding({ item: row, outcome: "keep" })}>Keep on hold…</AdminButton>
+          </div>
+        ) : (
+          <AdminButton onClick={() => setClosing(row)}>Close…</AdminButton>
+        )
     }
   ];
 
@@ -126,6 +136,39 @@ export default function AdminMoneyAttentionPage() {
         }}
       >
         <p>{closing?.note}</p>
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={deciding !== null}
+        title={
+          deciding
+            ? deciding.outcome === "release"
+              ? `Release the hold (${money(deciding.item.amount, deciding.item.currency)})`
+              : "Keep the earning on hold"
+            : ""
+        }
+        confirmLabel={deciding?.outcome === "release" ? "Release hold" : "Keep on hold"}
+        reason={{
+          label: deciding?.outcome === "release" ? "Why it is released" : "Why it stays on hold",
+          placeholder:
+            deciding?.outcome === "release"
+              ? "e.g. all photos delivered; client confirmed"
+              : "e.g. waiting for the photographer's reply"
+        }}
+        onClose={() => setDeciding(null)}
+        onConfirm={async (note) => {
+          if (!deciding) return null;
+          const res = await admin.resolveMoneyAttention(deciding.item.id, note, deciding.outcome);
+          if (!res.ok) return res.error.message;
+          queryClient.invalidateQueries({ queryKey: ["admin", "money-attention"] });
+          return null;
+        }}
+      >
+        <p>
+          {deciding?.outcome === "release"
+            ? "The photographer's earning for this booking goes back to its normal settlement date, or settles at the next run if that date has passed. No refund is made."
+            : "The earning stays on hold and this item stays in the queue until the hold is released."}
+        </p>
+        <p className="whitespace-pre-line">{deciding?.item.note}</p>
       </ConfirmDialog>
     </>
   );

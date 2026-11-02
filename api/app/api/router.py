@@ -10,6 +10,7 @@ from app.api.v1.available_now import router as available_now_router
 from app.api.v1.dev_only import router as dev_only_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.lightroom import router as lightroom_router
+from app.api.v1.marketing_consent import router as marketing_consent_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chats import router as chats_router
 from app.api.v1.client_launch import router as client_launch_router
@@ -88,6 +89,7 @@ api_router.include_router(webhooks_router)
 api_router.include_router(payouts_router)
 api_router.include_router(lightroom_router)
 api_router.include_router(delivery_router)
+api_router.include_router(marketing_consent_router)
 api_router.include_router(i18n_router)
 api_router.include_router(legacy_router)
 api_router.include_router(prints_router)

@@ -40,6 +40,9 @@ DEFAULT_FLAG_STATE: dict[str, bool] = {
     # ledger from the 5% credit. Event minting into the shared reward
     # ledger stays in the code, dormant; balances it already paid are kept.
     "raww_minting_enabled": False,
+    # The old commerce store (api/v1/store.py) is dormant: The Shelf
+    # replaces it. Its user routes answer 404 unless this is switched on.
+    "ecom_enabled": False,
 }
 
 

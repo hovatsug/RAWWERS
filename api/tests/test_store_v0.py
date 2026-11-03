@@ -1,14 +1,26 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+
+import pytest
 from decimal import Decimal
 
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
 from app.models.commerce import CommerceOrder, CommercePartner, PartnerAPIType, PriceRule, PriceRuleAppliesTo, PriceRuleDiscountType, Product, ProductStockStatus, StoreOrderStatus
 from app.models.niche import Niche, ProNicheSkill, SkillTier
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType, RewardBalance
+from app.models.ops import FeatureFlagScope
+from app.services.feature_flags import upsert_feature_flag
 from app.services.store import sync_partner_products
 
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
+
+
+@pytest.fixture(autouse=True)
+def _store_on(db_session):
+    """The old store is dormant behind ecom_enabled (off by default); these
+    tests are about it, so they switch it on."""
+    upsert_feature_flag(db_session, key="ecom_enabled", is_enabled=True, scope=FeatureFlagScope.global_scope, rules=None)
+    db_session.commit()
 
 
 class DummyStripePI:

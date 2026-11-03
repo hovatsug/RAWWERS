@@ -62,9 +62,18 @@ from app.tasks.store_tasks import sync_partner_products_task
 router = APIRouter(tags=["store"])
 
 
+def _store_open(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> CurrentUser:
+    """The old commerce store is dormant (owner, 2026-11-03: The Shelf
+    replaces it). Every user route answers as if it were not there unless
+    `ecom_enabled` is switched on, which it is not by default."""
+    if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
+        raise APIError(code="not_found", message="Not found", status_code=404)
+    return user
+
+
 @router.get("/store/access", response_model=StoreAccessResponse)
 def store_access(
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreAccessResponse:
     if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
@@ -89,7 +98,7 @@ def store_products(
     search: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreProductListResponse:
     if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
@@ -115,7 +124,7 @@ def store_products(
 @router.get("/store/products/{product_id}", response_model=StoreProductView)
 def store_product_detail(
     product_id: uuid.UUID,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreProductView:
     access = can_access_pro_store(db, user.user_id)
@@ -132,7 +141,7 @@ def store_product_detail(
 @router.post("/store/cart/items", response_model=StoreCartView)
 def store_cart_add_item(
     body: CartAddItemRequest,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreCartView:
     access = can_access_pro_store(db, user.user_id)
@@ -168,7 +177,7 @@ def store_cart_add_item(
 
 @router.get("/store/cart", response_model=StoreCartView)
 def store_cart(
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreCartView:
     access = can_access_pro_store(db, user.user_id)
@@ -182,7 +191,7 @@ def store_cart(
 @router.delete("/store/cart/items/{item_id}", response_model=StoreCartView)
 def store_cart_delete_item(
     item_id: uuid.UUID,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreCartView:
     access = can_access_pro_store(db, user.user_id)
@@ -201,7 +210,7 @@ def store_cart_delete_item(
 @router.post("/store/checkout", response_model=StoreCheckoutResponse)
 def store_checkout(
     body: StoreCheckoutRequest,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreCheckoutResponse:
     if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
@@ -224,7 +233,7 @@ def store_checkout(
 
 @router.get("/store/orders", response_model=StoreOrdersResponse)
 def my_store_orders(
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreOrdersResponse:
     access = can_access_pro_store(db, user.user_id)
@@ -241,7 +250,7 @@ def my_store_orders(
 @router.get("/store/orders/{order_id}", response_model=StoreOrderView)
 def my_store_order_detail(
     order_id: uuid.UUID,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_store_open),
     db: Session = Depends(get_db_session),
 ) -> StoreOrderView:
     order = db.get(CommerceOrder, order_id)

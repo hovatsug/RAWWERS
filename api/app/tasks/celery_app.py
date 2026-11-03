@@ -119,6 +119,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.marketing_consent_daily",
         "schedule": timedelta(days=1),
     },
+    # Stripe successes that never reached us as a webhook, recorded; and
+    # what cannot be matched, flagged on Money attention.
+    "stripe-reconcile": {
+        "task": "app.tasks.scheduled.stripe_reconcile",
+        "schedule": timedelta(seconds=settings.stripe_reconcile_interval_seconds),
+    },
     # The Shelf: RAWW expiry after long inactivity, and the warning before it.
     "shelf-raww-daily": {
         "task": "app.tasks.scheduled.shelf_raww_daily",
@@ -164,6 +170,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.remove_unfinished_uploads": {"queue": "media"},
     "app.tasks.scheduled.marketing_consent_daily": {"queue": "media"},
     "app.tasks.scheduled.shelf_raww_daily": {"queue": "media"},
+    "app.tasks.scheduled.stripe_reconcile": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

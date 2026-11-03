@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { admin, type HoldOutcome, type MoneyAttentionItem } from "@/lib/api/admin";
+import { admin, type HoldOutcome, type MoneyAttentionItem, type StripeCheckRun } from "@/lib/api/admin";
 import { AdminButton, ConfirmDialog, DataTable, PageHeader, StatusBadge, money, type Column } from "@/app/admin/_components/ui";
 
 /**
@@ -29,8 +29,22 @@ const KIND: Record<string, string> = {
   // "Report a problem" before downloading: the photographer's earning for
   // the booking is on hold. Resolving this item does not release it; the
   // hold is released through POST /v1/admin/holds/{id}/release (no screen yet).
-  client_reported_problem: "Client reported a problem (earning on hold)"
+  client_reported_problem: "Client reported a problem (earning on hold)",
+  // The Stripe reconcile job (every 15 minutes).
+  stripe_payment_unknown: "Paid in Stripe, unknown here",
+  stripe_payment_unmatched: "Payment here that Stripe does not have",
+  stripe_success_not_recorded: "Paid in Stripe, could not be recorded",
+  stripe_reconcile_error: "Stripe check failed for this payment"
 };
+
+/** "Stripe check: last run 14:05 · 12 checked · 1 recorded · 0 flagged". */
+function stripeCheckLine(run: StripeCheckRun | null | undefined): string {
+  if (!run) return "Stripe check: not run yet.";
+  const when = new Date(run.finished_at ?? run.started_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  if (run.error === "stripe_not_configured") return `Stripe check: last run ${when}, Stripe is not configured.`;
+  const parts = [`${run.checked} checked`, `${run.recorded} ${run.dry_run ? "would be recorded" : "recorded"}`, `${run.flagged} flagged`];
+  return `Stripe check${run.dry_run ? " (dry run)" : ""}: last run ${when} · ${parts.join(" · ")}${run.error ? ` · failed: ${run.error}` : ""}${run.finished_at ? "" : " · still running"}`;
+}
 
 function dueLabel(dueAt: string | null): { text: string; overdue: boolean } | null {
   if (!dueAt) return null;
@@ -112,6 +126,7 @@ export default function AdminMoneyAttentionPage() {
               : `${items.length} open. Close each one by saying what was done.`
         }
       />
+      <p className="mb-3 text-xs text-slate-400">{stripeCheckLine(query.data?.ok ? query.data.data.stripe_check : undefined)}</p>
       <DataTable
         columns={columns}
         rows={items}

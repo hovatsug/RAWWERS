@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import Boolean, CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint
 from sqlalchemy import text
 from sqlalchemy import true as sa_true
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -380,6 +380,7 @@ class MoneyAttentionItem(Base):
     __table_args__ = (
         UniqueConstraint("kind", "stripe_refund_id", name="uq_money_attention_kind_refund"),
         UniqueConstraint("kind", "stripe_dispute_id", name="uq_money_attention_kind_dispute"),
+        UniqueConstraint("kind", "stripe_payment_intent_id", name="uq_money_attention_kind_payment_intent"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -390,6 +391,8 @@ class MoneyAttentionItem(Base):
     refund_case_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("refund_case.id"), nullable=True)
     stripe_refund_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     stripe_dispute_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The payment the Stripe reconcile job could not match (one per kind).
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: When something must be done by - a chargeback's evidence deadline.
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -398,6 +401,25 @@ class MoneyAttentionItem(Base):
     resolved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class StripeReconcileRun(Base):
+    """One run of the Stripe reconcile job (services/stripe_reconcile), for
+    the "last run" line on Money attention: what it checked, recorded and
+    flagged, whether it was a dry run, and what went wrong."""
+
+    __tablename__ = "stripe_reconcile_run"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dry_run: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    checked: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recorded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    flagged: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: One line per payment it acted on (or would have, in a dry run).
+    details: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
 
 class ProFaultEvent(Base):

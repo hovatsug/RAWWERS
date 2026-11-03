@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Postgres advisory-lock keys, one per sweep. These two run every minute; a
 # run that starts while the previous one is still going skips rather than
 # working the same rows twice (a Stripe cancel twice, a transition twice).
-SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002}
+SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003}
 
 
 def _run_exclusively(name: str, sweep, limit: int | None) -> int:
@@ -168,5 +168,25 @@ def shelf_raww_daily_task() -> dict:
         result = run_daily(db)
         db.commit()
         return result
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.stripe_reconcile")
+def stripe_reconcile_task() -> dict:
+    """Record Stripe successes that never reached us as a webhook, and flag
+    what cannot be matched (services/stripe_reconcile.py). A run that
+    starts while the previous one still holds the lock skips."""
+    from app.services.stripe_reconcile import run
+
+    db = SessionLocal()
+    try:
+        if not db.execute(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": SWEEP_LOCK_KEYS["stripe_reconcile"]}).scalar():
+            logger.info("sweep_skipped_overlap", extra={"sweep": "stripe_reconcile"})
+            db.rollback()
+            return {"skipped": True}
+        record = run(db)
+        db.commit()
+        return {"checked": record.checked, "recorded": record.recorded, "flagged": record.flagged, "dry_run": record.dry_run, "error": record.error}
     finally:
         db.close()

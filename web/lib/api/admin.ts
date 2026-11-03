@@ -189,6 +189,17 @@ export type NicheSkillRow = {
   active_override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
 };
 
+/** The Stripe reconcile job's last run, shown above Money attention. */
+export type StripeCheckRun = {
+  started_at: string;
+  finished_at: string | null;
+  dry_run: boolean;
+  checked: number;
+  recorded: number;
+  flagged: number;
+  error: string | null;
+};
+
 /** Money an admin has to act on (GET /v1/admin/money-attention). */
 export type MoneyAttentionItem = {
   id: string;
@@ -199,6 +210,7 @@ export type MoneyAttentionItem = {
   refund_case_id: string | null;
   stripe_refund_id: string | null;
   stripe_dispute_id: string | null;
+  stripe_payment_intent_id?: string | null;
   amount: string;
   currency: string;
   note: string | null;
@@ -500,7 +512,7 @@ export const admin = {
   revertBannerImage: (slug: string) => adminFetch<NicheBannerDetail>(`niche-banners/${slug}/image/revert`, { method: "POST" }),
   saveAccountabilityPolicy: (body: Partial<AccountabilityPolicy>) =>
     adminFetch<AccountabilityPolicy>("policies/accountability", { method: "PUT", body: JSON.stringify(body) }),
-  moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[] }>("money-attention"),
+  moneyAttention: () => adminFetch<{ items: MoneyAttentionItem[]; stripe_check: StripeCheckRun | null }>("money-attention"),
   resolveMoneyAttention: (id: string, note: string, holdOutcome?: HoldOutcome) =>
     adminFetch<MoneyAttentionItem>(`money-attention/${id}/resolve`, {
       method: "POST",

@@ -1660,6 +1660,7 @@ def _money_attention_view(item: MoneyAttentionItem, *, hold_open: bool | None = 
         "refund_case_id": str(item.refund_case_id) if item.refund_case_id else None,
         "stripe_refund_id": item.stripe_refund_id,
         "stripe_dispute_id": item.stripe_dispute_id,
+        "stripe_payment_intent_id": item.stripe_payment_intent_id,
         "due_at": item.due_at.isoformat() if item.due_at else None,
         "amount": str(item.amount),
         "currency": item.currency,
@@ -1682,11 +1683,26 @@ def list_money_attention(
     stmt = select(MoneyAttentionItem).order_by(MoneyAttentionItem.created_at.asc()).limit(500)
     if status:
         stmt = stmt.where(MoneyAttentionItem.status == status)
+    from app.services.stripe_reconcile import last_run
+
+    run = last_run(db)
     return {
         "items": [
             _money_attention_view(i, hold_open=open_hold_for_item(db, i) is not None if i.kind == "client_reported_problem" else None)
             for i in db.execute(stmt).scalars()
-        ]
+        ],
+        # The Stripe reconcile job's last run, for the line above the list.
+        "stripe_check": None
+        if run is None
+        else {
+            "started_at": run.started_at.isoformat(),
+            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+            "dry_run": run.dry_run,
+            "checked": run.checked,
+            "recorded": run.recorded,
+            "flagged": run.flagged,
+            "error": run.error,
+        },
     }
 
 

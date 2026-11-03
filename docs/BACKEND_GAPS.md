@@ -8,13 +8,17 @@ Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.
 
 Owner's priority. None of these is built; each says what is true today and what is needed.
 
-### a) No Stripe reconcile job, and the selection difference can still get stuck
+### a) Stripe reconcile job — BUILT (2026-11-03); the selection difference: recorded by it, the route itself waits on a decision
 
-**Today.** A Stripe success that never reaches us as a webhook is recorded only when someone acts: the client taps Pay again (`payment_intents.apply_missed_success`, then `409 already_paid`), or the unpaid-booking expiry job finds Stripe refusing to cancel. A paid booking nobody touches reads "Payment due" until its deadline. In dev, `stripe listen` dying with a Mac restart is enough to cause it (seen 2026-11-02).
+**Built.** `services/stripe_reconcile.py`, beat `stripe-reconcile` every `STRIPE_RECONCILE_INTERVAL_SECONDS` (900). Each run:
+- fetches from Stripe every booking payment (`stripe_payment`: base and difference) and extras purchase (`upsell_purchase`) not yet recorded as paid, created between `STRIPE_RECONCILE_LOOKBACK_HOURS` (72) and `STRIPE_RECONCILE_MIN_AGE_SECONDS` (300) ago, and records a `succeeded` one through `apply_missed_success`, the webhook's own handler (idempotent: the real event arriving later changes nothing);
+- lists Stripe's `succeeded` intents in the same window and flags any no table of ours knows.
 
-**Needed.**
-- A periodic job (beat, every few minutes) that lists Stripe's recent `payment_intent.succeeded` events, or recent PaymentIntents, for a look-back window longer than the job's interval, and, for each one whose `StripePayment` row is not `succeeded`, records it through the same handler the webhook uses (`apply_missed_success` is idempotent, so the real event arriving later changes nothing). It should also cover refunds and disputes (`charge.refunded`, `charge.dispute.created`) the same way, log every repair with the event id, and alert when it repairs anything in production, because a repair means the webhook path is broken.
-- **The selection difference.** `_reconcile_difference_intent` still refuses a `succeeded` open intent with "already being processed" and waits for the webhook. Recording it from inside the selection submit also writes the new selection, so it needs a decision on what a resubmitted selection does when its difference is already paid. The reconcile job above would record the payment either way; the client would still see the refusal until it runs.
+What it cannot settle is a Money attention item, once per kind and payment (`stripe_payment_intent_id`, migration 0086): paid in Stripe and unknown here; ours and unknown to Stripe; paid in Stripe and still unpaid here after recording; the check failing for that payment. A failure on one payment rolls back alone. `STRIPE_RECONCILE_DRY_RUN` records what it would do and writes nothing else. Every run is kept (`stripe_reconcile_run`), and Money attention shows the last one. Tests: `tests/test_stripe_reconcile.py`, with a fake Stripe client.
+
+**Not covered.** Refunds and disputes missed as webhooks (refund reconciliation and chargebacks have their own paths); store, prints, learning and Studioverse payments are only recognised as ours, not recorded (all dormant). Stripe's list is read in full for the window each run: fine at beta volume, worth narrowing (by metadata or a cursor) later.
+
+**The selection difference.** With the job, a difference paid at Stripe and never recorded is recorded within about 20 minutes, and the webhook's handler then completes the booking with the selection that was paid for. Until then a new submit is still refused with "A payment for this selection is already being processed". Recording it at once inside the submit needs a decision (owner, pending): the client paid for selection A and is now submitting B. Recording A completes the booking with A, so B would be refused (A is what was paid for; more photos are extras), or A could be recorded and B re-priced against it (charge the rest, or refund through the reduction path).
 
 ### b) No notifications screen in either app
 

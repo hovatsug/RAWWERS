@@ -54,7 +54,7 @@ from app.schemas.payouts import (
     PayoutRequestView,
 )
 from app.models.payouts import TaxProfile, VatStatus
-from app.services.raww_wallet import booking_rawws
+from app.services.raww_wallet import booking_rawws, invoice_rawws
 from app.services.shelf_settings import shelf_open
 from app.services.connect_return import PAGE_HEADERS, REFRESH_PAGE, RETURN_PAGE
 from app.services.invoices import build_invoice, summarise_invoices
@@ -224,7 +224,7 @@ def list_my_invoices(
     ).scalars().all()
     show = shelf_open(db)
     return GigInvoiceListResponse(
-        items=[_invoice_view(build_invoice(db, gig), booking_rawws(db, user.user_id, gig.id) if show else None) for gig in gigs]
+        items=[_invoice_view(build_invoice(db, gig), invoice_rawws(db, user.user_id, gig.id) if show else None) for gig in gigs]
     )
 
 
@@ -240,7 +240,7 @@ def get_my_invoice(
     # id exists is not something to confirm to a stranger.
     if gig is None or gig.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Invoice not found", status_code=404)
-    return _invoice_view(build_invoice(db, gig), booking_rawws(db, user.user_id, gig.id) if shelf_open(db) else None)
+    return _invoice_view(build_invoice(db, gig), invoice_rawws(db, user.user_id, gig.id) if shelf_open(db) else None)
 
 
 @router.get("/pro/earnings/ledger", response_model=EarningsLedgerResponse)

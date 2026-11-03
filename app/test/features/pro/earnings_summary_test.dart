@@ -104,11 +104,17 @@ void main() {
     expect(find.textContaining('predate itemised rates'), findsNothing);
   });
 
-  testWidgets('once The Shelf is open the RAWW credit shows its RAWW beside the euros', (tester) async {
-    await tester.pumpWidget(_wrap(_summary(proRaww: '7.50', proRawwRawws: 75)));
+  testWidgets('once The Shelf is open the RAWW are their own total, not beside the all-time euros', (tester) async {
+    // 2 RAWW from the ledger beside an all-time €7.50 credit: bookings from
+    // before The Shelf have euros and no RAWW, so the two are not one figure.
+    await tester.pumpWidget(_wrap(_summary(proRaww: '7.50', proRawwRawws: 2)));
     await tester.pump();
 
-    expect(find.text('75 RAWW (€7.50)'), findsOneWidget);
+    expect(find.widgetWithText(RAmountRow, 'Your RAWW credit'), findsOneWidget);
+    expect(find.text('€7.50'), findsOneWidget);
+    expect(find.text('2 RAWW'), findsOneWidget);
+    expect(find.text('RAWW from your bookings'), findsOneWidget);
+    expect(find.textContaining('RAWW ('), findsNothing);
   });
 
   testWidgets('before it opens the credit is euros only', (tester) async {
@@ -117,6 +123,7 @@ void main() {
 
     expect(find.text('€7.50'), findsOneWidget);
     expect(find.textContaining('RAWW ('), findsNothing);
+    expect(find.text('RAWW from your bookings'), findsNothing);
   });
 
   testWidgets('Booked, fees and cash earned add up, and RAWW credit sits below them', (tester) async {

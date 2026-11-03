@@ -113,3 +113,40 @@ def test_while_the_shelf_is_closed_invoices_show_euros_only(client, db_session):
 
     invoice = _get(client, pro, f"/v1/pro/earnings/invoices/{gig.id}")
     assert invoice["pro_raww_rawws"] is None
+
+
+def _as_if_before_the_shelf(db, gig):
+    """A booking completed before The Shelf has no RAWW entries (no backfill)."""
+    from sqlalchemy import delete
+
+    from app.models.shelf import ProRawwLedgerEntry
+
+    db.execute(delete(ProRawwLedgerEntry).where(ProRawwLedgerEntry.gig_id == gig.id))
+    db.commit()
+
+
+def test_a_booking_from_before_the_shelf_shows_euros_only(client, db_session):
+    pro = _pro_user(db_session)
+    old = _booking(db_session, pro, gross="100.00")
+    _as_if_before_the_shelf(db_session, old)
+    new = _booking(db_session, pro)
+
+    old_invoice = _get(client, pro, f"/v1/pro/earnings/invoices/{old.id}")
+    new_invoice = _get(client, pro, f"/v1/pro/earnings/invoices/{new.id}")
+    listed = {i["gig_id"]: i["pro_raww_rawws"] for i in _get(client, pro, "/v1/pro/earnings/invoices")["items"]}
+
+    assert (Decimal(old_invoice["pro_raww"]), old_invoice["pro_raww_rawws"]) == (Decimal("5.00"), None)
+    assert new_invoice["pro_raww_rawws"] == 75
+    assert listed == {str(old.id): None, str(new.id): 75}
+
+
+def test_the_summary_rawws_are_the_ledger_total_not_the_all_time_euros_over_the_rate(client, db_session):
+    pro = _pro_user(db_session)
+    old = _booking(db_session, pro, gross="100.00")
+    _as_if_before_the_shelf(db_session, old)
+    _booking(db_session, pro)
+
+    summary = _get(client, pro, "/v1/pro/earnings/summary")
+
+    assert Decimal(summary["pro_raww"]) == Decimal("12.50"), "the euro credit covers every booking"
+    assert summary["pro_raww_rawws"] == 75, "the RAWW are what the ledger holds"

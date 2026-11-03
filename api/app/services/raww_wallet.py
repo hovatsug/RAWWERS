@@ -72,3 +72,20 @@ def booking_rawws(db: Session, pro_user_id: uuid.UUID, gig_id: uuid.UUID | None 
     if gig_id is not None:
         query = query.where(ProRawwLedgerEntry.gig_id == gig_id)
     return int(db.execute(query).scalar_one())
+
+
+def invoice_rawws(db: Session, pro_user_id: uuid.UUID, gig_id: uuid.UUID) -> int | None:
+    """A booking's RAWW for its invoice, or None for a booking that has no
+    RAWW entries: one completed before The Shelf (no backfill, owner's
+    decision 2026-11-03), whose invoice shows its euro credit alone rather
+    than "0 RAWW" beside it."""
+    has_entries = db.execute(
+        select(ProRawwLedgerEntry.id)
+        .where(
+            ProRawwLedgerEntry.pro_user_id == pro_user_id,
+            ProRawwLedgerEntry.kind.in_(BOOKING_KINDS),
+            ProRawwLedgerEntry.gig_id == gig_id,
+        )
+        .limit(1)
+    ).first()
+    return booking_rawws(db, pro_user_id, gig_id) if has_entries else None

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/core/format/money.dart';
-import 'package:rawwers/features/pro/wallet/raww_card.dart';
 import 'package:rawwers/design/components/r_amount_row.dart';
 import 'package:rawwers/api/models/invoice_summary_view.dart';
 import 'package:rawwers/design/components/r_card.dart';
@@ -66,9 +65,15 @@ class _Summary extends StatelessWidget {
           const Divider(height: RSpace.s16),
           RAmountRow(label: 'Cash earned', amount: money.format(summary.proCash), total: true),
           const SizedBox(height: RSpace.s12),
-          RAmountRow(label: 'Your RAWW credit', amount: rawwAmount(summary.proRawwRawws, money.format(summary.proRaww))),
+          RAmountRow(label: 'Your RAWW credit', amount: money.format(summary.proRaww)),
           const SizedBox(height: RSpace.s4),
           Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
+          // The ledger's own total, never the euros above over the rate:
+          // bookings from before The Shelf earned euros and no RAWW.
+          if (summary.proRawwRawws != null) ...[
+            const SizedBox(height: RSpace.s8),
+            RAmountRow(label: 'RAWW from your bookings', amount: '${summary.proRawwRawws} RAWW'),
+          ],
 
           if (summary.averageGross != null) ...[
             const SizedBox(height: RSpace.s12),

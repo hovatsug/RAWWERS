@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/components/r_switch_tile.dart';
@@ -43,7 +44,7 @@ class MarketingAgreementCard extends ConsumerWidget {
               if (value.recordedAt case final at?) ...[
                 const SizedBox(height: RSpace.s4),
                 Text(
-                  'Last changed ${MaterialLocalizations.of(context).formatMediumDate(at.toLocal())} (wording ${value.wordingVersion}).',
+                  'Last changed ${RDates.of(context).date(at)} (wording ${value.wordingVersion}).',
                   style: theme.textTheme.bodySmall,
                 ),
               ],

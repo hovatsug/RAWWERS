@@ -240,8 +240,8 @@ class _ItemCardState extends ConsumerState<_ItemCard> {
           children: [
             if (item.imageUrl != null) ...[
               SizedBox(
-                width: 64,
-                height: 64,
+                width: RSize.blockRow,
+                height: RSize.blockRow,
                 child: Image.network(item.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
               ),
               const SizedBox(width: RSpace.s12),

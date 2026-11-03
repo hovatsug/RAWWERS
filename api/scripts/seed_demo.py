@@ -35,6 +35,13 @@ feature is visible in the app rather than present only in tests:
                   a draft he never published, so his has neither. Alex Lens
                   (pro1@rawwers.dev) is left without one to write it from the
                   pro app.
+  shelf           The Shelf: a dozen items across the five levels, some
+                  for Sony A7 III/IV or Canon EOS R6 bodies, the rest for
+                  everyone, one out of stock; pro1 (Alex Lens) gets the RAWW
+                  his completed bookings earned (the real earning path, run
+                  for bookings from before The Shelf) and 1,200 demo RAWW to
+                  spend. His gear is left alone, so the "Add your camera"
+                  prompt shows until a body is added in My gear.
   refunds         two bookings with Bruno Cardoso from a seed-only client,
                   paid in Stripe test mode: one refunded in full by the
                   client (the booking ends, its time is free again), one
@@ -1133,6 +1140,68 @@ def seed_lightroom(db, *, dry_run: bool) -> list[str]:
     return lines
 
 
+SHELF_DEMO_ITEMS = [
+    # (title, brand, category, level, price_raww, street GBP, cost GBP, cameras, in_stock)
+    ("SanDisk Extreme PRO 128GB SD card", "SanDisk", "card", 1, 250, "28.00", "19.00", [], True),
+    ("Lens cleaning kit", "Zeiss", "accessory", 1, 140, "15.00", "8.00", [], True),
+    ("RAWWERS camera strap", "RAWWERS", "merch", 1, 180, "20.00", "9.00", [], False),
+    ("Sony NP-FZ100 battery", "Sony", "battery", 2, 650, "75.00", "52.00", ["ilce7m3", "ilce7m4"], True),
+    ("Canon LP-E6NH battery", "Canon", "battery", 2, 600, "69.00", "48.00", ["canoneosr6", "canoneosr6markii"], True),
+    ("Samsung T7 1TB SSD", "Samsung", "ssd", 2, 850, "95.00", "68.00", [], True),
+    ("Sony BC-QZ1 charger", "Sony", "charger", 3, 1100, "110.00", "80.00", ["ilce7m3", "ilce7m4"], True),
+    ("Godox V1 flash", "Godox", "light", 3, 2200, "230.00", "165.00", [], True),
+    ("Peak Design Everyday Backpack", "Peak Design", "bag", 4, 2900, "280.00", "205.00", [], True),
+    ("Aputure Amaran 200d", "Aputure", "light", 4, 3600, "350.00", "250.00", [], True),
+    ("DJI RS 4 gimbal", "DJI", "gimbal", 5, 6500, "620.00", "470.00", [], True),
+    ("Sigma 35mm F1.4 DG DN Art", "Sigma", "lens", 5, 8000, "740.00", "560.00", ["ilce7m3", "ilce7m4"], True),
+]
+SHELF_DEMO_RAWW_REQUEST = "demo-shelf-raww-1200"
+
+
+def seed_shelf(db, *, dry_run: bool) -> list[str]:
+    """The Shelf, through its own services: items (created, or brought back
+    to these values), pro1's bookings' RAWW and 1,200 demo RAWW."""
+    from app.models.gear_verification import CameraModelReference
+    from app.models.gig import Gig, GigStatus
+    from app.models.shelf import ShelfItem
+    from app.services import raww_ledger, shelf_items
+    from app.services.raww_earning import sync_booking_raww
+
+    pro_id = _user_id(db, LIGHTROOM_PRO_EMAIL)
+    if pro_id is None:
+        return [f"{LIGHTROOM_PRO_EMAIL}: missing - run the base seed first"]
+    if dry_run:
+        return [f"would create or repair {len(SHELF_DEMO_ITEMS)} Shelf items and give pro1 his bookings' RAWW and 1,200 demo RAWW"]
+    admin_id = _user_id(db, "admin@rawwers.dev") or pro_id
+    known = set(db.execute(select(CameraModelReference.normalised_model)).scalars())
+    lines: list[str] = []
+    for title, brand, category, level, price, street, cost, cameras, in_stock in SHELF_DEMO_ITEMS:
+        values = {
+            "title": title, "brand": brand, "category": category, "level": level, "price_raww": price,
+            "street_price": street, "street_currency": "GBP", "supplier_cost": cost, "supplier_currency": "GBP",
+            "supplier_name": "Demo supplier", "supplier_sku": f"DEMO-{title[:12].upper().replace(' ', '-')}",
+            "stock_status": "in_stock" if in_stock else "out_of_stock", "active": True,
+        }
+        fits = [c for c in cameras if c in known]
+        existing = db.execute(select(ShelfItem).where(ShelfItem.title == title)).scalar_one_or_none()
+        if existing is None:
+            shelf_items.create_item(db, values=values, camera_models=fits, actor_user_id=admin_id)
+            lines.append(f"item: {title} (level {level}, {price} RAWW)")
+        else:
+            shelf_items.update_item(db, item_id=existing.id, values=values, camera_models=fits)
+    db.commit()
+    completed = db.execute(select(Gig).where(Gig.pro_user_id == pro_id, Gig.status == GigStatus.completed)).scalars().all()
+    for gig in completed:
+        sync_booking_raww(db, gig)
+    raww_ledger.admin_adjust(
+        db, pro_user_id=pro_id, amount=1200, note="Demo RAWW to try The Shelf", actor_user_id=admin_id, request_id=SHELF_DEMO_RAWW_REQUEST,
+    )
+    db.commit()
+    balance = raww_ledger.get_balance(db, pro_id)
+    lines.append(f"pro1: {balance.spendable} RAWW spendable, {balance.pending} pending ({len(completed)} completed bookings)")
+    return lines
+
+
 STEPS = {
     "lightroom": seed_lightroom,
     "response_time": seed_response_time,
@@ -1140,6 +1209,7 @@ STEPS = {
     "available_now": seed_available_now,
     "interviews": seed_interviews,
     "refunds": seed_refunds,
+    "shelf": seed_shelf,
 }
 
 

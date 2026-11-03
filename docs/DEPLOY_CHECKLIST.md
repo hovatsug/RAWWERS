@@ -20,6 +20,15 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
   A `master` row with no maximum is correct: master is uncapped by design, and the row has to exist anyway.
 
+- [ ] **Duplicated reward-ledger references (migration `0079`).** `0079` adds a unique index on `reward_ledger_entry (user_id, entry_type, reference_type, reference_id)`. It first lists any existing duplicates and, if there are any, stops without changing or deleting anything. Run this first; it must return no rows:
+
+      SELECT user_id, entry_type, reference_type, reference_id, count(*), sum(amount)
+      FROM reward_ledger_entry
+      WHERE reference_type IS NOT NULL AND reference_id IS NOT NULL
+      GROUP BY 1, 2, 3, 4 HAVING count(*) > 1;
+
+  Each row is an event credited more than once. Decide it with an admin adjustment, then deploy.
+
 - [ ] **Run the integration tests against a live backend, and they must pass.** With the release candidate's `api/` up on this machine (`docker compose up`, a development or test `APP_ENV`), run in `app/`:
 
       flutter test --tags integration --run-skipped

@@ -152,6 +152,8 @@ def issue_reward(
         return None
 
     balance = _get_or_create_reward_balance_locked(db, user_id)
+    if reference_type and reference_id and _entry_for_reference(db, user_id, RewardEntryType.earn, reference_type, reference_id):
+        return None
     new_balance = balance.balance + rule.amount
     balance.balance = new_balance
     balance.updated_at = datetime.now(timezone.utc)
@@ -171,6 +173,19 @@ def issue_reward(
     return entry
 
 
+def _open_redemption(
+    db: Session, user_id: uuid.UUID, context_type: RedemptionContextType, context_id: uuid.UUID
+) -> DiscountRedemption | None:
+    return db.execute(
+        select(DiscountRedemption).where(
+            DiscountRedemption.user_id == user_id,
+            DiscountRedemption.context_type == context_type,
+            DiscountRedemption.context_id == context_id,
+            DiscountRedemption.status.in_([DiscountRedemptionStatus.reserved, DiscountRedemptionStatus.applied]),
+        )
+    ).scalar_one_or_none()
+
+
 def reserve_points_for_discount(
     db: Session,
     user_id: uuid.UUID,
@@ -186,14 +201,7 @@ def reserve_points_for_discount(
     if payment_amount <= Decimal("0.00"):
         raise APIError(code="validation_error", message="payment amount must be > 0", status_code=422)
 
-    existing = db.execute(
-        select(DiscountRedemption).where(
-            DiscountRedemption.user_id == user_id,
-            DiscountRedemption.context_type == context_type,
-            DiscountRedemption.context_id == context_id,
-            DiscountRedemption.status.in_([DiscountRedemptionStatus.reserved, DiscountRedemptionStatus.applied]),
-        )
-    ).scalar_one_or_none()
+    existing = _open_redemption(db, user_id, context_type, context_id)
     if existing:
         return existing
 
@@ -209,6 +217,11 @@ def reserve_points_for_discount(
         raise APIError(code="validation_error", message="Invalid redemption points", status_code=422)
 
     balance = _get_or_create_reward_balance_locked(db, user_id)
+    # Again under the lock: a double tap's other request may have reserved
+    # for this payment while this one waited. Spending twice is the bug.
+    existing = _open_redemption(db, user_id, context_type, context_id)
+    if existing:
+        return existing
     if balance.balance < points_to_spend:
         raise APIError(code="validation_error", message="Insufficient reward balance", status_code=422)
 
@@ -236,8 +249,8 @@ def reserve_points_for_discount(
             amount=-points_to_spend,
             balance_after=new_balance,
             reference_type=context_type.value,
-            reference_id=str(context_id),
-            meta=metadata or {},
+            reference_id=f"{context_id}:{redemption.id}",
+            meta={**(metadata or {}), "redemption_id": str(redemption.id)},
         )
     )
     db.flush()
@@ -296,8 +309,8 @@ def release_redemption_for_context(
             amount=redemption.points_spent,
             balance_after=new_balance,
             reference_type=context_type.value,
-            reference_id=str(context_id),
-            meta={"reason": reason},
+            reference_id=f"{context_id}:{redemption.id}",
+            meta={"reason": reason, "redemption_id": str(redemption.id)},
         )
     )
     db.flush()
@@ -354,6 +367,19 @@ def create_manual_adjustment(
     return entry
 
 
+def _entry_for_reference(
+    db: Session, user_id: uuid.UUID, entry_type: RewardEntryType, reference_type: str, reference_id: str
+) -> RewardLedgerEntry | None:
+    return db.execute(
+        select(RewardLedgerEntry).where(
+            RewardLedgerEntry.user_id == user_id,
+            RewardLedgerEntry.entry_type == entry_type,
+            RewardLedgerEntry.reference_type == reference_type,
+            RewardLedgerEntry.reference_id == reference_id,
+        )
+    ).scalar_one_or_none()
+
+
 def add_reward_entry(
     db: Session,
     *,
@@ -374,18 +400,16 @@ def add_reward_entry(
     if has_active_risk_action(db, user_id=user_id, action_type=RiskActionType.freeze_rewards):
         return None
 
-    existing = db.execute(
-        select(RewardLedgerEntry).where(
-            RewardLedgerEntry.user_id == user_id,
-            RewardLedgerEntry.entry_type == entry_type,
-            RewardLedgerEntry.reference_type == reference_type,
-            RewardLedgerEntry.reference_id == reference_id,
-        )
-    ).scalar_one_or_none()
+    existing = _entry_for_reference(db, user_id, entry_type, reference_type, reference_id)
     if existing:
         return existing
 
     balance = _get_or_create_reward_balance_locked(db, user_id)
+    # Again under the lock: a concurrent call for the same reference may have
+    # written it while this one waited (the outbox delivers at least once).
+    existing = _entry_for_reference(db, user_id, entry_type, reference_type, reference_id)
+    if existing:
+        return existing
     new_balance = balance.balance + int(amount)
     floor = min_balance_floor if min_balance_floor is not None else 0
     if new_balance < floor:

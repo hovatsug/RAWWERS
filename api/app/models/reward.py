@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, BigInteger, DateTime, Enum, Index, Numeric, Text
+from sqlalchemy import CHAR, BigInteger, DateTime, Enum, Index, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -229,6 +229,21 @@ class RewardLedgerEntry(Base):
     reference_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+
+    __table_args__ = (
+        # One entry per idempotency reference: the same event arriving twice
+        # (the outbox delivers at least once) must not credit twice, whatever
+        # the timing. Entries without a reference are not covered.
+        Index(
+            "uq_reward_ledger_idempotency",
+            "user_id",
+            "entry_type",
+            "reference_type",
+            "reference_id",
+            unique=True,
+            postgresql_where=text("reference_type IS NOT NULL AND reference_id IS NOT NULL"),
+        ),
+    )
 
 
 class RewardBalance(Base):

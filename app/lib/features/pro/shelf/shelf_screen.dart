@@ -262,9 +262,10 @@ class _ItemCardState extends ConsumerState<_ItemCard> {
                 ],
               ),
             ),
-            if (item.locked)
-              const Padding(padding: EdgeInsets.all(RSpace.s8), child: Icon(Icons.lock_outline))
-            else
+            if (item.locked) const Padding(padding: EdgeInsets.all(RSpace.s8), child: Icon(Icons.lock_outline)),
+            // A wish from before their level dropped: still theirs to take
+            // off, so it does not hold a place on a full list.
+            if (!item.locked || item.wished)
               IconButton(
                 tooltip: item.wished ? 'Take off your wish list' : 'Add to your wish list',
                 onPressed: _busy ? null : _toggle,

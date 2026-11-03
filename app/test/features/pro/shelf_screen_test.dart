@@ -83,6 +83,27 @@ void main() {
     expect(find.text('Your wish list holds 3 items. Take one off to add this.'), findsOneWidget);
   });
 
+  testWidgets('a wish now above their level stays a locked teaser they can take off the list', (tester) async {
+    final fake = await _pump(
+      tester,
+      shelfView(levels: [
+        ShelfBrowseLevel(level: 4, bandRaww: 3000, locked: true, unlocksAtTier: 'skilled', items: [
+          shelfItem(id: 'w', title: 'Gimbal', level: 4, locked: true, wished: true),
+          shelfItem(id: 'n', title: 'Light', level: 4, locked: true),
+        ]),
+      ]),
+      order: (_, _) {},
+    );
+
+    expect(find.byIcon(Icons.lock_outline), findsNWidgets(2));
+    expect(find.byIcon(Icons.favorite_border), findsNothing, reason: 'a locked item cannot be added');
+    expect(find.text('Order'), findsNothing);
+    await tester.tap(find.byTooltip('Take off your wish list'));
+    await tester.pumpAndSettle();
+
+    expect(fake.toggled, ['w']);
+  });
+
   testWidgets('an item they cannot afford, or out of stock, says so and cannot be ordered', (tester) async {
     await _pump(
       tester,

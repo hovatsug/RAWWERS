@@ -298,6 +298,11 @@ def refresh_earnings_balance_snapshot(db: Session, *, pro_user_id: uuid.UUID) ->
     row.held_eur = money.on_hold
     row.updated_at = datetime.now(timezone.utc)
     db.flush()
+    # Every change to an earning's state comes through here, so its RAWWS
+    # follow it: spendable only while it is available with no hold.
+    from app.services.raww_earning import sync_pro_raww_status
+
+    sync_pro_raww_status(db, pro_user_id)
     return row
 
 

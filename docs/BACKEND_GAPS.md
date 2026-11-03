@@ -61,6 +61,51 @@ Owner's priority. None of these is built; each says what is true today and what 
 - **Rows already marked `sent` by the console provider are not re-sent** when Brevo is switched on. That is intended: nothing old should go out on day one.
 - **GDPR.** A data processing agreement with Brevo, and only the address, subject and body sent (no payload dump). Marketing email stays behind marketing consent and is a separate decision.
 
+### c1) HARD PREREQUISITE before Brevo sends anything: unsubscribe (logged 2026-11-03, not built)
+
+**Today.** Every notification email would carry `{APP_PUBLIC_URL}/unsubscribe?u=<user id>&t=<topic>&s=<sig>` (`notifications._unsubscribe_url`), and:
+- **The page does not exist.** No route in the API or the web app serves `/unsubscribe`. The link is a 404, which breaks the law on commercial mail and Gmail's and Yahoo's bulk-sender rules, and recipients who cannot unsubscribe mark mail as spam, which hurts the sending domain.
+- **The signature is unkeyed and forgeable.** `s` is the first 24 hex characters of `sha256("<user id>:<topic>")`, with no secret. Anyone who knows or guesses a user id (ids appear in links and API responses) can make a valid link for any topic.
+
+**Proposed fix (one commit, before any provider is switched on):**
+1. **A keyed signature.** `s = HMAC-SHA256(UNSUBSCRIBE_SIGNING_KEYS[0], "unsubscribe:v1:<user id>:<topic>")`, checked with `hmac.compare_digest` against every key listed, so the key can rotate without breaking links already sent. It is a new secret, required in production, never the JWT or address key. No expiry: an unsubscribe link must keep working for good.
+2. **A real page.** The web app's public `/unsubscribe` page (no login) says what stops ("Emails about bookings") and has one button, which POSTs to a new `POST /v1/email/unsubscribe` with `{u, t, s}`. A GET only shows the page and changes nothing, because mail scanners open every link. The page offers "Stop all emails except security" too, and says where to switch it back on.
+3. **Per-user preference.** The POST writes the preference that already exists: the topic's `NotificationTopicPreference.email_enabled = false`, or `channel_email_enabled = false` for "all". `_send_email_from_payload` already honours both. It is idempotent, and audit-logged with the time and the topic. The apps' settings should show the same switches; they belong with the notifications screens in b).
+4. **Headers.** Every non-security email gets `List-Unsubscribe: <https://…/unsubscribe?…>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), and the same POST route accepts the one-click form.
+5. **Security mail is exempt.** Verification codes, password resets and new sign-in alerts carry no unsubscribe link and ignore the preference.
+6. **Tests.** A forged or other-topic signature is refused; a GET never unsubscribes; unsubscribing twice is one change; an old key still verifies after rotation; after unsubscribing, that topic's email is suppressed and its in-app notification is not.
+
+### c2) Proposed transactional emails for the beta (drafts, owner to approve)
+
+About eight emails. Everything else stays in-app until it has real text: set an allow-list in `_send_email_from_payload` so a type without approved text never emails. Placeholders in `{braces}`; English first, Portuguese to follow. "Enqueued today" means the code already queues it; the others need a trigger added.
+
+1. **Verify your email** (`email.verify.send`, enqueued today; security, no unsubscribe)
+   - Subject: Your RAWWERS code: {code}
+   - Body: Enter {code} in the app to verify your email. It works for {minutes} minutes. If you did not sign up for RAWWERS, ignore this email.
+2. **Reset your password** (`email.reset.send`, enqueued today; security)
+   - Subject: Reset your RAWWERS password
+   - Body: Enter {code} in the app to choose a new password. It works for {minutes} minutes. If you did not ask for this, ignore this email: your password has not changed.
+3. **New sign-in** (`auth.new_login`, enqueued today; security)
+   - Subject: New sign-in to your RAWWERS account
+   - Body: Your account was signed in to on {device} on {date} at {time}. If this was you, there is nothing to do. If not, reset your password now from the sign-in screen.
+4. **New booking request, to the photographer** (`booking.request_received`, enqueued today; time-critical)
+   - Subject: New booking request from {client_first_name}
+   - Body: {client_first_name} would like to book you on {date}, {start}-{end}, in {area}. Reply by {respond_by}, or the request lapses. Open RAWWERS Pro to accept or decline.
+5. **Booking accepted, to the client** (`booking.request_accepted`, enqueued today)
+   - Subject: {pro_name} accepted your booking
+   - Body: Good news: {pro_name} accepted your booking on {date}, {start}-{end}. Pay the deposit of {deposit} by {pay_by} to confirm it. Open RAWWERS to pay.
+6. **Payment received, to the client** (`payment.succeeded`: has a template, **not enqueued today**; add it where the payment is recorded, webhook and `apply_missed_success` alike, deduped on the payment)
+   - Subject: Payment received: {amount} for your shoot with {pro_name}
+   - Body: We received {amount} for your shoot on {date}. Your booking is confirmed. Your receipt is in the app under the booking.
+7. **Your photos are ready to choose, to the client** (`proofs.gallery_published`: has a template, **not enqueued today**; add it where the gallery is sent)
+   - Subject: Your photos from {date} are ready
+   - Body: {pro_name} has sent your gallery. Choose your favourites by {choose_by}. Open RAWWERS to see them.
+8. **Payout on its way, to the photographer** (**not enqueued today**: `payout.requested` goes to admins only, "A pro submitted a payout request"; add a pro-facing type, e.g. `payout.paid`, where the Stripe transfer is created)
+   - Subject: Your payout of {amount} is on its way
+   - Body: We have sent {amount} to your bank account ending {last4}. It usually arrives within {days} working days. The breakdown is in RAWWERS Pro under Wallet.
+
+Next candidates, once these work: dispute opened (both sides, money on hold) and The Shelf's "shipped" (once The Shelf is open).
+
 ## The Shelf (built 2026-11-03): what is open
 
 Built on the owner's decisions; these were found while building it and left as they are.

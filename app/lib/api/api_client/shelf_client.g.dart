@@ -229,6 +229,406 @@ class _ShelfClient implements ShelfClient {
     return httpResponse;
   }
 
+  @override
+  Future<HttpResponse<ShelfCameraModelsResponse>>
+  searchCameraModelsV1ProShelfCameraModelsGet({
+    required String q,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'Search Camera Models',
+      'description': 'The camera catalogue, for picking a body in My gear.',
+      'operationId': 'search_camera_models_v1_pro_shelf_camera_models_get',
+      'parameters': [
+        {
+          'name': 'q',
+          'in': 'query',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'minLength': 1,
+            'maxLength': 100,
+            'title': 'Q',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ShelfCameraModelsResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{r'q': q};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ShelfCameraModelsResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/shelf/camera-models',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ShelfCameraModelsResponse _value;
+    try {
+      _value = ShelfCameraModelsResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ShelfWishlistResponse>> myWishlistV1ProShelfWishlistGet({
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'My Wishlist',
+      'operationId': 'my_wishlist_v1_pro_shelf_wishlist_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ShelfWishlistResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ShelfWishlistResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/shelf/wishlist',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ShelfWishlistResponse _value;
+    try {
+      _value = ShelfWishlistResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ShelfWishlistResponse>>
+  wishForV1ProShelfWishlistItemIdPut({
+    required String itemId,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'Wish For',
+      'operationId': 'wish_for_v1_pro_shelf_wishlist__item_id__put',
+      'parameters': [
+        {
+          'name': 'item_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Item Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ShelfWishlistResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ShelfWishlistResponse>>(
+      Options(method: 'PUT', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/shelf/wishlist/${itemId}',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ShelfWishlistResponse _value;
+    try {
+      _value = ShelfWishlistResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ShelfWishlistResponse>>
+  unwishV1ProShelfWishlistItemIdDelete({
+    required String itemId,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'Unwish',
+      'operationId': 'unwish_v1_pro_shelf_wishlist__item_id__delete',
+      'parameters': [
+        {
+          'name': 'item_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Item Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ShelfWishlistResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ShelfWishlistResponse>>(
+      Options(method: 'DELETE', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/shelf/wishlist/${itemId}',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ShelfWishlistResponse _value;
+    try {
+      _value = ShelfWishlistResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
   RequestOptions _setStreamType<T>(RequestOptions requestOptions) {
     if (T != dynamic &&
         !(requestOptions.responseType == ResponseType.bytes ||

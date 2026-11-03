@@ -340,3 +340,6 @@ export 'pro_raww_view.dart';
 export 'raww_entry_view.dart';
 export 'raww_history_response.dart';
 export 'raww_pending_booking.dart';
+export 'shelf_camera_model_view.dart';
+export 'shelf_camera_models_response.dart';
+export 'shelf_wishlist_response.dart';

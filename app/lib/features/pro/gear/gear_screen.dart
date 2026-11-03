@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/gear_category.dart';
 import 'package:rawwers/api/models/gear_item_view.dart';
+import 'package:rawwers/api/models/shelf_camera_model_view.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_dialog.dart';
@@ -132,6 +135,10 @@ class _GearRow extends StatelessWidget {
                 Text(name.isEmpty ? gearCategoryLabel(item.category) : name, style: theme.textTheme.titleSmall),
                 const SizedBox(height: RSpace.s4),
                 Text(gearCategoryLabel(item.category), style: theme.textTheme.bodySmall),
+                if (item.cameraModel != null) ...[
+                  const SizedBox(height: RSpace.s4),
+                  Text('On the camera list: The Shelf shows what fits it', style: theme.textTheme.bodySmall),
+                ],
                 if (item.serialNumber != null) ...[
                   const SizedBox(height: RSpace.s4),
                   Text('Serial ${item.serialNumber}', style: theme.textTheme.bodySmall),
@@ -165,7 +172,12 @@ class _GearEditorState extends ConsumerState<_GearEditor> {
   late final TextEditingController _model;
   late final TextEditingController _serial;
   late final TextEditingController _notes;
+  late final TextEditingController _cameraQuery;
   late GearCategory _category;
+  String? _cameraModel;
+  String? _cameraName;
+  String _query = '';
+  Timer? _debounce;
 
   bool _saving = false;
   String? _error;
@@ -179,11 +191,35 @@ class _GearEditorState extends ConsumerState<_GearEditor> {
     _serial = TextEditingController(text: e?.serialNumber ?? '');
     _notes = TextEditingController(text: e?.notes ?? '');
     _category = e?.category ?? GearCategory.cameraBody;
+    _cameraModel = e?.cameraModel;
+    _cameraQuery = TextEditingController()..addListener(() => _search(_cameraQuery.text));
+  }
+
+  void _search(String text) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _query = text);
+    });
+  }
+
+  void _pick(ShelfCameraModelView camera) {
+    setState(() {
+      _cameraModel = camera.normalisedModel;
+      _cameraName = camera.displayName;
+      _query = '';
+      _cameraQuery.clear();
+      final make = camera.make ?? '';
+      if (_brand.text.trim().isEmpty) _brand.text = make;
+      if (_model.text.trim().isEmpty) {
+        _model.text = make.isNotEmpty && camera.displayName.startsWith('$make ') ? camera.displayName.substring(make.length + 1) : camera.displayName;
+      }
+    });
   }
 
   @override
   void dispose() {
-    for (final c in [_brand, _model, _serial, _notes]) {
+    _debounce?.cancel();
+    for (final c in [_brand, _model, _serial, _notes, _cameraQuery]) {
       c.dispose();
     }
     super.dispose();
@@ -202,6 +238,7 @@ class _GearEditorState extends ConsumerState<_GearEditor> {
             category: _category,
             brand: _brand.text,
             model: _model.text,
+            cameraModel: _category == GearCategory.cameraBody ? _cameraModel : null,
             serialNumber: _serial.text,
             notes: _notes.text,
           )
@@ -210,6 +247,7 @@ class _GearEditorState extends ConsumerState<_GearEditor> {
             category: _category,
             brand: _brand.text,
             model: _model.text,
+            cameraModel: _category == GearCategory.cameraBody ? _cameraModel : null,
             serialNumber: _serial.text,
             notes: _notes.text,
           );
@@ -242,6 +280,19 @@ class _GearEditorState extends ConsumerState<_GearEditor> {
           ],
           onChanged: (value) => setState(() => _category = value ?? _category),
         ),
+        if (_category == GearCategory.cameraBody) ...[
+          const SizedBox(height: RSpace.s16),
+          _CameraPicker(
+            linkedName: _cameraModel == null ? null : (_cameraName ?? 'a camera on the list'),
+            controller: _cameraQuery,
+            query: _query,
+            onPick: _pick,
+            onClear: () => setState(() {
+              _cameraModel = null;
+              _cameraName = null;
+            }),
+          ),
+        ],
         const SizedBox(height: RSpace.s16),
         RInput(label: 'Make', controller: _brand),
         const SizedBox(height: RSpace.s16),
@@ -264,6 +315,56 @@ class _GearEditorState extends ConsumerState<_GearEditor> {
           onPressed: _saving ? null : _submit,
           loading: _saving,
         ),
+      ],
+    );
+  }
+}
+
+
+/// Find the body in the camera catalogue, so The Shelf can show what fits
+/// it. Optional: Make and Model stay free text.
+class _CameraPicker extends ConsumerWidget {
+  const _CameraPicker({
+    required this.linkedName,
+    required this.controller,
+    required this.query,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final String? linkedName;
+  final TextEditingController controller;
+  final String query;
+  final ValueChanged<ShelfCameraModelView> onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    if (linkedName != null) {
+      return Row(
+        children: [
+          Expanded(child: Text('On the camera list: $linkedName', style: theme.textTheme.bodyMedium)),
+          TextButton(onPressed: onClear, child: const Text('Change')),
+        ],
+      );
+    }
+    final results = query.isEmpty ? const <ShelfCameraModelView>[] : (ref.watch(cameraSearchProvider(query)).value ?? const []);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RInput(label: 'Find your camera on the list', controller: controller),
+        Padding(
+          padding: const EdgeInsets.only(top: RSpace.s4),
+          child: Text('So The Shelf can show batteries and chargers that fit it.', style: theme.textTheme.bodySmall),
+        ),
+        for (final camera in results)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: Text(camera.displayName),
+            onTap: () => onPick(camera),
+          ),
       ],
     );
   }

@@ -18,7 +18,8 @@ mixin _$GearItemUpdateRequest {
 /// category
 @JsonKey(name: GearItemUpdateRequest.categoryKey_) GearCategory? get category;/// brand
 @JsonKey(name: GearItemUpdateRequest.brandKey_) String? get brand;/// model
-@JsonKey(name: GearItemUpdateRequest.modelKey_) String? get model;/// serialNumber
+@JsonKey(name: GearItemUpdateRequest.modelKey_) String? get model;/// cameraModel
+@JsonKey(name: GearItemUpdateRequest.cameraModelKey_) String? get cameraModel;/// serialNumber
 @JsonKey(name: GearItemUpdateRequest.serialNumberKey_) String? get serialNumber;/// purchaseDate
 @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) DateTime? get purchaseDate;/// notes
 @JsonKey(name: GearItemUpdateRequest.notesKey_) String? get notes;/// metadata
@@ -35,16 +36,16 @@ $GearItemUpdateRequestCopyWith<GearItemUpdateRequest> get copyWith => _$GearItem
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GearItemUpdateRequest&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other.metadata, metadata));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GearItemUpdateRequest&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.cameraModel, cameraModel) || other.cameraModel == cameraModel)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other.metadata, metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,brand,model,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(metadata));
+int get hashCode => Object.hash(runtimeType,category,brand,model,cameraModel,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(metadata));
 
 @override
 String toString() {
-  return 'GearItemUpdateRequest(category: $category, brand: $brand, model: $model, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, metadata: $metadata)';
+  return 'GearItemUpdateRequest(category: $category, brand: $brand, model: $model, cameraModel: $cameraModel, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, metadata: $metadata)';
 }
 
 
@@ -55,7 +56,7 @@ abstract mixin class $GearItemUpdateRequestCopyWith<$Res>  {
   factory $GearItemUpdateRequestCopyWith(GearItemUpdateRequest value, $Res Function(GearItemUpdateRequest) _then) = _$GearItemUpdateRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: GearItemUpdateRequest.categoryKey_) GearCategory? category,@JsonKey(name: GearItemUpdateRequest.brandKey_) String? brand,@JsonKey(name: GearItemUpdateRequest.modelKey_) String? model,@JsonKey(name: GearItemUpdateRequest.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemUpdateRequest.notesKey_) String? notes,@JsonKey(name: GearItemUpdateRequest.metadataKey_) Map<String, dynamic>? metadata
+@JsonKey(name: GearItemUpdateRequest.categoryKey_) GearCategory? category,@JsonKey(name: GearItemUpdateRequest.brandKey_) String? brand,@JsonKey(name: GearItemUpdateRequest.modelKey_) String? model,@JsonKey(name: GearItemUpdateRequest.cameraModelKey_) String? cameraModel,@JsonKey(name: GearItemUpdateRequest.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemUpdateRequest.notesKey_) String? notes,@JsonKey(name: GearItemUpdateRequest.metadataKey_) Map<String, dynamic>? metadata
 });
 
 
@@ -72,11 +73,12 @@ class _$GearItemUpdateRequestCopyWithImpl<$Res>
 
 /// Create a copy of GearItemUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? category = freezed,Object? brand = freezed,Object? model = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? metadata = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? category = freezed,Object? brand = freezed,Object? model = freezed,Object? cameraModel = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? metadata = freezed,}) {
   return _then(_self.copyWith(
 category: freezed == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as GearCategory?,brand: freezed == brand ? _self.brand : brand // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,cameraModel: freezed == cameraModel ? _self.cameraModel : cameraModel // ignore: cast_nullable_to_non_nullable
 as String?,serialNumber: freezed == serialNumber ? _self.serialNumber : serialNumber // ignore: cast_nullable_to_non_nullable
 as String?,purchaseDate: freezed == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemUpdateRequest.categoryKey_)  GearCategory? category, @JsonKey(name: GearItemUpdateRequest.brandKey_)  String? brand, @JsonKey(name: GearItemUpdateRequest.modelKey_)  String? model, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_)  String? notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_)  Map<String, dynamic>? metadata)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemUpdateRequest.categoryKey_)  GearCategory? category, @JsonKey(name: GearItemUpdateRequest.brandKey_)  String? brand, @JsonKey(name: GearItemUpdateRequest.modelKey_)  String? model, @JsonKey(name: GearItemUpdateRequest.cameraModelKey_)  String? cameraModel, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_)  String? notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_)  Map<String, dynamic>? metadata)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GearItemUpdateRequest() when $default != null:
-return $default(_that.category,_that.brand,_that.model,_that.serialNumber,_that.purchaseDate,_that.notes,_that.metadata);case _:
+return $default(_that.category,_that.brand,_that.model,_that.cameraModel,_that.serialNumber,_that.purchaseDate,_that.notes,_that.metadata);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.category,_that.brand,_that.model,_that.serialNumber,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemUpdateRequest.categoryKey_)  GearCategory? category, @JsonKey(name: GearItemUpdateRequest.brandKey_)  String? brand, @JsonKey(name: GearItemUpdateRequest.modelKey_)  String? model, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_)  String? notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_)  Map<String, dynamic>? metadata)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemUpdateRequest.categoryKey_)  GearCategory? category, @JsonKey(name: GearItemUpdateRequest.brandKey_)  String? brand, @JsonKey(name: GearItemUpdateRequest.modelKey_)  String? model, @JsonKey(name: GearItemUpdateRequest.cameraModelKey_)  String? cameraModel, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_)  String? notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_)  Map<String, dynamic>? metadata)  $default,) {final _that = this;
 switch (_that) {
 case _GearItemUpdateRequest():
-return $default(_that.category,_that.brand,_that.model,_that.serialNumber,_that.purchaseDate,_that.notes,_that.metadata);case _:
+return $default(_that.category,_that.brand,_that.model,_that.cameraModel,_that.serialNumber,_that.purchaseDate,_that.notes,_that.metadata);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.category,_that.brand,_that.model,_that.serialNumber,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GearItemUpdateRequest.categoryKey_)  GearCategory? category, @JsonKey(name: GearItemUpdateRequest.brandKey_)  String? brand, @JsonKey(name: GearItemUpdateRequest.modelKey_)  String? model, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_)  String? notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_)  Map<String, dynamic>? metadata)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GearItemUpdateRequest.categoryKey_)  GearCategory? category, @JsonKey(name: GearItemUpdateRequest.brandKey_)  String? brand, @JsonKey(name: GearItemUpdateRequest.modelKey_)  String? model, @JsonKey(name: GearItemUpdateRequest.cameraModelKey_)  String? cameraModel, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_)  String? notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_)  Map<String, dynamic>? metadata)?  $default,) {final _that = this;
 switch (_that) {
 case _GearItemUpdateRequest() when $default != null:
-return $default(_that.category,_that.brand,_that.model,_that.serialNumber,_that.purchaseDate,_that.notes,_that.metadata);case _:
+return $default(_that.category,_that.brand,_that.model,_that.cameraModel,_that.serialNumber,_that.purchaseDate,_that.notes,_that.metadata);case _:
   return null;
 
 }
@@ -222,7 +224,7 @@ return $default(_that.category,_that.brand,_that.model,_that.serialNumber,_that.
 
 @jsonSerializable
 class _GearItemUpdateRequest extends GearItemUpdateRequest {
-  const _GearItemUpdateRequest({@JsonKey(name: GearItemUpdateRequest.categoryKey_) this.category, @JsonKey(name: GearItemUpdateRequest.brandKey_) this.brand, @JsonKey(name: GearItemUpdateRequest.modelKey_) this.model, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_) this.serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) this.purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_) this.notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_) final  Map<String, dynamic>? metadata}): _metadata = metadata,super._();
+  const _GearItemUpdateRequest({@JsonKey(name: GearItemUpdateRequest.categoryKey_) this.category, @JsonKey(name: GearItemUpdateRequest.brandKey_) this.brand, @JsonKey(name: GearItemUpdateRequest.modelKey_) this.model, @JsonKey(name: GearItemUpdateRequest.cameraModelKey_) this.cameraModel, @JsonKey(name: GearItemUpdateRequest.serialNumberKey_) this.serialNumber, @JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) this.purchaseDate, @JsonKey(name: GearItemUpdateRequest.notesKey_) this.notes, @JsonKey(name: GearItemUpdateRequest.metadataKey_) final  Map<String, dynamic>? metadata}): _metadata = metadata,super._();
   factory _GearItemUpdateRequest.fromJson(Map<String, dynamic> json) => _$GearItemUpdateRequestFromJson(json);
 
 /// category
@@ -231,6 +233,8 @@ class _GearItemUpdateRequest extends GearItemUpdateRequest {
 @override@JsonKey(name: GearItemUpdateRequest.brandKey_) final  String? brand;
 /// model
 @override@JsonKey(name: GearItemUpdateRequest.modelKey_) final  String? model;
+/// cameraModel
+@override@JsonKey(name: GearItemUpdateRequest.cameraModelKey_) final  String? cameraModel;
 /// serialNumber
 @override@JsonKey(name: GearItemUpdateRequest.serialNumberKey_) final  String? serialNumber;
 /// purchaseDate
@@ -262,16 +266,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GearItemUpdateRequest&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other._metadata, _metadata));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GearItemUpdateRequest&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.cameraModel, cameraModel) || other.cameraModel == cameraModel)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other._metadata, _metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,brand,model,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(_metadata));
+int get hashCode => Object.hash(runtimeType,category,brand,model,cameraModel,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(_metadata));
 
 @override
 String toString() {
-  return 'GearItemUpdateRequest(category: $category, brand: $brand, model: $model, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, metadata: $metadata)';
+  return 'GearItemUpdateRequest(category: $category, brand: $brand, model: $model, cameraModel: $cameraModel, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, metadata: $metadata)';
 }
 
 
@@ -282,7 +286,7 @@ abstract mixin class _$GearItemUpdateRequestCopyWith<$Res> implements $GearItemU
   factory _$GearItemUpdateRequestCopyWith(_GearItemUpdateRequest value, $Res Function(_GearItemUpdateRequest) _then) = __$GearItemUpdateRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: GearItemUpdateRequest.categoryKey_) GearCategory? category,@JsonKey(name: GearItemUpdateRequest.brandKey_) String? brand,@JsonKey(name: GearItemUpdateRequest.modelKey_) String? model,@JsonKey(name: GearItemUpdateRequest.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemUpdateRequest.notesKey_) String? notes,@JsonKey(name: GearItemUpdateRequest.metadataKey_) Map<String, dynamic>? metadata
+@JsonKey(name: GearItemUpdateRequest.categoryKey_) GearCategory? category,@JsonKey(name: GearItemUpdateRequest.brandKey_) String? brand,@JsonKey(name: GearItemUpdateRequest.modelKey_) String? model,@JsonKey(name: GearItemUpdateRequest.cameraModelKey_) String? cameraModel,@JsonKey(name: GearItemUpdateRequest.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemUpdateRequest.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemUpdateRequest.notesKey_) String? notes,@JsonKey(name: GearItemUpdateRequest.metadataKey_) Map<String, dynamic>? metadata
 });
 
 
@@ -299,11 +303,12 @@ class __$GearItemUpdateRequestCopyWithImpl<$Res>
 
 /// Create a copy of GearItemUpdateRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? category = freezed,Object? brand = freezed,Object? model = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? metadata = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? category = freezed,Object? brand = freezed,Object? model = freezed,Object? cameraModel = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? metadata = freezed,}) {
   return _then(_GearItemUpdateRequest(
 category: freezed == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as GearCategory?,brand: freezed == brand ? _self.brand : brand // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,cameraModel: freezed == cameraModel ? _self.cameraModel : cameraModel // ignore: cast_nullable_to_non_nullable
 as String?,serialNumber: freezed == serialNumber ? _self.serialNumber : serialNumber // ignore: cast_nullable_to_non_nullable
 as String?,purchaseDate: freezed == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable

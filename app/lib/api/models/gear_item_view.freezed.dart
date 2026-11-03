@@ -20,7 +20,8 @@ mixin _$GearItemView {
 @JsonKey(name: GearItemView.proUserIdKey_) String get proUserId;/// category
 @JsonKey(name: GearItemView.categoryKey_) GearCategory get category;/// brand
 @JsonKey(name: GearItemView.brandKey_) String? get brand;/// model
-@JsonKey(name: GearItemView.modelKey_) String? get model;/// serialNumber
+@JsonKey(name: GearItemView.modelKey_) String? get model;/// cameraModel
+@JsonKey(name: GearItemView.cameraModelKey_) String? get cameraModel;/// serialNumber
 @JsonKey(name: GearItemView.serialNumberKey_) String? get serialNumber;/// purchaseDate
 @JsonKey(name: GearItemView.purchaseDateKey_) DateTime? get purchaseDate;/// notes
 @JsonKey(name: GearItemView.notesKey_) String? get notes;/// meta
@@ -39,16 +40,16 @@ $GearItemViewCopyWith<GearItemView> get copyWith => _$GearItemViewCopyWithImpl<G
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GearItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other.meta, meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GearItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.cameraModel, cameraModel) || other.cameraModel == cameraModel)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other.meta, meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,category,brand,model,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(meta),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,proUserId,category,brand,model,cameraModel,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(meta),createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'GearItemView(id: $id, proUserId: $proUserId, category: $category, brand: $brand, model: $model, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, meta: $meta, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'GearItemView(id: $id, proUserId: $proUserId, category: $category, brand: $brand, model: $model, cameraModel: $cameraModel, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, meta: $meta, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -59,7 +60,7 @@ abstract mixin class $GearItemViewCopyWith<$Res>  {
   factory $GearItemViewCopyWith(GearItemView value, $Res Function(GearItemView) _then) = _$GearItemViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: GearItemView.idKey_) String id,@JsonKey(name: GearItemView.proUserIdKey_) String proUserId,@JsonKey(name: GearItemView.categoryKey_) GearCategory category,@JsonKey(name: GearItemView.brandKey_) String? brand,@JsonKey(name: GearItemView.modelKey_) String? model,@JsonKey(name: GearItemView.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemView.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemView.notesKey_) String? notes,@JsonKey(name: GearItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: GearItemView.createdAtKey_) DateTime createdAt,@JsonKey(name: GearItemView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: GearItemView.idKey_) String id,@JsonKey(name: GearItemView.proUserIdKey_) String proUserId,@JsonKey(name: GearItemView.categoryKey_) GearCategory category,@JsonKey(name: GearItemView.brandKey_) String? brand,@JsonKey(name: GearItemView.modelKey_) String? model,@JsonKey(name: GearItemView.cameraModelKey_) String? cameraModel,@JsonKey(name: GearItemView.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemView.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemView.notesKey_) String? notes,@JsonKey(name: GearItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: GearItemView.createdAtKey_) DateTime createdAt,@JsonKey(name: GearItemView.updatedAtKey_) DateTime updatedAt
 });
 
 
@@ -76,13 +77,14 @@ class _$GearItemViewCopyWithImpl<$Res>
 
 /// Create a copy of GearItemView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? category = null,Object? brand = freezed,Object? model = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? meta = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? category = null,Object? brand = freezed,Object? model = freezed,Object? cameraModel = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? meta = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as GearCategory,brand: freezed == brand ? _self.brand : brand // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,cameraModel: freezed == cameraModel ? _self.cameraModel : cameraModel // ignore: cast_nullable_to_non_nullable
 as String?,serialNumber: freezed == serialNumber ? _self.serialNumber : serialNumber // ignore: cast_nullable_to_non_nullable
 as String?,purchaseDate: freezed == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
@@ -174,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemView.idKey_)  String id, @JsonKey(name: GearItemView.proUserIdKey_)  String proUserId, @JsonKey(name: GearItemView.categoryKey_)  GearCategory category, @JsonKey(name: GearItemView.brandKey_)  String? brand, @JsonKey(name: GearItemView.modelKey_)  String? model, @JsonKey(name: GearItemView.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemView.notesKey_)  String? notes, @JsonKey(name: GearItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_)  DateTime createdAt, @JsonKey(name: GearItemView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemView.idKey_)  String id, @JsonKey(name: GearItemView.proUserIdKey_)  String proUserId, @JsonKey(name: GearItemView.categoryKey_)  GearCategory category, @JsonKey(name: GearItemView.brandKey_)  String? brand, @JsonKey(name: GearItemView.modelKey_)  String? model, @JsonKey(name: GearItemView.cameraModelKey_)  String? cameraModel, @JsonKey(name: GearItemView.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemView.notesKey_)  String? notes, @JsonKey(name: GearItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_)  DateTime createdAt, @JsonKey(name: GearItemView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GearItemView() when $default != null:
-return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,_that.serialNumber,_that.purchaseDate,_that.notes,_that.meta,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,_that.cameraModel,_that.serialNumber,_that.purchaseDate,_that.notes,_that.meta,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -195,10 +197,10 @@ return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemView.idKey_)  String id, @JsonKey(name: GearItemView.proUserIdKey_)  String proUserId, @JsonKey(name: GearItemView.categoryKey_)  GearCategory category, @JsonKey(name: GearItemView.brandKey_)  String? brand, @JsonKey(name: GearItemView.modelKey_)  String? model, @JsonKey(name: GearItemView.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemView.notesKey_)  String? notes, @JsonKey(name: GearItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_)  DateTime createdAt, @JsonKey(name: GearItemView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GearItemView.idKey_)  String id, @JsonKey(name: GearItemView.proUserIdKey_)  String proUserId, @JsonKey(name: GearItemView.categoryKey_)  GearCategory category, @JsonKey(name: GearItemView.brandKey_)  String? brand, @JsonKey(name: GearItemView.modelKey_)  String? model, @JsonKey(name: GearItemView.cameraModelKey_)  String? cameraModel, @JsonKey(name: GearItemView.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemView.notesKey_)  String? notes, @JsonKey(name: GearItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_)  DateTime createdAt, @JsonKey(name: GearItemView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _GearItemView():
-return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,_that.serialNumber,_that.purchaseDate,_that.notes,_that.meta,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,_that.cameraModel,_that.serialNumber,_that.purchaseDate,_that.notes,_that.meta,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +217,10 @@ return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GearItemView.idKey_)  String id, @JsonKey(name: GearItemView.proUserIdKey_)  String proUserId, @JsonKey(name: GearItemView.categoryKey_)  GearCategory category, @JsonKey(name: GearItemView.brandKey_)  String? brand, @JsonKey(name: GearItemView.modelKey_)  String? model, @JsonKey(name: GearItemView.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemView.notesKey_)  String? notes, @JsonKey(name: GearItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_)  DateTime createdAt, @JsonKey(name: GearItemView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GearItemView.idKey_)  String id, @JsonKey(name: GearItemView.proUserIdKey_)  String proUserId, @JsonKey(name: GearItemView.categoryKey_)  GearCategory category, @JsonKey(name: GearItemView.brandKey_)  String? brand, @JsonKey(name: GearItemView.modelKey_)  String? model, @JsonKey(name: GearItemView.cameraModelKey_)  String? cameraModel, @JsonKey(name: GearItemView.serialNumberKey_)  String? serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_)  DateTime? purchaseDate, @JsonKey(name: GearItemView.notesKey_)  String? notes, @JsonKey(name: GearItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_)  DateTime createdAt, @JsonKey(name: GearItemView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _GearItemView() when $default != null:
-return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,_that.serialNumber,_that.purchaseDate,_that.notes,_that.meta,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,_that.cameraModel,_that.serialNumber,_that.purchaseDate,_that.notes,_that.meta,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -230,7 +232,7 @@ return $default(_that.id,_that.proUserId,_that.category,_that.brand,_that.model,
 
 @jsonSerializable
 class _GearItemView extends GearItemView {
-  const _GearItemView({@JsonKey(name: GearItemView.idKey_) required this.id, @JsonKey(name: GearItemView.proUserIdKey_) required this.proUserId, @JsonKey(name: GearItemView.categoryKey_) required this.category, @JsonKey(name: GearItemView.brandKey_) this.brand, @JsonKey(name: GearItemView.modelKey_) this.model, @JsonKey(name: GearItemView.serialNumberKey_) this.serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_) this.purchaseDate, @JsonKey(name: GearItemView.notesKey_) this.notes, @JsonKey(name: GearItemView.metaKey_) final  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_) required this.createdAt, @JsonKey(name: GearItemView.updatedAtKey_) required this.updatedAt}): _meta = meta,super._();
+  const _GearItemView({@JsonKey(name: GearItemView.idKey_) required this.id, @JsonKey(name: GearItemView.proUserIdKey_) required this.proUserId, @JsonKey(name: GearItemView.categoryKey_) required this.category, @JsonKey(name: GearItemView.brandKey_) this.brand, @JsonKey(name: GearItemView.modelKey_) this.model, @JsonKey(name: GearItemView.cameraModelKey_) this.cameraModel, @JsonKey(name: GearItemView.serialNumberKey_) this.serialNumber, @JsonKey(name: GearItemView.purchaseDateKey_) this.purchaseDate, @JsonKey(name: GearItemView.notesKey_) this.notes, @JsonKey(name: GearItemView.metaKey_) final  Map<String, dynamic>? meta, @JsonKey(name: GearItemView.createdAtKey_) required this.createdAt, @JsonKey(name: GearItemView.updatedAtKey_) required this.updatedAt}): _meta = meta,super._();
   factory _GearItemView.fromJson(Map<String, dynamic> json) => _$GearItemViewFromJson(json);
 
 /// id
@@ -243,6 +245,8 @@ class _GearItemView extends GearItemView {
 @override@JsonKey(name: GearItemView.brandKey_) final  String? brand;
 /// model
 @override@JsonKey(name: GearItemView.modelKey_) final  String? model;
+/// cameraModel
+@override@JsonKey(name: GearItemView.cameraModelKey_) final  String? cameraModel;
 /// serialNumber
 @override@JsonKey(name: GearItemView.serialNumberKey_) final  String? serialNumber;
 /// purchaseDate
@@ -278,16 +282,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GearItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other._meta, _meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GearItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.category, category) || other.category == category)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model)&&(identical(other.cameraModel, cameraModel) || other.cameraModel == cameraModel)&&(identical(other.serialNumber, serialNumber) || other.serialNumber == serialNumber)&&(identical(other.purchaseDate, purchaseDate) || other.purchaseDate == purchaseDate)&&(identical(other.notes, notes) || other.notes == notes)&&const DeepCollectionEquality().equals(other._meta, _meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,category,brand,model,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(_meta),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,proUserId,category,brand,model,cameraModel,serialNumber,purchaseDate,notes,const DeepCollectionEquality().hash(_meta),createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'GearItemView(id: $id, proUserId: $proUserId, category: $category, brand: $brand, model: $model, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, meta: $meta, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'GearItemView(id: $id, proUserId: $proUserId, category: $category, brand: $brand, model: $model, cameraModel: $cameraModel, serialNumber: $serialNumber, purchaseDate: $purchaseDate, notes: $notes, meta: $meta, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -298,7 +302,7 @@ abstract mixin class _$GearItemViewCopyWith<$Res> implements $GearItemViewCopyWi
   factory _$GearItemViewCopyWith(_GearItemView value, $Res Function(_GearItemView) _then) = __$GearItemViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: GearItemView.idKey_) String id,@JsonKey(name: GearItemView.proUserIdKey_) String proUserId,@JsonKey(name: GearItemView.categoryKey_) GearCategory category,@JsonKey(name: GearItemView.brandKey_) String? brand,@JsonKey(name: GearItemView.modelKey_) String? model,@JsonKey(name: GearItemView.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemView.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemView.notesKey_) String? notes,@JsonKey(name: GearItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: GearItemView.createdAtKey_) DateTime createdAt,@JsonKey(name: GearItemView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: GearItemView.idKey_) String id,@JsonKey(name: GearItemView.proUserIdKey_) String proUserId,@JsonKey(name: GearItemView.categoryKey_) GearCategory category,@JsonKey(name: GearItemView.brandKey_) String? brand,@JsonKey(name: GearItemView.modelKey_) String? model,@JsonKey(name: GearItemView.cameraModelKey_) String? cameraModel,@JsonKey(name: GearItemView.serialNumberKey_) String? serialNumber,@JsonKey(name: GearItemView.purchaseDateKey_) DateTime? purchaseDate,@JsonKey(name: GearItemView.notesKey_) String? notes,@JsonKey(name: GearItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: GearItemView.createdAtKey_) DateTime createdAt,@JsonKey(name: GearItemView.updatedAtKey_) DateTime updatedAt
 });
 
 
@@ -315,13 +319,14 @@ class __$GearItemViewCopyWithImpl<$Res>
 
 /// Create a copy of GearItemView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? category = null,Object? brand = freezed,Object? model = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? meta = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? category = null,Object? brand = freezed,Object? model = freezed,Object? cameraModel = freezed,Object? serialNumber = freezed,Object? purchaseDate = freezed,Object? notes = freezed,Object? meta = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_GearItemView(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
 as String,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as GearCategory,brand: freezed == brand ? _self.brand : brand // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,cameraModel: freezed == cameraModel ? _self.cameraModel : cameraModel // ignore: cast_nullable_to_non_nullable
 as String?,serialNumber: freezed == serialNumber ? _self.serialNumber : serialNumber // ignore: cast_nullable_to_non_nullable
 as String?,purchaseDate: freezed == purchaseDate ? _self.purchaseDate : purchaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable

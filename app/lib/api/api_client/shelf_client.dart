@@ -154,4 +154,268 @@ abstract class ShelfClient {
       },
     },
   });
+  @GET("/v1/pro/shelf/camera-models")
+  Future<HttpResponse<ShelfCameraModelsResponse>>
+  searchCameraModelsV1ProShelfCameraModelsGet({
+    @Query("q") required String q,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'Search Camera Models',
+      'description': 'The camera catalogue, for picking a body in My gear.',
+      'operationId': 'search_camera_models_v1_pro_shelf_camera_models_get',
+      'parameters': [
+        {
+          'name': 'q',
+          'in': 'query',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'minLength': 1,
+            'maxLength': 100,
+            'title': 'Q',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ShelfCameraModelsResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @GET("/v1/pro/shelf/wishlist")
+  Future<HttpResponse<ShelfWishlistResponse>> myWishlistV1ProShelfWishlistGet({
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'My Wishlist',
+      'operationId': 'my_wishlist_v1_pro_shelf_wishlist_get',
+      'parameters': [
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ShelfWishlistResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @PUT("/v1/pro/shelf/wishlist/{item_id}")
+  Future<HttpResponse<ShelfWishlistResponse>>
+  wishForV1ProShelfWishlistItemIdPut({
+    @Path("item_id") required String itemId,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'Wish For',
+      'operationId': 'wish_for_v1_pro_shelf_wishlist__item_id__put',
+      'parameters': [
+        {
+          'name': 'item_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Item Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ShelfWishlistResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @DELETE("/v1/pro/shelf/wishlist/{item_id}")
+  Future<HttpResponse<ShelfWishlistResponse>>
+  unwishV1ProShelfWishlistItemIdDelete({
+    @Path("item_id") required String itemId,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['shelf'],
+      'summary': 'Unwish',
+      'operationId': 'unwish_v1_pro_shelf_wishlist__item_id__delete',
+      'parameters': [
+        {
+          'name': 'item_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Item Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ShelfWishlistResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
 }

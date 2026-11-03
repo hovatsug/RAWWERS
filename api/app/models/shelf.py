@@ -210,3 +210,13 @@ class ShelfItemCompat(Base):
 
     item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_item.id", ondelete="CASCADE"), primary_key=True)
     camera_model: Mapped[str] = mapped_column(Text, ForeignKey("camera_model_reference.normalised_model"), primary_key=True)
+
+
+class ShelfWishlistItem(Base):
+    """An item a photographer wants, up to the settings' wish list size."""
+
+    __tablename__ = "shelf_wishlist_item"
+
+    pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_item.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)

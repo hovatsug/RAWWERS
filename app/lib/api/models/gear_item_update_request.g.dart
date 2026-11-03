@@ -14,6 +14,7 @@ _GearItemUpdateRequest _$GearItemUpdateRequestFromJson(
       : GearCategory.fromJson(json['category'] as String),
   brand: json['brand'] as String?,
   model: json['model'] as String?,
+  cameraModel: json['camera_model'] as String?,
   serialNumber: json['serial_number'] as String?,
   purchaseDate: json['purchase_date'] == null
       ? null
@@ -28,6 +29,7 @@ Map<String, dynamic> _$GearItemUpdateRequestToJson(
   'category': instance.category,
   'brand': instance.brand,
   'model': instance.model,
+  'camera_model': instance.cameraModel,
   'serial_number': instance.serialNumber,
   'purchase_date': instance.purchaseDate?.toIso8601String(),
   'notes': instance.notes,

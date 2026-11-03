@@ -76,6 +76,12 @@ class GearItem(Base):
     category: Mapped[GearCategory] = mapped_column(Enum(GearCategory, name="gear_category", native_enum=False, length=64), nullable=False)
     brand: Mapped[str | None] = mapped_column(Text, nullable=True)
     model: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The camera catalogue's entry for this body, when there is one: what
+    #: The Shelf matches compatible batteries and chargers against. Optional;
+    #: brand and model stay free text.
+    camera_model: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("camera_model_reference.normalised_model"), nullable=True, index=True
+    )
     serial_number: Mapped[str | None] = mapped_column(Text, nullable=True)
     purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

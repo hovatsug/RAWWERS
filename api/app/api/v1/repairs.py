@@ -44,6 +44,7 @@ from app.schemas.repair import (
     SetLoanerStatusRequest,
     SetRepairStatusRequest,
 )
+from app.services.shelf_items import resolve_camera_model
 from app.services.analytics import log_event
 from app.services.audit import add_admin_audit_log
 from app.services.feature_flags import is_feature_enabled
@@ -84,6 +85,7 @@ def create_gear_item(
         category=body.category,
         brand=body.brand,
         model=body.model,
+        camera_model=resolve_camera_model(db, category=body.category, camera_model=body.camera_model, model_text=body.model),
         serial_number=body.serial_number,
         purchase_date=body.purchase_date,
         notes=body.notes,
@@ -118,6 +120,13 @@ def update_gear_item(
     values = body.model_dump(exclude_unset=True)
     if "metadata" in values:
         values["meta"] = values.pop("metadata")
+    if "camera_model" in values or "model" in values or "category" in values:
+        values["camera_model"] = resolve_camera_model(
+            db,
+            category=values.get("category", row.category),
+            camera_model=values["camera_model"] if "camera_model" in values else (None if "model" in values else row.camera_model),
+            model_text=values.get("model", row.model),
+        )
     for field, value in values.items():
         setattr(row, field, value)
     row.updated_at = datetime.now(timezone.utc)

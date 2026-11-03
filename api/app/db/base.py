@@ -243,6 +243,6 @@ from app.models.i18n import (
     LocalizedText,
     UserLocalePreference,
 )
-from app.models.shelf import ProRawwBalance, ProRawwLedgerEntry, ShelfItem, ShelfItemCompat, ShelfSettings  # noqa: F401
+from app.models.shelf import ProRawwBalance, ProRawwLedgerEntry, ShelfItem, ShelfItemCompat, ShelfSettings, ShelfWishlistItem  # noqa: F401
 
 __all__ = ["Base"]

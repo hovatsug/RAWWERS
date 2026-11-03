@@ -172,3 +172,21 @@ def _plain(value):
     if isinstance(value, ShelfStockStatus):
         return value.value
     return value
+
+
+def resolve_camera_model(db: Session, *, category, camera_model: str | None, model_text: str | None) -> str | None:
+    """The catalogue key for a gear item: the one picked, checked against the
+    catalogue; else, for a camera body typed by hand, the catalogue entry its
+    model normalises to, if any; else none (free text is still allowed)."""
+    from app.models.repair import GearCategory
+    from app.services.gear_verify import normalise_model
+
+    if camera_model:
+        if db.get(CameraModelReference, camera_model) is None:
+            raise APIError(code="validation_error", message="That camera is not in the catalogue", status_code=422)
+        return camera_model
+    if category == GearCategory.camera_body and model_text:
+        key = normalise_model(model_text)
+        if key and db.get(CameraModelReference, key) is not None:
+            return key
+    return None

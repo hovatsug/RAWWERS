@@ -26,6 +26,17 @@
 ///             ],
 ///             "title": "Model"
 ///         },
+///         "camera_model": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Camera Model"
+///         },
 ///         "serial_number": {
 ///             "anyOf": [
 ///                 {
@@ -93,6 +104,9 @@ abstract class GearItemCreateRequest with _$GearItemCreateRequest {
     /// model
     @JsonKey(name: GearItemCreateRequest.modelKey_) String? model,
 
+    /// cameraModel
+    @JsonKey(name: GearItemCreateRequest.cameraModelKey_) String? cameraModel,
+
     /// serialNumber
     @JsonKey(name: GearItemCreateRequest.serialNumberKey_) String? serialNumber,
 
@@ -116,6 +130,8 @@ abstract class GearItemCreateRequest with _$GearItemCreateRequest {
   static const String brandKey_ = r'brand';
 
   static const String modelKey_ = r'model';
+
+  static const String cameraModelKey_ = r'camera_model';
 
   static const String serialNumberKey_ = r'serial_number';
 

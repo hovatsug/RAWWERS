@@ -1,8 +1,10 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/models/gear_category.dart';
 import 'package:rawwers/api/models/gear_item_create_request.dart';
 import 'package:rawwers/api/models/gear_item_update_request.dart';
 import 'package:rawwers/api/models/gear_item_view.dart';
+import 'package:rawwers/api/models/shelf_camera_model_view.dart';
 import 'package:rawwers/core/api/api_call.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
@@ -33,6 +35,7 @@ class GearController extends _$GearController {
     required GearCategory category,
     String? brand,
     String? model,
+    String? cameraModel,
     String? serialNumber,
     String? notes,
   }) async {
@@ -43,6 +46,7 @@ class GearController extends _$GearController {
           category: category,
           brand: _trimmed(brand),
           model: _trimmed(model),
+          cameraModel: cameraModel,
           serialNumber: _trimmed(serialNumber),
           notes: _trimmed(notes),
         ),
@@ -58,6 +62,7 @@ class GearController extends _$GearController {
     required GearCategory category,
     String? brand,
     String? model,
+    String? cameraModel,
     String? serialNumber,
     String? notes,
   }) async {
@@ -69,6 +74,7 @@ class GearController extends _$GearController {
           category: category,
           brand: _trimmed(brand),
           model: _trimmed(model),
+          cameraModel: cameraModel,
           serialNumber: _trimmed(serialNumber),
           notes: _trimmed(notes),
         ),
@@ -117,6 +123,20 @@ class GearController extends _$GearController {
     final trimmed = value?.trim();
     return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
+}
+
+/// The camera catalogue, searched by name or model code, for linking a body
+/// in My gear: what The Shelf matches batteries and chargers against.
+@riverpod
+Future<List<ShelfCameraModelView>> cameraSearch(Ref ref, String query) async {
+  if (query.trim().isEmpty) return const [];
+  final result = await apiCall(
+    () => ref.read(shelfClientProvider).searchCameraModelsV1ProShelfCameraModelsGet(q: query.trim(), authorization: null, xMinusUserMinusId: null),
+  );
+  return switch (result) {
+    Ok(:final value) => value.items,
+    Err() => const [],
+  };
 }
 
 /// Plain-language names. The API's enum values are storage identifiers, not

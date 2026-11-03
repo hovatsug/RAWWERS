@@ -164,3 +164,18 @@ class AdminShelfItemView(BaseModel):
 
 class AdminShelfItemsResponse(BaseModel):
     items: list[AdminShelfItemView]
+
+
+class ShelfCameraModelView(BaseModel):
+    normalised_model: str
+    make: str | None = None
+    display_name: str
+
+
+class ShelfCameraModelsResponse(BaseModel):
+    items: list[ShelfCameraModelView]
+
+
+class ShelfWishlistResponse(BaseModel):
+    item_ids: list[uuid.UUID]
+    limit: int

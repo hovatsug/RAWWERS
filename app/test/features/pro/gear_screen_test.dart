@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/gear_category.dart';
 import 'package:rawwers/api/models/gear_item_view.dart';
+import 'package:rawwers/api/models/shelf_camera_model_view.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/gear/gear_controller.dart';
@@ -23,6 +24,21 @@ class _FakeGear extends GearController {
     removed = id;
     return lastRemoveError;
   }
+
+  Map<String, String?>? added;
+
+  @override
+  Future<String?> add({
+    required GearCategory category,
+    String? brand,
+    String? model,
+    String? cameraModel,
+    String? serialNumber,
+    String? notes,
+  }) async {
+    added = {'brand': brand, 'model': model, 'cameraModel': cameraModel};
+    return null;
+  }
 }
 
 class _FailingGear extends GearController {
@@ -36,8 +52,10 @@ GearItemView _item({
   String? brand = 'Sony',
   String? model = 'A7 IV',
   String? serial = 'SN-12345',
+  String? cameraModel,
 }) =>
     GearItemView(
+      cameraModel: cameraModel,
       id: id,
       proUserId: 'pro-1',
       category: category,
@@ -129,5 +147,42 @@ void main() {
     await tester.pump();
 
     expect(find.text('Could not load your kit.'), findsOneWidget);
+  });
+
+  testWidgets('a body on the camera list says The Shelf shows what fits it', (tester) async {
+    await tester.pumpWidget(_wrap(() => _FakeGear([_item(cameraModel: 'ilce7m4'), _item(id: 'g2', model: 'Old one')])));
+    await tester.pump();
+
+    expect(find.text('On the camera list: The Shelf shows what fits it'), findsOneWidget);
+  });
+
+  testWidgets('a camera picked from the list fills make and model and is sent with the item', (tester) async {
+    tester.view.physicalSize = const Size(1170, 4000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final gear = _FakeGear(const []);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        gearControllerProvider.overrideWith(() => gear),
+        cameraSearchProvider('a7').overrideWith(
+          (ref) async => const [ShelfCameraModelView(normalisedModel: 'ilce7m4', make: 'Sony', displayName: 'Sony A7 IV')],
+        ),
+      ],
+      child: MaterialApp(theme: buildProTheme(), home: const GearScreen()),
+    ));
+    await tester.pump();
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Find your camera on the list'), 'a7');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sony A7 IV'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('On the camera list: Sony A7 IV'), findsOneWidget);
+    await tester.tap(find.text('Add to kit'));
+    await tester.pumpAndSettle();
+    expect(gear.added, {'brand': 'Sony', 'model': 'A7 IV', 'cameraModel': 'ilce7m4'});
   });
 }

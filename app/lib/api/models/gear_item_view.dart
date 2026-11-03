@@ -36,6 +36,17 @@
 ///             ],
 ///             "title": "Model"
 ///         },
+///         "camera_model": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Camera Model"
+///         },
 ///         "serial_number": {
 ///             "anyOf": [
 ///                 {
@@ -122,6 +133,9 @@ abstract class GearItemView with _$GearItemView {
     /// model
     @JsonKey(name: GearItemView.modelKey_) String? model,
 
+    /// cameraModel
+    @JsonKey(name: GearItemView.cameraModelKey_) String? cameraModel,
+
     /// serialNumber
     @JsonKey(name: GearItemView.serialNumberKey_) String? serialNumber,
 
@@ -153,6 +167,8 @@ abstract class GearItemView with _$GearItemView {
   static const String brandKey_ = r'brand';
 
   static const String modelKey_ = r'model';
+
+  static const String cameraModelKey_ = r'camera_model';
 
   static const String serialNumberKey_ = r'serial_number';
 

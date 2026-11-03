@@ -27,6 +27,8 @@ class GearItemCreateRequest(BaseModel):
     category: GearCategory
     brand: str | None = None
     model: str | None = None
+    #: A camera catalogue key (picked from the list); optional.
+    camera_model: str | None = None
     serial_number: str | None = None
     purchase_date: date | None = None
     notes: str | None = None
@@ -37,6 +39,7 @@ class GearItemUpdateRequest(BaseModel):
     category: GearCategory | None = None
     brand: str | None = None
     model: str | None = None
+    camera_model: str | None = None
     serial_number: str | None = None
     purchase_date: date | None = None
     notes: str | None = None
@@ -49,6 +52,7 @@ class GearItemView(BaseModel):
     category: GearCategory
     brand: str | None = None
     model: str | None = None
+    camera_model: str | None = None
     serial_number: str | None = None
     purchase_date: date | None = None
     notes: str | None = None

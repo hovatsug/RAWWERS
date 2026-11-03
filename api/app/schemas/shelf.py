@@ -94,3 +94,73 @@ class RawwEntryView(BaseModel):
 class RawwHistoryResponse(BaseModel):
     total: int
     items: list[RawwEntryView]
+
+
+class ShelfPriceHelper(BaseModel):
+    suggested_price_raww: int
+    street_price_eur: Decimal
+    supplier_cost_eur: Decimal
+    band_low_raww: int
+    band_high_raww: int | None = None
+    #: What the typed RAWW price is worth, and the margin over the cost.
+    price_eur: Decimal | None = None
+    margin_eur: Decimal | None = None
+    #: Set when the price is outside its level's band. Advice, not a refusal.
+    band_warning: str | None = None
+
+
+class ShelfPriceHelperRequest(BaseModel):
+    level: int
+    price_raww: int | None = None
+    street_price: Decimal
+    street_currency: str = "GBP"
+    supplier_cost: Decimal
+    supplier_currency: str = "GBP"
+
+
+class AdminShelfItemRequest(BaseModel):
+    title: str
+    brand: str | None = None
+    category: str
+    description: str | None = None
+    image_url: str | None = None
+    level: int
+    price_raww: int
+    street_price: Decimal
+    street_currency: str = "GBP"
+    supplier_cost: Decimal
+    supplier_currency: str = "GBP"
+    supplier_name: str
+    supplier_sku: str | None = None
+    supplier_url: str | None = None
+    stock_status: str = "in_stock"
+    active: bool = True
+    #: Cameras it fits (catalogue keys). Empty: it fits everyone.
+    camera_models: list[str] = []
+
+
+class AdminShelfItemView(BaseModel):
+    id: uuid.UUID
+    title: str
+    brand: str | None = None
+    category: str
+    description: str | None = None
+    image_url: str | None = None
+    level: int
+    price_raww: int
+    street_price: Decimal
+    street_currency: str
+    supplier_cost: Decimal
+    supplier_currency: str
+    supplier_name: str
+    supplier_sku: str | None = None
+    supplier_url: str | None = None
+    stock_status: str
+    active: bool
+    camera_models: list[str]
+    helper: ShelfPriceHelper
+    updated_at: datetime
+
+
+class AdminShelfItemsResponse(BaseModel):
+    items: list[AdminShelfItemView]

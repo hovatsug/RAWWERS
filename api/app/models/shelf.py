@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -152,3 +152,61 @@ class ShelfSettings(Base):
     terms_approved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+
+class ShelfStockStatus(str, enum.Enum):
+    in_stock = "in_stock"
+    out_of_stock = "out_of_stock"
+
+
+#: Currencies an item's prices may be entered in (converted for the price
+#: helper with the settings' rate).
+SHELF_CURRENCIES = ("GBP", "EUR")
+
+
+class ShelfItem(Base):
+    """Something on The Shelf. Its RAWW price is typed by an admin; the
+    street price and the supplier's cost are there for the price helper and
+    the margin, never shown to photographers as a euro price."""
+
+    __tablename__ = "shelf_item"
+    __table_args__ = (
+        CheckConstraint("level BETWEEN 1 AND 5", name="ck_shelf_item_level"),
+        CheckConstraint("price_raww > 0", name="ck_shelf_item_price"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    brand: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Free text for the beta: "battery", "charger", "card", "ssd", "light", "merch"...
+    category: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The supplier's product image, linked (the beta has no image upload).
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    level: Mapped[int] = mapped_column(nullable=False)
+    price_raww: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    street_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    street_currency: Mapped[str] = mapped_column(Text, nullable=False, default="GBP")
+    supplier_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    supplier_currency: Mapped[str] = mapped_column(Text, nullable=False, default="GBP")
+    supplier_name: Mapped[str] = mapped_column(Text, nullable=False)
+    supplier_sku: Mapped[str | None] = mapped_column(Text, nullable=True)
+    supplier_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stock_status: Mapped[ShelfStockStatus] = mapped_column(
+        Enum(ShelfStockStatus, name="shelf_stock_status", native_enum=False, length=16), nullable=False, default=ShelfStockStatus.in_stock
+    )
+    active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+
+class ShelfItemCompat(Base):
+    """A camera an item fits. An item with none fits everyone (a card, an
+    SSD, a light, merch); one with any is shown only to photographers who
+    own one of them."""
+
+    __tablename__ = "shelf_item_compat"
+
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_item.id", ondelete="CASCADE"), primary_key=True)
+    camera_model: Mapped[str] = mapped_column(Text, ForeignKey("camera_model_reference.normalised_model"), primary_key=True)

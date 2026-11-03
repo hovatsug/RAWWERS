@@ -276,6 +276,39 @@ export type ShelfSettings = {
   updated_at: string;
 };
 
+export type ShelfPriceHelper = {
+  suggested_price_raww: number;
+  street_price_eur: string;
+  supplier_cost_eur: string;
+  band_low_raww: number;
+  band_high_raww: number | null;
+  price_eur: string | null;
+  margin_eur: string | null;
+  band_warning: string | null;
+};
+
+export type ShelfItemInput = {
+  title: string;
+  brand: string | null;
+  category: string;
+  description: string | null;
+  image_url: string | null;
+  level: number;
+  price_raww: number;
+  street_price: string;
+  street_currency: string;
+  supplier_cost: string;
+  supplier_currency: string;
+  supplier_name: string;
+  supplier_sku: string | null;
+  supplier_url: string | null;
+  stock_status: "in_stock" | "out_of_stock" | string;
+  active: boolean;
+  camera_models: string[];
+};
+
+export type ShelfItem = ShelfItemInput & { id: string; helper: ShelfPriceHelper; updated_at: string };
+
 export type MarketingTakeDown = {
   use_id: string;
   content_name: string;
@@ -456,6 +489,18 @@ export const admin = {
     adminFetch<ShelfSettings>("shelf/settings/terms", { method: "PUT", body: JSON.stringify({ text }) }),
   approveShelfTerms: (body: { reviewed_by: string; note: string }) =>
     adminFetch<ShelfSettings>("shelf/settings/terms/approve", { method: "POST", body: JSON.stringify(body) }),
+  shelfItems: () => adminFetch<{ items: ShelfItem[] }>("shelf/items"),
+  createShelfItem: (body: ShelfItemInput) => adminFetch<ShelfItem>("shelf/items", { method: "POST", body: JSON.stringify(body) }),
+  updateShelfItem: (id: string, body: ShelfItemInput) =>
+    adminFetch<ShelfItem>(`shelf/items/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  shelfPriceHelper: (body: {
+    level: number;
+    price_raww: number | null;
+    street_price: string;
+    street_currency: string;
+    supplier_cost: string;
+    supplier_currency: string;
+  }) => adminFetch<ShelfPriceHelper>("shelf/items/price-helper", { method: "POST", body: JSON.stringify(body) }),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

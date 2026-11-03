@@ -71,7 +71,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     },
     {
       title: "The Shelf",
-      items: [{ href: "/admin/shelf/settings", label: "Shelf settings" }]
+      items: [
+        { href: "/admin/shelf/items", label: "Shelf items" },
+        { href: "/admin/shelf/settings", label: "Shelf settings" }
+      ]
     },
     {
       title: "Catalog & pricing",

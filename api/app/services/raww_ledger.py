@@ -59,6 +59,10 @@ def _existing(db: Session, pro_user_id: uuid.UUID, kind: RawwEntryKind, source_t
     ).scalar_one_or_none()
 
 
+def find_entry(db: Session, *, pro_user_id: uuid.UUID, kind: RawwEntryKind, source_type: str, source_id: str) -> ProRawwLedgerEntry | None:
+    return _existing(db, pro_user_id, kind, source_type, source_id)
+
+
 def _insert_locked(db: Session, balance: ProRawwBalance, **fields) -> ProRawwLedgerEntry:
     """Write an entry and move the balance with it. The caller holds the lock."""
     entry = ProRawwLedgerEntry(meta={}, **fields)

@@ -263,3 +263,78 @@ class ShelfOrderView(BaseModel):
 
 class ShelfOrdersResponse(BaseModel):
     items: list[ShelfOrderView]
+
+
+class AdminShelfOrderEvent(BaseModel):
+    from_status: str | None = None
+    to_status: str
+    actor_type: str
+    actor_user_id: uuid.UUID | None = None
+    note: str | None = None
+    created_at: datetime
+
+
+class AdminShelfOrderView(BaseModel):
+    id: uuid.UUID
+    pro_user_id: uuid.UUID
+    pro_name: str | None = None
+    item_id: uuid.UUID
+    title: str
+    supplier_name: str
+    supplier_sku: str | None = None
+    price_raww: int
+    raww_eur_value: Decimal
+    price_eur: Decimal
+    status: str
+    country: str
+    #: Decrypted for the admin who fulfils it; null if it cannot be read.
+    address: dict | None = None
+    supplier_order_ref: str | None = None
+    tracking_code: str | None = None
+    tracking_url: str | None = None
+    cancel_reason: str | None = None
+    placed_at: datetime
+    events: list[AdminShelfOrderEvent]
+
+
+class AdminShelfOrdersResponse(BaseModel):
+    items: list[AdminShelfOrderView]
+
+
+class AdminShelfOrderedRequest(BaseModel):
+    supplier_order_ref: str
+
+
+class AdminShelfShippedRequest(BaseModel):
+    tracking_code: str
+    tracking_url: str | None = None
+
+
+class AdminShelfCancelRequest(BaseModel):
+    reason: str
+    note: str | None = None
+
+
+class AdminRawwLedgerEntry(BaseModel):
+    id: uuid.UUID
+    kind: str
+    amount: int
+    status: str
+    gig_id: uuid.UUID | None = None
+    source_type: str
+    note: str | None = None
+    actor_user_id: uuid.UUID | None = None
+    created_at: datetime
+
+
+class AdminRawwLedgerResponse(BaseModel):
+    spendable: int
+    pending: int
+    items: list[AdminRawwLedgerEntry]
+
+
+class AdminRawwAdjustRequest(BaseModel):
+    amount: int
+    note: str
+    #: Made once by the form: a resubmit is the same adjustment.
+    request_id: str | None = None

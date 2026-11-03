@@ -309,6 +309,49 @@ export type ShelfItemInput = {
 
 export type ShelfItem = ShelfItemInput & { id: string; helper: ShelfPriceHelper; updated_at: string };
 
+export type ShelfOrderEvent = {
+  from_status: string | null;
+  to_status: string;
+  actor_type: string;
+  actor_user_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type AdminShelfOrder = {
+  id: string;
+  pro_user_id: string;
+  pro_name: string | null;
+  item_id: string;
+  title: string;
+  supplier_name: string;
+  supplier_sku: string | null;
+  price_raww: number;
+  raww_eur_value: string;
+  price_eur: string;
+  status: "placed" | "ordered" | "shipped" | "delivered" | "cancelled" | "refunded" | string;
+  country: string;
+  address: Record<string, string | null> | null;
+  supplier_order_ref: string | null;
+  tracking_code: string | null;
+  tracking_url: string | null;
+  cancel_reason: string | null;
+  placed_at: string;
+  events: ShelfOrderEvent[];
+};
+
+export type RawwLedgerRow = {
+  id: string;
+  kind: string;
+  amount: number;
+  status: string;
+  gig_id: string | null;
+  source_type: string;
+  note: string | null;
+  actor_user_id: string | null;
+  created_at: string;
+};
+
 export type MarketingTakeDown = {
   use_id: string;
   content_name: string;
@@ -501,6 +544,18 @@ export const admin = {
     supplier_cost: string;
     supplier_currency: string;
   }) => adminFetch<ShelfPriceHelper>("shelf/items/price-helper", { method: "POST", body: JSON.stringify(body) }),
+  shelfOrders: (status?: string) => adminFetch<{ items: AdminShelfOrder[] }>(`shelf/orders${status ? `?status=${status}` : ""}`),
+  shelfOrderOrdered: (id: string, supplier_order_ref: string) =>
+    adminFetch<AdminShelfOrder>(`shelf/orders/${id}/ordered`, { method: "POST", body: JSON.stringify({ supplier_order_ref }) }),
+  shelfOrderShipped: (id: string, tracking_code: string, tracking_url: string | null) =>
+    adminFetch<AdminShelfOrder>(`shelf/orders/${id}/shipped`, { method: "POST", body: JSON.stringify({ tracking_code, tracking_url }) }),
+  shelfOrderDelivered: (id: string) => adminFetch<AdminShelfOrder>(`shelf/orders/${id}/delivered`, { method: "POST" }),
+  shelfOrderCancel: (id: string, reason: string, note: string) =>
+    adminFetch<AdminShelfOrder>(`shelf/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason, note }) }),
+  rawwLedger: (proUserId: string) =>
+    adminFetch<{ spendable: number; pending: number; items: RawwLedgerRow[] }>(`shelf/raww/${proUserId}`),
+  rawwAdjust: (proUserId: string, amount: number, note: string, request_id: string) =>
+    adminFetch<RawwLedgerRow>(`shelf/raww/${proUserId}/adjust`, { method: "POST", body: JSON.stringify({ amount, note, request_id }) }),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

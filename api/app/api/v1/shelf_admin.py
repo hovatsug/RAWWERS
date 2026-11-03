@@ -6,15 +6,27 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from decimal import ROUND_HALF_UP, Decimal
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_admin
 from app.core.errors import APIError
-from app.models.shelf import ShelfItem, ShelfSettings
+from app.models.admin import ProProfile
+from app.models.shelf import ProRawwLedgerEntry, RawwEntryKind, ShelfItem, ShelfOrder, ShelfOrderEvent, ShelfOrderStatus, ShelfSettings
 from app.schemas.media import CurrentUser
 from app.schemas.shelf import (
+    AdminRawwAdjustRequest,
+    AdminRawwLedgerEntry,
+    AdminRawwLedgerResponse,
+    AdminShelfCancelRequest,
+    AdminShelfOrderedRequest,
+    AdminShelfOrderEvent,
+    AdminShelfOrdersResponse,
+    AdminShelfOrderView,
+    AdminShelfShippedRequest,
     AdminShelfItemRequest,
     AdminShelfItemsResponse,
     AdminShelfItemView,
@@ -25,7 +37,9 @@ from app.schemas.shelf import (
     ShelfTermsApproveRequest,
     ShelfTermsRequest,
 )
+from app.services import raww_ledger as ledger
 from app.services import shelf_items as si
+from app.services import shelf_orders as so
 from app.services import shelf_settings as ss
 from app.services.audit import add_admin_audit_log
 
@@ -165,3 +179,104 @@ def update_shelf_item(
     db.commit()
     db.refresh(item)
     return _item_view(db, item, si.compat_for(db, [item.id])[item.id])
+
+
+# --- orders ---------------------------------------------------------------------------------
+
+
+def _order_view(db: Session, order: ShelfOrder) -> AdminShelfOrderView:
+    profile = db.get(ProProfile, order.pro_user_id)
+    events = db.execute(select(ShelfOrderEvent).where(ShelfOrderEvent.order_id == order.id).order_by(ShelfOrderEvent.created_at)).scalars().all()
+    return AdminShelfOrderView(
+        id=order.id, pro_user_id=order.pro_user_id, pro_name=profile.display_name if profile else None, item_id=order.item_id,
+        title=order.title, supplier_name=order.supplier_name, supplier_sku=order.supplier_sku, price_raww=order.price_raww,
+        raww_eur_value=order.raww_eur_value,
+        price_eur=(Decimal(order.price_raww) * order.raww_eur_value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        status=order.status.value, country=order.country, address=so.order_address(order),
+        supplier_order_ref=order.supplier_order_ref, tracking_code=order.tracking_code, tracking_url=order.tracking_url,
+        cancel_reason=order.cancel_reason, placed_at=order.placed_at,
+        events=[AdminShelfOrderEvent.model_validate(e, from_attributes=True) for e in events],
+    )
+
+
+@router.get("/orders", response_model=AdminShelfOrdersResponse)
+def list_shelf_orders(
+    status: ShelfOrderStatus | None = Query(default=None),
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> AdminShelfOrdersResponse:
+    query = select(ShelfOrder).order_by(ShelfOrder.placed_at.asc() if status == ShelfOrderStatus.placed else ShelfOrder.placed_at.desc()).limit(200)
+    if status is not None:
+        query = query.where(ShelfOrder.status == status)
+    return AdminShelfOrdersResponse(items=[_order_view(db, o) for o in db.execute(query).scalars()])
+
+
+def _logged(db: Session, actor: CurrentUser, order: ShelfOrder, action: str, **meta) -> AdminShelfOrderView:
+    add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="shelf_order", target_id=str(order.id), action=action, metadata=meta)
+    db.commit()
+    db.refresh(order)
+    return _order_view(db, order)
+
+
+@router.post("/orders/{order_id}/ordered", response_model=AdminShelfOrderView)
+def shelf_order_ordered(order_id: uuid.UUID, body: AdminShelfOrderedRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfOrderView:
+    order = so.admin_mark_ordered(db, order_id=order_id, supplier_order_ref=body.supplier_order_ref, admin_user_id=actor.user_id)
+    return _logged(db, actor, order, "shelf_order_ordered", supplier_order_ref=order.supplier_order_ref)
+
+
+@router.post("/orders/{order_id}/shipped", response_model=AdminShelfOrderView)
+def shelf_order_shipped(order_id: uuid.UUID, body: AdminShelfShippedRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfOrderView:
+    order = so.admin_mark_shipped(db, order_id=order_id, tracking_code=body.tracking_code, tracking_url=body.tracking_url, admin_user_id=actor.user_id)
+    return _logged(db, actor, order, "shelf_order_shipped", tracking_code=order.tracking_code)
+
+
+@router.post("/orders/{order_id}/delivered", response_model=AdminShelfOrderView)
+def shelf_order_delivered(order_id: uuid.UUID, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfOrderView:
+    order = so.admin_mark_delivered(db, order_id=order_id, admin_user_id=actor.user_id)
+    return _logged(db, actor, order, "shelf_order_delivered")
+
+
+@router.post("/orders/{order_id}/cancel", response_model=AdminShelfOrderView)
+def shelf_order_cancel(order_id: uuid.UUID, body: AdminShelfCancelRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfOrderView:
+    order = so.admin_cancel(db, order_id=order_id, reason=body.reason, note=body.note, admin_user_id=actor.user_id)
+    return _logged(db, actor, order, "shelf_order_cancelled", reason=body.reason, note=body.note, refunded_raww=order.price_raww)
+
+
+# --- one photographer's RAWW ----------------------------------------------------------------
+
+
+@router.get("/raww/{pro_user_id}", response_model=AdminRawwLedgerResponse)
+def raww_ledger_for(pro_user_id: uuid.UUID, _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminRawwLedgerResponse:
+    balance = ledger.get_balance(db, pro_user_id)
+    rows = db.execute(
+        select(ProRawwLedgerEntry).where(ProRawwLedgerEntry.pro_user_id == pro_user_id).order_by(ProRawwLedgerEntry.created_at.desc()).limit(500)
+    ).scalars().all()
+    return AdminRawwLedgerResponse(
+        spendable=balance.spendable if balance else 0,
+        pending=balance.pending if balance else 0,
+        items=[
+            AdminRawwLedgerEntry(
+                id=r.id, kind=r.kind.value, amount=r.amount, status=r.status.value, gig_id=r.gig_id,
+                source_type=r.source_type, note=r.note, actor_user_id=r.actor_user_id, created_at=r.created_at,
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.post("/raww/{pro_user_id}/adjust", response_model=AdminRawwLedgerEntry)
+def raww_adjust(pro_user_id: uuid.UUID, body: AdminRawwAdjustRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminRawwLedgerEntry:
+    resubmitted = body.request_id is not None and ledger.find_entry(
+        db, pro_user_id=pro_user_id, kind=RawwEntryKind.admin_adjust, source_type="admin", source_id=body.request_id
+    ) is not None
+    entry = ledger.admin_adjust(db, pro_user_id=pro_user_id, amount=body.amount, note=body.note, actor_user_id=actor.user_id, request_id=body.request_id)
+    if not resubmitted:
+        add_admin_audit_log(
+            db, actor_user_id=actor.user_id, target_type="pro_raww", target_id=str(pro_user_id), action="raww_adjusted",
+            reason=entry.note, metadata={"amount": entry.amount, "entry_id": str(entry.id)},
+        )
+    db.commit()
+    return AdminRawwLedgerEntry(
+        id=entry.id, kind=entry.kind.value, amount=entry.amount, status=entry.status.value, gig_id=entry.gig_id,
+        source_type=entry.source_type, note=entry.note, actor_user_id=entry.actor_user_id, created_at=entry.created_at,
+    )

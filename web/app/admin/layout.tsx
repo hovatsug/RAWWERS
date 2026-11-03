@@ -72,7 +72,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     {
       title: "The Shelf",
       items: [
+        { href: "/admin/shelf/orders", label: "Shelf orders" },
         { href: "/admin/shelf/items", label: "Shelf items" },
+        { href: "/admin/shelf/raww", label: "RAWW ledger" },
         { href: "/admin/shelf/settings", label: "Shelf settings" }
       ]
     },

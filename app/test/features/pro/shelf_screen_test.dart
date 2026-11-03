@@ -57,6 +57,12 @@ void main() {
     expect(find.byIcon(Icons.lock_outline), findsOneWidget, reason: 'the teaser has no wish heart');
   });
 
+  testWidgets('shows the monthly order cap and the date it resets', (tester) async {
+    await _pump(tester, shelfView(ordersThisMonth: 2, ordersResetAt: DateTime.utc(2027, 1, 1, 12)));
+
+    expect(find.text('2 of 3 orders this month · resets 1 Jan 2027'), findsOneWidget);
+  });
+
   testWidgets('says which items fit their camera', (tester) async {
     await _pump(tester, shelfView());
     expect(find.text('Fits your camera'), findsOneWidget);

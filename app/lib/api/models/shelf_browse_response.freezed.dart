@@ -20,7 +20,10 @@ mixin _$ShelfBrowseResponse {
 @JsonKey(name: ShelfBrowseResponse.maxLevelKey_) int get maxLevel;/// spendable
 @JsonKey(name: ShelfBrowseResponse.spendableKey_) int get spendable;/// hasCamera
 @JsonKey(name: ShelfBrowseResponse.hasCameraKey_) bool get hasCamera;/// wishlistMax
-@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) int get wishlistMax;/// termsText
+@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) int get wishlistMax;/// ordersThisMonth
+@JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_) int get ordersThisMonth;/// maxOrdersPerMonth
+@JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_) int get maxOrdersPerMonth;/// ordersResetAt
+@JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_) DateTime get ordersResetAt;/// termsText
 @JsonKey(name: ShelfBrowseResponse.termsTextKey_) String get termsText;/// termsDraft
 @JsonKey(name: ShelfBrowseResponse.termsDraftKey_) bool get termsDraft;/// levels
 @JsonKey(name: ShelfBrowseResponse.levelsKey_) List<ShelfBrowseLevel> get levels;
@@ -36,16 +39,16 @@ $ShelfBrowseResponseCopyWith<ShelfBrowseResponse> get copyWith => _$ShelfBrowseR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShelfBrowseResponse&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.maxLevel, maxLevel) || other.maxLevel == maxLevel)&&(identical(other.spendable, spendable) || other.spendable == spendable)&&(identical(other.hasCamera, hasCamera) || other.hasCamera == hasCamera)&&(identical(other.wishlistMax, wishlistMax) || other.wishlistMax == wishlistMax)&&(identical(other.termsText, termsText) || other.termsText == termsText)&&(identical(other.termsDraft, termsDraft) || other.termsDraft == termsDraft)&&const DeepCollectionEquality().equals(other.levels, levels));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShelfBrowseResponse&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.maxLevel, maxLevel) || other.maxLevel == maxLevel)&&(identical(other.spendable, spendable) || other.spendable == spendable)&&(identical(other.hasCamera, hasCamera) || other.hasCamera == hasCamera)&&(identical(other.wishlistMax, wishlistMax) || other.wishlistMax == wishlistMax)&&(identical(other.ordersThisMonth, ordersThisMonth) || other.ordersThisMonth == ordersThisMonth)&&(identical(other.maxOrdersPerMonth, maxOrdersPerMonth) || other.maxOrdersPerMonth == maxOrdersPerMonth)&&(identical(other.ordersResetAt, ordersResetAt) || other.ordersResetAt == ordersResetAt)&&(identical(other.termsText, termsText) || other.termsText == termsText)&&(identical(other.termsDraft, termsDraft) || other.termsDraft == termsDraft)&&const DeepCollectionEquality().equals(other.levels, levels));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tier,maxLevel,spendable,hasCamera,wishlistMax,termsText,termsDraft,const DeepCollectionEquality().hash(levels));
+int get hashCode => Object.hash(runtimeType,tier,maxLevel,spendable,hasCamera,wishlistMax,ordersThisMonth,maxOrdersPerMonth,ordersResetAt,termsText,termsDraft,const DeepCollectionEquality().hash(levels));
 
 @override
 String toString() {
-  return 'ShelfBrowseResponse(tier: $tier, maxLevel: $maxLevel, spendable: $spendable, hasCamera: $hasCamera, wishlistMax: $wishlistMax, termsText: $termsText, termsDraft: $termsDraft, levels: $levels)';
+  return 'ShelfBrowseResponse(tier: $tier, maxLevel: $maxLevel, spendable: $spendable, hasCamera: $hasCamera, wishlistMax: $wishlistMax, ordersThisMonth: $ordersThisMonth, maxOrdersPerMonth: $maxOrdersPerMonth, ordersResetAt: $ordersResetAt, termsText: $termsText, termsDraft: $termsDraft, levels: $levels)';
 }
 
 
@@ -56,7 +59,7 @@ abstract mixin class $ShelfBrowseResponseCopyWith<$Res>  {
   factory $ShelfBrowseResponseCopyWith(ShelfBrowseResponse value, $Res Function(ShelfBrowseResponse) _then) = _$ShelfBrowseResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ShelfBrowseResponse.tierKey_) String tier,@JsonKey(name: ShelfBrowseResponse.maxLevelKey_) int maxLevel,@JsonKey(name: ShelfBrowseResponse.spendableKey_) int spendable,@JsonKey(name: ShelfBrowseResponse.hasCameraKey_) bool hasCamera,@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) int wishlistMax,@JsonKey(name: ShelfBrowseResponse.termsTextKey_) String termsText,@JsonKey(name: ShelfBrowseResponse.termsDraftKey_) bool termsDraft,@JsonKey(name: ShelfBrowseResponse.levelsKey_) List<ShelfBrowseLevel> levels
+@JsonKey(name: ShelfBrowseResponse.tierKey_) String tier,@JsonKey(name: ShelfBrowseResponse.maxLevelKey_) int maxLevel,@JsonKey(name: ShelfBrowseResponse.spendableKey_) int spendable,@JsonKey(name: ShelfBrowseResponse.hasCameraKey_) bool hasCamera,@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) int wishlistMax,@JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_) int ordersThisMonth,@JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_) int maxOrdersPerMonth,@JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_) DateTime ordersResetAt,@JsonKey(name: ShelfBrowseResponse.termsTextKey_) String termsText,@JsonKey(name: ShelfBrowseResponse.termsDraftKey_) bool termsDraft,@JsonKey(name: ShelfBrowseResponse.levelsKey_) List<ShelfBrowseLevel> levels
 });
 
 
@@ -73,14 +76,17 @@ class _$ShelfBrowseResponseCopyWithImpl<$Res>
 
 /// Create a copy of ShelfBrowseResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? tier = null,Object? maxLevel = null,Object? spendable = null,Object? hasCamera = null,Object? wishlistMax = null,Object? termsText = null,Object? termsDraft = null,Object? levels = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? tier = null,Object? maxLevel = null,Object? spendable = null,Object? hasCamera = null,Object? wishlistMax = null,Object? ordersThisMonth = null,Object? maxOrdersPerMonth = null,Object? ordersResetAt = null,Object? termsText = null,Object? termsDraft = null,Object? levels = null,}) {
   return _then(_self.copyWith(
 tier: null == tier ? _self.tier : tier // ignore: cast_nullable_to_non_nullable
 as String,maxLevel: null == maxLevel ? _self.maxLevel : maxLevel // ignore: cast_nullable_to_non_nullable
 as int,spendable: null == spendable ? _self.spendable : spendable // ignore: cast_nullable_to_non_nullable
 as int,hasCamera: null == hasCamera ? _self.hasCamera : hasCamera // ignore: cast_nullable_to_non_nullable
 as bool,wishlistMax: null == wishlistMax ? _self.wishlistMax : wishlistMax // ignore: cast_nullable_to_non_nullable
-as int,termsText: null == termsText ? _self.termsText : termsText // ignore: cast_nullable_to_non_nullable
+as int,ordersThisMonth: null == ordersThisMonth ? _self.ordersThisMonth : ordersThisMonth // ignore: cast_nullable_to_non_nullable
+as int,maxOrdersPerMonth: null == maxOrdersPerMonth ? _self.maxOrdersPerMonth : maxOrdersPerMonth // ignore: cast_nullable_to_non_nullable
+as int,ordersResetAt: null == ordersResetAt ? _self.ordersResetAt : ordersResetAt // ignore: cast_nullable_to_non_nullable
+as DateTime,termsText: null == termsText ? _self.termsText : termsText // ignore: cast_nullable_to_non_nullable
 as String,termsDraft: null == termsDraft ? _self.termsDraft : termsDraft // ignore: cast_nullable_to_non_nullable
 as bool,levels: null == levels ? _self.levels : levels // ignore: cast_nullable_to_non_nullable
 as List<ShelfBrowseLevel>,
@@ -168,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseResponse.tierKey_)  String tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_)  int maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_)  int spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_)  bool hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)  int wishlistMax, @JsonKey(name: ShelfBrowseResponse.termsTextKey_)  String termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_)  bool termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_)  List<ShelfBrowseLevel> levels)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseResponse.tierKey_)  String tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_)  int maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_)  int spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_)  bool hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)  int wishlistMax, @JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_)  int ordersThisMonth, @JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_)  int maxOrdersPerMonth, @JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_)  DateTime ordersResetAt, @JsonKey(name: ShelfBrowseResponse.termsTextKey_)  String termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_)  bool termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_)  List<ShelfBrowseLevel> levels)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ShelfBrowseResponse() when $default != null:
-return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.wishlistMax,_that.termsText,_that.termsDraft,_that.levels);case _:
+return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.wishlistMax,_that.ordersThisMonth,_that.maxOrdersPerMonth,_that.ordersResetAt,_that.termsText,_that.termsDraft,_that.levels);case _:
   return orElse();
 
 }
@@ -189,10 +195,10 @@ return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseResponse.tierKey_)  String tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_)  int maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_)  int spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_)  bool hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)  int wishlistMax, @JsonKey(name: ShelfBrowseResponse.termsTextKey_)  String termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_)  bool termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_)  List<ShelfBrowseLevel> levels)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseResponse.tierKey_)  String tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_)  int maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_)  int spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_)  bool hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)  int wishlistMax, @JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_)  int ordersThisMonth, @JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_)  int maxOrdersPerMonth, @JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_)  DateTime ordersResetAt, @JsonKey(name: ShelfBrowseResponse.termsTextKey_)  String termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_)  bool termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_)  List<ShelfBrowseLevel> levels)  $default,) {final _that = this;
 switch (_that) {
 case _ShelfBrowseResponse():
-return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.wishlistMax,_that.termsText,_that.termsDraft,_that.levels);case _:
+return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.wishlistMax,_that.ordersThisMonth,_that.maxOrdersPerMonth,_that.ordersResetAt,_that.termsText,_that.termsDraft,_that.levels);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -209,10 +215,10 @@ return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ShelfBrowseResponse.tierKey_)  String tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_)  int maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_)  int spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_)  bool hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)  int wishlistMax, @JsonKey(name: ShelfBrowseResponse.termsTextKey_)  String termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_)  bool termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_)  List<ShelfBrowseLevel> levels)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ShelfBrowseResponse.tierKey_)  String tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_)  int maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_)  int spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_)  bool hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)  int wishlistMax, @JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_)  int ordersThisMonth, @JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_)  int maxOrdersPerMonth, @JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_)  DateTime ordersResetAt, @JsonKey(name: ShelfBrowseResponse.termsTextKey_)  String termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_)  bool termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_)  List<ShelfBrowseLevel> levels)?  $default,) {final _that = this;
 switch (_that) {
 case _ShelfBrowseResponse() when $default != null:
-return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.wishlistMax,_that.termsText,_that.termsDraft,_that.levels);case _:
+return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.wishlistMax,_that.ordersThisMonth,_that.maxOrdersPerMonth,_that.ordersResetAt,_that.termsText,_that.termsDraft,_that.levels);case _:
   return null;
 
 }
@@ -224,7 +230,7 @@ return $default(_that.tier,_that.maxLevel,_that.spendable,_that.hasCamera,_that.
 
 @jsonSerializable
 class _ShelfBrowseResponse extends ShelfBrowseResponse {
-  const _ShelfBrowseResponse({@JsonKey(name: ShelfBrowseResponse.tierKey_) required this.tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_) required this.maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_) required this.spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_) required this.hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) required this.wishlistMax, @JsonKey(name: ShelfBrowseResponse.termsTextKey_) required this.termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_) required this.termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_) required final  List<ShelfBrowseLevel> levels}): _levels = levels,super._();
+  const _ShelfBrowseResponse({@JsonKey(name: ShelfBrowseResponse.tierKey_) required this.tier, @JsonKey(name: ShelfBrowseResponse.maxLevelKey_) required this.maxLevel, @JsonKey(name: ShelfBrowseResponse.spendableKey_) required this.spendable, @JsonKey(name: ShelfBrowseResponse.hasCameraKey_) required this.hasCamera, @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) required this.wishlistMax, @JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_) required this.ordersThisMonth, @JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_) required this.maxOrdersPerMonth, @JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_) required this.ordersResetAt, @JsonKey(name: ShelfBrowseResponse.termsTextKey_) required this.termsText, @JsonKey(name: ShelfBrowseResponse.termsDraftKey_) required this.termsDraft, @JsonKey(name: ShelfBrowseResponse.levelsKey_) required final  List<ShelfBrowseLevel> levels}): _levels = levels,super._();
   factory _ShelfBrowseResponse.fromJson(Map<String, dynamic> json) => _$ShelfBrowseResponseFromJson(json);
 
 /// tier
@@ -237,6 +243,12 @@ class _ShelfBrowseResponse extends ShelfBrowseResponse {
 @override@JsonKey(name: ShelfBrowseResponse.hasCameraKey_) final  bool hasCamera;
 /// wishlistMax
 @override@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) final  int wishlistMax;
+/// ordersThisMonth
+@override@JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_) final  int ordersThisMonth;
+/// maxOrdersPerMonth
+@override@JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_) final  int maxOrdersPerMonth;
+/// ordersResetAt
+@override@JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_) final  DateTime ordersResetAt;
 /// termsText
 @override@JsonKey(name: ShelfBrowseResponse.termsTextKey_) final  String termsText;
 /// termsDraft
@@ -264,16 +276,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShelfBrowseResponse&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.maxLevel, maxLevel) || other.maxLevel == maxLevel)&&(identical(other.spendable, spendable) || other.spendable == spendable)&&(identical(other.hasCamera, hasCamera) || other.hasCamera == hasCamera)&&(identical(other.wishlistMax, wishlistMax) || other.wishlistMax == wishlistMax)&&(identical(other.termsText, termsText) || other.termsText == termsText)&&(identical(other.termsDraft, termsDraft) || other.termsDraft == termsDraft)&&const DeepCollectionEquality().equals(other._levels, _levels));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShelfBrowseResponse&&(identical(other.tier, tier) || other.tier == tier)&&(identical(other.maxLevel, maxLevel) || other.maxLevel == maxLevel)&&(identical(other.spendable, spendable) || other.spendable == spendable)&&(identical(other.hasCamera, hasCamera) || other.hasCamera == hasCamera)&&(identical(other.wishlistMax, wishlistMax) || other.wishlistMax == wishlistMax)&&(identical(other.ordersThisMonth, ordersThisMonth) || other.ordersThisMonth == ordersThisMonth)&&(identical(other.maxOrdersPerMonth, maxOrdersPerMonth) || other.maxOrdersPerMonth == maxOrdersPerMonth)&&(identical(other.ordersResetAt, ordersResetAt) || other.ordersResetAt == ordersResetAt)&&(identical(other.termsText, termsText) || other.termsText == termsText)&&(identical(other.termsDraft, termsDraft) || other.termsDraft == termsDraft)&&const DeepCollectionEquality().equals(other._levels, _levels));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tier,maxLevel,spendable,hasCamera,wishlistMax,termsText,termsDraft,const DeepCollectionEquality().hash(_levels));
+int get hashCode => Object.hash(runtimeType,tier,maxLevel,spendable,hasCamera,wishlistMax,ordersThisMonth,maxOrdersPerMonth,ordersResetAt,termsText,termsDraft,const DeepCollectionEquality().hash(_levels));
 
 @override
 String toString() {
-  return 'ShelfBrowseResponse(tier: $tier, maxLevel: $maxLevel, spendable: $spendable, hasCamera: $hasCamera, wishlistMax: $wishlistMax, termsText: $termsText, termsDraft: $termsDraft, levels: $levels)';
+  return 'ShelfBrowseResponse(tier: $tier, maxLevel: $maxLevel, spendable: $spendable, hasCamera: $hasCamera, wishlistMax: $wishlistMax, ordersThisMonth: $ordersThisMonth, maxOrdersPerMonth: $maxOrdersPerMonth, ordersResetAt: $ordersResetAt, termsText: $termsText, termsDraft: $termsDraft, levels: $levels)';
 }
 
 
@@ -284,7 +296,7 @@ abstract mixin class _$ShelfBrowseResponseCopyWith<$Res> implements $ShelfBrowse
   factory _$ShelfBrowseResponseCopyWith(_ShelfBrowseResponse value, $Res Function(_ShelfBrowseResponse) _then) = __$ShelfBrowseResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ShelfBrowseResponse.tierKey_) String tier,@JsonKey(name: ShelfBrowseResponse.maxLevelKey_) int maxLevel,@JsonKey(name: ShelfBrowseResponse.spendableKey_) int spendable,@JsonKey(name: ShelfBrowseResponse.hasCameraKey_) bool hasCamera,@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) int wishlistMax,@JsonKey(name: ShelfBrowseResponse.termsTextKey_) String termsText,@JsonKey(name: ShelfBrowseResponse.termsDraftKey_) bool termsDraft,@JsonKey(name: ShelfBrowseResponse.levelsKey_) List<ShelfBrowseLevel> levels
+@JsonKey(name: ShelfBrowseResponse.tierKey_) String tier,@JsonKey(name: ShelfBrowseResponse.maxLevelKey_) int maxLevel,@JsonKey(name: ShelfBrowseResponse.spendableKey_) int spendable,@JsonKey(name: ShelfBrowseResponse.hasCameraKey_) bool hasCamera,@JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_) int wishlistMax,@JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_) int ordersThisMonth,@JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_) int maxOrdersPerMonth,@JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_) DateTime ordersResetAt,@JsonKey(name: ShelfBrowseResponse.termsTextKey_) String termsText,@JsonKey(name: ShelfBrowseResponse.termsDraftKey_) bool termsDraft,@JsonKey(name: ShelfBrowseResponse.levelsKey_) List<ShelfBrowseLevel> levels
 });
 
 
@@ -301,14 +313,17 @@ class __$ShelfBrowseResponseCopyWithImpl<$Res>
 
 /// Create a copy of ShelfBrowseResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? tier = null,Object? maxLevel = null,Object? spendable = null,Object? hasCamera = null,Object? wishlistMax = null,Object? termsText = null,Object? termsDraft = null,Object? levels = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? tier = null,Object? maxLevel = null,Object? spendable = null,Object? hasCamera = null,Object? wishlistMax = null,Object? ordersThisMonth = null,Object? maxOrdersPerMonth = null,Object? ordersResetAt = null,Object? termsText = null,Object? termsDraft = null,Object? levels = null,}) {
   return _then(_ShelfBrowseResponse(
 tier: null == tier ? _self.tier : tier // ignore: cast_nullable_to_non_nullable
 as String,maxLevel: null == maxLevel ? _self.maxLevel : maxLevel // ignore: cast_nullable_to_non_nullable
 as int,spendable: null == spendable ? _self.spendable : spendable // ignore: cast_nullable_to_non_nullable
 as int,hasCamera: null == hasCamera ? _self.hasCamera : hasCamera // ignore: cast_nullable_to_non_nullable
 as bool,wishlistMax: null == wishlistMax ? _self.wishlistMax : wishlistMax // ignore: cast_nullable_to_non_nullable
-as int,termsText: null == termsText ? _self.termsText : termsText // ignore: cast_nullable_to_non_nullable
+as int,ordersThisMonth: null == ordersThisMonth ? _self.ordersThisMonth : ordersThisMonth // ignore: cast_nullable_to_non_nullable
+as int,maxOrdersPerMonth: null == maxOrdersPerMonth ? _self.maxOrdersPerMonth : maxOrdersPerMonth // ignore: cast_nullable_to_non_nullable
+as int,ordersResetAt: null == ordersResetAt ? _self.ordersResetAt : ordersResetAt // ignore: cast_nullable_to_non_nullable
+as DateTime,termsText: null == termsText ? _self.termsText : termsText // ignore: cast_nullable_to_non_nullable
 as String,termsDraft: null == termsDraft ? _self.termsDraft : termsDraft // ignore: cast_nullable_to_non_nullable
 as bool,levels: null == levels ? _self._levels : levels // ignore: cast_nullable_to_non_nullable
 as List<ShelfBrowseLevel>,

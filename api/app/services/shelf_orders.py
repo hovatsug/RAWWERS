@@ -109,6 +109,24 @@ def _month_start(now: datetime) -> datetime:
     return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
+def month_resets_at(now: datetime) -> datetime:
+    """When the monthly cap starts again: the first of next month, 00:00 UTC
+    (owner's decision, 2026-11-03: the month is the UTC calendar month)."""
+    start = _month_start(now.astimezone(timezone.utc))
+    return start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
+
+
+def orders_this_month(db: Session, pro_user_id: uuid.UUID, now: datetime | None = None) -> int:
+    """The orders counting against this month's cap: cancelled ones do not."""
+    return db.execute(
+        select(func.count()).select_from(ShelfOrder).where(
+            ShelfOrder.pro_user_id == pro_user_id,
+            ShelfOrder.status.in_(_LIVE),
+            ShelfOrder.placed_at >= _month_start((now or _now()).astimezone(timezone.utc)),
+        )
+    ).scalar_one()
+
+
 def place_order(db: Session, *, pro_user_id: uuid.UUID, item_id: uuid.UUID, client_request_id: str) -> ShelfOrder:
     request_id = (client_request_id or "").strip()
     if not request_id or len(request_id) > 100:
@@ -138,12 +156,7 @@ def place_order(db: Session, *, pro_user_id: uuid.UUID, item_id: uuid.UUID, clie
 
     settings = shelf_settings(db)
     now = _now()
-    this_month = db.execute(
-        select(func.count()).select_from(ShelfOrder).where(
-            ShelfOrder.pro_user_id == pro_user_id, ShelfOrder.status.in_(_LIVE), ShelfOrder.placed_at >= _month_start(now)
-        )
-    ).scalar_one()
-    if this_month >= settings.max_orders_per_month:
+    if orders_this_month(db, pro_user_id, now) >= settings.max_orders_per_month:
         raise _refuse("monthly_limit", f"You can order {settings.max_orders_per_month} items a month. More next month.")
     if settings.same_item_cooldown_days:
         recent = db.execute(

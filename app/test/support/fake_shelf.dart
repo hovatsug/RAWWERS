@@ -31,6 +31,8 @@ ShelfBrowseResponse shelfView({
   int spendable = 300,
   List<ShelfBrowseLevel>? levels,
   bool termsDraft = true,
+  int ordersThisMonth = 1,
+  DateTime? ordersResetAt,
 }) =>
     ShelfBrowseResponse(
       tier: 'rookie',
@@ -38,6 +40,9 @@ ShelfBrowseResponse shelfView({
       spendable: spendable,
       hasCamera: hasCamera,
       wishlistMax: 3,
+      ordersThisMonth: ordersThisMonth,
+      maxOrdersPerMonth: 3,
+      ordersResetAt: ordersResetAt ?? DateTime.utc(2026, 12, 1),
       termsText: 'DRAFT - not reviewed. RAWW have no cash value.',
       termsDraft: termsDraft,
       levels: levels ??

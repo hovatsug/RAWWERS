@@ -215,6 +215,11 @@ class ShelfBrowseResponse(BaseModel):
     #: False: show the prompt to add their camera, so compatible items show.
     has_camera: bool
     wishlist_max: int
+    #: The monthly cap: orders counting against it (cancelled ones do not),
+    #: the cap, and when it starts again (the first of next month, UTC).
+    orders_this_month: int
+    max_orders_per_month: int
+    orders_reset_at: datetime
     terms_text: str
     terms_draft: bool
     levels: list[ShelfBrowseLevel]

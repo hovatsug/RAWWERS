@@ -99,3 +99,35 @@ def test_closed_with_the_shelf(client, db_session):
     shelf_settings(db_session).shelf_enabled = False
     db_session.commit()
     assert client.get("/v1/pro/shelf", headers=_h(pro)).status_code == 403
+
+
+def test_it_shows_the_monthly_cap_and_when_it_resets(client, db_session):
+    from datetime import datetime, timezone
+
+    from app.services.shelf_orders import month_resets_at
+    from tests.test_shelf_orders import _order, _ready_pro
+
+    pro = _ready_pro(db_session)
+    first, second = _item(db_session, title="Card"), _item(db_session, title="Strap")
+    cancelled = _order(client, pro, first).json()
+    client.post(f"/v1/pro/shelf/orders/{cancelled['id']}/cancel", headers=_h(pro))
+    _order(client, pro, second)
+
+    body = _browse(client, pro)
+
+    assert (body["orders_this_month"], body["max_orders_per_month"]) == (1, 3), "a cancelled order does not count"
+    resets = datetime.fromisoformat(body["orders_reset_at"].replace("Z", "+00:00"))
+    assert resets == month_resets_at(datetime.now(timezone.utc))
+    assert (resets.day, resets.hour, resets.utcoffset().total_seconds()) == (1, 0, 0)
+
+
+def test_the_cap_resets_on_the_first_of_next_month_utc():
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.shelf_orders import month_resets_at
+
+    utc = timezone.utc
+    assert month_resets_at(datetime(2026, 11, 3, 12, tzinfo=utc)) == datetime(2026, 12, 1, tzinfo=utc)
+    assert month_resets_at(datetime(2026, 12, 31, 23, 59, tzinfo=utc)) == datetime(2027, 1, 1, tzinfo=utc)
+    # 00:30 on 1 December at UTC+1 is still 30 November in UTC.
+    assert month_resets_at(datetime(2026, 12, 1, 0, 30, tzinfo=timezone(timedelta(hours=1)))) == datetime(2026, 12, 1, tzinfo=utc)

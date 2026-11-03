@@ -21,6 +21,19 @@
 ///             "type": "integer",
 ///             "title": "Wishlist Max"
 ///         },
+///         "orders_this_month": {
+///             "type": "integer",
+///             "title": "Orders This Month"
+///         },
+///         "max_orders_per_month": {
+///             "type": "integer",
+///             "title": "Max Orders Per Month"
+///         },
+///         "orders_reset_at": {
+///             "type": "string",
+///             "format": "date-time",
+///             "title": "Orders Reset At"
+///         },
 ///         "terms_text": {
 ///             "type": "string",
 ///             "title": "Terms Text"
@@ -44,6 +57,9 @@
 ///         "spendable",
 ///         "has_camera",
 ///         "wishlist_max",
+///         "orders_this_month",
+///         "max_orders_per_month",
+///         "orders_reset_at",
 ///         "terms_text",
 ///         "terms_draft",
 ///         "levels"
@@ -78,6 +94,18 @@ abstract class ShelfBrowseResponse with _$ShelfBrowseResponse {
     @JsonKey(name: ShelfBrowseResponse.wishlistMaxKey_)
     required int wishlistMax,
 
+    /// ordersThisMonth
+    @JsonKey(name: ShelfBrowseResponse.ordersThisMonthKey_)
+    required int ordersThisMonth,
+
+    /// maxOrdersPerMonth
+    @JsonKey(name: ShelfBrowseResponse.maxOrdersPerMonthKey_)
+    required int maxOrdersPerMonth,
+
+    /// ordersResetAt
+    @JsonKey(name: ShelfBrowseResponse.ordersResetAtKey_)
+    required DateTime ordersResetAt,
+
     /// termsText
     @JsonKey(name: ShelfBrowseResponse.termsTextKey_) required String termsText,
 
@@ -101,6 +129,12 @@ abstract class ShelfBrowseResponse with _$ShelfBrowseResponse {
   static const String hasCameraKey_ = r'has_camera';
 
   static const String wishlistMaxKey_ = r'wishlist_max';
+
+  static const String ordersThisMonthKey_ = r'orders_this_month';
+
+  static const String maxOrdersPerMonthKey_ = r'max_orders_per_month';
+
+  static const String ordersResetAtKey_ = r'orders_reset_at';
 
   static const String termsTextKey_ = r'terms_text';
 

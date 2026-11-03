@@ -5,6 +5,7 @@ import 'package:rawwers/api/models/shelf_browse_item.dart';
 import 'package:rawwers/api/models/shelf_browse_level.dart';
 import 'package:rawwers/api/models/shelf_browse_response.dart';
 import 'package:rawwers/api/models/skill_tier.dart';
+import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
@@ -124,6 +125,12 @@ class _Header extends StatelessWidget {
         Text(
           '${tier == null ? 'Your tier' : rTierName(tier)} sees levels 1 to ${view.maxLevel}. '
           'Wish list: up to ${view.wishlistMax}.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        // The cap counts the UTC calendar month (owner's decision).
+        Text(
+          '${view.ordersThisMonth} of ${view.maxOrdersPerMonth} orders this month · '
+          'resets ${RDates.of(context).date(view.ordersResetAt)}',
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],

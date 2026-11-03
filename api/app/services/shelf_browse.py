@@ -64,8 +64,10 @@ def browse(db: Session, pro_user_id: uuid.UUID) -> dict:
     always show. Within a level, items made for their gear come first."""
     from app.models.shelf import ShelfWishlistItem
     from app.services import raww_ledger as ledger
+    from app.services import shelf_orders
 
     settings = shelf_settings(db)
+    now = shelf_orders._now()
     tier = tier_of(db, pro_user_id)
     highest = int(settings.tier_max_level[tier.value])
     owned = owned_cameras(db, pro_user_id)
@@ -121,6 +123,9 @@ def browse(db: Session, pro_user_id: uuid.UUID) -> dict:
         "spendable": spendable,
         "has_camera": bool(owned),
         "wishlist_max": settings.wishlist_max,
+        "orders_this_month": shelf_orders.orders_this_month(db, pro_user_id, now),
+        "max_orders_per_month": settings.max_orders_per_month,
+        "orders_reset_at": shelf_orders.month_resets_at(now),
         "terms_text": settings.terms_text,
         "terms_draft": settings.terms_approved_at is None,
         "levels": levels,

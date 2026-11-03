@@ -19,9 +19,15 @@ from app.schemas.shelf import (
     ShelfBrowseResponse,
     ShelfCameraModelsResponse,
     ShelfCameraModelView,
+    PlaceShelfOrderRequest,
+    ShelfAddress,
+    ShelfAddressResponse,
+    ShelfOrdersResponse,
+    ShelfOrderView,
     ShelfWishlistResponse,
 )
-from app.services import raww_wallet, shelf_browse, shelf_wishlist
+from app.models.shelf import ShelfOrder, ShelfOrderStatus
+from app.services import raww_wallet, shelf_browse, shelf_orders, shelf_wishlist
 from app.services.gear_verify import normalise_model
 from app.services.shelf_settings import shelf_open, shelf_settings
 
@@ -127,3 +133,54 @@ def browse_shelf(user: CurrentUser = Depends(require_not_banned), db: Session = 
     view = ShelfBrowseResponse(**shelf_browse.browse(db, user.user_id))
     db.commit()
     return view
+
+
+@router.get("/shelf/address", response_model=ShelfAddressResponse)
+def my_shelf_address(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> ShelfAddressResponse:
+    _ensure_pro_user(db, user.user_id)
+    _require_open(db)
+    saved = shelf_orders.saved_address(db, user.user_id)
+    return ShelfAddressResponse(
+        address=ShelfAddress(**saved[1]) if saved else None, allowed_countries=shelf_settings(db).allowed_countries
+    )
+
+
+@router.put("/shelf/address", response_model=ShelfAddressResponse)
+def save_shelf_address(body: ShelfAddress, user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> ShelfAddressResponse:
+    _ensure_pro_user(db, user.user_id)
+    _require_open(db)
+    fields = shelf_orders.save_address(db, pro_user_id=user.user_id, fields=body.model_dump())
+    db.commit()
+    return ShelfAddressResponse(address=ShelfAddress(**fields), allowed_countries=shelf_settings(db).allowed_countries)
+
+
+def _order_view(order: ShelfOrder) -> ShelfOrderView:
+    return ShelfOrderView(
+        id=order.id, item_id=order.item_id, title=order.title, price_raww=order.price_raww, status=order.status.value,
+        placed_at=order.placed_at, ordered_at=order.ordered_at, shipped_at=order.shipped_at, delivered_at=order.delivered_at,
+        cancelled_at=order.cancelled_at, refunded_at=order.refunded_at, tracking_code=order.tracking_code,
+        tracking_url=order.tracking_url, cancel_reason=order.cancel_reason, can_cancel=order.status == ShelfOrderStatus.placed,
+    )
+
+
+@router.post("/shelf/orders", response_model=ShelfOrderView)
+def place_shelf_order(body: PlaceShelfOrderRequest, user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> ShelfOrderView:
+    _ensure_pro_user(db, user.user_id)
+    order = shelf_orders.place_order(db, pro_user_id=user.user_id, item_id=body.item_id, client_request_id=body.client_request_id)
+    db.commit()
+    return _order_view(order)
+
+
+@router.get("/shelf/orders", response_model=ShelfOrdersResponse)
+def my_shelf_orders(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> ShelfOrdersResponse:
+    _ensure_pro_user(db, user.user_id)
+    rows = db.execute(select(ShelfOrder).where(ShelfOrder.pro_user_id == user.user_id).order_by(ShelfOrder.placed_at.desc())).scalars().all()
+    return ShelfOrdersResponse(items=[_order_view(o) for o in rows])
+
+
+@router.post("/shelf/orders/{order_id}/cancel", response_model=ShelfOrderView)
+def cancel_my_shelf_order(order_id: uuid.UUID, user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> ShelfOrderView:
+    _ensure_pro_user(db, user.user_id)
+    order = shelf_orders.cancel_by_pro(db, pro_user_id=user.user_id, order_id=order_id)
+    db.commit()
+    return _order_view(order)

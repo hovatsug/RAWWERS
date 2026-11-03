@@ -131,7 +131,7 @@ def test_entitlement_required_for_print_orders(db_session):
                 }
             ],
             shipping_address_payload={
-                "encrypted_fields": {"line1": "Street"},
+                "name": "Ana", "line1": "Street", "city": "Lisbon",
                 "country": "PT",
                 "postal_code": "1000-001",
             },
@@ -160,7 +160,7 @@ def test_totals_calculation_correct(db_session):
             }
         ],
         shipping_address_payload={
-            "encrypted_fields": {"line1": "Street"},
+            "name": "Ana", "line1": "Street", "city": "Lisbon",
             "country": "PT",
             "postal_code": "1000-001",
         },
@@ -186,7 +186,7 @@ def test_payment_success_triggers_export_job(db_session, monkeypatch):
         gig_id=gig.id,
         partner_id=partner.id,
         items=[{"product_id": str(products[0].id), "quantity": 1, "selected_media": [{"media_asset_id": str(media_id)}], "options_snapshot": {}}],
-        shipping_address_payload={"encrypted_fields": {"line1": "Street"}, "country": "PT", "postal_code": "1000-001"},
+        shipping_address_payload={"name": "Ana", "line1": "Street", "city": "Lisbon", "country": "PT", "postal_code": "1000-001"},
     )
     _, intent = create_print_payment_intent(db_session, order=order)
     on_print_payment_succeeded(db_session, payment_intent_id=intent.id)
@@ -212,7 +212,7 @@ def test_export_job_generates_output_files(db_session, monkeypatch):
         gig_id=gig.id,
         partner_id=partner.id,
         items=[{"product_id": str(products[0].id), "quantity": 1, "selected_media": [{"media_asset_id": str(media_id)}], "options_snapshot": {"size": "A4"}}],
-        shipping_address_payload={"encrypted_fields": {"line1": "Street"}, "country": "PT", "postal_code": "1000-001"},
+        shipping_address_payload={"name": "Ana", "line1": "Street", "city": "Lisbon", "country": "PT", "postal_code": "1000-001"},
     )
     _, intent = create_print_payment_intent(db_session, order=order)
     on_print_payment_succeeded(db_session, payment_intent_id=intent.id)
@@ -241,7 +241,7 @@ def test_admin_status_tracking_logged(db_session):
         gig_id=gig.id,
         partner_id=partner.id,
         items=[{"product_id": str(products[0].id), "quantity": 1, "selected_media": [{"media_asset_id": str(media_id)}], "options_snapshot": {}}],
-        shipping_address_payload={"encrypted_fields": {"line1": "Street"}, "country": "PT", "postal_code": "1000-001"},
+        shipping_address_payload={"name": "Ana", "line1": "Street", "city": "Lisbon", "country": "PT", "postal_code": "1000-001"},
     )
     order.status = PrintOrderStatus.in_production
     admin_set_print_tracking(db_session, order=order, tracking_code="TRACK123")
@@ -264,7 +264,7 @@ def test_refund_policy_for_in_production_requires_admin_review(db_session):
         gig_id=gig.id,
         partner_id=partner.id,
         items=[{"product_id": str(products[0].id), "quantity": 1, "selected_media": [{"media_asset_id": str(media_id)}], "options_snapshot": {}}],
-        shipping_address_payload={"encrypted_fields": {"line1": "Street"}, "country": "PT", "postal_code": "1000-001"},
+        shipping_address_payload={"name": "Ana", "line1": "Street", "city": "Lisbon", "country": "PT", "postal_code": "1000-001"},
     )
     order.status = PrintOrderStatus.in_production
     order.stripe_payment_intent_id = f"pi_{uuid.uuid4().hex[:8]}"

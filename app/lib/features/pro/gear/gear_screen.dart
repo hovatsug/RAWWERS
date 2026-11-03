@@ -349,7 +349,7 @@ class _CameraPicker extends ConsumerWidget {
         ],
       );
     }
-    final results = query.isEmpty ? const <ShelfCameraModelView>[] : (ref.watch(cameraSearchProvider(query)).value ?? const []);
+    final results = query.isEmpty ? const <ShelfCameraModelView>[] : (ref.watch(cameraSearchProvider(query)).valueOrNull ?? const []);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

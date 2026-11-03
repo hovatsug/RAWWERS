@@ -346,3 +346,8 @@ export 'shelf_wishlist_response.dart';
 export 'shelf_browse_item.dart';
 export 'shelf_browse_level.dart';
 export 'shelf_browse_response.dart';
+export 'place_shelf_order_request.dart';
+export 'shelf_address.dart';
+export 'shelf_address_response.dart';
+export 'shelf_order_view.dart';
+export 'shelf_orders_response.dart';

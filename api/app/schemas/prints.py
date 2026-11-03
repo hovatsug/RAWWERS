@@ -73,10 +73,20 @@ class PrintOrderItemRequest(BaseModel):
 
 
 class ShippingAddressPayload(BaseModel):
+    """A saved address (`address_id` alone) or the address itself, in plain
+    fields: it is encrypted on the server. `encrypted_fields` is refused."""
+
     address_id: uuid.UUID | None = None
-    encrypted_fields: dict = Field(default_factory=dict)
-    country: str
+    name: str | None = None
+    line1: str | None = None
+    line2: str | None = None
+    city: str | None = None
+    region: str | None = None
     postal_code: str | None = None
+    country: str | None = None
+    phone: str | None = None
+    #: No longer accepted: a client cannot send its own "encrypted" address.
+    encrypted_fields: dict = Field(default_factory=dict)
 
 
 class PrintOrderCreateRequest(BaseModel):

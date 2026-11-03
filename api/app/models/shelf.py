@@ -220,3 +220,77 @@ class ShelfWishlistItem(Base):
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_item.id", ondelete="CASCADE"), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+
+
+class ShelfProAddress(Base):
+    """The photographer's saved shipping address for The Shelf (one; each
+    order keeps its own encrypted copy)."""
+
+    __tablename__ = "shelf_pro_address"
+
+    pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    shipping_address_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shipping_address.id"), nullable=False)
+
+
+class ShelfOrderStatus(str, enum.Enum):
+    placed = "placed"
+    #: Ordered from the supplier (their reference recorded).
+    ordered = "ordered"
+    shipped = "shipped"
+    delivered = "delivered"
+    cancelled = "cancelled"
+    #: Cancelled and the RAWW given back.
+    refunded = "refunded"
+
+
+class ShelfOrder(Base):
+    """One item ordered with RAWW. Everything that priced it is copied onto
+    it: the title, the RAWW price and the RAWW value then, and the address."""
+
+    __tablename__ = "shelf_order"
+    __table_args__ = (UniqueConstraint("pro_user_id", "client_request_id", name="uq_shelf_order_request"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_item.id"), nullable=False, index=True)
+    #: The app's id for this attempt: the same request twice is one order.
+    client_request_id: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    supplier_name: Mapped[str] = mapped_column(Text, nullable=False)
+    supplier_sku: Mapped[str | None] = mapped_column(Text, nullable=True)
+    level: Mapped[int] = mapped_column(nullable=False)
+    price_raww: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    raww_eur_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    status: Mapped[ShelfOrderStatus] = mapped_column(
+        Enum(ShelfOrderStatus, name="shelf_order_status", native_enum=False, length=16), nullable=False, index=True
+    )
+    #: The address it ships to, encrypted (services/addresses.py).
+    shipping_address: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    country: Mapped[str] = mapped_column(Text, nullable=False)
+    supplier_order_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tracking_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tracking_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    placed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, index=True)
+    ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+
+class ShelfOrderEvent(Base):
+    """Every status change of an order: from what, to what, by whom, when."""
+
+    __tablename__ = "shelf_order_event"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_order.id"), nullable=False, index=True)
+    from_status: Mapped[str | None] = mapped_column(Text, nullable=True)
+    to_status: Mapped[str] = mapped_column(Text, nullable=False)
+    #: "pro", "admin" or "system".
+    actor_type: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)

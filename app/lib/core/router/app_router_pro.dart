@@ -29,6 +29,7 @@ import 'package:rawwers/features/pro/settings/pro_settings_screen.dart';
 import 'package:rawwers/features/pro/dashboard/dashboard_screen.dart';
 import 'package:rawwers/features/pro/upgrade/upgrade_to_pro_screen.dart';
 import 'package:rawwers/features/pro/wallet/invoice_screen.dart';
+import 'package:rawwers/features/pro/shelf/shelf_orders_screen.dart';
 import 'package:rawwers/features/pro/shelf/shelf_screen.dart';
 import 'package:rawwers/features/pro/wallet/wallet_screen.dart';
 import 'package:rawwers/features/client/messages/thread_screen.dart';
@@ -105,8 +106,9 @@ abstract final class ProRoute {
   /// One gig's invoice, opened from a Wallet earnings row.
   static const invoice = '$wallet/invoice';
 
-  /// The Shelf, opened from the Wallet's RAWW card.
+  /// The Shelf, opened from the Wallet's RAWW card, and its orders.
   static const shelf = '$wallet/shelf';
+  static const shelfOrders = '$shelf/orders';
 }
 
 @Riverpod(keepAlive: true)
@@ -274,7 +276,14 @@ GoRouter proRouter(Ref ref) {
                   GoRoute(
                     path: 'shelf',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const ShelfScreen(gearPath: ProRoute.gear),
+                    builder: (context, state) => const ShelfScreen(gearPath: ProRoute.gear, ordersPath: ProRoute.shelfOrders),
+                    routes: [
+                      GoRoute(
+                        path: 'orders',
+                        parentNavigatorKey: _rootNavigatorKey,
+                        builder: (context, state) => const ShelfOrdersScreen(),
+                      ),
+                    ],
                   ),
                 ],
               ),

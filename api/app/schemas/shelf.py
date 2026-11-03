@@ -218,3 +218,48 @@ class ShelfBrowseResponse(BaseModel):
     terms_text: str
     terms_draft: bool
     levels: list[ShelfBrowseLevel]
+
+
+class ShelfAddress(BaseModel):
+    name: str | None = None
+    line1: str | None = None
+    line2: str | None = None
+    city: str | None = None
+    region: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+    phone: str | None = None
+
+
+class ShelfAddressResponse(BaseModel):
+    address: ShelfAddress | None = None
+    allowed_countries: list[str]
+
+
+class PlaceShelfOrderRequest(BaseModel):
+    item_id: uuid.UUID
+    #: Made once by the app for this attempt: a second tap is the same order.
+    client_request_id: str
+
+
+class ShelfOrderView(BaseModel):
+    id: uuid.UUID
+    item_id: uuid.UUID
+    title: str
+    price_raww: int
+    status: str
+    placed_at: datetime
+    ordered_at: datetime | None = None
+    shipped_at: datetime | None = None
+    delivered_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    refunded_at: datetime | None = None
+    tracking_code: str | None = None
+    tracking_url: str | None = None
+    cancel_reason: str | None = None
+    #: The photographer may cancel it themselves (only while placed).
+    can_cancel: bool
+
+
+class ShelfOrdersResponse(BaseModel):
+    items: list[ShelfOrderView]

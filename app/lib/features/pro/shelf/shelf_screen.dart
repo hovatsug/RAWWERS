@@ -12,6 +12,7 @@ import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/shelf/shelf_checkout.dart';
 import 'package:rawwers/features/pro/shelf/shelf_controller.dart';
 
 /// The Shelf: gear a photographer can have for the RAWW their bookings earn.
@@ -20,19 +21,34 @@ import 'package:rawwers/features/pro/shelf/shelf_controller.dart';
 /// for particular cameras, only those that fit a camera in My gear. Levels
 /// above their tier show as teasers with the tier that unlocks them.
 class ShelfScreen extends ConsumerWidget {
-  const ShelfScreen({this.gearPath, this.orderItem, super.key});
+  const ShelfScreen({this.gearPath, this.ordersPath, this.orderItem, super.key});
 
   /// Where "Add your camera" goes (My gear).
   final String? gearPath;
 
-  /// Opens an item's order flow; null until ordering exists.
+  /// Where "My orders" goes.
+  final String? ordersPath;
+
+  /// Opens an item's order flow (the checkout, by default).
   final void Function(BuildContext context, ShelfBrowseItem item)? orderItem;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shelf = ref.watch(shelfControllerProvider);
+    final spendable = shelf.valueOrNull?.spendable ?? 0;
+    final order = orderItem ??
+        (BuildContext context, ShelfBrowseItem item) async {
+          final messenger = ScaffoldMessenger.of(context);
+          final placed = await showShelfCheckout(context, item: item, spendable: spendable);
+          if (placed) messenger.showSnackBar(const SnackBar(content: Text('Order placed. Find it in My orders.')));
+        };
     return Scaffold(
-      appBar: AppBar(title: const Text('The Shelf')),
+      appBar: AppBar(
+        title: const Text('The Shelf'),
+        actions: [
+          if (ordersPath != null) TextButton(onPressed: () => context.push(ordersPath!), child: const Text('My orders')),
+        ],
+      ),
       body: SafeArea(
         child: switch (shelf) {
           AsyncData(:final value) => RefreshIndicator(
@@ -47,7 +63,7 @@ class ShelfScreen extends ConsumerWidget {
                   ],
                   for (final level in value.levels) ...[
                     const SizedBox(height: RSpace.s24),
-                    _Level(level: level, orderItem: orderItem),
+                    _Level(level: level, orderItem: order),
                   ],
                   const SizedBox(height: RSpace.s24),
                   Align(

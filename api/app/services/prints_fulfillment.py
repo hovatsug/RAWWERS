@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -52,12 +51,6 @@ def _now() -> datetime:
 
 def _q2(value: Decimal | int | float | str) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-
-def _postal_hash(postal_code: str | None) -> str | None:
-    if not postal_code:
-        return None
-    return hashlib.sha256(f"{postal_code}|{settings.auth_jwt_secret}".encode("utf-8")).hexdigest()
 
 
 def _add_print_event(
@@ -170,26 +163,26 @@ def upsert_shipping_address(
     db: Session,
     *,
     user_id: uuid.UUID,
-    encrypted_fields: dict,
-    country: str,
-    postal_code: str | None,
-    address_id: uuid.UUID | None = None,
+    payload: dict,
 ) -> ShippingAddress:
-    if (country or "").upper() not in EU_COUNTRIES:
-        raise APIError(code="validation_error", message="Only EU shipping is supported in v1", status_code=422)
+    """The print order's address: the client's own saved row (`address_id`
+    alone), or the plain fields sent, validated and encrypted on the server
+    (services/addresses.py). A client-sent "encrypted" blob is refused."""
+    from app.services import addresses
 
-    row = db.get(ShippingAddress, address_id) if address_id else None
-    if row and row.user_id != user_id:
-        raise APIError(code="forbidden", message="Cannot reuse another user's shipping address", status_code=403)
-    if not row:
-        row = ShippingAddress(user_id=user_id, encrypted_fields={}, country=country.upper(), postal_code_hash=None)
-        db.add(row)
-    row.encrypted_fields = encrypted_fields or {}
-    row.country = (country or "").upper()
-    row.postal_code_hash = _postal_hash(postal_code)
-    row.updated_at = _now()
-    db.flush()
-    return row
+    addresses.refuse_client_encrypted(payload)
+    address_id = uuid.UUID(str(payload["address_id"])) if payload.get("address_id") else None
+    fields = {key: payload.get(key) for key in addresses.FIELDS}
+    if address_id and not fields.get("line1"):
+        row = db.get(ShippingAddress, address_id)
+        if not row or row.user_id != user_id:
+            raise APIError(code="forbidden", message="Cannot reuse another user's shipping address", status_code=403)
+        if (row.country or "").upper() not in EU_COUNTRIES:
+            raise APIError(code="validation_error", message="Only EU shipping is supported in v1", status_code=422)
+        return row
+    if (str(fields.get("country") or "")).upper() not in EU_COUNTRIES:
+        raise APIError(code="validation_error", message="Only EU shipping is supported in v1", status_code=422)
+    return addresses.save(db, user_id=user_id, fields=fields, allowed_countries=tuple(sorted(EU_COUNTRIES)), address_id=address_id)
 
 
 def _validate_selected_media(db: Session, *, gig_id: uuid.UUID, selected_media: list[dict]) -> None:
@@ -267,14 +260,7 @@ def create_print_order(
     if not partner or not partner.is_active:
         raise APIError(code="validation_error", message="Print partner unavailable", status_code=422)
 
-    address = upsert_shipping_address(
-        db,
-        user_id=client_user_id,
-        encrypted_fields=shipping_address_payload.get("encrypted_fields") or {},
-        country=str(shipping_address_payload.get("country") or "").upper(),
-        postal_code=shipping_address_payload.get("postal_code"),
-        address_id=uuid.UUID(shipping_address_payload["address_id"]) if shipping_address_payload.get("address_id") else None,
-    )
+    address = upsert_shipping_address(db, user_id=client_user_id, payload=shipping_address_payload)
 
     order = PrintOrder(
         client_user_id=client_user_id,
@@ -355,14 +341,7 @@ def update_print_order(
         raise APIError(code="invalid_state", message="Order can no longer be edited", status_code=409)
 
     if shipping_address_payload:
-        address = upsert_shipping_address(
-            db,
-            user_id=client_user_id,
-            encrypted_fields=shipping_address_payload.get("encrypted_fields") or {},
-            country=str(shipping_address_payload.get("country") or "").upper(),
-            postal_code=shipping_address_payload.get("postal_code"),
-            address_id=uuid.UUID(shipping_address_payload["address_id"]) if shipping_address_payload.get("address_id") else None,
-        )
+        address = upsert_shipping_address(db, user_id=client_user_id, payload=shipping_address_payload)
         order.shipping_address_id = address.id
 
     if items is not None:

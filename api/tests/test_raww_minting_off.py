@@ -1,6 +1,6 @@
 """Event minting into the shared reward ledger is off by default.
 
-Owner's decision (2026-11-03): photographers earn RAWWS from the 5% credit
+Owner's decision (2026-11-03): photographers earn RAWW from the 5% credit
 on The Shelf's own ledger. The older per-event minting (proof_of_gigs) stays
 in the code, dormant behind `raww_minting_enabled`, and balances it already
 paid are neither converted nor deleted.

@@ -1,11 +1,11 @@
-"""The Shelf: a photographer's RAWWS and the gear store they are spent in.
+"""The Shelf: a photographer's RAWW and the gear store they are spent in.
 
-Owner's decision (2026-11-03). A photographer's RAWWS live on their own
+Owner's decision (2026-11-03). A photographer's RAWW live on their own
 ledger here, separate from the reward ledger clients share (rewards.py):
 the two are different currencies with different values, and one user can
 hold both.
 
-- `ProRawwLedgerEntry`: every change to a photographer's RAWWS, append
+- `ProRawwLedgerEntry`: every change to a photographer's RAWW, append
   only. Booking entries move from pending to spendable as their earning
   settles (the same states the earnings ledger uses); nothing else changes
   an entry once written. One entry per (pro, kind, source): the same event
@@ -31,13 +31,13 @@ def _now() -> datetime:
 
 
 class RawwEntryKind(str, enum.Enum):
-    #: A booking's 5% credit, in RAWWS at the rate stamped on the entry.
+    #: A booking's 5% credit, in RAWW at the rate stamped on the entry.
     earn_booking = "earn_booking"
     #: A refund or price reduction lowering that credit (negative).
     reverse_booking = "reverse_booking"
     #: An order on The Shelf (negative).
     spend_order = "spend_order"
-    #: A cancelled order's RAWWS given back (positive).
+    #: A cancelled order's RAWW given back (positive).
     refund_order = "refund_order"
     #: The spendable balance expired after long inactivity (negative).
     expire = "expire"
@@ -66,7 +66,7 @@ class ProRawwLedgerEntry(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     kind: Mapped[RawwEntryKind] = mapped_column(Enum(RawwEntryKind, name="raww_entry_kind", native_enum=False, length=32), nullable=False)
-    #: Signed, whole RAWWS.
+    #: Signed, whole RAWW.
     amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[RawwEntryStatus] = mapped_column(
         Enum(RawwEntryStatus, name="raww_entry_status", native_enum=False, length=16), nullable=False
@@ -108,9 +108,9 @@ class ProRawwBalance(Base):
 
 #: The Shelf's terms until the lawyer's reviewed text replaces it.
 SHELF_TERMS_PLACEHOLDER = (
-    "DRAFT - not reviewed. RAWWS are a reward for photographers on RAWWERS. They have no cash value, "
-    "cannot be sold, transferred or exchanged for money, and can only be spent on The Shelf. RAWWS from "
-    "a booking become spendable once that booking's earning has settled. Unused RAWWS expire after a long "
+    "DRAFT - not reviewed. RAWW are a reward for photographers on RAWWERS. They have no cash value, "
+    "cannot be sold, transferred or exchanged for money, and can only be spent on The Shelf. RAWW from "
+    "a booking become spendable once that booking's earning has settled. Unused RAWW expire after a long "
     "period without earning or spending; you will be told before they do. Items ship to the countries "
     "listed, while stocks last."
 )
@@ -126,13 +126,13 @@ class ShelfSettings(Base):
     id: Mapped[int] = mapped_column(primary_key=True, default=1)
     #: Euros one RAWW stands for (an earning is credit in euros / this).
     raww_eur_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
-    #: Used only to suggest a RAWWS price from a GBP street price.
+    #: Used only to suggest a RAWW price from a GBP street price.
     gbp_eur_rate: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     #: How far below street price the suggested price sits.
     shelf_discount_percent: Mapped[int] = mapped_column(nullable=False)
     inactivity_months: Mapped[int] = mapped_column(nullable=False)
     warning_days: Mapped[int] = mapped_column(nullable=False)
-    #: Five RAWWS amounts, one per level: the band an item's price should sit in.
+    #: Five RAWW amounts, one per level: the band an item's price should sit in.
     level_band_raww: Mapped[list] = mapped_column(JSONB, nullable=False)
     #: The highest level each tier sees.
     tier_max_level: Mapped[dict] = mapped_column(JSONB, nullable=False)

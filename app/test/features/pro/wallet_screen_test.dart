@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/design/components/r_amount_row.dart';
+import 'package:rawwers/features/pro/wallet/raww_controller.dart';
 import 'package:rawwers/features/pro/wallet/summary_controller.dart';
+
+import '../../support/fake_raww.dart';
 import 'package:rawwers/api/models/invoice_summary_view.dart';
 import 'package:rawwers/api/models/earnings_balance_view.dart';
 import 'package:rawwers/api/models/earnings_entry_status.dart';
@@ -81,6 +84,8 @@ Widget _wrap(WalletData data, {InvoiceSummaryView? summary, DateTime Function()?
         // The all-time summary above the ledger is its own request. Without
         // this override it reaches the network and the test hangs.
         earningsSummaryProvider.overrideWith((ref) async => summary ?? _summary()),
+        // So is the RAWW card; closed here, as The Shelf is in production.
+        rawwProvider.overrideWith((ref) async => closedRaww),
       ],
       child: MaterialApp(theme: buildProTheme(), home: WalletScreen(clock: clock ?? DateTime.now)),
     );
@@ -205,6 +210,7 @@ void main() {
               ? const InvoiceSummaryView(bookings: 1, gross: '52.43', platformFees: '10.48', proRaww: '2.62', clientRaww: '0.00', proCash: '41.95')
               : const InvoiceSummaryView(bookings: 2, gross: '139.26', platformFees: '27.84', proRaww: '6.96', clientRaww: '0.00', proCash: '111.42');
         }),
+        rawwProvider.overrideWith((ref) async => closedRaww),
       ],
       child: MaterialApp(theme: buildProTheme(), home: const WalletScreen()),
     ));
@@ -217,6 +223,28 @@ void main() {
     expect(fetches, 2);
     expect(find.text('2 completed bookings'), findsOneWidget);
     expect(find.text('€139.26'), findsOneWidget);
+  });
+
+  testWidgets('pulling the Wallet down reloads the RAWW card too', (tester) async {
+    var fetches = 0;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        walletControllerProvider.overrideWith(() => _FakeWallet(_wallet())),
+        earningsSummaryProvider.overrideWith((ref) async => _summary()),
+        rawwProvider.overrideWith((ref) async {
+          fetches++;
+          return openRaww(spendable: fetches == 1 ? 75 : 150, pending: 0, pendingBookings: const []);
+        }),
+      ],
+      child: MaterialApp(theme: buildProTheme(), home: const WalletScreen()),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('75 RAWW'), findsOneWidget);
+
+    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+
+    expect(find.text('150 RAWW'), findsOneWidget);
   });
 
   group('when pending money can be withdrawn', () {

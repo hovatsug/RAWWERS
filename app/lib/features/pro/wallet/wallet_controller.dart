@@ -10,6 +10,7 @@ import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/core/api/result.dart';
 import 'package:rawwers/core/money/payout_request_money.dart';
+import 'package:rawwers/features/pro/wallet/raww_controller.dart';
 import 'package:rawwers/features/pro/wallet/summary_controller.dart';
 
 part 'wallet_controller.g.dart';
@@ -123,6 +124,7 @@ class WalletController extends _$WalletController {
     // on the figure from when the Wallet first opened: after a booking
     // completed it still said "1 completed booking" (Stage 1 loop, 2026-10-30).
     ref.invalidate(earningsSummaryProvider);
+    ref.invalidate(rawwProvider);
     ref.invalidateSelf();
     await future;
   }

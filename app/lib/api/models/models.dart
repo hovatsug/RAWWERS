@@ -336,3 +336,7 @@ export 'marketing_consent_view.dart';
 export 'update_booking_marketing_settings_request.dart';
 export 'update_pro_marketing_agreement_request.dart';
 export 'marketing_term_view.dart';
+export 'pro_raww_view.dart';
+export 'raww_entry_view.dart';
+export 'raww_history_response.dart';
+export 'raww_pending_booking.dart';

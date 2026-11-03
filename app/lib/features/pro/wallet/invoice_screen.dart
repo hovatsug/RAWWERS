@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/core/format/money.dart';
+import 'package:rawwers/features/pro/wallet/raww_card.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/gig_invoice_view.dart';
 import 'package:rawwers/design/components/r_amount_row.dart';
@@ -105,7 +106,7 @@ class _Invoice extends StatelessWidget {
                 RAmountRow(
                   label: 'Your RAWW credit',
                   detail: '${invoice.proRawwPercent}% of the booking',
-                  amount: amount(invoice.proRaww),
+                  amount: rawwAmount(invoice.proRawwRawws, amount(invoice.proRaww)),
                 ),
                 const SizedBox(height: RSpace.s4),
                 Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),

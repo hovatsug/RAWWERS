@@ -7,8 +7,8 @@ import { AdminButton, FieldLabel, Notice, PageHeader, Panel, StatusBadge, TextAr
 
 /**
  * The Shelf's settings. Every save is logged with the admin, the time and
- * what changed. The RAWWS value is stamped on each earning and order when
- * it is made, so a change here never rewrites RAWWS already earned or spent.
+ * what changed. The RAWW value is stamped on each earning and order when
+ * it is made, so a change here never rewrites RAWW already earned or spent.
  *
  * In production The Shelf opens only with "Shelf on" AND approved terms:
  * the seeded terms are a draft placeholder until the lawyer's reviewed text
@@ -102,7 +102,7 @@ export default function ShelfSettingsPage() {
   if (!form || !settings) {
     return (
       <>
-        <PageHeader title="Shelf settings" description="RAWWS value, levels, limits and expiry." />
+        <PageHeader title="Shelf settings" description="RAWW value, levels, limits and expiry." />
         {query.data && !query.data.ok ? <Notice tone="error">{query.data.error.message}</Notice> : <p className="text-sm text-slate-400">Loading…</p>}
       </>
     );
@@ -114,7 +114,7 @@ export default function ShelfSettingsPage() {
     <>
       <PageHeader
         title="Shelf settings"
-        description="RAWWS value, levels, limits and expiry. Values are stamped on each earning and order, so a change applies from now on."
+        description="RAWW value, levels, limits and expiry. Values are stamped on each earning and order, so a change applies from now on."
       />
       <div className="space-y-4">
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
@@ -130,7 +130,7 @@ export default function ShelfSettingsPage() {
         </Panel>
 
         <Panel className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-          <NumberField id="raww" label="Euros per RAWW" value={form.raww_eur_value} onChange={(v) => set("raww_eur_value", v)} hint="0.10 means a €150 booking's 5% (€7.50) earns 75 RAWWS." />
+          <NumberField id="raww" label="Euros per RAWW" value={form.raww_eur_value} onChange={(v) => set("raww_eur_value", v)} hint="0.10 means a €150 booking's 5% (€7.50) earns 75 RAWW." />
           <NumberField id="gbp" label="GBP to EUR (price suggestions only)" value={form.gbp_eur_rate} onChange={(v) => set("gbp_eur_rate", v)} />
           <NumberField id="discount" label="Below street price (%)" value={form.shelf_discount_percent} onChange={(v) => set("shelf_discount_percent", v)} hint="Used for the suggested price." />
           <NumberField id="inactivity" label="Expire after (months without earning or spending)" value={form.inactivity_months} onChange={(v) => set("inactivity_months", v)} />
@@ -152,7 +152,7 @@ export default function ShelfSettingsPage() {
               <NumberField
                 key={i}
                 id={`band-${i}`}
-                label={`Level ${i + 1} (RAWWS)`}
+                label={`Level ${i + 1} (RAWW)`}
                 value={value}
                 onChange={(v) => set("level_band_raww", form.level_band_raww.map((b, j) => (j === i ? v : b)))}
               />

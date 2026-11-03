@@ -54,6 +54,8 @@ from app.schemas.payouts import (
     PayoutRequestView,
 )
 from app.models.payouts import TaxProfile, VatStatus
+from app.services.raww_wallet import booking_rawws
+from app.services.shelf_settings import shelf_open
 from app.services.connect_return import PAGE_HEADERS, REFRESH_PAGE, RETURN_PAGE
 from app.services.invoices import build_invoice, summarise_invoices
 from app.services.tax import DEFAULT_COUNTRY, ensure_uk_tax_rule, tax_profile_for, tax_rule_for
@@ -97,8 +99,9 @@ def get_my_earnings_balance(
     return EarningsBalanceView(**payout_balance_view(db, pro_user_id=user.user_id))
 
 
-def _invoice_view(invoice) -> GigInvoiceView:
+def _invoice_view(invoice, rawws: int | None = None) -> GigInvoiceView:
     return GigInvoiceView(
+        pro_raww_rawws=rawws,
         gig_id=invoice.gig_id,
         issued_at=invoice.issued_at,
         currency=invoice.currency,
@@ -197,6 +200,7 @@ def get_my_earnings_summary(
         gross=summary.gross,
         platform_fees=summary.platform_fees,
         pro_raww=summary.pro_raww,
+        pro_raww_rawws=booking_rawws(db, user.user_id) if shelf_open(db) else None,
         client_raww=summary.client_raww,
         pro_cash=summary.pro_cash,
         average_gross=summary.average_gross,
@@ -218,7 +222,10 @@ def list_my_invoices(
         .order_by(Gig.scheduled_end.desc().nullslast(), Gig.created_at.desc())
         .limit(limit)
     ).scalars().all()
-    return GigInvoiceListResponse(items=[_invoice_view(build_invoice(db, gig)) for gig in gigs])
+    show = shelf_open(db)
+    return GigInvoiceListResponse(
+        items=[_invoice_view(build_invoice(db, gig), booking_rawws(db, user.user_id, gig.id) if show else None) for gig in gigs]
+    )
 
 
 @router.get("/pro/earnings/invoices/{gig_id}", response_model=GigInvoiceView)
@@ -233,7 +240,7 @@ def get_my_invoice(
     # id exists is not something to confirm to a stranger.
     if gig is None or gig.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Invoice not found", status_code=404)
-    return _invoice_view(build_invoice(db, gig))
+    return _invoice_view(build_invoice(db, gig), booking_rawws(db, user.user_id, gig.id) if shelf_open(db) else None)
 
 
 @router.get("/pro/earnings/ledger", response_model=EarningsLedgerResponse)

@@ -420,6 +420,23 @@ final marketingConsentClientProvider =
 // ignore: unused_element
 typedef MarketingConsentClientRef =
     AutoDisposeProviderRef<MarketingConsentClient>;
+String _$shelfClientHash() => r'706a2831b8ea05197dc125032c37d86c3843d854';
+
+/// See also [shelfClient].
+@ProviderFor(shelfClient)
+final shelfClientProvider = AutoDisposeProvider<ShelfClient>.internal(
+  shelfClient,
+  name: r'shelfClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$shelfClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ShelfClientRef = AutoDisposeProviderRef<ShelfClient>;
 String _$accountabilityClientHash() =>
     r'9339f685eaaab0c82027697eb1e3e03175530ef1';
 

@@ -255,6 +255,9 @@ class GigInvoiceView(BaseModel):
     retained_percent: int
     pro_raww_percent: int
     client_credit_percent: int
+    #: The credit in RAWW, shown beside the euros once The Shelf is open.
+    #: Null while it is closed.
+    pro_raww_rawws: int | None = None
 
     #: Null when no selection was submitted. Not zero - a completed gig with
     #: no recorded count has an unknown count, and rendering zero on it would
@@ -297,6 +300,8 @@ class InvoiceSummaryView(BaseModel):
     #: paid - not only the share the platform keeps.
     platform_fees: Decimal
     pro_raww: Decimal
+    #: All bookings' credit in RAWW, once The Shelf is open; null before.
+    pro_raww_rawws: int | None = None
     #: What this photographer has chosen to hand back to their clients.
     client_raww: Decimal
     pro_cash: Decimal

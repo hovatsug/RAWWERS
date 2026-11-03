@@ -1,4 +1,4 @@
-"""A photographer's RAWWS: the only code that writes their ledger.
+"""A photographer's RAWW: the only code that writes their ledger.
 
 Every change is an entry (models/shelf.py) and the balance moves with it,
 under the balance row's lock. Idempotent by source: posting the same
@@ -15,8 +15,9 @@ The inactivity clock (`last_activity_at`) restarts on any earn or spend.
 """
 from __future__ import annotations
 
+import calendar
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -150,7 +151,7 @@ def spend(
     if balance.spendable < amount:
         raise APIError(
             code="insufficient_raww",
-            message=f"You have {max(balance.spendable, 0)} RAWWS to spend; this needs {amount}.",
+            message=f"You have {max(balance.spendable, 0)} RAWW to spend; this needs {amount}.",
             status_code=409,
         )
     entry = _insert_locked(
@@ -170,9 +171,9 @@ def spend(
 
 
 def set_booking_status(db: Session, *, pro_user_id: uuid.UUID, gig_id: uuid.UUID, status: RawwEntryStatus) -> int:
-    """Move a booking's entries to `status`, and their RAWWS between the
+    """Move a booking's entries to `status`, and their RAWW between the
     buckets. Both directions: an earning held after it settled takes its
-    RAWWS back to pending. Returns how many entries moved."""
+    RAWW back to pending. Returns how many entries moved."""
     balance = balance_locked(db, pro_user_id)
     rows = db.execute(
         select(ProRawwLedgerEntry).where(
@@ -225,7 +226,7 @@ def admin_adjust(
     `request_id` makes a resubmitted form the same adjustment."""
     note = (note or "").strip()
     if not note:
-        raise APIError(code="validation_error", message="A note is required for a RAWWS adjustment", status_code=422)
+        raise APIError(code="validation_error", message="A note is required for a RAWW adjustment", status_code=422)
     if int(amount) == 0:
         raise APIError(code="validation_error", message="An adjustment must change the balance", status_code=422)
     entry = post_entry(
@@ -269,3 +270,23 @@ def ledger_totals(db: Session, pro_user_id: uuid.UUID) -> tuple[int, int]:
     ).all()
     totals = {status: int(total) for status, total in rows}
     return totals.get(RawwEntryStatus.spendable, 0), totals.get(RawwEntryStatus.pending, 0)
+
+
+def months_after(start: datetime, months: int) -> datetime:
+    """`months` calendar months after `start`, on the same day (the last of
+    the month when that day does not exist)."""
+    month = start.month - 1 + months
+    year, month = start.year + month // 12, month % 12 + 1
+    return start.replace(year=year, month=month, day=min(start.day, calendar.monthrange(year, month)[1]))
+
+
+def expires_at(balance: ProRawwBalance | None, inactivity_months: int) -> datetime | None:
+    """When the spendable balance expires if nothing is earned or spent
+    before then. None with nothing to expire."""
+    if balance is None or balance.spendable <= 0 or balance.last_activity_at is None:
+        return None
+    return months_after(balance.last_activity_at, inactivity_months)
+
+
+def in_warning_period(expiry: datetime | None, warning_days: int, now: datetime | None = None) -> bool:
+    return expiry is not None and (now or _now()) >= expiry - timedelta(days=warning_days)

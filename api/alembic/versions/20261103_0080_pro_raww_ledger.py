@@ -1,4 +1,4 @@
-"""The Shelf: a photographer's RAWWS ledger and balance.
+"""The Shelf: a photographer's RAWW ledger and balance.
 
 New tables only. Separate from the reward ledger clients share.
 

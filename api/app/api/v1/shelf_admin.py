@@ -1,4 +1,4 @@
-"""The Shelf, for admins: settings, terms, items, orders and RAWWS.
+"""The Shelf, for admins: settings, terms, items, orders and RAWW.
 
 Every change is audit-logged with the admin and the time.
 """

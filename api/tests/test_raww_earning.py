@@ -1,9 +1,9 @@
-"""A booking's RAWWS follow its earning (services/raww_earning.py).
+"""A booking's RAWW follow its earning (services/raww_earning.py).
 
-Owner's decision (2026-11-03): the 5% credit, in RAWWS at the stamped rate,
+Owner's decision (2026-11-03): the 5% credit, in RAWW at the stamped rate,
 pending until the earning is available with no hold, back to pending if it
 is held; refunds and price reductions write the difference at the original
-rate; a full refund reverses all; spent RAWWS are not clawed back from cash.
+rate; a full refund reverses all; spent RAWW are not clawed back from cash.
 """
 from decimal import Decimal
 
@@ -158,7 +158,7 @@ def test_a_refund_after_spending_goes_negative_and_takes_no_cash(db_session):
     db_session.commit()
 
     assert _raww(db_session, pro) == (-75, 0)
-    assert photographer_money(db_session, pro).lifetime == D("0.00") and cash_before == D("120.00"), "the cash follows the refund, not the RAWWS"
+    assert photographer_money(db_session, pro).lifetime == D("0.00") and cash_before == D("120.00"), "the cash follows the refund, not the RAWW"
 
 
 def test_a_booking_not_yet_completed_earns_nothing(db_session):
@@ -174,7 +174,7 @@ def test_a_booking_not_yet_completed_earns_nothing(db_session):
 
 def _available_with_a_bare_hold(db, pro, gig, **hold):
     """An earning still marked available while a hold row is active: the
-    RAWWS must read the hold itself, not only the earning's status."""
+    RAWW must read the hold itself, not only the earning's status."""
     from app.models.payouts import EarningsHold
     from app.services.raww_earning import sync_pro_raww_status
 

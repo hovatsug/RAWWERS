@@ -25,8 +25,10 @@ InvoiceSummaryView _summary({
   String proCash = '38639.04',
   String? averageGross = '847.35',
   int reconstructed = 0,
+  int? proRawwRawws,
 }) =>
     InvoiceSummaryView(
+      proRawwRawws: proRawwRawws,
       bookings: bookings,
       gross: gross,
       platformFees: platformFees,
@@ -100,6 +102,21 @@ void main() {
     await tester.pumpWidget(_wrap(_summary(reconstructed: 0)));
     await tester.pumpAndSettle();
     expect(find.textContaining('predate itemised rates'), findsNothing);
+  });
+
+  testWidgets('once The Shelf is open the RAWW credit shows its RAWW beside the euros', (tester) async {
+    await tester.pumpWidget(_wrap(_summary(proRaww: '7.50', proRawwRawws: 75)));
+    await tester.pump();
+
+    expect(find.text('75 RAWW (€7.50)'), findsOneWidget);
+  });
+
+  testWidgets('before it opens the credit is euros only', (tester) async {
+    await tester.pumpWidget(_wrap(_summary(proRaww: '7.50')));
+    await tester.pump();
+
+    expect(find.text('€7.50'), findsOneWidget);
+    expect(find.textContaining('RAWW ('), findsNothing);
   });
 
   testWidgets('Booked, fees and cash earned add up, and RAWW credit sits below them', (tester) async {

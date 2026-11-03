@@ -93,7 +93,7 @@ def validate(values: dict) -> dict:
         if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
             raise _refuse(f"{key} must be a whole number from {low} to {high}")
     if out["warning_days"] >= out["inactivity_months"] * 30:
-        raise _refuse("The warning must come before the RAWWS expire")
+        raise _refuse("The warning must come before the RAWW expire")
     bands = out["level_band_raww"]
     if (
         not isinstance(bands, list)
@@ -101,7 +101,7 @@ def validate(values: dict) -> dict:
         or any(isinstance(b, bool) or not isinstance(b, int) or b <= 0 for b in bands)
         or any(a >= b for a, b in zip(bands, bands[1:]))
     ):
-        raise _refuse(f"level_band_raww must be {LEVELS} whole RAWWS amounts, each above the one before")
+        raise _refuse(f"level_band_raww must be {LEVELS} whole RAWW amounts, each above the one before")
     tiers = out["tier_max_level"]
     if not isinstance(tiers, dict) or set(tiers) != {t.value for t in SkillTier}:
         raise _refuse("tier_max_level must give a level for every tier: " + ", ".join(t.value for t in SkillTier))

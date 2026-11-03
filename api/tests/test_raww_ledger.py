@@ -1,4 +1,4 @@
-"""The Shelf's RAWWS ledger (services/raww_ledger.py), on its own.
+"""The Shelf's RAWW ledger (services/raww_ledger.py), on its own.
 
 The rules: one entry per (pro, kind, source); the balance always equals its
 entries; booking credit is pending until moved, both ways; spending needs

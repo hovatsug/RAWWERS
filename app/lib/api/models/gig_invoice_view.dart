@@ -17,27 +17,22 @@
 ///         },
 ///         "client_total": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Client Total"
 ///         },
 ///         "platform_retained": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Platform Retained"
 ///         },
 ///         "pro_raww": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Pro Raww"
 ///         },
 ///         "client_raww": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Client Raww"
 ///         },
 ///         "pro_cash": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Pro Cash"
 ///         },
 ///         "retained_percent": {
@@ -51,6 +46,17 @@
 ///         "client_credit_percent": {
 ///             "type": "integer",
 ///             "title": "Client Credit Percent"
+///         },
+///         "pro_raww_rawws": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Pro Raww Rawws"
 ///         },
 ///         "photos_delivered": {
 ///             "anyOf": [
@@ -98,8 +104,7 @@
 ///         "vat_net_amount": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -110,8 +115,7 @@
 ///         "vat_amount": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -190,6 +194,9 @@ abstract class GigInvoiceView with _$GigInvoiceView {
     @JsonKey(name: GigInvoiceView.clientCreditPercentKey_)
     required int clientCreditPercent,
 
+    /// proRawwRawws
+    @JsonKey(name: GigInvoiceView.proRawwRawwsKey_) int? proRawwRawws,
+
     /// photosDelivered
     @JsonKey(name: GigInvoiceView.photosDeliveredKey_) int? photosDelivered,
 
@@ -244,6 +251,8 @@ abstract class GigInvoiceView with _$GigInvoiceView {
   static const String proRawwPercentKey_ = r'pro_raww_percent';
 
   static const String clientCreditPercentKey_ = r'client_credit_percent';
+
+  static const String proRawwRawwsKey_ = r'pro_raww_rawws';
 
   static const String photosDeliveredKey_ = r'photos_delivered';
 

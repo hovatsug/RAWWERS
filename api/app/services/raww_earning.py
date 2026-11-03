@@ -1,12 +1,12 @@
-"""A booking's RAWWS: its 5% credit, following its earning.
+"""A booking's RAWW: its 5% credit, following its earning.
 
 Owner's decision (2026-11-03). When a booking's earning is recorded, the
-photographer earns round(final_pro_raww / raww_eur_value) RAWWS, the rate
+photographer earns round(final_pro_raww / raww_eur_value) RAWW, the rate
 stamped on the entry. They are pending until that earning is available with
 no hold on it - the earning's state, not a date - and go back to pending if
 it is held again. A refund or price reduction recomputes the target from
 the new `final_pro_raww` at the original rate and writes the difference; a
-booking that earned nothing loses them all. Spent RAWWS are not clawed back
+booking that earned nothing loses them all. Spent RAWW are not clawed back
 from cash: the spendable balance goes negative instead.
 
 `sync_booking_raww` is called wherever a booking's earning is written
@@ -30,7 +30,7 @@ from app.services.shelf_settings import shelf_settings
 
 
 def raww_for(eur: Decimal, raww_eur_value: Decimal) -> int:
-    """Whole RAWWS for a euro amount, to the nearest."""
+    """Whole RAWW for a euro amount, to the nearest."""
     return int((Decimal(eur) / Decimal(raww_eur_value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
@@ -73,7 +73,7 @@ def _wanted(earning: EarningsLedgerEntry | None, holds: tuple[bool, set[uuid.UUI
 
 
 def sync_booking_raww(db: Session, gig: Gig) -> None:
-    """Bring a booking's RAWWS in line with its earning: amount and state."""
+    """Bring a booking's RAWW in line with its earning: amount and state."""
     earning = _earning(db, gig)
     first = db.execute(
         select(ProRawwLedgerEntry).where(
@@ -119,7 +119,7 @@ def sync_booking_raww(db: Session, gig: Gig) -> None:
 
 
 def sync_pro_raww_status(db: Session, pro_user_id: uuid.UUID) -> int:
-    """Move each of a photographer's bookings' RAWWS to the state its
+    """Move each of a photographer's bookings' RAWW to the state its
     earning is in now. Returns how many bookings moved."""
     rows = db.execute(
         select(ProRawwLedgerEntry.gig_id, ProRawwLedgerEntry.status)

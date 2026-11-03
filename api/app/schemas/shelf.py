@@ -56,3 +56,41 @@ class ShelfTermsRequest(BaseModel):
 class ShelfTermsApproveRequest(BaseModel):
     reviewed_by: str
     note: str
+
+
+class RawwPendingBooking(BaseModel):
+    gig_id: uuid.UUID
+    amount: int
+    #: Held (a hold, or not yet settled for another reason): no date to give.
+    held: bool
+    #: When its earning settles, if nothing holds it.
+    expected_at: datetime | None = None
+
+
+class ProRawwView(BaseModel):
+    shelf_open: bool
+    spendable: int
+    pending: int
+    raww_eur_value: Decimal
+    pending_bookings: list[RawwPendingBooking]
+    #: When the spendable balance expires with no earning or spending first.
+    expires_at: datetime | None = None
+    #: Within the warning period before that.
+    expiry_warning: bool
+    inactivity_months: int
+
+
+class RawwEntryView(BaseModel):
+    id: uuid.UUID
+    kind: str
+    amount: int
+    status: str
+    gig_id: uuid.UUID | None = None
+    source_type: str
+    note: str | None = None
+    created_at: datetime
+
+
+class RawwHistoryResponse(BaseModel):
+    total: int
+    items: list[RawwEntryView]

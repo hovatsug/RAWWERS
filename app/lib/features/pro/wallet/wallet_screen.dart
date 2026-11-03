@@ -19,6 +19,7 @@ import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_input.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/wallet/earnings_summary_card.dart';
+import 'package:rawwers/features/pro/wallet/raww_card.dart';
 import 'package:rawwers/features/pro/wallet/pending_availability.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 
@@ -84,6 +85,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     children: [
                 _BalanceCard(data: value, now: now),
                 const SizedBox(height: RSpace.s16),
+                // Shown only once The Shelf is open; nothing while it is not.
+                const RawwCard(),
                 // What the balance does not say: how it got there. The
                 // balance is a position; this is the history behind it.
                 const EarningsSummaryCard(),

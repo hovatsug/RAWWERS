@@ -7,34 +7,39 @@
 ///         },
 ///         "gross": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Gross"
 ///         },
 ///         "platform_fees": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Platform Fees"
 ///         },
 ///         "pro_raww": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Pro Raww"
+///         },
+///         "pro_raww_rawws": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Pro Raww Rawws"
 ///         },
 ///         "client_raww": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Client Raww"
 ///         },
 ///         "pro_cash": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Pro Cash"
 ///         },
 ///         "average_gross": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -85,6 +90,9 @@ abstract class InvoiceSummaryView with _$InvoiceSummaryView {
     /// proRaww
     @JsonKey(name: InvoiceSummaryView.proRawwKey_) required String proRaww,
 
+    /// proRawwRawws
+    @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? proRawwRawws,
+
     /// clientRaww
     @JsonKey(name: InvoiceSummaryView.clientRawwKey_)
     required String clientRaww,
@@ -111,6 +119,8 @@ abstract class InvoiceSummaryView with _$InvoiceSummaryView {
   static const String platformFeesKey_ = r'platform_fees';
 
   static const String proRawwKey_ = r'pro_raww';
+
+  static const String proRawwRawwsKey_ = r'pro_raww_rawws';
 
   static const String clientRawwKey_ = r'client_raww';
 

@@ -36,7 +36,7 @@ DEFAULT_FLAG_STATE: dict[str, bool] = {
     "search_force_db_fallback": False,
     "guest_discovery_enabled": False,
     "ai_chat_kill_switch": False,
-    # Off (owner, 2026-11-03): photographers earn RAWWS on The Shelf's own
+    # Off (owner, 2026-11-03): photographers earn RAWW on The Shelf's own
     # ledger from the 5% credit. Event minting into the shared reward
     # ledger stays in the code, dormant; balances it already paid are kept.
     "raww_minting_enabled": False,

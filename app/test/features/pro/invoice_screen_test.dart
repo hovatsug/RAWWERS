@@ -31,8 +31,10 @@ GigInvoiceView _invoice({
   String? vatNumber,
   String? vatNetAmount,
   String? vatAmount,
+  int? proRawwRawws,
 }) =>
     GigInvoiceView(
+      proRawwRawws: proRawwRawws,
       gigId: _gigId,
       issuedAt: DateTime.utc(2026, 3, 5, 14),
       currency: 'EUR',
@@ -174,6 +176,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('predates itemised rates'), findsOneWidget);
+  });
+
+  testWidgets('once The Shelf is open the invoice shows the credit in RAWW beside the euros', (tester) async {
+    _tall(tester);
+    await tester.pumpWidget(_wrap(_invoice(proRawwRawws: 745)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('745 RAWW (€74.50)'), findsOneWidget);
   });
 
   testWidgets('a recorded split carries no such disclaimer', (tester) async {

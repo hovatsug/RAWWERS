@@ -144,7 +144,7 @@ def stamp_final_split(db: Session, gig: Gig) -> BookingSplit:
 
 def record_gig_earnings(db: Session, gig: Gig, *, lower_only: bool = False) -> EarningsLedgerEntry | None:
     """Bring a completed booking's earnings in line with what it earned,
-    and its RAWWS with them (raww_earning.sync_booking_raww)."""
+    and its RAWW with them (raww_earning.sync_booking_raww)."""
     from app.services.raww_earning import sync_booking_raww
 
     entry = _record_gig_earnings(db, gig, lower_only=lower_only)

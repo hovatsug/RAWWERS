@@ -4,23 +4,82 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## HIGH, before the beta: three gaps logged 2026-11-03 (not built)
+
+Owner's priority. None of these is built; each says what is true today and what is needed.
+
+### a) No Stripe reconcile job, and the selection difference can still get stuck
+
+**Today.** A Stripe success that never reaches us as a webhook is recorded only when someone acts: the client taps Pay again (`payment_intents.apply_missed_success`, then `409 already_paid`), or the unpaid-booking expiry job finds Stripe refusing to cancel. A paid booking nobody touches reads "Payment due" until its deadline. In dev, `stripe listen` dying with a Mac restart is enough to cause it (seen 2026-11-02).
+
+**Needed.**
+- A periodic job (beat, every few minutes) that lists Stripe's recent `payment_intent.succeeded` events, or recent PaymentIntents, for a look-back window longer than the job's interval, and, for each one whose `StripePayment` row is not `succeeded`, records it through the same handler the webhook uses (`apply_missed_success` is idempotent, so the real event arriving later changes nothing). It should also cover refunds and disputes (`charge.refunded`, `charge.dispute.created`) the same way, log every repair with the event id, and alert when it repairs anything in production, because a repair means the webhook path is broken.
+- **The selection difference.** `_reconcile_difference_intent` still refuses a `succeeded` open intent with "already being processed" and waits for the webhook. Recording it from inside the selection submit also writes the new selection, so it needs a decision on what a resubmitted selection does when its difference is already paid. The reconcile job above would record the payment either way; the client would still see the refusal until it runs.
+
+### b) No notifications screen in either app
+
+**Today.** The API keeps every in-app notification (`GET /v1/me/notifications`, cursor-paged, `unread_only`, plus `POST .../{id}/read` and `POST .../read-all`), but neither app has a screen that reads it. So these are created and never seen:
+- The Shelf: every order change (`shelf.order_placed`, `_ordered`, `_shipped`, `_delivered`, `_cancelled`, `_refunded`) and the RAWW expiry warning and expiry (`shelf.raww_expiring`, `shelf.raww_expired`). Today only the Wallet banner (expiry) and My orders (status, when opened) show them.
+- The client's marketing-consent renewal prompt (`marketing_consent.renewal`).
+- Everything else enqueued with `enqueue_notification` (booking requests, disputes, payouts and so on), which the apps show elsewhere or not at all.
+
+**Needed.**
+- A bell with an unread count and a notifications screen in **each** app, as separate screens per flavor: pro screens under `features/pro`, client screens under `features/client`, no shared screen that branches on flavor. Shared code is limited to the generated client and design components, as now.
+- An unread count. There is no count endpoint: either add `GET /v1/me/notifications/unread-count` or have the list return one. Counting by paging `unread_only` is not acceptable for a badge.
+- Mark read on open; "mark all read".
+- Routing each notification's `action` link into the app. The Shelf's links (`rawwerspro://wallet/shelf...`) are not routed today.
+- An unread dot on **My orders** in The Shelf, from unread `shelf.order_*` notifications (or an `unseen` flag on the order), cleared when My orders is opened.
+- Alerts stay in-app only for now (owner's decision, 2026-11-03): no push and no email until c) is done.
+
+### c) Brevo: every email we already queue, and what is needed to send them
+
+**Today no email is delivered.** `get_mail_provider()` (`api/app/services/mail.py`) always returns `ConsoleMailProvider`, which logs the send and reports success, so `email_message` rows read `sent` with `provider_message_id = "console-<template>"`. The outbox is drained on a schedule (`dispatch-outbox-events` in beat), so everything below is queued and "sent" to the log.
+
+**Emails queued today.**
+1. Sent straight from the outbox, ignoring notification preferences:
+   - `email.verify.send`: the sign-up verification code (`auth_service`).
+   - `email.reset.send`: the password-reset code (`auth_service`).
+   - `launch.invite.email`: the launch invite code ("Your RAWWERS invite (<wave>)").
+   - `client.waitlist.confirmation_email`: the client waitlist confirmation.
+2. Every in-app notification also queues an email. `enqueue_notification` writes `notify.create_inapp` **and** `notify.send_email` for every call; the email respects the user's email channel switch, per-topic switches, quiet hours (non-urgent mail is deferred) and the daily cap (`RATE_LIMIT_NOTIFICATIONS_EMAIL_PER_DAY`, 20). Types enqueued in the code today:
+   - Bookings: `booking.request_received`, `booking.request_accepted`, `review.request`, `gig.stuck_sweep_flag`.
+   - Money and disputes: `payout.requested`, `dispute.opened`, `dispute.escalated`, `finding.recorded`, `finding.in_effect`.
+   - Accounts: `auth.new_login`, `password.reset`, `onboarding.approved_public`, `consent.updated`, `consent.reminder`, `marketing_consent.renewal`.
+   - The Shelf: `shelf.order_placed`, `_ordered`, `_shipped`, `_delivered`, `_cancelled`, `_refunded`, `shelf.raww_expiring`, `shelf.raww_expired`.
+   - Gear and learning: `gear.verified`, `gear.rejected`, `course.completed`, `certificate.issued`.
+   - Referrals: `referral.reward.granted`.
+   - Dormant features (gated off or no client): `store.order_paid`, `prints.export.ready`, `prints.order.risk_review`, `prints.shipment.updated`, `legacy.order.created`, `legacy.pro_assigned`, `legacy.schedule.confirmed`, `legacy.brief.submitted`, `legacy.review.requested`, `legacy.changes.requested`, `legacy.final.delivered`.
+   - Admins can resend any `email_message` (`POST /v1/admin/notifications/resend`).
+
+**Needed to send them.**
+- **A Brevo provider.** A `BrevoMailProvider` implementing `MailProvider` (`send_template_email`, `send_verification_email`, `send_password_reset_email`) over Brevo's transactional API, selected by settings (`MAIL_PROVIDER=brevo`, `BREVO_API_KEY`, sender address and name, reply-to). Production must refuse to start on the console provider, as it does for missing address keys.
+- **A sending domain.** SPF, DKIM and DMARC for the sender domain, verified in Brevo before the first real send.
+- **Content.** Only some types have a template (`_TEMPLATE_REGISTRY` and its i18n keys). The rest fall back to the payload's title and body, or to "Update from RAWWERS / You have a new notification.", which is useless as an email. The Shelf's emails would all have the subject "Update from RAWWERS". Every type that should email needs a subject, a body in English and Portuguese, and a link. Today all mail is plain text; an HTML layout is optional.
+- **Decide which types email at all.** Today every notification would. Some are internal (`gig.stuck_sweep_flag`) or for dormant features; an allow-list per type is safer than sending everything once a provider exists.
+- **Unsubscribe.** Notification emails carry `/unsubscribe?u=&t=&s=`, but **no route serves it** (neither the API nor the web app). Its `s` is an unkeyed SHA-256 of user id and topic, so anyone who knows a user id can forge it. It needs a keyed signature (HMAC with a server secret), a page or route that flips the topic preference, and a `List-Unsubscribe` header. Auth emails (verify, reset, new login) stay unsubscribable-exempt.
+- **Delivery status.** A Brevo webhook (delivered, soft and hard bounce, blocked, spam complaint) that updates `email_message` and suppresses addresses that hard-bounce or complain. Today `sent` only means "handed to the provider".
+- **Rows already marked `sent` by the console provider are not re-sent** when Brevo is switched on. That is intended: nothing old should go out on day one.
+- **GDPR.** A data processing agreement with Brevo, and only the address, subject and body sent (no payload dump). Marketing email stays behind marketing consent and is a separate decision.
+
 ## The Shelf (built 2026-11-03): what is open
 
 Built on the owner's decisions; these were found while building it and left as they are.
 
-- **No RAWW for bookings completed before The Shelf.** Earning starts with the first earning recorded after this release. Backfilling means running `raww_earning.sync_booking_raww` over past completed bookings, a one-off data step (the dev demo seed does it for pro1 only). Owner's call.
-- **Extras purchases earn no RAWW.** Only a booking's 5% (`final_pro_raww`) is credited. Extra-image purchases have their own earnings entries (`gig_extras`) and their own fee split; whether they earn RAWW is undecided.
+- **No RAWW for bookings completed before The Shelf: DECIDED, no backfill (owner, 2026-11-03).** Earning starts with the first earning recorded after this release (the dev demo seed syncs pro1's bookings only so there is something to see). Consequence, open: such a booking's invoice reads "0 RAWW (€7.50)", and the Wallet summary's RAWW total covers only bookings after the release while its euro credit covers all of them, so the RAWW figure is not the euro figure ÷ the rate there. See the next item.
+- **Extras: DECIDED, follow the money (owner, 2026-11-03).** Extras earn RAWW only if the invoice's euro RAWW credit includes them, and the RAWW figure must always equal that euro figure ÷ the rate. True today: extras are not in it. Extra-image purchases (`StripePaymentKind.extras`) get their own earnings entry (`extra_images`), split with no RAWW share (`pro_raww_percent=0`, the extras fee only), and the invoice's credit is the booking's 5% of its own price, so extras earn no euro credit and no RAWW, consistently. Per booking the RAWW are `round(final_pro_raww ÷ the rate stamped on its first entry)`, half up, and the invoice shows that same `final_pro_raww` beside them. Where the figures differ today: (1) bookings from before The Shelf (0 RAWW beside a euro credit, above); (2) the Wallet summary, which adds rounded per-booking RAWW against the unrounded euro total, so it can be off by a few RAWW; (3) after an admin changes `raww_eur_value`, a booking keeps the rate it was earned at, so its euros ÷ the new rate is not its RAWW. None of these is changed yet.
 - **The old per-event minting still sits in the shared reward ledger.** It is off by default now, but points it already paid to photographers stay in `reward_balance`, and a photographer who is also a client can spend them as a booking discount (100 points = €1). Not converted, as decided.
-- **Warnings reach photographers only inside the app.** The expiry warning and every order change create a `Notification` row; the pro app has no inbox screen and there is no push, so the Wallet banner (expiry) and My orders (status) are what is actually seen. Email waits for Brevo. The notifications' links (`rawwerspro://wallet/shelf...`) are not routed by the app yet.
+- **Warnings reach photographers only inside the app: ACCEPTED for now (owner, 2026-11-03), logged HIGH** as b) and c) above. The expiry warning and every order change create a `Notification` row that no screen reads; the Wallet banner (expiry) and My orders (status) are what is actually seen.
 - **Item images are links to the supplier's image**, not uploads. A supplier changing or removing the image leaves a blank tile.
 - **The margin ignores shipping.** Shipping is free in the beta and its cost is not entered anywhere, so the margin shown is price less supplier cost only.
-- **The monthly order cap counts the calendar month in UTC.** A photographer in London ordering just after midnight on the 1st in summer counts in the new month an hour early.
+- **The monthly order cap counts the calendar month in UTC: DECIDED, keep UTC (owner, 2026-11-03).** The Shelf's header shows "2 of 3 orders this month · resets 1 Dec 2026" (`orders_reset_at`, the first of next month 00:00 UTC, shown in the phone's time zone). A photographer in London ordering just after midnight on the 1st in summer still counts in the old month for an hour; the refusal still says "More next month."
 - **Credit given only by an admin never expires.** Expiry counts from the last earn or spend; a balance whose only entries are admin adjustments has no such date.
-- **A tier drop after ordering changes nothing for open orders**, and nothing for the wish list either: an item above the new level stays on it, unorderable. Not decided either way.
+- **A tier drop: DECIDED and held by tests (owner, 2026-11-03).** Open orders stand: the photographer can still cancel one while placed and the admin can move it on. Wish-list items above the new level show as locked teasers, still on the list, unorderable, and can be taken off (the app keeps their filled heart) but not put back. `tests/test_shelf_level_drop.py`.
 - **Print addresses sent before 2026-11-03 cannot be read.** They were whatever "encrypted" blob the client sent; they now read as no address. No client used the prints path.
 - **The old commerce store stores addresses unencrypted** (`order.shipping_address`). It is gated off; if it ever comes back it needs the same server-side encryption.
-- **Item compatibility is by camera body only.** Lens mounts are not modelled, so a lens shows for the bodies listed on it, not for every body with that mount.
-- **The terms text is a draft placeholder** until the lawyer's reviewed text is pasted and approved; production stays closed until then.
+- **Item compatibility is by camera body only: lens mounts NOT NOW (owner, 2026-11-03).** Mounts are not modelled, so a lens shows for the bodies listed on it, not for every body with that mount. Listing every body by hand is the workaround.
+- **The terms text is a draft placeholder: DECIDED, stays (owner, 2026-11-03).** `shelf_enabled` stays off in production until the lawyer's reviewed text is pasted and approved.
+- **Price helper defaults: DECIDED, keep for now (owner, 2026-11-03):** GBP→EUR 1.17 and a 10% discount.
+- **Address keys cannot be retired.** Nothing re-encrypts stored addresses with the newest key (`MultiFernet.rotate` over `shipping_address`), so an old key must stay listed for good, and a leaked key keeps working on what it encrypted. The postcode hash is keyed with the newest key, so it changes on rotation (nothing matches on it yet). DEPLOY_CHECKLIST has the rotation steps.
 
 ## A paid booking could read "Payment due" for good when Stripe's success event was missed — FIXED for the booking payment (2026-11-03); the selection difference still waits for the webhook
 

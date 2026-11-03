@@ -4,6 +4,24 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## The Shelf (built 2026-11-03): what is open
+
+Built on the owner's decisions; these were found while building it and left as they are.
+
+- **No RAWW for bookings completed before The Shelf.** Earning starts with the first earning recorded after this release. Backfilling means running `raww_earning.sync_booking_raww` over past completed bookings, a one-off data step (the dev demo seed does it for pro1 only). Owner's call.
+- **Extras purchases earn no RAWW.** Only a booking's 5% (`final_pro_raww`) is credited. Extra-image purchases have their own earnings entries (`gig_extras`) and their own fee split; whether they earn RAWW is undecided.
+- **The old per-event minting still sits in the shared reward ledger.** It is off by default now, but points it already paid to photographers stay in `reward_balance`, and a photographer who is also a client can spend them as a booking discount (100 points = €1). Not converted, as decided.
+- **Warnings reach photographers only inside the app.** The expiry warning and every order change create a `Notification` row; the pro app has no inbox screen and there is no push, so the Wallet banner (expiry) and My orders (status) are what is actually seen. Email waits for Brevo. The notifications' links (`rawwerspro://wallet/shelf...`) are not routed by the app yet.
+- **Item images are links to the supplier's image**, not uploads. A supplier changing or removing the image leaves a blank tile.
+- **The margin ignores shipping.** Shipping is free in the beta and its cost is not entered anywhere, so the margin shown is price less supplier cost only.
+- **The monthly order cap counts the calendar month in UTC.** A photographer in London ordering just after midnight on the 1st in summer counts in the new month an hour early.
+- **Credit given only by an admin never expires.** Expiry counts from the last earn or spend; a balance whose only entries are admin adjustments has no such date.
+- **A tier drop after ordering changes nothing for open orders**, and nothing for the wish list either: an item above the new level stays on it, unorderable. Not decided either way.
+- **Print addresses sent before 2026-11-03 cannot be read.** They were whatever "encrypted" blob the client sent; they now read as no address. No client used the prints path.
+- **The old commerce store stores addresses unencrypted** (`order.shipping_address`). It is gated off; if it ever comes back it needs the same server-side encryption.
+- **Item compatibility is by camera body only.** Lens mounts are not modelled, so a lens shows for the bodies listed on it, not for every body with that mount.
+- **The terms text is a draft placeholder** until the lawyer's reviewed text is pasted and approved; production stays closed until then.
+
 ## A paid booking could read "Payment due" for good when Stripe's success event was missed — FIXED for the booking payment (2026-11-03); the selection difference still waits for the webhook
 
 **Seen 2026-11-02 in dev.** The `stripe listen` forwarder had stopped with a Mac restart. A client paid €96 at 17:06, Stripe recorded `succeeded` (`pi_3UXOaa…`), and no `payment_intent.succeeded` reached the API. The booking kept saying "Payment due". Every "Try again" called `POST /v1/client/bookings/{id}/pay`, which fetched the existing intent from Stripe and handed back its client secret whatever its status (`payment_intents.create_or_get_gig_payment_intent`). The payment sheet answers a paid intent with "There was an unexpected error -- try again in a few seconds", on every try. Resending the event recorded it at once.

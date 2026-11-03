@@ -536,9 +536,14 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
             increment_notification_event("email", "duplicate")
             return "duplicate"
 
+    from app.services.unsubscribe import SECURITY_TYPES, page_url
+
+    # Security mail (a new sign-in, a password reset) always goes, and has no
+    # unsubscribe: someone who switched email off still hears about these.
+    security = notification_type in SECURITY_TYPES
     prefs = get_or_create_preferences(db, user_id) if user_id else None
     topic_pref = _get_topic_pref(db, user_id, topic) if user_id else None
-    if prefs and (not prefs.channel_email_enabled or (topic_pref and not topic_pref.email_enabled)):
+    if not security and prefs and (not prefs.channel_email_enabled or (topic_pref and not topic_pref.email_enabled)):
         increment_notification_event("email", "suppressed")
         return "suppressed"
 
@@ -603,7 +608,7 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
             template_key=rendered.template_key,
             subject=rendered.subject,
             text_body=rendered.body,
-            unsubscribe_url=_unsubscribe_url(user_id, topic) if user_id else None,
+            unsubscribe_url=page_url(user_id, topic) if user_id and not security else None,
         )
         row.provider_message_id = provider_message_id
         row.status = EmailMessageStatus.sent
@@ -631,11 +636,6 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
         )
     db.flush()
     return row.status.value
-
-
-def _unsubscribe_url(user_id: uuid.UUID, topic: str) -> str:
-    digest = hashlib.sha256(f"{user_id}:{topic}".encode("utf-8")).hexdigest()[:24]
-    return f"{settings.app_public_url.rstrip('/')}/unsubscribe?u={user_id}&t={topic}&s={digest}"
 
 
 def _sanitize_action(action: dict) -> dict:

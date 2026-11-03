@@ -38,10 +38,20 @@ class ConsoleMailProvider(MailProvider):
         text_body: str,
         unsubscribe_url: str | None = None,
     ) -> str | None:
+        from app.services.unsubscribe import headers_for
+
         message_id = f"console-{template_key}"
         logger.info(
             "mail_template_send",
-            extra={"template_key": template_key, "email_domain": _mask_email_domain(email), "subject": subject[:120], "message_id": message_id},
+            extra={
+                "template_key": template_key,
+                "email_domain": _mask_email_domain(email),
+                "subject": subject[:120],
+                "message_id": message_id,
+                # What a real provider must send: List-Unsubscribe and
+                # List-Unsubscribe-Post on every email with a link.
+                "headers": sorted(headers_for(unsubscribe_url)),
+            },
         )
         return message_id
 

@@ -65,6 +65,12 @@ class Settings(BaseSettings):
 
     platform_fee_bps: int = Field(default=2000, alias="PLATFORM_FEE_BPS")
     app_public_url: str = Field(default="http://localhost:3000", alias="APP_PUBLIC_URL")
+    # Where this API is reached from outside: the one-click unsubscribe URL
+    # in email headers points here.
+    api_public_url: str = Field(default="http://localhost:8000", alias="API_PUBLIC_URL")
+    # Unsubscribe link signing keys, "<key id>:<secret>" comma-separated,
+    # newest first (services/unsubscribe.py). Required in production.
+    unsubscribe_signing_keys: str = Field(default="", alias="UNSUBSCRIBE_SIGNING_KEYS")
     cors_allow_origins: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
     admin_user_ids: str = Field(default="", alias="ADMIN_USER_IDS")
     ban_enforcement_mode: str = Field(default="strict", alias="BAN_ENFORCEMENT_MODE")

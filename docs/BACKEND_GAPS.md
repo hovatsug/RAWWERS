@@ -66,19 +66,18 @@ What it cannot settle is a Money attention item, once per kind and payment (`str
 - **Rows already marked `sent` by the console provider are not re-sent** when Brevo is switched on. That is intended: nothing old should go out on day one.
 - **GDPR.** A data processing agreement with Brevo, and only the address, subject and body sent (no payload dump). Marketing email stays behind marketing consent and is a separate decision.
 
-### c1) HARD PREREQUISITE before Brevo sends anything: unsubscribe (logged 2026-11-03, not built)
+### c1) Unsubscribe — BUILT (2026-11-03), the prerequisite before Brevo sends anything
 
-**Today.** Every notification email would carry `{APP_PUBLIC_URL}/unsubscribe?u=<user id>&t=<topic>&s=<sig>` (`notifications._unsubscribe_url`), and:
-- **The page does not exist.** No route in the API or the web app serves `/unsubscribe`. The link is a 404, which breaks the law on commercial mail and Gmail's and Yahoo's bulk-sender rules, and recipients who cannot unsubscribe mark mail as spam, which hurts the sending domain.
-- **The signature is unkeyed and forgeable.** `s` is the first 24 hex characters of `sha256("<user id>:<topic>")`, with no secret. Anyone who knows or guesses a user id (ids appear in links and API responses) can make a valid link for any topic.
+`services/unsubscribe.py`, `api/v1/email_unsubscribe.py`, web `app/unsubscribe`. Tests: `tests/test_unsubscribe.py`.
+- **Signed links.** `?u=<user>&t=<topic>&k=<key id>&s=HMAC-SHA256(key, "unsubscribe:v1:<user>:<topic>")`. Keys come from `UNSUBSCRIBE_SIGNING_KEYS` (`<id>:<secret>`, newest first), required in production: the first signs and every one listed verifies, so a key can rotate without breaking links already sent. There is no expiry. The old unkeyed links are refused.
+- **A public page that changes nothing until its button.** `GET /v1/email/unsubscribe` only checks the link and says what it stops. The page's button, and a mail client's one-click, POST to the same path with the link in the query. The page also offers "Stop all emails", with a signed `all` link that the GET hands it.
+- **The existing switches.** A topic's `email_enabled` is set off (in-app is left on), or for `all`, `channel_email_enabled` is set off. Doing it twice is one change, and it is logged (`notification.email_unsubscribed`).
+- **Headers.** `unsubscribe.headers_for(url)` gives `List-Unsubscribe: <API one-click URL>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. The console provider logs them; the Brevo provider must send them (docs/BREVO_SETUP.md).
+- **Security mail is exempt.** `auth.new_login` and `password.reset` carry no link and are sent whatever the switches say. The direct verification and reset codes never had one. The `security` topic cannot be unsubscribed.
 
-**Proposed fix (one commit, before any provider is switched on):**
-1. **A keyed signature.** `s = HMAC-SHA256(UNSUBSCRIBE_SIGNING_KEYS[0], "unsubscribe:v1:<user id>:<topic>")`, checked with `hmac.compare_digest` against every key listed, so the key can rotate without breaking links already sent. It is a new secret, required in production, never the JWT or address key. No expiry: an unsubscribe link must keep working for good.
-2. **A real page.** The web app's public `/unsubscribe` page (no login) says what stops ("Emails about bookings") and has one button, which POSTs to a new `POST /v1/email/unsubscribe` with `{u, t, s}`. A GET only shows the page and changes nothing, because mail scanners open every link. The page offers "Stop all emails except security" too, and says where to switch it back on.
-3. **Per-user preference.** The POST writes the preference that already exists: the topic's `NotificationTopicPreference.email_enabled = false`, or `channel_email_enabled = false` for "all". `_send_email_from_payload` already honours both. It is idempotent, and audit-logged with the time and the topic. The apps' settings should show the same switches; they belong with the notifications screens in b).
-4. **Headers.** Every non-security email gets `List-Unsubscribe: <https://…/unsubscribe?…>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), and the same POST route accepts the one-click form.
-5. **Security mail is exempt.** Verification codes, password resets and new sign-in alerts carry no unsubscribe link and ignore the preference.
-6. **Tests.** A forged or other-topic signature is refused; a GET never unsubscribes; unsubscribing twice is one change; an old key still verifies after rotation; after unsubscribing, that topic's email is suppressed and its in-app notification is not.
+**Open.**
+- **No app screen shows the email switches**, so switching email back on is a support request. The page says so.
+- **`API_PUBLIC_URL` must be the API's public address in production**, or one-click unsubscribe points nowhere.
 
 ### c2) Proposed transactional emails for the beta (drafts, owner to approve)
 

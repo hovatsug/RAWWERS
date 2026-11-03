@@ -3,9 +3,12 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+import pytest
+
 from app.models.admin import UserAccount, UserRole, UserRoleType
 from app.models.gig import Gig, GigStatus
 from app.models.niche import Niche, ProNicheSkill, SkillTier
+from app.models.ops import FeatureFlagScope
 from app.models.outbox import OutboxEvent
 from app.models.proof_of_gigs import (
     RawwClawback,
@@ -29,9 +32,18 @@ from app.services.proof_of_gigs import (
     process_raww_mint_event,
     reverse_raww_mints_for_refund,
 )
+from app.services.feature_flags import upsert_feature_flag
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
+
+
+@pytest.fixture(autouse=True)
+def _minting_on(db_session):
+    """Event minting is off by default (The Shelf earns on its own ledger);
+    these tests are about the dormant minting code, so they switch it on."""
+    upsert_feature_flag(db_session, key="raww_minting_enabled", is_enabled=True, scope=FeatureFlagScope.global_scope, rules=None)
+    db_session.commit()
 
 
 def _seed_user(db_session, user_id: str, roles: list[UserRoleType]) -> None:

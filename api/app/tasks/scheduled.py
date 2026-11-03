@@ -155,3 +155,18 @@ def remove_unfinished_uploads_task() -> int:
         return removed
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.shelf_raww_daily")
+def shelf_raww_daily_task() -> dict:
+    """The Shelf: expire spendable RAWW after long inactivity, and warn
+    beforehand (services/raww_expiry.py)."""
+    from app.services.raww_expiry import run_daily
+
+    db = SessionLocal()
+    try:
+        result = run_daily(db)
+        db.commit()
+        return result
+    finally:
+        db.close()

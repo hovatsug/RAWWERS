@@ -119,6 +119,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.marketing_consent_daily",
         "schedule": timedelta(days=1),
     },
+    # The Shelf: RAWW expiry after long inactivity, and the warning before it.
+    "shelf-raww-daily": {
+        "task": "app.tasks.scheduled.shelf_raww_daily",
+        "schedule": timedelta(days=1),
+    },
 }
 celery_app.conf.task_routes = {
     # Its own queue, served by the worker-photos processes: a photographer's
@@ -158,6 +163,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.apply_due_findings": {"queue": "media"},
     "app.tasks.scheduled.remove_unfinished_uploads": {"queue": "media"},
     "app.tasks.scheduled.marketing_consent_daily": {"queue": "media"},
+    "app.tasks.scheduled.shelf_raww_daily": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

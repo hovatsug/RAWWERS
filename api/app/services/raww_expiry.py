@@ -21,6 +21,10 @@ from app.services import raww_ledger as ledger
 from app.services.notifications import enqueue_notification
 from app.services.shelf_settings import shelf_open, shelf_settings
 
+#: Where the expiry warning opens in the pro app (an app path: links that do
+#: not start with "/" are dropped from notifications).
+SHELF_PATH = "/wallet/shelf"
+
 
 def run_daily(db: Session, *, now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
@@ -69,7 +73,7 @@ def run_daily(db: Session, *, now: datetime | None = None) -> dict:
                     payload={
                         "title": "Your RAWW expire soon",
                         "body": f"{balance.spendable} RAWW expire on {expiry:%d %b %Y}. Earn or spend before then to keep them.",
-                        "action": {"label": "The Shelf", "url": "rawwerspro://wallet/shelf"},
+                        "action": {"label": "The Shelf", "url": SHELF_PATH},
                     },
                     reference_type="pro_raww",
                     reference_id=str(pro_user_id),

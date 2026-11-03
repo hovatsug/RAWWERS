@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/features/shared/notifications/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/client_booking_list_item.dart';
@@ -11,7 +12,10 @@ import 'package:rawwers/features/client/bookings/booking_status_display.dart';
 import 'package:rawwers/features/client/bookings/bookings_controller.dart';
 
 class BookingsScreen extends ConsumerWidget {
-  const BookingsScreen({super.key});
+  const BookingsScreen({this.notificationsPath, super.key});
+
+  /// Where the bell opens; no bell without it.
+  final String? notificationsPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +23,10 @@ class BookingsScreen extends ConsumerWidget {
     final notifier = ref.read(bookingsControllerProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Bookings')),
+      appBar: AppBar(
+        title: const Text('Bookings'),
+        actions: [if (notificationsPath != null) NotificationBell(onOpen: () => context.push(notificationsPath!))],
+      ),
       body: SafeArea(
         child: switch (page) {
           AsyncLoading() => const PagedListSkeleton(),

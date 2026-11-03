@@ -46,6 +46,7 @@ class DashboardScreen extends ConsumerWidget {
     required this.onboardingPath,
     required this.interviewPath,
     required this.walletPath,
+    this.notificationsPath,
     super.key,
   });
 
@@ -58,6 +59,7 @@ class DashboardScreen extends ConsumerWidget {
   final String onboardingPath;
   final String interviewPath;
   final String walletPath;
+  final String? notificationsPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,7 +74,7 @@ class DashboardScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
           children: [
-            YouBand(walletPath: walletPath, settingsPath: settingsPath),
+            YouBand(walletPath: walletPath, settingsPath: settingsPath, notificationsPath: notificationsPath),
             Padding(
               padding: const EdgeInsets.all(RSpace.s16),
               child: Column(

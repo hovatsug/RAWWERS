@@ -32,6 +32,17 @@ Future<void> _pump(WidgetTester tester, Widget app) async {
 }
 
 void main() {
+  testWidgets('the band carries the bell, with the unread count, and it opens the notifications', (tester) async {
+    await _pump(tester, youTab(notificationsPath: '/notifications', unread: 4));
+
+    expect(find.byTooltip('Notifications, 4 unread'), findsOneWidget);
+    await tester.tap(find.byTooltip('Notifications, 4 unread'));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('The notifications'), findsOneWidget);
+  });
+
   group('the band', () {
     testWidgets('carries the brand, the label and the withdrawable amount, framed', (tester) async {
       await _pump(tester, youTab());

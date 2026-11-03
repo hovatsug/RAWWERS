@@ -10,6 +10,7 @@ import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/shelf/shelf_orders_controller.dart';
+import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
 
 /// Where each order is, in words, with the date it got there.
 String shelfOrderStatusLine(ShelfOrderView order, RDates dates) => switch (order.status) {
@@ -22,12 +23,27 @@ String shelfOrderStatusLine(ShelfOrderView order, RDates dates) => switch (order
       _ => order.status,
     };
 
-/// My orders on The Shelf.
-class ShelfOrdersScreen extends ConsumerWidget {
+/// The notifications My orders answers for: every order update.
+const shelfOrderUpdates = 'shelf.order_';
+
+/// My orders on The Shelf. Opening it reads the order updates, which clears
+/// the dot on "My orders".
+class ShelfOrdersScreen extends ConsumerStatefulWidget {
   const ShelfOrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShelfOrdersScreen> createState() => _ShelfOrdersScreenState();
+}
+
+class _ShelfOrdersScreenState extends ConsumerState<ShelfOrdersScreen> {
+  @override
+  void initState() {
+    super.initState();
+    ref.read(notificationKindReaderProvider)(shelfOrderUpdates);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final orders = ref.watch(shelfOrdersControllerProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('My orders')),

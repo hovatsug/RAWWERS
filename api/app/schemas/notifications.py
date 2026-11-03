@@ -26,6 +26,10 @@ class NotificationView(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
+class NotificationUnreadCount(BaseModel):
+    count: int
+
+
 class NotificationListResponse(BaseModel):
     items: list[NotificationView]
     next_cursor: str | None = None

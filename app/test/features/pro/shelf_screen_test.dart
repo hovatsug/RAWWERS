@@ -7,7 +7,9 @@ import 'package:rawwers/api/models/shelf_browse_response.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/shelf/shelf_controller.dart';
+import 'package:rawwers/features/pro/shelf/shelf_orders_screen.dart';
 import 'package:rawwers/features/pro/shelf/shelf_screen.dart';
+import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
 
 import '../../support/fake_shelf.dart';
 
@@ -33,14 +35,17 @@ class _FailingShelf extends ShelfController {
   Future<ShelfBrowseResponse> build() async => throw const NetworkError();
 }
 
-Future<_FakeShelf> _pump(WidgetTester tester, ShelfBrowseResponse view, {String? wishResult, void Function(BuildContext, ShelfBrowseItem)? order}) async {
+Future<_FakeShelf> _pump(WidgetTester tester, ShelfBrowseResponse view, {String? wishResult, void Function(BuildContext, ShelfBrowseItem)? order, int unreadOrderUpdates = 0}) async {
   tester.view.physicalSize = const Size(1170, 4000);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final fake = _FakeShelf(view, wishResult: wishResult);
   await tester.pumpWidget(ProviderScope(
-    overrides: [shelfControllerProvider.overrideWith(() => fake)],
-    child: MaterialApp(theme: buildProTheme(), home: ShelfScreen(gearPath: '/gear', orderItem: order)),
+    overrides: [
+      shelfControllerProvider.overrideWith(() => fake),
+      unreadCountProvider(typePrefix: shelfOrderUpdates).overrideWith((ref) async => unreadOrderUpdates),
+    ],
+    child: MaterialApp(theme: buildProTheme(), home: ShelfScreen(gearPath: '/gear', ordersPath: '/orders', orderItem: order)),
   ));
   await tester.pumpAndSettle();
   return fake;
@@ -61,6 +66,20 @@ void main() {
     await _pump(tester, shelfView(ordersThisMonth: 2, ordersResetAt: DateTime.utc(2027, 1, 1, 12)));
 
     expect(find.text('2 of 3 orders this month · resets 1 Jan 2027'), findsOneWidget);
+  });
+
+  testWidgets('My orders carries a dot while an order update is unread', (tester) async {
+    await _pump(tester, shelfView(), unreadOrderUpdates: 2);
+
+    final badge = tester.widget<Badge>(find.ancestor(of: find.text('My orders'), matching: find.byType(Badge)));
+    expect(badge.isLabelVisible, isTrue);
+  });
+
+  testWidgets('and none when there is nothing new', (tester) async {
+    await _pump(tester, shelfView());
+
+    final badge = tester.widget<Badge>(find.ancestor(of: find.text('My orders'), matching: find.byType(Badge)));
+    expect(badge.isLabelVisible, isFalse);
   });
 
   testWidgets('says which items fit their camera', (tester) async {

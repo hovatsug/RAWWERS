@@ -15,6 +15,8 @@ import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/shelf/shelf_checkout.dart';
 import 'package:rawwers/features/pro/shelf/shelf_controller.dart';
+import 'package:rawwers/features/pro/shelf/shelf_orders_screen.dart';
+import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
 
 /// The Shelf: gear a photographer can have for the RAWW their bookings earn.
 ///
@@ -47,7 +49,16 @@ class ShelfScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('The Shelf'),
         actions: [
-          if (ordersPath != null) TextButton(onPressed: () => context.push(ordersPath!), child: const Text('My orders')),
+          if (ordersPath != null)
+            TextButton(
+              onPressed: () => context.push(ordersPath!),
+              // A dot while an order update is unread; My orders reads them.
+              child: Badge(
+                isLabelVisible: (ref.watch(unreadCountProvider(typePrefix: shelfOrderUpdates)).valueOrNull ?? 0) > 0,
+                smallSize: RSpace.s8,
+                child: const Text('My orders'),
+              ),
+            ),
         ],
       ),
       body: SafeArea(

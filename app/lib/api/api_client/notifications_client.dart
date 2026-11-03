@@ -176,6 +176,7 @@ abstract class NotificationsClient {
   });
   @POST("/v1/me/notifications/read-all")
   Future<HttpResponse> readAllNotificationsV1MeNotificationsReadAllPost({
+    @Query("type_prefix") required String? typePrefix,
     @Header("Authorization") required String? authorization,
     @Header("X-User-Id") required String? xMinusUserMinusId,
     @CancelRequest() CancelToken? cancelToken,
@@ -185,8 +186,22 @@ abstract class NotificationsClient {
     Map<String, dynamic>? extras = const {
       'tags': ['notifications'],
       'summary': 'Read All Notifications',
+      'description':
+          'Mark everything read, or only the notifications whose type starts\nwith `type_prefix` (opening My orders reads its order updates).',
       'operationId': 'read_all_notifications_v1_me_notifications_read_all_post',
       'parameters': [
+        {
+          'name': 'type_prefix',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string', 'maxLength': 64},
+              {'type': 'null'},
+            ],
+            'title': 'Type Prefix',
+          },
+        },
         {
           'name': 'Authorization',
           'in': 'header',
@@ -493,6 +508,82 @@ abstract class NotificationsClient {
                 },
                 'title':
                     'Response Put My Topic Preferences V1 Me Notification Topic Preferences Put',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @GET("/v1/me/notifications/unread-count")
+  Future<HttpResponse<NotificationUnreadCount>>
+  getMyUnreadCountV1MeNotificationsUnreadCountGet({
+    @Query("type_prefix") required String? typePrefix,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['notifications'],
+      'summary': 'Get My Unread Count',
+      'description':
+          'The bell\'s number: unread notifications, all of them or those whose\ntype starts with `type_prefix` (e.g. "shelf.order_" for My orders).',
+      'operationId': 'get_my_unread_count_v1_me_notifications_unread_count_get',
+      'parameters': [
+        {
+          'name': 'type_prefix',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string', 'maxLength': 64},
+              {'type': 'null'},
+            ],
+            'title': 'Type Prefix',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/NotificationUnreadCount',
               },
             },
           },

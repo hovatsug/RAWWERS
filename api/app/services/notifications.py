@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -373,11 +373,23 @@ def mark_notification_read(db: Session, *, user_id: uuid.UUID, notification_id: 
     return True
 
 
-def mark_all_notifications_read(db: Session, *, user_id: uuid.UUID) -> int:
+def _unread(user_id: uuid.UUID, type_prefix: str | None):
+    """A user's unread notifications, of every type or of those whose type
+    starts with `type_prefix` (e.g. "shelf.order_")."""
+    where = [Notification.user_id == user_id, Notification.read_at.is_(None)]
+    if type_prefix:
+        where.append(Notification.type.startswith(type_prefix, autoescape=True))
+    return where
+
+
+def count_unread(db: Session, *, user_id: uuid.UUID, type_prefix: str | None = None) -> int:
+    """For the apps' bell, and the dot on My orders."""
+    return int(db.execute(select(func.count()).select_from(Notification).where(*_unread(user_id, type_prefix))).scalar_one())
+
+
+def mark_all_notifications_read(db: Session, *, user_id: uuid.UUID, type_prefix: str | None = None) -> int:
     now = datetime.now(timezone.utc)
-    rows = db.execute(
-        select(Notification).where(Notification.user_id == user_id, Notification.read_at.is_(None))
-    ).scalars().all()
+    rows = db.execute(select(Notification).where(*_unread(user_id, type_prefix))).scalars().all()
     for row in rows:
         row.read_at = now
         row.status = NotificationStatus.read

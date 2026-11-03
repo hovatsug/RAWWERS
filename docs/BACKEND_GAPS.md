@@ -20,20 +20,21 @@ What it cannot settle is a Money attention item, once per kind and payment (`str
 
 **The selection difference.** With the job, a difference paid at Stripe and never recorded is recorded within about 20 minutes, and the webhook's handler then completes the booking with the selection that was paid for. Until then a new submit is still refused with "A payment for this selection is already being processed". Recording it at once inside the submit needs a decision (owner, pending): the client paid for selection A and is now submitting B. Recording A completes the booking with A, so B would be refused (A is what was paid for; more photos are extras), or A could be recorded and B re-priced against it (charge the rest, or refund through the reduction path).
 
-### b) No notifications screen in either app
+### b) Notifications screens — BUILT in both apps (2026-11-03)
 
-**Today.** The API keeps every in-app notification (`GET /v1/me/notifications`, cursor-paged, `unread_only`, plus `POST .../{id}/read` and `POST .../read-all`), but neither app has a screen that reads it. So these are created and never seen:
-- The Shelf: every order change (`shelf.order_placed`, `_ordered`, `_shipped`, `_delivered`, `_cancelled`, `_refunded`) and the RAWW expiry warning and expiry (`shelf.raww_expiring`, `shelf.raww_expired`). Today only the Wallet banner (expiry) and My orders (status, when opened) show them.
-- The client's marketing-consent renewal prompt (`marketing_consent.renewal`).
-- Everything else enqueued with `enqueue_notification` (booking requests, disputes, payouts and so on), which the apps show elsewhere or not at all.
+- **API.** `GET /v1/me/notifications/unread-count` (optional `type_prefix`), and `POST /v1/me/notifications/read-all` takes the same `type_prefix` to read one kind. Tests: `tests/test_notification_unread.py`.
+- **Apps.** A bell with the unread count (99+ at most): in the pro app in the dashboard's band beside Settings, in the client app on Bookings and Account. It opens a notifications screen per flavor (`features/pro/notifications`, `features/client/notifications`) over a shared list (`features/shared/notifications`): newest 50, unread marked, "Mark all read", tap marks read and opens where it leads. Each flavor decides where:
+  - pro: Shelf order updates go to My orders, RAWW expiry to The Shelf, booking requests to Requests, payouts to the Wallet;
+  - client: the marketing-consent renewal goes to Marketing permissions, booking and payment updates to Bookings.
+  Anything else is only marked read.
+- **My orders** carries a dot while a Shelf order update is unread; opening My orders reads them.
+- **Fixed on the way.** The Shelf's notification links were `rawwerspro://...`, which the notification service drops (it keeps links starting with "/"), so they opened nothing. They are app paths now (`/wallet/shelf/orders`, `/wallet/shelf`).
 
-**Needed.**
-- A bell with an unread count and a notifications screen in **each** app, as separate screens per flavor: pro screens under `features/pro`, client screens under `features/client`, no shared screen that branches on flavor. Shared code is limited to the generated client and design components, as now.
-- An unread count. There is no count endpoint: either add `GET /v1/me/notifications/unread-count` or have the list return one. Counting by paging `unread_only` is not acceptable for a badge.
-- Mark read on open; "mark all read".
-- Routing each notification's `action` link into the app. The Shelf's links (`rawwerspro://wallet/shelf...`) are not routed today.
-- An unread dot on **My orders** in The Shelf, from unread `shelf.order_*` notifications (or an `unseen` flag on the order), cleared when My orders is opened.
-- Alerts stay in-app only for now (owner's decision, 2026-11-03): no push and no email until c) is done.
+**Still open.**
+- **No push.** The count refreshes when a screen with a bell is built and after reading. It does not refresh while the app sits open.
+- **Only the newest 50 are listed**, with no paging.
+- **Many notifications link to web paths** the apps do not have (`/gigs/{id}`, `/disputes/{id}`, `/pro/findings`). They open nothing until those screens get routes.
+- **A client booking link opens the Bookings list, not the booking.** The ids in links are not all the ones the booking screen opens by.
 
 ### c) Brevo: every email we already queue, and what is needed to send them
 

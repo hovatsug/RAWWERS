@@ -7,6 +7,7 @@ import 'package:rawwers/core/paging/cursor_page.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/bookings/bookings_controller.dart';
 import 'package:rawwers/features/client/bookings/bookings_screen.dart';
+import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
 
 class _FakeBookings extends BookingsController {
   _FakeBookings(this._page);
@@ -48,6 +49,20 @@ Widget _wrap(Override override) => ProviderScope(
     );
 
 void main() {
+  testWidgets('the bar carries the bell when it has somewhere to open', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        bookingsControllerProvider.overrideWith(() => _FakeBookings(const CursorPage(items: []))),
+        unreadCountProvider().overrideWith((ref) async => 2),
+      ],
+      child: MaterialApp(theme: buildClientTheme(), home: const BookingsScreen(notificationsPath: '/notifications')),
+    ));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byTooltip('Notifications, 2 unread'), findsOneWidget);
+  });
+
   testWidgets('shows what a booking is waiting on, not just its raw status', (tester) async {
     await tester.pumpWidget(
       _wrap(bookingsControllerProvider.overrideWith(() => _FakeBookings(CursorPage(items: [_booking()])))),

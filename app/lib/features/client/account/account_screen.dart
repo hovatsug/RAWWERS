@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/features/shared/notifications/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
@@ -7,7 +8,10 @@ import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/tokens.dart';
 
 class AccountScreen extends ConsumerWidget {
-  const AccountScreen({required this.verifyEmailPath, this.marketingPermissionsPath, super.key});
+  const AccountScreen({required this.verifyEmailPath, this.marketingPermissionsPath, this.notificationsPath, super.key});
+
+  /// Where the bell opens; no bell without it.
+  final String? notificationsPath;
 
   final String verifyEmailPath;
 
@@ -22,7 +26,10 @@ class AccountScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Account')),
+      appBar: AppBar(
+        title: const Text('Account'),
+        actions: [if (notificationsPath != null) NotificationBell(onOpen: () => context.push(notificationsPath!))],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(RSpace.s16),
         child: Column(

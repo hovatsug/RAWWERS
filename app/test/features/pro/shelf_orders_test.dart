@@ -8,6 +8,7 @@ import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/shelf/shelf_checkout.dart';
 import 'package:rawwers/features/pro/shelf/shelf_orders_controller.dart';
 import 'package:rawwers/features/pro/shelf/shelf_orders_screen.dart';
+import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
 
 import '../../support/fake_shelf.dart';
 
@@ -134,15 +135,26 @@ void main() {
   });
 
   group('My orders', () {
+    final readKinds = <String>[];
+
     Future<_FakeOrders> pump(WidgetTester tester, List<ShelfOrderView> list) async {
       final orders = _FakeOrders(orders: list);
+      readKinds.clear();
       await tester.pumpWidget(ProviderScope(
-        overrides: [shelfOrdersControllerProvider.overrideWith(() => orders)],
+        overrides: [
+          shelfOrdersControllerProvider.overrideWith(() => orders),
+          notificationKindReaderProvider.overrideWithValue((prefix) async => readKinds.add(prefix)),
+        ],
         child: MaterialApp(theme: buildProTheme(), home: const ShelfOrdersScreen()),
       ));
       await tester.pumpAndSettle();
       return orders;
     }
+
+    testWidgets('opening it reads the order updates, which clears the dot', (tester) async {
+      await pump(tester, [_order()]);
+      expect(readKinds, ['shelf.order_']);
+    });
 
     testWidgets('a placed order can be cancelled after asking', (tester) async {
       final orders = await pump(tester, [_order()]);

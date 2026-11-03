@@ -14,6 +14,7 @@ import 'package:rawwers/features/pro/delivery/delivery_gallery_screen.dart';
 import 'package:rawwers/features/pro/gear/gear_screen.dart';
 import 'package:rawwers/features/pro/gear_verification/gear_verification_screen.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_screen.dart';
+import 'package:rawwers/features/pro/notifications/pro_notifications_screen.dart';
 import 'package:rawwers/features/pro/onboarding/onboarding_screen.dart';
 import 'package:rawwers/features/pro/payouts/payouts_screen.dart';
 import 'package:rawwers/features/pro/lightroom/connect_lightroom_screen.dart';
@@ -76,6 +77,9 @@ abstract final class ProRoute {
   static const resetPassword = '/auth/reset-password';
 
   static const upgradeToPro = '/upgrade-to-pro';
+
+  /// Notifications, over whichever tab the bell was tapped on.
+  static const notifications = '/notifications';
 
   static const dashboard = '/dashboard';
   static const requests = '/requests';
@@ -169,6 +173,15 @@ GoRouter proRouter(Ref ref) {
         ],
       ),
       GoRoute(path: ProRoute.upgradeToPro, builder: (context, state) => const UpgradeToProScreen()),
+      GoRoute(
+        path: ProRoute.notifications,
+        builder: (context, state) => const ProNotificationsScreen(
+          shelfPath: ProRoute.shelf,
+          shelfOrdersPath: ProRoute.shelfOrders,
+          requestsPath: ProRoute.requests,
+          walletPath: ProRoute.wallet,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => PresenceScope(child: ProShell(navigationShell: navigationShell)),
         branches: [
@@ -186,6 +199,7 @@ GoRouter proRouter(Ref ref) {
                   onboardingPath: ProRoute.onboarding,
                   interviewPath: ProRoute.interview,
                   walletPath: ProRoute.wallet,
+                  notificationsPath: ProRoute.notifications,
                 ),
                 routes: [
                   _editor('settings', (context, state) => const ProSettingsScreen(

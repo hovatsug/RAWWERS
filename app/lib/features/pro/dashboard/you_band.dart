@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
+import 'package:rawwers/features/shared/notifications/notification_bell.dart';
 import 'package:rawwers/design/components/r_band_hero.dart';
 import 'package:rawwers/design/brand.dart';
 import 'package:rawwers/design/components/r_header_band.dart';
@@ -29,11 +30,15 @@ class YouBand extends ConsumerWidget {
   const YouBand({
     required this.walletPath,
     required this.settingsPath,
+    this.notificationsPath,
     super.key,
   });
 
   final String walletPath;
   final String settingsPath;
+
+  /// Where the bell opens; no bell without it.
+  final String? notificationsPath;
 
   static const amountKey = ValueKey('you-band-amount');
 
@@ -76,6 +81,7 @@ class YouBand extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (notificationsPath != null) NotificationBell(onOpen: () => context.push(notificationsPath!)),
                       IconButton(
                         icon: const Icon(Icons.settings_outlined),
                         tooltip: 'Settings',

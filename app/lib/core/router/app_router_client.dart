@@ -11,6 +11,7 @@ import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
 import 'package:rawwers/features/client/gallery/selection_gallery_screen.dart';
 import 'package:rawwers/features/client/client_shell.dart';
 import 'package:rawwers/features/client/discover/home_screen.dart';
+import 'package:rawwers/features/client/notifications/client_notifications_screen.dart';
 import 'package:rawwers/features/client/discover/niche_screen.dart';
 import 'package:rawwers/features/client/messages/messages_screen.dart';
 import 'package:rawwers/features/client/messages/thread_screen.dart';
@@ -39,6 +40,9 @@ abstract final class ClientRoute {
   static const resetPassword = '/auth/reset-password';
 
   static const discover = '/discover';
+
+  /// Notifications, over whichever tab the bell was tapped on.
+  static const notifications = '/notifications';
   static const bookings = '/bookings';
   /// Choosing which photographs to keep. Nested under the booking it belongs
   /// to, so backing out lands on that booking rather than the bookings list.
@@ -97,6 +101,13 @@ GoRouter clientRouter(Ref ref) {
     routes: [
       GoRoute(path: ClientRoute.launch, builder: (context, state) => const LaunchScreen()),
       GoRoute(
+        path: ClientRoute.notifications,
+        builder: (context, state) => const ClientNotificationsScreen(
+          marketingPermissionsPath: ClientRoute.marketingPermissions,
+          bookingsPath: ClientRoute.bookings,
+        ),
+      ),
+      GoRoute(
         path: ClientRoute.login,
         builder: (context, state) => const LoginScreen(registerPath: ClientRoute.register, forgotPasswordPath: ClientRoute.forgotPassword),
         routes: [
@@ -145,7 +156,7 @@ GoRouter clientRouter(Ref ref) {
             routes: [
               GoRoute(
                 path: ClientRoute.bookings,
-                builder: (context, state) => const BookingsScreen(),
+                builder: (context, state) => const BookingsScreen(notificationsPath: ClientRoute.notifications),
                 routes: [
                   GoRoute(
                     path: ':bookingId',
@@ -191,6 +202,7 @@ GoRouter clientRouter(Ref ref) {
                 builder: (context, state) => const AccountScreen(
                   verifyEmailPath: ClientRoute.verifyEmail,
                   marketingPermissionsPath: ClientRoute.marketingPermissions,
+                  notificationsPath: ClientRoute.notifications,
                 ),
                 routes: [
                   GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),

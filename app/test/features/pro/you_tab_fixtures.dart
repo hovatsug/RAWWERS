@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/api/models/booking_request_list_item.dart';
@@ -185,6 +186,8 @@ Widget youTab({
   bool availableNowFails = false,
   bool availableNowOn = false,
   double textScale = 1.0,
+  String? notificationsPath,
+  int unread = 0,
 }) {
   final dio = Dio(BaseOptions(baseUrl: 'https://example.invalid'))
     ..httpClientAdapter = FakeHttpClientAdapter((o) => backend(o, availableNowFails: availableNowFails, availableNowOn: availableNowOn));
@@ -193,7 +196,7 @@ Widget youTab({
     routes: [
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(
+        builder: (context, state) => DashboardScreen(
           settingsPath: '/settings',
           profilePath: '/profile',
           portfolioPath: '/portfolio',
@@ -203,8 +206,10 @@ Widget youTab({
           onboardingPath: '/onboarding',
           interviewPath: '/interview',
           walletPath: '/wallet',
+          notificationsPath: notificationsPath,
         ),
       ),
+      GoRoute(path: '/notifications', builder: (context, state) => const Scaffold(body: Text('The notifications'))),
       GoRoute(path: '/wallet', builder: (context, state) => const Scaffold(body: Text('The Wallet'))),
     ],
   );
@@ -217,6 +222,7 @@ Widget youTab({
       pendingRequestsControllerProvider.overrideWith(() => FakePending(pending)),
       proProfileControllerProvider.overrideWith(FakeProfile.new),
       tierStandingsControllerProvider.overrideWith(FakeStandings.new),
+      unreadCountProvider().overrideWith((ref) async => unread),
     ],
     child: MediaQuery(
       data: MediaQueryData(textScaler: TextScaler.linear(textScale), padding: const EdgeInsets.only(top: 47)),

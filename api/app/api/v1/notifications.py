@@ -15,6 +15,7 @@ from app.schemas.notifications import (
     AdminNotificationLogResponse,
     AdminNotificationResendRequest,
     NotificationListResponse,
+    NotificationUnreadCount,
     NotificationPreferenceUpdate,
     NotificationPreferenceView,
     NotificationTopicPreferenceBulkUpdate,
@@ -23,6 +24,7 @@ from app.schemas.notifications import (
 )
 from app.services.audit import add_admin_audit_log
 from app.services.notifications import (
+    count_unread,
     get_or_create_preferences,
     list_notifications,
     list_topic_preferences,
@@ -78,12 +80,26 @@ def read_notification(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/me/notifications/unread-count", response_model=NotificationUnreadCount)
+def get_my_unread_count(
+    type_prefix: str | None = Query(default=None, max_length=64),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> NotificationUnreadCount:
+    """The bell's number: unread notifications, all of them or those whose
+    type starts with `type_prefix` (e.g. "shelf.order_" for My orders)."""
+    return NotificationUnreadCount(count=count_unread(db, user_id=user.user_id, type_prefix=type_prefix))
+
+
 @router.post("/me/notifications/read-all", status_code=status.HTTP_204_NO_CONTENT)
 def read_all_notifications(
+    type_prefix: str | None = Query(default=None, max_length=64),
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> Response:
-    mark_all_notifications_read(db, user_id=user.user_id)
+    """Mark everything read, or only the notifications whose type starts
+    with `type_prefix` (opening My orders reads its order updates)."""
+    mark_all_notifications_read(db, user_id=user.user_id, type_prefix=type_prefix)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

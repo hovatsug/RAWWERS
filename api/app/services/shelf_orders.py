@@ -56,6 +56,10 @@ _NEXT = {
     ShelfOrderStatus.shipped: {ShelfOrderStatus.delivered},
 }
 
+#: Where an order notification opens in the pro app (an app path: links
+#: that do not start with "/" are dropped from notifications).
+MY_ORDERS_PATH = "/wallet/shelf/orders"
+
 ADMIN_CANCEL_REASONS = ("out_of_stock", "supplier_problem", "address_problem", "photographer_asked", "other")
 
 _MESSAGES = {
@@ -228,7 +232,7 @@ def _event(db: Session, order: ShelfOrder, before: ShelfOrderStatus | None, afte
         payload={
             "title": title,
             "body": body.format(title=order.title, price=order.price_raww),
-            "action": {"label": "My orders", "url": "rawwerspro://wallet/shelf/orders"},
+            "action": {"label": "My orders", "url": MY_ORDERS_PATH},
         },
         reference_type="shelf_order",
         reference_id=str(order.id),

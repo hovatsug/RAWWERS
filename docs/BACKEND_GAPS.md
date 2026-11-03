@@ -4,6 +4,22 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## A paid booking could read "Payment due" for good when Stripe's success event was missed — FIXED for the booking payment (2026-11-03); the selection difference still waits for the webhook
+
+**Seen 2026-11-02 in dev.** The `stripe listen` forwarder had stopped with a Mac restart. A client paid €96 at 17:06, Stripe recorded `succeeded` (`pi_3UXOaa…`), and no `payment_intent.succeeded` reached the API. The booking kept saying "Payment due". Every "Try again" called `POST /v1/client/bookings/{id}/pay`, which fetched the existing intent from Stripe and handed back its client secret whatever its status (`payment_intents.create_or_get_gig_payment_intent`). The payment sheet answers a paid intent with "There was an unexpected error -- try again in a few seconds", on every try. Resending the event recorded it at once.
+
+The expiry job had the same gap. `expire_unpaid_gigs` cannot cancel a succeeded intent, so it left the gig "for the webhook to mark paid", which in this case never came.
+
+**Fixed.** `payment_intents.apply_missed_success` records a `succeeded` intent exactly as the webhook would (the same handler, idempotent, so the real event arriving later changes nothing). It is called where the intent is fetched from Stripe anyway:
+- the pay route, which then answers `409 already_paid` (the app already shows that as paid and refreshes);
+- the expiry job, when Stripe refuses to cancel a payment.
+A `processing` intent is left alone. Tests: `tests/test_missed_payment_webhook.py` (4 of 4 break checks).
+
+**Still open:**
+- **The selection difference** (`_reconcile_difference_intent`) still refuses a `succeeded` open intent with "already being processed" and waits for the webhook. Recording it there means committing a successful payment from inside the selection submit, which also writes the new selection; that needs a decision on what a resubmitted selection should do.
+- **No sweep looks for missed events** when nobody taps Pay and the deadline has not passed. A periodic reconcile (Stripe's list of recent `payment_intent.succeeded` events against our rows) would close it; not built.
+- **In dev**, `stripe listen` dies with a Mac restart and nothing says so. Start it as `docs/STAGE1_LOOP.md` 0.3 describes.
+
 ## Earnings, balance and payout responses carry no currency, so the apps show everything as EUR — needed before the London closed beta
 
 `GET /v1/pro/earnings/balance`, the earnings ledger and summary, payout requests and the invoice name their amounts for one currency (`withdrawable_eur`, `pending_eur`, `amount_eur`, `gross_eur`...) and send no `currency` field. The apps format money through one helper, `RMoney` (`app/lib/core/format/money.dart`), which uses the currency a response carries and falls back to EUR (`RMoney.fallbackCurrency`, the one place EUR is assumed) for these responses, which carry none; payout requests are made in EUR. Gig and booking responses do send a `currency` (`GigResponse.currency`), but the screens still put "€" in front of their amounts - the app treats every amount as EUR.

@@ -86,7 +86,7 @@ from app.services.media_urls import (
 )
 from app.services.notifications import enqueue_notification
 from app.services.outbox import enqueue_outbox_event
-from app.services.payment_intents import create_or_get_gig_payment_intent
+from app.services.payment_intents import apply_missed_success, create_or_get_gig_payment_intent
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
 from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services import live_rows, presence
@@ -1017,6 +1017,11 @@ def client_booking_pay(
         gig,
         extra_metadata={"payment_mode": mode},
     )
+    if apply_missed_success(db, intent):
+        # Stripe already took this payment and the webhook never told us.
+        # Recorded now, and answered the way any other paid booking is.
+        db.commit()
+        raise APIError(code="already_paid", message="This booking has already been paid for.", status_code=409)
     gig_pro_profile = db.get(ProProfile, gig.pro_user_id)
     log_event(
         db,

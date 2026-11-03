@@ -741,6 +741,7 @@ def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int |
                     stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
         except stripe.error.StripeError:
             logger.warning("unpaid_gig_payment_not_cancellable", extra={"gig_id": str(gig.id)})
+            _record_payments_stripe_took(db, gig, open_payments)
             continue
         try:
             with db.begin_nested():
@@ -758,6 +759,23 @@ def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int |
         except Exception:
             logger.exception("expire_unpaid_gig_failed", extra={"gig_id": str(gig.id)})
     return expired
+
+
+def _record_payments_stripe_took(db: Session, gig: Gig, payments: list[StripePayment]) -> None:
+    """A payment that could not be cancelled may be one Stripe already took.
+    Waiting for the webhook is not enough when it never comes: the booking
+    would sit unpaid with the client charged. Asked of Stripe, and recorded
+    if so (payment_intents.apply_missed_success)."""
+    from app.services.payment_intents import apply_missed_success
+
+    for payment in payments:
+        if not payment.stripe_payment_intent_id:
+            continue
+        try:
+            with db.begin_nested():
+                apply_missed_success(db, stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id))
+        except Exception:
+            logger.exception("unpaid_gig_success_check_failed", extra={"gig_id": str(gig.id)})
 
 
 from app.services.deadlines import RequestTerms  # noqa: E402 - re-exported for the request paths

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -17,6 +18,7 @@ from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, Str
 from app.services.stripe_service import PAYMENT_METHODS, map_intent_status, to_cents
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 _CENTS = Decimal("0.01")
@@ -177,6 +179,34 @@ def allocate_amount_oldest_first(payments: list[StripePayment], amount: Decimal)
         allocation.append((payment, take))
         remaining -= take
     return allocation
+
+
+def apply_missed_success(db: Session, pi) -> bool:
+    """Record a payment Stripe says succeeded, when our webhook never did.
+
+    Stripe's `payment_intent.succeeded` is how a payment is recorded here.
+    When it does not arrive (the dev forwarder down, an outage, a lost
+    delivery), the client has been charged and the booking still reads as
+    unpaid. Handing that paid intent back to the payment sheet only produces
+    Stripe's "unexpected error", on every try, for good.
+
+    So wherever an intent is fetched from Stripe anyway, a `succeeded` status
+    is applied exactly as the webhook would apply it - the same handler,
+    which is idempotent, so the real event arriving later changes nothing.
+    Returns whether it did.
+    """
+    if getattr(pi, "status", None) != "succeeded":
+        return False
+    from app.api.v1.webhooks import _apply_stripe_event
+
+    logger.warning("stripe_success_recorded_without_webhook", extra={"payment_intent_id": pi.id})
+    _apply_stripe_event(
+        db,
+        "payment_intent.succeeded",
+        {"id": pi.id, "amount_received": getattr(pi, "amount_received", None)},
+    )
+    db.flush()
+    return True
 
 
 def create_or_get_gig_payment_intent(

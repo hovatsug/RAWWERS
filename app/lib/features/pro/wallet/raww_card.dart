@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/pro_raww_view.dart';
 import 'package:rawwers/core/format/dates.dart';
 import 'package:rawwers/core/format/money.dart';
+import 'package:go_router/go_router.dart';
+import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/wallet/raww_controller.dart';
@@ -16,14 +18,17 @@ String rawwAmount(int? raww, String euros) => raww == null ? euros : '$raww RAWW
 /// still waiting for its booking's earning to settle, and when the spendable
 /// balance expires. Shown only while The Shelf is open.
 class RawwCard extends ConsumerWidget {
-  const RawwCard({super.key});
+  const RawwCard({this.shelfPath, super.key});
+
+  /// Where "Browse The Shelf" goes.
+  final String? shelfPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (ref.watch(rawwProvider)) {
       AsyncData(:final value) when value.shelfOpen => Padding(
           padding: const EdgeInsets.only(bottom: RSpace.s16),
-          child: _Card(view: value),
+          child: _Card(view: value, shelfPath: shelfPath),
         ),
       // Closed, still loading, or unreachable: the rest of the Wallet is
       // about money, and an empty RAWW card would only say nothing.
@@ -33,9 +38,10 @@ class RawwCard extends ConsumerWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.view});
+  const _Card({required this.view, required this.shelfPath});
 
   final ProRawwView view;
+  final String? shelfPath;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +82,10 @@ class _Card extends StatelessWidget {
           if (view.expiresAt case final expires?) ...[
             const SizedBox(height: RSpace.s16),
             _Expiry(date: dates.date(expires), warning: view.expiryWarning, months: view.inactivityMonths),
+          ],
+          if (shelfPath != null) ...[
+            const SizedBox(height: RSpace.s16),
+            RButton(label: 'Browse The Shelf', variant: RButtonVariant.secondary, onPressed: () => context.push(shelfPath!)),
           ],
         ],
       ),

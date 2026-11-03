@@ -179,3 +179,42 @@ class ShelfCameraModelsResponse(BaseModel):
 class ShelfWishlistResponse(BaseModel):
     item_ids: list[uuid.UUID]
     limit: int
+
+
+class ShelfBrowseItem(BaseModel):
+    id: uuid.UUID
+    title: str
+    brand: str | None = None
+    category: str
+    description: str | None = None
+    image_url: str | None = None
+    level: int
+    price_raww: int
+    in_stock: bool
+    #: Made for a camera they own (not a universal item).
+    fits_your_gear: bool
+    wished: bool
+    affordable: bool
+    #: On a level their tier does not unlock yet: a teaser, not orderable.
+    locked: bool
+
+
+class ShelfBrowseLevel(BaseModel):
+    level: int
+    band_raww: int
+    locked: bool
+    #: The tier that unlocks a locked level.
+    unlocks_at_tier: str | None = None
+    items: list[ShelfBrowseItem]
+
+
+class ShelfBrowseResponse(BaseModel):
+    tier: str
+    max_level: int
+    spendable: int
+    #: False: show the prompt to add their camera, so compatible items show.
+    has_camera: bool
+    wishlist_max: int
+    terms_text: str
+    terms_draft: bool
+    levels: list[ShelfBrowseLevel]

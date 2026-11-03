@@ -9,9 +9,9 @@ import 'package:rawwers/features/pro/wallet/raww_controller.dart';
 
 import '../../support/fake_raww.dart';
 
-Widget _wrap(ProRawwView view) => ProviderScope(
+Widget _wrap(ProRawwView view, {String? shelfPath}) => ProviderScope(
       overrides: [rawwProvider.overrideWith((ref) async => view)],
-      child: MaterialApp(theme: buildProTheme(), home: const Scaffold(body: SingleChildScrollView(child: RawwCard()))),
+      child: MaterialApp(theme: buildProTheme(), home: Scaffold(body: SingleChildScrollView(child: RawwCard(shelfPath: shelfPath)))),
     );
 
 void main() {
@@ -70,5 +70,11 @@ void main() {
   test('the invoice amount shows RAWW beside the euros once they are sent', () {
     expect(rawwAmount(75, '€7.50'), '75 RAWW (€7.50)');
     expect(rawwAmount(null, '€7.50'), '€7.50');
+  });
+
+  testWidgets('offers The Shelf when there is somewhere to go', (tester) async {
+    await tester.pumpWidget(_wrap(openRaww(), shelfPath: '/wallet/shelf'));
+    await tester.pump();
+    expect(find.text('Browse The Shelf'), findsOneWidget);
   });
 }

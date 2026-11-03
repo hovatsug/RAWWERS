@@ -24,7 +24,11 @@ import 'package:rawwers/features/pro/wallet/pending_availability.dart';
 import 'package:rawwers/features/pro/wallet/wallet_controller.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
-  const WalletScreen({this.clock = DateTime.now, super.key});
+  const WalletScreen({this.clock = DateTime.now, this.shelfPath, super.key});
+
+  /// Where the RAWW card's "Browse The Shelf" goes. Passed in rather than
+  /// imported, as the other Wallet destinations are.
+  final String? shelfPath;
 
   /// When "now" is, for how long pending earnings have left. A parameter so a
   /// test can stand at a chosen moment.
@@ -86,7 +90,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 _BalanceCard(data: value, now: now),
                 const SizedBox(height: RSpace.s16),
                 // Shown only once The Shelf is open; nothing while it is not.
-                const RawwCard(),
+                RawwCard(shelfPath: widget.shelfPath),
                 // What the balance does not say: how it got there. The
                 // balance is a position; this is the history behind it.
                 const EarningsSummaryCard(),

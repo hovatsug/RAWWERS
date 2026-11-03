@@ -46,3 +46,82 @@ def fits(db: Session, pro_user_id: uuid.UUID, item: ShelfItem, owned: set[str] |
 def can_see(db: Session, pro_user_id: uuid.UUID, item: ShelfItem) -> bool:
     """Shown to them, unlocked: active, within their level, and fitting."""
     return item.active and item.level <= max_level(db, pro_user_id) and fits(db, pro_user_id, item)
+
+
+_TIERS_IN_ORDER = (SkillTier.rookie, SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master)
+
+
+def unlocks_at(level: int, tier_max_level: dict) -> SkillTier | None:
+    """The first tier that sees `level`, or None when no tier does."""
+    return next((t for t in _TIERS_IN_ORDER if int(tier_max_level[t.value]) >= level), None)
+
+
+def browse(db: Session, pro_user_id: uuid.UUID) -> dict:
+    """The Shelf as this photographer sees it, by level.
+
+    Levels above theirs show as locked teasers with the tier that unlocks
+    them. Items for cameras they do not own are left out; universal ones
+    always show. Within a level, items made for their gear come first."""
+    from app.models.shelf import ShelfWishlistItem
+    from app.services import raww_ledger as ledger
+
+    settings = shelf_settings(db)
+    tier = tier_of(db, pro_user_id)
+    highest = int(settings.tier_max_level[tier.value])
+    owned = owned_cameras(db, pro_user_id)
+    items = db.execute(select(ShelfItem).where(ShelfItem.active.is_(True))).scalars().all()
+    compat: dict[uuid.UUID, set[str]] = {}
+    for item_id, model in db.execute(select(ShelfItemCompat.item_id, ShelfItemCompat.camera_model)):
+        compat.setdefault(item_id, set()).add(model)
+    wished = set(db.execute(select(ShelfWishlistItem.item_id).where(ShelfWishlistItem.pro_user_id == pro_user_id)).scalars())
+    balance = ledger.get_balance(db, pro_user_id)
+    spendable = balance.spendable if balance else 0
+
+    levels = []
+    for level in range(1, len(settings.level_band_raww) + 1):
+        locked = level > highest
+        shown = []
+        for item in items:
+            if item.level != level:
+                continue
+            cameras = compat.get(item.id, set())
+            if cameras and not (cameras & owned):
+                continue
+            shown.append(
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "brand": item.brand,
+                    "category": item.category,
+                    "description": item.description,
+                    "image_url": item.image_url,
+                    "level": item.level,
+                    "price_raww": item.price_raww,
+                    "in_stock": item.stock_status.value == "in_stock",
+                    "fits_your_gear": bool(cameras),
+                    "wished": item.id in wished,
+                    "affordable": spendable >= item.price_raww,
+                    "locked": locked,
+                }
+            )
+        shown.sort(key=lambda i: (not i["fits_your_gear"], i["price_raww"], i["title"]))
+        unlock = unlocks_at(level, settings.tier_max_level) if locked else None
+        levels.append(
+            {
+                "level": level,
+                "band_raww": settings.level_band_raww[level - 1],
+                "locked": locked,
+                "unlocks_at_tier": unlock.value if unlock else None,
+                "items": shown,
+            }
+        )
+    return {
+        "tier": tier.value,
+        "max_level": highest,
+        "spendable": spendable,
+        "has_camera": bool(owned),
+        "wishlist_max": settings.wishlist_max,
+        "terms_text": settings.terms_text,
+        "terms_draft": settings.terms_approved_at is None,
+        "levels": levels,
+    }

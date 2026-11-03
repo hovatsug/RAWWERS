@@ -16,11 +16,12 @@ from app.schemas.shelf import (
     ProRawwView,
     RawwEntryView,
     RawwHistoryResponse,
+    ShelfBrowseResponse,
     ShelfCameraModelsResponse,
     ShelfCameraModelView,
     ShelfWishlistResponse,
 )
-from app.services import raww_wallet, shelf_wishlist
+from app.services import raww_wallet, shelf_browse, shelf_wishlist
 from app.services.gear_verify import normalise_model
 from app.services.shelf_settings import shelf_open, shelf_settings
 
@@ -117,3 +118,12 @@ def unwish(item_id: uuid.UUID, user: CurrentUser = Depends(require_not_banned), 
     shelf_wishlist.remove(db, pro_user_id=user.user_id, item_id=item_id)
     db.commit()
     return _wishlist_view(db, user.user_id)
+
+
+@router.get("/shelf", response_model=ShelfBrowseResponse)
+def browse_shelf(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> ShelfBrowseResponse:
+    _ensure_pro_user(db, user.user_id)
+    _require_open(db)
+    view = ShelfBrowseResponse(**shelf_browse.browse(db, user.user_id))
+    db.commit()
+    return view

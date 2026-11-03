@@ -13,6 +13,7 @@ from app.api.v1.lightroom import router as lightroom_router
 from app.api.v1.marketing_consent import router as marketing_consent_router
 from app.api.v1.marketing_consent_pro import router as marketing_consent_pro_router
 from app.api.v1.marketing_consent_admin import router as marketing_consent_admin_router
+from app.api.v1.shelf_admin import router as shelf_admin_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chats import router as chats_router
 from app.api.v1.client_launch import router as client_launch_router
@@ -94,6 +95,7 @@ api_router.include_router(delivery_router)
 api_router.include_router(marketing_consent_router)
 api_router.include_router(marketing_consent_pro_router)
 api_router.include_router(marketing_consent_admin_router)
+api_router.include_router(shelf_admin_router)
 api_router.include_router(i18n_router)
 api_router.include_router(legacy_router)
 api_router.include_router(prints_router)

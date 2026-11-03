@@ -253,6 +253,29 @@ export type MarketingWording = {
   published_at: string | null;
 };
 
+export type ShelfSettings = {
+  raww_eur_value: string;
+  gbp_eur_rate: string;
+  shelf_discount_percent: number;
+  inactivity_months: number;
+  warning_days: number;
+  level_band_raww: number[];
+  tier_max_level: Record<string, number>;
+  wishlist_max: number;
+  max_orders_per_month: number;
+  same_item_cooldown_days: number;
+  allowed_countries: string[];
+  free_shipping: boolean;
+  shelf_enabled: boolean;
+  shelf_open: boolean;
+  terms_text: string;
+  terms_draft: boolean;
+  terms_reviewed_by: string | null;
+  terms_review_note: string | null;
+  terms_approved_at: string | null;
+  updated_at: string;
+};
+
 export type MarketingTakeDown = {
   use_id: string;
   content_name: string;
@@ -426,6 +449,13 @@ export const admin = {
       method: "POST",
       body: JSON.stringify(body)
     }),
+  shelfSettings: () => adminFetch<ShelfSettings>("shelf/settings"),
+  saveShelfSettings: (body: Partial<ShelfSettings>) =>
+    adminFetch<ShelfSettings>("shelf/settings", { method: "PUT", body: JSON.stringify(body) }),
+  saveShelfTerms: (text: string) =>
+    adminFetch<ShelfSettings>("shelf/settings/terms", { method: "PUT", body: JSON.stringify({ text }) }),
+  approveShelfTerms: (body: { reviewed_by: string; note: string }) =>
+    adminFetch<ShelfSettings>("shelf/settings/terms/approve", { method: "POST", body: JSON.stringify(body) }),
   disputes: () => adminFetch<DisputeRow[]>("disputes"),
   dispute: (id: string) => adminFetch<Record<string, unknown>>(`disputes/${id}`),
   resolveDispute: (id: string, decision: string, rationale: string, amount?: string) =>

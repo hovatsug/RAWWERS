@@ -104,3 +104,51 @@ class ProRawwBalance(Base):
     #: When the expiry warning went out; cleared by any activity.
     expiry_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+
+#: The Shelf's terms until the lawyer's reviewed text replaces it.
+SHELF_TERMS_PLACEHOLDER = (
+    "DRAFT - not reviewed. RAWWS are a reward for photographers on RAWWERS. They have no cash value, "
+    "cannot be sold, transferred or exchanged for money, and can only be spent on The Shelf. RAWWS from "
+    "a booking become spendable once that booking's earning has settled. Unused RAWWS expire after a long "
+    "period without earning or spending; you will be told before they do. Items ship to the countries "
+    "listed, while stocks last."
+)
+
+
+class ShelfSettings(Base):
+    """The Shelf's settings: one row, edited in the admin, every change
+    audit-logged. Values that set a price are stamped on what they priced
+    (an earning's rate, an order's price and rate), never re-read."""
+
+    __tablename__ = "shelf_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    #: Euros one RAWW stands for (an earning is credit in euros / this).
+    raww_eur_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    #: Used only to suggest a RAWWS price from a GBP street price.
+    gbp_eur_rate: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    #: How far below street price the suggested price sits.
+    shelf_discount_percent: Mapped[int] = mapped_column(nullable=False)
+    inactivity_months: Mapped[int] = mapped_column(nullable=False)
+    warning_days: Mapped[int] = mapped_column(nullable=False)
+    #: Five RAWWS amounts, one per level: the band an item's price should sit in.
+    level_band_raww: Mapped[list] = mapped_column(JSONB, nullable=False)
+    #: The highest level each tier sees.
+    tier_max_level: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    wishlist_max: Mapped[int] = mapped_column(nullable=False)
+    max_orders_per_month: Mapped[int] = mapped_column(nullable=False)
+    same_item_cooldown_days: Mapped[int] = mapped_column(nullable=False)
+    allowed_countries: Mapped[list] = mapped_column(JSONB, nullable=False)
+    #: The beta ships free; there is no charged shipping yet.
+    free_shipping: Mapped[bool] = mapped_column(nullable=False, default=True)
+    shelf_enabled: Mapped[bool] = mapped_column(nullable=False)
+    terms_text: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Set when the lawyer's reviewed terms are approved; cleared when the
+    #: text changes. In production The Shelf is off without it.
+    terms_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    terms_reviewed_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    terms_review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    terms_approved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)

@@ -44,15 +44,16 @@ def _earning(db: Session, gig: Gig) -> EarningsLedgerEntry | None:
     ).scalar_one_or_none()
 
 
-def _active_holds(db: Session, pro_user_id: uuid.UUID) -> tuple[bool, set[uuid.UUID]]:
-    """(a hold on all their earnings, the gigs with a hold of their own)."""
+def _active_holds(db: Session, pro_user_id: uuid.UUID, source_type: EarningsSourceType = EarningsSourceType.gig_base) -> tuple[bool, set[uuid.UUID]]:
+    """(a hold on all their earnings, the sources of `source_type` with a
+    hold of their own: gigs, or extras purchases)."""
     rows = db.execute(
         select(EarningsHold.source_type, EarningsHold.source_id).where(
             EarningsHold.pro_user_id == pro_user_id,
             EarningsHold.released_at.is_(None),
             or_(
                 and_(EarningsHold.source_type.is_(None), EarningsHold.source_id.is_(None)),
-                EarningsHold.source_type == EarningsSourceType.gig_base.value,
+                EarningsHold.source_type == source_type.value,
             ),
         )
     ).all()
@@ -118,9 +119,79 @@ def sync_booking_raww(db: Session, gig: Gig) -> None:
     ledger.set_booking_status(db, pro_user_id=gig.pro_user_id, gig_id=gig.id, status=status)
 
 
+def extras_credit(entry: EarningsLedgerEntry) -> Decimal:
+    """An extras purchase's euro credit now: what was stamped on its
+    earning, none once that earning is reversed (a refund takes the
+    purchase's whole earning back today, so its whole credit with it), and
+    none for extras from before they earned it."""
+    if entry.pro_raww_eur is None or entry.status == EarningsEntryStatus.reversed or entry.reversed_at is not None:
+        return Decimal("0.00")
+    return Decimal(entry.pro_raww_eur)
+
+
+def sync_extras_raww(db: Session, pro_user_id: uuid.UUID) -> int:
+    """Bring each of a photographer's extras purchases' RAWW in line with
+    its earning: the amount (round(credit / the rate stamped on its first
+    entry)) and the state (spendable once that earning is available with no
+    hold on it or on the purchase). Extras from before this release have no
+    stamped credit and are left alone (no backfill). Returns how many
+    purchases changed."""
+    entries = db.execute(
+        select(EarningsLedgerEntry).where(
+            EarningsLedgerEntry.pro_user_id == pro_user_id,
+            EarningsLedgerEntry.source_type == EarningsSourceType.extra_images,
+            EarningsLedgerEntry.pro_raww_eur.is_not(None),
+        )
+    ).scalars().all()
+    if not entries:
+        return 0
+    ledger.balance_locked(db, pro_user_id)
+    holds = _active_holds(db, pro_user_id, EarningsSourceType.extra_images)
+    changed = 0
+    for entry in entries:
+        purchase_id = str(entry.source_id)
+        first = ledger.find_entry(
+            db, pro_user_id=pro_user_id, kind=RawwEntryKind.earn_extras, source_type="extra_images", source_id=purchase_id
+        )
+        credit = extras_credit(entry)
+        if first is None and credit <= 0:
+            continue
+        rate = first.raww_eur_value if first is not None else shelf_settings(db).raww_eur_value
+        target = raww_for(credit, rate)
+        status = _wanted(entry, holds)
+        gig_id = (entry.meta or {}).get("gig_id")
+        common = dict(
+            pro_user_id=pro_user_id,
+            status=status,
+            gig_id=uuid.UUID(gig_id) if gig_id else None,
+            raww_eur_value=rate,
+            eur_basis=credit,
+            source_type="extra_images",
+        )
+        moved = False
+        if first is None:
+            moved = ledger.post_entry(db, kind=RawwEntryKind.earn_extras, amount=target, source_id=purchase_id, **common) is not None
+        else:
+            net = ledger.extras_net(db, pro_user_id=pro_user_id, purchase_id=purchase_id)
+            if target != net:
+                ledger.post_entry(
+                    db,
+                    kind=RawwEntryKind.reverse_extras if target < net else RawwEntryKind.earn_extras,
+                    amount=target - net,
+                    source_id=f"{purchase_id}:{net}->{target}",
+                    **common,
+                )
+                moved = True
+        moved = ledger.set_extras_status(db, pro_user_id=pro_user_id, purchase_id=purchase_id, status=status) > 0 or moved
+        changed += int(moved)
+    return changed
+
+
 def sync_pro_raww_status(db: Session, pro_user_id: uuid.UUID) -> int:
     """Move each of a photographer's bookings' RAWW to the state its
-    earning is in now. Returns how many bookings moved."""
+    earning is in now, and bring their extras' RAWW in line with theirs.
+    Returns how many bookings moved."""
+    sync_extras_raww(db, pro_user_id)
     rows = db.execute(
         select(ProRawwLedgerEntry.gig_id, ProRawwLedgerEntry.status)
         .where(

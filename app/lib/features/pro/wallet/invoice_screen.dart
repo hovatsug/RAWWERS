@@ -63,6 +63,8 @@ class _Invoice extends StatelessWidget {
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     String amount(String value) => money.format(value, currency: invoice.currency);
     String minus(String value) => money.minus(value, currency: invoice.currency);
+    final hasExtras = Decimal.parse(invoice.extrasProRaww) > Decimal.zero;
+    final credit = (Decimal.parse(invoice.proRaww) + Decimal.parse(invoice.extrasProRaww)).toStringAsFixed(2);
 
     return ListView(
       padding: const EdgeInsets.all(RSpace.s16),
@@ -103,10 +105,12 @@ class _Invoice extends StatelessWidget {
               RAmountRow(label: 'Your cash', amount: amount(invoice.proCash), total: true),
               if (invoice.proRawwPercent > 0) ...[
                 const SizedBox(height: RSpace.s12),
+                // The booking's credit and its extras' (5% of them, part of
+                // the extras fee), which are not in the sum above.
                 RAmountRow(
                   label: 'Your RAWW credit',
-                  detail: '${invoice.proRawwPercent}% of the booking',
-                  amount: rawwAmount(invoice.proRawwRawws, amount(invoice.proRaww)),
+                  detail: hasExtras ? '${invoice.proRawwPercent}% of the booking and its extras' : '${invoice.proRawwPercent}% of the booking',
+                  amount: rawwAmount(invoice.proRawwRawws, amount(credit)),
                 ),
                 const SizedBox(height: RSpace.s4),
                 Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),

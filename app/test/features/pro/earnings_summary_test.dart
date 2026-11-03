@@ -26,9 +26,11 @@ InvoiceSummaryView _summary({
   String? averageGross = '847.35',
   int reconstructed = 0,
   int? proRawwRawws,
+  String extrasProRaww = '0.00',
 }) =>
     InvoiceSummaryView(
       proRawwRawws: proRawwRawws,
+      extrasProRaww: extrasProRaww,
       bookings: bookings,
       gross: gross,
       platformFees: platformFees,
@@ -115,6 +117,14 @@ void main() {
     expect(find.text('2 RAWW'), findsOneWidget);
     expect(find.text('RAWW from your bookings'), findsOneWidget);
     expect(find.textContaining('RAWW ('), findsNothing);
+  });
+
+  testWidgets('the credit includes the extras credit', (tester) async {
+    await tester.pumpWidget(_wrap(_summary(proRaww: '7.50', extrasProRaww: '0.50', proRawwRawws: 80)));
+    await tester.pump();
+
+    expect(find.text('€8.00'), findsOneWidget);
+    expect(find.text('80 RAWW'), findsOneWidget);
   });
 
   testWidgets('before it opens the credit is euros only', (tester) async {

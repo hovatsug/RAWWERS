@@ -32,9 +32,11 @@ GigInvoiceView _invoice({
   String? vatNetAmount,
   String? vatAmount,
   int? proRawwRawws,
+  String extrasProRaww = '0.00',
 }) =>
     GigInvoiceView(
       proRawwRawws: proRawwRawws,
+      extrasProRaww: extrasProRaww,
       gigId: _gigId,
       issuedAt: DateTime.utc(2026, 3, 5, 14),
       currency: 'EUR',
@@ -184,6 +186,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('745 RAWW (€74.50)'), findsOneWidget);
+  });
+
+  testWidgets('the credit covers the extras too, outside the booking sum', (tester) async {
+    _tall(tester);
+    await tester.pumpWidget(_wrap(_invoice(proRawwRawws: 755, extrasProRaww: '1.00')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('755 RAWW (€75.50)'), findsOneWidget);
+    expect(find.text('5% of the booking and its extras'), findsOneWidget);
+    expect(find.textContaining('298.00'), findsOneWidget, reason: 'the platform fee is the booking\'s alone');
   });
 
   testWidgets('a recorded split carries no such disclaimer', (tester) async {

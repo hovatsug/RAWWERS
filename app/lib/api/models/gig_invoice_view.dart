@@ -47,6 +47,11 @@
 ///             "type": "integer",
 ///             "title": "Client Credit Percent"
 ///         },
+///         "extras_pro_raww": {
+///             "type": "string",
+///             "default": "0.00",
+///             "title": "Extras Pro Raww"
+///         },
 ///         "pro_raww_rawws": {
 ///             "anyOf": [
 ///                 {
@@ -194,6 +199,11 @@ abstract class GigInvoiceView with _$GigInvoiceView {
     @JsonKey(name: GigInvoiceView.clientCreditPercentKey_)
     required int clientCreditPercent,
 
+    /// extrasProRaww
+    @Default('0.00')
+    @JsonKey(name: GigInvoiceView.extrasProRawwKey_)
+    String extrasProRaww,
+
     /// proRawwRawws
     @JsonKey(name: GigInvoiceView.proRawwRawwsKey_) int? proRawwRawws,
 
@@ -251,6 +261,8 @@ abstract class GigInvoiceView with _$GigInvoiceView {
   static const String proRawwPercentKey_ = r'pro_raww_percent';
 
   static const String clientCreditPercentKey_ = r'client_credit_percent';
+
+  static const String extrasProRawwKey_ = r'extras_pro_raww';
 
   static const String proRawwRawwsKey_ = r'pro_raww_rawws';
 

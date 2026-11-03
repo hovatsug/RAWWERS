@@ -20,14 +20,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import APIError
-from app.models.shelf import BOOKING_KINDS, ProRawwBalance, ProRawwLedgerEntry, RawwEntryKind, RawwEntryStatus
+from app.models.shelf import BOOKING_KINDS, EARNING_KINDS, EXTRAS_KINDS, ProRawwBalance, ProRawwLedgerEntry, RawwEntryKind, RawwEntryStatus
 
 #: Kinds that restart the inactivity clock: earning and spending.
-_ACTIVITY_KINDS = (RawwEntryKind.earn_booking, RawwEntryKind.spend_order)
+_ACTIVITY_KINDS = (RawwEntryKind.earn_booking, RawwEntryKind.earn_extras, RawwEntryKind.spend_order)
 
 
 def _now() -> datetime:
@@ -70,7 +70,7 @@ def _insert_locked(db: Session, balance: ProRawwBalance, **fields) -> ProRawwLed
         balance.pending += entry.amount
     else:
         balance.spendable += entry.amount
-    if entry.kind in _ACTIVITY_KINDS and (entry.kind != RawwEntryKind.earn_booking or entry.amount > 0):
+    if entry.kind in _ACTIVITY_KINDS and (entry.kind not in EARNING_KINDS or entry.amount > 0):
         balance.last_activity_at = entry.created_at or _now()
         balance.expiry_warned_at = None
     balance.updated_at = _now()
@@ -100,8 +100,8 @@ def post_entry(
     amount = int(amount)
     if amount == 0:
         return None
-    if kind not in BOOKING_KINDS and status != RawwEntryStatus.spendable:
-        raise ValueError("only booking entries can be pending")
+    if kind not in EARNING_KINDS and status != RawwEntryStatus.spendable:
+        raise ValueError("only entries earned from work can be pending")
     existing = _existing(db, pro_user_id, kind, source_type, source_id)
     if existing:
         return existing
@@ -124,7 +124,7 @@ def post_entry(
         note=note,
         actor_user_id=actor_user_id,
         created_at=_now(),
-        spendable_at=_now() if (kind in BOOKING_KINDS and status == RawwEntryStatus.spendable) else None,
+        spendable_at=_now() if (kind in EARNING_KINDS and status == RawwEntryStatus.spendable) else None,
     )
     if meta:
         entry.meta = meta
@@ -178,13 +178,50 @@ def set_booking_status(db: Session, *, pro_user_id: uuid.UUID, gig_id: uuid.UUID
     """Move a booking's entries to `status`, and their RAWW between the
     buckets. Both directions: an earning held after it settled takes its
     RAWW back to pending. Returns how many entries moved."""
+    return _set_status(
+        db, pro_user_id, status, ProRawwLedgerEntry.gig_id == gig_id, ProRawwLedgerEntry.kind.in_(BOOKING_KINDS)
+    )
+
+
+def set_extras_status(db: Session, *, pro_user_id: uuid.UUID, purchase_id: str, status: RawwEntryStatus) -> int:
+    """The same for one extras purchase's entries, which follow their own
+    earning, not the booking's."""
+    return _set_status(
+        db,
+        pro_user_id,
+        status,
+        ProRawwLedgerEntry.source_type == "extra_images",
+        _purchase_entries(purchase_id),
+        ProRawwLedgerEntry.kind.in_(EXTRAS_KINDS),
+    )
+
+
+def extras_net(db: Session, *, pro_user_id: uuid.UUID, purchase_id: str) -> int:
+    """What one extras purchase's entries add up to now."""
+    return int(
+        db.execute(
+            select(func.coalesce(func.sum(ProRawwLedgerEntry.amount), 0)).where(
+                ProRawwLedgerEntry.pro_user_id == pro_user_id,
+                ProRawwLedgerEntry.source_type == "extra_images",
+                _purchase_entries(purchase_id),
+                ProRawwLedgerEntry.kind.in_(EXTRAS_KINDS),
+            )
+        ).scalar_one()
+    )
+
+
+def _purchase_entries(purchase_id: str):
+    """A purchase's first entry is keyed by its id, later ones "<id>:<from>-><to>"."""
+    return or_(ProRawwLedgerEntry.source_id == purchase_id, ProRawwLedgerEntry.source_id.like(f"{purchase_id}:%"))
+
+
+def _set_status(db: Session, pro_user_id: uuid.UUID, status: RawwEntryStatus, *where) -> int:
     balance = balance_locked(db, pro_user_id)
     rows = db.execute(
         select(ProRawwLedgerEntry).where(
             ProRawwLedgerEntry.pro_user_id == pro_user_id,
-            ProRawwLedgerEntry.gig_id == gig_id,
-            ProRawwLedgerEntry.kind.in_(BOOKING_KINDS),
             ProRawwLedgerEntry.status != status,
+            *where,
         )
     ).scalars().all()
     now = _now()

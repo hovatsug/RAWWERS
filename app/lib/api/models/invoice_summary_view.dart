@@ -17,6 +17,11 @@
 ///             "type": "string",
 ///             "title": "Pro Raww"
 ///         },
+///         "extras_pro_raww": {
+///             "type": "string",
+///             "default": "0.00",
+///             "title": "Extras Pro Raww"
+///         },
 ///         "pro_raww_rawws": {
 ///             "anyOf": [
 ///                 {
@@ -90,6 +95,11 @@ abstract class InvoiceSummaryView with _$InvoiceSummaryView {
     /// proRaww
     @JsonKey(name: InvoiceSummaryView.proRawwKey_) required String proRaww,
 
+    /// extrasProRaww
+    @Default('0.00')
+    @JsonKey(name: InvoiceSummaryView.extrasProRawwKey_)
+    String extrasProRaww,
+
     /// proRawwRawws
     @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? proRawwRawws,
 
@@ -119,6 +129,8 @@ abstract class InvoiceSummaryView with _$InvoiceSummaryView {
   static const String platformFeesKey_ = r'platform_fees';
 
   static const String proRawwKey_ = r'pro_raww';
+
+  static const String extrasProRawwKey_ = r'extras_pro_raww';
 
   static const String proRawwRawwsKey_ = r'pro_raww_rawws';
 

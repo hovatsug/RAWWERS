@@ -19,7 +19,8 @@ mixin _$InvoiceSummaryView {
 @JsonKey(name: InvoiceSummaryView.bookingsKey_) int get bookings;/// gross
 @JsonKey(name: InvoiceSummaryView.grossKey_) String get gross;/// platformFees
 @JsonKey(name: InvoiceSummaryView.platformFeesKey_) String get platformFees;/// proRaww
-@JsonKey(name: InvoiceSummaryView.proRawwKey_) String get proRaww;/// proRawwRawws
+@JsonKey(name: InvoiceSummaryView.proRawwKey_) String get proRaww;/// extrasProRaww
+@JsonKey(name: InvoiceSummaryView.extrasProRawwKey_) String get extrasProRaww;/// proRawwRawws
 @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? get proRawwRawws;/// clientRaww
 @JsonKey(name: InvoiceSummaryView.clientRawwKey_) String get clientRaww;/// proCash
 @JsonKey(name: InvoiceSummaryView.proCashKey_) String get proCash;/// averageGross
@@ -37,16 +38,16 @@ $InvoiceSummaryViewCopyWith<InvoiceSummaryView> get copyWith => _$InvoiceSummary
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InvoiceSummaryView&&(identical(other.bookings, bookings) || other.bookings == bookings)&&(identical(other.gross, gross) || other.gross == gross)&&(identical(other.platformFees, platformFees) || other.platformFees == platformFees)&&(identical(other.proRaww, proRaww) || other.proRaww == proRaww)&&(identical(other.proRawwRawws, proRawwRawws) || other.proRawwRawws == proRawwRawws)&&(identical(other.clientRaww, clientRaww) || other.clientRaww == clientRaww)&&(identical(other.proCash, proCash) || other.proCash == proCash)&&(identical(other.averageGross, averageGross) || other.averageGross == averageGross)&&(identical(other.reconstructed, reconstructed) || other.reconstructed == reconstructed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InvoiceSummaryView&&(identical(other.bookings, bookings) || other.bookings == bookings)&&(identical(other.gross, gross) || other.gross == gross)&&(identical(other.platformFees, platformFees) || other.platformFees == platformFees)&&(identical(other.proRaww, proRaww) || other.proRaww == proRaww)&&(identical(other.extrasProRaww, extrasProRaww) || other.extrasProRaww == extrasProRaww)&&(identical(other.proRawwRawws, proRawwRawws) || other.proRawwRawws == proRawwRawws)&&(identical(other.clientRaww, clientRaww) || other.clientRaww == clientRaww)&&(identical(other.proCash, proCash) || other.proCash == proCash)&&(identical(other.averageGross, averageGross) || other.averageGross == averageGross)&&(identical(other.reconstructed, reconstructed) || other.reconstructed == reconstructed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookings,gross,platformFees,proRaww,proRawwRawws,clientRaww,proCash,averageGross,reconstructed);
+int get hashCode => Object.hash(runtimeType,bookings,gross,platformFees,proRaww,extrasProRaww,proRawwRawws,clientRaww,proCash,averageGross,reconstructed);
 
 @override
 String toString() {
-  return 'InvoiceSummaryView(bookings: $bookings, gross: $gross, platformFees: $platformFees, proRaww: $proRaww, proRawwRawws: $proRawwRawws, clientRaww: $clientRaww, proCash: $proCash, averageGross: $averageGross, reconstructed: $reconstructed)';
+  return 'InvoiceSummaryView(bookings: $bookings, gross: $gross, platformFees: $platformFees, proRaww: $proRaww, extrasProRaww: $extrasProRaww, proRawwRawws: $proRawwRawws, clientRaww: $clientRaww, proCash: $proCash, averageGross: $averageGross, reconstructed: $reconstructed)';
 }
 
 
@@ -57,7 +58,7 @@ abstract mixin class $InvoiceSummaryViewCopyWith<$Res>  {
   factory $InvoiceSummaryViewCopyWith(InvoiceSummaryView value, $Res Function(InvoiceSummaryView) _then) = _$InvoiceSummaryViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: InvoiceSummaryView.bookingsKey_) int bookings,@JsonKey(name: InvoiceSummaryView.grossKey_) String gross,@JsonKey(name: InvoiceSummaryView.platformFeesKey_) String platformFees,@JsonKey(name: InvoiceSummaryView.proRawwKey_) String proRaww,@JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? proRawwRawws,@JsonKey(name: InvoiceSummaryView.clientRawwKey_) String clientRaww,@JsonKey(name: InvoiceSummaryView.proCashKey_) String proCash,@JsonKey(name: InvoiceSummaryView.averageGrossKey_) String? averageGross,@JsonKey(name: InvoiceSummaryView.reconstructedKey_) int reconstructed
+@JsonKey(name: InvoiceSummaryView.bookingsKey_) int bookings,@JsonKey(name: InvoiceSummaryView.grossKey_) String gross,@JsonKey(name: InvoiceSummaryView.platformFeesKey_) String platformFees,@JsonKey(name: InvoiceSummaryView.proRawwKey_) String proRaww,@JsonKey(name: InvoiceSummaryView.extrasProRawwKey_) String extrasProRaww,@JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? proRawwRawws,@JsonKey(name: InvoiceSummaryView.clientRawwKey_) String clientRaww,@JsonKey(name: InvoiceSummaryView.proCashKey_) String proCash,@JsonKey(name: InvoiceSummaryView.averageGrossKey_) String? averageGross,@JsonKey(name: InvoiceSummaryView.reconstructedKey_) int reconstructed
 });
 
 
@@ -74,12 +75,13 @@ class _$InvoiceSummaryViewCopyWithImpl<$Res>
 
 /// Create a copy of InvoiceSummaryView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? bookings = null,Object? gross = null,Object? platformFees = null,Object? proRaww = null,Object? proRawwRawws = freezed,Object? clientRaww = null,Object? proCash = null,Object? averageGross = freezed,Object? reconstructed = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? bookings = null,Object? gross = null,Object? platformFees = null,Object? proRaww = null,Object? extrasProRaww = null,Object? proRawwRawws = freezed,Object? clientRaww = null,Object? proCash = null,Object? averageGross = freezed,Object? reconstructed = null,}) {
   return _then(_self.copyWith(
 bookings: null == bookings ? _self.bookings : bookings // ignore: cast_nullable_to_non_nullable
 as int,gross: null == gross ? _self.gross : gross // ignore: cast_nullable_to_non_nullable
 as String,platformFees: null == platformFees ? _self.platformFees : platformFees // ignore: cast_nullable_to_non_nullable
 as String,proRaww: null == proRaww ? _self.proRaww : proRaww // ignore: cast_nullable_to_non_nullable
+as String,extrasProRaww: null == extrasProRaww ? _self.extrasProRaww : extrasProRaww // ignore: cast_nullable_to_non_nullable
 as String,proRawwRawws: freezed == proRawwRawws ? _self.proRawwRawws : proRawwRawws // ignore: cast_nullable_to_non_nullable
 as int?,clientRaww: null == clientRaww ? _self.clientRaww : clientRaww // ignore: cast_nullable_to_non_nullable
 as String,proCash: null == proCash ? _self.proCash : proCash // ignore: cast_nullable_to_non_nullable
@@ -170,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: InvoiceSummaryView.bookingsKey_)  int bookings, @JsonKey(name: InvoiceSummaryView.grossKey_)  String gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_)  String platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_)  String proRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_)  int? proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_)  String clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_)  String proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_)  String? averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_)  int reconstructed)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: InvoiceSummaryView.bookingsKey_)  int bookings, @JsonKey(name: InvoiceSummaryView.grossKey_)  String gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_)  String platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_)  String proRaww, @JsonKey(name: InvoiceSummaryView.extrasProRawwKey_)  String extrasProRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_)  int? proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_)  String clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_)  String proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_)  String? averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_)  int reconstructed)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _InvoiceSummaryView() when $default != null:
-return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_that.proRawwRawws,_that.clientRaww,_that.proCash,_that.averageGross,_that.reconstructed);case _:
+return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_that.extrasProRaww,_that.proRawwRawws,_that.clientRaww,_that.proCash,_that.averageGross,_that.reconstructed);case _:
   return orElse();
 
 }
@@ -191,10 +193,10 @@ return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: InvoiceSummaryView.bookingsKey_)  int bookings, @JsonKey(name: InvoiceSummaryView.grossKey_)  String gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_)  String platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_)  String proRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_)  int? proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_)  String clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_)  String proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_)  String? averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_)  int reconstructed)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: InvoiceSummaryView.bookingsKey_)  int bookings, @JsonKey(name: InvoiceSummaryView.grossKey_)  String gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_)  String platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_)  String proRaww, @JsonKey(name: InvoiceSummaryView.extrasProRawwKey_)  String extrasProRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_)  int? proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_)  String clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_)  String proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_)  String? averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_)  int reconstructed)  $default,) {final _that = this;
 switch (_that) {
 case _InvoiceSummaryView():
-return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_that.proRawwRawws,_that.clientRaww,_that.proCash,_that.averageGross,_that.reconstructed);case _:
+return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_that.extrasProRaww,_that.proRawwRawws,_that.clientRaww,_that.proCash,_that.averageGross,_that.reconstructed);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +213,10 @@ return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: InvoiceSummaryView.bookingsKey_)  int bookings, @JsonKey(name: InvoiceSummaryView.grossKey_)  String gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_)  String platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_)  String proRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_)  int? proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_)  String clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_)  String proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_)  String? averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_)  int reconstructed)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: InvoiceSummaryView.bookingsKey_)  int bookings, @JsonKey(name: InvoiceSummaryView.grossKey_)  String gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_)  String platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_)  String proRaww, @JsonKey(name: InvoiceSummaryView.extrasProRawwKey_)  String extrasProRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_)  int? proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_)  String clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_)  String proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_)  String? averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_)  int reconstructed)?  $default,) {final _that = this;
 switch (_that) {
 case _InvoiceSummaryView() when $default != null:
-return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_that.proRawwRawws,_that.clientRaww,_that.proCash,_that.averageGross,_that.reconstructed);case _:
+return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_that.extrasProRaww,_that.proRawwRawws,_that.clientRaww,_that.proCash,_that.averageGross,_that.reconstructed);case _:
   return null;
 
 }
@@ -226,7 +228,7 @@ return $default(_that.bookings,_that.gross,_that.platformFees,_that.proRaww,_tha
 
 @jsonSerializable
 class _InvoiceSummaryView extends InvoiceSummaryView {
-  const _InvoiceSummaryView({@JsonKey(name: InvoiceSummaryView.bookingsKey_) required this.bookings, @JsonKey(name: InvoiceSummaryView.grossKey_) required this.gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_) required this.platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_) required this.proRaww, @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) this.proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_) required this.clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_) required this.proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_) this.averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_) this.reconstructed = 0}): super._();
+  const _InvoiceSummaryView({@JsonKey(name: InvoiceSummaryView.bookingsKey_) required this.bookings, @JsonKey(name: InvoiceSummaryView.grossKey_) required this.gross, @JsonKey(name: InvoiceSummaryView.platformFeesKey_) required this.platformFees, @JsonKey(name: InvoiceSummaryView.proRawwKey_) required this.proRaww, @JsonKey(name: InvoiceSummaryView.extrasProRawwKey_) this.extrasProRaww = '0.00', @JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) this.proRawwRawws, @JsonKey(name: InvoiceSummaryView.clientRawwKey_) required this.clientRaww, @JsonKey(name: InvoiceSummaryView.proCashKey_) required this.proCash, @JsonKey(name: InvoiceSummaryView.averageGrossKey_) this.averageGross, @JsonKey(name: InvoiceSummaryView.reconstructedKey_) this.reconstructed = 0}): super._();
   factory _InvoiceSummaryView.fromJson(Map<String, dynamic> json) => _$InvoiceSummaryViewFromJson(json);
 
 /// bookings
@@ -237,6 +239,8 @@ class _InvoiceSummaryView extends InvoiceSummaryView {
 @override@JsonKey(name: InvoiceSummaryView.platformFeesKey_) final  String platformFees;
 /// proRaww
 @override@JsonKey(name: InvoiceSummaryView.proRawwKey_) final  String proRaww;
+/// extrasProRaww
+@override@JsonKey(name: InvoiceSummaryView.extrasProRawwKey_) final  String extrasProRaww;
 /// proRawwRawws
 @override@JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) final  int? proRawwRawws;
 /// clientRaww
@@ -261,16 +265,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InvoiceSummaryView&&(identical(other.bookings, bookings) || other.bookings == bookings)&&(identical(other.gross, gross) || other.gross == gross)&&(identical(other.platformFees, platformFees) || other.platformFees == platformFees)&&(identical(other.proRaww, proRaww) || other.proRaww == proRaww)&&(identical(other.proRawwRawws, proRawwRawws) || other.proRawwRawws == proRawwRawws)&&(identical(other.clientRaww, clientRaww) || other.clientRaww == clientRaww)&&(identical(other.proCash, proCash) || other.proCash == proCash)&&(identical(other.averageGross, averageGross) || other.averageGross == averageGross)&&(identical(other.reconstructed, reconstructed) || other.reconstructed == reconstructed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InvoiceSummaryView&&(identical(other.bookings, bookings) || other.bookings == bookings)&&(identical(other.gross, gross) || other.gross == gross)&&(identical(other.platformFees, platformFees) || other.platformFees == platformFees)&&(identical(other.proRaww, proRaww) || other.proRaww == proRaww)&&(identical(other.extrasProRaww, extrasProRaww) || other.extrasProRaww == extrasProRaww)&&(identical(other.proRawwRawws, proRawwRawws) || other.proRawwRawws == proRawwRawws)&&(identical(other.clientRaww, clientRaww) || other.clientRaww == clientRaww)&&(identical(other.proCash, proCash) || other.proCash == proCash)&&(identical(other.averageGross, averageGross) || other.averageGross == averageGross)&&(identical(other.reconstructed, reconstructed) || other.reconstructed == reconstructed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookings,gross,platformFees,proRaww,proRawwRawws,clientRaww,proCash,averageGross,reconstructed);
+int get hashCode => Object.hash(runtimeType,bookings,gross,platformFees,proRaww,extrasProRaww,proRawwRawws,clientRaww,proCash,averageGross,reconstructed);
 
 @override
 String toString() {
-  return 'InvoiceSummaryView(bookings: $bookings, gross: $gross, platformFees: $platformFees, proRaww: $proRaww, proRawwRawws: $proRawwRawws, clientRaww: $clientRaww, proCash: $proCash, averageGross: $averageGross, reconstructed: $reconstructed)';
+  return 'InvoiceSummaryView(bookings: $bookings, gross: $gross, platformFees: $platformFees, proRaww: $proRaww, extrasProRaww: $extrasProRaww, proRawwRawws: $proRawwRawws, clientRaww: $clientRaww, proCash: $proCash, averageGross: $averageGross, reconstructed: $reconstructed)';
 }
 
 
@@ -281,7 +285,7 @@ abstract mixin class _$InvoiceSummaryViewCopyWith<$Res> implements $InvoiceSumma
   factory _$InvoiceSummaryViewCopyWith(_InvoiceSummaryView value, $Res Function(_InvoiceSummaryView) _then) = __$InvoiceSummaryViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: InvoiceSummaryView.bookingsKey_) int bookings,@JsonKey(name: InvoiceSummaryView.grossKey_) String gross,@JsonKey(name: InvoiceSummaryView.platformFeesKey_) String platformFees,@JsonKey(name: InvoiceSummaryView.proRawwKey_) String proRaww,@JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? proRawwRawws,@JsonKey(name: InvoiceSummaryView.clientRawwKey_) String clientRaww,@JsonKey(name: InvoiceSummaryView.proCashKey_) String proCash,@JsonKey(name: InvoiceSummaryView.averageGrossKey_) String? averageGross,@JsonKey(name: InvoiceSummaryView.reconstructedKey_) int reconstructed
+@JsonKey(name: InvoiceSummaryView.bookingsKey_) int bookings,@JsonKey(name: InvoiceSummaryView.grossKey_) String gross,@JsonKey(name: InvoiceSummaryView.platformFeesKey_) String platformFees,@JsonKey(name: InvoiceSummaryView.proRawwKey_) String proRaww,@JsonKey(name: InvoiceSummaryView.extrasProRawwKey_) String extrasProRaww,@JsonKey(name: InvoiceSummaryView.proRawwRawwsKey_) int? proRawwRawws,@JsonKey(name: InvoiceSummaryView.clientRawwKey_) String clientRaww,@JsonKey(name: InvoiceSummaryView.proCashKey_) String proCash,@JsonKey(name: InvoiceSummaryView.averageGrossKey_) String? averageGross,@JsonKey(name: InvoiceSummaryView.reconstructedKey_) int reconstructed
 });
 
 
@@ -298,12 +302,13 @@ class __$InvoiceSummaryViewCopyWithImpl<$Res>
 
 /// Create a copy of InvoiceSummaryView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? bookings = null,Object? gross = null,Object? platformFees = null,Object? proRaww = null,Object? proRawwRawws = freezed,Object? clientRaww = null,Object? proCash = null,Object? averageGross = freezed,Object? reconstructed = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? bookings = null,Object? gross = null,Object? platformFees = null,Object? proRaww = null,Object? extrasProRaww = null,Object? proRawwRawws = freezed,Object? clientRaww = null,Object? proCash = null,Object? averageGross = freezed,Object? reconstructed = null,}) {
   return _then(_InvoiceSummaryView(
 bookings: null == bookings ? _self.bookings : bookings // ignore: cast_nullable_to_non_nullable
 as int,gross: null == gross ? _self.gross : gross // ignore: cast_nullable_to_non_nullable
 as String,platformFees: null == platformFees ? _self.platformFees : platformFees // ignore: cast_nullable_to_non_nullable
 as String,proRaww: null == proRaww ? _self.proRaww : proRaww // ignore: cast_nullable_to_non_nullable
+as String,extrasProRaww: null == extrasProRaww ? _self.extrasProRaww : extrasProRaww // ignore: cast_nullable_to_non_nullable
 as String,proRawwRawws: freezed == proRawwRawws ? _self.proRawwRawws : proRawwRawws // ignore: cast_nullable_to_non_nullable
 as int?,clientRaww: null == clientRaww ? _self.clientRaww : clientRaww // ignore: cast_nullable_to_non_nullable
 as String,proCash: null == proCash ? _self.proCash : proCash // ignore: cast_nullable_to_non_nullable

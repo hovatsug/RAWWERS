@@ -17,7 +17,9 @@ const KIND: Record<string, string> = {
   spend_order: "Shelf order",
   refund_order: "Order cancelled",
   expire: "Expired",
-  admin_adjust: "Adjustment"
+  admin_adjust: "Adjustment",
+  earn_extras: "Extras credit",
+  reverse_extras: "Extras refunded"
 };
 
 function newRequestId(): string {

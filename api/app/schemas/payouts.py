@@ -255,6 +255,11 @@ class GigInvoiceView(BaseModel):
     retained_percent: int
     pro_raww_percent: int
     client_credit_percent: int
+    #: The RAWW credit on this booking's extra-image purchases (5% of them,
+    #: part of the extras fee), apart from the booking's sum above. Zero for
+    #: none, for a refunded purchase, and for extras from before they
+    #: earned it. The invoice's credit is `pro_raww + extras_pro_raww`.
+    extras_pro_raww: Decimal = Decimal("0.00")
     #: The credit in RAWW, shown beside the euros once The Shelf is open.
     #: Null while it is closed, and for a booking from before The Shelf
     #: (it has no RAWW: its invoice shows euros only).
@@ -301,6 +306,9 @@ class InvoiceSummaryView(BaseModel):
     #: paid - not only the share the platform keeps.
     platform_fees: Decimal
     pro_raww: Decimal
+    #: The credit on extra-image purchases, apart from the sum (as on the
+    #: invoice). The credit shown is `pro_raww + extras_pro_raww`.
+    extras_pro_raww: Decimal = Decimal("0.00")
     #: The RAWW the ledger holds for this photographer's bookings, once The
     #: Shelf is open; null before. Its own total, not `pro_raww` over the
     #: rate: bookings from before The Shelf have euros and no RAWW.

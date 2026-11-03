@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/core/format/money.dart';
@@ -65,7 +66,12 @@ class _Summary extends StatelessWidget {
           const Divider(height: RSpace.s16),
           RAmountRow(label: 'Cash earned', amount: money.format(summary.proCash), total: true),
           const SizedBox(height: RSpace.s12),
-          RAmountRow(label: 'Your RAWW credit', amount: money.format(summary.proRaww)),
+          // Bookings' credit and their extras', which the sum above leaves
+          // out (extras are not on invoices).
+          RAmountRow(
+            label: 'Your RAWW credit',
+            amount: money.format((Decimal.parse(summary.proRaww) + Decimal.parse(summary.extrasProRaww)).toStringAsFixed(2)),
+          ),
           const SizedBox(height: RSpace.s4),
           Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
           // The ledger's own total, never the euros above over the rate:

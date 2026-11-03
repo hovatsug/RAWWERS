@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, Index, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import CHAR, DateTime, Enum, Index, Integer, Numeric, SmallInteger, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -87,6 +87,11 @@ class EarningsLedgerEntry(Base):
     gross_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     platform_fee_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     net_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    #: Extras only: the photographer's RAWW credit, part of the platform fee
+    #: (`platform_fee_eur` holds it), at the booking's stamped percentage.
+    #: Null on entries from before extras earned it (no backfill).
+    pro_raww_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    pro_raww_percent: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     status: Mapped[EarningsEntryStatus] = mapped_column(
         Enum(EarningsEntryStatus, name="earnings_entry_status", native_enum=False, length=64),
         nullable=False,

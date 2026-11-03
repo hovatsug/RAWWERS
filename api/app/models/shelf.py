@@ -43,10 +43,19 @@ class RawwEntryKind(str, enum.Enum):
     expire = "expire"
     #: An admin's correction, with a required note (either sign).
     admin_adjust = "admin_adjust"
+    #: An extra-image purchase's 5% credit, in RAWW at the rate stamped on
+    #: the entry (source: the purchase; gig_id: its booking).
+    earn_extras = "earn_extras"
+    #: A refund lowering that credit (negative).
+    reverse_extras = "reverse_extras"
 
 
 #: Kinds that follow a booking's earning: pending until it settles.
 BOOKING_KINDS = (RawwEntryKind.earn_booking, RawwEntryKind.reverse_booking)
+#: Kinds that follow an extras purchase's own earning, the same way.
+EXTRAS_KINDS = (RawwEntryKind.earn_extras, RawwEntryKind.reverse_extras)
+#: Every kind earned from work: pending until its earning settles.
+EARNING_KINDS = BOOKING_KINDS + EXTRAS_KINDS
 
 
 class RawwEntryStatus(str, enum.Enum):

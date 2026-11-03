@@ -70,7 +70,13 @@ def create_earnings_entry(
     """`split` (a commission.BookingSplit) for a booking's own earnings,
     computed by photographer_money from the booking's stamped rates. Other
     sources (extras, Studioverse) take their fee from the policy, through
-    the same rounding rule."""
+    the same rounding rule.
+
+    Extras earn the RAWW credit (owner's decision, 2026-11-03): the policy's
+    extras fee divides as a booking's does, the booking's stamped
+    `pro_raww_percent` of it credited to the photographer (15% kept and 5%
+    credited of a 20% fee) and stamped on the entry. Their cash is the same
+    as before; the credit comes out of the platform's share."""
     from app.services.commission import split_with_rates
 
     gross = _q2(gross_eur)
@@ -78,9 +84,12 @@ def create_earnings_entry(
         return None
 
     policy = ensure_default_platform_fee_policy(db)
+    credit_percent: int | None = None
     if split is None:
         fee_percent = _fee_percent_for_source(policy, source_type)
-        split = split_with_rates(gross, retained_percent=fee_percent, pro_raww_percent=0)
+        if source_type == EarningsSourceType.extra_images:
+            credit_percent = min(fee_percent, _extras_credit_percent(db, policy, metadata))
+        split = split_with_rates(gross, retained_percent=fee_percent - (credit_percent or 0), pro_raww_percent=credit_percent or 0)
     fee_percent = split.fee_percent
     net = _q2(split.pro_cash)
     fee = _q2(gross - net)
@@ -112,6 +121,8 @@ def create_earnings_entry(
             net_eur=net,
             status=status,
             available_at=available_at,
+            pro_raww_eur=_q2(split.pro_raww) if credit_percent is not None else None,
+            pro_raww_percent=credit_percent,
             meta={
                 "fee_percent": fee_percent,
                 "fee_policy_id": str(policy.id),
@@ -672,6 +683,18 @@ def _add_payout_event(db: Session, *, payout_request_id: uuid.UUID, event_type: 
     db.add(row)
     db.flush()
     return row
+
+
+def _extras_credit_percent(db: Session, policy: PlatformFeePolicy, metadata: dict | None) -> int:
+    """The credit share on extras: the booking's stamped `pro_raww_percent`,
+    the policy's for a booking made before rates were stamped."""
+    from app.models.gig import Gig
+
+    gig_id = (metadata or {}).get("gig_id")
+    gig = db.get(Gig, uuid.UUID(str(gig_id))) if gig_id else None
+    if gig is not None and gig.pro_raww_percent is not None:
+        return int(gig.pro_raww_percent)
+    return int(policy.pro_raww_percent)
 
 
 def _fee_percent_for_source(policy: PlatformFeePolicy, source_type: EarningsSourceType) -> int:

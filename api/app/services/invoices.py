@@ -43,6 +43,9 @@ class Invoice:
     pro_raww: Decimal
     client_raww: Decimal
     pro_cash: Decimal
+    #: The RAWW credit on this booking's extra-image purchases, apart from
+    #: the booking's own sum above (extras are not on the invoice).
+    extras_pro_raww: Decimal
 
     retained_percent: int
     pro_raww_percent: int
@@ -115,13 +118,39 @@ class InvoiceAmounts:
     pro_raww: Decimal
     client_raww: Decimal
     pro_cash: Decimal
+    extras_pro_raww: Decimal
     retained_percent: int
     pro_raww_percent: int
     client_credit_percent: int
     rates_were_stamped: bool
 
 
-def invoice_amounts(db: Session, gig: Gig) -> InvoiceAmounts:
+def extras_credits(db: Session, pro_user_id: uuid.UUID, gig_ids: list[uuid.UUID] | None = None) -> dict[uuid.UUID, Decimal]:
+    """The RAWW credit on each booking's extra-image purchases, as it stands
+    (a refunded purchase's is gone; extras from before they earned it have
+    none), in one query for any number of bookings."""
+    from app.models.client_rewards_pricing import ExtraImagePurchase
+    from app.models.payouts import EarningsLedgerEntry, EarningsSourceType
+    from app.services.raww_earning import extras_credit
+
+    query = (
+        select(ExtraImagePurchase.gig_id, EarningsLedgerEntry)
+        .join(ExtraImagePurchase, ExtraImagePurchase.id == EarningsLedgerEntry.source_id)
+        .where(
+            EarningsLedgerEntry.pro_user_id == pro_user_id,
+            EarningsLedgerEntry.source_type == EarningsSourceType.extra_images,
+            EarningsLedgerEntry.pro_raww_eur.is_not(None),
+        )
+    )
+    if gig_ids is not None:
+        query = query.where(ExtraImagePurchase.gig_id.in_(gig_ids))
+    out: dict[uuid.UUID, Decimal] = {}
+    for gig_id, entry in db.execute(query).all():
+        out[gig_id] = _q2(out.get(gig_id, Decimal("0.00")) + extras_credit(entry))
+    return out
+
+
+def invoice_amounts(db: Session, gig: Gig, extras: dict[uuid.UUID, Decimal] | None = None) -> InvoiceAmounts:
     """What one gig's money divides into.
 
     The split stamped on the booking when its earnings were recorded
@@ -151,6 +180,7 @@ def invoice_amounts(db: Session, gig: Gig) -> InvoiceAmounts:
         pro_raww=pro_raww,
         client_raww=client_raww,
         pro_cash=pro_cash,
+        extras_pro_raww=(extras if extras is not None else extras_credits(db, gig.pro_user_id, [gig.id])).get(gig.id, Decimal("0.00")),
         retained_percent=split.retained_percent,
         pro_raww_percent=split.pro_raww_percent,
         client_credit_percent=split.client_credit_percent,
@@ -183,6 +213,7 @@ def build_invoice(db: Session, gig: Gig) -> Invoice:
         pro_raww=amounts.pro_raww,
         client_raww=amounts.client_raww,
         pro_cash=amounts.pro_cash,
+        extras_pro_raww=amounts.extras_pro_raww,
         retained_percent=amounts.retained_percent,
         pro_raww_percent=amounts.pro_raww_percent,
         client_credit_percent=amounts.client_credit_percent,
@@ -209,6 +240,7 @@ class InvoiceSummary:
     pro_raww: Decimal
     client_raww: Decimal
     pro_cash: Decimal
+    extras_pro_raww: Decimal
 
     #: None rather than zero when there are no bookings. A photographer with
     #: no completed work has no average, and rendering 0.00 would state one.
@@ -227,11 +259,12 @@ def summarise_invoices(db: Session, pro_user_id: uuid.UUID) -> InvoiceSummary:
     ).scalars().all()
 
     zero = Decimal("0.00")
-    totals = {"gross": zero, "platform_fees": zero, "pro_raww": zero, "client_raww": zero, "pro_cash": zero}
+    totals = {"gross": zero, "platform_fees": zero, "pro_raww": zero, "client_raww": zero, "pro_cash": zero, "extras_pro_raww": zero}
     reconstructed = 0
 
+    extras = extras_credits(db, pro_user_id)
     for gig in gigs:
-        amounts = invoice_amounts(db, gig)
+        amounts = invoice_amounts(db, gig, extras)
         totals["gross"] += amounts.gross
         # The platform's whole take, which is what a photographer means by
         # "fees paid" - not just the part the platform keeps.
@@ -239,6 +272,7 @@ def summarise_invoices(db: Session, pro_user_id: uuid.UUID) -> InvoiceSummary:
         totals["pro_raww"] += amounts.pro_raww
         totals["client_raww"] += amounts.client_raww
         totals["pro_cash"] += amounts.pro_cash
+        totals["extras_pro_raww"] += amounts.extras_pro_raww
         if not amounts.rates_were_stamped:
             reconstructed += 1
 
@@ -249,6 +283,7 @@ def summarise_invoices(db: Session, pro_user_id: uuid.UUID) -> InvoiceSummary:
         pro_raww=_q2(totals["pro_raww"]),
         client_raww=_q2(totals["client_raww"]),
         pro_cash=_q2(totals["pro_cash"]),
+        extras_pro_raww=_q2(totals["extras_pro_raww"]),
         average_gross=_q2(totals["gross"] / len(gigs)) if gigs else None,
         reconstructed=reconstructed,
     )

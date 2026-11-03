@@ -243,5 +243,6 @@ from app.models.i18n import (
     LocalizedText,
     UserLocalePreference,
 )
+from app.models.shelf import ProRawwBalance, ProRawwLedgerEntry  # noqa: F401
 
 __all__ = ["Base"]

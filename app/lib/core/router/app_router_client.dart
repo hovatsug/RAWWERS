@@ -41,8 +41,6 @@ abstract final class ClientRoute {
 
   static const discover = '/discover';
 
-  /// Notifications, over whichever tab the bell was tapped on.
-  static const notifications = '/notifications';
   static const bookings = '/bookings';
   /// Choosing which photographs to keep. Nested under the booking it belongs
   /// to, so backing out lands on that booking rather than the bookings list.
@@ -53,6 +51,11 @@ abstract final class ClientRoute {
       '$bookings/$bookingId/photos/$galleryId';
   static const messages = '/messages';
   static const account = '/account';
+
+  /// Notifications, under the tab whose bell opened them, so back returns
+  /// there and the bottom nav stays.
+  static const notifications = '$bookings/notifications';
+  static const accountNotifications = '$account/notifications';
 
   /// Opened from Account, so it hangs off Account and back returns there.
   static const verifyEmail = '$account/verify-email';
@@ -70,6 +73,11 @@ abstract final class ClientRoute {
 
   static String thread(String threadId) => '$messages/$threadId';
 }
+
+const _clientNotifications = ClientNotificationsScreen(
+  marketingPermissionsPath: ClientRoute.marketingPermissions,
+  bookingsPath: ClientRoute.bookings,
+);
 
 @Riverpod(keepAlive: true)
 GoRouter clientRouter(Ref ref) {
@@ -100,13 +108,6 @@ GoRouter clientRouter(Ref ref) {
     },
     routes: [
       GoRoute(path: ClientRoute.launch, builder: (context, state) => const LaunchScreen()),
-      GoRoute(
-        path: ClientRoute.notifications,
-        builder: (context, state) => const ClientNotificationsScreen(
-          marketingPermissionsPath: ClientRoute.marketingPermissions,
-          bookingsPath: ClientRoute.bookings,
-        ),
-      ),
       GoRoute(
         path: ClientRoute.login,
         builder: (context, state) => const LoginScreen(registerPath: ClientRoute.register, forgotPasswordPath: ClientRoute.forgotPassword),
@@ -158,6 +159,8 @@ GoRouter clientRouter(Ref ref) {
                 path: ClientRoute.bookings,
                 builder: (context, state) => const BookingsScreen(notificationsPath: ClientRoute.notifications),
                 routes: [
+                  // Before ':bookingId', which would otherwise take it.
+                  GoRoute(path: 'notifications', builder: (context, state) => _clientNotifications),
                   GoRoute(
                     path: ':bookingId',
                     builder: (context, state) => BookingDetailScreen(bookingId: state.pathParameters['bookingId']!),
@@ -202,11 +205,12 @@ GoRouter clientRouter(Ref ref) {
                 builder: (context, state) => const AccountScreen(
                   verifyEmailPath: ClientRoute.verifyEmail,
                   marketingPermissionsPath: ClientRoute.marketingPermissions,
-                  notificationsPath: ClientRoute.notifications,
+                  notificationsPath: ClientRoute.accountNotifications,
                 ),
                 routes: [
                   GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),
                   GoRoute(path: 'marketing-permissions', builder: (context, state) => const MarketingPermissionsScreen()),
+                  GoRoute(path: 'notifications', builder: (context, state) => _clientNotifications),
                 ],
               ),
             ],

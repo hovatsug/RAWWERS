@@ -78,10 +78,11 @@ abstract final class ProRoute {
 
   static const upgradeToPro = '/upgrade-to-pro';
 
-  /// Notifications, over whichever tab the bell was tapped on.
-  static const notifications = '/notifications';
 
   static const dashboard = '/dashboard';
+
+  /// Notifications, opened from the bell in the dashboard's band.
+  static const notifications = '$dashboard/notifications';
   static const requests = '/requests';
   static const messages = '/messages';
   static String thread(String threadId) => '$messages/$threadId';
@@ -173,15 +174,6 @@ GoRouter proRouter(Ref ref) {
         ],
       ),
       GoRoute(path: ProRoute.upgradeToPro, builder: (context, state) => const UpgradeToProScreen()),
-      GoRoute(
-        path: ProRoute.notifications,
-        builder: (context, state) => const ProNotificationsScreen(
-          shelfPath: ProRoute.shelf,
-          shelfOrdersPath: ProRoute.shelfOrders,
-          requestsPath: ProRoute.requests,
-          walletPath: ProRoute.wallet,
-        ),
-      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => PresenceScope(child: ProShell(navigationShell: navigationShell)),
         branches: [
@@ -215,6 +207,12 @@ GoRouter proRouter(Ref ref) {
                         availabilityPath: ProRoute.availability,
                         reviewsPath: ProRoute.reviews,
                         connectLightroomPath: ProRoute.connectLightroom,
+                      )),
+                  _editor('notifications', (context, state) => const ProNotificationsScreen(
+                        shelfPath: ProRoute.shelf,
+                        shelfOrdersPath: ProRoute.shelfOrders,
+                        requestsPath: ProRoute.requests,
+                        walletPath: ProRoute.wallet,
                       )),
                   _editor('profile', (context, state) => const ProProfileEditScreen()),
                   _editor('gear', (context, state) => const GearScreen()),

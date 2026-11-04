@@ -321,7 +321,7 @@ bool _nothingDue(SelectionQuoteResponse quote) => quote.amountDue == '0.00';
 /// The server's refund for a selection cheaper than what was paid, or null.
 String? _refundOf(SelectionQuoteResponse quote) {
   final refund = quote.refundAmount;
-  return (refund == null || refund == '0.00') ? null : refund;
+  return refund == '0.00' ? null : refund;
 }
 
 /// Said before confirming, never discovered after: the final price, and the

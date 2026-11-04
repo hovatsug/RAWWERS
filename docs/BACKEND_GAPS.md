@@ -60,8 +60,8 @@ What it cannot settle is a Money attention item, once per kind and payment (`str
 - **A Brevo provider.** A `BrevoMailProvider` implementing `MailProvider` (`send_template_email`, `send_verification_email`, `send_password_reset_email`) over Brevo's transactional API, selected by settings (`MAIL_PROVIDER=brevo`, `BREVO_API_KEY`, sender address and name, reply-to). Production must refuse to start on the console provider, as it does for missing address keys.
 - **A sending domain.** SPF, DKIM and DMARC for the sender domain, verified in Brevo before the first real send.
 - **Content.** Only some types have a template (`_TEMPLATE_REGISTRY` and its i18n keys). The rest fall back to the payload's title and body, or to "Update from RAWWERS / You have a new notification.", which is useless as an email. The Shelf's emails would all have the subject "Update from RAWWERS". Every type that should email needs a subject, a body in English and Portuguese, and a link. Today all mail is plain text; an HTML layout is optional.
-- **Decide which types email at all.** Today every notification would. Some are internal (`gig.stuck_sweep_flag`) or for dormant features; an allow-list per type is safer than sending everything once a provider exists.
-- **Unsubscribe.** Notification emails carry `/unsubscribe?u=&t=&s=`, but **no route serves it** (neither the API nor the web app). Its `s` is an unkeyed SHA-256 of user id and topic, so anyone who knows a user id can forge it. It needs a keyed signature (HMAC with a server secret), a page or route that flips the topic preference, and a `List-Unsubscribe` header. Auth emails (verify, reset, new login) stay unsubscribable-exempt.
+- **Decide which types email at all.** DONE: the allow-list in c2.
+- **Unsubscribe.** DONE: c1.
 - **Delivery status.** A Brevo webhook (delivered, soft and hard bounce, blocked, spam complaint) that updates `email_message` and suppresses addresses that hard-bounce or complain. Today `sent` only means "handed to the provider".
 - **Rows already marked `sent` by the console provider are not re-sent** when Brevo is switched on. That is intended: nothing old should go out on day one.
 - **GDPR.** A data processing agreement with Brevo, and only the address, subject and body sent (no payload dump). Marketing email stays behind marketing consent and is a separate decision.
@@ -79,36 +79,23 @@ What it cannot settle is a Money attention item, once per kind and payment (`str
 - **No app screen shows the email switches**, so switching email back on is a support request. The page says so.
 - **`API_PUBLIC_URL` must be the API's public address in production**, or one-click unsubscribe points nowhere.
 
-### c2) Proposed transactional emails for the beta (drafts, owner to approve)
+### c2) The email allow-list and its texts — BUILT (2026-11-03); Brevo itself is not wired
 
-About eight emails. Everything else stays in-app until it has real text: set an allow-list in `_send_email_from_payload` so a type without approved text never emails. Placeholders in `{braces}`; English first, Portuguese to follow. "Enqueued today" means the code already queues it; the others need a trigger added.
+Only nine types email (`services/email_texts.APPROVED`), each with real text in English. Every other notification stays in-app and creates no `email_message`. Tests: `tests/test_email_allowlist.py`.
+1. **Verification code** (`email.verify`): the direct outbox email, now through `send_template_email` with approved text.
+2. **Password reset code** (`email.reset`): the same.
+3. **New sign-in** (`auth.new_login`, with when). Security mail: no unsubscribe, sent whatever the switches say.
+4. **New booking request**, to the photographer (`booking.request_received`, with the shoot time and the reply-by deadline).
+5. **Booking accepted**, to the client (`booking.request_accepted`, with the pay-by time). **New trigger**: the app's accept path (`POST /v1/booking-requests/{id}/accept`) never notified the client; only the older confirm-slot path did.
+6. **Payment received**, to the client (`payment.succeeded`). **New trigger**: when a booking payment is first recorded, by the webhook or the reconcile job, once per payment.
+7. **Photos ready to choose**, to the client (`proofs.gallery_published`). **New trigger**: when the gallery is sent, once.
+8. **Payout on its way**, to the photographer (`payout.paid`). **New trigger**: when a payout is paid, by Stripe transfer or marked paid by hand, once.
+9. **Shelf order shipped with tracking** (`shelf.order_shipped`). The tracking code and link are now set before the notification, so they are in it.
 
-1. **Verify your email** (`email.verify.send`, enqueued today; security, no unsubscribe)
-   - Subject: Your RAWWERS code: {code}
-   - Body: Enter {code} in the app to verify your email. It works for {minutes} minutes. If you did not sign up for RAWWERS, ignore this email.
-2. **Reset your password** (`email.reset.send`, enqueued today; security)
-   - Subject: Reset your RAWWERS password
-   - Body: Enter {code} in the app to choose a new password. It works for {minutes} minutes. If you did not ask for this, ignore this email: your password has not changed.
-3. **New sign-in** (`auth.new_login`, enqueued today; security)
-   - Subject: New sign-in to your RAWWERS account
-   - Body: Your account was signed in to on {device} on {date} at {time}. If this was you, there is nothing to do. If not, reset your password now from the sign-in screen.
-4. **New booking request, to the photographer** (`booking.request_received`, enqueued today; time-critical)
-   - Subject: New booking request from {client_first_name}
-   - Body: {client_first_name} would like to book you on {date}, {start}-{end}, in {area}. Reply by {respond_by}, or the request lapses. Open RAWWERS Pro to accept or decline.
-5. **Booking accepted, to the client** (`booking.request_accepted`, enqueued today)
-   - Subject: {pro_name} accepted your booking
-   - Body: Good news: {pro_name} accepted your booking on {date}, {start}-{end}. Pay the deposit of {deposit} by {pay_by} to confirm it. Open RAWWERS to pay.
-6. **Payment received, to the client** (`payment.succeeded`: has a template, **not enqueued today**; add it where the payment is recorded, webhook and `apply_missed_success` alike, deduped on the payment)
-   - Subject: Payment received: {amount} for your shoot with {pro_name}
-   - Body: We received {amount} for your shoot on {date}. Your booking is confirmed. Your receipt is in the app under the booking.
-7. **Your photos are ready to choose, to the client** (`proofs.gallery_published`: has a template, **not enqueued today**; add it where the gallery is sent)
-   - Subject: Your photos from {date} are ready
-   - Body: {pro_name} has sent your gallery. Choose your favourites by {choose_by}. Open RAWWERS to see them.
-8. **Payout on its way, to the photographer** (**not enqueued today**: `payout.requested` goes to admins only, "A pro submitted a payout request"; add a pro-facing type, e.g. `payout.paid`, where the Stripe transfer is created)
-   - Subject: Your payout of {amount} is on its way
-   - Body: We have sent {amount} to your bank account ending {last4}. It usually arrives within {days} working days. The breakdown is in RAWWERS Pro under Wallet.
-
-Next candidates, once these work: dispute opened (both sides, money on hold) and The Shelf's "shipped" (once The Shelf is open).
+**Open.**
+- **Not on the list, so nothing is sent:** the launch invite email and the client waitlist confirmation (owner's call: approve them with text, or leave them off).
+- **Portuguese texts.** English only today.
+- **Brevo itself:** docs/BREVO_SETUP.md.
 
 ## The Shelf (built 2026-11-03): what is open
 

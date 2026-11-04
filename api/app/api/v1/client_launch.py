@@ -727,6 +727,8 @@ def client_booking_request(
             "title": "New booking request",
             "body": "A client requested a booking.",
             "action": {"label": "Review", "url": f"/booking-requests/{booking.id}"},
+            "requested_start": booking.requested_start.isoformat(),
+            "expires_at": booking.expires_at.isoformat(),
         },
         reference_type="booking_request",
         reference_id=str(booking.id),

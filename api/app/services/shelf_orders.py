@@ -233,6 +233,8 @@ def _event(db: Session, order: ShelfOrder, before: ShelfOrderStatus | None, afte
             "title": title,
             "body": body.format(title=order.title, price=order.price_raww),
             "action": {"label": "My orders", "url": MY_ORDERS_PATH},
+            "item": order.title,
+            **({"tracking_code": order.tracking_code, "tracking_url": order.tracking_url} if after == ShelfOrderStatus.shipped else {}),
         },
         reference_type="shelf_order",
         reference_id=str(order.id),
@@ -300,9 +302,10 @@ def admin_mark_shipped(db: Session, *, order_id: uuid.UUID, tracking_code: str, 
     if not code:
         raise APIError(code="validation_error", message="The tracking code is required", status_code=422)
     order = _order_locked(db, order_id)
-    _move(db, order, ShelfOrderStatus.shipped, actor_type="admin", actor_user_id=admin_user_id, note=code)
+    # Before the move, so its notification (and email) carries the tracking.
     order.tracking_code = code
     order.tracking_url = (tracking_url or "").strip() or None
+    _move(db, order, ShelfOrderStatus.shipped, actor_type="admin", actor_user_id=admin_user_id, note=code)
     return order
 
 

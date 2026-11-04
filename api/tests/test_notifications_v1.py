@@ -101,7 +101,9 @@ def test_quiet_hours_defers_non_critical_email(db_session):
     enqueue_notification(
         db_session,
         user_id=user_id,
-        notification_type="proofs.selection_due_reminder",
+        # An approved email type (services/email_texts): a type that is not
+        # approved never emails at all, so it would not be deferred either.
+        notification_type="proofs.gallery_published",
         payload={},
         reference_type="gallery",
         reference_id="g-1",

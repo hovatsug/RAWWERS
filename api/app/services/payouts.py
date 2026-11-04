@@ -505,6 +505,7 @@ def execute_payout_request(db: Session, *, payout_request_id: uuid.UUID) -> Payo
         row.reference = {**(row.reference or {}), "stripe_transfer_id": getattr(transfer, "id", None)}
         row.updated_at = datetime.now(timezone.utc)
         _add_payout_event(db, payout_request_id=row.id, event_type="paid", payload={"mode": "stripe_connect", "reference": row.reference})
+        _notify_payout_paid(db, row)
         log_event(
             db,
             event_name="payout.paid",
@@ -526,6 +527,26 @@ def execute_payout_request(db: Session, *, payout_request_id: uuid.UUID) -> Payo
     return row
 
 
+def _notify_payout_paid(db: Session, row: PayoutRequest) -> None:
+    """The photographer's "payout on its way" (an approved email), once."""
+    from app.services.notifications import enqueue_notification
+
+    enqueue_notification(
+        db,
+        user_id=row.pro_user_id,
+        notification_type="payout.paid",
+        payload={
+            "title": "Payout on its way",
+            "body": f"€{row.amount_eur} is on its way to your bank account.",
+            "amount": str(row.amount_eur),
+            "currency": "EUR",
+        },
+        reference_type="payout_request",
+        reference_id=str(row.id),
+        dedupe_key=f"payout-paid:{row.id}",
+    )
+
+
 def mark_payout_paid_manual(
     db: Session,
     *,
@@ -544,6 +565,7 @@ def mark_payout_paid_manual(
     row.reference = {**(row.reference or {}), **(reference or {})}
     row.updated_at = datetime.now(timezone.utc)
     _add_payout_event(db, payout_request_id=row.id, event_type="paid", payload={"mode": "manual", "admin_user_id": str(admin_user_id), "reference": reference or {}})
+    _notify_payout_paid(db, row)
     log_event(
         db,
         event_name="payout.paid",

@@ -14,7 +14,9 @@ String? clientNotificationRoute(
   if (url == marketingPermissionsPath || notification.type.startsWith('marketing_consent.')) return marketingPermissionsPath;
   // The list rather than one booking: the ids the server links to are not
   // all the ones the app's booking screen opens by.
-  if (notification.type.startsWith('booking.') || notification.type.startsWith('payment.')) return bookingsPath;
+  if (notification.type.startsWith('booking.') || notification.type.startsWith('payment.') || notification.type.startsWith('proofs.')) {
+    return bookingsPath;
+  }
   return null;
 }
 

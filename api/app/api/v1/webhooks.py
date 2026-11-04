@@ -30,6 +30,7 @@ from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurc
 from app.models.admin import ProProfile
 from app.models.proof_of_gigs import RawwIssuanceEventType
 from app.schemas.webhooks import WebhookAckResponse
+from app.services.notifications import enqueue_notification
 from app.services.audit import add_admin_audit_log
 from app.services.analytics import log_event
 from app.services.discovery_index import recompute_pro_public_index
@@ -416,9 +417,28 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                            "payment_status_before": payment.status.value,
                            "gig_status_before": gig.status.value})
 
+        newly_paid = payment.status != PaymentStatus.succeeded
         payment.status = PaymentStatus.succeeded
         payment.last_error = None
         payment.meta = {**payment.meta, "paid_at": datetime.now(timezone.utc).isoformat()}
+        if newly_paid:
+            # The client's receipt (an approved email). Once per payment,
+            # however often the event (or the reconcile job) applies it.
+            enqueue_notification(
+                db,
+                user_id=gig.client_user_id,
+                notification_type="payment.succeeded",
+                payload={
+                    "title": "Payment received",
+                    "body": f"We received {payment.amount} {payment.currency} for your shoot.",
+                    "amount": str(payment.amount),
+                    "currency": payment.currency,
+                    "starts_at": gig.scheduled_start.isoformat() if gig.scheduled_start else None,
+                },
+                reference_type="stripe_payment",
+                reference_id=payment_intent_id,
+                dedupe_key=f"payment-received:{payment_intent_id}",
+            )
 
         # Trust what Stripe collected over what we meant to ask for. The row's
         # amount is our intention; `amount_received` is the fact, and the

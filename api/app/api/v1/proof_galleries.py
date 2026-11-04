@@ -43,6 +43,7 @@ from app.schemas.gallery import (
     UpsellCreateIntentResponse,
 )
 from app.schemas.media import CurrentUser
+from app.services.notifications import enqueue_notification
 from app.services.audit import add_admin_audit_log
 from app.services.gallery_items import (
     OPEN_GALLERY_STATUSES,
@@ -241,6 +242,21 @@ def publish_gallery(
     gallery.status = ProofGalleryStatus.published
     gallery.published_at = datetime.now(timezone.utc)
     gig = db.get(Gig, gallery.gig_id)
+    # Photos ready to choose (an approved email). Once: a second send of a
+    # published gallery returned above.
+    enqueue_notification(
+        db,
+        user_id=gallery.client_user_id,
+        notification_type="proofs.gallery_published",
+        payload={
+            "title": "Your photos are ready",
+            "body": "Your photographer sent your gallery. Choose your favourites.",
+            "starts_at": gig.scheduled_start.isoformat() if gig and gig.scheduled_start else None,
+        },
+        reference_type="proof_gallery",
+        reference_id=str(gallery.id),
+        dedupe_key=f"gallery-published:{gallery.id}",
+    )
     if gig:
         upsert_delivery_sla_snapshot(db, gig=gig, proofs_published_at=gallery.published_at)
 

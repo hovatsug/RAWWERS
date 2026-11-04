@@ -518,6 +518,13 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
     notification_type = str(payload.get("type") or "")
     if not notification_type:
         return "skipped"
+    from app.services import email_texts
+
+    # Only approved emails, with approved text, go out (owner's decision,
+    # 2026-11-03); everything else stays in-app.
+    if notification_type not in email_texts.APPROVED:
+        increment_notification_event("email", "not_approved")
+        return "not_approved"
     topic = str(payload.get("topic") or topic_for_type(notification_type))
     dedupe_key = str(payload.get("dedupe_key") or "")
 
@@ -574,13 +581,16 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
 
     locale = str(payload.get("locale") or (get_user_locale_preference(db, user_id=user_id) if user_id else DEFAULT_LOCALE))
     rendered = render_template(db, notification_type, payload.get("payload") or {}, locale=locale)
+    subject, text_body = email_texts.render(
+        notification_type, payload.get("payload") or {}, tz=(prefs.timezone_name if prefs else settings.notification_default_timezone)
+    )
     provider = get_mail_provider()
     if existing_email is None:
         row = EmailMessage(
             user_id=user_id,
             to_email=str(to_email),
             template_key=rendered.template_key,
-            subject=rendered.subject,
+            subject=subject,
             provider=getattr(provider, "provider_name", None),
             status=EmailMessageStatus.queued,
             dedupe_key=dedupe_key or f"email:{uuid.uuid4()}",
@@ -597,7 +607,7 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
         row = existing_email
         row.to_email = str(to_email)
         row.template_key = rendered.template_key
-        row.subject = rendered.subject
+        row.subject = subject
         row.provider = getattr(provider, "provider_name", None)
         row.status = EmailMessageStatus.queued
         row.error = None
@@ -606,8 +616,8 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
         provider_message_id = provider.send_template_email(
             email=str(to_email),
             template_key=rendered.template_key,
-            subject=rendered.subject,
-            text_body=rendered.body,
+            subject=subject,
+            text_body=text_body,
             unsubscribe_url=page_url(user_id, topic) if user_id and not security else None,
         )
         row.provider_message_id = provider_message_id

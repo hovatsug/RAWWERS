@@ -102,31 +102,24 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
     if topic.startswith("index."):
         process_index_event(db, topic, payload)
         return
-    if topic == "email.verify.send":
-        get_mail_provider().send_verification_email(email=payload["email"], code=payload["code"])
-        return
-    if topic == "email.reset.send":
-        get_mail_provider().send_password_reset_email(email=payload["email"], code=payload["code"])
-        return
-    if topic == "launch.invite.email":
-        code = payload["code"]
-        wave_name = payload.get("wave_name", "RAWWERS Invite")
-        get_mail_provider().send_template_email(
-            email=payload["email"],
-            template_key="launch_invite",
-            subject=f"Your RAWWERS invite ({wave_name})",
-            text_body=f"Your invite code is: {code}",
-            unsubscribe_url=None,
+    if topic in ("email.verify.send", "email.reset.send"):
+        # Approved text (services/email_texts), through the one sending call a
+        # provider implements. Security mail: no unsubscribe, no switches.
+        from app.core.config import get_settings
+        from app.services.email_texts import render
+
+        conf = get_settings()
+        kind, minutes = (
+            ("email.verify", conf.auth_email_verification_ttl_minutes)
+            if topic == "email.verify.send"
+            else ("email.reset", conf.auth_password_reset_ttl_minutes)
         )
+        subject, body = render(kind, {"code": payload["code"], "minutes": minutes})
+        get_mail_provider().send_template_email(email=payload["email"], template_key=kind, subject=subject, text_body=body, unsubscribe_url=None)
         return
-    if topic == "client.waitlist.confirmation_email":
-        get_mail_provider().send_template_email(
-            email=payload["email"],
-            template_key="client_waitlist_confirmation",
-            subject="You are on the RAWWERS client waitlist",
-            text_body=f"Thanks. We will notify you when {payload.get('city')}, {payload.get('country')} is enabled.",
-            unsubscribe_url=None,
-        )
+    if topic in ("launch.invite.email", "client.waitlist.confirmation_email"):
+        # Not on the approved list (services/email_texts): nothing is sent.
+        logger.info("email_not_approved", extra={"topic": topic})
         return
     if topic.startswith("notify."):
         process_outbox_notification(topic, payload, db)

@@ -153,7 +153,7 @@ def login_user(db: Session, *, email: str, password: str, ip: str | None, user_a
         db,
         user_id=user.user_id,
         notification_type="auth.new_login",
-        payload={},
+        payload={"signed_in_at": _now().isoformat()},
         reference_type="user_account",
         reference_id=str(uuid.uuid4()),
         severity=NotificationSeverity.important,

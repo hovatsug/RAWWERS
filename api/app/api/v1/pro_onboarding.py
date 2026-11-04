@@ -68,6 +68,7 @@ from app.schemas.launch_ops import (
     ProOnboardingStartRequest,
     ProOnboardingStatusResponse,
 )
+from app.services.notifications import enqueue_notification
 from app.services.audit import add_admin_audit_log
 from app.services.bookable_time import RequestTerms, apply_request_terms, check_bookable, check_requestable, request_preset, shape_for_package
 from app.services.available_now import default_short_notice_ok
@@ -1195,7 +1196,7 @@ def accept_booking_request(
         notice_from=request.created_at if request.notice_minutes is not None else None,
     )
     # A yes the client cannot pay for in time books nothing.
-    ensure_payable_in_time(request, accepted_at=datetime.now(timezone.utc))
+    pay_by = ensure_payable_in_time(request, accepted_at=datetime.now(timezone.utc))
 
     package = db.get(ProPackage, request.package_id)
     if not package:
@@ -1246,6 +1247,22 @@ def accept_booking_request(
         event_name="booking.accepted",
         user_id=user.user_id,
         properties={"booking_request_id": str(request.id), "gig_id": str(gig.id), "payment_intent_id": pi.id},
+    )
+    pro_profile = db.get(ProProfile, request.pro_user_id)
+    enqueue_notification(
+        db,
+        user_id=request.client_user_id,
+        notification_type="booking.request_accepted",
+        payload={
+            "title": "Booking accepted",
+            "body": "Your photographer accepted. Pay to confirm the booking.",
+            "pro_name": pro_profile.display_name if pro_profile else None,
+            "starts_at": request.requested_start.isoformat(),
+            "pay_by": pay_by.isoformat(),
+        },
+        reference_type="booking_request",
+        reference_id=str(request.id),
+        dedupe_key=f"booking-accepted:{request.id}",
     )
     schedule_followups(
         db,

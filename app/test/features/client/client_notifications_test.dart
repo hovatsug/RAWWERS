@@ -18,6 +18,7 @@ void main() {
   test('booking and payment updates open Bookings', () {
     expect(_route('booking.request_accepted', url: '/client/bookings/0b0c5f3e-0000-0000-0000-000000000000'), '/bookings');
     expect(_route('payment.succeeded'), '/bookings');
+    expect(_route('proofs.gallery_published'), '/bookings', reason: 'the gallery opens from its booking');
   });
 
   test('anything else has nowhere to go', () {

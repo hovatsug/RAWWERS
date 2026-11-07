@@ -197,7 +197,7 @@ def reserve_points_for_discount(
     metadata: dict | None = None,
 ) -> DiscountRedemption:
     if points <= 0:
-        raise APIError(code="validation_error", message="points must be > 0", status_code=422)
+        raise APIError(code="validation_error", message="Choose an amount of credit to use", status_code=422)
     if payment_amount <= Decimal("0.00"):
         raise APIError(code="validation_error", message="payment amount must be > 0", status_code=422)
 
@@ -210,11 +210,11 @@ def reserve_points_for_discount(
     raw_discount_amount = (Decimal(points) / Decimal(points_per_eur)).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
     discount_amount = min(raw_discount_amount, max_discount_amount, payment_amount)
     if discount_amount <= Decimal("0.00"):
-        raise APIError(code="validation_error", message="points too low for minimum discount", status_code=422)
+        raise APIError(code="validation_error", message="Your credit is less than €0.01, too little to take off this payment", status_code=422)
 
     points_to_spend = int((discount_amount * Decimal(points_per_eur)).to_integral_value(rounding=ROUND_DOWN))
     if points_to_spend <= 0:
-        raise APIError(code="validation_error", message="Invalid redemption points", status_code=422)
+        raise APIError(code="validation_error", message="That amount of credit cannot be used", status_code=422)
 
     balance = _get_or_create_reward_balance_locked(db, user_id)
     # Again under the lock: a double tap's other request may have reserved
@@ -223,7 +223,7 @@ def reserve_points_for_discount(
     if existing:
         return existing
     if balance.balance < points_to_spend:
-        raise APIError(code="validation_error", message="Insufficient reward balance", status_code=422)
+        raise APIError(code="validation_error", message="You do not have enough credit for this", status_code=422)
 
     new_balance = balance.balance - points_to_spend
     balance.balance = new_balance

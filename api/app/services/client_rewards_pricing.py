@@ -42,6 +42,13 @@ DEFAULT_FRAUD_SETTINGS: dict[str, int] = {
 }
 
 
+def _credit_eur(db: Session, points: int) -> Decimal:
+    """Client credit is shown in euros, never as points."""
+    from app.services.client_credit import points_per_eur, to_eur
+
+    return to_eur(points, points_per_eur(db))
+
+
 def ensure_default_consent_reward_policies(db: Session) -> None:
     defaults = {
         ConsentRewardLevel.none: 0,
@@ -410,8 +417,8 @@ def maybe_clawback_consent_points(
             user_id=client_user_id,
             notification_type="consent.updated",
             payload={
-                "title": "Consent reward adjusted",
-                "body": "Your consent reward was adjusted after a consent level change.",
+                "title": "Your credit was adjusted",
+                "body": f"€{_credit_eur(db, delta)} credit was taken back after a marketing permission changed.",
                 "action": {"label": "Open gig", "url": f"/gigs/{gig_id}"},
             },
             reference_type="gig",

@@ -170,7 +170,7 @@ def create_payment_intent(
         if not is_feature_enabled(db, "rewards_spend_enabled", user_id=user.user_id):
             raise APIError(code="feature_disabled", message="Rewards spend is temporarily disabled", status_code=503)
         if existing_payment and not existing_redemption:
-            raise APIError(code="invalid_state", message="Cannot apply points after payment intent was created", status_code=409)
+            raise APIError(code="invalid_state", message="Credit cannot be added once the payment has started", status_code=409)
         points_redemption = reserve_points_for_discount(
             db,
             user_id=user.user_id,

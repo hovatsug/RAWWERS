@@ -62,7 +62,7 @@ def _views(db: Session, rows: list[MarketingConsent]) -> list[MarketingConsentVi
 def get_marketing_consent_offer(
     gig_id: uuid.UUID, user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)
 ) -> MarketingConsentOfferResponse:
-    """Whether to show "Let RAWWERS feature your photos? Earn RAW credit." for
+    """Whether to show "Let RAWWERS feature your photos? Earn credit." for
     this booking, and with what: the wording, the terms and their credit,
     and the photos the client may choose from."""
     gig = _client_gig(db, gig_id, user)

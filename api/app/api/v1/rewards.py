@@ -255,7 +255,7 @@ def reserve_reward_spend(
 ) -> DiscountRedemptionView:
     enforce_named_rate_limit("payments", principal=str(user.user_id))
     if not is_feature_enabled(db, "rewards_spend_enabled", user_id=user.user_id):
-        raise APIError(code="feature_disabled", message="Rewards spend is temporarily disabled", status_code=503)
+        raise APIError(code="feature_disabled", message="Using credit is turned off for now", status_code=503)
     redemption = reserve_points_for_discount(
         db,
         user_id=user.user_id,

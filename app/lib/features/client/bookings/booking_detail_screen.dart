@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:rawwers/features/client/gallery/addon_window.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/client_booking_refund.dart';
@@ -292,6 +293,8 @@ class _PhotosPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final galleryId = booking.proofGalleryId!;
     final choosing = booking.proofGalleryStatus == 'published';
+    final addonEnds = booking.addonWindowEndsAt;
+    final canAdd = !choosing && addonEnds != null && addonTimeLeft(addonEnds) != null;
 
     return RCard(
       child: Column(
@@ -305,6 +308,10 @@ class _PhotosPanel extends StatelessWidget {
                 : 'You have already chosen. These are yours.',
             style: theme.textTheme.bodyMedium,
           ),
+          if (!choosing && addonEnds != null) ...[
+            const SizedBox(height: RSpace.s8),
+            Text(addonBanner(addonEnds), style: theme.textTheme.titleSmall),
+          ],
           const SizedBox(height: RSpace.s12),
           RButton(
             label: choosing ? 'Choose your photos' : 'View your photos',
@@ -314,6 +321,14 @@ class _PhotosPanel extends StatelessWidget {
                   : ClientRoute.delivered(bookingId, galleryId),
             ),
           ),
+          if (canAdd) ...[
+            const SizedBox(height: RSpace.s8),
+            RButton(
+              label: 'Add more photos',
+              variant: RButtonVariant.secondary,
+              onPressed: () => context.push(ClientRoute.gallery(bookingId, galleryId)),
+            ),
+          ],
         ],
       ),
     );

@@ -57,7 +57,15 @@ class ReasonUpdateIn(BaseModel):
 
 
 class DeliveryPolicyIn(BaseModel):
-    shortfall_min_photos: int = Field(ge=1)
+    shortfall_min_photos: int | None = Field(default=None, ge=1)
+    #: Days after the selection closes that a client may add photos. Stamped
+    #: on each booking when it closes: changing this never moves an existing one.
+    selection_addon_days: int | None = Field(default=None, ge=0, le=90)
+
+
+class ExtendWindowIn(BaseModel):
+    days: int = Field(ge=1, le=60)
+    note: str
 
 
 def _gig(db: Session, gig_id: uuid.UUID) -> Gig:
@@ -98,6 +106,8 @@ def booking_money(gig_id: uuid.UUID, _: CurrentUser = Depends(require_admin), db
         "gig_id": str(gig.id),
         "status": gig.status.value,
         "currency": gig.currency,
+        # The client may add photos until then (selection add-on window).
+        "addon_window_ends_at": gig.addon_window_ends_at.isoformat() if gig.addon_window_ends_at else None,
         "deposit": {"amount": str(gig.amount_minimum), "platform_fee": str(gig.amount_platform_fee), "pro_gross": str(gig.amount_pro_gross)},
         "final_price": str(final_price(gig)),
         "final_split": None if gig.final_stamped_at is None else {
@@ -175,17 +185,32 @@ def update_reason(code: str, body: ReasonUpdateIn, actor: CurrentUser = Depends(
 def get_delivery_policy(_: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
     row = delivery_review_policy(db)
     db.commit()
-    return {"shortfall_min_photos": row.shortfall_min_photos}
+    return {"shortfall_min_photos": row.shortfall_min_photos, "selection_addon_days": row.selection_addon_days}
 
 
 @router.put("/policies/delivery-review")
 def put_delivery_policy(body: DeliveryPolicyIn, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
     row = delivery_review_policy(db)
-    before = row.shortfall_min_photos
-    row.shortfall_min_photos = body.shortfall_min_photos
+    changes = {}
+    for field in ("shortfall_min_photos", "selection_addon_days"):
+        value = getattr(body, field)
+        if value is not None and value != getattr(row, field):
+            changes[field] = {"from": getattr(row, field), "to": value}
+            setattr(row, field, value)
     row.updated_by_user_id = actor.user_id
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="delivery_review_policy", target_id="1",
-                        action="delivery_review_policy_updated", reason=None,
-                        metadata={"shortfall_min_photos": {"from": before, "to": body.shortfall_min_photos}})
+                        action="delivery_review_policy_updated", reason=None, metadata=changes)
     db.commit()
-    return {"shortfall_min_photos": row.shortfall_min_photos}
+    return {"shortfall_min_photos": row.shortfall_min_photos, "selection_addon_days": row.selection_addon_days}
+
+
+@router.post("/gigs/{gig_id}/selection-window/extend")
+def extend_selection_window(
+    gig_id: uuid.UUID, body: ExtendWindowIn, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> dict:
+    """Give the client more days to add photos. Needs a note; logged."""
+    from app.services.selection_addons import extend
+
+    ends = extend(db, gig=_gig(db, gig_id), days=body.days, note=body.note, admin_user_id=actor.user_id)
+    db.commit()
+    return {"addon_window_ends_at": ends.isoformat()}

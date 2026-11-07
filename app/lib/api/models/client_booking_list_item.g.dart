@@ -23,6 +23,9 @@ _ClientBookingListItem _$ClientBookingListItemFromJson(
   payBy: json['pay_by'] == null
       ? null
       : DateTime.parse(json['pay_by'] as String),
+  addonWindowEndsAt: json['addon_window_ends_at'] == null
+      ? null
+      : DateTime.parse(json['addon_window_ends_at'] as String),
 );
 
 Map<String, dynamic> _$ClientBookingListItemToJson(
@@ -40,4 +43,5 @@ Map<String, dynamic> _$ClientBookingListItemToJson(
   'created_at': instance.createdAt.toIso8601String(),
   'short_notice': instance.shortNotice,
   'pay_by': instance.payBy?.toIso8601String(),
+  'addon_window_ends_at': instance.addonWindowEndsAt?.toIso8601String(),
 };

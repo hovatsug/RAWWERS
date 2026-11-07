@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/features/client/gallery/addon_window.dart';
 import 'package:rawwers/features/shared/notifications/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,6 +96,11 @@ class _BookingCard extends StatelessWidget {
                 'Your photographer accepted. Pay to confirm the date.',
                 style: theme.textTheme.bodySmall,
               ),
+            ],
+            // After choosing: photos can still be added until the window ends.
+            if (booking.addonWindowEndsAt != null && addonTimeLeft(booking.addonWindowEndsAt!) != null) ...[
+              const SizedBox(height: RSpace.s12),
+              Text(addonBanner(booking.addonWindowEndsAt!), style: theme.textTheme.labelLarge),
             ],
           ],
         ),

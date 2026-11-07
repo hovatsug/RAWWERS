@@ -82,6 +82,10 @@ def finalize_gallery_and_complete_gig(
     already applied."""
     if gallery.status != ProofGalleryStatus.selection_submitted:
         gallery.status = ProofGalleryStatus.selection_submitted
+    # The add-on window opens now, once (services/selection_addons).
+    from app.services.selection_addons import stamp_window
+
+    stamp_window(db, gig)
 
     # A curve-priced booking charges for every selected photograph through
     # amount_final, so this is the moment it is known to have been paid for and

@@ -29,6 +29,9 @@ from app.models.media_rights import GigEntitlementType, MediaDerivativeKind
 from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 from app.schemas.gallery import (
     AddGalleryItemsRequest,
+    AddonQuoteResponse,
+    StartAddonRequest,
+    StartAddonResponse,
     CreateProofGalleryRequest,
     DownloadsResponse,
     GalleryDetailResponse,
@@ -43,6 +46,7 @@ from app.schemas.gallery import (
     UpsellCreateIntentResponse,
 )
 from app.schemas.media import CurrentUser
+from app.services import selection_addons
 from app.services.notifications import enqueue_notification
 from app.services.audit import add_admin_audit_log
 from app.services.gallery_items import (
@@ -377,7 +381,50 @@ def get_gallery(
         )
         db.commit()
 
-    return GalleryDetailResponse(gallery=_gallery_to_response(gallery), items=views)
+    detail = GalleryDetailResponse(gallery=_gallery_to_response(gallery), items=views)
+    gig = db.get(Gig, gallery.gig_id)
+    if gig is not None and gig.addon_window_ends_at is not None:
+        detail.addon_window_ends_at = gig.addon_window_ends_at
+        detail.addon_open = selection_addons.window_open(gig)
+    if user.user_id == gallery.client_user_id and gallery.status == ProofGalleryStatus.selection_submitted:
+        detail.chosen_media_asset_ids = selection_addons.chosen_asset_ids(db, gallery)
+    return detail
+
+
+@router.get("/proof-galleries/{gallery_id}/addon-quote", response_model=AddonQuoteResponse)
+def get_addon_quote(
+    gallery_id: uuid.UUID,
+    adding: int = Query(ge=0, le=5000),
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> AddonQuoteResponse:
+    """What adding `adding` photos after the selection closed costs now."""
+    gallery = db.get(ProofGallery, gallery_id)
+    if not gallery:
+        raise APIError(code="not_found", message="Gallery not found", status_code=404)
+    return AddonQuoteResponse(**selection_addons.quote(db, gallery=gallery, user_id=user.user_id, adding=adding))
+
+
+@router.post("/proof-galleries/{gallery_id}/addons", response_model=StartAddonResponse)
+def start_addon(
+    gallery_id: uuid.UUID,
+    body: StartAddonRequest,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> StartAddonResponse:
+    """Add photos after the selection closed, while its window is open. Pay
+    with the returned client secret; nothing is owed when it is null."""
+    gallery = db.get(ProofGallery, gallery_id)
+    if not gallery:
+        raise APIError(code="not_found", message="Gallery not found", status_code=404)
+    purchase, secret = selection_addons.start(
+        db, gallery=gallery, user_id=user.user_id, asset_ids=body.media_asset_ids, request_id=body.client_request_id
+    )
+    db.commit()
+    return StartAddonResponse(
+        addon_id=purchase.id, amount=purchase.total, currency=gallery.currency or "EUR",
+        payment_intent_client_secret=secret, status=purchase.status.value,
+    )
 
 
 @router.post("/proof-galleries/{gallery_id}/selections", response_model=SelectionResponse)
@@ -499,6 +546,7 @@ def get_selection_quote(
         extras_count=quote.extras_count,
         can_submit=quote.can_submit,
         photos_still_needed=quote.photos_still_needed,
+        addon_days=selection_addons.addon_days(db),
     )
 
 
@@ -741,9 +789,12 @@ def get_download_links(
     if not latest_submitted:
         raise APIError(code="invalid_state", message="Selection not submitted", status_code=409)
 
-    selected_item_ids = db.execute(
+    # The selection, and every photo added after it closed and paid for.
+    selected_item_ids = list(db.execute(
         select(ClientSelectionItem.media_asset_id).where(ClientSelectionItem.selection_id == latest_submitted.id)
-    ).scalars().all()
+    ).scalars())
+    paid_addons = selection_addons.paid_addon_asset_ids(db, gallery.gig_id)
+    selected_item_ids += [a for a in paid_addons if a not in set(selected_item_ids)]
     if not selected_item_ids:
         return DownloadsResponse(gallery_id=gallery.id, urls={})
 
@@ -756,7 +807,7 @@ def get_download_links(
         # not paid for: nothing unpaid, or for a flat-priced booking the extras
         # still owed. This branch used to carry its own copy of the unlock
         # rules, which for a curve-priced booking asked for no payment at all.
-        unlocked_ids = unlocked_final_asset_ids(db, gallery=gallery)
+        unlocked_ids = unlocked_final_asset_ids(db, gallery=gallery, paid_addons=paid_addons)
         if len(unlocked_ids) < len(selected_item_ids):
             raise APIError(code="payment_required", message="Payment for this selection is not complete", status_code=402)
         # Paid for, and then the review gate: a star rating or a reported

@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 from app.core.constants import SYSTEM_USER_ID
 from app.core.errors import APIError
 from app.models.admin import MoneyAttentionItem, RefundCase, RefundCaseStatus, RefundPaymentScope
-from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment
+from app.models.gig import Gig, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.services import stripe_service  # noqa: F401 - sets the API key and version
 from app.services.full_refund import is_fully_refunded, settle_full_refund
 from app.services.payment_intents import hold_refund_slot
@@ -180,6 +180,13 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
     gig = db.get(Gig, payment.gig_id)
     if gig is None:
         return False
+    if payment.kind == StripePaymentKind.extras:
+        # Photos added after the selection closed: their own extras earning,
+        # not the booking's (services/selection_addons).
+        from app.services.selection_addons import reconcile_refunds
+
+        if reconcile_refunds(db, payment, fetch_refunds(payment_intent_id)):
+            return True
 
     back = Decimal("0.00")
     for refund in fetch_refunds(payment_intent_id):

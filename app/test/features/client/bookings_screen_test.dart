@@ -27,6 +27,7 @@ ClientBookingListItem _booking({
   String id = 'booking-1',
   String bookingStatus = 'accepted',
   String? gigStatus = 'payment_pending',
+  DateTime? addonWindowEndsAt,
 }) {
   // A fixed UTC instant so the rendered window is deterministic wherever the
   // suite runs; the assertions convert the same way the screen does.
@@ -40,6 +41,7 @@ ClientBookingListItem _booking({
     locationText: 'Lisbon, Alfama',
     expiresAt: start,
     createdAt: start,
+    addonWindowEndsAt: addonWindowEndsAt,
   );
 }
 
@@ -61,6 +63,19 @@ void main() {
     await tester.pump();
 
     expect(find.byTooltip('Notifications, 2 unread'), findsOneWidget);
+  });
+
+  testWidgets('a booking whose photos can still be added shows the countdown', (tester) async {
+    final ends = DateTime.now().add(const Duration(days: 2, hours: 3, minutes: 30));
+    await tester.pumpWidget(_wrap(bookingsControllerProvider.overrideWith(() => _FakeBookings(CursorPage(items: [
+          _booking(bookingStatus: 'accepted', gigStatus: 'completed', addonWindowEndsAt: ends),
+          _booking(id: 'booking-2', bookingStatus: 'accepted', gigStatus: 'completed', addonWindowEndsAt: DateTime.now().subtract(const Duration(hours: 1))),
+        ])))));
+    await tester.pump();
+
+    expect(find.text('Add more photos · 2 days 3 h left'), findsOneWidget);
+    expect(find.textContaining('Add more photos'), findsOneWidget, reason: 'a closed window shows nothing on the card');
+    expect(find.text('Gallery closed'), findsNothing);
   });
 
   testWidgets('shows what a booking is waiting on, not just its raw status', (tester) async {

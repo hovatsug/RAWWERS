@@ -4,6 +4,23 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## Selection add-on window — BUILT (2026-11-07)
+
+A client who finished choosing may add photos for `selection_addon_days` (admin, Galleries, default 7), stamped on the booking when its selection closes (`gig.addon_window_ends_at`, migration 0087), so a later change never moves an open window. `services/selection_addons.py`; tests `tests/test_selection_addons.py`.
+- **Price:** `total(chosen + added) - total(chosen)` on the booking's own curve and anchor (`selection_quote.selection_total`). Whole cents, so batches add up to the same as all at once.
+- **Payment:** the selection-difference path (`_create_intent`, payment sheet, webhook, reconcile job), as a payment of kind `extras`. A payment started before the window ends still completes.
+- **What a paid add-on does:** it is an `ExtraImagePurchase` (meta `kind: selection_addon`) and becomes its own extras earnings entry with its RAWW credit, created once. Its photos download at once, with the review gate as today. The booking's status, ledger, payouts and reviews are untouched; the webhook branches before the booking's "paid" transition, which would otherwise have moved a completed booking back to paid. The photographer is not notified.
+- **Refunds:** a refund in Stripe is all or nothing, as extras are. The add-on is marked refunded, its photos are locked again, and its earning is reversed; the booking is not touched.
+- **Not allowed** on a cancelled or refunded booking.
+- **Reminder:** one in-app notification (`proofs.addon_closing`) within two days of the end if photos are left (hourly beat `selection-addon-reminders`). An extended window gets its own.
+- **Admin:** "Extend selection window" on the booking page (days and a required note, audit-logged). An extension runs from the end, or from now if the window has already closed.
+- **Unchosen photos:** no job deletes delivered gallery photos today. The only cleanup, `remove-unfinished-uploads`, touches photos whose upload never finished; a test holds that.
+
+**Open.**
+- **After the window ends,** photos are kept as today: no cleanup exists to change.
+- **No email.** The reminder is in-app only, so the email allow-list is unchanged.
+- **The full-screen viewer in add-on mode is view-only.** Photos are added from the grid.
+
 ## HIGH, before the beta: three gaps logged 2026-11-03 (not built)
 
 Owner's priority. None of these is built; each says what is true today and what is needed.

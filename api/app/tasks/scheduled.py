@@ -190,3 +190,18 @@ def stripe_reconcile_task() -> dict:
         return {"checked": record.checked, "recorded": record.recorded, "flagged": record.flagged, "dry_run": record.dry_run, "error": record.error}
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.selection_addon_reminders")
+def selection_addon_reminders_task() -> int:
+    """Remind clients, once, within two days of their gallery closing, if
+    photos are still there to add (services/selection_addons.py)."""
+    from app.services.selection_addons import send_closing_reminders
+
+    db = SessionLocal()
+    try:
+        sent = send_closing_reminders(db)
+        db.commit()
+        return sent
+    finally:
+        db.close()

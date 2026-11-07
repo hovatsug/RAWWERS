@@ -236,7 +236,7 @@ void main() {
 
     expect(find.textContaining('10 photos chosen'), findsOneWidget);
     expect(find.textContaining('You will be charged EUR 48.00'), findsOneWidget);
-    expect(find.textContaining('cannot change your selection'), findsOneWidget);
+    expect(find.textContaining('The photos you choose are fixed. You can add more photos for 7 days.'), findsOneWidget);
   });
 
   testWidgets('a difference charge opens the payment sheet on the intent submit returned', (tester) async {

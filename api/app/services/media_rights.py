@@ -231,7 +231,22 @@ def selected_asset_ids(db: Session, *, gallery_id: uuid.UUID, submitted_only: bo
     return db.execute(select(ClientSelectionItem.media_asset_id).where(ClientSelectionItem.selection_id == selection.id)).scalars().all()
 
 
-def unlocked_final_asset_ids(db: Session, *, gallery: ProofGallery) -> list[uuid.UUID]:
+def unlocked_final_asset_ids(
+    db: Session, *, gallery: ProofGallery, paid_addons: list[uuid.UUID] | None = None
+) -> list[uuid.UUID]:
+    """The photographs this client may download at full resolution, right
+    now: the selection's (below), and every photo added after it closed and
+    paid for (services/selection_addons), which is released on its own.
+    `paid_addons` saves the query for a caller that already has them."""
+    from app.services.selection_addons import paid_addon_asset_ids
+
+    unlocked = _unlocked_selection_asset_ids(db, gallery=gallery)
+    seen = set(unlocked)
+    addons = paid_addons if paid_addons is not None else paid_addon_asset_ids(db, gallery.gig_id)
+    return unlocked + [a for a in addons if a not in seen]
+
+
+def _unlocked_selection_asset_ids(db: Session, *, gallery: ProofGallery) -> list[uuid.UUID]:
     """The photographs this client may download at full resolution, right now.
 
     The single boundary for releasing finals: the downloads endpoint, the

@@ -9,6 +9,7 @@ import 'package:rawwers/design/components/r_image_tile.dart';
 import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/client/gallery/addon_gallery.dart';
 import 'package:rawwers/features/client/gallery/selection_controller.dart';
 import 'package:rawwers/core/images/disk_cached_image.dart';
 
@@ -43,6 +44,10 @@ class SelectionGalleryScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Choose your photos')),
       body: SafeArea(
         child: switch (state) {
+          // Already chosen: photos can still be added while the add-on
+          // window is open, and are looked at, read-only, after it.
+          AsyncData(:final value) when value.locked && value.gallery.addonWindowEndsAt != null =>
+            AddonGallery(galleryId: galleryId, bookingId: bookingId),
           AsyncData(:final value) when value.items.isEmpty => const REmptyState(
             title: 'Nothing here yet',
             body: 'Your photographer has not published any photos for this shoot.',
@@ -302,7 +307,7 @@ class _PriceBar extends ConsumerWidget {
         content: Text(
           '${count == 1 ? '1 photo' : '$count photos'} chosen. '
           '${owed ? 'You will be charged ${_money(quote.amountDue, quote.currency)}.' : _refundSentence(quote)} '
-          'You cannot change your selection after this.',
+          '${_afterSentence(quote)}',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Not yet')),
@@ -317,6 +322,14 @@ class _PriceBar extends ConsumerWidget {
 }
 
 bool _nothingDue(SelectionQuoteResponse quote) => quote.amountDue == '0.00';
+
+/// What happens after: the chosen photos are fixed, and more can be added
+/// for the add-on window.
+String _afterSentence(SelectionQuoteResponse quote) {
+  final days = quote.addonDays;
+  if (days <= 0) return 'You cannot change your selection after this.';
+  return 'The photos you choose are fixed. You can add more photos for ${days == 1 ? '1 day' : '$days days'}.';
+}
 
 /// The server's refund for a selection cheaper than what was paid, or null.
 String? _refundOf(SelectionQuoteResponse quote) {

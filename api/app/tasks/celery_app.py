@@ -119,6 +119,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.marketing_consent_daily",
         "schedule": timedelta(days=1),
     },
+    # The once-only reminder that a gallery's add-on window is closing.
+    "selection-addon-reminders": {
+        "task": "app.tasks.scheduled.selection_addon_reminders",
+        "schedule": timedelta(hours=1),
+    },
     # Stripe successes that never reached us as a webhook, recorded; and
     # what cannot be matched, flagged on Money attention.
     "stripe-reconcile": {
@@ -171,6 +176,7 @@ celery_app.conf.task_routes = {
     "app.tasks.scheduled.marketing_consent_daily": {"queue": "media"},
     "app.tasks.scheduled.shelf_raww_daily": {"queue": "media"},
     "app.tasks.scheduled.stripe_reconcile": {"queue": "media"},
+    "app.tasks.scheduled.selection_addon_reminders": {"queue": "media"},
 }
 
 _TASK_START_TIMES: dict[str, float] = {}

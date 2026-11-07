@@ -104,6 +104,18 @@
 ///             ],
 ///             "title": "Pay By"
 ///         },
+///         "addon_window_ends_at": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "date-time"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Addon Window Ends At"
+///         },
 ///         "timeline": {
 ///             "type": "array",
 ///             "items": {
@@ -191,6 +203,10 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
     /// payBy
     @JsonKey(name: ClientBookingStatusResponse.payByKey_) DateTime? payBy,
 
+    /// addonWindowEndsAt
+    @JsonKey(name: ClientBookingStatusResponse.addonWindowEndsAtKey_)
+    DateTime? addonWindowEndsAt,
+
     /// timeline
     @JsonKey(name: ClientBookingStatusResponse.timelineKey_)
     List<Map<String, dynamic>>? timeline,
@@ -227,6 +243,8 @@ abstract class ClientBookingStatusResponse with _$ClientBookingStatusResponse {
   static const String refundsKey_ = r'refunds';
 
   static const String payByKey_ = r'pay_by';
+
+  static const String addonWindowEndsAtKey_ = r'addon_window_ends_at';
 
   static const String timelineKey_ = r'timeline';
 

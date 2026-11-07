@@ -113,6 +113,10 @@ router = APIRouter(tags=["client_launch"])
 logger = logging.getLogger(__name__)
 
 
+#: A cancelled or refunded booking takes no add-ons, so shows no window.
+_NO_ADDONS = ("cancelled_by_client", "cancelled_by_pro", "refunded")
+
+
 @router.get("/client/access", response_model=ClientAccessResponse)
 def get_client_access(
     country: str,
@@ -818,6 +822,7 @@ def list_client_bookings(
                 created_at=row.created_at,
                 short_notice=bool(row.short_notice),
                 pay_by=_pay_by(gig),
+                addon_window_ends_at=gig.addon_window_ends_at if gig and gig.status.value not in _NO_ADDONS else None,
             )
         )
     return ClientBookingListResponse(items=items, next_cursor=next_cursor)
@@ -924,6 +929,7 @@ def client_booking_status(
         payment_status=payment.status.value if payment else None,
         proof_gallery_id=gallery.id if gallery else None,
         proof_gallery_status=gallery.status.value if gallery else None,
+        addon_window_ends_at=gig.addon_window_ends_at if gig and gig.status.value not in _NO_ADDONS else None,
         expires_at=booking.expires_at if booking.status == BookingRequestStatus.pending else None,
         short_notice=bool(booking.short_notice),
         pay_by=_pay_by(gig),

@@ -380,6 +380,8 @@ export type BookingMoney = {
   gig_id: string;
   status: string;
   currency: string;
+  /** Until when the client may add photos after choosing; null before they finish. */
+  addon_window_ends_at: string | null;
   deposit: { amount: string; platform_fee: string; pro_gross: string };
   final_price: string;
   final_split: { gross: string; platform_retained: string; pro_raww: string; client_raww: string; pro_cash: string; stamped_at: string | null } | null;
@@ -473,6 +475,14 @@ export const admin = {
     adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 
   bookingMoney: (gigId: string) => adminFetch<BookingMoney>(`gigs/${gigId}/money`),
+  extendSelectionWindow: (gigId: string, days: number, note: string) =>
+    adminFetch<{ addon_window_ends_at: string }>(`gigs/${gigId}/selection-window/extend`, { method: "POST", body: JSON.stringify({ days, note }) }),
+  galleryPolicy: () => adminFetch<{ shortfall_min_photos: number; selection_addon_days: number }>("policies/delivery-review"),
+  saveGalleryPolicy: (selectionAddonDays: number) =>
+    adminFetch<{ shortfall_min_photos: number; selection_addon_days: number }>("policies/delivery-review", {
+      method: "PUT",
+      body: JSON.stringify({ selection_addon_days: selectionAddonDays })
+    }),
   previewReduction: (gigId: string, lines: ReductionLine[]) =>
     adminFetch<ReductionPreview>(`gigs/${gigId}/price-reductions/preview`, { method: "POST", body: JSON.stringify({ lines }) }),
   reducePrice: (gigId: string, lines: ReductionLine[], note: string, idempotencyKey: string) =>

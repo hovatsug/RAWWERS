@@ -46,6 +46,40 @@ class GalleryItemView(BaseModel):
 class GalleryDetailResponse(BaseModel):
     gallery: ProofGalleryResponse
     items: list[GalleryItemView]
+    #: After the selection closed: until when photos may still be added
+    #: (null before it closes, or on a booking from before add-ons), whether
+    #: that is still open, and what the client has already taken (greyed,
+    #: not selectable, not removable). Empty for the photographer.
+    addon_window_ends_at: datetime | None = None
+    addon_open: bool = False
+    chosen_media_asset_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class AddonQuoteResponse(BaseModel):
+    """What adding `adding` photos costs now: total(chosen + adding) -
+    total(chosen), on the booking's own curve."""
+
+    already_chosen: int
+    adding: int
+    amount: Decimal
+    currency: str
+    window_ends_at: datetime | None = None
+
+
+class StartAddonRequest(BaseModel):
+    media_asset_ids: list[uuid.UUID]
+    #: One id per attempt: a second tap is the same add-on.
+    client_request_id: str
+
+
+class StartAddonResponse(BaseModel):
+    addon_id: uuid.UUID
+    amount: Decimal
+    currency: str
+    #: Null when nothing is owed (the photos were added at once) or when the
+    #: add-on is already paid.
+    payment_intent_client_secret: str | None = None
+    status: str
 
 
 class SaveSelectionRequest(BaseModel):
@@ -108,6 +142,9 @@ class SelectionQuoteResponse(BaseModel):
     amount_paid: Decimal
     # What submitting now would charge. Never negative.
     amount_due: Decimal
+    # How many days after finishing the client may still add photos (the
+    # finish dialog says so).
+    addon_days: int = 7
     # What submitting now would refund: the client paid for more than they
     # chose, and the difference comes back (price_reduction). Zero otherwise.
     refund_amount: Decimal = Decimal("0.00")

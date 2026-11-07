@@ -111,6 +111,14 @@ def _amount_due_for(
     return total, due, extras
 
 
+def selection_total(db: Session, *, gig: Gig, gallery: ProofGallery, photo_count: int) -> Decimal:
+    """What `photo_count` photos come to on this booking, in whole cents: the
+    curve and anchor snapshotted on it, or a flat booking's deposit plus its
+    extras. Add-ons are priced as the difference of two of these."""
+    total, _due, _extras = _amount_due_for(db, gig=gig, gallery=gallery, photo_count=photo_count)
+    return total
+
+
 def selection_minimum(gig: Gig, *, delivered: int) -> int:
     """The fewest photos the client may submit: the package's size, as agreed
     at booking (10 for a booking made before that was stored). A gallery that

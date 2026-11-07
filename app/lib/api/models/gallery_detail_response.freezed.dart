@@ -17,7 +17,10 @@ mixin _$GalleryDetailResponse {
 
 /// gallery
 @JsonKey(name: GalleryDetailResponse.galleryKey_) ProofGalleryResponse get gallery;/// items
-@JsonKey(name: GalleryDetailResponse.itemsKey_) List<GalleryItemView> get items;
+@JsonKey(name: GalleryDetailResponse.itemsKey_) List<GalleryItemView> get items;/// addonWindowEndsAt
+@JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_) DateTime? get addonWindowEndsAt;/// addonOpen
+@JsonKey(name: GalleryDetailResponse.addonOpenKey_) bool get addonOpen;/// chosenMediaAssetIds
+@JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_) List<String>? get chosenMediaAssetIds;
 /// Create a copy of GalleryDetailResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +33,16 @@ $GalleryDetailResponseCopyWith<GalleryDetailResponse> get copyWith => _$GalleryD
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryDetailResponse&&(identical(other.gallery, gallery) || other.gallery == gallery)&&const DeepCollectionEquality().equals(other.items, items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryDetailResponse&&(identical(other.gallery, gallery) || other.gallery == gallery)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.addonWindowEndsAt, addonWindowEndsAt) || other.addonWindowEndsAt == addonWindowEndsAt)&&(identical(other.addonOpen, addonOpen) || other.addonOpen == addonOpen)&&const DeepCollectionEquality().equals(other.chosenMediaAssetIds, chosenMediaAssetIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,gallery,const DeepCollectionEquality().hash(items));
+int get hashCode => Object.hash(runtimeType,gallery,const DeepCollectionEquality().hash(items),addonWindowEndsAt,addonOpen,const DeepCollectionEquality().hash(chosenMediaAssetIds));
 
 @override
 String toString() {
-  return 'GalleryDetailResponse(gallery: $gallery, items: $items)';
+  return 'GalleryDetailResponse(gallery: $gallery, items: $items, addonWindowEndsAt: $addonWindowEndsAt, addonOpen: $addonOpen, chosenMediaAssetIds: $chosenMediaAssetIds)';
 }
 
 
@@ -50,7 +53,7 @@ abstract mixin class $GalleryDetailResponseCopyWith<$Res>  {
   factory $GalleryDetailResponseCopyWith(GalleryDetailResponse value, $Res Function(GalleryDetailResponse) _then) = _$GalleryDetailResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: GalleryDetailResponse.galleryKey_) ProofGalleryResponse gallery,@JsonKey(name: GalleryDetailResponse.itemsKey_) List<GalleryItemView> items
+@JsonKey(name: GalleryDetailResponse.galleryKey_) ProofGalleryResponse gallery,@JsonKey(name: GalleryDetailResponse.itemsKey_) List<GalleryItemView> items,@JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_) DateTime? addonWindowEndsAt,@JsonKey(name: GalleryDetailResponse.addonOpenKey_) bool addonOpen,@JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_) List<String>? chosenMediaAssetIds
 });
 
 
@@ -67,11 +70,14 @@ class _$GalleryDetailResponseCopyWithImpl<$Res>
 
 /// Create a copy of GalleryDetailResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? gallery = null,Object? items = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? gallery = null,Object? items = null,Object? addonWindowEndsAt = freezed,Object? addonOpen = null,Object? chosenMediaAssetIds = freezed,}) {
   return _then(_self.copyWith(
 gallery: null == gallery ? _self.gallery : gallery // ignore: cast_nullable_to_non_nullable
 as ProofGalleryResponse,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
-as List<GalleryItemView>,
+as List<GalleryItemView>,addonWindowEndsAt: freezed == addonWindowEndsAt ? _self.addonWindowEndsAt : addonWindowEndsAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,addonOpen: null == addonOpen ? _self.addonOpen : addonOpen // ignore: cast_nullable_to_non_nullable
+as bool,chosenMediaAssetIds: freezed == chosenMediaAssetIds ? _self.chosenMediaAssetIds : chosenMediaAssetIds // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 /// Create a copy of GalleryDetailResponse
@@ -165,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GalleryDetailResponse.galleryKey_)  ProofGalleryResponse gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_)  List<GalleryItemView> items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GalleryDetailResponse.galleryKey_)  ProofGalleryResponse gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_)  List<GalleryItemView> items, @JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_)  DateTime? addonWindowEndsAt, @JsonKey(name: GalleryDetailResponse.addonOpenKey_)  bool addonOpen, @JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_)  List<String>? chosenMediaAssetIds)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GalleryDetailResponse() when $default != null:
-return $default(_that.gallery,_that.items);case _:
+return $default(_that.gallery,_that.items,_that.addonWindowEndsAt,_that.addonOpen,_that.chosenMediaAssetIds);case _:
   return orElse();
 
 }
@@ -186,10 +192,10 @@ return $default(_that.gallery,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GalleryDetailResponse.galleryKey_)  ProofGalleryResponse gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_)  List<GalleryItemView> items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GalleryDetailResponse.galleryKey_)  ProofGalleryResponse gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_)  List<GalleryItemView> items, @JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_)  DateTime? addonWindowEndsAt, @JsonKey(name: GalleryDetailResponse.addonOpenKey_)  bool addonOpen, @JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_)  List<String>? chosenMediaAssetIds)  $default,) {final _that = this;
 switch (_that) {
 case _GalleryDetailResponse():
-return $default(_that.gallery,_that.items);case _:
+return $default(_that.gallery,_that.items,_that.addonWindowEndsAt,_that.addonOpen,_that.chosenMediaAssetIds);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +212,10 @@ return $default(_that.gallery,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GalleryDetailResponse.galleryKey_)  ProofGalleryResponse gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_)  List<GalleryItemView> items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GalleryDetailResponse.galleryKey_)  ProofGalleryResponse gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_)  List<GalleryItemView> items, @JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_)  DateTime? addonWindowEndsAt, @JsonKey(name: GalleryDetailResponse.addonOpenKey_)  bool addonOpen, @JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_)  List<String>? chosenMediaAssetIds)?  $default,) {final _that = this;
 switch (_that) {
 case _GalleryDetailResponse() when $default != null:
-return $default(_that.gallery,_that.items);case _:
+return $default(_that.gallery,_that.items,_that.addonWindowEndsAt,_that.addonOpen,_that.chosenMediaAssetIds);case _:
   return null;
 
 }
@@ -221,7 +227,7 @@ return $default(_that.gallery,_that.items);case _:
 
 @jsonSerializable
 class _GalleryDetailResponse extends GalleryDetailResponse {
-  const _GalleryDetailResponse({@JsonKey(name: GalleryDetailResponse.galleryKey_) required this.gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_) required final  List<GalleryItemView> items}): _items = items,super._();
+  const _GalleryDetailResponse({@JsonKey(name: GalleryDetailResponse.galleryKey_) required this.gallery, @JsonKey(name: GalleryDetailResponse.itemsKey_) required final  List<GalleryItemView> items, @JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_) this.addonWindowEndsAt, @JsonKey(name: GalleryDetailResponse.addonOpenKey_) this.addonOpen = false, @JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_) final  List<String>? chosenMediaAssetIds}): _items = items,_chosenMediaAssetIds = chosenMediaAssetIds,super._();
   factory _GalleryDetailResponse.fromJson(Map<String, dynamic> json) => _$GalleryDetailResponseFromJson(json);
 
 /// gallery
@@ -233,6 +239,21 @@ class _GalleryDetailResponse extends GalleryDetailResponse {
   if (_items is EqualUnmodifiableListView) return _items;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_items);
+}
+
+/// addonWindowEndsAt
+@override@JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_) final  DateTime? addonWindowEndsAt;
+/// addonOpen
+@override@JsonKey(name: GalleryDetailResponse.addonOpenKey_) final  bool addonOpen;
+/// chosenMediaAssetIds
+ final  List<String>? _chosenMediaAssetIds;
+/// chosenMediaAssetIds
+@override@JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_) List<String>? get chosenMediaAssetIds {
+  final value = _chosenMediaAssetIds;
+  if (value == null) return null;
+  if (_chosenMediaAssetIds is EqualUnmodifiableListView) return _chosenMediaAssetIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
 }
 
 
@@ -249,16 +270,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryDetailResponse&&(identical(other.gallery, gallery) || other.gallery == gallery)&&const DeepCollectionEquality().equals(other._items, _items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryDetailResponse&&(identical(other.gallery, gallery) || other.gallery == gallery)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.addonWindowEndsAt, addonWindowEndsAt) || other.addonWindowEndsAt == addonWindowEndsAt)&&(identical(other.addonOpen, addonOpen) || other.addonOpen == addonOpen)&&const DeepCollectionEquality().equals(other._chosenMediaAssetIds, _chosenMediaAssetIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,gallery,const DeepCollectionEquality().hash(_items));
+int get hashCode => Object.hash(runtimeType,gallery,const DeepCollectionEquality().hash(_items),addonWindowEndsAt,addonOpen,const DeepCollectionEquality().hash(_chosenMediaAssetIds));
 
 @override
 String toString() {
-  return 'GalleryDetailResponse(gallery: $gallery, items: $items)';
+  return 'GalleryDetailResponse(gallery: $gallery, items: $items, addonWindowEndsAt: $addonWindowEndsAt, addonOpen: $addonOpen, chosenMediaAssetIds: $chosenMediaAssetIds)';
 }
 
 
@@ -269,7 +290,7 @@ abstract mixin class _$GalleryDetailResponseCopyWith<$Res> implements $GalleryDe
   factory _$GalleryDetailResponseCopyWith(_GalleryDetailResponse value, $Res Function(_GalleryDetailResponse) _then) = __$GalleryDetailResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: GalleryDetailResponse.galleryKey_) ProofGalleryResponse gallery,@JsonKey(name: GalleryDetailResponse.itemsKey_) List<GalleryItemView> items
+@JsonKey(name: GalleryDetailResponse.galleryKey_) ProofGalleryResponse gallery,@JsonKey(name: GalleryDetailResponse.itemsKey_) List<GalleryItemView> items,@JsonKey(name: GalleryDetailResponse.addonWindowEndsAtKey_) DateTime? addonWindowEndsAt,@JsonKey(name: GalleryDetailResponse.addonOpenKey_) bool addonOpen,@JsonKey(name: GalleryDetailResponse.chosenMediaAssetIdsKey_) List<String>? chosenMediaAssetIds
 });
 
 
@@ -286,11 +307,14 @@ class __$GalleryDetailResponseCopyWithImpl<$Res>
 
 /// Create a copy of GalleryDetailResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? gallery = null,Object? items = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? gallery = null,Object? items = null,Object? addonWindowEndsAt = freezed,Object? addonOpen = null,Object? chosenMediaAssetIds = freezed,}) {
   return _then(_GalleryDetailResponse(
 gallery: null == gallery ? _self.gallery : gallery // ignore: cast_nullable_to_non_nullable
 as ProofGalleryResponse,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
-as List<GalleryItemView>,
+as List<GalleryItemView>,addonWindowEndsAt: freezed == addonWindowEndsAt ? _self.addonWindowEndsAt : addonWindowEndsAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,addonOpen: null == addonOpen ? _self.addonOpen : addonOpen // ignore: cast_nullable_to_non_nullable
+as bool,chosenMediaAssetIds: freezed == chosenMediaAssetIds ? _self._chosenMediaAssetIds : chosenMediaAssetIds // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 

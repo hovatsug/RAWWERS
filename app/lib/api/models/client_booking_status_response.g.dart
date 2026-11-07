@@ -28,6 +28,9 @@ _ClientBookingStatusResponse _$ClientBookingStatusResponseFromJson(
   payBy: json['pay_by'] == null
       ? null
       : DateTime.parse(json['pay_by'] as String),
+  addonWindowEndsAt: json['addon_window_ends_at'] == null
+      ? null
+      : DateTime.parse(json['addon_window_ends_at'] as String),
   timeline: (json['timeline'] as List<dynamic>?)
       ?.map((e) => e as Map<String, dynamic>)
       .toList(),
@@ -53,6 +56,7 @@ Map<String, dynamic> _$ClientBookingStatusResponseToJson(
   'short_notice': instance.shortNotice,
   'refunds': instance.refunds,
   'pay_by': instance.payBy?.toIso8601String(),
+  'addon_window_ends_at': instance.addonWindowEndsAt?.toIso8601String(),
   'timeline': instance.timeline,
   'next_actions': instance.nextActions,
   'review': instance.review,

@@ -46,6 +46,8 @@ export default function AdminBookingMoneyPage() {
     <>
       <PageHeader title="Booking money" description={`Booking ${data.gig_id} · ${data.status.replace(/_/g, " ")}`} />
 
+      <SelectionWindow gigId={data.gig_id} endsAt={data.addon_window_ends_at} onDone={() => queryClient.invalidateQueries({ queryKey: ["admin", "booking-money", id] })} />
+
       <div className="grid gap-4 md:grid-cols-2">
         <Panel>
           <h2 className="mb-2 text-sm font-semibold text-slate-200">Price</h2>
@@ -194,6 +196,51 @@ function RecordFinding({ gigId, proId }: { gigId: string; proId: string }) {
       >
         Record finding
       </AdminButton>
+    </Panel>
+  );
+}
+
+/**
+ * Until when the client may add photos after choosing, and "Extend selection
+ * window": days and a required note, logged with the admin and the time.
+ */
+function SelectionWindow({ gigId, endsAt, onDone }: { gigId: string; endsAt: string | null; onDone: () => void }) {
+  const [days, setDays] = useState("3");
+  const [note, setNote] = useState("");
+  const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | null>(null);
+  if (!endsAt) return null;
+  const ends = new Date(endsAt);
+  const open = ends.getTime() > Date.now();
+  return (
+    <Panel className="mb-4 space-y-3 p-4">
+      <h2 className="text-sm font-semibold text-slate-200">Selection window</h2>
+      <p className="text-sm text-slate-300">
+        {open ? "The client can add photos until " : "Closed on "}
+        {ends.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}.
+      </p>
+      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <FieldLabel htmlFor="window-days">Extend by (days)</FieldLabel>
+          <TextField id="window-days" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/[^0-9]/g, ""))} />
+        </div>
+        <div className="min-w-72 flex-1">
+          <FieldLabel htmlFor="window-note">Note (required)</FieldLabel>
+          <TextField id="window-note" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <AdminButton
+          disabled={!note.trim() || !Number(days)}
+          onClick={async () => {
+            const res = await admin.extendSelectionWindow(gigId, Number(days), note);
+            if (!res.ok) return setMessage({ tone: "error", text: res.error.message });
+            setMessage({ tone: "success", text: "Extended." });
+            setNote("");
+            onDone();
+          }}
+        >
+          Extend selection window
+        </AdminButton>
+      </div>
     </Panel>
   );
 }

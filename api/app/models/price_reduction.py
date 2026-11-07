@@ -68,5 +68,8 @@ class DeliveryReviewPolicy(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     shortfall_min_photos: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    #: How many days after the selection closes the client may still add
+    #: photos (stamped on each booking when it closes).
+    selection_addon_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))

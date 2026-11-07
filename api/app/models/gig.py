@@ -75,6 +75,11 @@ class Gig(Base):
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
     amount_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_final: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    #: Until when the client may add photos to what they chose (selection
+    #: add-on window). Stamped once, when the selection closes, from the
+    #: setting then: a later change of the setting never moves it. An admin
+    #: may extend it. Null before the selection closes.
+    addon_window_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # What the booking earned, split, stamped by photographer_money when its
     # earnings are recorded and after every change: the final price net of
     # refunds, 15% retained and 5% $RAWW credit each rounded, the

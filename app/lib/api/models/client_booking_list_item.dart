@@ -91,6 +91,18 @@
 ///                 }
 ///             ],
 ///             "title": "Pay By"
+///         },
+///         "addon_window_ends_at": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "date-time"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Addon Window Ends At"
 ///         }
 ///     },
 ///     "type": "object",
@@ -161,6 +173,10 @@ abstract class ClientBookingListItem with _$ClientBookingListItem {
 
     /// payBy
     @JsonKey(name: ClientBookingListItem.payByKey_) DateTime? payBy,
+
+    /// addonWindowEndsAt
+    @JsonKey(name: ClientBookingListItem.addonWindowEndsAtKey_)
+    DateTime? addonWindowEndsAt,
   }) = _ClientBookingListItem;
 
   factory ClientBookingListItem.fromJson(Map<String, dynamic> json) =>
@@ -189,4 +205,6 @@ abstract class ClientBookingListItem with _$ClientBookingListItem {
   static const String shortNoticeKey_ = r'short_notice';
 
   static const String payByKey_ = r'pay_by';
+
+  static const String addonWindowEndsAtKey_ = r'addon_window_ends_at';
 }

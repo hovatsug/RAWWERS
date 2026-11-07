@@ -19,30 +19,30 @@
 ///         },
 ///         "amount_total": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Total"
 ///         },
 ///         "amount_paid": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Paid"
 ///         },
 ///         "amount_due": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Due"
+///         },
+///         "addon_days": {
+///             "type": "integer",
+///             "default": 7,
+///             "title": "Addon Days"
 ///         },
 ///         "refund_amount": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "default": "0.00",
 ///             "title": "Refund Amount"
 ///         },
 ///         "next_photo_price": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -119,6 +119,11 @@ abstract class SelectionQuoteResponse with _$SelectionQuoteResponse {
     @JsonKey(name: SelectionQuoteResponse.amountDueKey_)
     required String amountDue,
 
+    /// addonDays
+    @Default(7)
+    @JsonKey(name: SelectionQuoteResponse.addonDaysKey_)
+    int addonDays,
+
     /// refundAmount
     @Default('0.00')
     @JsonKey(name: SelectionQuoteResponse.refundAmountKey_)
@@ -157,6 +162,8 @@ abstract class SelectionQuoteResponse with _$SelectionQuoteResponse {
   static const String amountPaidKey_ = r'amount_paid';
 
   static const String amountDueKey_ = r'amount_due';
+
+  static const String addonDaysKey_ = r'addon_days';
 
   static const String refundAmountKey_ = r'refund_amount';
 

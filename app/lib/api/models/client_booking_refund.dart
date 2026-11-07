@@ -3,7 +3,6 @@
 ///     "properties": {
 ///         "amount": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount"
 ///         },
 ///         "currency": {

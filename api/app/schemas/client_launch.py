@@ -334,6 +334,8 @@ class ClientBookingStatusResponse(BaseModel):
     # When the client has to pay by - set only while payment is due. The
     # same deadline the pay route enforces.
     pay_by: datetime | None = None
+    # Until when photos may still be added after the selection closed.
+    addon_window_ends_at: datetime | None = None
     timeline: list[dict] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
     # The client's own review of this booking, whatever its status - so the
@@ -370,6 +372,9 @@ class ClientBookingListItem(BaseModel):
     # When the client has to pay by - set only while payment is due. The
     # same deadline the pay route enforces.
     pay_by: datetime | None = None
+    # Until when photos may still be added after the selection closed; the
+    # card shows the countdown while it is in the future.
+    addon_window_ends_at: datetime | None = None
 
 
 class ClientBookingListResponse(BaseModel):

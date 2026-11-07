@@ -352,3 +352,6 @@ export 'shelf_address_response.dart';
 export 'shelf_order_view.dart';
 export 'shelf_orders_response.dart';
 export 'notification_unread_count.dart';
+export 'addon_quote_response.dart';
+export 'start_addon_request.dart';
+export 'start_addon_response.dart';

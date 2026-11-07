@@ -475,6 +475,16 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             )
             payment.amount = received_amount
 
+        # Photos added after the selection closed: their own extras earning
+        # and their own downloads, nothing else. Not the booking's payment -
+        # its status (often completed), ledger, payouts and reviews stay as
+        # they are (services/selection_addons).
+        if payment.kind == StripePaymentKind.extras:
+            from app.services.selection_addons import apply_payment
+
+            if apply_payment(db, payment):
+                return
+
         if gig.status != GigStatus.paid:
             transition = transition_gig(gig, GigStatus.paid, SYSTEM_USER_ID, reason="Stripe payment_intent.succeeded")
             db.add(transition)

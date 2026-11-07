@@ -24,6 +24,7 @@ class RImageTile extends StatelessWidget {
     this.onTap,
     this.onExpand,
     this.semanticLabel,
+    this.lockedLabel,
     super.key,
   });
 
@@ -35,6 +36,11 @@ class RImageTile extends StatelessWidget {
 
   /// What a screen reader says for the tile, e.g. "Photo 12, selected".
   final String? semanticLabel;
+
+  /// Set when the photo is already taken and cannot change, e.g. "Chosen":
+  /// the tile is greyed and carries this label instead of a selection ring.
+  /// It can still be opened full screen.
+  final String? lockedLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +77,21 @@ class RImageTile extends StatelessWidget {
                 ),
               ),
             ),
-            if (selected || selectable)
+            if (lockedLabel != null) ...[
+              const ColoredBox(color: Colors.black54),
+              Positioned(
+                right: RSpace.s4,
+                bottom: RSpace.s4,
+                child: ExcludeSemantics(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: RSpace.s8, vertical: 2),
+                    decoration: BoxDecoration(color: RInk.i050, borderRadius: BorderRadius.circular(RSpace.s8)),
+                    child: Text(lockedLabel!, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: RInk.i900)),
+                  ),
+                ),
+              ),
+            ],
+            if (lockedLabel == null && (selected || selectable))
               Positioned(
                 top: RSpace.s4,
                 right: RSpace.s4,

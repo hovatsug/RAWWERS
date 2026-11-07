@@ -189,7 +189,6 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
             return True
 
     back = Decimal("0.00")
-    succeeded: list[tuple[str, Decimal]] = []
     for refund in fetch_refunds(payment_intent_id):
         refund_id = refund.get("id")
         status = refund.get("status")
@@ -198,7 +197,6 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
 
         if status == "succeeded":
             back += amount
-            succeeded.append((refund_id, amount))
             if not _ledger_line(db, gig, LedgerEntryType.refund_succeeded, refund_id) and not _adopt_legacy_line(db, gig, payment, refund_id, amount):
                 _add_line(db, gig, LedgerEntryType.refund_succeeded, refund_id, -amount, f"Stripe refund {refund_id}")
             if case is not None and case.status not in (RefundCaseStatus.refunded, RefundCaseStatus.succeeded):
@@ -224,7 +222,7 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
     # Credit used on the booking goes back in the same share as the cash.
     from app.services.client_credit import return_credit_on_refunds
 
-    return_credit_on_refunds(db, gig=gig, payment=payment, refunds=succeeded)
+    return_credit_on_refunds(db, gig=gig)
 
     if is_fully_refunded(db, gig):
         settle_full_refund(db, gig, reason=f"Refunded in full ({trigger})")

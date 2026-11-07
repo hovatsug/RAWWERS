@@ -303,18 +303,23 @@ def returned_on_refunds_points(db: Session, gig_id: uuid.UUID) -> int:
     )
 
 
-def return_credit_on_refunds(db: Session, *, gig, payment, refunds: list[tuple[str, Decimal]]) -> list[RewardLedgerEntry]:
-    """Give back the credit used on this booking for its payment's refunds
-    (Stripe's succeeded ones, oldest first, cash amounts). Each refund's
-    return is the cumulative share owed so far less what was already given
-    back, so repeated or reordered events never give twice. Not subject to
-    a rewards freeze: it is the client's own credit coming back."""
-    from app.models.gig import StripePaymentKind
+def return_credit_on_refunds(db: Session, *, gig) -> list[RewardLedgerEntry]:
+    """Give back the credit used on this booking for its refunds.
+
+    The share is the cash refunded over the cash paid, across the booking's
+    payments; full when it is all refunded. A price reduction's refund is
+    not counted: the price itself came down by that amount, all of it paid
+    in cash, so cash back is already the whole reduction (the credit stays
+    used on the lower price), and the reduction is taken off the cash paid.
+    Each refund's return is the cumulative share owed so far less what was
+    already given back, so repeated or reordered events never give twice;
+    a refund that failed gives nothing. Not subject to a rewards freeze: it
+    is the client's own credit coming back."""
+    from app.models.admin import RefundCase
+    from app.models.gig import LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
     from app.models.reward import RedemptionContextType
     from app.services.rewards import _get_or_create_reward_balance_locked
 
-    if payment.kind != StripePaymentKind.base or not refunds or Decimal(payment.amount or 0) <= 0:
-        return []
     redemption = db.execute(
         select(DiscountRedemption).where(
             DiscountRedemption.context_type == RedemptionContextType.gig_payment,
@@ -324,14 +329,36 @@ def return_credit_on_refunds(db: Session, *, gig, payment, refunds: list[tuple[s
     ).scalar_one_or_none()
     if redemption is None or redemption.points_spent <= 0:
         return []
+    cash_paid = db.execute(
+        select(func.coalesce(func.sum(StripePayment.amount), 0)).where(
+            StripePayment.gig_id == gig.id,
+            StripePayment.kind.in_([StripePaymentKind.base, StripePaymentKind.difference]),
+            StripePayment.status.in_([PaymentStatus.succeeded, PaymentStatus.refunded, PaymentStatus.disputed]),
+        )
+    ).scalar_one()
+    lines = db.execute(
+        select(LedgerEntry).where(LedgerEntry.gig_id == gig.id, LedgerEntry.reference_type == "stripe_refund")
+        .order_by(LedgerEntry.created_at, LedgerEntry.id)
+    ).scalars().all()
+    failed = {line.reference_id for line in lines if line.entry_type == LedgerEntryType.refund_failed}
+    succeeded = [(line.reference_id, -Decimal(line.amount)) for line in lines
+                 if line.entry_type == LedgerEntryType.refund_succeeded and line.reference_id not in failed]
+    reduction_ids = {
+        (case.meta or {}).get("stripe_refund_id")
+        for case in db.execute(select(RefundCase).where(RefundCase.gig_id == gig.id)).scalars()
+        if (case.meta or {}).get("source") == "price_reduction"
+    }
+    base = Decimal(cash_paid) - sum((amount for rid, amount in succeeded if rid in reduction_ids), Decimal("0.00"))
+    refunds = [(rid, amount) for rid, amount in succeeded if rid not in reduction_ids]
+    if base <= 0 or not refunds:
+        return []
     balance = _get_or_create_reward_balance_locked(db, redemption.user_id)
     per_eur = points_per_eur(db)
-    paid = Decimal(payment.amount)
     returned = returned_on_refunds_points(db, gig.id)  # under the balance lock
     written: list[RewardLedgerEntry] = []
     refunded = Decimal("0.00")
     for refund_id, amount in refunds:
-        refunded += Decimal(amount)
+        refunded += amount
         reference = f"{gig.id}:{refund_id}"
         exists = db.execute(
             select(RewardLedgerEntry.id).where(
@@ -340,10 +367,10 @@ def return_credit_on_refunds(db: Session, *, gig, payment, refunds: list[tuple[s
         ).first()
         if exists:
             continue
-        if refunded >= paid:
+        if refunded >= base:
             owed = int(redemption.points_spent)
         else:
-            euros = (Decimal(redemption.discount_amount) * refunded / paid).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+            euros = (Decimal(redemption.discount_amount) * refunded / base).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
             owed = min(int(redemption.points_spent), int(euros * per_eur))
         give = owed - returned
         if give <= 0:

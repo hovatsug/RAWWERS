@@ -186,3 +186,47 @@ def test_a_booking_paid_without_credit_gets_none(client, db_session, fake_stripe
     assert _returns(db_session, gig) == []
     payment = db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one()
     assert payment.amount_refunded == Decimal("100.00")
+
+
+def test_a_price_reduction_refund_gives_no_credit_back_and_a_later_full_refund_gives_it_all(client, db_session, fake_stripe, refunds):
+    """The price came down by EUR 20, all of it paid back in cash: cash back
+    is the whole reduction, so no credit comes back with it. Refunding the
+    rest (EUR 125 of the EUR 125 cash left) then gives back all EUR 5."""
+    from app.models.admin import RefundCase, RefundCaseStatus, RefundPaymentScope
+
+    user_id, gig, pi = _paid_with_credit(client, db_session)
+    payment = db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one()
+    db_session.add(RefundCase(
+        gig_id=gig.id, requested_by_user_id=gig.client_user_id, payment_scope=RefundPaymentScope.booking_payment,
+        reference_id=gig.id, stripe_payment_intent_id=pi, amount_authorized=payment.amount, status=RefundCaseStatus.processing,
+        amount=Decimal("20.00"), currency="EUR", reason="price_reduction: client_selected_fewer",
+        meta={"source": "price_reduction", "stripe_refund_id": "re_reduction"},
+    ))
+    db_session.commit()
+    _refund(refunds, pi, "re_reduction", "20.00")
+    _reconcile(db_session, pi)
+    assert _returns(db_session, gig) == [] and _balance(client, user_id) == "0.00"
+
+    _refund(refunds, pi, "re_rest", "62.50")  # half of what is left
+    _reconcile(db_session, pi)
+    assert _balance(client, user_id) == "2.50"
+    _refund(refunds, pi, "re_last", "62.50")
+    _reconcile(db_session, pi)
+    assert _balance(client, user_id) == "5.00"
+
+
+def test_a_refund_that_fails_after_succeeding_does_not_count_towards_the_next(client, db_session, fake_stripe, refunds):
+    """EUR 40 back gives EUR 1.37; that refund then fails (the money is with
+    us again), and another EUR 40 succeeds: still EUR 40 refunded in all, so
+    nothing more comes back. The credit given for the failed one stays
+    (logged as open)."""
+    user_id, gig, pi = _paid_with_credit(client, db_session)
+    _refund(refunds, pi, "re_a", "40.00")
+    _reconcile(db_session, pi)
+    assert _balance(client, user_id) == "1.37"
+
+    refunds[pi][0]["status"] = "failed"
+    _refund(refunds, pi, "re_b", "40.00")
+    _reconcile(db_session, pi)
+
+    assert _balance(client, user_id) == "1.37"

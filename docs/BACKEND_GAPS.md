@@ -4,6 +4,16 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## Open, logged 2026-11-07 (one line each)
+
+- **Admin budget alerts are in-app only.** The 80% and 100% marketing-budget alerts go to the admin's notifications; email waits for Brevo.
+- **Referral rewards have no client screen.** They exist in the backend (codes, claims, rewards); the screen belongs with the first-100-clients plan.
+- **The admin Galleries page is read-only.** It lists galleries and their add-on windows; acting on one is done from the booking.
+- **No add-on emails.** The add-on window's reminder and the add-on receipt are in-app only.
+- **Add-on refunds are all or none.** Refunding an add-on reverses the whole purchase and its earning; there is no per-photo refund.
+- **`test_niche_banners` hits a 429 rate limit when run alone.** It passes in the full suite; also on main.
+- **Portuguese texts and the launch invite and waitlist emails come later.** The UK beta is English first.
+
 ## The Shelf: photos and rows — BUILT (2026-11-07)
 
 - **Photos:** 1 to 4 per item; the first is the cover (`shelf_item_image`, migration 0089; `services/shelf_images.py`).

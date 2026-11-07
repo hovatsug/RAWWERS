@@ -15,12 +15,19 @@ sees of it (owner's decisions, 2026-11-07).
   under a lock on the settings row, so concurrent grants can never exceed
   it. Admins are told at 80% and at 100%, once each a month. The per-client
   monthly cap (3) and the per-grant amounts are unchanged.
+- Credit used on a booking that is refunded goes back to the client
+  (owner's decision, 2026-11-07): all of it on a full refund; on a partial
+  refund the same share as the cash refunded, rounded down to the cent, so
+  cash back plus credit back is the refunded share of the booking's value.
+  Each return is its own ledger line, "Refunded credit", referenced by the
+  booking and the refund (reference_type REFUND_REFERENCE), spendable like
+  any credit and never counted against the marketing budget.
 """
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -31,6 +38,9 @@ from app.models.reward import ClientCreditSettings, DiscountRedemption, Discount
 REPORTING_TZ = ZoneInfo("Europe/London")
 #: The reward ledger's reference for a marketing-permission credit.
 MARKETING_REFERENCE = "marketing_consent"
+#: The reward ledger's reference for credit given back on a refund:
+#: reference_id "<gig id>:<stripe refund id>".
+REFUND_REFERENCE = "booking_refund"
 
 
 def settings(db: Session, *, lock: bool = False) -> ClientCreditSettings:
@@ -94,12 +104,20 @@ def budget_view(db: Session, now: datetime | None = None) -> dict:
         )
     ).scalar_one()
     outstanding_points = db.execute(select(func.coalesce(func.sum(RewardBalance.balance), 0)).where(RewardBalance.balance > 0)).scalar_one()
+    returned_points = db.execute(
+        select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
+            RewardLedgerEntry.reference_type == REFUND_REFERENCE,
+            RewardLedgerEntry.created_at >= start,
+            RewardLedgerEntry.created_at < end,
+        )
+    ).scalar_one()
     budget = Decimal(row.monthly_marketing_credit_budget_eur)
     return {
         "month": key,
         "budget_eur": budget,
         "awarded_eur": awarded,
         "used_eur": Decimal(used).quantize(Decimal("0.01")),
+        "returned_on_refunds_eur": to_eur(returned_points, points_per_eur(db)),
         "outstanding_eur": to_eur(outstanding_points, points_per_eur(db)),
         "remaining_eur": max(Decimal("0.00"), budget - awarded),
         "max_discount_percent": row.max_discount_percent,
@@ -270,6 +288,81 @@ def set_for_payment(db: Session, *, client_user_id: uuid.UUID, gig, use_credit: 
     return max(Decimal("0.01"), price - discount), involved
 
 
+# --- refunds -------------------------------------------------------------------------------
+
+
+def returned_on_refunds_points(db: Session, gig_id: uuid.UUID) -> int:
+    """Credit already given back for this booking's refunds."""
+    return int(
+        db.execute(
+            select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
+                RewardLedgerEntry.reference_type == REFUND_REFERENCE,
+                RewardLedgerEntry.reference_id.like(f"{gig_id}:%"),
+            )
+        ).scalar_one()
+    )
+
+
+def return_credit_on_refunds(db: Session, *, gig, payment, refunds: list[tuple[str, Decimal]]) -> list[RewardLedgerEntry]:
+    """Give back the credit used on this booking for its payment's refunds
+    (Stripe's succeeded ones, oldest first, cash amounts). Each refund's
+    return is the cumulative share owed so far less what was already given
+    back, so repeated or reordered events never give twice. Not subject to
+    a rewards freeze: it is the client's own credit coming back."""
+    from app.models.gig import StripePaymentKind
+    from app.models.reward import RedemptionContextType
+    from app.services.rewards import _get_or_create_reward_balance_locked
+
+    if payment.kind != StripePaymentKind.base or not refunds or Decimal(payment.amount or 0) <= 0:
+        return []
+    redemption = db.execute(
+        select(DiscountRedemption).where(
+            DiscountRedemption.context_type == RedemptionContextType.gig_payment,
+            DiscountRedemption.context_id == gig.id,
+            DiscountRedemption.status == DiscountRedemptionStatus.applied,
+        )
+    ).scalar_one_or_none()
+    if redemption is None or redemption.points_spent <= 0:
+        return []
+    balance = _get_or_create_reward_balance_locked(db, redemption.user_id)
+    per_eur = points_per_eur(db)
+    paid = Decimal(payment.amount)
+    returned = returned_on_refunds_points(db, gig.id)  # under the balance lock
+    written: list[RewardLedgerEntry] = []
+    refunded = Decimal("0.00")
+    for refund_id, amount in refunds:
+        refunded += Decimal(amount)
+        reference = f"{gig.id}:{refund_id}"
+        exists = db.execute(
+            select(RewardLedgerEntry.id).where(
+                RewardLedgerEntry.reference_type == REFUND_REFERENCE, RewardLedgerEntry.reference_id == reference
+            )
+        ).first()
+        if exists:
+            continue
+        if refunded >= paid:
+            owed = int(redemption.points_spent)
+        else:
+            euros = (Decimal(redemption.discount_amount) * refunded / paid).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+            owed = min(int(redemption.points_spent), int(euros * per_eur))
+        give = owed - returned
+        if give <= 0:
+            continue
+        returned += give
+        balance.balance = int(balance.balance) + give
+        balance.updated_at = datetime.now(timezone.utc)
+        entry = RewardLedgerEntry(
+            user_id=redemption.user_id, entry_type=RewardEntryType.adjustment, rule_code=None, amount=give,
+            balance_after=balance.balance, reference_type=REFUND_REFERENCE, reference_id=reference,
+            meta={"kind": "refunded_credit", "gig_id": str(gig.id), "stripe_refund_id": refund_id,
+                  "refunded_redemption_id": str(redemption.id)},
+        )
+        db.add(entry)
+        db.flush()
+        written.append(entry)
+    return written
+
+
 # --- what the client sees ------------------------------------------------------------------
 
 
@@ -295,6 +388,8 @@ def history(db: Session, client_user_id: uuid.UUID, *, limit: int = 100) -> list
             profile = db.get(ProProfile, gig.pro_user_id) if gig else None
             name = (profile.display_name or "").strip() if profile else ""
             first_name = name.split()[0] if name else None
+        elif row.reference_type == REFUND_REFERENCE:
+            kind = "refunded_credit"
         elif row.entry_type == RewardEntryType.spend:
             kind = "used_on_booking"
         elif row.entry_type == RewardEntryType.adjustment and (row.meta or {}).get("redemption_id"):

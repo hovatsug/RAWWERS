@@ -81,7 +81,10 @@ def points_paid(db: Session, gig: Gig) -> Decimal:
     """What the client paid with reward points: the discount RAWWERS funds,
     applied to the booking's payment. Money towards the price like any
     other - leaving it out paid the photographer less for a points-assisted
-    booking than for the same booking paid by card."""
+    booking than for the same booking paid by card. Less any credit given
+    back on a refund: like refunded cash, it is no longer money towards the
+    price (otherwise a partial refund kept the photographer's share of the
+    credit the client got back)."""
     from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, RedemptionContextType
 
     total = db.execute(
@@ -91,7 +94,10 @@ def points_paid(db: Session, gig: Gig) -> Decimal:
             DiscountRedemption.status == DiscountRedemptionStatus.applied,
         )
     ).scalar_one()
-    return _q2(total)
+    from app.services.client_credit import points_per_eur, returned_on_refunds_points
+
+    returned = Decimal(returned_on_refunds_points(db, gig.id)) / Decimal(points_per_eur(db))
+    return _q2(max(ZERO, Decimal(total) - returned))
 
 
 def net_paid(db: Session, gig: Gig) -> Decimal:

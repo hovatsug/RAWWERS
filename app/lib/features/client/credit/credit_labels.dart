@@ -19,6 +19,7 @@ String creditLabel(CreditHistoryItem item) => switch (item.kind) {
           : 'Marketing permission · booking with ${item.photographerFirstName}',
       'used_on_booking' => 'Used on a booking',
       'returned' => 'Returned to you',
+      'refunded_credit' => 'Refunded credit',
       'reversed' => 'Reversed',
       'earned' => 'Credit earned',
       _ => 'Adjustment',

@@ -195,6 +195,7 @@ export type MarketingBudget = {
   budget_eur: string;
   awarded_eur: string;
   used_eur: string;
+  returned_on_refunds_eur: string;
   outstanding_eur: string;
   remaining_eur: string;
   max_discount_percent: number;

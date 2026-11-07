@@ -21,7 +21,7 @@ router = APIRouter(tags=["client_credit"])
 class CreditHistoryItem(BaseModel):
     id: uuid.UUID
     created_at: datetime
-    #: marketing_permission, used_on_booking, returned, reversed, earned, adjustment.
+    #: marketing_permission, used_on_booking, returned, refunded_credit, reversed, earned, adjustment.
     kind: str
     #: Signed: positive earned or given back, negative used or reversed.
     amount_eur: Decimal
@@ -96,6 +96,8 @@ class MarketingBudgetView(BaseModel):
     budget_eur: Decimal
     awarded_eur: Decimal
     used_eur: Decimal
+    #: Credit given back this month because a booking it was used on was refunded.
+    returned_on_refunds_eur: Decimal = Decimal("0.00")
     outstanding_eur: Decimal
     remaining_eur: Decimal
     max_discount_percent: int

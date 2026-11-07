@@ -33,11 +33,12 @@ export default function AdminClientCreditPage() {
       <div className="space-y-4">
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
         {b ? (
-          <Panel className="grid gap-4 p-4 sm:grid-cols-5">
+          <Panel className="grid gap-4 p-4 sm:grid-cols-6">
             {[
               ["Budget", b.budget_eur],
               ["Awarded", b.awarded_eur],
               ["Used at checkout", b.used_eur],
+              ["Returned on refunds", b.returned_on_refunds_eur],
               ["Outstanding", b.outstanding_eur],
               ["Remaining", b.remaining_eur]
             ].map(([label, value]) => (
@@ -46,7 +47,7 @@ export default function AdminClientCreditPage() {
                 <div className="text-xl tabular-nums">{money(value, "EUR")}</div>
               </div>
             ))}
-            <p className="text-xs text-slate-400 sm:col-span-5">{b.month}, Europe/London. Outstanding is every client&apos;s unspent credit, whenever earned.</p>
+            <p className="text-xs text-slate-400 sm:col-span-6">{b.month}, Europe/London. Outstanding is every client&apos;s unspent credit, whenever earned.</p>
           </Panel>
         ) : budget.data && !budget.data.ok ? (
           <Notice tone="error">{budget.data.error.message}</Notice>

@@ -52,6 +52,7 @@ void main() {
       expect(creditLabel(_item('used_on_booking', '-2.00')), 'Used on a booking');
       expect(creditLabel(_item('returned', '2.00')), 'Returned to you');
       expect(creditLabel(_item('reversed', '-1.00')), 'Reversed');
+      expect(creditLabel(_item('refunded_credit', '5.00')), 'Refunded credit');
     });
   });
 
@@ -62,6 +63,7 @@ void main() {
         balanceEur: '1.00',
         maxDiscountPercent: 10,
         items: [
+          _item('refunded_credit', '5.00', at: DateTime.utc(2026, 11, 7, 12)),
           _item('used_on_booking', '-2.00', at: DateTime.utc(2026, 11, 6, 12)),
           _item('marketing_permission', '3.00', name: 'Ana', at: DateTime.utc(2026, 11, 5, 12)),
         ],
@@ -75,6 +77,8 @@ void main() {
     expect(find.text('−€2.00'), findsOneWidget);
     expect(find.text('Marketing permission · booking with Ana'), findsOneWidget);
     expect(find.text('+€3.00'), findsOneWidget);
+    expect(find.text('Refunded credit'), findsOneWidget);
+    expect(find.text('+€5.00'), findsOneWidget);
     expect(find.text('5 Nov 2026'), findsOneWidget);
     for (final word in ['store', 'gift', 'book', 'print', 'RAWW']) {
       expect(find.textContaining(RegExp('\\b${word}s?\\b', caseSensitive: false)), findsNothing, reason: 'no $word');

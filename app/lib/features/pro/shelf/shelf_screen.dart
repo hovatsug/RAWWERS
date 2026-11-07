@@ -6,14 +6,15 @@ import 'package:rawwers/api/models/shelf_browse_level.dart';
 import 'package:rawwers/api/models/shelf_browse_response.dart';
 import 'package:rawwers/api/models/skill_tier.dart';
 import 'package:rawwers/core/format/dates.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
+import 'package:rawwers/design/components/r_card_row.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/tokens.dart';
-import 'package:rawwers/features/pro/shelf/shelf_checkout.dart';
 import 'package:rawwers/features/pro/shelf/shelf_controller.dart';
 import 'package:rawwers/features/pro/shelf/shelf_orders_screen.dart';
 import 'package:rawwers/features/shared/notifications/notifications_controller.dart';
@@ -24,7 +25,10 @@ import 'package:rawwers/features/shared/notifications/notifications_controller.d
 /// for particular cameras, only those that fit a camera in My gear. Levels
 /// above their tier show as teasers with the tier that unlocks them.
 class ShelfScreen extends ConsumerWidget {
-  const ShelfScreen({this.gearPath, this.ordersPath, this.orderItem, super.key});
+  const ShelfScreen({this.gearPath, this.ordersPath, this.itemPath, super.key});
+
+  /// Where an item's card opens (its detail: photos, description, order).
+  final String Function(String itemId)? itemPath;
 
   /// Where "Add your camera" goes (My gear).
   final String? gearPath;
@@ -32,19 +36,10 @@ class ShelfScreen extends ConsumerWidget {
   /// Where "My orders" goes.
   final String? ordersPath;
 
-  /// Opens an item's order flow (the checkout, by default).
-  final void Function(BuildContext context, ShelfBrowseItem item)? orderItem;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shelf = ref.watch(shelfControllerProvider);
-    final spendable = shelf.valueOrNull?.spendable ?? 0;
-    final order = orderItem ??
-        (BuildContext context, ShelfBrowseItem item) async {
-          final messenger = ScaffoldMessenger.of(context);
-          final placed = await showShelfCheckout(context, item: item, spendable: spendable);
-          if (placed) messenger.showSnackBar(const SnackBar(content: Text('Order placed. Find it in My orders.')));
-        };
     return Scaffold(
       appBar: AppBar(
         title: const Text('The Shelf'),
@@ -66,21 +61,25 @@ class ShelfScreen extends ConsumerWidget {
           AsyncData(:final value) => RefreshIndicator(
               onRefresh: () async => ref.invalidate(shelfControllerProvider),
               child: ListView(
-                padding: const EdgeInsets.all(RSpace.s16),
+                padding: const EdgeInsets.only(bottom: RSpace.s24),
                 children: [
-                  _Header(view: value),
-                  if (!value.hasCamera) ...[
-                    const SizedBox(height: RSpace.s16),
-                    _AddCameraPrompt(gearPath: gearPath),
-                  ],
-                  for (final level in value.levels) ...[
-                    const SizedBox(height: RSpace.s24),
-                    _Level(level: level, orderItem: order),
-                  ],
-                  const SizedBox(height: RSpace.s24),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(onPressed: () => _showTerms(context, value), child: const Text('Terms for The Shelf')),
+                  Padding(padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, 0), child: _Header(view: value)),
+                  if (!value.hasCamera)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, 0),
+                      child: _AddCameraPrompt(gearPath: gearPath),
+                    ),
+                  // What they wished for, wherever it sits, first.
+                  if (_wished(value) case final wished when wished.isNotEmpty)
+                    _ShelfRow(heading: Text('Your wish list', style: Theme.of(context).textTheme.titleMedium), items: wished, itemPath: itemPath),
+                  for (final level in value.levels)
+                    _ShelfRow(heading: _LevelHeading(level: level), items: level.items, itemPath: itemPath),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(RSpace.s8, RSpace.s16, RSpace.s16, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(onPressed: () => _showTerms(context, value), child: const Text('Terms for The Shelf')),
+                    ),
                   ),
                 ],
               ),
@@ -177,11 +176,18 @@ class _AddCameraPrompt extends StatelessWidget {
   }
 }
 
-class _Level extends StatelessWidget {
-  const _Level({required this.level, required this.orderItem});
+/// Every wished item across the levels, in level order.
+List<ShelfBrowseItem> _wished(ShelfBrowseResponse view) => [
+      for (final level in view.levels)
+        for (final item in level.items)
+          if (item.wished) item,
+    ];
+
+/// "Level 2 · about €100 · 1000 RAWW", and the tier that unlocks a locked one.
+class _LevelHeading extends StatelessWidget {
+  const _LevelHeading({required this.level});
 
   final ShelfBrowseLevel level;
-  final void Function(BuildContext context, ShelfBrowseItem item)? orderItem;
 
   @override
   Widget build(BuildContext context) {
@@ -190,43 +196,66 @@ class _Level extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: RSpace.s8,
-          children: [
-            Text('Level ${level.level}', style: theme.textTheme.titleMedium),
-            Text('from ${level.bandRaww} RAWW', style: theme.textTheme.bodySmall),
-          ],
+        Text(
+          'Level ${level.level} · about ${RMoney.of(context).format(level.bandEur)} · ${level.bandRaww} RAWW',
+          style: theme.textTheme.titleMedium,
         ),
         if (level.locked)
-          Text(
-            unlocks == null ? 'Locked' : 'Unlocks at ${rTierName(unlocks)}',
-            style: theme.textTheme.labelMedium,
+          Row(
+            children: [
+              const Icon(Icons.lock_outline, size: RIcon.inline),
+              const SizedBox(width: RSpace.s4),
+              Text(unlocks == null ? 'Locked' : 'Unlocks at ${rTierName(unlocks)}', style: theme.textTheme.labelMedium),
+            ],
           ),
-        const SizedBox(height: RSpace.s8),
-        if (level.items.isEmpty)
-          Text('Nothing here yet.', style: theme.textTheme.bodySmall)
-        else
-          for (final item in level.items) ...[
-            _ItemCard(item: item, orderItem: orderItem),
-            const SizedBox(height: RSpace.s8),
-          ],
       ],
     );
   }
 }
 
-class _ItemCard extends ConsumerStatefulWidget {
-  const _ItemCard({required this.item, required this.orderItem});
+/// One row of cards, in the client's row pattern. Compatible items come
+/// first (the server's order).
+class _ShelfRow extends StatelessWidget {
+  const _ShelfRow({required this.heading, required this.items, required this.itemPath});
 
-  final ShelfBrowseItem item;
-  final void Function(BuildContext context, ShelfBrowseItem item)? orderItem;
+  final Widget heading;
+  final List<ShelfBrowseItem> items;
+  final String Function(String itemId)? itemPath;
+
+  static const cardWidth = 148.0;
+  static const rowHeight = 236.0;
 
   @override
-  ConsumerState<_ItemCard> createState() => _ItemCardState();
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Padding(
+        padding: RCardRow.headingPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [heading, const SizedBox(height: RSpace.s8), Text('Nothing here yet.', style: Theme.of(context).textTheme.bodySmall)],
+        ),
+      );
+    }
+    return RCardRow(
+      heading: heading,
+      height: rowHeight,
+      itemCount: items.length,
+      itemBuilder: (context, index) => _ShelfCard(item: items[index], itemPath: itemPath),
+    );
+  }
 }
 
-class _ItemCardState extends ConsumerState<_ItemCard> {
+class _ShelfCard extends ConsumerStatefulWidget {
+  const _ShelfCard({required this.item, required this.itemPath});
+
+  final ShelfBrowseItem item;
+  final String Function(String itemId)? itemPath;
+
+  @override
+  ConsumerState<_ShelfCard> createState() => _ShelfCardState();
+}
+
+class _ShelfCardState extends ConsumerState<_ShelfCard> {
   bool _busy = false;
 
   Future<void> _toggle() async {
@@ -243,53 +272,55 @@ class _ItemCardState extends ConsumerState<_ItemCard> {
     final theme = Theme.of(context);
     final item = widget.item;
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    final notes = [
-      if (item.fitsYourGear) 'Fits your camera',
-      if (!item.inStock) 'Out of stock',
-      if (!item.locked && item.inStock && !item.affordable) 'Not enough RAWW yet',
-    ];
-    final canOrder = widget.orderItem != null && !item.locked && item.inStock && item.affordable;
+    final note = !item.inStock ? 'Out of stock' : (item.fitsYourGear ? 'Fits your camera' : null);
+    final open = widget.itemPath;
 
     return Opacity(
       opacity: item.locked ? 0.55 : 1,
-      child: RCard(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (item.imageUrl != null) ...[
-              SizedBox(
-                width: RSize.blockRow,
-                height: RSize.blockRow,
-                child: Image.network(item.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-              ),
-              const SizedBox(width: RSpace.s12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: SizedBox(
+        width: _ShelfRow.cardWidth,
+        child: InkWell(
+          onTap: open == null ? null : () => context.push(open(item.id)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
                 children: [
-                  Text(item.title, style: theme.textTheme.titleSmall),
-                  if (item.brand != null) Text(item.brand!, style: muted),
-                  const SizedBox(height: RSpace.s4),
-                  Text('${item.priceRaww} RAWW', style: theme.textTheme.bodyMedium),
-                  if (notes.isNotEmpty) Text(notes.join(' · '), style: muted),
-                  if (canOrder) ...[
-                    const SizedBox(height: RSpace.s8),
-                    RButton(label: 'Order', onPressed: () => widget.orderItem!(context, item)),
-                  ],
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(RSpace.s8),
+                    child: SizedBox.square(
+                      dimension: _ShelfRow.cardWidth,
+                      child: item.coverUrl == null
+                          ? ColoredBox(color: theme.colorScheme.surfaceContainerHighest)
+                          : Image.network(
+                              item.coverUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => ColoredBox(color: theme.colorScheme.surfaceContainerHighest),
+                            ),
+                    ),
+                  ),
+                  if (item.locked)
+                    const Positioned(left: RSpace.s4, top: RSpace.s4, child: Icon(Icons.lock_outline)),
+                  // A wish from before their level dropped: still theirs to
+                  // take off, so it does not hold a place on a full list.
+                  if (!item.locked || item.wished)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: IconButton(
+                        tooltip: item.wished ? 'Take off your wish list' : 'Add to your wish list',
+                        onPressed: _busy ? null : _toggle,
+                        icon: Icon(item.wished ? Icons.favorite : Icons.favorite_border),
+                      ),
+                    ),
                 ],
               ),
-            ),
-            if (item.locked) const Padding(padding: EdgeInsets.all(RSpace.s8), child: Icon(Icons.lock_outline)),
-            // A wish from before their level dropped: still theirs to take
-            // off, so it does not hold a place on a full list.
-            if (!item.locked || item.wished)
-              IconButton(
-                tooltip: item.wished ? 'Take off your wish list' : 'Add to your wish list',
-                onPressed: _busy ? null : _toggle,
-                icon: Icon(item.wished ? Icons.favorite : Icons.favorite_border),
-              ),
-          ],
+              const SizedBox(height: RSpace.s8),
+              Text(item.title, style: theme.textTheme.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text('${item.priceRaww} RAWW', style: theme.textTheme.bodyMedium),
+              if (note != null) Text(note, style: muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
+          ),
         ),
       ),
     );

@@ -1156,6 +1156,39 @@ SHELF_DEMO_ITEMS = [
     ("Sigma 35mm F1.4 DG DN Art", "Sigma", "lens", 5, 8000, "740.00", "560.00", ["ilce7m3", "ilce7m4"], True),
 ]
 SHELF_DEMO_RAWW_REQUEST = "demo-shelf-raww-1200"
+#: One flat tint per level for the demo covers.
+_DEMO_TINTS = {1: (76, 110, 140), 2: (90, 128, 96), 3: (150, 112, 70), 4: (120, 86, 140), 5: (60, 60, 70)}
+
+
+def demo_cover(title: str, level: int) -> bytes:
+    """A neutral placeholder for a demo item: its name on a flat tint, marked
+    "demo". 1200x900 PNG, so it passes the same checks as an upload. Real
+    product photos come from the supplier."""
+    import io
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    image = Image.new("RGB", (1200, 900), _DEMO_TINTS.get(level, (90, 90, 90)))
+    draw = ImageDraw.Draw(image)
+    try:
+        big, small = ImageFont.load_default(size=64), ImageFont.load_default(size=36)
+    except TypeError:  # an older Pillow: one size only
+        big = small = ImageFont.load_default()
+    words, lines = title.split(), [""]
+    for word in words:
+        trial = f"{lines[-1]} {word}".strip()
+        if draw.textlength(trial, font=big) > 1000 and lines[-1]:
+            lines.append(word)
+        else:
+            lines[-1] = trial
+    y = 450 - len(lines) * 40
+    for line in lines:
+        draw.text((600, y), line, fill=(250, 250, 250), font=big, anchor="ma")
+        y += 80
+    draw.text((1150, 860), "demo", fill=(235, 235, 235), font=small, anchor="rs")
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
 
 
 def seed_shelf(db, *, dry_run: bool) -> list[str]:
@@ -1164,7 +1197,7 @@ def seed_shelf(db, *, dry_run: bool) -> list[str]:
     from app.models.gear_verification import CameraModelReference
     from app.models.gig import Gig, GigStatus
     from app.models.shelf import ShelfItem
-    from app.services import raww_ledger, shelf_items
+    from app.services import raww_ledger, shelf_images, shelf_items
     from app.services.raww_earning import sync_booking_raww
 
     pro_id = _user_id(db, LIGHTROOM_PRO_EMAIL)
@@ -1180,15 +1213,17 @@ def seed_shelf(db, *, dry_run: bool) -> list[str]:
             "title": title, "brand": brand, "category": category, "level": level, "price_raww": price,
             "street_price": street, "street_currency": "GBP", "supplier_cost": cost, "supplier_currency": "GBP",
             "supplier_name": "Demo supplier", "supplier_sku": f"DEMO-{title[:12].upper().replace(' ', '-')}",
-            "stock_status": "in_stock" if in_stock else "out_of_stock", "active": True,
+            "stock_status": "in_stock" if in_stock else "out_of_stock", "active": False,
         }
         fits = [c for c in cameras if c in known]
         existing = db.execute(select(ShelfItem).where(ShelfItem.title == title)).scalar_one_or_none()
         if existing is None:
-            shelf_items.create_item(db, values=values, camera_models=fits, actor_user_id=admin_id)
+            existing = shelf_items.create_item(db, values=values, camera_models=fits, actor_user_id=admin_id)
             lines.append(f"item: {title} (level {level}, {price} RAWW)")
-        else:
-            shelf_items.update_item(db, item_id=existing.id, values=values, camera_models=fits)
+        # A cover first (an item cannot be active without one), then active.
+        if not shelf_images.images_of(db, existing.id):
+            shelf_images.attach_generated(db, item_id=existing.id, png=demo_cover(title, level), admin_user_id=admin_id)
+        shelf_items.update_item(db, item_id=existing.id, values={**values, "active": True}, camera_models=fits)
     db.commit()
     completed = db.execute(select(Gig).where(Gig.pro_user_id == pro_id, Gig.status == GigStatus.completed)).scalars().all()
     for gig in completed:

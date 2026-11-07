@@ -331,7 +331,9 @@ export type ShelfItemInput = {
   camera_models: string[];
 };
 
-export type ShelfItem = ShelfItemInput & { id: string; helper: ShelfPriceHelper; updated_at: string };
+/** One of an item's photos; the first is the cover. */
+export type ShelfImage = { id: string; status: "uploading" | "processing" | "ready" | "failed" | string; small_url: string | null; medium_url: string | null; large_url: string | null };
+export type ShelfItem = ShelfItemInput & { id: string; helper: ShelfPriceHelper; updated_at: string; images: ShelfImage[] };
 
 export type ShelfOrderEvent = {
   from_status: string | null;
@@ -571,6 +573,15 @@ export const admin = {
   approveShelfTerms: (body: { reviewed_by: string; note: string }) =>
     adminFetch<ShelfSettings>("shelf/settings/terms/approve", { method: "POST", body: JSON.stringify(body) }),
   shelfItems: () => adminFetch<{ items: ShelfItem[] }>("shelf/items"),
+  startShelfImage: (itemId: string, contentType: string, fileName: string) =>
+    adminFetch<{ image_id: string; upload_url: string; method: string; headers: Record<string, string> }>(`shelf/items/${itemId}/images`, {
+      method: "POST",
+      body: JSON.stringify({ content_type: contentType, file_name: fileName })
+    }),
+  completeShelfImage: (itemId: string, imageId: string) => adminFetch<ShelfItem>(`shelf/items/${itemId}/images/${imageId}/complete`, { method: "POST" }),
+  orderShelfImages: (itemId: string, imageIds: string[]) =>
+    adminFetch<ShelfItem>(`shelf/items/${itemId}/images/order`, { method: "PUT", body: JSON.stringify({ image_ids: imageIds }) }),
+  deleteShelfImage: (itemId: string, imageId: string) => adminFetch<ShelfItem>(`shelf/items/${itemId}/images/${imageId}`, { method: "DELETE" }),
   createShelfItem: (body: ShelfItemInput) => adminFetch<ShelfItem>("shelf/items", { method: "POST", body: JSON.stringify(body) }),
   updateShelfItem: (id: string, body: ShelfItemInput) =>
     adminFetch<ShelfItem>(`shelf/items/${id}`, { method: "PUT", body: JSON.stringify(body) }),

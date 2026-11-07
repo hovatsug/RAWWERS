@@ -121,6 +121,13 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         # Not on the approved list (services/email_texts): nothing is sent.
         logger.info("email_not_approved", extra={"topic": topic})
         return
+    if topic == "shelf.image.process":
+        import uuid as _uuid
+
+        from app.services.shelf_images import process as process_shelf_image
+
+        process_shelf_image(db, _uuid.UUID(payload["image_id"]))
+        return
     if topic.startswith("notify."):
         process_outbox_notification(topic, payload, db)
         return

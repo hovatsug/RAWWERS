@@ -21,6 +21,10 @@ class MediaDerivativeKind(str, enum.Enum):
     banner_tile = "banner_tile"
     banner_hero = "banner_hero"
     banner_placeholder = "banner_placeholder"
+    # A Shelf item's photo at 400, 800 and 1600 px on its long edge.
+    shelf_400 = "shelf_400"
+    shelf_800 = "shelf_800"
+    shelf_1600 = "shelf_1600"
 
 
 class GigEntitlementType(str, enum.Enum):

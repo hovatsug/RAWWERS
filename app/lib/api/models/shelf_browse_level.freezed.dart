@@ -17,7 +17,8 @@ mixin _$ShelfBrowseLevel {
 
 /// level
 @JsonKey(name: ShelfBrowseLevel.levelKey_) int get level;/// bandRaww
-@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) int get bandRaww;/// locked
+@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) int get bandRaww;/// bandEur
+@JsonKey(name: ShelfBrowseLevel.bandEurKey_) String get bandEur;/// locked
 @JsonKey(name: ShelfBrowseLevel.lockedKey_) bool get locked;/// unlocksAtTier
 @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) String? get unlocksAtTier;/// items
 @JsonKey(name: ShelfBrowseLevel.itemsKey_) List<ShelfBrowseItem> get items;
@@ -33,16 +34,16 @@ $ShelfBrowseLevelCopyWith<ShelfBrowseLevel> get copyWith => _$ShelfBrowseLevelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShelfBrowseLevel&&(identical(other.level, level) || other.level == level)&&(identical(other.bandRaww, bandRaww) || other.bandRaww == bandRaww)&&(identical(other.locked, locked) || other.locked == locked)&&(identical(other.unlocksAtTier, unlocksAtTier) || other.unlocksAtTier == unlocksAtTier)&&const DeepCollectionEquality().equals(other.items, items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShelfBrowseLevel&&(identical(other.level, level) || other.level == level)&&(identical(other.bandRaww, bandRaww) || other.bandRaww == bandRaww)&&(identical(other.bandEur, bandEur) || other.bandEur == bandEur)&&(identical(other.locked, locked) || other.locked == locked)&&(identical(other.unlocksAtTier, unlocksAtTier) || other.unlocksAtTier == unlocksAtTier)&&const DeepCollectionEquality().equals(other.items, items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,level,bandRaww,locked,unlocksAtTier,const DeepCollectionEquality().hash(items));
+int get hashCode => Object.hash(runtimeType,level,bandRaww,bandEur,locked,unlocksAtTier,const DeepCollectionEquality().hash(items));
 
 @override
 String toString() {
-  return 'ShelfBrowseLevel(level: $level, bandRaww: $bandRaww, locked: $locked, unlocksAtTier: $unlocksAtTier, items: $items)';
+  return 'ShelfBrowseLevel(level: $level, bandRaww: $bandRaww, bandEur: $bandEur, locked: $locked, unlocksAtTier: $unlocksAtTier, items: $items)';
 }
 
 
@@ -53,7 +54,7 @@ abstract mixin class $ShelfBrowseLevelCopyWith<$Res>  {
   factory $ShelfBrowseLevelCopyWith(ShelfBrowseLevel value, $Res Function(ShelfBrowseLevel) _then) = _$ShelfBrowseLevelCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ShelfBrowseLevel.levelKey_) int level,@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) int bandRaww,@JsonKey(name: ShelfBrowseLevel.lockedKey_) bool locked,@JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) String? unlocksAtTier,@JsonKey(name: ShelfBrowseLevel.itemsKey_) List<ShelfBrowseItem> items
+@JsonKey(name: ShelfBrowseLevel.levelKey_) int level,@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) int bandRaww,@JsonKey(name: ShelfBrowseLevel.bandEurKey_) String bandEur,@JsonKey(name: ShelfBrowseLevel.lockedKey_) bool locked,@JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) String? unlocksAtTier,@JsonKey(name: ShelfBrowseLevel.itemsKey_) List<ShelfBrowseItem> items
 });
 
 
@@ -70,11 +71,12 @@ class _$ShelfBrowseLevelCopyWithImpl<$Res>
 
 /// Create a copy of ShelfBrowseLevel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? level = null,Object? bandRaww = null,Object? locked = null,Object? unlocksAtTier = freezed,Object? items = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? level = null,Object? bandRaww = null,Object? bandEur = null,Object? locked = null,Object? unlocksAtTier = freezed,Object? items = null,}) {
   return _then(_self.copyWith(
 level: null == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
 as int,bandRaww: null == bandRaww ? _self.bandRaww : bandRaww // ignore: cast_nullable_to_non_nullable
-as int,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
+as int,bandEur: null == bandEur ? _self.bandEur : bandEur // ignore: cast_nullable_to_non_nullable
+as String,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
 as bool,unlocksAtTier: freezed == unlocksAtTier ? _self.unlocksAtTier : unlocksAtTier // ignore: cast_nullable_to_non_nullable
 as String?,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<ShelfBrowseItem>,
@@ -162,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseLevel.levelKey_)  int level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_)  int bandRaww, @JsonKey(name: ShelfBrowseLevel.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_)  String? unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_)  List<ShelfBrowseItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseLevel.levelKey_)  int level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_)  int bandRaww, @JsonKey(name: ShelfBrowseLevel.bandEurKey_)  String bandEur, @JsonKey(name: ShelfBrowseLevel.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_)  String? unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_)  List<ShelfBrowseItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ShelfBrowseLevel() when $default != null:
-return $default(_that.level,_that.bandRaww,_that.locked,_that.unlocksAtTier,_that.items);case _:
+return $default(_that.level,_that.bandRaww,_that.bandEur,_that.locked,_that.unlocksAtTier,_that.items);case _:
   return orElse();
 
 }
@@ -183,10 +185,10 @@ return $default(_that.level,_that.bandRaww,_that.locked,_that.unlocksAtTier,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseLevel.levelKey_)  int level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_)  int bandRaww, @JsonKey(name: ShelfBrowseLevel.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_)  String? unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_)  List<ShelfBrowseItem> items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseLevel.levelKey_)  int level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_)  int bandRaww, @JsonKey(name: ShelfBrowseLevel.bandEurKey_)  String bandEur, @JsonKey(name: ShelfBrowseLevel.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_)  String? unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_)  List<ShelfBrowseItem> items)  $default,) {final _that = this;
 switch (_that) {
 case _ShelfBrowseLevel():
-return $default(_that.level,_that.bandRaww,_that.locked,_that.unlocksAtTier,_that.items);case _:
+return $default(_that.level,_that.bandRaww,_that.bandEur,_that.locked,_that.unlocksAtTier,_that.items);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +205,10 @@ return $default(_that.level,_that.bandRaww,_that.locked,_that.unlocksAtTier,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ShelfBrowseLevel.levelKey_)  int level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_)  int bandRaww, @JsonKey(name: ShelfBrowseLevel.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_)  String? unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_)  List<ShelfBrowseItem> items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ShelfBrowseLevel.levelKey_)  int level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_)  int bandRaww, @JsonKey(name: ShelfBrowseLevel.bandEurKey_)  String bandEur, @JsonKey(name: ShelfBrowseLevel.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_)  String? unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_)  List<ShelfBrowseItem> items)?  $default,) {final _that = this;
 switch (_that) {
 case _ShelfBrowseLevel() when $default != null:
-return $default(_that.level,_that.bandRaww,_that.locked,_that.unlocksAtTier,_that.items);case _:
+return $default(_that.level,_that.bandRaww,_that.bandEur,_that.locked,_that.unlocksAtTier,_that.items);case _:
   return null;
 
 }
@@ -218,13 +220,15 @@ return $default(_that.level,_that.bandRaww,_that.locked,_that.unlocksAtTier,_tha
 
 @jsonSerializable
 class _ShelfBrowseLevel extends ShelfBrowseLevel {
-  const _ShelfBrowseLevel({@JsonKey(name: ShelfBrowseLevel.levelKey_) required this.level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_) required this.bandRaww, @JsonKey(name: ShelfBrowseLevel.lockedKey_) required this.locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) this.unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_) required final  List<ShelfBrowseItem> items}): _items = items,super._();
+  const _ShelfBrowseLevel({@JsonKey(name: ShelfBrowseLevel.levelKey_) required this.level, @JsonKey(name: ShelfBrowseLevel.bandRawwKey_) required this.bandRaww, @JsonKey(name: ShelfBrowseLevel.bandEurKey_) this.bandEur = '0.00', @JsonKey(name: ShelfBrowseLevel.lockedKey_) required this.locked, @JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) this.unlocksAtTier, @JsonKey(name: ShelfBrowseLevel.itemsKey_) required final  List<ShelfBrowseItem> items}): _items = items,super._();
   factory _ShelfBrowseLevel.fromJson(Map<String, dynamic> json) => _$ShelfBrowseLevelFromJson(json);
 
 /// level
 @override@JsonKey(name: ShelfBrowseLevel.levelKey_) final  int level;
 /// bandRaww
 @override@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) final  int bandRaww;
+/// bandEur
+@override@JsonKey(name: ShelfBrowseLevel.bandEurKey_) final  String bandEur;
 /// locked
 @override@JsonKey(name: ShelfBrowseLevel.lockedKey_) final  bool locked;
 /// unlocksAtTier
@@ -252,16 +256,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShelfBrowseLevel&&(identical(other.level, level) || other.level == level)&&(identical(other.bandRaww, bandRaww) || other.bandRaww == bandRaww)&&(identical(other.locked, locked) || other.locked == locked)&&(identical(other.unlocksAtTier, unlocksAtTier) || other.unlocksAtTier == unlocksAtTier)&&const DeepCollectionEquality().equals(other._items, _items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShelfBrowseLevel&&(identical(other.level, level) || other.level == level)&&(identical(other.bandRaww, bandRaww) || other.bandRaww == bandRaww)&&(identical(other.bandEur, bandEur) || other.bandEur == bandEur)&&(identical(other.locked, locked) || other.locked == locked)&&(identical(other.unlocksAtTier, unlocksAtTier) || other.unlocksAtTier == unlocksAtTier)&&const DeepCollectionEquality().equals(other._items, _items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,level,bandRaww,locked,unlocksAtTier,const DeepCollectionEquality().hash(_items));
+int get hashCode => Object.hash(runtimeType,level,bandRaww,bandEur,locked,unlocksAtTier,const DeepCollectionEquality().hash(_items));
 
 @override
 String toString() {
-  return 'ShelfBrowseLevel(level: $level, bandRaww: $bandRaww, locked: $locked, unlocksAtTier: $unlocksAtTier, items: $items)';
+  return 'ShelfBrowseLevel(level: $level, bandRaww: $bandRaww, bandEur: $bandEur, locked: $locked, unlocksAtTier: $unlocksAtTier, items: $items)';
 }
 
 
@@ -272,7 +276,7 @@ abstract mixin class _$ShelfBrowseLevelCopyWith<$Res> implements $ShelfBrowseLev
   factory _$ShelfBrowseLevelCopyWith(_ShelfBrowseLevel value, $Res Function(_ShelfBrowseLevel) _then) = __$ShelfBrowseLevelCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ShelfBrowseLevel.levelKey_) int level,@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) int bandRaww,@JsonKey(name: ShelfBrowseLevel.lockedKey_) bool locked,@JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) String? unlocksAtTier,@JsonKey(name: ShelfBrowseLevel.itemsKey_) List<ShelfBrowseItem> items
+@JsonKey(name: ShelfBrowseLevel.levelKey_) int level,@JsonKey(name: ShelfBrowseLevel.bandRawwKey_) int bandRaww,@JsonKey(name: ShelfBrowseLevel.bandEurKey_) String bandEur,@JsonKey(name: ShelfBrowseLevel.lockedKey_) bool locked,@JsonKey(name: ShelfBrowseLevel.unlocksAtTierKey_) String? unlocksAtTier,@JsonKey(name: ShelfBrowseLevel.itemsKey_) List<ShelfBrowseItem> items
 });
 
 
@@ -289,11 +293,12 @@ class __$ShelfBrowseLevelCopyWithImpl<$Res>
 
 /// Create a copy of ShelfBrowseLevel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? level = null,Object? bandRaww = null,Object? locked = null,Object? unlocksAtTier = freezed,Object? items = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? level = null,Object? bandRaww = null,Object? bandEur = null,Object? locked = null,Object? unlocksAtTier = freezed,Object? items = null,}) {
   return _then(_ShelfBrowseLevel(
 level: null == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
 as int,bandRaww: null == bandRaww ? _self.bandRaww : bandRaww // ignore: cast_nullable_to_non_nullable
-as int,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
+as int,bandEur: null == bandEur ? _self.bandEur : bandEur // ignore: cast_nullable_to_non_nullable
+as String,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
 as bool,unlocksAtTier: freezed == unlocksAtTier ? _self.unlocksAtTier : unlocksAtTier // ignore: cast_nullable_to_non_nullable
 as String?,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<ShelfBrowseItem>,

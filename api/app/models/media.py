@@ -27,6 +27,8 @@ class MediaPurpose(str, enum.Enum):
     gear_evidence = "gear_evidence"
     #: A niche's banner, uploaded by an admin. Public; its own derivatives.
     niche_banner = "niche_banner"
+    #: A Shelf item's photo, uploaded by an admin. Public; its own sizes.
+    shelf_item = "shelf_item"
     other = "other"
 
 

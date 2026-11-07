@@ -46,7 +46,7 @@ const EMPTY: ShelfItemInput = {
   supplier_sku: "",
   supplier_url: "",
   stock_status: "in_stock",
-  active: true,
+  active: false,
   camera_models: []
 };
 
@@ -69,6 +69,17 @@ export default function ShelfItemsPage() {
 
   const columns: Column<ShelfItem>[] = [
     { header: "Level", className: "w-px tabular-nums", cell: (row) => row.level },
+    {
+      header: "",
+      className: "w-px",
+      cell: (row) =>
+        row.images?.[0]?.small_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={row.images[0].small_url} alt="" className="h-12 w-12 rounded object-cover" />
+        ) : (
+          <div className="h-12 w-12 rounded bg-white/5" title="No cover yet" />
+        )
+    },
     {
       header: "Item",
       cell: (row) => (
@@ -136,11 +147,19 @@ export default function ShelfItemsPage() {
             onCancel={() => setEditing(null)}
             onSave={save}
           />
-        ) : (
+        ) : null}
+        {editing?.id ? (
+          <ShelfPhotos
+            item={rows?.find((r) => r.id === editing.id)}
+            onChanged={() => queryClient.invalidateQueries({ queryKey: ["admin", "shelf", "items"] })}
+            onMessage={setMessage}
+          />
+        ) : null}
+        {!editing ? (
           <div className="flex justify-end">
             <AdminButton onClick={() => setEditing({ id: null, form: EMPTY })}>Add an item</AdminButton>
           </div>
-        )}
+        ) : null}
         <DataTable
           columns={columns}
           rows={rows}
@@ -334,6 +353,108 @@ function ItemForm({
           </AdminButton>
         </div>
       </div>
+    </Panel>
+  );
+}
+
+
+/**
+ * An item's photos: 1 to 4, the first is the cover (no cover, no
+ * activation). JPEG, PNG or WebP, at most 10 MB, at least 800 px on the long
+ * edge; the server makes three sizes. Move a photo to reorder; delete it.
+ */
+function ShelfPhotos({
+  item,
+  onChanged,
+  onMessage
+}: {
+  item: ShelfItem | undefined;
+  onChanged: () => void;
+  onMessage: (m: { tone: "error" | "success"; text: string }) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  if (!item) return null;
+  const images = item.images ?? [];
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    try {
+      const started = await admin.startShelfImage(item.id, file.type, file.name);
+      if (!started.ok) return onMessage({ tone: "error", text: started.error.message });
+      const put = await fetch(started.data.upload_url, {
+        method: started.data.method,
+        headers: { ...started.data.headers, "Content-Type": file.type },
+        body: file
+      }).catch(() => null);
+      if (!put || !put.ok) return onMessage({ tone: "error", text: "The upload did not reach storage. Try again." });
+      const done = await admin.completeShelfImage(item.id, started.data.image_id);
+      if (!done.ok) return onMessage({ tone: "error", text: done.error.message });
+      onMessage({ tone: "success", text: "Photo added. Its sizes are being made." });
+    } finally {
+      setBusy(false);
+      onChanged();
+    }
+  };
+
+  const move = async (index: number, by: number) => {
+    const ids = images.map((i) => i.id);
+    const [moved] = ids.splice(index, 1);
+    ids.splice(index + by, 0, moved);
+    const res = await admin.orderShelfImages(item.id, ids);
+    if (!res.ok) onMessage({ tone: "error", text: res.error.message });
+    onChanged();
+  };
+
+  const remove = async (imageId: string) => {
+    const res = await admin.deleteShelfImage(item.id, imageId);
+    if (!res.ok) onMessage({ tone: "error", text: res.error.message });
+    onChanged();
+  };
+
+  return (
+    <Panel className="space-y-3 p-4">
+      <h2 className="text-sm font-semibold">Photos of {item.title}</h2>
+      <p className="text-xs text-slate-400">The first is the cover. JPEG, PNG or WebP, up to 10 MB, at least 800 px on the long edge. At most 4.</p>
+      <div className="flex flex-wrap gap-3">
+        {images.map((image, index) => (
+          <div key={image.id} className="w-36 space-y-1">
+            {image.medium_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image.medium_url} alt="" className="h-36 w-36 rounded object-cover" />
+            ) : (
+              <div className="flex h-36 w-36 items-center justify-center rounded bg-white/5 text-xs text-slate-400">{image.status}</div>
+            )}
+            <div className="flex items-center gap-1">
+              {index === 0 ? <StatusBadge label="Cover" tone="positive" /> : null}
+              <AdminButton tone="secondary" disabled={index === 0} onClick={() => move(index, -1)}>
+                ←
+              </AdminButton>
+              <AdminButton tone="secondary" disabled={index === images.length - 1} onClick={() => move(index, 1)}>
+                →
+              </AdminButton>
+              <AdminButton tone="secondary" onClick={() => remove(image.id)}>
+                Delete
+              </AdminButton>
+            </div>
+          </div>
+        ))}
+      </div>
+      {images.length < 4 ? (
+        <label className="inline-block cursor-pointer text-sm text-slate-200">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            disabled={busy}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void upload(file);
+            }}
+          />
+          <span className="rounded border border-white/15 px-3 py-1.5">{busy ? "Uploading…" : "Add a photo"}</span>
+        </label>
+      ) : null}
     </Panel>
   );
 }

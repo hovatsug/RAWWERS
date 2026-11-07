@@ -3,6 +3,7 @@ import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/api/models/teaser_kind.dart';
 import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
+import 'package:rawwers/design/components/r_card_row.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
@@ -35,9 +36,9 @@ abstract final class _RowMetrics {
   /// taller.
   static const rowHeight = 244.0;
 
-  static const gap = RSpace.s12;
-  static const sidePadding = EdgeInsets.symmetric(horizontal: RSpace.s16);
-  static const headingPadding = EdgeInsets.fromLTRB(RSpace.s16, RSpace.s24, RSpace.s16, RSpace.s8);
+  static const gap = RCardRow.gap;
+  static const sidePadding = RCardRow.sidePadding;
+  static const headingPadding = RCardRow.headingPadding;
   static const headingHeight = 20.0;
   static const headingWidth = 180.0;
 }
@@ -65,39 +66,22 @@ class PhotographerRow extends StatelessWidget {
     final items = row.items ?? const <ClientDiscoverCard>[];
     if (items.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: _RowMetrics.headingPadding,
-          child: slug == null
-              ? _RowHeading(title: row.title, subtitle: row.subtitle)
-              : RNicheBanner(
-                  title: row.title,
-                  banner: row.banner,
-                  height: 96,
-                  onTap: onOpenNiche == null ? null : () => onOpenNiche!(slug),
-                ),
-        ),
-        SizedBox(
-          height: _RowMetrics.rowHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: _RowMetrics.sidePadding,
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: _RowMetrics.gap),
-            itemBuilder: (context, index) => _Card(
-              card: items[index],
-              onTap: onOpenPro == null ? null : () => onOpenPro!(items[index].proUserId),
+    return RCardRow(
+      heading: slug == null
+          ? _RowHeading(title: row.title, subtitle: row.subtitle)
+          : RNicheBanner(
+              title: row.title,
+              banner: row.banner,
+              height: 96,
+              onTap: onOpenNiche == null ? null : () => onOpenNiche!(slug),
             ),
-          ),
-        ),
-        if (row.subtitle != null && slug != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s8, RSpace.s16, 0),
-            child: Text(row.subtitle!, style: theme.textTheme.bodySmall),
-          ),
-      ],
+      height: _RowMetrics.rowHeight,
+      itemCount: items.length,
+      itemBuilder: (context, index) => _Card(
+        card: items[index],
+        onTap: onOpenPro == null ? null : () => onOpenPro!(items[index].proUserId),
+      ),
+      footer: row.subtitle != null && slug != null ? Text(row.subtitle!, style: theme.textTheme.bodySmall) : null,
     );
   }
 }

@@ -9,6 +9,11 @@
 ///             "type": "integer",
 ///             "title": "Band Raww"
 ///         },
+///         "band_eur": {
+///             "type": "string",
+///             "default": "0.00",
+///             "title": "Band Eur"
+///         },
 ///         "locked": {
 ///             "type": "boolean",
 ///             "title": "Locked"
@@ -59,6 +64,11 @@ abstract class ShelfBrowseLevel with _$ShelfBrowseLevel {
     /// bandRaww
     @JsonKey(name: ShelfBrowseLevel.bandRawwKey_) required int bandRaww,
 
+    /// bandEur
+    @Default('0.00')
+    @JsonKey(name: ShelfBrowseLevel.bandEurKey_)
+    String bandEur,
+
     /// locked
     @JsonKey(name: ShelfBrowseLevel.lockedKey_) required bool locked,
 
@@ -76,6 +86,8 @@ abstract class ShelfBrowseLevel with _$ShelfBrowseLevel {
   static const String levelKey_ = r'level';
 
   static const String bandRawwKey_ = r'band_raww';
+
+  static const String bandEurKey_ = r'band_eur';
 
   static const String lockedKey_ = r'locked';
 

@@ -30,6 +30,10 @@ from app.schemas.shelf import (
     AdminShelfItemRequest,
     AdminShelfItemsResponse,
     AdminShelfItemView,
+    ShelfImageOrder,
+    ShelfImageUploadStart,
+    ShelfImageUploadStarted,
+    ShelfImageView,
     ShelfPriceHelper,
     ShelfPriceHelperRequest,
     ShelfSettingsUpdateRequest,
@@ -115,8 +119,20 @@ def approve_shelf_terms(
     return _settings_view(db, row)
 
 
-def _item_view(db: Session, item: ShelfItem, camera_models: list[str]) -> AdminShelfItemView:
+def _image_views(db: Session, item_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[ShelfImageView]]:
+    from app.services.shelf_images import urls_for
+
+    return {
+        item_id: [ShelfImageView(id=i.id, status=i.status, small_url=i.small, medium_url=i.medium, large_url=i.large) for i in rows]
+        for item_id, rows in urls_for(db, item_ids, ready_only=False).items()
+    }
+
+
+def _item_view(db: Session, item: ShelfItem, camera_models: list[str], images: list[ShelfImageView] | None = None) -> AdminShelfItemView:
+    if images is None:
+        images = _image_views(db, [item.id]).get(item.id, [])
     return AdminShelfItemView(
+        images=images,
         **{key: getattr(item, key) for key in si.FIELDS if key != "stock_status"},
         id=item.id,
         stock_status=item.stock_status.value,
@@ -135,7 +151,8 @@ def _item_view(db: Session, item: ShelfItem, camera_models: list[str]) -> AdminS
 def list_shelf_items(_: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfItemsResponse:
     items = db.execute(select(ShelfItem).order_by(ShelfItem.level, ShelfItem.price_raww, ShelfItem.title)).scalars().all()
     compat = si.compat_for(db, [i.id for i in items])
-    return AdminShelfItemsResponse(items=[_item_view(db, i, compat[i.id]) for i in items])
+    images = _image_views(db, [i.id for i in items])
+    return AdminShelfItemsResponse(items=[_item_view(db, i, compat[i.id], images.get(i.id, [])) for i in items])
 
 
 @router.post("/items/price-helper", response_model=ShelfPriceHelper)
@@ -178,6 +195,63 @@ def update_shelf_item(
         )
     db.commit()
     db.refresh(item)
+    return _item_view(db, item, si.compat_for(db, [item.id])[item.id])
+
+
+# --- photos ---------------------------------------------------------------------------------
+
+
+@router.post("/items/{item_id}/images", response_model=ShelfImageUploadStarted)
+def start_shelf_image(
+    item_id: uuid.UUID, body: ShelfImageUploadStart, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> ShelfImageUploadStarted:
+    """Upload one more photo (JPEG, PNG or WebP, up to 10 MB, at least
+    800 px on its long edge): PUT the file to `upload_url`, then complete."""
+    from app.services import shelf_images
+
+    image, started = shelf_images.start(db, item_id=item_id, admin_user_id=actor.user_id, content_type=body.content_type, file_name=body.file_name)
+    db.commit()
+    return ShelfImageUploadStarted(image_id=image.id, upload_url=started.upload.url, method=started.upload.method, headers=started.upload.headers)
+
+
+@router.post("/items/{item_id}/images/{image_id}/complete", response_model=AdminShelfItemView)
+def complete_shelf_image(
+    item_id: uuid.UUID, image_id: uuid.UUID, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> AdminShelfItemView:
+    """Check the photo; the worker makes its sizes."""
+    from app.services import shelf_images
+
+    shelf_images.complete(db, item_id=item_id, image_id=image_id)
+    add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="shelf_item", target_id=str(item_id), action="shelf_item_photo_added", metadata={"image_id": str(image_id)})
+    db.commit()
+    item = db.get(ShelfItem, item_id)
+    return _item_view(db, item, si.compat_for(db, [item.id])[item.id])
+
+
+@router.put("/items/{item_id}/images/order", response_model=AdminShelfItemView)
+def order_shelf_images(
+    item_id: uuid.UUID, body: ShelfImageOrder, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> AdminShelfItemView:
+    """The photos in this order; the first is the cover."""
+    from app.services import shelf_images
+
+    shelf_images.reorder(db, item_id=item_id, image_ids=body.image_ids)
+    add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="shelf_item", target_id=str(item_id), action="shelf_item_photos_reordered", metadata={"order": [str(i) for i in body.image_ids]})
+    db.commit()
+    item = db.get(ShelfItem, item_id)
+    return _item_view(db, item, si.compat_for(db, [item.id])[item.id])
+
+
+@router.delete("/items/{item_id}/images/{image_id}", response_model=AdminShelfItemView)
+def delete_shelf_image(
+    item_id: uuid.UUID, image_id: uuid.UUID, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> AdminShelfItemView:
+    from app.services import shelf_images
+
+    shelf_images.remove(db, item_id=item_id, image_id=image_id)
+    add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="shelf_item", target_id=str(item_id), action="shelf_item_photo_deleted", metadata={"image_id": str(image_id)})
+    db.commit()
+    item = db.get(ShelfItem, item_id)
     return _item_view(db, item, si.compat_for(db, [item.id])[item.id])
 
 

@@ -12,6 +12,10 @@ ShelfBrowseItem shelfItem({
   bool affordable = true,
   bool inStock = true,
   bool locked = false,
+  String? coverUrl,
+  List<String> imageUrls = const [],
+  List<String> cameraNames = const [],
+  String? description,
 }) =>
     ShelfBrowseItem(
       id: id,
@@ -24,6 +28,10 @@ ShelfBrowseItem shelfItem({
       wished: wished,
       affordable: affordable,
       locked: locked,
+      coverUrl: coverUrl,
+      imageUrls: imageUrls,
+      cameraNames: cameraNames,
+      description: description,
     );
 
 ShelfBrowseResponse shelfView({
@@ -47,10 +55,11 @@ ShelfBrowseResponse shelfView({
       termsDraft: termsDraft,
       levels: levels ??
           [
-            ShelfBrowseLevel(level: 1, bandRaww: 100, locked: false, items: [shelfItem(fits: true), shelfItem(id: 'i2', title: 'Card')]),
+            ShelfBrowseLevel(level: 1, bandRaww: 100, bandEur: '10', locked: false, items: [shelfItem(fits: true), shelfItem(id: 'i2', title: 'Card')]),
             ShelfBrowseLevel(
               level: 4,
               bandRaww: 3000,
+              bandEur: '300',
               locked: true,
               unlocksAtTier: 'skilled',
               items: [shelfItem(id: 'i4', title: 'Gimbal', level: 4, price: 3200, locked: true)],

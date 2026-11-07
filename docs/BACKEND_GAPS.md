@@ -4,6 +4,24 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## The Shelf: photos and rows — BUILT (2026-11-07)
+
+- **Photos:** 1 to 4 per item; the first is the cover (`shelf_item_image`, migration 0089; `services/shelf_images.py`).
+  - **Upload:** admins upload on the items page, the niche-banner way: a presigned PUT, then "complete".
+  - **Checks:** JPEG, PNG or WebP; at most 10 MB; at least 800 px on the long edge. A refused file is deleted.
+  - **Sizes:** the worker (outbox topic `shelf.image.process`) makes 400, 800 and 1600 px on the long edge, never enlarged.
+  - **Admin:** reorder and delete. An active item keeps a cover: its last photo cannot be deleted.
+  - **No cover, no activation:** new items start inactive, and activating needs a ready cover.
+  - **Fallback:** an item without photos still shows the supplier's `image_url`.
+- **Pro app:** one horizontal row per level, in the client's row pattern, now shared as `design/components/r_card_row.dart`, which the client's photographer rows also use.
+  - **Row title:** "Level N · about €X · NNN RAWW".
+  - **Cards:** cover, name, RAWW price and a wish-list heart. Locked items are dimmed, with a lock and "Unlocks at <tier>".
+  - **Wish list:** a "Your wish list" row on top when it is not empty.
+  - **Item detail:** a swipeable gallery of the 1600 px photos, the description, the price, the compatibility in words, and Order, or the reason it cannot be ordered.
+- **Demo seed:** the 12 demo items get generated covers (the item's name on a flat tint, marked "demo") before they are activated.
+
+**Found, not fixed:** `tests/test_niche_banners.py` hits the admin rate limit (429) when the file runs on its own, on main too. It passes within the full suite.
+
 ## Client credit: visibility, checkout, money rules and the marketing budget — BUILT (2026-11-07)
 
 `services/client_credit.py`, `api/v1/client_credit.py`, client app `features/client/credit`, web `admin/client-credit`, migration 0088. Tests: `tests/test_client_credit.py`, `app/test/features/client/my_credit_test.dart`.

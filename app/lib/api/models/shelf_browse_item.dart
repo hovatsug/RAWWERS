@@ -74,6 +74,31 @@
 ///         "locked": {
 ///             "type": "boolean",
 ///             "title": "Locked"
+///         },
+///         "cover_url": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Url"
+///         },
+///         "image_urls": {
+///             "type": "array",
+///             "items": {
+///                 "type": "string"
+///             },
+///             "title": "Image Urls"
+///         },
+///         "camera_names": {
+///             "type": "array",
+///             "items": {
+///                 "type": "string"
+///             },
+///             "title": "Camera Names"
 ///         }
 ///     },
 ///     "type": "object",
@@ -141,6 +166,15 @@ abstract class ShelfBrowseItem with _$ShelfBrowseItem {
 
     /// locked
     @JsonKey(name: ShelfBrowseItem.lockedKey_) required bool locked,
+
+    /// coverUrl
+    @JsonKey(name: ShelfBrowseItem.coverUrlKey_) String? coverUrl,
+
+    /// imageUrls
+    @JsonKey(name: ShelfBrowseItem.imageUrlsKey_) List<String>? imageUrls,
+
+    /// cameraNames
+    @JsonKey(name: ShelfBrowseItem.cameraNamesKey_) List<String>? cameraNames,
   }) = _ShelfBrowseItem;
 
   factory ShelfBrowseItem.fromJson(Map<String, dynamic> json) =>
@@ -171,4 +205,10 @@ abstract class ShelfBrowseItem with _$ShelfBrowseItem {
   static const String affordableKey_ = r'affordable';
 
   static const String lockedKey_ = r'locked';
+
+  static const String coverUrlKey_ = r'cover_url';
+
+  static const String imageUrlsKey_ = r'image_urls';
+
+  static const String cameraNamesKey_ = r'camera_names';
 }

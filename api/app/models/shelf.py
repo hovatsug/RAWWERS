@@ -303,3 +303,22 @@ class ShelfOrderEvent(Base):
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+
+
+class ShelfItemImage(Base):
+    """One of an item's 1 to 4 photos; position 0 is the cover. Uploaded by
+    an admin (services/shelf_images.py), checked, then sized by the worker
+    to 400, 800 and 1600 px on the long edge."""
+
+    __tablename__ = "shelf_item_image"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shelf_item.id", ondelete="CASCADE"), nullable=False, index=True)
+    media_asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("media_asset.id"), nullable=False)
+    position: Mapped[int] = mapped_column(nullable=False, default=0)
+    #: uploading, processing, ready, failed.
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="uploading")
+    width: Mapped[int | None] = mapped_column(nullable=True)
+    height: Mapped[int | None] = mapped_column(nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))

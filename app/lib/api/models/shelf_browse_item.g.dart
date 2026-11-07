@@ -21,6 +21,13 @@ _ShelfBrowseItem _$ShelfBrowseItemFromJson(Map<String, dynamic> json) =>
       wished: json['wished'] as bool,
       affordable: json['affordable'] as bool,
       locked: json['locked'] as bool,
+      coverUrl: json['cover_url'] as String?,
+      imageUrls: (json['image_urls'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      cameraNames: (json['camera_names'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$ShelfBrowseItemToJson(_ShelfBrowseItem instance) =>
@@ -38,4 +45,7 @@ Map<String, dynamic> _$ShelfBrowseItemToJson(_ShelfBrowseItem instance) =>
       'wished': instance.wished,
       'affordable': instance.affordable,
       'locked': instance.locked,
+      'cover_url': instance.coverUrl,
+      'image_urls': instance.imageUrls,
+      'camera_names': instance.cameraNames,
     };

@@ -28,7 +28,10 @@ mixin _$ShelfBrowseItem {
 @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) bool get fitsYourGear;/// wished
 @JsonKey(name: ShelfBrowseItem.wishedKey_) bool get wished;/// affordable
 @JsonKey(name: ShelfBrowseItem.affordableKey_) bool get affordable;/// locked
-@JsonKey(name: ShelfBrowseItem.lockedKey_) bool get locked;
+@JsonKey(name: ShelfBrowseItem.lockedKey_) bool get locked;/// coverUrl
+@JsonKey(name: ShelfBrowseItem.coverUrlKey_) String? get coverUrl;/// imageUrls
+@JsonKey(name: ShelfBrowseItem.imageUrlsKey_) List<String>? get imageUrls;/// cameraNames
+@JsonKey(name: ShelfBrowseItem.cameraNamesKey_) List<String>? get cameraNames;
 /// Create a copy of ShelfBrowseItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -41,16 +44,16 @@ $ShelfBrowseItemCopyWith<ShelfBrowseItem> get copyWith => _$ShelfBrowseItemCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShelfBrowseItem&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.category, category) || other.category == category)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.level, level) || other.level == level)&&(identical(other.priceRaww, priceRaww) || other.priceRaww == priceRaww)&&(identical(other.inStock, inStock) || other.inStock == inStock)&&(identical(other.fitsYourGear, fitsYourGear) || other.fitsYourGear == fitsYourGear)&&(identical(other.wished, wished) || other.wished == wished)&&(identical(other.affordable, affordable) || other.affordable == affordable)&&(identical(other.locked, locked) || other.locked == locked));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShelfBrowseItem&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.category, category) || other.category == category)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.level, level) || other.level == level)&&(identical(other.priceRaww, priceRaww) || other.priceRaww == priceRaww)&&(identical(other.inStock, inStock) || other.inStock == inStock)&&(identical(other.fitsYourGear, fitsYourGear) || other.fitsYourGear == fitsYourGear)&&(identical(other.wished, wished) || other.wished == wished)&&(identical(other.affordable, affordable) || other.affordable == affordable)&&(identical(other.locked, locked) || other.locked == locked)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&const DeepCollectionEquality().equals(other.imageUrls, imageUrls)&&const DeepCollectionEquality().equals(other.cameraNames, cameraNames));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,title,brand,category,description,imageUrl,level,priceRaww,inStock,fitsYourGear,wished,affordable,locked);
+int get hashCode => Object.hash(runtimeType,id,title,brand,category,description,imageUrl,level,priceRaww,inStock,fitsYourGear,wished,affordable,locked,coverUrl,const DeepCollectionEquality().hash(imageUrls),const DeepCollectionEquality().hash(cameraNames));
 
 @override
 String toString() {
-  return 'ShelfBrowseItem(id: $id, title: $title, brand: $brand, category: $category, description: $description, imageUrl: $imageUrl, level: $level, priceRaww: $priceRaww, inStock: $inStock, fitsYourGear: $fitsYourGear, wished: $wished, affordable: $affordable, locked: $locked)';
+  return 'ShelfBrowseItem(id: $id, title: $title, brand: $brand, category: $category, description: $description, imageUrl: $imageUrl, level: $level, priceRaww: $priceRaww, inStock: $inStock, fitsYourGear: $fitsYourGear, wished: $wished, affordable: $affordable, locked: $locked, coverUrl: $coverUrl, imageUrls: $imageUrls, cameraNames: $cameraNames)';
 }
 
 
@@ -61,7 +64,7 @@ abstract mixin class $ShelfBrowseItemCopyWith<$Res>  {
   factory $ShelfBrowseItemCopyWith(ShelfBrowseItem value, $Res Function(ShelfBrowseItem) _then) = _$ShelfBrowseItemCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ShelfBrowseItem.idKey_) String id,@JsonKey(name: ShelfBrowseItem.titleKey_) String title,@JsonKey(name: ShelfBrowseItem.brandKey_) String? brand,@JsonKey(name: ShelfBrowseItem.categoryKey_) String category,@JsonKey(name: ShelfBrowseItem.descriptionKey_) String? description,@JsonKey(name: ShelfBrowseItem.imageUrlKey_) String? imageUrl,@JsonKey(name: ShelfBrowseItem.levelKey_) int level,@JsonKey(name: ShelfBrowseItem.priceRawwKey_) int priceRaww,@JsonKey(name: ShelfBrowseItem.inStockKey_) bool inStock,@JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) bool fitsYourGear,@JsonKey(name: ShelfBrowseItem.wishedKey_) bool wished,@JsonKey(name: ShelfBrowseItem.affordableKey_) bool affordable,@JsonKey(name: ShelfBrowseItem.lockedKey_) bool locked
+@JsonKey(name: ShelfBrowseItem.idKey_) String id,@JsonKey(name: ShelfBrowseItem.titleKey_) String title,@JsonKey(name: ShelfBrowseItem.brandKey_) String? brand,@JsonKey(name: ShelfBrowseItem.categoryKey_) String category,@JsonKey(name: ShelfBrowseItem.descriptionKey_) String? description,@JsonKey(name: ShelfBrowseItem.imageUrlKey_) String? imageUrl,@JsonKey(name: ShelfBrowseItem.levelKey_) int level,@JsonKey(name: ShelfBrowseItem.priceRawwKey_) int priceRaww,@JsonKey(name: ShelfBrowseItem.inStockKey_) bool inStock,@JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) bool fitsYourGear,@JsonKey(name: ShelfBrowseItem.wishedKey_) bool wished,@JsonKey(name: ShelfBrowseItem.affordableKey_) bool affordable,@JsonKey(name: ShelfBrowseItem.lockedKey_) bool locked,@JsonKey(name: ShelfBrowseItem.coverUrlKey_) String? coverUrl,@JsonKey(name: ShelfBrowseItem.imageUrlsKey_) List<String>? imageUrls,@JsonKey(name: ShelfBrowseItem.cameraNamesKey_) List<String>? cameraNames
 });
 
 
@@ -78,7 +81,7 @@ class _$ShelfBrowseItemCopyWithImpl<$Res>
 
 /// Create a copy of ShelfBrowseItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? brand = freezed,Object? category = null,Object? description = freezed,Object? imageUrl = freezed,Object? level = null,Object? priceRaww = null,Object? inStock = null,Object? fitsYourGear = null,Object? wished = null,Object? affordable = null,Object? locked = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? brand = freezed,Object? category = null,Object? description = freezed,Object? imageUrl = freezed,Object? level = null,Object? priceRaww = null,Object? inStock = null,Object? fitsYourGear = null,Object? wished = null,Object? affordable = null,Object? locked = null,Object? coverUrl = freezed,Object? imageUrls = freezed,Object? cameraNames = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -93,7 +96,10 @@ as bool,fitsYourGear: null == fitsYourGear ? _self.fitsYourGear : fitsYourGear /
 as bool,wished: null == wished ? _self.wished : wished // ignore: cast_nullable_to_non_nullable
 as bool,affordable: null == affordable ? _self.affordable : affordable // ignore: cast_nullable_to_non_nullable
 as bool,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,coverUrl: freezed == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
+as String?,imageUrls: freezed == imageUrls ? _self.imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
+as List<String>?,cameraNames: freezed == cameraNames ? _self.cameraNames : cameraNames // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 
@@ -178,10 +184,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseItem.idKey_)  String id, @JsonKey(name: ShelfBrowseItem.titleKey_)  String title, @JsonKey(name: ShelfBrowseItem.brandKey_)  String? brand, @JsonKey(name: ShelfBrowseItem.categoryKey_)  String category, @JsonKey(name: ShelfBrowseItem.descriptionKey_)  String? description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_)  String? imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_)  int level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_)  int priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_)  bool inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_)  bool fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_)  bool wished, @JsonKey(name: ShelfBrowseItem.affordableKey_)  bool affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_)  bool locked)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseItem.idKey_)  String id, @JsonKey(name: ShelfBrowseItem.titleKey_)  String title, @JsonKey(name: ShelfBrowseItem.brandKey_)  String? brand, @JsonKey(name: ShelfBrowseItem.categoryKey_)  String category, @JsonKey(name: ShelfBrowseItem.descriptionKey_)  String? description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_)  String? imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_)  int level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_)  int priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_)  bool inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_)  bool fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_)  bool wished, @JsonKey(name: ShelfBrowseItem.affordableKey_)  bool affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseItem.coverUrlKey_)  String? coverUrl, @JsonKey(name: ShelfBrowseItem.imageUrlsKey_)  List<String>? imageUrls, @JsonKey(name: ShelfBrowseItem.cameraNamesKey_)  List<String>? cameraNames)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ShelfBrowseItem() when $default != null:
-return $default(_that.id,_that.title,_that.brand,_that.category,_that.description,_that.imageUrl,_that.level,_that.priceRaww,_that.inStock,_that.fitsYourGear,_that.wished,_that.affordable,_that.locked);case _:
+return $default(_that.id,_that.title,_that.brand,_that.category,_that.description,_that.imageUrl,_that.level,_that.priceRaww,_that.inStock,_that.fitsYourGear,_that.wished,_that.affordable,_that.locked,_that.coverUrl,_that.imageUrls,_that.cameraNames);case _:
   return orElse();
 
 }
@@ -199,10 +205,10 @@ return $default(_that.id,_that.title,_that.brand,_that.category,_that.descriptio
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseItem.idKey_)  String id, @JsonKey(name: ShelfBrowseItem.titleKey_)  String title, @JsonKey(name: ShelfBrowseItem.brandKey_)  String? brand, @JsonKey(name: ShelfBrowseItem.categoryKey_)  String category, @JsonKey(name: ShelfBrowseItem.descriptionKey_)  String? description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_)  String? imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_)  int level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_)  int priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_)  bool inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_)  bool fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_)  bool wished, @JsonKey(name: ShelfBrowseItem.affordableKey_)  bool affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_)  bool locked)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ShelfBrowseItem.idKey_)  String id, @JsonKey(name: ShelfBrowseItem.titleKey_)  String title, @JsonKey(name: ShelfBrowseItem.brandKey_)  String? brand, @JsonKey(name: ShelfBrowseItem.categoryKey_)  String category, @JsonKey(name: ShelfBrowseItem.descriptionKey_)  String? description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_)  String? imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_)  int level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_)  int priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_)  bool inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_)  bool fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_)  bool wished, @JsonKey(name: ShelfBrowseItem.affordableKey_)  bool affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseItem.coverUrlKey_)  String? coverUrl, @JsonKey(name: ShelfBrowseItem.imageUrlsKey_)  List<String>? imageUrls, @JsonKey(name: ShelfBrowseItem.cameraNamesKey_)  List<String>? cameraNames)  $default,) {final _that = this;
 switch (_that) {
 case _ShelfBrowseItem():
-return $default(_that.id,_that.title,_that.brand,_that.category,_that.description,_that.imageUrl,_that.level,_that.priceRaww,_that.inStock,_that.fitsYourGear,_that.wished,_that.affordable,_that.locked);case _:
+return $default(_that.id,_that.title,_that.brand,_that.category,_that.description,_that.imageUrl,_that.level,_that.priceRaww,_that.inStock,_that.fitsYourGear,_that.wished,_that.affordable,_that.locked,_that.coverUrl,_that.imageUrls,_that.cameraNames);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -219,10 +225,10 @@ return $default(_that.id,_that.title,_that.brand,_that.category,_that.descriptio
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ShelfBrowseItem.idKey_)  String id, @JsonKey(name: ShelfBrowseItem.titleKey_)  String title, @JsonKey(name: ShelfBrowseItem.brandKey_)  String? brand, @JsonKey(name: ShelfBrowseItem.categoryKey_)  String category, @JsonKey(name: ShelfBrowseItem.descriptionKey_)  String? description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_)  String? imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_)  int level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_)  int priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_)  bool inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_)  bool fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_)  bool wished, @JsonKey(name: ShelfBrowseItem.affordableKey_)  bool affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_)  bool locked)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ShelfBrowseItem.idKey_)  String id, @JsonKey(name: ShelfBrowseItem.titleKey_)  String title, @JsonKey(name: ShelfBrowseItem.brandKey_)  String? brand, @JsonKey(name: ShelfBrowseItem.categoryKey_)  String category, @JsonKey(name: ShelfBrowseItem.descriptionKey_)  String? description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_)  String? imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_)  int level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_)  int priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_)  bool inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_)  bool fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_)  bool wished, @JsonKey(name: ShelfBrowseItem.affordableKey_)  bool affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_)  bool locked, @JsonKey(name: ShelfBrowseItem.coverUrlKey_)  String? coverUrl, @JsonKey(name: ShelfBrowseItem.imageUrlsKey_)  List<String>? imageUrls, @JsonKey(name: ShelfBrowseItem.cameraNamesKey_)  List<String>? cameraNames)?  $default,) {final _that = this;
 switch (_that) {
 case _ShelfBrowseItem() when $default != null:
-return $default(_that.id,_that.title,_that.brand,_that.category,_that.description,_that.imageUrl,_that.level,_that.priceRaww,_that.inStock,_that.fitsYourGear,_that.wished,_that.affordable,_that.locked);case _:
+return $default(_that.id,_that.title,_that.brand,_that.category,_that.description,_that.imageUrl,_that.level,_that.priceRaww,_that.inStock,_that.fitsYourGear,_that.wished,_that.affordable,_that.locked,_that.coverUrl,_that.imageUrls,_that.cameraNames);case _:
   return null;
 
 }
@@ -234,7 +240,7 @@ return $default(_that.id,_that.title,_that.brand,_that.category,_that.descriptio
 
 @jsonSerializable
 class _ShelfBrowseItem extends ShelfBrowseItem {
-  const _ShelfBrowseItem({@JsonKey(name: ShelfBrowseItem.idKey_) required this.id, @JsonKey(name: ShelfBrowseItem.titleKey_) required this.title, @JsonKey(name: ShelfBrowseItem.brandKey_) this.brand, @JsonKey(name: ShelfBrowseItem.categoryKey_) required this.category, @JsonKey(name: ShelfBrowseItem.descriptionKey_) this.description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_) this.imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_) required this.level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_) required this.priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_) required this.inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) required this.fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_) required this.wished, @JsonKey(name: ShelfBrowseItem.affordableKey_) required this.affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_) required this.locked}): super._();
+  const _ShelfBrowseItem({@JsonKey(name: ShelfBrowseItem.idKey_) required this.id, @JsonKey(name: ShelfBrowseItem.titleKey_) required this.title, @JsonKey(name: ShelfBrowseItem.brandKey_) this.brand, @JsonKey(name: ShelfBrowseItem.categoryKey_) required this.category, @JsonKey(name: ShelfBrowseItem.descriptionKey_) this.description, @JsonKey(name: ShelfBrowseItem.imageUrlKey_) this.imageUrl, @JsonKey(name: ShelfBrowseItem.levelKey_) required this.level, @JsonKey(name: ShelfBrowseItem.priceRawwKey_) required this.priceRaww, @JsonKey(name: ShelfBrowseItem.inStockKey_) required this.inStock, @JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) required this.fitsYourGear, @JsonKey(name: ShelfBrowseItem.wishedKey_) required this.wished, @JsonKey(name: ShelfBrowseItem.affordableKey_) required this.affordable, @JsonKey(name: ShelfBrowseItem.lockedKey_) required this.locked, @JsonKey(name: ShelfBrowseItem.coverUrlKey_) this.coverUrl, @JsonKey(name: ShelfBrowseItem.imageUrlsKey_) final  List<String>? imageUrls, @JsonKey(name: ShelfBrowseItem.cameraNamesKey_) final  List<String>? cameraNames}): _imageUrls = imageUrls,_cameraNames = cameraNames,super._();
   factory _ShelfBrowseItem.fromJson(Map<String, dynamic> json) => _$ShelfBrowseItemFromJson(json);
 
 /// id
@@ -263,6 +269,30 @@ class _ShelfBrowseItem extends ShelfBrowseItem {
 @override@JsonKey(name: ShelfBrowseItem.affordableKey_) final  bool affordable;
 /// locked
 @override@JsonKey(name: ShelfBrowseItem.lockedKey_) final  bool locked;
+/// coverUrl
+@override@JsonKey(name: ShelfBrowseItem.coverUrlKey_) final  String? coverUrl;
+/// imageUrls
+ final  List<String>? _imageUrls;
+/// imageUrls
+@override@JsonKey(name: ShelfBrowseItem.imageUrlsKey_) List<String>? get imageUrls {
+  final value = _imageUrls;
+  if (value == null) return null;
+  if (_imageUrls is EqualUnmodifiableListView) return _imageUrls;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+/// cameraNames
+ final  List<String>? _cameraNames;
+/// cameraNames
+@override@JsonKey(name: ShelfBrowseItem.cameraNamesKey_) List<String>? get cameraNames {
+  final value = _cameraNames;
+  if (value == null) return null;
+  if (_cameraNames is EqualUnmodifiableListView) return _cameraNames;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of ShelfBrowseItem
 /// with the given fields replaced by the non-null parameter values.
@@ -277,16 +307,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShelfBrowseItem&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.category, category) || other.category == category)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.level, level) || other.level == level)&&(identical(other.priceRaww, priceRaww) || other.priceRaww == priceRaww)&&(identical(other.inStock, inStock) || other.inStock == inStock)&&(identical(other.fitsYourGear, fitsYourGear) || other.fitsYourGear == fitsYourGear)&&(identical(other.wished, wished) || other.wished == wished)&&(identical(other.affordable, affordable) || other.affordable == affordable)&&(identical(other.locked, locked) || other.locked == locked));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShelfBrowseItem&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.category, category) || other.category == category)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.level, level) || other.level == level)&&(identical(other.priceRaww, priceRaww) || other.priceRaww == priceRaww)&&(identical(other.inStock, inStock) || other.inStock == inStock)&&(identical(other.fitsYourGear, fitsYourGear) || other.fitsYourGear == fitsYourGear)&&(identical(other.wished, wished) || other.wished == wished)&&(identical(other.affordable, affordable) || other.affordable == affordable)&&(identical(other.locked, locked) || other.locked == locked)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&const DeepCollectionEquality().equals(other._imageUrls, _imageUrls)&&const DeepCollectionEquality().equals(other._cameraNames, _cameraNames));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,title,brand,category,description,imageUrl,level,priceRaww,inStock,fitsYourGear,wished,affordable,locked);
+int get hashCode => Object.hash(runtimeType,id,title,brand,category,description,imageUrl,level,priceRaww,inStock,fitsYourGear,wished,affordable,locked,coverUrl,const DeepCollectionEquality().hash(_imageUrls),const DeepCollectionEquality().hash(_cameraNames));
 
 @override
 String toString() {
-  return 'ShelfBrowseItem(id: $id, title: $title, brand: $brand, category: $category, description: $description, imageUrl: $imageUrl, level: $level, priceRaww: $priceRaww, inStock: $inStock, fitsYourGear: $fitsYourGear, wished: $wished, affordable: $affordable, locked: $locked)';
+  return 'ShelfBrowseItem(id: $id, title: $title, brand: $brand, category: $category, description: $description, imageUrl: $imageUrl, level: $level, priceRaww: $priceRaww, inStock: $inStock, fitsYourGear: $fitsYourGear, wished: $wished, affordable: $affordable, locked: $locked, coverUrl: $coverUrl, imageUrls: $imageUrls, cameraNames: $cameraNames)';
 }
 
 
@@ -297,7 +327,7 @@ abstract mixin class _$ShelfBrowseItemCopyWith<$Res> implements $ShelfBrowseItem
   factory _$ShelfBrowseItemCopyWith(_ShelfBrowseItem value, $Res Function(_ShelfBrowseItem) _then) = __$ShelfBrowseItemCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ShelfBrowseItem.idKey_) String id,@JsonKey(name: ShelfBrowseItem.titleKey_) String title,@JsonKey(name: ShelfBrowseItem.brandKey_) String? brand,@JsonKey(name: ShelfBrowseItem.categoryKey_) String category,@JsonKey(name: ShelfBrowseItem.descriptionKey_) String? description,@JsonKey(name: ShelfBrowseItem.imageUrlKey_) String? imageUrl,@JsonKey(name: ShelfBrowseItem.levelKey_) int level,@JsonKey(name: ShelfBrowseItem.priceRawwKey_) int priceRaww,@JsonKey(name: ShelfBrowseItem.inStockKey_) bool inStock,@JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) bool fitsYourGear,@JsonKey(name: ShelfBrowseItem.wishedKey_) bool wished,@JsonKey(name: ShelfBrowseItem.affordableKey_) bool affordable,@JsonKey(name: ShelfBrowseItem.lockedKey_) bool locked
+@JsonKey(name: ShelfBrowseItem.idKey_) String id,@JsonKey(name: ShelfBrowseItem.titleKey_) String title,@JsonKey(name: ShelfBrowseItem.brandKey_) String? brand,@JsonKey(name: ShelfBrowseItem.categoryKey_) String category,@JsonKey(name: ShelfBrowseItem.descriptionKey_) String? description,@JsonKey(name: ShelfBrowseItem.imageUrlKey_) String? imageUrl,@JsonKey(name: ShelfBrowseItem.levelKey_) int level,@JsonKey(name: ShelfBrowseItem.priceRawwKey_) int priceRaww,@JsonKey(name: ShelfBrowseItem.inStockKey_) bool inStock,@JsonKey(name: ShelfBrowseItem.fitsYourGearKey_) bool fitsYourGear,@JsonKey(name: ShelfBrowseItem.wishedKey_) bool wished,@JsonKey(name: ShelfBrowseItem.affordableKey_) bool affordable,@JsonKey(name: ShelfBrowseItem.lockedKey_) bool locked,@JsonKey(name: ShelfBrowseItem.coverUrlKey_) String? coverUrl,@JsonKey(name: ShelfBrowseItem.imageUrlsKey_) List<String>? imageUrls,@JsonKey(name: ShelfBrowseItem.cameraNamesKey_) List<String>? cameraNames
 });
 
 
@@ -314,7 +344,7 @@ class __$ShelfBrowseItemCopyWithImpl<$Res>
 
 /// Create a copy of ShelfBrowseItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? brand = freezed,Object? category = null,Object? description = freezed,Object? imageUrl = freezed,Object? level = null,Object? priceRaww = null,Object? inStock = null,Object? fitsYourGear = null,Object? wished = null,Object? affordable = null,Object? locked = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? brand = freezed,Object? category = null,Object? description = freezed,Object? imageUrl = freezed,Object? level = null,Object? priceRaww = null,Object? inStock = null,Object? fitsYourGear = null,Object? wished = null,Object? affordable = null,Object? locked = null,Object? coverUrl = freezed,Object? imageUrls = freezed,Object? cameraNames = freezed,}) {
   return _then(_ShelfBrowseItem(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -329,7 +359,10 @@ as bool,fitsYourGear: null == fitsYourGear ? _self.fitsYourGear : fitsYourGear /
 as bool,wished: null == wished ? _self.wished : wished // ignore: cast_nullable_to_non_nullable
 as bool,affordable: null == affordable ? _self.affordable : affordable // ignore: cast_nullable_to_non_nullable
 as bool,locked: null == locked ? _self.locked : locked // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,coverUrl: freezed == coverUrl ? _self.coverUrl : coverUrl // ignore: cast_nullable_to_non_nullable
+as String?,imageUrls: freezed == imageUrls ? _self._imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
+as List<String>?,cameraNames: freezed == cameraNames ? _self._cameraNames : cameraNames // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 

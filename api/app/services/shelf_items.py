@@ -138,8 +138,16 @@ def compat_for(db: Session, item_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[s
     return {k: sorted(v) for k, v in out.items()}
 
 
+def _need_cover() -> APIError:
+    return APIError(code="cover_required", message="An item needs a cover photo before it can be active. Add a photo first.", status_code=422)
+
+
 def create_item(db: Session, *, values: dict, camera_models: list[str], actor_user_id: uuid.UUID) -> ShelfItem:
-    item = ShelfItem(**_clean({k: values.get(k) for k in FIELDS}), created_by_user_id=actor_user_id)
+    # A new item has no photos yet, so it starts inactive (owner's decision,
+    # 2026-11-07: no cover, no activation).
+    if values.get("active") is True:
+        raise _need_cover()
+    item = ShelfItem(**_clean({**{k: values.get(k) for k in FIELDS}, "active": False}), created_by_user_id=actor_user_id)
     db.add(item)
     db.flush()
     _set_compat(db, item, camera_models)
@@ -152,6 +160,11 @@ def update_item(db: Session, *, item_id: uuid.UUID, values: dict, camera_models:
         raise APIError(code="not_found", message="Item not found", status_code=404)
     current = {k: getattr(item, k) for k in FIELDS}
     merged = _clean({**current, **{k: v for k, v in values.items() if k in FIELDS}})
+    if merged["active"] and not item.active:
+        from app.services.shelf_images import has_cover
+
+        if not has_cover(db, item.id):
+            raise _need_cover()
     changes = {}
     for key, value in merged.items():
         if getattr(item, key) != value:

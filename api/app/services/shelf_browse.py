@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -76,6 +77,11 @@ def browse(db: Session, pro_user_id: uuid.UUID) -> dict:
     for item_id, model in db.execute(select(ShelfItemCompat.item_id, ShelfItemCompat.camera_model)):
         compat.setdefault(item_id, set()).add(model)
     wished = set(db.execute(select(ShelfWishlistItem.item_id).where(ShelfWishlistItem.pro_user_id == pro_user_id)).scalars())
+    from app.models.gear_verification import CameraModelReference
+    from app.services.shelf_images import urls_for
+
+    photos = urls_for(db, [i.id for i in items])
+    names = dict(db.execute(select(CameraModelReference.normalised_model, CameraModelReference.display_name)).all()) if compat else {}
     balance = ledger.get_balance(db, pro_user_id)
     spendable = balance.spendable if balance else 0
 
@@ -104,6 +110,9 @@ def browse(db: Session, pro_user_id: uuid.UUID) -> dict:
                     "wished": item.id in wished,
                     "affordable": spendable >= item.price_raww,
                     "locked": locked,
+                    "cover_url": next((p.small for p in photos.get(item.id, []) if p.small), None) or item.image_url,
+                    "image_urls": [p.large for p in photos.get(item.id, []) if p.large],
+                    "camera_names": sorted(names.get(m, m) for m in cameras),
                 }
             )
         shown.sort(key=lambda i: (not i["fits_your_gear"], i["price_raww"], i["title"]))
@@ -112,6 +121,7 @@ def browse(db: Session, pro_user_id: uuid.UUID) -> dict:
             {
                 "level": level,
                 "band_raww": settings.level_band_raww[level - 1],
+                "band_eur": (Decimal(settings.level_band_raww[level - 1]) * Decimal(settings.raww_eur_value)).quantize(Decimal("1")),
                 "locked": locked,
                 "unlocks_at_tier": unlock.value if unlock else None,
                 "items": shown,

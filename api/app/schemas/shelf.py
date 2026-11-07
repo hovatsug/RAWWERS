@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ShelfSettingsView(BaseModel):
@@ -134,9 +134,37 @@ class AdminShelfItemRequest(BaseModel):
     supplier_sku: str | None = None
     supplier_url: str | None = None
     stock_status: str = "in_stock"
-    active: bool = True
+    #: New items start inactive: an item needs a cover photo to be active.
+    active: bool = False
     #: Cameras it fits (catalogue keys). Empty: it fits everyone.
     camera_models: list[str] = []
+
+
+class ShelfImageView(BaseModel):
+    """One of an item's photos: 400 px for cards, 800 for the admin, 1600
+    for the detail's gallery (long edge). Signed, short-lived URLs."""
+
+    id: uuid.UUID
+    status: str
+    small_url: str | None = None
+    medium_url: str | None = None
+    large_url: str | None = None
+
+
+class ShelfImageUploadStart(BaseModel):
+    content_type: str
+    file_name: str | None = None
+
+
+class ShelfImageUploadStarted(BaseModel):
+    image_id: uuid.UUID
+    upload_url: str
+    method: str = "PUT"
+    headers: dict[str, str] = Field(default_factory=dict)
+
+
+class ShelfImageOrder(BaseModel):
+    image_ids: list[uuid.UUID]
 
 
 class AdminShelfItemView(BaseModel):
@@ -160,6 +188,8 @@ class AdminShelfItemView(BaseModel):
     camera_models: list[str]
     helper: ShelfPriceHelper
     updated_at: datetime
+    #: In order, the first the cover; including ones still processing.
+    images: list[ShelfImageView] = Field(default_factory=list)
 
 
 class AdminShelfItemsResponse(BaseModel):
@@ -197,11 +227,20 @@ class ShelfBrowseItem(BaseModel):
     affordable: bool
     #: On a level their tier does not unlock yet: a teaser, not orderable.
     locked: bool
+    #: The cover at 400 px (cards), then every photo at 1600 px (the
+    #: detail's gallery), in order. The supplier's `image_url` stands in for
+    #: an item whose photos are not uploaded yet.
+    cover_url: str | None = None
+    image_urls: list[str] = Field(default_factory=list)
+    #: The cameras it is made for, by name; empty for a universal item.
+    camera_names: list[str] = Field(default_factory=list)
 
 
 class ShelfBrowseLevel(BaseModel):
     level: int
     band_raww: int
+    #: The band in euros, at the RAWW value: "about €X".
+    band_eur: Decimal = Decimal("0.00")
     locked: bool
     #: The tier that unlocks a locked level.
     unlocks_at_tier: str | None = None

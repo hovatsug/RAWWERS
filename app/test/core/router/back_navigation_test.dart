@@ -57,6 +57,7 @@ const _paramSamples = <String, String>{
   'nicheSlug': 'weddings',
   'bookingId': 'b1',
   'threadId': 't1',
+  'itemId': 'i1',
 };
 
 int _pageCount(RouteMatchBase match) {

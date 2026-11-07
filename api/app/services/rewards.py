@@ -478,6 +478,11 @@ def _get_discount_conversion_settings(db: Session) -> tuple[int, int]:
         points_per_eur = int(rule.meta.get("points_per_eur", points_per_eur))
         max_discount_pct = int(rule.meta.get("max_discount_percent", max_discount_pct))
 
+    # The checkout cap is client credit's own setting now (admin, default
+    # 10%): credit is the platform's marketing cost, out of its retained share.
+    from app.services.client_credit import max_discount_percent
+
+    max_discount_pct = max_discount_percent(db)
     points_per_eur = max(points_per_eur, 1)
     max_discount_pct = max(1, min(max_discount_pct, 100))
     return points_per_eur, max_discount_pct

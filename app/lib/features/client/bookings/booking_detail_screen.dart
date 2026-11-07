@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:rawwers/features/client/credit/credit_labels.dart';
+import 'package:rawwers/features/client/credit/credit_controller.dart';
+import 'package:decimal/decimal.dart';
 import 'package:rawwers/features/client/gallery/addon_window.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,17 +183,32 @@ class _RefundCard extends StatelessWidget {
   }
 }
 
-class _PayPanel extends ConsumerWidget {
+class _PayPanel extends ConsumerStatefulWidget {
   const _PayPanel({required this.bookingId, required this.payBy});
 
   final String bookingId;
   final DateTime? payBy;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PayPanel> createState() => _PayPanelState();
+}
+
+class _PayPanelState extends ConsumerState<_PayPanel> {
+  /// Whether to use the client's credit; null until they choose (then the
+  /// server's own answer, set aside or not, stands).
+  bool? _useCredit;
+
+  String get bookingId => widget.bookingId;
+  DateTime? get payBy => widget.payBy;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progress = ref.watch(bookingPaymentControllerProvider(bookingId));
     final notifier = ref.read(bookingPaymentControllerProvider(bookingId).notifier);
+    final credit = ref.watch(bookingCreditProvider(bookingId)).valueOrNull;
+    final hasCredit = credit != null && Decimal.parse(credit.discountEur) > Decimal.zero;
+    final useCredit = _useCredit ?? (credit?.applied ?? false);
 
     return RCard(
       child: Column(
@@ -209,6 +227,20 @@ class _PayPanel extends ConsumerWidget {
           ),
           const SizedBox(height: RSpace.s8),
           Text(depositExplainer, style: theme.textTheme.bodySmall),
+          if (hasCredit) ...[
+            const SizedBox(height: RSpace.s8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('Use my credit (${creditEuros(credit.balanceEur)})'),
+              subtitle: Text(
+                useCredit
+                    ? '${creditEuros('-${credit.discountEur}')} · you pay ${creditEuros(credit.totalEur)}'
+                    : 'Up to ${credit.maxDiscountPercent}% of this payment',
+              ),
+              value: useCredit,
+              onChanged: progress is PaymentWorking || progress is PaymentSucceeded ? null : (on) => setState(() => _useCredit = on),
+            ),
+          ],
           if (progress case PaymentFailed(:final message)) ...[
             const SizedBox(height: RSpace.s12),
             Text(message, style: theme.textTheme.bodyMedium?.copyWith(color: RShade.shade600)),
@@ -226,7 +258,12 @@ class _PayPanel extends ConsumerWidget {
           RButton(
             label: progress is PaymentFailed ? 'Try again' : 'Pay now',
             loading: progress is PaymentWorking,
-            onPressed: progress is PaymentWorking || progress is PaymentSucceeded ? null : notifier.pay,
+            onPressed: progress is PaymentWorking || progress is PaymentSucceeded
+                ? null
+                : () async {
+                    await notifier.pay(useCredit: hasCredit ? useCredit : null);
+                    ref.invalidate(bookingCreditProvider(bookingId));
+                  },
           ),
         ],
       ),

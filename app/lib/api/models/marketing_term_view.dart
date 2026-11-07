@@ -8,6 +8,11 @@
 ///         "credit": {
 ///             "type": "integer",
 ///             "title": "Credit"
+///         },
+///         "credit_eur": {
+///             "type": "string",
+///             "default": "0.00",
+///             "title": "Credit Eur"
 ///         }
 ///     },
 ///     "type": "object",
@@ -34,6 +39,11 @@ abstract class MarketingTermView with _$MarketingTermView {
 
     /// credit
     @JsonKey(name: MarketingTermView.creditKey_) required int credit,
+
+    /// creditEur
+    @Default('0.00')
+    @JsonKey(name: MarketingTermView.creditEurKey_)
+    String creditEur,
   }) = _MarketingTermView;
 
   factory MarketingTermView.fromJson(Map<String, dynamic> json) =>
@@ -42,4 +52,6 @@ abstract class MarketingTermView with _$MarketingTermView {
   static const String monthsKey_ = r'months';
 
   static const String creditKey_ = r'credit';
+
+  static const String creditEurKey_ = r'credit_eur';
 }

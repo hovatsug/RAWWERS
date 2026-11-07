@@ -181,6 +181,7 @@ from app.models.gear_verification import (  # noqa: F401
 )
 from app.models.reward import (
     AttributionTouch,
+    ClientCreditSettings,
     ConversionAttribution,
     DiscountRedemption,
     ReferralBlacklist,

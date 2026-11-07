@@ -47,7 +47,7 @@ class BookingPaymentController extends _$BookingPaymentController {
   /// is get-or-create on the backend - `create_or_get_gig_payment_intent`
   /// passes a fixed idempotency key per gig and payment kind - so a retry
   /// resumes the same intent rather than charging twice.
-  Future<void> pay() async {
+  Future<void> pay({bool? useCredit}) async {
     if (state is PaymentWorking) return;
     if (!ref.read(paymentSheetLauncherProvider).isConfigured) {
       state = const PaymentFailed('Payments are not configured in this build.');
@@ -62,7 +62,9 @@ class BookingPaymentController extends _$BookingPaymentController {
         bookingId: bookingId,
         // MVP is a single payment per booking; deposit mode exists on the
         // endpoint but no flow offers it yet.
-        requestBody: const ClientBookingPayRequest(paymentMode: 'full'),
+        // Credit, when the client switched it on: taken off this payment, at
+        // most the cap, out of RAWWERS's share (never the photographer's).
+        requestBody: ClientBookingPayRequest(paymentMode: 'full', useCredit: useCredit),
         authorization: null,
         xMinusUserMinusId: null,
       ),

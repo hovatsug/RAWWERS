@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 import logging
 import uuid
 from collections import Counter
@@ -1020,11 +1021,21 @@ def client_booking_pay(
         )
 
     mode = "full" if body.payment_mode not in {"full", "deposit"} else body.payment_mode
-    _, intent = create_or_get_gig_payment_intent(
+    # Client credit, if they chose it: reserved now, taken off the charge, and
+    # applied when the payment succeeds. It comes out of the platform's
+    # share; the photographer is paid on the full price (client_credit).
+    from app.services.client_credit import set_for_payment
+    from app.services.payment_intents import bring_base_intent_to
+
+    payable, credit_involved = set_for_payment(db, client_user_id=user.user_id, gig=gig, use_credit=body.use_credit)
+    payment_row, intent = create_or_get_gig_payment_intent(
         db,
         gig,
+        amount_override=payable,
         extra_metadata={"payment_mode": mode},
     )
+    if credit_involved:
+        intent = bring_base_intent_to(db, payment_row, intent, payable)
     if apply_missed_success(db, intent):
         # Stripe already took this payment and the webhook never told us.
         # Recorded now, and answered the way any other paid booking is.
@@ -1050,6 +1061,8 @@ def client_booking_pay(
         payment_intent_id=intent.id,
         payment_intent_client_secret=intent.client_secret,
         mode=mode,
+        credit_eur=gig.amount_minimum - payable if payable < gig.amount_minimum else Decimal("0.00"),
+        amount_eur=payable,
     )
 
 

@@ -7,7 +7,7 @@ part of 'booking_payment_controller.dart';
 // **************************************************************************
 
 String _$bookingPaymentControllerHash() =>
-    r'94222459fbeb682b9c1078dd02fcadf5cb7ce4d4';
+    r'6841d420af421ef864875ab06f7f1a8ae504492d';
 
 /// Copied from Dart SDK
 class _SystemHash {

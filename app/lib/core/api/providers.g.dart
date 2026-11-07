@@ -437,6 +437,25 @@ final shelfClientProvider = AutoDisposeProvider<ShelfClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ShelfClientRef = AutoDisposeProviderRef<ShelfClient>;
+String _$clientCreditClientHash() =>
+    r'3cb31e3ff55d83d7e9c2b4e2d5fa0216655cb2cf';
+
+/// See also [clientCreditClient].
+@ProviderFor(clientCreditClient)
+final clientCreditClientProvider =
+    AutoDisposeProvider<ClientCreditClient>.internal(
+      clientCreditClient,
+      name: r'clientCreditClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$clientCreditClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientCreditClientRef = AutoDisposeProviderRef<ClientCreditClient>;
 String _$accountabilityClientHash() =>
     r'9339f685eaaab0c82027697eb1e3e03175530ef1';
 

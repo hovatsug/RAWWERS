@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:rawwers/features/client/credit/credit_labels.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rawwers/api/models/marketing_consent_offer_response.dart';
 import 'package:rawwers/design/components/r_button.dart';
@@ -13,35 +15,43 @@ import 'package:rawwers/features/client/marketing/marketing_consent_controllers.
 /// the server offers it for this booking; nothing is chosen until the client
 /// chooses.
 class MarketingOfferCard extends ConsumerWidget {
-  const MarketingOfferCard({required this.gigId, super.key});
+  const MarketingOfferCard({required this.gigId, this.creditPath, super.key});
 
   final String gigId;
+
+  /// Where "See my credit" goes after credit is earned.
+  final String? creditPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offer = ref.watch(marketingOfferControllerProvider(gigId)).valueOrNull;
     if (offer == null || !offer.offered) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final credit = [for (final t in offer.terms ?? const []) if (t.months == offer.defaultTermMonths) t.credit].firstOrNull;
+    final credit = [for (final t in offer.terms ?? const []) if (t.months == offer.defaultTermMonths) t.creditEur].firstOrNull;
+    final earns = offer.creditAvailable && credit != null && credit != '0.00';
     return Padding(
       padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, 0),
       child: RCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Let RAWWERS feature your photos? Earn RAW credit.', style: theme.textTheme.titleSmall),
+            Text(earns ? 'Let RAWWERS feature your photos? Earn credit.' : 'Let RAWWERS feature your photos?', style: theme.textTheme.titleSmall),
             const SizedBox(height: RSpace.s4),
             Text(
               'Optional. You choose which photos and for how long'
-              '${credit != null && credit > 0 ? ', and earn up to $credit RAW credit' : ''}. '
+              '${earns ? ', and earn up to ${creditEuros(credit)} credit' : ''}. '
               'Credited to ${offer.photographerCredit ?? 'your photographer'}.',
               style: theme.textTheme.bodySmall,
             ),
+            if (creditUnavailableText(offer) case final why?) ...[
+              const SizedBox(height: RSpace.s4),
+              Text(why, style: theme.textTheme.bodySmall),
+            ],
             const SizedBox(height: RSpace.s12),
             RButton(
               label: 'Choose photos',
               variant: RButtonVariant.secondary,
-              onPressed: () => showRSheet<void>(context, builder: (_) => MarketingConsentForm(gigId: gigId, offer: offer)),
+              onPressed: () => showRSheet<void>(context, builder: (_) => MarketingConsentForm(gigId: gigId, offer: offer, creditPath: creditPath)),
             ),
           ],
         ),
@@ -54,10 +64,13 @@ class MarketingOfferCard extends ConsumerWidget {
 /// unless changed), the wording as the server sent it, and the confirmation
 /// about the people shown (unticked).
 class MarketingConsentForm extends ConsumerStatefulWidget {
-  const MarketingConsentForm({required this.gigId, required this.offer, super.key});
+  const MarketingConsentForm({required this.gigId, required this.offer, this.creditPath, super.key});
 
   final String gigId;
   final MarketingConsentOfferResponse offer;
+
+  /// Where "See my credit" goes after credit is earned.
+  final String? creditPath;
 
   @override
   ConsumerState<MarketingConsentForm> createState() => _MarketingConsentFormState();
@@ -77,6 +90,7 @@ class _MarketingConsentFormState extends ConsumerState<MarketingConsentForm> {
     });
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final router = GoRouter.maybeOf(context);
     final outcome = await ref
         .read(marketingOfferControllerProvider(widget.gigId).notifier)
         .grant(assetIds: _chosen.toList(), termMonths: _term, peopleConfirmed: _confirmed);
@@ -92,10 +106,13 @@ class _MarketingConsentFormState extends ConsumerState<MarketingConsentForm> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          outcome.credit > 0
-              ? 'Thank you. ${outcome.credit} RAW credit added.'
+          outcome.creditEur != '0.00'
+              ? 'Thank you. ${creditEuros(outcome.creditEur)} credit added.'
               : 'Thank you. You can change this in Account > Marketing permissions.',
         ),
+        action: outcome.creditEur != '0.00' && widget.creditPath != null && router != null
+            ? SnackBarAction(label: 'See my credit', onPressed: () => router.push(widget.creditPath!))
+            : null,
       ),
     );
   }
@@ -161,7 +178,7 @@ class _MarketingConsentFormState extends ConsumerState<MarketingConsentForm> {
               children: [
                 for (final t in terms)
                   ChoiceChip(
-                    label: Text(t.credit > 0 ? '${t.months} months · ${t.credit} RAW' : '${t.months} months'),
+                    label: Text(widget.offer.creditAvailable && t.creditEur != '0.00' ? '${t.months} months · ${creditEuros(t.creditEur)}' : '${t.months} months'),
                     selected: _term == t.months,
                     onSelected: _sending ? null : (_) => setState(() => _term = t.months),
                   ),
@@ -194,3 +211,13 @@ class _MarketingConsentFormState extends ConsumerState<MarketingConsentForm> {
     );
   }
 }
+
+
+/// Said where the offer is made, before the client confirms: why this grant
+/// would earn no credit. Permission can still be given.
+String? creditUnavailableText(MarketingConsentOfferResponse offer) => switch (offer.creditUnavailableReason) {
+      'budget' => 'No credit is available this month. You can still give permission.',
+      'monthly_cap' => 'You have earned credit for 3 permissions this month, the most there is. You can still give permission, without credit.',
+      'already_credited' => 'You have already earned credit for this booking.',
+      _ => null,
+    };

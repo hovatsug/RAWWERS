@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
+from decimal import Decimal
+
 from pydantic import BaseModel, Field
 
 
@@ -11,6 +13,8 @@ class MarketingTermView(BaseModel):
     #: RAW credit (reward points) a grant of this term earns, before the
     #: once-per-booking and monthly limits.
     credit: int
+    #: The same in euros (points / 100), which is how the app shows it.
+    credit_eur: Decimal = Decimal("0.00")
 
 
 class MarketingPhotoView(BaseModel):
@@ -31,6 +35,12 @@ class MarketingConsentOfferResponse(BaseModel):
     default_term_months: int = 12
     photographer_credit: str | None = None
     photos: list[MarketingPhotoView] = Field(default_factory=list)
+    #: Whether a grant now earns credit, said before the client confirms.
+    #: When not: monthly_cap (3 credited permissions this month), budget (no
+    #: credit is available this month) or already_credited (this booking).
+    #: Permission can still be given without credit.
+    credit_available: bool = True
+    credit_unavailable_reason: str | None = None
 
 
 class GrantMarketingConsentRequest(BaseModel):
@@ -61,6 +71,8 @@ class GrantMarketingConsentResponse(BaseModel):
     #: RAW credit given for this grant; 0 when none (already credited for the
     #: booking, the monthly limit reached, or the setting is 0).
     credit: int
+    #: The credit given, in euros.
+    credit_eur: Decimal = Decimal("0.00")
 
 
 class MyMarketingConsentsResponse(BaseModel):

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, BigInteger, DateTime, Enum, Index, Numeric, Text, text
+from sqlalchemy import CHAR, BigInteger, DateTime, Enum, Index, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -316,3 +316,22 @@ class ReminderJob(Base):
 Index("ix_reward_ledger_user_created", RewardLedgerEntry.user_id, RewardLedgerEntry.created_at.desc())
 Index("ix_referral_link_referrer_referee", ReferralLink.referrer_user_id, ReferralLink.referee_user_id, unique=True)
 Index("ix_referral_reward_grant_conversion", ReferralRewardGrant.conversion_type, ReferralRewardGrant.conversion_id, unique=True)
+
+
+class ClientCreditSettings(Base):
+    """One row: client credit's money rules (owner's decision, 2026-11-07).
+    Client credit is RAWWERS's marketing cost, funded from the platform's
+    retained share (services/client_credit.py)."""
+
+    __tablename__ = "client_credit_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    #: The most of a payment credit may take off at checkout, in percent.
+    max_discount_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    #: Credit that may be awarded for marketing permissions in a calendar
+    #: month (Europe/London), in euros. 0: no credit is awarded.
+    monthly_marketing_credit_budget_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("300.00"))
+    #: The month ("2026-11") whose 80% and 100% admin alerts went out, so each is sent once.
+    alerted_80_month: Mapped[str | None] = mapped_column(Text, nullable=True)
+    alerted_100_month: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))

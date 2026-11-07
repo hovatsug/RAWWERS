@@ -22,6 +22,22 @@
 ///         "mode": {
 ///             "type": "string",
 ///             "title": "Mode"
+///         },
+///         "credit_eur": {
+///             "type": "string",
+///             "default": "0.00",
+///             "title": "Credit Eur"
+///         },
+///         "amount_eur": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Amount Eur"
 ///         }
 ///     },
 ///     "type": "object",
@@ -63,6 +79,14 @@ abstract class ClientBookingPayResponse with _$ClientBookingPayResponse {
 
     /// mode
     @JsonKey(name: ClientBookingPayResponse.modeKey_) required String mode,
+
+    /// creditEur
+    @Default('0.00')
+    @JsonKey(name: ClientBookingPayResponse.creditEurKey_)
+    String creditEur,
+
+    /// amountEur
+    @JsonKey(name: ClientBookingPayResponse.amountEurKey_) String? amountEur,
   }) = _ClientBookingPayResponse;
 
   factory ClientBookingPayResponse.fromJson(Map<String, dynamic> json) =>
@@ -78,4 +102,8 @@ abstract class ClientBookingPayResponse with _$ClientBookingPayResponse {
       r'payment_intent_client_secret';
 
   static const String modeKey_ = r'mode';
+
+  static const String creditEurKey_ = r'credit_eur';
+
+  static const String amountEurKey_ = r'amount_eur';
 }

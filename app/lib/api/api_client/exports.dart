@@ -31,3 +31,4 @@ export 'i18n_client.dart';
 export 'default_client.dart';
 export 'marketing_consent_client.dart';
 export 'shelf_client.dart';
+export 'client_credit_client.dart';

@@ -755,6 +755,11 @@ def expire_unpaid_gigs(db: Session, *, now: datetime | None = None, limit: int |
                         reason="Not paid by its pay deadline; the time was released",
                     )
                 )
+                # Credit set aside for this payment goes back to the client.
+                from app.models.reward import RedemptionContextType
+                from app.services.rewards import release_redemption_for_context
+
+                release_redemption_for_context(db, RedemptionContextType.gig_payment, gig.id, reason="booking_expired_unpaid")
             expired += 1
         except Exception:
             logger.exception("expire_unpaid_gig_failed", extra={"gig_id": str(gig.id)})

@@ -355,3 +355,6 @@ export 'notification_unread_count.dart';
 export 'addon_quote_response.dart';
 export 'start_addon_request.dart';
 export 'start_addon_response.dart';
+export 'booking_credit_preview.dart';
+export 'credit_history_item.dart';
+export 'my_credit_response.dart';

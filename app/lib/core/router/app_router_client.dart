@@ -11,6 +11,7 @@ import 'package:rawwers/features/client/gallery/delivered_gallery_screen.dart';
 import 'package:rawwers/features/client/gallery/selection_gallery_screen.dart';
 import 'package:rawwers/features/client/client_shell.dart';
 import 'package:rawwers/features/client/discover/home_screen.dart';
+import 'package:rawwers/features/client/credit/my_credit_screen.dart';
 import 'package:rawwers/features/client/notifications/client_notifications_screen.dart';
 import 'package:rawwers/features/client/discover/niche_screen.dart';
 import 'package:rawwers/features/client/messages/messages_screen.dart';
@@ -60,6 +61,7 @@ abstract final class ClientRoute {
   /// Opened from Account, so it hangs off Account and back returns there.
   static const verifyEmail = '$account/verify-email';
   static const marketingPermissions = '$account/marketing-permissions';
+  static const credit = '$account/credit';
 
   /// Nested under Discover so the bottom nav stays put and back returns to
   /// the results the client was browsing, at the scroll position they left.
@@ -176,6 +178,7 @@ GoRouter clientRouter(Ref ref) {
                         path: 'photos/:galleryId',
                         builder: (context, state) => DeliveredGalleryScreen(
                           galleryId: state.pathParameters['galleryId']!,
+                          creditPath: ClientRoute.credit,
                         ),
                       ),
                     ],
@@ -206,10 +209,12 @@ GoRouter clientRouter(Ref ref) {
                   verifyEmailPath: ClientRoute.verifyEmail,
                   marketingPermissionsPath: ClientRoute.marketingPermissions,
                   notificationsPath: ClientRoute.accountNotifications,
+                  creditPath: ClientRoute.credit,
                 ),
                 routes: [
                   GoRoute(path: 'verify-email', builder: (context, state) => const VerifyEmailScreen()),
                   GoRoute(path: 'marketing-permissions', builder: (context, state) => const MarketingPermissionsScreen()),
+                  GoRoute(path: 'credit', builder: (context, state) => const MyCreditScreen()),
                   GoRoute(path: 'notifications', builder: (context, state) => _clientNotifications),
                 ],
               ),

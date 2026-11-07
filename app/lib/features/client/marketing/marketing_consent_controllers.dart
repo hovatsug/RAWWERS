@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:rawwers/features/client/credit/credit_controller.dart';
 import 'package:rawwers/api/models/grant_marketing_consent_request.dart';
 import 'package:rawwers/api/models/marketing_consent_offer_response.dart';
 import 'package:rawwers/api/models/marketing_consent_view.dart';
@@ -20,7 +21,7 @@ String _explain(ApiFailure failure) => switch (failure) {
 /// What a grant did: null [problem] when it went through, with the RAW
 /// credit it earned (0 when none: already credited for this booking, or the
 /// month's limit reached).
-typedef GrantOutcome = ({String? problem, int credit});
+typedef GrantOutcome = ({String? problem, String creditEur});
 
 /// "Let RAWWERS feature your photos? Earn RAW credit." for one booking: the
 /// server says whether to offer it, the wording, the terms and the photos.
@@ -58,9 +59,10 @@ class MarketingOfferController extends _$MarketingOfferController {
       case Ok(:final value):
         ref.invalidateSelf();
         ref.invalidate(myMarketingConsentsControllerProvider);
-        return (problem: null, credit: value.credit);
+        ref.invalidate(myCreditProvider);
+        return (problem: null, creditEur: value.creditEur);
       case Err(:final failure):
-        return (problem: _explain(failure), credit: 0);
+        return (problem: _explain(failure), creditEur: '0.00');
     }
   }
 }

@@ -322,11 +322,45 @@ class MarketingConsentRefused(Exception):
         self.status_code = status_code
 
 
+def credit_block(db: Session, gig: Gig, client_user_id, term_months: int) -> str | None:
+    """Why a grant now would earn no credit, before the client confirms:
+    already_credited (this booking), monthly_cap (3 credited permissions this
+    month), budget (this month's marketing budget is used up), or None."""
+    settings = get_settings()
+    already = db.execute(
+        select(RewardLedgerEntry.id).where(
+            RewardLedgerEntry.user_id == client_user_id,
+            RewardLedgerEntry.reference_type == CREDIT_REFERENCE,
+            RewardLedgerEntry.reference_id == str(gig.id),
+        )
+    ).first()
+    if already:
+        return "already_credited"
+    month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    this_month = db.execute(
+        select(func.count()).select_from(RewardLedgerEntry).where(
+            RewardLedgerEntry.user_id == client_user_id,
+            RewardLedgerEntry.reference_type == CREDIT_REFERENCE,
+            RewardLedgerEntry.entry_type == RewardEntryType.earn,
+            RewardLedgerEntry.created_at >= month_start,
+        )
+    ).scalar_one()
+    if this_month >= settings.marketing_consent_monthly_cap:
+        return "monthly_cap"
+    from app.services.client_credit import budget_left_for
+
+    amount = credit_for_term(term_months) - _older_consent_points(db, gig, client_user_id)
+    if amount > 0 and not budget_left_for(db, amount):
+        return "budget"
+    return None
+
+
 def _credit(db: Session, gig: Gig, client_user_id, term_months: int) -> RewardLedgerEntry | None:
     """The RAW credit for a grant: once per booking, at most the monthly cap
     a month, less any points the older consent already paid on the booking
-    - one reward per booking. Through the reward ledger, whose own rules
-    (frozen rewards, the balance floor) apply."""
+    - one reward per booking - and within the month's marketing budget
+    (services/client_credit, under its lock). Through the reward ledger,
+    whose own rules (frozen rewards, the balance floor) apply."""
     settings = get_settings()
     already = db.execute(
         select(RewardLedgerEntry.id).where(
@@ -351,15 +385,11 @@ def _credit(db: Session, gig: Gig, client_user_id, term_months: int) -> RewardLe
     amount = credit_for_term(term_months) - _older_consent_points(db, gig, client_user_id)
     if amount <= 0:
         return None
-    return add_reward_entry(
-        db,
-        user_id=client_user_id,
-        amount=amount,
-        entry_type=RewardEntryType.earn,
-        reference_type=CREDIT_REFERENCE,
-        reference_id=str(gig.id),
-        metadata={"term_months": term_months},
-        min_balance_floor=settings.reward_balance_floor,
+    from app.services.client_credit import award_marketing_credit
+
+    return award_marketing_credit(
+        db, client_user_id=client_user_id, amount_points=amount, gig_id=gig.id,
+        metadata={"term_months": term_months}, balance_floor=settings.reward_balance_floor,
     )
 
 
@@ -413,6 +443,12 @@ def grant(
     db.add_all(rows)
     db.flush()
     entry = _credit(db, gig, client_user_id, term_months)
+    if entry is None:
+        # Permission given without credit: say so in the record.
+        from app.services.analytics import log_event
+
+        log_event(db, event_name="consent.granted_without_credit", user_id=client_user_id,
+                  properties={"gig_id": str(gig.id), "reason": credit_block(db, gig, client_user_id, term_months) or "none_due"})
     return rows, int(entry.amount) if entry else 0
 
 

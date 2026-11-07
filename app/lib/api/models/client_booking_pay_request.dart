@@ -16,6 +16,17 @@
 ///                 }
 ///             ],
 ///             "title": "Points To Spend"
+///         },
+///         "use_credit": {
+///             "anyOf": [
+///                 {
+///                     "type": "boolean"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Use Credit"
 ///         }
 ///     },
 ///     "type": "object",
@@ -43,6 +54,9 @@ abstract class ClientBookingPayRequest with _$ClientBookingPayRequest {
     /// pointsToSpend
     @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)
     int? pointsToSpend,
+
+    /// useCredit
+    @JsonKey(name: ClientBookingPayRequest.useCreditKey_) bool? useCredit,
   }) = _ClientBookingPayRequest;
 
   factory ClientBookingPayRequest.fromJson(Map<String, dynamic> json) =>
@@ -51,4 +65,6 @@ abstract class ClientBookingPayRequest with _$ClientBookingPayRequest {
   static const String paymentModeKey_ = r'payment_mode';
 
   static const String pointsToSpendKey_ = r'points_to_spend';
+
+  static const String useCreditKey_ = r'use_credit';
 }

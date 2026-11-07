@@ -189,6 +189,18 @@ export type NicheSkillRow = {
   active_override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
 };
 
+/** This month's marketing credit (Europe/London), in euros. */
+export type MarketingBudget = {
+  month: string;
+  budget_eur: string;
+  awarded_eur: string;
+  used_eur: string;
+  outstanding_eur: string;
+  remaining_eur: string;
+  max_discount_percent: number;
+};
+export type ClientCreditSettings = { max_discount_percent: number; monthly_marketing_credit_budget_eur: string };
+
 /** The Stripe reconcile job's last run, shown above Money attention. */
 export type StripeCheckRun = {
   started_at: string;
@@ -475,6 +487,10 @@ export const admin = {
     adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 
   bookingMoney: (gigId: string) => adminFetch<BookingMoney>(`gigs/${gigId}/money`),
+  marketingBudget: () => adminFetch<MarketingBudget>("client-credit/budget"),
+  clientCreditSettings: () => adminFetch<ClientCreditSettings>("client-credit/settings"),
+  saveClientCreditSettings: (body: Partial<ClientCreditSettings>) =>
+    adminFetch<ClientCreditSettings>("client-credit/settings", { method: "PUT", body: JSON.stringify(body) }),
   extendSelectionWindow: (gigId: string, days: number, note: string) =>
     adminFetch<{ addon_window_ends_at: string }>(`gigs/${gigId}/selection-window/extend`, { method: "POST", body: JSON.stringify({ days, note }) }),
   galleryPolicy: () => adminFetch<{ shortfall_min_photos: number; selection_addon_days: number }>("policies/delivery-review"),

@@ -385,6 +385,9 @@ class ClientBookingListResponse(BaseModel):
 class ClientBookingPayRequest(BaseModel):
     payment_mode: str = Field(pattern="^(full|deposit)$")
     points_to_spend: int | None = Field(default=None, ge=1)
+    #: Use the client's credit on this payment (true), stop using it (false),
+    #: or leave it as it is (null). At most `max_discount_percent` of it.
+    use_credit: bool | None = None
 
 
 class ClientBookingPayResponse(BaseModel):
@@ -393,6 +396,9 @@ class ClientBookingPayResponse(BaseModel):
     payment_intent_id: str
     payment_intent_client_secret: str
     mode: str
+    #: Credit taken off this payment, and what is charged.
+    credit_eur: Decimal = Decimal("0.00")
+    amount_eur: Decimal | None = None
 
 
 class ClientFunnelCityMetrics(BaseModel):

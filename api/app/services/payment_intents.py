@@ -235,6 +235,20 @@ def create_or_get_gig_payment_intent(
     )
 
 
+def bring_base_intent_to(db: Session, payment: StripePayment, pi, amount: Decimal):
+    """A booking's payment intent at `amount` (credit switched on or off at
+    checkout). Changed in place while it still waits for a card; once money
+    is moving it is left as it is."""
+    target = to_cents(amount)
+    if getattr(pi, "amount", target) == target or getattr(pi, "status", None) != "requires_payment_method":
+        return pi
+    pi = stripe.PaymentIntent.modify(pi.id, amount=target)
+    payment.amount = amount
+    payment.meta = {**(payment.meta or {}), "amount_changed_at_checkout": datetime.now(timezone.utc).isoformat()}
+    db.flush()
+    return pi
+
+
 def _create_intent(
     db: Session,
     gig: Gig,

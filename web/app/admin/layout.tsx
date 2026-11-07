@@ -66,7 +66,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       items: [
         { href: "/admin/payouts", label: "Payouts", count: counts.payouts },
         { href: "/admin/disputes", label: "Disputes", count: counts.disputes },
-        { href: "/admin/money-attention", label: "Money to act on", count: counts.money }
+        { href: "/admin/money-attention", label: "Money to act on", count: counts.money },
+        { href: "/admin/client-credit", label: "Client credit" }
       ]
     },
     {

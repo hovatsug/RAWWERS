@@ -24,7 +24,9 @@ mixin _$MarketingConsentOfferResponse {
 @JsonKey(name: MarketingConsentOfferResponse.termsKey_) List<MarketingTermView>? get terms;/// defaultTermMonths
 @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) int get defaultTermMonths;/// photographerCredit
 @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) String? get photographerCredit;/// photos
-@JsonKey(name: MarketingConsentOfferResponse.photosKey_) List<MarketingPhotoView>? get photos;
+@JsonKey(name: MarketingConsentOfferResponse.photosKey_) List<MarketingPhotoView>? get photos;/// creditAvailable
+@JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_) bool get creditAvailable;/// creditUnavailableReason
+@JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_) String? get creditUnavailableReason;
 /// Create a copy of MarketingConsentOfferResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -37,16 +39,16 @@ $MarketingConsentOfferResponseCopyWith<MarketingConsentOfferResponse> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MarketingConsentOfferResponse&&(identical(other.offered, offered) || other.offered == offered)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.wordingVersion, wordingVersion) || other.wordingVersion == wordingVersion)&&(identical(other.wordingText, wordingText) || other.wordingText == wordingText)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.terms, terms)&&(identical(other.defaultTermMonths, defaultTermMonths) || other.defaultTermMonths == defaultTermMonths)&&(identical(other.photographerCredit, photographerCredit) || other.photographerCredit == photographerCredit)&&const DeepCollectionEquality().equals(other.photos, photos));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MarketingConsentOfferResponse&&(identical(other.offered, offered) || other.offered == offered)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.wordingVersion, wordingVersion) || other.wordingVersion == wordingVersion)&&(identical(other.wordingText, wordingText) || other.wordingText == wordingText)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.terms, terms)&&(identical(other.defaultTermMonths, defaultTermMonths) || other.defaultTermMonths == defaultTermMonths)&&(identical(other.photographerCredit, photographerCredit) || other.photographerCredit == photographerCredit)&&const DeepCollectionEquality().equals(other.photos, photos)&&(identical(other.creditAvailable, creditAvailable) || other.creditAvailable == creditAvailable)&&(identical(other.creditUnavailableReason, creditUnavailableReason) || other.creditUnavailableReason == creditUnavailableReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,offered,reason,wordingVersion,wordingText,scope,const DeepCollectionEquality().hash(terms),defaultTermMonths,photographerCredit,const DeepCollectionEquality().hash(photos));
+int get hashCode => Object.hash(runtimeType,offered,reason,wordingVersion,wordingText,scope,const DeepCollectionEquality().hash(terms),defaultTermMonths,photographerCredit,const DeepCollectionEquality().hash(photos),creditAvailable,creditUnavailableReason);
 
 @override
 String toString() {
-  return 'MarketingConsentOfferResponse(offered: $offered, reason: $reason, wordingVersion: $wordingVersion, wordingText: $wordingText, scope: $scope, terms: $terms, defaultTermMonths: $defaultTermMonths, photographerCredit: $photographerCredit, photos: $photos)';
+  return 'MarketingConsentOfferResponse(offered: $offered, reason: $reason, wordingVersion: $wordingVersion, wordingText: $wordingText, scope: $scope, terms: $terms, defaultTermMonths: $defaultTermMonths, photographerCredit: $photographerCredit, photos: $photos, creditAvailable: $creditAvailable, creditUnavailableReason: $creditUnavailableReason)';
 }
 
 
@@ -57,7 +59,7 @@ abstract mixin class $MarketingConsentOfferResponseCopyWith<$Res>  {
   factory $MarketingConsentOfferResponseCopyWith(MarketingConsentOfferResponse value, $Res Function(MarketingConsentOfferResponse) _then) = _$MarketingConsentOfferResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: MarketingConsentOfferResponse.offeredKey_) bool offered,@JsonKey(name: MarketingConsentOfferResponse.reasonKey_) String? reason,@JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_) String? wordingVersion,@JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_) String? wordingText,@JsonKey(name: MarketingConsentOfferResponse.scopeKey_) String scope,@JsonKey(name: MarketingConsentOfferResponse.termsKey_) List<MarketingTermView>? terms,@JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) int defaultTermMonths,@JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) String? photographerCredit,@JsonKey(name: MarketingConsentOfferResponse.photosKey_) List<MarketingPhotoView>? photos
+@JsonKey(name: MarketingConsentOfferResponse.offeredKey_) bool offered,@JsonKey(name: MarketingConsentOfferResponse.reasonKey_) String? reason,@JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_) String? wordingVersion,@JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_) String? wordingText,@JsonKey(name: MarketingConsentOfferResponse.scopeKey_) String scope,@JsonKey(name: MarketingConsentOfferResponse.termsKey_) List<MarketingTermView>? terms,@JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) int defaultTermMonths,@JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) String? photographerCredit,@JsonKey(name: MarketingConsentOfferResponse.photosKey_) List<MarketingPhotoView>? photos,@JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_) bool creditAvailable,@JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_) String? creditUnavailableReason
 });
 
 
@@ -74,7 +76,7 @@ class _$MarketingConsentOfferResponseCopyWithImpl<$Res>
 
 /// Create a copy of MarketingConsentOfferResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? offered = null,Object? reason = freezed,Object? wordingVersion = freezed,Object? wordingText = freezed,Object? scope = null,Object? terms = freezed,Object? defaultTermMonths = null,Object? photographerCredit = freezed,Object? photos = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? offered = null,Object? reason = freezed,Object? wordingVersion = freezed,Object? wordingText = freezed,Object? scope = null,Object? terms = freezed,Object? defaultTermMonths = null,Object? photographerCredit = freezed,Object? photos = freezed,Object? creditAvailable = null,Object? creditUnavailableReason = freezed,}) {
   return _then(_self.copyWith(
 offered: null == offered ? _self.offered : offered // ignore: cast_nullable_to_non_nullable
 as bool,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
@@ -85,7 +87,9 @@ as String,terms: freezed == terms ? _self.terms : terms // ignore: cast_nullable
 as List<MarketingTermView>?,defaultTermMonths: null == defaultTermMonths ? _self.defaultTermMonths : defaultTermMonths // ignore: cast_nullable_to_non_nullable
 as int,photographerCredit: freezed == photographerCredit ? _self.photographerCredit : photographerCredit // ignore: cast_nullable_to_non_nullable
 as String?,photos: freezed == photos ? _self.photos : photos // ignore: cast_nullable_to_non_nullable
-as List<MarketingPhotoView>?,
+as List<MarketingPhotoView>?,creditAvailable: null == creditAvailable ? _self.creditAvailable : creditAvailable // ignore: cast_nullable_to_non_nullable
+as bool,creditUnavailableReason: freezed == creditUnavailableReason ? _self.creditUnavailableReason : creditUnavailableReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -170,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingConsentOfferResponse.offeredKey_)  bool offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_)  String? reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_)  String? wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_)  String? wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_)  String scope, @JsonKey(name: MarketingConsentOfferResponse.termsKey_)  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_)  int defaultTermMonths, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_)  String? photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_)  List<MarketingPhotoView>? photos)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingConsentOfferResponse.offeredKey_)  bool offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_)  String? reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_)  String? wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_)  String? wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_)  String scope, @JsonKey(name: MarketingConsentOfferResponse.termsKey_)  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_)  int defaultTermMonths, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_)  String? photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_)  List<MarketingPhotoView>? photos, @JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_)  bool creditAvailable, @JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_)  String? creditUnavailableReason)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MarketingConsentOfferResponse() when $default != null:
-return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingText,_that.scope,_that.terms,_that.defaultTermMonths,_that.photographerCredit,_that.photos);case _:
+return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingText,_that.scope,_that.terms,_that.defaultTermMonths,_that.photographerCredit,_that.photos,_that.creditAvailable,_that.creditUnavailableReason);case _:
   return orElse();
 
 }
@@ -191,10 +195,10 @@ return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingTex
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingConsentOfferResponse.offeredKey_)  bool offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_)  String? reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_)  String? wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_)  String? wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_)  String scope, @JsonKey(name: MarketingConsentOfferResponse.termsKey_)  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_)  int defaultTermMonths, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_)  String? photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_)  List<MarketingPhotoView>? photos)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingConsentOfferResponse.offeredKey_)  bool offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_)  String? reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_)  String? wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_)  String? wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_)  String scope, @JsonKey(name: MarketingConsentOfferResponse.termsKey_)  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_)  int defaultTermMonths, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_)  String? photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_)  List<MarketingPhotoView>? photos, @JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_)  bool creditAvailable, @JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_)  String? creditUnavailableReason)  $default,) {final _that = this;
 switch (_that) {
 case _MarketingConsentOfferResponse():
-return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingText,_that.scope,_that.terms,_that.defaultTermMonths,_that.photographerCredit,_that.photos);case _:
+return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingText,_that.scope,_that.terms,_that.defaultTermMonths,_that.photographerCredit,_that.photos,_that.creditAvailable,_that.creditUnavailableReason);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +215,10 @@ return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingTex
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MarketingConsentOfferResponse.offeredKey_)  bool offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_)  String? reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_)  String? wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_)  String? wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_)  String scope, @JsonKey(name: MarketingConsentOfferResponse.termsKey_)  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_)  int defaultTermMonths, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_)  String? photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_)  List<MarketingPhotoView>? photos)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MarketingConsentOfferResponse.offeredKey_)  bool offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_)  String? reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_)  String? wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_)  String? wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_)  String scope, @JsonKey(name: MarketingConsentOfferResponse.termsKey_)  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_)  int defaultTermMonths, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_)  String? photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_)  List<MarketingPhotoView>? photos, @JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_)  bool creditAvailable, @JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_)  String? creditUnavailableReason)?  $default,) {final _that = this;
 switch (_that) {
 case _MarketingConsentOfferResponse() when $default != null:
-return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingText,_that.scope,_that.terms,_that.defaultTermMonths,_that.photographerCredit,_that.photos);case _:
+return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingText,_that.scope,_that.terms,_that.defaultTermMonths,_that.photographerCredit,_that.photos,_that.creditAvailable,_that.creditUnavailableReason);case _:
   return null;
 
 }
@@ -226,7 +230,7 @@ return $default(_that.offered,_that.reason,_that.wordingVersion,_that.wordingTex
 
 @jsonSerializable
 class _MarketingConsentOfferResponse extends MarketingConsentOfferResponse {
-  const _MarketingConsentOfferResponse({@JsonKey(name: MarketingConsentOfferResponse.offeredKey_) required this.offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_) this.reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_) this.wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_) this.wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_) this.scope = 'rawwers_organic', @JsonKey(name: MarketingConsentOfferResponse.termsKey_) final  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) this.defaultTermMonths = 12, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) this.photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_) final  List<MarketingPhotoView>? photos}): _terms = terms,_photos = photos,super._();
+  const _MarketingConsentOfferResponse({@JsonKey(name: MarketingConsentOfferResponse.offeredKey_) required this.offered, @JsonKey(name: MarketingConsentOfferResponse.reasonKey_) this.reason, @JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_) this.wordingVersion, @JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_) this.wordingText, @JsonKey(name: MarketingConsentOfferResponse.scopeKey_) this.scope = 'rawwers_organic', @JsonKey(name: MarketingConsentOfferResponse.termsKey_) final  List<MarketingTermView>? terms, @JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) this.defaultTermMonths = 12, @JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) this.photographerCredit, @JsonKey(name: MarketingConsentOfferResponse.photosKey_) final  List<MarketingPhotoView>? photos, @JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_) this.creditAvailable = true, @JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_) this.creditUnavailableReason}): _terms = terms,_photos = photos,super._();
   factory _MarketingConsentOfferResponse.fromJson(Map<String, dynamic> json) => _$MarketingConsentOfferResponseFromJson(json);
 
 /// offered
@@ -265,6 +269,10 @@ class _MarketingConsentOfferResponse extends MarketingConsentOfferResponse {
   return EqualUnmodifiableListView(value);
 }
 
+/// creditAvailable
+@override@JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_) final  bool creditAvailable;
+/// creditUnavailableReason
+@override@JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_) final  String? creditUnavailableReason;
 
 /// Create a copy of MarketingConsentOfferResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -279,16 +287,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MarketingConsentOfferResponse&&(identical(other.offered, offered) || other.offered == offered)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.wordingVersion, wordingVersion) || other.wordingVersion == wordingVersion)&&(identical(other.wordingText, wordingText) || other.wordingText == wordingText)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other._terms, _terms)&&(identical(other.defaultTermMonths, defaultTermMonths) || other.defaultTermMonths == defaultTermMonths)&&(identical(other.photographerCredit, photographerCredit) || other.photographerCredit == photographerCredit)&&const DeepCollectionEquality().equals(other._photos, _photos));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MarketingConsentOfferResponse&&(identical(other.offered, offered) || other.offered == offered)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.wordingVersion, wordingVersion) || other.wordingVersion == wordingVersion)&&(identical(other.wordingText, wordingText) || other.wordingText == wordingText)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other._terms, _terms)&&(identical(other.defaultTermMonths, defaultTermMonths) || other.defaultTermMonths == defaultTermMonths)&&(identical(other.photographerCredit, photographerCredit) || other.photographerCredit == photographerCredit)&&const DeepCollectionEquality().equals(other._photos, _photos)&&(identical(other.creditAvailable, creditAvailable) || other.creditAvailable == creditAvailable)&&(identical(other.creditUnavailableReason, creditUnavailableReason) || other.creditUnavailableReason == creditUnavailableReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,offered,reason,wordingVersion,wordingText,scope,const DeepCollectionEquality().hash(_terms),defaultTermMonths,photographerCredit,const DeepCollectionEquality().hash(_photos));
+int get hashCode => Object.hash(runtimeType,offered,reason,wordingVersion,wordingText,scope,const DeepCollectionEquality().hash(_terms),defaultTermMonths,photographerCredit,const DeepCollectionEquality().hash(_photos),creditAvailable,creditUnavailableReason);
 
 @override
 String toString() {
-  return 'MarketingConsentOfferResponse(offered: $offered, reason: $reason, wordingVersion: $wordingVersion, wordingText: $wordingText, scope: $scope, terms: $terms, defaultTermMonths: $defaultTermMonths, photographerCredit: $photographerCredit, photos: $photos)';
+  return 'MarketingConsentOfferResponse(offered: $offered, reason: $reason, wordingVersion: $wordingVersion, wordingText: $wordingText, scope: $scope, terms: $terms, defaultTermMonths: $defaultTermMonths, photographerCredit: $photographerCredit, photos: $photos, creditAvailable: $creditAvailable, creditUnavailableReason: $creditUnavailableReason)';
 }
 
 
@@ -299,7 +307,7 @@ abstract mixin class _$MarketingConsentOfferResponseCopyWith<$Res> implements $M
   factory _$MarketingConsentOfferResponseCopyWith(_MarketingConsentOfferResponse value, $Res Function(_MarketingConsentOfferResponse) _then) = __$MarketingConsentOfferResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: MarketingConsentOfferResponse.offeredKey_) bool offered,@JsonKey(name: MarketingConsentOfferResponse.reasonKey_) String? reason,@JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_) String? wordingVersion,@JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_) String? wordingText,@JsonKey(name: MarketingConsentOfferResponse.scopeKey_) String scope,@JsonKey(name: MarketingConsentOfferResponse.termsKey_) List<MarketingTermView>? terms,@JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) int defaultTermMonths,@JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) String? photographerCredit,@JsonKey(name: MarketingConsentOfferResponse.photosKey_) List<MarketingPhotoView>? photos
+@JsonKey(name: MarketingConsentOfferResponse.offeredKey_) bool offered,@JsonKey(name: MarketingConsentOfferResponse.reasonKey_) String? reason,@JsonKey(name: MarketingConsentOfferResponse.wordingVersionKey_) String? wordingVersion,@JsonKey(name: MarketingConsentOfferResponse.wordingTextKey_) String? wordingText,@JsonKey(name: MarketingConsentOfferResponse.scopeKey_) String scope,@JsonKey(name: MarketingConsentOfferResponse.termsKey_) List<MarketingTermView>? terms,@JsonKey(name: MarketingConsentOfferResponse.defaultTermMonthsKey_) int defaultTermMonths,@JsonKey(name: MarketingConsentOfferResponse.photographerCreditKey_) String? photographerCredit,@JsonKey(name: MarketingConsentOfferResponse.photosKey_) List<MarketingPhotoView>? photos,@JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_) bool creditAvailable,@JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_) String? creditUnavailableReason
 });
 
 
@@ -316,7 +324,7 @@ class __$MarketingConsentOfferResponseCopyWithImpl<$Res>
 
 /// Create a copy of MarketingConsentOfferResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? offered = null,Object? reason = freezed,Object? wordingVersion = freezed,Object? wordingText = freezed,Object? scope = null,Object? terms = freezed,Object? defaultTermMonths = null,Object? photographerCredit = freezed,Object? photos = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? offered = null,Object? reason = freezed,Object? wordingVersion = freezed,Object? wordingText = freezed,Object? scope = null,Object? terms = freezed,Object? defaultTermMonths = null,Object? photographerCredit = freezed,Object? photos = freezed,Object? creditAvailable = null,Object? creditUnavailableReason = freezed,}) {
   return _then(_MarketingConsentOfferResponse(
 offered: null == offered ? _self.offered : offered // ignore: cast_nullable_to_non_nullable
 as bool,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
@@ -327,7 +335,9 @@ as String,terms: freezed == terms ? _self._terms : terms // ignore: cast_nullabl
 as List<MarketingTermView>?,defaultTermMonths: null == defaultTermMonths ? _self.defaultTermMonths : defaultTermMonths // ignore: cast_nullable_to_non_nullable
 as int,photographerCredit: freezed == photographerCredit ? _self.photographerCredit : photographerCredit // ignore: cast_nullable_to_non_nullable
 as String?,photos: freezed == photos ? _self._photos : photos // ignore: cast_nullable_to_non_nullable
-as List<MarketingPhotoView>?,
+as List<MarketingPhotoView>?,creditAvailable: null == creditAvailable ? _self.creditAvailable : creditAvailable // ignore: cast_nullable_to_non_nullable
+as bool,creditUnavailableReason: freezed == creditUnavailableReason ? _self.creditUnavailableReason : creditUnavailableReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

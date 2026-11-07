@@ -17,7 +17,8 @@ mixin _$GrantMarketingConsentResponse {
 
 /// items
 @JsonKey(name: GrantMarketingConsentResponse.itemsKey_) List<MarketingConsentView> get items;/// credit
-@JsonKey(name: GrantMarketingConsentResponse.creditKey_) int get credit;
+@JsonKey(name: GrantMarketingConsentResponse.creditKey_) int get credit;/// creditEur
+@JsonKey(name: GrantMarketingConsentResponse.creditEurKey_) String get creditEur;
 /// Create a copy of GrantMarketingConsentResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $GrantMarketingConsentResponseCopyWith<GrantMarketingConsentResponse> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrantMarketingConsentResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.credit, credit) || other.credit == credit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrantMarketingConsentResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.creditEur, creditEur) || other.creditEur == creditEur));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),credit);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),credit,creditEur);
 
 @override
 String toString() {
-  return 'GrantMarketingConsentResponse(items: $items, credit: $credit)';
+  return 'GrantMarketingConsentResponse(items: $items, credit: $credit, creditEur: $creditEur)';
 }
 
 
@@ -50,7 +51,7 @@ abstract mixin class $GrantMarketingConsentResponseCopyWith<$Res>  {
   factory $GrantMarketingConsentResponseCopyWith(GrantMarketingConsentResponse value, $Res Function(GrantMarketingConsentResponse) _then) = _$GrantMarketingConsentResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) List<MarketingConsentView> items,@JsonKey(name: GrantMarketingConsentResponse.creditKey_) int credit
+@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) List<MarketingConsentView> items,@JsonKey(name: GrantMarketingConsentResponse.creditKey_) int credit,@JsonKey(name: GrantMarketingConsentResponse.creditEurKey_) String creditEur
 });
 
 
@@ -67,11 +68,12 @@ class _$GrantMarketingConsentResponseCopyWithImpl<$Res>
 
 /// Create a copy of GrantMarketingConsentResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? credit = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? credit = null,Object? creditEur = null,}) {
   return _then(_self.copyWith(
 items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<MarketingConsentView>,credit: null == credit ? _self.credit : credit // ignore: cast_nullable_to_non_nullable
-as int,
+as int,creditEur: null == creditEur ? _self.creditEur : creditEur // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -156,10 +158,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GrantMarketingConsentResponse.itemsKey_)  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_)  int credit)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: GrantMarketingConsentResponse.itemsKey_)  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_)  int credit, @JsonKey(name: GrantMarketingConsentResponse.creditEurKey_)  String creditEur)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GrantMarketingConsentResponse() when $default != null:
-return $default(_that.items,_that.credit);case _:
+return $default(_that.items,_that.credit,_that.creditEur);case _:
   return orElse();
 
 }
@@ -177,10 +179,10 @@ return $default(_that.items,_that.credit);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GrantMarketingConsentResponse.itemsKey_)  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_)  int credit)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: GrantMarketingConsentResponse.itemsKey_)  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_)  int credit, @JsonKey(name: GrantMarketingConsentResponse.creditEurKey_)  String creditEur)  $default,) {final _that = this;
 switch (_that) {
 case _GrantMarketingConsentResponse():
-return $default(_that.items,_that.credit);case _:
+return $default(_that.items,_that.credit,_that.creditEur);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +199,10 @@ return $default(_that.items,_that.credit);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GrantMarketingConsentResponse.itemsKey_)  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_)  int credit)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: GrantMarketingConsentResponse.itemsKey_)  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_)  int credit, @JsonKey(name: GrantMarketingConsentResponse.creditEurKey_)  String creditEur)?  $default,) {final _that = this;
 switch (_that) {
 case _GrantMarketingConsentResponse() when $default != null:
-return $default(_that.items,_that.credit);case _:
+return $default(_that.items,_that.credit,_that.creditEur);case _:
   return null;
 
 }
@@ -212,7 +214,7 @@ return $default(_that.items,_that.credit);case _:
 
 @jsonSerializable
 class _GrantMarketingConsentResponse extends GrantMarketingConsentResponse {
-  const _GrantMarketingConsentResponse({@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) required final  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_) required this.credit}): _items = items,super._();
+  const _GrantMarketingConsentResponse({@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) required final  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_) required this.credit, @JsonKey(name: GrantMarketingConsentResponse.creditEurKey_) this.creditEur = '0.00'}): _items = items,super._();
   factory _GrantMarketingConsentResponse.fromJson(Map<String, dynamic> json) => _$GrantMarketingConsentResponseFromJson(json);
 
 /// items
@@ -226,6 +228,8 @@ class _GrantMarketingConsentResponse extends GrantMarketingConsentResponse {
 
 /// credit
 @override@JsonKey(name: GrantMarketingConsentResponse.creditKey_) final  int credit;
+/// creditEur
+@override@JsonKey(name: GrantMarketingConsentResponse.creditEurKey_) final  String creditEur;
 
 /// Create a copy of GrantMarketingConsentResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -240,16 +244,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrantMarketingConsentResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.credit, credit) || other.credit == credit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrantMarketingConsentResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.creditEur, creditEur) || other.creditEur == creditEur));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),credit);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),credit,creditEur);
 
 @override
 String toString() {
-  return 'GrantMarketingConsentResponse(items: $items, credit: $credit)';
+  return 'GrantMarketingConsentResponse(items: $items, credit: $credit, creditEur: $creditEur)';
 }
 
 
@@ -260,7 +264,7 @@ abstract mixin class _$GrantMarketingConsentResponseCopyWith<$Res> implements $G
   factory _$GrantMarketingConsentResponseCopyWith(_GrantMarketingConsentResponse value, $Res Function(_GrantMarketingConsentResponse) _then) = __$GrantMarketingConsentResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) List<MarketingConsentView> items,@JsonKey(name: GrantMarketingConsentResponse.creditKey_) int credit
+@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) List<MarketingConsentView> items,@JsonKey(name: GrantMarketingConsentResponse.creditKey_) int credit,@JsonKey(name: GrantMarketingConsentResponse.creditEurKey_) String creditEur
 });
 
 
@@ -277,11 +281,12 @@ class __$GrantMarketingConsentResponseCopyWithImpl<$Res>
 
 /// Create a copy of GrantMarketingConsentResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? credit = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? credit = null,Object? creditEur = null,}) {
   return _then(_GrantMarketingConsentResponse(
 items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<MarketingConsentView>,credit: null == credit ? _self.credit : credit // ignore: cast_nullable_to_non_nullable
-as int,
+as int,creditEur: null == creditEur ? _self.creditEur : creditEur // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

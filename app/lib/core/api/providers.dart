@@ -23,6 +23,7 @@ import 'package:rawwers/core/upload/photo_upload_service.dart';
 import 'package:rawwers/api/api_client/payouts_client.dart';
 import 'package:rawwers/api/api_client/lightroom_client.dart';
 import 'package:rawwers/api/api_client/marketing_consent_client.dart';
+import 'package:rawwers/api/api_client/client_credit_client.dart';
 import 'package:rawwers/api/api_client/shelf_client.dart';
 import 'package:rawwers/api/api_client/pro_onboarding_client.dart';
 import 'package:rawwers/core/api/dio_client.dart';
@@ -124,6 +125,9 @@ MarketingConsentClient marketingConsentClient(Ref ref) => MarketingConsentClient
 
 @riverpod
 ShelfClient shelfClient(Ref ref) => ShelfClient(ref.watch(dioProvider));
+
+@riverpod
+ClientCreditClient clientCreditClient(Ref ref) => ClientCreditClient(ref.watch(dioProvider));
 
 @riverpod
 AccountabilityClient accountabilityClient(Ref ref) => AccountabilityClient(ref.watch(dioProvider));

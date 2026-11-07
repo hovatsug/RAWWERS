@@ -156,4 +156,8 @@ class BaseApiClient {
   ShelfClient get shelfClient {
     return ShelfClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
+
+  ClientCreditClient get clientCreditClient {
+    return ClientCreditClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
 }

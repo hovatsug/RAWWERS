@@ -22,6 +22,8 @@ _MarketingConsentOfferResponse _$MarketingConsentOfferResponseFromJson(
   photos: (json['photos'] as List<dynamic>?)
       ?.map((e) => MarketingPhotoView.fromJson(e as Map<String, dynamic>))
       .toList(),
+  creditAvailable: json['credit_available'] as bool? ?? true,
+  creditUnavailableReason: json['credit_unavailable_reason'] as String?,
 );
 
 Map<String, dynamic> _$MarketingConsentOfferResponseToJson(
@@ -36,4 +38,6 @@ Map<String, dynamic> _$MarketingConsentOfferResponseToJson(
   'default_term_months': instance.defaultTermMonths,
   'photographer_credit': instance.photographerCredit,
   'photos': instance.photos,
+  'credit_available': instance.creditAvailable,
+  'credit_unavailable_reason': instance.creditUnavailableReason,
 };

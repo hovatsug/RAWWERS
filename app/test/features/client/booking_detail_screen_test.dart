@@ -5,6 +5,7 @@ import 'package:rawwers/api/models/client_booking_refund.dart';
 import 'package:rawwers/api/models/client_booking_status_response.dart';
 import 'package:rawwers/design/theme_client.dart';
 import 'package:rawwers/features/client/bookings/booking_detail_controller.dart';
+import 'package:rawwers/features/client/credit/credit_controller.dart';
 import 'package:rawwers/features/client/bookings/booking_detail_screen.dart';
 
 const _bookingId = 'booking-1';
@@ -33,7 +34,10 @@ ClientBookingStatusResponse _booking({
     );
 
 Widget _wrap(ClientBookingStatusResponse booking) => ProviderScope(
-      overrides: [bookingDetailProvider(_bookingId).overrideWith((ref) async => booking)],
+      overrides: [
+        bookingDetailProvider(_bookingId).overrideWith((ref) async => booking),
+        bookingCreditProvider(_bookingId).overrideWith((ref) async => null),
+      ],
       child: MaterialApp(
         theme: buildClientTheme(),
         home: const BookingDetailScreen(bookingId: _bookingId),
@@ -102,6 +106,7 @@ void main() {
       final fetches = [0];
       final widget = ProviderScope(
         overrides: [
+          bookingCreditProvider(_bookingId).overrideWith((ref) async => null),
           bookingDetailProvider(_bookingId).overrideWith((ref) async {
             final i = fetches[0]++;
             // A refresh takes a moment, as a real one does - long enough for
@@ -152,6 +157,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            bookingCreditProvider(_bookingId).overrideWith((ref) async => null),
             bookingDetailProvider(_bookingId).overrideWith((ref) async {
               if (fetches[0]++ > 0) throw Exception('dropped');
               return waiting;

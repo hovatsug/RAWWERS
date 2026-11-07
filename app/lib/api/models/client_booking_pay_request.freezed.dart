@@ -17,7 +17,8 @@ mixin _$ClientBookingPayRequest {
 
 /// paymentMode
 @JsonKey(name: ClientBookingPayRequest.paymentModeKey_) String get paymentMode;/// pointsToSpend
-@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) int? get pointsToSpend;
+@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) int? get pointsToSpend;/// useCredit
+@JsonKey(name: ClientBookingPayRequest.useCreditKey_) bool? get useCredit;
 /// Create a copy of ClientBookingPayRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $ClientBookingPayRequestCopyWith<ClientBookingPayRequest> get copyWith => _$Clie
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingPayRequest&&(identical(other.paymentMode, paymentMode) || other.paymentMode == paymentMode)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingPayRequest&&(identical(other.paymentMode, paymentMode) || other.paymentMode == paymentMode)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend)&&(identical(other.useCredit, useCredit) || other.useCredit == useCredit));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,paymentMode,pointsToSpend);
+int get hashCode => Object.hash(runtimeType,paymentMode,pointsToSpend,useCredit);
 
 @override
 String toString() {
-  return 'ClientBookingPayRequest(paymentMode: $paymentMode, pointsToSpend: $pointsToSpend)';
+  return 'ClientBookingPayRequest(paymentMode: $paymentMode, pointsToSpend: $pointsToSpend, useCredit: $useCredit)';
 }
 
 
@@ -50,7 +51,7 @@ abstract mixin class $ClientBookingPayRequestCopyWith<$Res>  {
   factory $ClientBookingPayRequestCopyWith(ClientBookingPayRequest value, $Res Function(ClientBookingPayRequest) _then) = _$ClientBookingPayRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) String paymentMode,@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) int? pointsToSpend
+@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) String paymentMode,@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) int? pointsToSpend,@JsonKey(name: ClientBookingPayRequest.useCreditKey_) bool? useCredit
 });
 
 
@@ -67,11 +68,12 @@ class _$ClientBookingPayRequestCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingPayRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? paymentMode = null,Object? pointsToSpend = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? paymentMode = null,Object? pointsToSpend = freezed,Object? useCredit = freezed,}) {
   return _then(_self.copyWith(
 paymentMode: null == paymentMode ? _self.paymentMode : paymentMode // ignore: cast_nullable_to_non_nullable
 as String,pointsToSpend: freezed == pointsToSpend ? _self.pointsToSpend : pointsToSpend // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,useCredit: freezed == useCredit ? _self.useCredit : useCredit // ignore: cast_nullable_to_non_nullable
+as bool?,
   ));
 }
 
@@ -156,10 +158,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayRequest.paymentModeKey_)  String paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)  int? pointsToSpend)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayRequest.paymentModeKey_)  String paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)  int? pointsToSpend, @JsonKey(name: ClientBookingPayRequest.useCreditKey_)  bool? useCredit)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientBookingPayRequest() when $default != null:
-return $default(_that.paymentMode,_that.pointsToSpend);case _:
+return $default(_that.paymentMode,_that.pointsToSpend,_that.useCredit);case _:
   return orElse();
 
 }
@@ -177,10 +179,10 @@ return $default(_that.paymentMode,_that.pointsToSpend);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayRequest.paymentModeKey_)  String paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)  int? pointsToSpend)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayRequest.paymentModeKey_)  String paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)  int? pointsToSpend, @JsonKey(name: ClientBookingPayRequest.useCreditKey_)  bool? useCredit)  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingPayRequest():
-return $default(_that.paymentMode,_that.pointsToSpend);case _:
+return $default(_that.paymentMode,_that.pointsToSpend,_that.useCredit);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +199,10 @@ return $default(_that.paymentMode,_that.pointsToSpend);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingPayRequest.paymentModeKey_)  String paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)  int? pointsToSpend)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingPayRequest.paymentModeKey_)  String paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_)  int? pointsToSpend, @JsonKey(name: ClientBookingPayRequest.useCreditKey_)  bool? useCredit)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingPayRequest() when $default != null:
-return $default(_that.paymentMode,_that.pointsToSpend);case _:
+return $default(_that.paymentMode,_that.pointsToSpend,_that.useCredit);case _:
   return null;
 
 }
@@ -212,13 +214,15 @@ return $default(_that.paymentMode,_that.pointsToSpend);case _:
 
 @jsonSerializable
 class _ClientBookingPayRequest extends ClientBookingPayRequest {
-  const _ClientBookingPayRequest({@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) required this.paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) this.pointsToSpend}): super._();
+  const _ClientBookingPayRequest({@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) required this.paymentMode, @JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) this.pointsToSpend, @JsonKey(name: ClientBookingPayRequest.useCreditKey_) this.useCredit}): super._();
   factory _ClientBookingPayRequest.fromJson(Map<String, dynamic> json) => _$ClientBookingPayRequestFromJson(json);
 
 /// paymentMode
 @override@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) final  String paymentMode;
 /// pointsToSpend
 @override@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) final  int? pointsToSpend;
+/// useCredit
+@override@JsonKey(name: ClientBookingPayRequest.useCreditKey_) final  bool? useCredit;
 
 /// Create a copy of ClientBookingPayRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +237,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingPayRequest&&(identical(other.paymentMode, paymentMode) || other.paymentMode == paymentMode)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingPayRequest&&(identical(other.paymentMode, paymentMode) || other.paymentMode == paymentMode)&&(identical(other.pointsToSpend, pointsToSpend) || other.pointsToSpend == pointsToSpend)&&(identical(other.useCredit, useCredit) || other.useCredit == useCredit));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,paymentMode,pointsToSpend);
+int get hashCode => Object.hash(runtimeType,paymentMode,pointsToSpend,useCredit);
 
 @override
 String toString() {
-  return 'ClientBookingPayRequest(paymentMode: $paymentMode, pointsToSpend: $pointsToSpend)';
+  return 'ClientBookingPayRequest(paymentMode: $paymentMode, pointsToSpend: $pointsToSpend, useCredit: $useCredit)';
 }
 
 
@@ -253,7 +257,7 @@ abstract mixin class _$ClientBookingPayRequestCopyWith<$Res> implements $ClientB
   factory _$ClientBookingPayRequestCopyWith(_ClientBookingPayRequest value, $Res Function(_ClientBookingPayRequest) _then) = __$ClientBookingPayRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) String paymentMode,@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) int? pointsToSpend
+@JsonKey(name: ClientBookingPayRequest.paymentModeKey_) String paymentMode,@JsonKey(name: ClientBookingPayRequest.pointsToSpendKey_) int? pointsToSpend,@JsonKey(name: ClientBookingPayRequest.useCreditKey_) bool? useCredit
 });
 
 
@@ -270,11 +274,12 @@ class __$ClientBookingPayRequestCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingPayRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? paymentMode = null,Object? pointsToSpend = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? paymentMode = null,Object? pointsToSpend = freezed,Object? useCredit = freezed,}) {
   return _then(_ClientBookingPayRequest(
 paymentMode: null == paymentMode ? _self.paymentMode : paymentMode // ignore: cast_nullable_to_non_nullable
 as String,pointsToSpend: freezed == pointsToSpend ? _self.pointsToSpend : pointsToSpend // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,useCredit: freezed == useCredit ? _self.useCredit : useCredit // ignore: cast_nullable_to_non_nullable
+as bool?,
   ));
 }
 

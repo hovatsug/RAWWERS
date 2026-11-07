@@ -33,9 +33,12 @@ import 'package:rawwers/core/images/disk_cached_image.dart';
 /// all of them. The grid's tiles are small enough that a save icon on each
 /// would be a mis-tap waiting to happen next to the tap that opens the photo.
 class DeliveredGalleryScreen extends ConsumerWidget {
-  const DeliveredGalleryScreen({required this.galleryId, super.key});
+  const DeliveredGalleryScreen({required this.galleryId, this.creditPath, super.key});
 
   final String galleryId;
+
+  /// Where "See my credit" goes after a marketing permission earns credit.
+  final String? creditPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,7 +57,7 @@ class DeliveredGalleryScreen extends ConsumerWidget {
           AsyncData(:final value) => Column(
               children: [
                 // After the rating: the optional marketing card, when offered.
-                if (value.gigId case final gigId?) MarketingOfferCard(gigId: gigId),
+                if (value.gigId case final gigId?) MarketingOfferCard(gigId: gigId, creditPath: creditPath),
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async => ref.invalidate(deliveredControllerProvider(galleryId)),

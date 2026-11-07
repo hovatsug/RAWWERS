@@ -34,9 +34,9 @@ const _offer = MarketingConsentOfferResponse(
   wordingVersion: 'client-draft-1',
   wordingText: 'DRAFT wording shown to the client.',
   terms: [
-    MarketingTermView(months: 6, credit: 50),
-    MarketingTermView(months: 12, credit: 100),
-    MarketingTermView(months: 24, credit: 150),
+    MarketingTermView(months: 6, credit: 50, creditEur: '0.50'),
+    MarketingTermView(months: 12, credit: 100, creditEur: '1.00'),
+    MarketingTermView(months: 24, credit: 150, creditEur: '1.50'),
   ],
   photographerCredit: 'Alex Lens',
   photos: [
@@ -47,10 +47,10 @@ const _offer = MarketingConsentOfferResponse(
 );
 
 class _FakeOffer extends MarketingOfferController {
-  _FakeOffer(this.offer, {this.problem, this.credit = 100});
+  _FakeOffer(this.offer, {this.problem, this.creditEur = '1.00'});
   final MarketingConsentOfferResponse offer;
   final String? problem;
-  final int credit;
+  final String creditEur;
   final grants = <({List<String> assetIds, int termMonths, bool peopleConfirmed})>[];
 
   @override
@@ -59,7 +59,7 @@ class _FakeOffer extends MarketingOfferController {
   @override
   Future<GrantOutcome> grant({required List<String> assetIds, required int termMonths, required bool peopleConfirmed}) async {
     grants.add((assetIds: assetIds, termMonths: termMonths, peopleConfirmed: peopleConfirmed));
-    return (problem: problem, credit: problem == null ? credit : 0);
+    return (problem: problem, creditEur: problem == null ? creditEur : '0.00');
   }
 }
 
@@ -122,10 +122,23 @@ void main() {
 
     testWidgets('offered: optional, credited to the photographer, with the credit', (tester) async {
       await _pumpCard(tester, _FakeOffer(_offer));
-      expect(find.text('Let RAWWERS feature your photos? Earn RAW credit.'), findsOneWidget);
+      expect(find.text('Let RAWWERS feature your photos? Earn credit.'), findsOneWidget);
       expect(find.textContaining('Optional'), findsOneWidget);
-      expect(find.textContaining('up to 100 RAW credit'), findsOneWidget);
+      expect(find.textContaining('up to €1.00 credit'), findsOneWidget);
+      expect(find.textContaining(RegExp(r'\bRAWW?\b')), findsNothing, reason: 'client credit is never called RAW or RAWW');
       expect(find.textContaining('Credited to Alex Lens'), findsOneWidget);
+    });
+
+    testWidgets('when this month\'s budget is used up it says so before anything is chosen', (tester) async {
+      await _pumpCard(tester, _FakeOffer(_offer.copyWith(creditAvailable: false, creditUnavailableReason: 'budget')));
+      expect(find.text('Let RAWWERS feature your photos?'), findsOneWidget);
+      expect(find.text('No credit is available this month. You can still give permission.'), findsOneWidget);
+      expect(find.textContaining('up to'), findsNothing);
+    });
+
+    testWidgets('and the monthly limit is said plainly too', (tester) async {
+      await _pumpCard(tester, _FakeOffer(_offer.copyWith(creditAvailable: false, creditUnavailableReason: 'monthly_cap')));
+      expect(find.textContaining('3 permissions this month'), findsOneWidget);
     });
 
     testWidgets('nothing is chosen until the client chooses, and the confirmation is required', (tester) async {
@@ -137,7 +150,7 @@ void main() {
       expect(find.text('DRAFT wording shown to the client.'), findsOneWidget);
       expect(find.byIcon(Icons.check_circle), findsNothing, reason: 'no photo ticked by default');
       expect(tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value, isFalse);
-      expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '12 months · 100 RAW')).selected, isTrue);
+      expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '12 months · €1.00')).selected, isTrue);
       expect(_allow(tester).onPressed, isNull);
 
       await tester.tap(find.byKey(const ValueKey('marketing-photo-a2')));
@@ -150,14 +163,14 @@ void main() {
     });
 
     testWidgets('sends the photos, the term and the confirmation, and says what was earned', (tester) async {
-      final fake = _FakeOffer(_offer, credit: 150);
+      final fake = _FakeOffer(_offer, creditEur: '1.50');
       await _pumpCard(tester, fake);
       await tester.tap(find.text('Choose photos'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('marketing-photo-a1')));
       await tester.tap(find.byKey(const ValueKey('marketing-photo-a3')));
-      await tester.tap(find.widgetWithText(ChoiceChip, '24 months · 150 RAW'));
+      await tester.tap(find.widgetWithText(ChoiceChip, '24 months · €1.50'));
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pump();
       await tester.tap(find.widgetWithText(RButton, 'Allow 2 photos'));
@@ -165,7 +178,33 @@ void main() {
 
       expect(fake.grants.single.assetIds.toSet(), {'a1', 'a3'});
       expect((fake.grants.single.termMonths, fake.grants.single.peopleConfirmed), (24, true));
-      expect(find.text('Thank you. 150 RAW credit added.'), findsOneWidget);
+      expect(find.text('Thank you. €1.50 credit added.'), findsOneWidget);
+    });
+
+    testWidgets('after credit is earned, "See my credit" opens it', (tester) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final router = GoRouter(routes: [
+        GoRoute(path: '/', builder: (_, _) => const Scaffold(body: MarketingOfferCard(gigId: 'gig-1', creditPath: '/credit'))),
+        GoRoute(path: '/credit', builder: (_, _) => const Scaffold(body: Text('My credit page'))),
+      ]);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [marketingOfferControllerProvider('gig-1').overrideWith(() => _FakeOffer(_offer))],
+        child: MaterialApp.router(theme: buildClientTheme(), routerConfig: router),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Choose photos'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('marketing-photo-a1')));
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(RButton, 'Allow 1 photo'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('See my credit'));
+      await tester.pumpAndSettle();
+      expect(find.text('My credit page'), findsOneWidget);
     });
 
     testWidgets('a refusal is shown in the form', (tester) async {
@@ -258,7 +297,7 @@ void main() {
         ..httpClientAdapter = FakeHttpClientAdapter((o) async {
           if (o.method == 'POST') sent.add((o.uri.path, Map<String, dynamic>.from(jsonDecode(jsonEncode(o.data)) as Map)));
           if (o.uri.path.endsWith('/withdraw')) return jsonResponseBody(jsonEncode({'withdrawn': 1}), 200);
-          if (o.uri.path.endsWith('/marketing-consent')) return jsonResponseBody(jsonEncode({'items': [], 'credit': 100}), 200);
+          if (o.uri.path.endsWith('/marketing-consent')) return jsonResponseBody(jsonEncode({'items': [], 'credit': 100, 'credit_eur': '1.00'}), 200);
           if (o.uri.path.endsWith('/offer')) return jsonResponseBody(jsonEncode({'offered': false}), 200);
           return jsonResponseBody(jsonEncode({'items': []}), 200);
         });
@@ -273,7 +312,7 @@ void main() {
           .read(marketingOfferControllerProvider('gig-1').notifier)
           .grant(assetIds: ['a1', 'a2'], termMonths: 6, peopleConfirmed: true);
 
-      expect(outcome, (problem: null, credit: 100));
+      expect(outcome, (problem: null, creditEur: '1.00'));
       expect(sent.single.$1, '/v1/gigs/gig-1/marketing-consent');
       expect(sent.single.$2, {'media_asset_ids': ['a1', 'a2'], 'term_months': 6, 'people_confirmed': true});
     });

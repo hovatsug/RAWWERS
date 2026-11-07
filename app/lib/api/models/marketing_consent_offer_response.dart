@@ -72,6 +72,22 @@
 ///                 "$ref": "#/components/schemas/MarketingPhotoView"
 ///             },
 ///             "title": "Photos"
+///         },
+///         "credit_available": {
+///             "type": "boolean",
+///             "default": true,
+///             "title": "Credit Available"
+///         },
+///         "credit_unavailable_reason": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Credit Unavailable Reason"
 ///         }
 ///     },
 ///     "type": "object",
@@ -129,6 +145,15 @@ abstract class MarketingConsentOfferResponse
     /// photos
     @JsonKey(name: MarketingConsentOfferResponse.photosKey_)
     List<MarketingPhotoView>? photos,
+
+    /// creditAvailable
+    @Default(true)
+    @JsonKey(name: MarketingConsentOfferResponse.creditAvailableKey_)
+    bool creditAvailable,
+
+    /// creditUnavailableReason
+    @JsonKey(name: MarketingConsentOfferResponse.creditUnavailableReasonKey_)
+    String? creditUnavailableReason,
   }) = _MarketingConsentOfferResponse;
 
   factory MarketingConsentOfferResponse.fromJson(Map<String, dynamic> json) =>
@@ -151,4 +176,9 @@ abstract class MarketingConsentOfferResponse
   static const String photographerCreditKey_ = r'photographer_credit';
 
   static const String photosKey_ = r'photos';
+
+  static const String creditAvailableKey_ = r'credit_available';
+
+  static const String creditUnavailableReasonKey_ =
+      r'credit_unavailable_reason';
 }

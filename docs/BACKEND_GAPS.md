@@ -4,6 +4,28 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## Client credit: visibility, checkout, money rules and the marketing budget — BUILT (2026-11-07)
+
+`services/client_credit.py`, `api/v1/client_credit.py`, client app `features/client/credit`, web `admin/client-credit`, migration 0088. Tests: `tests/test_client_credit.py`, `app/test/features/client/my_credit_test.dart`.
+- **Shown in euros** (points / 100, "€1.00 credit"), never as points and never called RAWW. Before this, the marketing offer said "earn up to 100 RAW credit"; it now says "€1.00 credit".
+- **Account > My credit:** the balance, "Use it on your next booking, up to N% of the payment.", the one way to earn built today (marketing permission), and the history newest first, with a label for each kind of entry.
+- **Checkout:** a "Use my credit" switch on the pay panel shows the discount and the new total. Credit is reserved through the existing reserve and apply code, taken off the payment intent, applied when the payment succeeds, and given back if the switch is turned off or the booking lapses unpaid. The pay route used to accept `points_to_spend` and ignore it.
+- **Money rules:** credit is RAWWERS's marketing cost, out of the platform's retained share. The photographer is paid on the price before credit (`points_paid` counts credit as money towards the price), and nothing goes to the photographer as RAWW. The cap is an admin setting, `max_discount_percent`, default 10; the old `REWARD_MAX_DISCOUNT_PERCENT` (20) and the rule's override no longer apply.
+- **Marketing budget:** `monthly_marketing_credit_budget_eur`, default 300 (0 = none). It counts awards in the Europe/London calendar month, checked under the settings row's lock, so concurrent grants never exceed it. When it is used up, the offer says so before the client confirms, and permission can still be given without credit; the grant is logged as `consent.granted_without_credit`. Admins get an in-app notice at 80% and at 100%, once each a month. The admin page shows budget, awarded, used, outstanding and remaining. The per-client cap (3 a month) and the per-grant amounts are unchanged, and the cap is now said before confirming as well.
+- **Notification per award** ("You earned €1.00 credit"), once per award, linking to My credit.
+
+**Report-only findings (€150 booking, €5 credit used):**
+- (a) The discount comes out of the platform's share. The client pays €145 by card; the photographer's cash is €120 and their RAWW credit €7.50, both on €150; the platform keeps €22.50 − €5 = €17.50. Not a bug.
+- (b) The 20% fee and the 5% RAWW credit are computed on the pre-discount €150: 15% retained = €22.50, and 5% RAWW = €7.50 (part of the fee).
+- (c) Credit **set aside but not yet paid** comes back: when the switch is turned off, the payment fails or is cancelled (the existing release), or the booking lapses unpaid (new). Credit **already used** on a booking that is later refunded or cancelled does **not** come back to the client: no code returns an applied redemption.
+- **Under the old 20% cap,** €30 off a €150 booking would leave the platform €22.50 − €30 = **−€7.50**, a loss before Stripe's fee. At 10% (€15) it keeps €7.50.
+
+**Open.**
+- **Credit used on a refunded booking is not returned** (see (c)). Owner's call.
+- **A partial cash refund** of a booking paid partly with credit still counts the credit as paid: the photographer's earnings fall by the cash refunded, not by the whole price.
+- **Admin budget alerts are in-app notifications** to the admin accounts; the web admin has no notifications screen.
+- **Referral rewards exist in the API** but have no client UI, so they are not listed under "Ways to earn".
+
 ## Selection add-on window — BUILT (2026-11-07)
 
 A client who finished choosing may add photos for `selection_addon_days` (admin, Galleries, default 7), stamped on the booking when its selection closes (`gig.addon_window_ends_at`, migration 0087), so a later change never moves an open window. `services/selection_addons.py`; tests `tests/test_selection_addons.py`.

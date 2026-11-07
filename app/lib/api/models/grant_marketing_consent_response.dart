@@ -11,6 +11,11 @@
 ///         "credit": {
 ///             "type": "integer",
 ///             "title": "Credit"
+///         },
+///         "credit_eur": {
+///             "type": "string",
+///             "default": "0.00",
+///             "title": "Credit Eur"
 ///         }
 ///     },
 ///     "type": "object",
@@ -40,6 +45,11 @@ abstract class GrantMarketingConsentResponse
     /// credit
     @JsonKey(name: GrantMarketingConsentResponse.creditKey_)
     required int credit,
+
+    /// creditEur
+    @Default('0.00')
+    @JsonKey(name: GrantMarketingConsentResponse.creditEurKey_)
+    String creditEur,
   }) = _GrantMarketingConsentResponse;
 
   factory GrantMarketingConsentResponse.fromJson(Map<String, dynamic> json) =>
@@ -48,4 +58,6 @@ abstract class GrantMarketingConsentResponse
   static const String itemsKey_ = r'items';
 
   static const String creditKey_ = r'credit';
+
+  static const String creditEurKey_ = r'credit_eur';
 }

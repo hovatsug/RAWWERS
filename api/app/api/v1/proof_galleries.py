@@ -83,8 +83,13 @@ from app.services.gig_state import require_gig_deliverable
 from app.services.package_pricing import MINIMUM_PHOTOS, enforce_minimum_selection_count, is_curve_priced
 from app.services.download_gate import require_review_or_report
 from app.services.selection_quote import gallery_photo_count, quote_selection
-from app.services.price_reduction import apply_price_reduction, flag_short_delivery, selection_reduction_lines
-from app.services.payment_intents import create_or_get_gig_payment_intent, difference_paid
+from app.services.payment_intents import (
+    cancel_open_difference_intents,
+    create_or_get_gig_payment_intent,
+    difference_paid,
+    record_open_difference_successes,
+    unrecorded_difference_successes,
+)
 
 settings = get_settings()
 router = APIRouter(tags=["proof_galleries"])
@@ -530,8 +535,12 @@ def get_selection_quote(
             status_code=422,
         )
 
+    # A payment Stripe took whose webhook has not come counts as paid here
+    # too, so the price shown before confirming is the price submit charges
+    # (read only: submit records it).
     quote = quote_selection(
-        db, gig=gig, gallery=gallery, selected_count=selected_count, max_photos=available
+        db, gig=gig, gallery=gallery, selected_count=selected_count, max_photos=available,
+        unrecorded_paid=unrecorded_difference_successes(db, gig) if is_curve_priced(gig) else Decimal("0.00"),
     )
     return SelectionQuoteResponse(
         selected_count=quote.selected_count,
@@ -573,6 +582,21 @@ def submit_selection(
     ).scalar_one()
     gig = db.get(Gig, gallery.gig_id)
     curve_priced = is_curve_priced(gig)
+    if curve_priced:
+        # What has been paid is known before anything is priced: a payment
+        # Stripe took whose webhook never came is recorded now, so the
+        # client is charged only for the photos past what it paid for.
+        # The submit prices and finishes this selection itself: a payment
+        # recorded here must not finish the earlier one (webhooks.py).
+        db.info["selection_submit_gallery_id"] = gallery.id
+        try:
+            record_open_difference_successes(db, gig)
+        finally:
+            db.info.pop("selection_submit_gallery_id", None)
+        db.refresh(gallery)
+        if gallery.status != ProofGalleryStatus.published:
+            db.commit()
+            raise APIError(code="invalid_state", message="Your earlier payment has gone through and your selection is final.", status_code=409)
 
     # The same call the quote endpoint makes. Deliberately not a second
     # implementation that agrees with it: one that agrees today diverges
@@ -591,24 +615,12 @@ def submit_selection(
 
     difference_amount = Decimal("0.00")
     if curve_priced and quote:
+        # A payment is for a count, not for particular photos. Within what
+        # was paid for, nothing is charged; past it, the difference; below
+        # it, the rest is refunded when the selection finishes (just below,
+        # gallery_completion.settle_selection_price).
         charged = (gig.amount_minimum + difference_paid(db, gig)).quantize(Decimal("0.01"))
-        if quote.amount_total < charged:
-            # Fewer photos chosen than were paid for: the difference is
-            # refunded, by reason - what was never delivered, and what the
-            # client chose not to take - through the one reduction function.
-            delivered = gallery_photo_count(db, gallery.id)
-            lines = selection_reduction_lines(
-                db, gig, charged=charged, delivered=delivered, included=gallery.included_photos, new_total=quote.amount_total
-            )
-            apply_price_reduction(
-                db, gig, new_final=quote.amount_total, from_amount=charged, lines=lines, source="selection",
-                key=f"selection:{selection.id}", actor_user_id=user.user_id,
-                note=f"The client chose {selected_count} photos; the gallery held {delivered} of {gallery.included_photos} included.",
-            )
-            short = next((line for line in lines if line.reason_code == "photographer_non_delivery"), None)
-            if short is not None:
-                flag_short_delivery(db, gig, delivered=delivered, included=gallery.included_photos, amount=short.amount)
-        else:
+        if quote.amount_total >= charged:
             gig.amount_final = quote.amount_total
         difference_amount = quote.amount_due
     difference_required = difference_amount > 0
@@ -653,6 +665,7 @@ def submit_selection(
             kind=StripePaymentKind.difference,
             extra_metadata={"selection_id": str(selection.id), "gallery_id": str(gallery.id)},
         )
+        difference_payment.meta = {**(difference_payment.meta or {}), "for_count": selected_count, "selection_id": str(selection.id)}
         difference_payment_intent_id = difference_payment.stripe_payment_intent_id
         difference_payment_intent_client_secret = difference_pi.client_secret
 
@@ -692,6 +705,9 @@ def submit_selection(
         )
 
     # Neither extras nor a difference charge is pending - the booking closes now.
+    if gig and curve_priced:
+        # An intent made for an earlier, larger selection is no longer owed.
+        cancel_open_difference_intents(db, gig)
     if gig:
         finalize_gallery_and_complete_gig(db, gallery=gallery, gig=gig, selection=selection)
     else:

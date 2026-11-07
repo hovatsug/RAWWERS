@@ -57,6 +57,7 @@ DEFAULT_REASONS = (
     ("mutual_agreement", "Agreed lower price", "You and your photographer agreed a lower price.", False, 30),
     ("admin_goodwill", "Goodwill", "A goodwill reduction from RAWWERS.", False, 40),
     ("dispute_resolution", "Dispute resolution", "The price was lowered to resolve a dispute.", False, 50),
+    ("duplicate_payment", "Paid twice for the same photos", "A payment covered photos you had already paid for, so it comes back to you.", False, 60),
 )
 
 

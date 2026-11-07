@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.models.gallery import ProofGallery
 from app.models.gig import Gig
-from app.services.package_pricing import MINIMUM_PHOTOS, gig_minimum_selection, gig_total, is_curve_priced
+from app.services.package_pricing import MINIMUM_PHOTOS, gig_curve, gig_minimum_selection, gig_total, is_curve_priced
 from app.services.payment_intents import difference_paid
 
 _CENTS = Decimal("0.01")
@@ -111,6 +111,42 @@ def _amount_due_for(
     return total, due, extras
 
 
+def paid_photo_count(db: Session, *, gig: Gig, gallery: ProofGallery) -> int:
+    """How many photos the money collected pays for (owner's rule,
+    2026-11-07): a payment is for a count on the booking's own curve, not
+    for particular photos. The deposit pays for the minimum selection; every
+    difference collected raises the count to the largest n whose price it
+    covers. Choosing or switching photos within it costs nothing; past it, the
+    client pays price(new count) - what was paid; below it, the rest comes
+    back at finish. Money collected beyond price(count) (a part payment, or a
+    payment for photos already paid for) still counts towards the next photo
+    and, at finish, goes back like any other overpayment."""
+    minimum = gig_minimum_selection(gig)
+    if not is_curve_priced(gig):
+        return minimum
+    from app.models.gig import StripePaymentKind
+    from app.services.payment_intents import list_succeeded_payments_for_gig, refundable_remaining
+
+    # Kept, not taken: a payment refunded (or being refunded) pays for nothing.
+    kept = sum(
+        (refundable_remaining(db, p) for p in list_succeeded_payments_for_gig(db, gig.id, kinds=[StripePaymentKind.difference])),
+        Decimal("0.00"),
+    )
+    paid = (gig.amount_minimum + kept).quantize(_CENTS, rounding=ROUND_HALF_UP)
+    curve = gig_curve(db, gig)
+    limit = max(minimum, gallery_photo_count(db, gallery.id))
+    count = minimum
+    while count < limit and curve.total(gig.entry_rate, count + 1) <= paid:
+        count += 1
+    return count
+
+
+def record_paid_count(db: Session, *, gig: Gig, gallery: ProofGallery) -> int:
+    """Keep the booking's paid count in line with the money collected."""
+    gig.selection_paid_count = paid_photo_count(db, gig=gig, gallery=gallery)
+    return gig.selection_paid_count
+
+
 def selection_total(db: Session, *, gig: Gig, gallery: ProofGallery, photo_count: int) -> Decimal:
     """What `photo_count` photos come to on this booking, in whole cents: the
     curve and anchor snapshotted on it, or a flat booking's deposit plus its
@@ -138,14 +174,18 @@ def quote_selection(
     gallery: ProofGallery,
     selected_count: int,
     max_photos: int | None = None,
+    unrecorded_paid: Decimal = Decimal("0.00"),
 ) -> SelectionQuote:
     """Price a selection of `selected_count` photos.
+
+    `unrecorded_paid` is difference money Stripe has collected that is not
+    recorded yet (a missed webhook): it counts as paid.
 
     `max_photos` is how many the gallery actually holds; past it there is no
     next photo to price, so `next_photo_price` is None rather than a number
     for a photo that does not exist.
     """
-    already_paid = difference_paid(db, gig) if is_curve_priced(gig) else Decimal("0.00")
+    already_paid = difference_paid(db, gig) + unrecorded_paid if is_curve_priced(gig) else Decimal("0.00")
     minimum = selection_minimum(
         gig, delivered=max_photos if max_photos is not None else gallery_photo_count(db, gallery.id)
     )

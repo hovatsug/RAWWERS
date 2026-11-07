@@ -65,7 +65,7 @@ A client who finished choosing may add photos for `selection_addon_days` (admin,
 
 Owner's priority. None of these is built; each says what is true today and what is needed.
 
-### a) Stripe reconcile job — BUILT (2026-11-03); the selection difference: recorded by it, the route itself waits on a decision
+### a) Stripe reconcile job — BUILT (2026-11-03); the selection difference — DECIDED and BUILT (2026-11-07)
 
 **Built.** `services/stripe_reconcile.py`, beat `stripe-reconcile` every `STRIPE_RECONCILE_INTERVAL_SECONDS` (900). Each run:
 - fetches from Stripe every booking payment (`stripe_payment`: base and difference) and extras purchase (`upsell_purchase`) not yet recorded as paid, created between `STRIPE_RECONCILE_LOOKBACK_HOURS` (72) and `STRIPE_RECONCILE_MIN_AGE_SECONDS` (300) ago, and records a `succeeded` one through `apply_missed_success`, the webhook's own handler (idempotent: the real event arriving later changes nothing);
@@ -75,7 +75,7 @@ What it cannot settle is a Money attention item, once per kind and payment (`str
 
 **Not covered.** Refunds and disputes missed as webhooks (refund reconciliation and chargebacks have their own paths); store, prints, learning and Studioverse payments are only recognised as ours, not recorded (all dormant). Stripe's list is read in full for the window each run: fine at beta volume, worth narrowing (by metadata or a cursor) later.
 
-**The selection difference.** With the job, a difference paid at Stripe and never recorded is recorded within about 20 minutes, and the webhook's handler then completes the booking with the selection that was paid for. Until then a new submit is still refused with "A payment for this selection is already being processed". Recording it at once inside the submit needs a decision (owner, pending): the client paid for selection A and is now submitting B. Recording A completes the booking with A, so B would be refused (A is what was paid for; more photos are extras), or A could be recorded and B re-priced against it (charge the rest, or refund through the reduction path).
+**The selection difference — decided and built (2026-11-07).** A payment is for a count of photos on the booking's own curve, not for particular photos; the booking keeps `selection_paid_count` (migration 0090). Submit (and the quote shown before it) first asks Stripe about open difference payments and records any that succeeded, so A paid then B submitted charges only price(B) − what was paid; within the paid count nothing is charged; below it, the rest is refunded at finish through the reduction path (`gallery_completion.settle_selection_price`). An intent for a changed selection is cancelled or brought to the new amount; one that succeeds anyway raises the count, and what it paid beyond the price goes back (reason `duplicate_payment`). A late difference payment never moves a completed booking back to paid. Tests: `tests/test_selection_paid_count.py`.
 
 ### b) Notifications screens — BUILT in both apps (2026-11-03)
 
@@ -174,7 +174,7 @@ Built on the owner's decisions; these were found while building it and left as t
 - **Price helper defaults: DECIDED, keep for now (owner, 2026-11-03):** GBP→EUR 1.17 and a 10% discount.
 - **Address keys cannot be retired.** Nothing re-encrypts stored addresses with the newest key (`MultiFernet.rotate` over `shipping_address`), so an old key must stay listed for good, and a leaked key keeps working on what it encrypted. The postcode hash is keyed with the newest key, so it changes on rotation (nothing matches on it yet). DEPLOY_CHECKLIST has the rotation steps.
 
-## A paid booking could read "Payment due" for good when Stripe's success event was missed — FIXED for the booking payment (2026-11-03); the selection difference still waits for the webhook
+## A paid booking could read "Payment due" for good when Stripe's success event was missed — FIXED for the booking payment (2026-11-03) and the selection difference (2026-11-07)
 
 **Seen 2026-11-02 in dev.** The `stripe listen` forwarder had stopped with a Mac restart. A client paid €96 at 17:06, Stripe recorded `succeeded` (`pi_3UXOaa…`), and no `payment_intent.succeeded` reached the API. The booking kept saying "Payment due". Every "Try again" called `POST /v1/client/bookings/{id}/pay`, which fetched the existing intent from Stripe and handed back its client secret whatever its status (`payment_intents.create_or_get_gig_payment_intent`). The payment sheet answers a paid intent with "There was an unexpected error -- try again in a few seconds", on every try. Resending the event recorded it at once.
 
@@ -186,7 +186,7 @@ The expiry job had the same gap. `expire_unpaid_gigs` cannot cancel a succeeded 
 A `processing` intent is left alone. Tests: `tests/test_missed_payment_webhook.py` (4 of 4 break checks).
 
 **Still open:**
-- **The selection difference** (`_reconcile_difference_intent`) still refuses a `succeeded` open intent with "already being processed" and waits for the webhook. Recording it there means committing a successful payment from inside the selection submit, which also writes the new selection; that needs a decision on what a resubmitted selection should do.
+- ~~**The selection difference** refused a `succeeded` open intent~~ — FIXED 2026-11-07: submit records it first (see HIGH a).
 - **No sweep looks for missed events** when nobody taps Pay and the deadline has not passed. A periodic reconcile (Stripe's list of recent `payment_intent.succeeded` events against our rows) would close it; not built.
 - **In dev**, `stripe listen` dies with a Mac restart and nothing says so. Start it as `docs/STAGE1_LOOP.md` 0.3 describes.
 

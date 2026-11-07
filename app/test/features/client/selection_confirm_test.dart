@@ -277,10 +277,10 @@ void main() {
     final container = await _open(tester, backend, launcher);
     await _choose(tester, container, 10);
 
-    expect(find.textContaining("you'll be refunded EUR 27.31"), findsOneWidget, reason: 'the bar must say it before the tap');
+    expect(find.textContaining("you'll get EUR 27.31 back"), findsOneWidget, reason: 'the bar must say it before the tap');
     await tester.tap(_barButton('Confirm selection'));
     await tester.pumpAndSettle();
-    expect(find.textContaining("You'll be refunded EUR 27.31."), findsOneWidget);
+    expect(find.textContaining("You'll get EUR 27.31 back."), findsOneWidget);
     expect(find.textContaining('Your final price is EUR 200.00.'), findsOneWidget);
     expect(find.textContaining('No charge'), findsNothing);
   });

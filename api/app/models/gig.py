@@ -80,6 +80,11 @@ class Gig(Base):
     #: setting then: a later change of the setting never moves it. An admin
     #: may extend it. Null before the selection closes.
     addon_window_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: How many photos the money collected pays for, on this booking's own
+    #: curve (selection_quote.paid_photo_count): a payment is for a count, not
+    #: for particular photos. Null until a selection is submitted or a
+    #: difference payment succeeds; null means the deposit's minimum.
+    selection_paid_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # What the booking earned, split, stamped by photographer_money when its
     # earnings are recorded and after every change: the final price net of
     # refunds, 15% retained and 5% $RAWW credit each rounded, the

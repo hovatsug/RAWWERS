@@ -209,6 +209,63 @@ def apply_missed_success(db: Session, pi) -> bool:
     return True
 
 
+def _open_difference_rows(db: Session, gig: Gig) -> list[StripePayment]:
+    return db.execute(
+        select(StripePayment)
+        .where(
+            StripePayment.gig_id == gig.id,
+            StripePayment.kind == StripePaymentKind.difference,
+            StripePayment.status.in_(_OPEN_PAYMENT_STATUSES),
+        )
+        .order_by(StripePayment.created_at)
+    ).scalars().all()
+
+
+def record_open_difference_successes(db: Session, gig: Gig) -> bool:
+    """Ask Stripe about every difference payment we still think is open,
+    and record any that succeeded (its webhook missed or still on the way).
+    What has been paid is then known before anything is priced or charged:
+    a payment is never asked for twice because one went unrecorded."""
+    recorded = False
+    for row in _open_difference_rows(db, gig):
+        if apply_missed_success(db, stripe.PaymentIntent.retrieve(row.stripe_payment_intent_id)):
+            recorded = True
+    return recorded
+
+
+def unrecorded_difference_successes(db: Session, gig: Gig) -> Decimal:
+    """What Stripe collected on difference payments we still think are open
+    (read only - for a price shown before anything is recorded)."""
+    total = Decimal("0.00")
+    for row in _open_difference_rows(db, gig):
+        pi = stripe.PaymentIntent.retrieve(row.stripe_payment_intent_id)
+        if getattr(pi, "status", None) == "succeeded":
+            received = getattr(pi, "amount_received", None)
+            total += (Decimal(int(received)) / 100).quantize(_CENTS) if received else Decimal(row.amount)
+    return total
+
+
+def cancel_open_difference_intents(db: Session, gig: Gig) -> None:
+    """Nothing more is owed: every open difference intent is for a selection
+    that has changed, and is cancelled. One that succeeded meanwhile is
+    recorded instead (what it paid beyond the price goes back at finish); one
+    already moving money is left to settle the same way."""
+    for row in _open_difference_rows(db, gig):
+        pi = stripe.PaymentIntent.retrieve(row.stripe_payment_intent_id)
+        if apply_missed_success(db, pi) or getattr(pi, "status", None) == "processing":
+            continue
+        if getattr(pi, "status", None) != "canceled":
+            try:
+                stripe.PaymentIntent.cancel(pi.id)
+            except stripe.InvalidRequestError:
+                # It succeeded between the two calls.
+                apply_missed_success(db, stripe.PaymentIntent.retrieve(row.stripe_payment_intent_id))
+                continue
+        row.status = PaymentStatus.cancelled
+        row.meta = {**(row.meta or {}), "cancelled_because": "selection_changed"}
+    db.flush()
+
+
 def create_or_get_gig_payment_intent(
     db: Session,
     gig: Gig,
@@ -386,7 +443,20 @@ def _reconcile_difference_intent(
                 db.flush()
                 return open_row, pi
 
-            stripe.PaymentIntent.cancel(pi.id)
+            try:
+                stripe.PaymentIntent.cancel(pi.id)
+            except stripe.InvalidRequestError:
+                # The old payment went through between the two calls: it is
+                # recorded, and the client is asked to look again at what is
+                # left, rather than charged on a stale amount.
+                if apply_missed_success(db, stripe.PaymentIntent.retrieve(pi.id)):
+                    db.commit()  # the payment stays recorded whatever the request does next
+                    raise APIError(
+                        code="invalid_state",
+                        message="Your earlier payment has just gone through. Check what is left to pay and confirm again.",
+                        status_code=409,
+                    ) from None
+                raise
 
         open_row.status = PaymentStatus.cancelled
         db.flush()

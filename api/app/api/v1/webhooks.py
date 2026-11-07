@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session
@@ -23,7 +23,7 @@ from app.models.gig import (
     StripePayment,
     StripePaymentKind,
 )
-from app.models.gallery import ClientSelection, ProofGallery, SelectionStatus, UpsellPurchase, UpsellPurchaseStatus
+from app.models.gallery import ClientSelection, ProofGallery, ProofGalleryStatus, SelectionStatus, UpsellPurchase, UpsellPurchaseStatus
 from app.models.media import MediaAsset, MediaProvider, MediaStatus
 from app.models.media_rights import GigEntitlementType
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
@@ -242,6 +242,42 @@ def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
         asset.status = MediaStatus.failed
         error_message = data.get("errors") or data.get("error") or "Unknown Mux processing error"
         asset.meta = {**asset.meta, "mux_error": error_message}
+
+
+def _bring_open_difference_to_owed(db: Session, gig: Gig, gallery: ProofGallery, selection: ClientSelection) -> None:
+    """An earlier difference payment just landed while a newer one is open
+    for the changed selection: the open one is brought to what is owed now,
+    so the same photos are never charged twice. If it can no longer change
+    (money moving), it is left; anything it takes beyond the price goes back
+    at finish."""
+    from app.models.gallery import ClientSelectionItem
+    from app.services.payment_intents import _OPEN_PAYMENT_STATUSES, create_or_get_gig_payment_intent
+    from app.services.selection_quote import quote_selection
+
+    open_row = db.execute(
+        select(StripePayment).where(
+            StripePayment.gig_id == gig.id,
+            StripePayment.kind == StripePaymentKind.difference,
+            StripePayment.status.in_(_OPEN_PAYMENT_STATUSES),
+        )
+    ).scalars().first()
+    if open_row is None:
+        return
+    count = db.execute(
+        select(func.count()).select_from(ClientSelectionItem).where(ClientSelectionItem.selection_id == selection.id)
+    ).scalar_one()
+    due = quote_selection(db, gig=gig, gallery=gallery, selected_count=count).amount_due
+    if due <= 0 or due == open_row.amount:
+        return
+    try:
+        row, _pi = create_or_get_gig_payment_intent(
+            db, gig, amount_override=due, kind=StripePaymentKind.difference,
+            extra_metadata={"selection_id": str(selection.id), "gallery_id": str(gallery.id)},
+        )
+    except APIError:
+        return  # processing: it settles, and the excess goes back at finish
+    row.meta = {**(row.meta or {}), "for_count": count, "selection_id": str(selection.id)}
+    db.flush()
 
 
 def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
@@ -485,7 +521,10 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             if apply_payment(db, payment):
                 return
 
-        if gig.status != GigStatus.paid:
+        # A difference payment comes after the booking was paid, and can land
+        # after it completed (a stale one, after the selection changed): it
+        # never moves the booking back. Settled at finish instead.
+        if gig.status != GigStatus.paid and payment.kind != StripePaymentKind.difference:
             transition = transition_gig(gig, GigStatus.paid, SYSTEM_USER_ID, reason="Stripe payment_intent.succeeded")
             db.add(transition)
 
@@ -601,8 +640,19 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                 if gallery
                 else None
             )
-            if gallery and selection and is_selection_fully_paid(db, gig=gig, gallery=gallery, selection=selection):
+            if gallery is not None:
+                from app.services.selection_quote import record_paid_count
+
+                record_paid_count(db, gig=gig, gallery=gallery)
+            if gallery is not None and db.info.get("selection_submit_gallery_id") == gallery.id:
+                pass  # a submit is pricing and finishing the new selection itself
+            elif gallery and selection and is_selection_fully_paid(db, gig=gig, gallery=gallery, selection=selection):
+                from app.services.payment_intents import cancel_open_difference_intents
+
                 finalize_gallery_and_complete_gig(db, gallery=gallery, gig=gig, selection=selection)
+                cancel_open_difference_intents(db, gig)
+            elif gallery and selection and gallery.status == ProofGalleryStatus.published:
+                _bring_open_difference_to_owed(db, gig, gallery, selection)
 
     elif event_type == "payment_intent.payment_failed":
         payment_intent_id = obj.get("id")

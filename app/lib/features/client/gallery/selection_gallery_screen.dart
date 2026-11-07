@@ -343,7 +343,7 @@ String _refundSentence(SelectionQuoteResponse quote) {
   final refund = _refundOf(quote);
   if (refund == null) return 'No charge - this is covered by what you have already paid.';
   return 'Your final price is ${_money(quote.amountTotal, quote.currency)}. '
-      "You'll be refunded ${_money(refund, quote.currency)}.";
+      "You'll get ${_money(refund, quote.currency)} back.";
 }
 
 /// The button says what it will do and what it will cost, so the number being
@@ -365,7 +365,7 @@ String _money(String amount, String currency) => '$currency $amount';
 String _totalLabel(SelectionQuoteResponse quote, bool failed) {
   if (failed) return 'Total unavailable - pull to refresh';
   final refund = _refundOf(quote);
-  if (refund != null) return "Final price ${_money(quote.amountTotal, quote.currency)} - you'll be refunded ${_money(refund, quote.currency)}";
+  if (refund != null) return "Final price ${_money(quote.amountTotal, quote.currency)} - you'll get ${_money(refund, quote.currency)} back";
   if (quote.amountDue == '0.00') return 'Nothing more to pay';
   return '${_money(quote.amountDue, quote.currency)} to pay';
 }

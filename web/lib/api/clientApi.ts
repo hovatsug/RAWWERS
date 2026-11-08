@@ -111,10 +111,6 @@ export const clientApi = {
   listNotifications: (params: Record<string, string | number | boolean | undefined>, accessToken?: string | null) => wrap(() => get<any>("/me/notifications", accessToken, params)),
   readAllNotifications: (accessToken?: string | null) => wrap(() => post<any>("/me/notifications/read-all", {}, accessToken)),
   readNotification: (notificationId: string, accessToken?: string | null) => wrap(() => post<any>(`/me/notifications/${notificationId}/read`, {}, accessToken)),
-  rewardsBalance: (accessToken?: string | null) => wrap(() => get<any>("/me/rewards/balance", accessToken)),
-  rewardsBalanceShared: (accessToken?: string | null) => wrap(() => get<any>("/rewards/balance", accessToken)),
-  rewardsLedger: (params: Record<string, string | number | boolean | undefined>, accessToken?: string | null) => wrap(() => get<any>("/rewards/ledger", accessToken, params)),
-  rewardsSpend: (payload: Record<string, unknown>, accessToken?: string | null) => wrap(() => post<any>("/rewards/spend", payload, accessToken)),
 
   printsCatalog: (accessToken?: string | null) => wrap(() => get<any>("/prints/catalog", accessToken)),
   myPrintOrders: (params: Record<string, string | number | boolean | undefined>, accessToken?: string | null) => wrap(() => get<any>("/prints/orders/mine", accessToken, params)),

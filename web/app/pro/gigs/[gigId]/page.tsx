@@ -17,7 +17,8 @@ export default function ProGigDetailPage() {
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-semibold">Gig {gigId}</h1>
-      <Card><pre className="overflow-auto text-xs">{JSON.stringify(gigQ.data.data, null, 2)}</pre></Card>
+      {/* No ledger on a user-facing page: the gig without its ledger summary. */}
+      <Card><pre className="overflow-auto text-xs">{JSON.stringify(gigQ.data.data, (key, value) => (key === "ledger_summary" ? undefined : value), 2)}</pre></Card>
       <div className="flex gap-3">
         <a className="text-sm text-brand-700 underline" href={`/pro/gigs/${gigId}/chat`}>Chat</a>
         <a className="text-sm text-brand-700 underline" href={`/pro/gigs/${gigId}/delivery`}>Delivery Studio</a>

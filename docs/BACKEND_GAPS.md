@@ -13,6 +13,7 @@ Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.
 - **Add-on refunds are all or none.** Refunding an add-on reverses the whole purchase and its earning; there is no per-photo refund.
 - **`test_niche_banners` hits a 429 rate limit when run alone.** It passes in the full suite; also on main.
 - **Portuguese texts and the launch invite and waitlist emails come later.** The UK beta is English first.
+- **Old client and pro pages on the web still show raw JSON** (bookings, gigs, settings, waitlist, pro tools). None shows a ledger or points (`scripts/check-web-user-pages.sh`); `/rewards` redirects to `/get-the-app` (2026-11-08). Whether to redirect them all is the owner's call.
 
 ## The Shelf: photos and rows — BUILT (2026-11-07)
 

@@ -21,7 +21,8 @@ export default function GigPage() {
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-semibold">Gig {gigId}</h1>
-      <Card><pre className="overflow-auto text-xs">{JSON.stringify(gigQ.data.data, null, 2)}</pre></Card>
+      {/* No ledger on a user-facing page: the gig without its ledger summary. */}
+      <Card><pre className="overflow-auto text-xs">{JSON.stringify(gigQ.data.data, (key, value) => (key === "ledger_summary" ? undefined : value), 2)}</pre></Card>
       <div className="flex gap-3 text-sm">
         {galleryId ? <Link href={`/gigs/${gigId}/gallery/${galleryId}` as Route} className="text-brand-700 underline">Open gallery</Link> : null}
         <Link href={`/gigs/${gigId}/delivery` as Route} className="text-brand-700 underline">Delivery</Link>

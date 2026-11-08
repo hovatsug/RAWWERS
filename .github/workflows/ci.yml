@@ -148,6 +148,9 @@ jobs:
       - name: Admin isolation check
         run: bash scripts/check-admin-isolation.sh
 
+      - name: No ledger or point numbers on user-facing pages
+        run: bash scripts/check-web-user-pages.sh
+
       - name: Build web
         working-directory: web
         env:

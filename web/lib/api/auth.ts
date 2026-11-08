@@ -40,10 +40,6 @@ export const auth = {
 
   // $RAWW ledger - explicit MVP scope (C12/C13), unlike the referral/growth
   // endpoints which were deleted below.
-  getRewardsBalance: (accessToken?: string | null) => apiGet<any>("/me/rewards/balance", accessToken),
-  getRewardsBalanceShared: (accessToken?: string | null) => apiGet<any>("/rewards/balance", accessToken),
-  getRewardsLedger: (params: Record<string, string | number | boolean | undefined> = {}, accessToken?: string | null) => apiGet<any>("/rewards/ledger", accessToken, params),
-  spendRewards: (payload: Record<string, unknown>, accessToken?: string | null) => apiPost<any>("/rewards/spend", payload, accessToken),
 
   getI18nBundle: (locale: string, namespace: string) =>
     apiGet<{ locale: string; namespace: string; version: number; content: Record<string, string> }>("/i18n/bundles", undefined, { locale, namespace }),

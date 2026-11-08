@@ -4,6 +4,29 @@ Confirmed backend behavior that the Flutter rebuild (F-0–F-8) needs to design 
 
 Every deploy step recorded below is also listed, in order, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). An entry that adds a deploy step adds it there too.
 
+## The API suite's run time — LOGGED, not changed (2026-11-08)
+
+The last full run, on 2026-11-08 (13148e8), took **9 h 34 min**: 26 failed (the known ones), 2265 passed and 2 xfailed, 2,293 tests in all. Runs on 2026-11-07 took about 4 h 3 min (2,257 tests). Per test that is 15.0 s against 6.5 s. Adding 36 tests does not explain the difference.
+
+**Where the time goes**
+- **Every test drops and recreates the whole schema.** The autouse `setup_database` fixture in `tests/conftest.py` runs `drop_all` and `create_all` over about 256 tables, then seeds the niches. Measured on 2026-11-08: **3.5 to 3.9 s of setup per test**, against 0.01 to 0.06 s for the test itself (three small `test_stripe_reconcile.py` tests). Over 2,293 tests that is about **2 h 20 min of setup on an idle machine**, before any test runs. It grows with every new table and every new test.
+- **Contention on the Mac.** The setup is DDL-heavy (locks, catalog writes, fsync), so it slows down sharply when the Docker VM is busy. During the 9 h 34 min run, the dev stack's workers were running, and the client app ran on the simulator under `flutter run`. Break checks and other single-file runs used the same Postgres before it started. That is the likeliest reason it took twice as long. It is not proven, because the run recorded no durations.
+- **Tests that wait on purpose:** `time.sleep` in `test_presence`, `test_raww_ledger`, `test_raww_earning`, `test_reward_ledger_concurrency`, `test_stable_urls`, `test_shelf_orders`, `test_shelf_gear_and_wishlist` and `test_startup_warmup`. Six files start threads for concurrency tests. These are small next to the setup.
+- **Nothing runs in parallel.** One run uses one database and one process. `MAX_PARALLEL` (3) allows three separate runs, not one run split three ways.
+- **The biggest files by test count:** `test_available_now` (45), `test_gear_intake` (37), `test_photographer_money` (33), `test_accountability` (32), `test_niche_banners` (29), `test_price_reduction` and `test_delivery_uploads` (26 each). Because setup dominates, the slowest files are the ones with the most tests.
+
+**Proposed, in order of payoff (none of it done)**
+1. **Record durations first.** Add `--durations=50` to the default ARGS in `scripts/test_isolated.sh` and keep the output with each run. That replaces the guesses above with numbers.
+2. **Build the schema once per run, and empty it between tests.** One `create_all` at session start. After each test, one `TRUNCATE <all tables> RESTART IDENTITY CASCADE`, then the niche seed again. That is expected to take well under a second against 3.6 s, saving about 2 h per run.
+   - Rolling back a transaction per test would be faster still. It does not fit, because many tests commit, and some use threads with their own sessions.
+   - Before switching, the tests that rely on a fresh schema have to be found. The first full run after the change will show them.
+3. **Run in parallel with `pytest-xdist`** (`-n 4`), giving each worker its own database (`<run>_gw<N>_test`) and Redis index.
+   - Today 15 Redis indexes are shared by `MAX_PARALLEL` runs, so the claim scheme needs one slot per worker.
+   - Truncating instead of dropping also removes the "out of shared memory" lock-table limit that capped parallel runs at three.
+   - With 2 and 3 together, a full run should take tens of minutes, not hours.
+4. **Run the suite on a quiet machine:** dev workers stopped, no simulators, and Docker Desktop given enough CPUs and memory. Or run it in CI.
+5. **CI.** GitHub Actions with Postgres 16 and Redis 7 as service containers, and the full repository checked out (some tests read the workflows and compose files). The database name must end in `_test`, as the conftest requires. Run `pytest -n auto`, or split the suite across 3 or 4 matrix jobs by the durations file from step 1 (`pytest-split`). Cache the Python dependencies (no lockfile yet: BACKEND_GAPS). Compare the failures with `KNOWN_FAILURES.txt` through `scripts/check_known_failures.py`. Steps 2 and 3 come first; without them, CI would take hours too.
+
 ## Open, logged 2026-11-07 (one line each)
 
 - **Admin budget alerts are in-app only.** The 80% and 100% marketing-budget alerts go to the admin's notifications; email waits for Brevo.
@@ -2338,6 +2361,13 @@ Built 2026-11-01 (owner's decision): a client's originals - `GET /v1/proof-galle
 ## Account deletion does not exist - LOGGED (launch requirement)
 
 Found during the marketing-consent discovery (2026-11-01). There is no way to delete an account outside development (`DELETE /v1/dev/test-accounts/me` is dev-only, for `@rawwers.test` accounts). It is a launch requirement: Apple requires in-app account deletion for any app that lets people create an account. When it is built it must, among the rest, **withdraw every marketing consent the account has given** (the per-photo records of the closed-beta marketing consent: status withdrawn, withdrawal date set, nothing deleted), so content using those photos falls under the take-down rule. Not hooked into anything now, by the owner's decision.
+
+**Google Play also needs a public web page** (logged 2026-11-08). Apple asks for deletion inside the app. Google Play asks for that too, and also for a web link, entered in the Play Console's Data safety form. The link must point to a page anyone can open without the app or a sign-in. That page must:
+- name the app (RAWWERS) and the developer, as on the store listing;
+- give the steps to request deletion (in the app, and by another way for someone who no longer has it, such as an email address or a form);
+- say what is deleted, what is kept, and for how long (for example, payment and tax records the law requires us to keep).
+
+It belongs on the web, which keeps public pages (landing, unsubscribe, share). It is not built yet, and the deletion flow it describes does not exist yet either.
 
 ## Marketing use of a client's video review - LOGGED (follow-up)
 

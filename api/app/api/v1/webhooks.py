@@ -71,6 +71,13 @@ from app.services.trust_safety import evaluate_payment_failure_rule
 
 logger = logging.getLogger(__name__)
 
+#: A booking in one of these has been paid: a success recorded for it late
+#: never moves it back to paid.
+_AT_OR_PAST_PAID = frozenset({
+    GigStatus.paid, GigStatus.scheduled, GigStatus.shoot_done, GigStatus.proofs_delivered, GigStatus.selection_pending,
+    GigStatus.final_delivered, GigStatus.completed, GigStatus.disputed,
+})
+
 #: Every Stripe event this webhook acts on - each one Stripe really sends,
 #: held against captured events by tests/test_stripe_event_contract.py. The
 #: endpoints are registered with exactly these (scripts/register_stripe_webhook.py).
@@ -523,8 +530,12 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
 
         # A difference payment comes after the booking was paid, and can land
         # after it completed (a stale one, after the selection changed): it
-        # never moves the booking back. Settled at finish instead.
-        if gig.status != GigStatus.paid and payment.kind != StripePaymentKind.difference:
+        # never moves the booking back. Settled at finish instead. Nor does a
+        # booking payment recorded late (the reconcile job, a delayed webhook)
+        # for a booking already past paid: the money is recorded and the
+        # booking keeps its status. A cancelled or refunded booking still
+        # refuses, so money taken after it ended is flagged, not absorbed.
+        if gig.status not in _AT_OR_PAST_PAID and payment.kind != StripePaymentKind.difference:
             transition = transition_gig(gig, GigStatus.paid, SYSTEM_USER_ID, reason="Stripe payment_intent.succeeded")
             db.add(transition)
 

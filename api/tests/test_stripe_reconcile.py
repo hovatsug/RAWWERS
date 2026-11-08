@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from sqlalchemy import func, select
 
 from app.models.admin import MoneyAttentionItem
-from app.models.gig import GigStatus, LedgerEntry, PaymentStatus, StripePayment, StripePaymentKind
+from app.models.gig import GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind
 from app.services import stripe_reconcile
 from app.services.stripe_reconcile import run
 
@@ -263,3 +263,67 @@ def test_admin_sees_the_last_run(client, db_session):
     last = body["stripe_check"]
     assert last["dry_run"] is True and last["flagged"] == 1 and last["error"] is None
     assert last["finished_at"] is not None
+
+
+def test_a_completed_booking_s_missed_payment_is_recorded_and_the_booking_stays_completed(db_session):
+    """Owner's follow-up (2026-11-08): a payment Stripe took that never
+    reached us is recorded even when the booking has already completed,
+    and recording it never moves the booking back to paid - neither the
+    booking payment nor a selection difference."""
+    from app.api.v1.webhooks import _apply_stripe_event
+    from app.models.gig import Gig
+
+    base = _unpaid(db_session)
+    gig = db_session.get(Gig, base.gig_id)
+    gig.status = GigStatus.completed
+    difference = StripePayment(
+        gig_id=gig.id, kind=StripePaymentKind.difference, client_user_id=gig.client_user_id, status=PaymentStatus.pending,
+        stripe_payment_intent_id=f"pi_{uuid.uuid4().hex[:16]}", amount=D("12.00"), currency="EUR", meta={},
+        created_at=NOW - timedelta(minutes=30),
+    )
+    db_session.add(difference)
+    db_session.commit()
+    fake = FakeStripe([_pi(base.stripe_payment_intent_id), _pi(difference.stripe_payment_intent_id, amount_cents=1200)])
+
+    result = run(db_session, gateway=fake, now=NOW)
+    db_session.commit()
+
+    db_session.expire_all()
+    assert (result.checked, result.recorded, result.flagged) == (2, 2, 0)
+    assert db_session.get(StripePayment, base.id).status == PaymentStatus.succeeded
+    assert db_session.get(StripePayment, difference.id).status == PaymentStatus.succeeded
+    assert db_session.get(Gig, gig.id).status == GigStatus.completed
+    captured = db_session.execute(
+        select(func.coalesce(func.sum(LedgerEntry.amount), 0)).where(
+            LedgerEntry.gig_id == gig.id, LedgerEntry.entry_type == LedgerEntryType.payment_captured
+        )
+    ).scalar_one()
+    assert captured == D("162.00"), "both payments are on the books"
+
+    # The late webhooks and a second run change nothing.
+    again = run(db_session, gateway=fake, now=NOW + timedelta(minutes=15))
+    for payment, cents in ((base, 15000), (difference, 1200)):
+        _apply_stripe_event(db_session, "payment_intent.succeeded", {"id": payment.stripe_payment_intent_id, "amount_received": cents})
+    db_session.commit()
+    db_session.expire_all()
+    assert again.recorded == 0
+    assert db_session.get(Gig, gig.id).status == GigStatus.completed
+    assert _items(db_session) == []
+
+
+def test_money_taken_for_a_cancelled_booking_is_flagged_not_absorbed(db_session):
+    """The other side of the rule above: a booking that ended (cancelled)
+    does not quietly take a late payment - the job flags it for an admin."""
+    from app.models.gig import Gig
+
+    payment = _unpaid(db_session)
+    db_session.get(Gig, payment.gig_id).status = GigStatus.cancelled_by_client
+    db_session.commit()
+
+    result = run(db_session, gateway=FakeStripe([_pi(payment.stripe_payment_intent_id)]), now=NOW)
+    db_session.commit()
+
+    db_session.expire_all()
+    assert (result.recorded, result.flagged) == (0, 1)
+    assert [i.kind for i in _items(db_session)] == ["stripe_reconcile_error"]
+    assert db_session.get(Gig, payment.gig_id).status == GigStatus.cancelled_by_client

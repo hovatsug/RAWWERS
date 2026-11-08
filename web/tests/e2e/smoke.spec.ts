@@ -58,9 +58,12 @@ test("critical funnel: login -> discover -> profile -> booking request", async (
   expect(booking.booking_id).toBeTruthy();
 });
 
-test("proof selection screen loads", async ({ page }) => {
-  await page.goto("/client/gigs/00000000-0000-0000-0000-000000000211/proofs");
-  await expect(
-    page.getByText(/Proof gallery|Proof gallery module is disabled\./)
-  ).toBeVisible();
-});
+// The client and pro pages moved to the apps (2026-11-08): each old route,
+// and everything under it, sends people to the "get the app" page.
+for (const path of ["/client/gigs/00000000-0000-0000-0000-000000000211/proofs", "/pro/dashboard", "/rewards", "/discover"]) {
+  test(`${path} sends people to the app`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/get-the-app$/);
+    await expect(page.getByRole("heading", { name: "This is in the RAWWERS app" })).toBeVisible();
+  });
+}

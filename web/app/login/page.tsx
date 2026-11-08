@@ -33,8 +33,8 @@ export default function LoginPage() {
       userId: me.data.user_id,
       locale: me.data.locale || "en-GB"
     });
-    if (me.data.roles.includes("pro")) router.replace("/pro/inbox");
-    else router.replace("/client/home");
+    // The web is the admin panel; everyone else uses the app.
+    router.replace(me.data.roles.includes("admin") ? "/admin" : "/get-the-app");
   }
 
   return (

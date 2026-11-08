@@ -21,8 +21,8 @@ export default function GetTheAppPage() {
         Your bookings, your photos and your credit are in the app. The app is in beta while we
         open city by city.
       </p>
-      <Link href="/" className="inline-block text-sm underline">
-        Join the waitlist on the home page
+      <Link href="/waitlist" className="inline-block text-sm underline">
+        Join the waitlist
       </Link>
     </div>
   );

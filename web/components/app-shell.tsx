@@ -16,13 +16,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Inside this shell it was squeezed into the phone column, under a client
   // tab bar.
   if (pathname.startsWith("/admin")) return <>{children}</>;
-  const links = [
-    { href: "/discover", label: "Discover", show: true },
-    { href: "/client/bookings", label: "Bookings", show: roles.includes("client") },
-    { href: "/pro/inbox", label: "Pro Inbox", show: roles.includes("pro") },
-    { href: "/admin", label: "Admin", show: roles.includes("admin") },
-    { href: "/client/notifications", label: "Alerts", show: roles.includes("client") || roles.includes("pro") }
-  ];
+  // The client and pro pages moved to the app: only the admin is linked.
+  const links = [{ href: "/admin", label: "Admin", show: roles.includes("admin") }];
 
   return (
     <div className={cn("min-h-screen", isLanding ? "pb-0" : "pb-20")}>

@@ -50,6 +50,10 @@ Status (2026-11-09): **wired, dev only.** The API sends the nine approved emails
 
 All of these are read by `api`, `worker`, `worker-photos` and `beat`: the worker does the sending, from the outbox. After changing `.env`, recreate them (`docker compose up -d --force-recreate api worker worker-photos beat`); `restart` does not re-read the file.
 
+## Brevo's authorised IPs
+
+Brevo refuses an API key used from an IP it does not know: `401 "We have detected you are using an unrecognised IP address …"`. The first dev send (2026-11-09) hit this. In Brevo, *Security → Authorised IPs*: add the dev machine's public IP (it changes with the network), or turn the restriction off for the dev key. Production: add the server's outbound IP for the production key. The API treats this 401 as a rejection: logged, not retried.
+
 ## The sending domain: what Brevo needs verified
 
 The sender is `rawwers@rawwers.com`, on the root domain, which also receives mail through Zoho. Public DNS on 2026-11-09 shows:

@@ -27,6 +27,10 @@ The last full run, on 2026-11-08 (13148e8), took **9 h 34 min**: 26 failed (the 
 4. **Run the suite on a quiet machine:** dev workers stopped, no simulators, and Docker Desktop given enough CPUs and memory. Or run it in CI.
 5. **CI.** GitHub Actions with Postgres 16 and Redis 7 as service containers, and the full repository checked out (some tests read the workflows and compose files). The database name must end in `_test`, as the conftest requires. Run `pytest -n auto`, or split the suite across 3 or 4 matrix jobs by the durations file from step 1 (`pytest-split`). Cache the Python dependencies (no lockfile yet: BACKEND_GAPS). Compare the failures with `KNOWN_FAILURES.txt` through `scripts/check_known_failures.py`. Steps 2 and 3 come first; without them, CI would take hours too.
 
+## Open, logged 2026-11-09 (one line each)
+
+- **Verify and reset codes sit in plain text in the outbox payload, and get no `email_message` row.** `email.verify.send` and `email.reset.send` carry the code itself; the outbox row keeps it after the email is sent, and the send is only logged. Fix: hash the code in the payload (or purge the payload once delivered) and record each send as an `email_message` row. Also on the security audit list (`docs/SECURITY_AUDIT_LIST.md`). Not fixed.
+
 ## Open, logged 2026-11-07 (one line each)
 
 - **Admin budget alerts are in-app only.** The 80% and 100% marketing-budget alerts go to the admin's notifications; email waits for Brevo.

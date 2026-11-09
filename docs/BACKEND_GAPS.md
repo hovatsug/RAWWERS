@@ -1080,6 +1080,8 @@ photographer can charge. Until then it must not.
 
 ## LAUNCH BLOCKER: no email is ever delivered, and push does not exist
 
+> **Update 2026-11-09: email is wired** (b93d6a8, f576147). The nine approved emails go through Brevo. Sending is off in production until `EMAIL_SENDING_ENABLED=true`, and outside production it goes only to `EMAIL_DEV_ALLOWLIST`. Bounces and complaints suppress the address (`POST /v1/webhooks/brevo`, migration `0091`). See [BREVO_SETUP.md](BREVO_SETUP.md). Item 1 below is done. **Push still does not exist.** The text below is the history.
+
 > **Status.** The outbox drain is FIXED (`b91ee8ba`) and in-app notifications now work end to end — verified live in F-7 discovery: a real booking request produced `booking.request_received` in the pro's `GET /v1/me/notifications`. What remains is items 1 and 4 below: **no mail provider**, and **no push channel at all**. Both are launch blockers rather than task blockers — the apps are built to work without them, and the chain is testable end to end via in-app alone.
 
 Found in F-5 by running the real app against the local backend: `POST /v1/auth/verify-email/request` returns **204 and nothing arrives**. The endpoint is not broken — it does exactly what it should, and then the mail dies in two separate places downstream. Both are verified in source, not inferred.

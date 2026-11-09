@@ -16,6 +16,7 @@ from app.api.v1.marketing_consent_admin import router as marketing_consent_admin
 from app.api.v1.client_credit import router as client_credit_router
 from app.api.v1.email_unsubscribe import router as email_unsubscribe_router
 from app.api.v1.shelf_admin import router as shelf_admin_router
+from app.api.v1.bi_admin import router as bi_admin_router
 from app.api.v1.shelf import router as shelf_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chats import router as chats_router
@@ -101,6 +102,7 @@ api_router.include_router(marketing_consent_admin_router)
 api_router.include_router(client_credit_router)
 api_router.include_router(email_unsubscribe_router)
 api_router.include_router(shelf_admin_router)
+api_router.include_router(bi_admin_router)
 api_router.include_router(shelf_router)
 api_router.include_router(i18n_router)
 api_router.include_router(legacy_router)

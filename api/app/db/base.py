@@ -246,5 +246,6 @@ from app.models.i18n import (
     UserLocalePreference,
 )
 from app.models.shelf import ProRawwBalance, ProRawwLedgerEntry, ShelfItem, ShelfItemCompat, ShelfItemImage, ShelfOrder, ShelfOrderEvent, ShelfProAddress, ShelfSettings, ShelfWishlistItem  # noqa: F401
+from app.models.bi import BiCompanyCash, BiCost, BiDaily, BiStripeSyncDay, BiStripeTxn  # noqa: F401
 
 __all__ = ["Base"]

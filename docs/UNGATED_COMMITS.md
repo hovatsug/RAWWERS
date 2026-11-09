@@ -9,3 +9,4 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 66b3ce0 | 2026-11-08 | Docs: this list (UNGATED_COMMITS.md) | no |
 | d7c18c4 | 2026-11-09 | Mux webhook: all four events, out-of-order delivery, nothing settled moves back; KNOWN_FAILURES 26 -> 25 | no |
 | 4134da5 | 2026-11-09 | Mux: the mux-sync job settles videos whose webhook never came; Mux lines in the env examples and DEPLOY_CHECKLIST | no |
+| c95b39e | 2026-11-09 | Docs: MUX_LOCAL_WEBHOOKS.md (Mux CLI forwarding to the dev API) | no |

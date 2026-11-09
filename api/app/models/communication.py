@@ -380,3 +380,32 @@ Index("ix_call_session_recipient_created", CallSession.recipient_user_id, CallSe
 Index("ix_notification_user_created", Notification.user_id, Notification.created_at.desc())
 Index("ix_notification_user_read", Notification.user_id, Notification.read_at)
 Index("ix_notification_event_user_created", NotificationEvent.user_id, NotificationEvent.created_at.desc())
+
+
+class EmailSuppression(Base):
+    """An address not to email (services/email_suppression.py), from
+    Brevo's delivery events. Keyed by address, not account: a person who
+    changes their address leaves the suppression behind."""
+
+    __tablename__ = "email_suppression"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    #: Lowercased.
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    #: "all" (the address cannot receive mail: even security mail is not
+    #: sent) or "non_security" (a complaint, an unsubscribe, repeated soft
+    #: bounces: security mail still goes). Null: not suppressed (soft
+    #: bounces counted, below the threshold).
+    scope: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The Brevo event that set the scope: hard_bounce, invalid_email,
+    #: blocked, spam, unsubscribed, soft_bounce.
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: When a temporary suppression (soft bounces) ends. Null: for good.
+    until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source_message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: {"soft_bounces": [{"message_id", "at"}], "events": [...]}.
+    meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )

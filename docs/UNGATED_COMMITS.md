@@ -15,3 +15,12 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | f576147 | 2026-11-09 | Brevo webhook: bounces and complaints suppress the address | **yes** (webhook authorization) |
 | f8e7b47 | 2026-11-09 | Docs: Brevo as built, the sending domain DNS, the deploy lines | no |
 | c239c45 | 2026-11-09 | Docs: plain-text codes on the gaps and SECURITY_AUDIT_LIST.md; Brevo authorised IPs | no |
+| 83f1791 | 2026-11-09 | Docs: UNGATED_COMMITS lists f8e7b47 and c239c45 | no |
+| e7f6ee0 | 2026-11-09 | Docs: BI.md, the business dashboard's definitions | no |
+| 4aa922b | 2026-11-09 | BI: bi_daily, manual tables, Stripe mirror, bi_* views (migration 0092) | **yes** (migration) |
+| 15627a0 | 2026-11-09 | BI: the definitions computed, bi-nightly job, backfill, Stripe mirror | **yes** (computes money) |
+| fbbe76b | 2026-11-09 | BI: /v1/admin/bi/* routes | **yes** (admin authorization) |
+| 8204047 | 2026-11-09 | BI: scripts/seed_bi_demo.py (dev only) | no |
+| 0487106 | 2026-11-09 | Web admin: the business dashboard and the costs and cash forms (web only) | no |
+| 42b2b29 | 2026-11-09 | BI: a test that days are London days | no |
+| 536056a | 2026-11-09 | Docs: reading BI, refilling its tables; after-deploy Brevo and Mux tests | no |

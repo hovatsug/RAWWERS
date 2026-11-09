@@ -402,3 +402,16 @@ def test_typed_amounts_are_exact():
     assert bi.euros_to_cents("12.34") == 1234
     with pytest.raises(APIError):
         bi.euros_to_cents("1.234")
+
+
+def test_days_are_london_days(db_session, world):
+    """23:30 UTC on 5 October is 00:30 on the 6th in London (BST)."""
+    niche = db_session.execute(select(Niche).where(Niche.slug == "food")).scalar_one()
+    gig = _gig(db_session, world.client, world.p1, niche)
+    pi = _card(db_session, gig, "1.00", D1)
+    db_session.flush()
+    db_session.execute(text("UPDATE ledger_entry SET created_at = :t WHERE reference_id = :pi"),
+                       {"t": datetime(2026, 10, 5, 23, 30, tzinfo=timezone.utc), "pi": pi})
+    db_session.commit()
+    days = {d["start"]: d["gmv_cents"] for d in bi.series(db_session, D1, D2, "day", now=NOW)}
+    assert days == {"2026-10-05": 11000, "2026-10-06": 6243 + 100}

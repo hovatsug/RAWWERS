@@ -11,3 +11,4 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 4134da5 | 2026-11-09 | Mux: the mux-sync job settles videos whose webhook never came; Mux lines in the env examples and DEPLOY_CHECKLIST | no |
 | c95b39e | 2026-11-09 | Docs: MUX_LOCAL_WEBHOOKS.md (Mux CLI forwarding to the dev API) | no |
 | 17a7e6f | 2026-11-09 | Email suppression table and service (migration 0091) | **yes** (migration) |
+| b93d6a8 | 2026-11-09 | Email: the nine approved emails through Brevo, EMAIL_SENDING_ENABLED, dev allowlist, suppression checked | **yes** (authentication mail) |

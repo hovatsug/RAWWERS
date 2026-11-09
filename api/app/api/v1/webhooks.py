@@ -139,6 +139,41 @@ async def mux_webhook(request: Request, db: Session = Depends(get_db_session)) -
     return WebhookAckResponse(ok=True)
 
 
+@router.post("/brevo", response_model=WebhookAckResponse)
+async def brevo_webhook(request: Request, db: Session = Depends(get_db_session)) -> WebhookAckResponse:
+    """Brevo's delivery events: bounces, complaints, unsubscribes
+    (services/brevo_events.py). Off (404) while BREVO_WEBHOOK_TOKEN is empty,
+    as in dev. The token comes as a Bearer header or ?token=."""
+    import hmac as _hmac
+
+    from app.services.brevo_events import apply_event
+
+    expected = get_settings().brevo_webhook_token
+    if not expected:
+        raise APIError(code="not_found", message="Not found", status_code=404)
+    auth = request.headers.get("authorization") or ""
+    given = auth[7:].strip() if auth.lower().startswith("bearer ") else (request.query_params.get("token") or "")
+    token_ok = bool(given) and _hmac.compare_digest(given.encode(), expected.encode())
+    observe_webhook("brevo", "event", token_ok)
+    if not token_ok:
+        _log_webhook_security_event(
+            db, provider="brevo", event_id=None, signature_valid=False, ip=_request_ip(request),
+            metadata={"token_present": bool(given)},
+        )
+        db.commit()
+        raise APIError(code="invalid_signature", message="Invalid Brevo webhook token", status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        raise APIError(code="invalid_payload", message="Not JSON", status_code=422) from None
+    events = payload if isinstance(payload, list) else [payload]
+    for event in events:
+        if isinstance(event, dict):
+            apply_event(db, event)
+    db.commit()
+    return WebhookAckResponse(ok=True)
+
+
 @router.post("/stripe", response_model=WebhookAckResponse)
 async def stripe_webhook(request: Request, db: Session = Depends(get_db_session)) -> WebhookAckResponse:
     raw_body = await request.body()

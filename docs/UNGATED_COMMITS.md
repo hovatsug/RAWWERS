@@ -13,3 +13,5 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 17a7e6f | 2026-11-09 | Email suppression table and service (migration 0091) | **yes** (migration) |
 | b93d6a8 | 2026-11-09 | Email: the nine approved emails through Brevo, EMAIL_SENDING_ENABLED, dev allowlist, suppression checked | **yes** (authentication mail) |
 | f576147 | 2026-11-09 | Brevo webhook: bounces and complaints suppress the address | **yes** (webhook authorization) |
+| f8e7b47 | 2026-11-09 | Docs: Brevo as built, the sending domain DNS, the deploy lines | no |
+| c239c45 | 2026-11-09 | Docs: plain-text codes on the gaps and SECURITY_AUDIT_LIST.md; Brevo authorised IPs | no |

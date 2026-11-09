@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Postgres advisory-lock keys, one per sweep. These two run every minute; a
 # run that starts while the previous one is still going skips rather than
 # working the same rows twice (a Stripe cancel twice, a transition twice).
-SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003, "mux_sync": 720_004}
+SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003, "mux_sync": 720_004, "bi_nightly": 720_005}
 
 
 def _run_exclusively(name: str, sweep, limit: int | None) -> int:
@@ -206,6 +206,37 @@ def mux_sync_task() -> dict:
         result = sync_waiting_videos(db)
         db.commit()
         return {"checked": result.checked, "applied": len(result.applied), "errors": result.errors}
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.bi_nightly")
+def bi_nightly_task() -> dict:
+    """The business dashboard's night (docs/BI.md): mirror Stripe's last
+    three days, then recompute bi_daily for them. A Stripe failure leaves
+    those days "no data" and the recompute still runs."""
+    from datetime import timedelta
+
+    from app.services import bi, bi_stripe
+
+    db = SessionLocal()
+    try:
+        if not db.execute(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": SWEEP_LOCK_KEYS["bi_nightly"]}).scalar():
+            logger.info("sweep_skipped_overlap", extra={"sweep": "bi_nightly"})
+            db.rollback()
+            return {"skipped": True}
+        today = bi.london_today()
+        start = today - timedelta(days=bi.LIVE_DAYS - 1)
+        synced = None
+        if bi_stripe.stripe_configured():
+            try:
+                with db.begin_nested():
+                    synced = bi_stripe.sync_days(db, start, today).transactions
+            except Exception as exc:
+                logger.warning("bi_stripe_sync_failed", extra={"error": type(exc).__name__})
+        rows = bi.recompute_days(db, start, today)
+        db.commit()
+        return {"rows": rows, "stripe_transactions": synced}
     finally:
         db.close()
 

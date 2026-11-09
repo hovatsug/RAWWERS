@@ -4,6 +4,7 @@ import time
 from datetime import timedelta
 
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import (
     before_task_publish,
     setup_logging,
@@ -135,6 +136,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.mux_sync",
         "schedule": timedelta(seconds=settings.mux_sync_interval_seconds),
     },
+    # The business dashboard: Stripe's last three days mirrored and bi_daily
+    # recomputed for them, every night (docs/BI.md).
+    "bi-nightly": {
+        "task": "app.tasks.scheduled.bi_nightly",
+        "schedule": crontab(minute=30, hour=2),
+    },
     # The Shelf: RAWW expiry after long inactivity, and the warning before it.
     "shelf-raww-daily": {
         "task": "app.tasks.scheduled.shelf_raww_daily",
@@ -170,6 +177,7 @@ celery_app.conf.task_routes = {
     "app.tasks.trust_safety_tasks.reconcile_risk_profiles": {"queue": "media"},
     "app.tasks.trust_safety_tasks.purge_risk_signals": {"queue": "media"},
     "app.tasks.scheduled.expire_booking_requests": {"queue": "media"},
+    "app.tasks.scheduled.bi_nightly": {"queue": "media"},
     "app.tasks.scheduled.expire_unpaid_gigs": {"queue": "media"},
     "app.tasks.scheduled.sweep_stuck_bookings": {"queue": "media"},
     "app.tasks.scheduled.reconcile_stuck_refunds": {"queue": "media"},

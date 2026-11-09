@@ -808,3 +808,173 @@ export type InterviewQuestion = {
 };
 
 export type InterviewQuestionInput = Omit<InterviewQuestion, "id" | "key">;
+
+// ─── Business dashboard (/v1/admin/bi/*, docs/BI.md) ──────────────────────
+// Amounts are integer cents. null means "no data" or "not set", never 0.
+
+export type BiKpi = {
+  key: string;
+  label: string;
+  value: number | null;
+  previous: number | null;
+  change_bp: number | null;
+  reason: string | null;
+};
+
+export type BiWaterfallStep = { key: string; label: string; kind: "start" | "step" | "total"; cents: number };
+
+export type BiOverview = {
+  period: {
+    from: string;
+    to: string;
+    days: number;
+    live_days: number;
+    stripe_unsynced_days: number;
+    other_currency_lines: number;
+    other_currency_costs: number;
+    shelf_cost_not_set_orders: number | null;
+  };
+  previous: { from: string; to: string };
+  filters: { niche: string | null; country: string | null; tier: string | null };
+  kpis: BiKpi[];
+  values: Record<string, number | null>;
+  reasons: Record<string, string>;
+  waterfall: {
+    steps: BiWaterfallStep[];
+    adds_up: boolean;
+    incomplete: string | null;
+    mismatches: { at: string; running_cents: number; reported_cents: number; difference_cents: number }[];
+  };
+};
+
+export type BiSeriesPoint = {
+  start: string;
+  gmv_cents: number;
+  bookings: number;
+  retained_cents: number;
+  contribution_cents: number | null;
+};
+
+export type BiHonest = { value: number | null; n: number; low_sample: boolean };
+
+export type BiGroup = {
+  key: string;
+  label: string;
+  n: number;
+  gmv_cents: number;
+  refund_cents: number;
+  net_gmv_cents: number;
+  retained_cents: number;
+  avg_booking: BiHonest;
+  take_rate_bp: BiHonest;
+};
+
+export type BiBookingRow = {
+  gig_id: string;
+  pro_name: string | null;
+  niche: string;
+  country: string;
+  tier: string;
+  status: string;
+  first_day: string;
+  gmv_cents: number;
+  refund_cents: number;
+  retained_cents: number;
+};
+
+export type BiPage<T> = { items: T[]; offset: number; limit: number; next_offset: number | null; total?: number };
+
+export type BiReconciliationLine = {
+  key: string;
+  label: string;
+  ours_cents: number | null;
+  stripe_cents: number | null;
+  difference_cents: number | null;
+  matches: boolean | null;
+  note: string | null;
+  reason: string | null;
+};
+
+export type BiReconciliation = {
+  period: BiOverview["period"];
+  lines: BiReconciliationLine[];
+  all_match: boolean;
+  differences: string[];
+};
+
+export type BiOwed = {
+  photographers: {
+    in_settlement_cents: number;
+    held_cents: number;
+    due_cents: number;
+    owed_cents: number;
+    paid_out_cents: number;
+    owed_back_by_photographers_cents: number;
+  };
+  clients: { owed_cents: number; items: { kind: string; n: number; cents: number }[] };
+  raww: { outstanding_raww: number; outstanding_cents: number; valued_at_current_rate_cents: number; unvalued_lines: number };
+  client_credit: { month: string; budget_cents: number; used_cents: number; awarded_cents: number; remaining_cents: number };
+  company_cash: {
+    total_cents: number | null;
+    accounts: { account: string; date: string; currency: string; amount_cents: number }[];
+  };
+  stripe: { available_cents: number | null; pending_cents: number | null; reason: string | null };
+  liquid: { cents: number | null; reason: string | null };
+};
+
+export type BiCost = {
+  id: string;
+  date: string;
+  end_date: string | null;
+  category: string;
+  amount_cents: number;
+  currency: string;
+  note: string | null;
+  recurring: boolean;
+  created_by: string;
+  created_at: string;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+
+export type BiCash = {
+  id: string;
+  date: string;
+  account: string;
+  amount_cents: number;
+  currency: string;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+
+export type BiCostInput = {
+  date: string;
+  category: string;
+  amount: string;
+  currency: string;
+  note: string | null;
+  recurring: boolean;
+  end_date: string | null;
+};
+
+export type BiCashInput = { date: string; account: string; amount: string; currency: string; note: string | null };
+
+export const adminBi = {
+  overview: (qs: string) => adminFetch<BiOverview>(`bi/overview?${qs}`),
+  series: (qs: string) => adminFetch<{ grain: string; items: BiSeriesPoint[] }>(`bi/series?${qs}`),
+  breakdown: (by: string, qs: string) => adminFetch<{ by: string; low_sample_below: number; items: BiGroup[] }>(`bi/breakdown?by=${by}&${qs}`),
+  bookings: (qs: string) => adminFetch<BiPage<BiBookingRow> & { total: number }>(`bi/bookings?${qs}`),
+  reconciliation: (qs: string) => adminFetch<BiReconciliation>(`bi/reconciliation?${qs}`),
+  owed: () => adminFetch<BiOwed>("bi/owed"),
+  costs: (offset = 0) => adminFetch<BiPage<BiCost> & { categories: string[] }>(`bi/costs?offset=${offset}&limit=50`),
+  createCost: (body: BiCostInput) => adminFetch<BiCost>("bi/costs", { method: "POST", body: JSON.stringify(body) }),
+  updateCost: (id: string, body: Partial<BiCostInput>) => adminFetch<BiCost>(`bi/costs/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteCost: (id: string) => adminFetch<{ deleted: boolean }>(`bi/costs/${id}`, { method: "DELETE" }),
+  cash: (offset = 0) => adminFetch<BiPage<BiCash>>(`bi/cash?offset=${offset}&limit=50`),
+  createCash: (body: BiCashInput) => adminFetch<BiCash>("bi/cash", { method: "POST", body: JSON.stringify(body) }),
+  updateCash: (id: string, body: Partial<BiCashInput>) => adminFetch<BiCash>(`bi/cash/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteCash: (id: string) => adminFetch<{ deleted: boolean }>(`bi/cash/${id}`, { method: "DELETE" })
+};

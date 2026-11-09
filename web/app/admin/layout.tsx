@@ -62,6 +62,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       ]
     },
     {
+      title: "Business",
+      items: [
+        { href: "/admin/bi", label: "Dashboard" },
+        { href: "/admin/bi/costs", label: "Costs & company cash" }
+      ]
+    },
+    {
       title: "Money",
       items: [
         { href: "/admin/payouts", label: "Payouts", count: counts.payouts },
@@ -93,7 +100,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" || pathname.startsWith("/admin/pros") : pathname.startsWith(href);
+    href === "/admin"
+      ? pathname === "/admin" || pathname.startsWith("/admin/pros")
+      : href === "/admin/bi"
+        ? pathname === "/admin/bi" || pathname.startsWith("/admin/bi/bookings")
+        : pathname.startsWith(href);
 
   return (
     <div className="min-h-screen bg-[#08080F] text-slate-200 md:flex">

@@ -7,3 +7,4 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 35e3e66 | 2026-11-08 | Web: every old client and pro page redirects to "get the app" (web only) | no |
 | f2838e1 | 2026-11-08 | Docs: the API suite's run time, Google Play's deletion page | no |
 | 66b3ce0 | 2026-11-08 | Docs: this list (UNGATED_COMMITS.md) | no |
+| d7c18c4 | 2026-11-09 | Mux webhook: all four events, out-of-order delivery, nothing settled moves back; KNOWN_FAILURES 26 -> 25 | no |

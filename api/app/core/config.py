@@ -252,6 +252,12 @@ class Settings(BaseSettings):
     stripe_reconcile_lookback_hours: int = Field(default=72, alias="STRIPE_RECONCILE_LOOKBACK_HOURS")
     stripe_reconcile_min_age_seconds: int = Field(default=300, alias="STRIPE_RECONCILE_MIN_AGE_SECONDS")
     stripe_reconcile_dry_run: bool = Field(default=False, alias="STRIPE_RECONCILE_DRY_RUN")
+    # Mux videos whose webhook never came (services/mux_sync): how often the
+    # job runs, how long a video must sit uploading or processing before it
+    # asks Mux, and the age past which it stops asking.
+    mux_sync_interval_seconds: int = Field(default=300, alias="MUX_SYNC_INTERVAL_SECONDS")
+    mux_sync_stale_minutes: int = Field(default=10, alias="MUX_SYNC_STALE_MINUTES")
+    mux_sync_max_age_hours: int = Field(default=48, alias="MUX_SYNC_MAX_AGE_HOURS")
     payout_hold_release_sweep_interval_seconds: int = Field(default=3600, alias="PAYOUT_HOLD_RELEASE_SWEEP_INTERVAL_SECONDS")
     dispute_escalation_sweep_interval_seconds: int = Field(default=3600, alias="DISPUTE_ESCALATION_SWEEP_INTERVAL_SECONDS")
     stuck_booking_sweep_interval_seconds: int = Field(default=3600, alias="STUCK_BOOKING_SWEEP_INTERVAL_SECONDS")

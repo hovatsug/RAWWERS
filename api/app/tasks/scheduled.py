@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Postgres advisory-lock keys, one per sweep. These two run every minute; a
 # run that starts while the previous one is still going skips rather than
 # working the same rows twice (a Stripe cancel twice, a transition twice).
-SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003}
+SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003, "mux_sync": 720_004}
 
 
 def _run_exclusively(name: str, sweep, limit: int | None) -> int:
@@ -188,6 +188,24 @@ def stripe_reconcile_task() -> dict:
         record = run(db)
         db.commit()
         return {"checked": record.checked, "recorded": record.recorded, "flagged": record.flagged, "dry_run": record.dry_run, "error": record.error}
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.mux_sync")
+def mux_sync_task() -> dict:
+    """Ask Mux about videos whose webhook never came (services/mux_sync.py)."""
+    from app.services.mux_sync import sync_waiting_videos
+
+    db = SessionLocal()
+    try:
+        if not db.execute(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": SWEEP_LOCK_KEYS["mux_sync"]}).scalar():
+            logger.info("sweep_skipped_overlap", extra={"sweep": "mux_sync"})
+            db.rollback()
+            return {"skipped": True}
+        result = sync_waiting_videos(db)
+        db.commit()
+        return {"checked": result.checked, "applied": len(result.applied), "errors": result.errors}
     finally:
         db.close()
 

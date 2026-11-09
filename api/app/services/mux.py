@@ -36,3 +36,19 @@ class MuxClient:
             logger.error("mux_create_upload_failed", extra={"status_code": resp.status_code, "body": resp.text})
             raise APIError(code="mux_error", message="Failed to create Mux direct upload", status_code=502)
         return resp.json()["data"]
+
+    def _get(self, path: str) -> dict | None:
+        """One Mux object, or None if Mux no longer has it."""
+        resp = requests.get(f"{self.base_url}/{path}", auth=self.auth, timeout=15)
+        if resp.status_code == 404:
+            return None
+        if resp.status_code >= 400:
+            logger.error("mux_get_failed", extra={"path": path.split("/")[0], "status_code": resp.status_code})
+            raise APIError(code="mux_error", message="Failed to read from Mux", status_code=502)
+        return resp.json()["data"]
+
+    def get_upload(self, upload_id: str) -> dict | None:
+        return self._get(f"uploads/{upload_id}")
+
+    def get_asset(self, asset_id: str) -> dict | None:
+        return self._get(f"assets/{asset_id}")

@@ -1,4 +1,6 @@
-# Backend tests known to fail - 26. 29 as of commit c8e6853 (2026-10-12);
+# Backend tests known to fail - 25 (26 until 2026-11-09: test_webhook_idempotency
+# asserted a table the Mux route no longer writes; it now checks the outbox).
+# 29 as of commit c8e6853 (2026-10-12);
 # the two test_payouts_v1 approval/mark-paid tests pass since their helper
 # flushes before settling (2026-10-14) - they had run against a zero balance;
 # test_hysteresis_blocks_rapid_promotion_flip passes since the tier-override
@@ -31,7 +33,6 @@ tests/test_launch_ops.py::test_onboarding_transitions_requirements_and_approve_t
 tests/test_learning_v0.py::test_certification_completion_triggers_niche_skill_recompute
 tests/test_learning_v0.py::test_completion_issues_certificate_and_certification_record
 tests/test_media_rights.py::test_share_link_expiry_max_views_and_revoke
-tests/test_mux_webhooks.py::test_webhook_idempotency
 tests/test_niche_skill_matrix_v2.py::test_badge_award_and_revoke_current_only
 tests/test_niche_skill_matrix_v2.py::test_extra_image_price_cap_uses_niche_tier
 tests/test_niche_skill_matrix_v2.py::test_tier_assignment_respects_verified_requirement

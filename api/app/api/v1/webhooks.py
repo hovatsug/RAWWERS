@@ -197,39 +197,73 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db_session)
     return WebhookAckResponse(ok=True)
 
 
+#: The Mux events that change a video (docs/MUX_LOCAL_WEBHOOKS.md). The
+#: reconcile job (services/mux_sync) feeds what it fetches through the same
+#: function, shaped as these events, so both paths agree.
+HANDLED_MUX_EVENTS = frozenset({
+    "video.upload.asset_created", "video.upload.errored", "video.upload.cancelled",
+    "video.asset.ready", "video.asset.errored",
+})
+#: A video in one of these has its final outcome: a late or repeated event
+#: never moves it back.
+_MUX_SETTLED = frozenset({MediaStatus.ready, MediaStatus.failed, MediaStatus.deleted})
+
+
+def _mux_asset_for(db: Session, *, asset_id: str | None, upload_id: str | None) -> MediaAsset | None:
+    """Our video for a Mux asset or upload. By asset id first; by the upload
+    id when the asset event arrived before `video.upload.asset_created`
+    (Mux does not promise order), and the asset id is linked then."""
+    asset = None
+    if asset_id:
+        asset = db.execute(
+            select(MediaAsset).where(MediaAsset.provider == MediaProvider.mux, MediaAsset.provider_asset_id == asset_id)
+        ).scalar_one_or_none()
+    if asset is None and upload_id:
+        asset = db.execute(
+            select(MediaAsset).where(MediaAsset.provider == MediaProvider.mux, MediaAsset.provider_upload_id == upload_id)
+        ).scalar_one_or_none()
+        if asset is not None and asset_id and not asset.provider_asset_id:
+            asset.provider_asset_id = asset_id
+            asset.meta = {**(asset.meta or {}), "mux_asset_id": asset_id}
+    return asset
+
+
 def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
+    """One Mux event, applied to its video. Applying it again changes nothing."""
     if event_type == "video.upload.asset_created":
-        upload_id = data.get("id")
-        asset_id = data.get("asset_id")
+        upload_id, asset_id = data.get("id"), data.get("asset_id")
         if not upload_id or not asset_id:
             return
-        asset = db.execute(
-            select(MediaAsset).where(
-                MediaAsset.provider == MediaProvider.mux,
-                MediaAsset.provider_upload_id == upload_id,
-            )
-        ).scalar_one_or_none()
-        if not asset:
+        asset = _mux_asset_for(db, asset_id=None, upload_id=upload_id)
+        if asset is None:
             return
         asset.provider_asset_id = asset_id
-        asset.meta = {**asset.meta, "mux_asset_id": asset_id}
+        asset.meta = {**(asset.meta or {}), "mux_asset_id": asset_id}
+        if asset.status not in _MUX_SETTLED:
+            # Mux has the file and is encoding it.
+            asset.status = MediaStatus.processing
+
+    elif event_type in ("video.upload.errored", "video.upload.cancelled"):
+        # The upload itself failed, or timed out with no file: there is no asset.
+        asset = _mux_asset_for(db, asset_id=None, upload_id=data.get("id"))
+        if asset is None or asset.status in _MUX_SETTLED:
+            return
+        asset.status = MediaStatus.failed
+        reason = (data.get("error") or {}).get("message") if isinstance(data.get("error"), dict) else data.get("error")
+        asset.meta = {**(asset.meta or {}), "mux_error": reason or ("Upload cancelled" if event_type.endswith("cancelled") else "Upload failed")}
 
     elif event_type == "video.asset.ready":
         mux_asset_id = data.get("id")
-        playback_ids = data.get("playback_ids") or []
-        playback_id = playback_ids[0].get("id") if playback_ids else None
         if not mux_asset_id:
             return
-        asset = db.execute(
-            select(MediaAsset).where(
-                MediaAsset.provider == MediaProvider.mux,
-                MediaAsset.provider_asset_id == mux_asset_id,
-            )
-        ).scalar_one_or_none()
-        if not asset:
+        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=data.get("upload_id"))
+        if asset is None or asset.status == MediaStatus.deleted:
             return
+        playback_ids = data.get("playback_ids") or []
+        playback_id = playback_ids[0].get("id") if playback_ids else None
         asset.status = MediaStatus.ready
-        new_meta = {**asset.meta, "mux_asset_id": mux_asset_id}
+        new_meta = {**(asset.meta or {}), "mux_asset_id": mux_asset_id}
+        new_meta.pop("mux_error", None)
         if playback_id:
             new_meta["playback_id"] = playback_id
         asset.meta = new_meta
@@ -238,17 +272,12 @@ def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
         mux_asset_id = data.get("id")
         if not mux_asset_id:
             return
-        asset = db.execute(
-            select(MediaAsset).where(
-                MediaAsset.provider == MediaProvider.mux,
-                MediaAsset.provider_asset_id == mux_asset_id,
-            )
-        ).scalar_one_or_none()
-        if not asset:
+        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=data.get("upload_id"))
+        if asset is None or asset.status in _MUX_SETTLED:
             return
         asset.status = MediaStatus.failed
         error_message = data.get("errors") or data.get("error") or "Unknown Mux processing error"
-        asset.meta = {**asset.meta, "mux_error": error_message}
+        asset.meta = {**(asset.meta or {}), "mux_error": error_message}
 
 
 def _bring_open_difference_to_owed(db: Session, gig: Gig, gallery: ProofGallery, selection: ClientSelection) -> None:

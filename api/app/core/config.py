@@ -65,6 +65,22 @@ class Settings(BaseSettings):
 
     platform_fee_bps: int = Field(default=2000, alias="PLATFORM_FEE_BPS")
     app_public_url: str = Field(default="http://localhost:3000", alias="APP_PUBLIC_URL")
+    # Email through Brevo (services/mail.py, docs/BREVO_SETUP.md). Nothing is
+    # delivered without BREVO_API_KEY and BREVO_SENDER_EMAIL; without them, or
+    # with sending off, email goes to the console provider (logged only).
+    brevo_api_key: str = Field(default="", alias="BREVO_API_KEY")
+    brevo_sender_email: str = Field(default="", alias="BREVO_SENDER_EMAIL")
+    brevo_sender_name: str = Field(default="RAWWERS", alias="BREVO_SENDER_NAME")
+    brevo_reply_to: str = Field(default="", alias="BREVO_REPLY_TO")
+    # The token Brevo's delivery-event webhook must carry. Empty: the route
+    # answers 404 (dev, where Brevo cannot reach it).
+    brevo_webhook_token: str = Field(default="", alias="BREVO_WEBHOOK_TOKEN")
+    # Unset: off in production, on elsewhere. Production sends only once this
+    # is set true (with the key, the sender and UNSUBSCRIBE_SIGNING_KEYS).
+    email_sending_enabled: bool | None = Field(default=None, alias="EMAIL_SENDING_ENABLED")
+    # Outside production, the only addresses ever delivered to, comma-separated
+    # and exact (no domains). Empty: nothing is delivered, only logged.
+    email_dev_allowlist: str = Field(default="", alias="EMAIL_DEV_ALLOWLIST")
     # Where this API is reached from outside: the one-click unsubscribe URL
     # in email headers points here.
     api_public_url: str = Field(default="http://localhost:8000", alias="API_PUBLIC_URL")
@@ -295,6 +311,35 @@ class Settings(BaseSettings):
         if configured:
             return configured
         return [self.app_public_url, "http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in {"prod", "production"}
+
+    @property
+    def email_sending_on(self) -> bool:
+        if self.email_sending_enabled is None:
+            return not self.is_production
+        return self.email_sending_enabled
+
+    @property
+    def email_dev_allowlist_set(self) -> frozenset[str]:
+        return frozenset(a.strip().lower() for a in self.email_dev_allowlist.split(",") if a.strip())
+
+    @model_validator(mode="after")
+    def _production_email_is_complete(self) -> "Settings":
+        """Production with sending on must be able to send real, unsubscribable mail."""
+        if self.is_production and self.email_sending_on:
+            missing = [
+                name for name, value in (
+                    ("BREVO_API_KEY", self.brevo_api_key),
+                    ("BREVO_SENDER_EMAIL", self.brevo_sender_email),
+                    ("UNSUBSCRIBE_SIGNING_KEYS", self.unsubscribe_signing_keys),
+                ) if not value
+            ]
+            if missing:
+                raise ValueError(f"EMAIL_SENDING_ENABLED is on in production but {', '.join(missing)} is not set")
+        return self
 
     @model_validator(mode="after")
     def _connect_urls_are_web_addresses(self) -> "Settings":

@@ -89,6 +89,10 @@ class EmailMessageStatus(str, enum.Enum):
     queued = "queued"
     sent = "sent"
     failed = "failed"
+    #: Not delivered by design: sending off, or not on the dev allowlist.
+    blocked = "blocked"
+    #: Not delivered: the address bounced or complained (email_suppression).
+    suppressed = "suppressed"
 
 
 class NotificationEventChannel(str, enum.Enum):

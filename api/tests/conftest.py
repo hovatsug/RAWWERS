@@ -74,6 +74,14 @@ os.environ["MUX_TOKEN_SECRET"] = "token-secret"
 os.environ["MUX_WEBHOOK_SECRET"] = "test-webhook-secret"
 os.environ["MUX_SIGNING_KEY_ID"] = "key-id"
 os.environ["MUX_SIGNING_KEY_PRIVATE"] = "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKSwN2zWi4KFOeFHrgb3R04QLbTjaCj1eO0MJdHj7FVFvXZHzVvz\nY9q24apqYh6gMPkTFogyXv3gZH/BqhGlywECAwEAAQJAQ0f+T5cxrFAxo0xO+ogz\n31xHn0SI7RyhokW2N7DbStO2Qd6hw2yYB9H9n1tFoZT3zh0+BTtPlqvGjYH6G+jD\nwQIhANBGSAdoo6gWQBaIj++ImQxGc1dQc5sKXc5teLoI0lpNAiEAxwoMvV7lidh+\nNangNh4tW7x1YgnPZXoqBYwygJyI072cCIDQXl3k5iADG7n2AFD+a83H8XTur2qx\n8pY/+bexdFv+AiEAjNFaUG2RglN6E466+vWXTjhBMWrMUR3pvN8MPmMXxMECIAxM\nN8MPmMXxMECIAxMN8MPmMXxMECIAxMN8MPmMXxMEC\n-----END RSA PRIVATE KEY-----"
+# Brevo: the dev .env holds a real key, and the test container reads that
+# file. Cleared, so no test can reach Brevo; tests that exercise the Brevo
+# provider stub its HTTP call.
+os.environ["BREVO_API_KEY"] = ""
+os.environ["BREVO_SENDER_EMAIL"] = ""
+os.environ["BREVO_WEBHOOK_TOKEN"] = ""
+os.environ["EMAIL_DEV_ALLOWLIST"] = ""
+os.environ.pop("EMAIL_SENDING_ENABLED", None)
 os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"
 os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test_123"
 os.environ["STRIPE_WEBHOOK_ALLOW_UNVERIFIED"] = "true"

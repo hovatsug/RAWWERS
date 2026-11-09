@@ -69,7 +69,7 @@ def dispatch_outbox_events_task(limit: int | None = None) -> int:
 
 def _dispatch_event(db, topic: str, payload: dict) -> None:
     from app.api.v1.webhooks import _apply_mux_event, _apply_stripe_event
-    from app.services.mail import get_mail_provider
+    from app.services.mail import MailRejected, MailUncertain, send_email
 
     if topic == "stripe.event":
         event_type = payload.get("type", "unknown")
@@ -115,7 +115,16 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
             else ("email.reset", conf.auth_password_reset_ttl_minutes)
         )
         subject, body = render(kind, {"code": payload["code"], "minutes": minutes})
-        get_mail_provider().send_template_email(email=payload["email"], template_key=kind, subject=subject, text_body=body, unsubscribe_url=None)
+        try:
+            outcome = send_email(db, email=payload["email"], template_key=kind, subject=subject, text_body=body, security=True)
+        except (MailRejected, MailUncertain) as exc:
+            # Refused, or maybe sent: not retried (a second code email is
+            # worse than none; the person can ask for a new code).
+            logger.warning("security_email_not_sent", extra={"topic": topic, "error": str(exc)[:200]})
+            return
+        # MailRetryable propagates: the outbox tries again with back-off.
+        if outcome.status != "sent":
+            logger.info("security_email_held", extra={"topic": topic, "status": outcome.status, "reason": outcome.reason})
         return
     if topic in ("launch.invite.email", "client.waitlist.confirmation_email"):
         # Not on the approved list (services/email_texts): nothing is sent.

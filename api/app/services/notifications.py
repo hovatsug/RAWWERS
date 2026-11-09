@@ -304,7 +304,12 @@ def process_due_scheduled_notifications(db: Session, *, limit: int = 100) -> int
         if row.channel != NotificationEventChannel.email:
             db.delete(row)
             continue
-        outcome = _send_email_from_payload(db, row.payload, allow_schedule=False)
+        from app.services.mail import MailRetryable
+
+        try:
+            outcome = _send_email_from_payload(db, row.payload, allow_schedule=False)
+        except MailRetryable:
+            continue  # left for the next sweep; the others in this one stand
         if outcome == "sent":
             db.delete(row)
             sent += 1
@@ -512,7 +517,7 @@ def _create_inapp_from_payload(db: Session, payload: dict) -> str:
 
 
 def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool = True) -> str:
-    from app.services.mail import get_mail_provider
+    from app.services.mail import MailRetryable, get_mail_provider, send_email
 
     user_id = _parse_optional_user_id(payload.get("user_id"))
     notification_type = str(payload.get("type") or "")
@@ -613,29 +618,15 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
         row.error = None
 
     try:
-        provider_message_id = provider.send_template_email(
+        outcome = send_email(
+            db,
             email=str(to_email),
             template_key=rendered.template_key,
             subject=subject,
             text_body=text_body,
             unsubscribe_url=page_url(user_id, topic) if user_id and not security else None,
+            security=security,
         )
-        row.provider_message_id = provider_message_id
-        row.status = EmailMessageStatus.sent
-        row.error = None
-        if dedupe_key and user_id is not None:
-            db.add(
-                NotificationEvent(
-                    user_id=user_id,
-                    topic=topic,
-                    type=notification_type,
-                    channel=NotificationEventChannel.email,
-                    reference_type=payload.get("reference_type"),
-                    reference_id=str(payload.get("reference_id")) if payload.get("reference_id") is not None else None,
-                    dedupe_key=dedupe_key,
-                )
-            )
-        increment_notification_event("email", "sent")
     except Exception as exc:
         row.status = EmailMessageStatus.failed
         row.error = str(exc)[:1000]
@@ -644,6 +635,38 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
             "notification_email_failed",
             extra={"template_key": rendered.template_key, "user_id": str(user_id) if user_id else None},
         )
+        if isinstance(exc, MailRetryable):
+            # Busy or down (429, 5xx): the outbox tries again with back-off,
+            # and the next try finds this row failed and sends it.
+            db.flush()
+            raise
+        db.flush()
+        return row.status.value
+    row.provider = outcome.provider
+    if outcome.status != "sent":
+        # Not delivered by design: the address bounced or complained, sending
+        # is off, or (outside production) it is not on the dev allowlist.
+        row.status = EmailMessageStatus(outcome.status)
+        row.error = outcome.reason
+        increment_notification_event("email", outcome.status)
+        db.flush()
+        return row.status.value
+    row.provider_message_id = outcome.message_id
+    row.status = EmailMessageStatus.sent
+    row.error = None
+    if dedupe_key and user_id is not None:
+        db.add(
+            NotificationEvent(
+                user_id=user_id,
+                topic=topic,
+                type=notification_type,
+                channel=NotificationEventChannel.email,
+                reference_type=payload.get("reference_type"),
+                reference_id=str(payload.get("reference_id")) if payload.get("reference_id") is not None else None,
+                dedupe_key=dedupe_key,
+            )
+        )
+    increment_notification_event("email", "sent")
     db.flush()
     return row.status.value
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminBi, type BiGroup, type BiOverview, type BiOwed } from "@/lib/api/admin";
 import { DataTable, Notice, PageHeader, Panel } from "@/app/admin/_components/ui";
@@ -29,7 +29,15 @@ function Dashboard() {
   const niches = useQuery({ queryKey: ["admin", "bi", "breakdown", "niche", qs], queryFn: () => adminBi.breakdown("niche", qs) });
   const countries = useQuery({ queryKey: ["admin", "bi", "breakdown", "country", qs], queryFn: () => adminBi.breakdown("country", qs) });
   const tiers = useQuery({ queryKey: ["admin", "bi", "breakdown", "tier", qs], queryFn: () => adminBi.breakdown("tier", qs) });
-  const keys = (q: typeof niches) => (q.data?.ok ? q.data.data.items.map((i) => i.key) : []);
+  // Options seen so far are kept: under a niche filter the niche breakdown
+  // holds only that niche, and the others must stay selectable.
+  const seen = useRef<Record<string, Set<string>>>({});
+  const keys = (name: string, q: typeof niches, chosen?: string) => {
+    const set = (seen.current[name] ??= new Set<string>());
+    if (q.data?.ok) q.data.data.items.forEach((i) => set.add(i.key));
+    if (chosen) set.add(chosen);
+    return [...set].sort();
+  };
   const o = overview.data?.ok ? overview.data.data : null;
 
   return (
@@ -43,7 +51,7 @@ function Dashboard() {
           </Link>
         }
       />
-      <PeriodBar current={current} set={set} options={{ niches: keys(niches), countries: keys(countries), tiers: keys(tiers) }} />
+      <PeriodBar current={current} set={set} options={{ niches: keys("niche", niches, current.niche), countries: keys("country", countries, current.country), tiers: keys("tier", tiers, current.tier) }} />
       {overview.data && !overview.data.ok ? <Notice tone="error">{overview.data.error.message}</Notice> : null}
       {o ? (
         <>

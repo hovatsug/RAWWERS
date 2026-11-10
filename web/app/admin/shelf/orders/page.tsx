@@ -142,6 +142,8 @@ function OrderPanel({
   const [ref, setRef] = useState("");
   const [tracking, setTracking] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
+  const [shipping, setShipping] = useState(order.shipping_cost_eur ?? "");
+  const shippingOk = shipping.trim() === "" || /^\d{1,5}(\.\d{1,2})?$/.test(shipping.trim());
   const [reason, setReason] = useState("out_of_stock");
   const [note, setNote] = useState("");
   const address = order.address;
@@ -181,6 +183,19 @@ function OrderPanel({
           </ul>
           {order.supplier_order_ref ? <p className="mt-2">Supplier ref: {order.supplier_order_ref}</p> : null}
           {order.tracking_code ? <p>Tracking: {order.tracking_code}</p> : null}
+          <p className="mt-2 text-slate-300">
+            Cost to us:{" "}
+            {order.supplier_cost ? (
+              <>
+                {order.supplier_cost} {order.supplier_currency}
+                {order.supplier_currency !== "EUR" && order.cost_eur_rate ? ` at ${order.cost_eur_rate}` : ""}
+                {order.cost_estimated ? <span className="text-slate-500"> (estimated: the item&apos;s cost when this was recorded)</span> : null}
+              </>
+            ) : (
+              <span className="text-slate-500">not set</span>
+            )}
+            {" · "}shipping {order.shipping_cost_eur ? `€${order.shipping_cost_eur}` : <span className="text-slate-500">not entered</span>}
+          </p>
         </div>
       </div>
 
@@ -205,9 +220,15 @@ function OrderPanel({
             <FieldLabel htmlFor="tracking-url">Tracking link (optional)</FieldLabel>
             <TextField id="tracking-url" value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} />
           </div>
+          <div>
+            <FieldLabel htmlFor="shipping">Shipping cost, € (optional)</FieldLabel>
+            <TextField id="shipping" inputMode="decimal" placeholder="0.00" value={shipping} onChange={(e) => setShipping(e.target.value)} />
+          </div>
           <AdminButton
-            disabled={!tracking.trim()}
-            onClick={async () => onDone(await admin.shelfOrderShipped(order.id, tracking, trackingUrl || null), "Marked shipped.")}
+            disabled={!tracking.trim() || !shippingOk}
+            onClick={async () =>
+              onDone(await admin.shelfOrderShipped(order.id, tracking, trackingUrl || null, shipping.trim() || null), "Marked shipped.")
+            }
           >
             Mark shipped
           </AdminButton>
@@ -241,6 +262,21 @@ function OrderPanel({
             }
           >
             Cancel and refund
+          </AdminButton>
+        </div>
+      ) : null}
+      {order.status === "shipped" || order.status === "delivered" ? (
+        <div className="flex flex-wrap items-end gap-3 border-t border-white/10 pt-3">
+          <div>
+            <FieldLabel htmlFor="shipping-edit">Shipping cost, €</FieldLabel>
+            <TextField id="shipping-edit" inputMode="decimal" placeholder="0.00" value={shipping} onChange={(e) => setShipping(e.target.value)} />
+          </div>
+          <AdminButton
+            tone="secondary"
+            disabled={!shippingOk || shipping.trim() === (order.shipping_cost_eur ?? "")}
+            onClick={async () => onDone(await admin.shelfOrderShippingCost(order.id, shipping.trim() || null), "Shipping cost saved.")}
+          >
+            Save shipping cost
           </AdminButton>
         </div>
       ) : null}

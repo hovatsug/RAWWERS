@@ -57,7 +57,15 @@ function Bookings() {
           { header: "Photographer", cell: (row) => row.pro_name || "—" },
           { header: "Niche", cell: (row) => (row.niche === "-" ? "not set" : row.niche.replace(/_/g, " ")) },
           { header: "Country", cell: (row) => (row.country === "-" ? "not set" : row.country) },
-          { header: "Tier", cell: (row) => (row.tier === "-" ? "not set" : row.tier) },
+          {
+            header: "Tier",
+            cell: (row) => (
+              <span>
+                {row.tier === "-" ? "not set" : row.tier}
+                {row.tier_estimated ? <span className="text-xs text-slate-500" title="Backfilled, or today's tier: not recorded when booked"> (est.)</span> : null}
+              </span>
+            )
+          },
           { header: "Status", cell: (row) => row.status.replace(/_/g, " ") },
           { header: "First day", cell: (row) => row.first_day },
           { header: "GMV", cell: (row) => <span className="tabular-nums">{eur(row.gmv_cents)}</span> },

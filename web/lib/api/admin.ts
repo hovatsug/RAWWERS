@@ -364,6 +364,11 @@ export type AdminShelfOrder = {
   tracking_url: string | null;
   cancel_reason: string | null;
   placed_at: string;
+  supplier_cost: string | null;
+  supplier_currency: string | null;
+  cost_eur_rate: string | null;
+  cost_estimated: boolean;
+  shipping_cost_eur: string | null;
   events: ShelfOrderEvent[];
 };
 
@@ -597,8 +602,13 @@ export const admin = {
   shelfOrders: (status?: string) => adminFetch<{ items: AdminShelfOrder[] }>(`shelf/orders${status ? `?status=${status}` : ""}`),
   shelfOrderOrdered: (id: string, supplier_order_ref: string) =>
     adminFetch<AdminShelfOrder>(`shelf/orders/${id}/ordered`, { method: "POST", body: JSON.stringify({ supplier_order_ref }) }),
-  shelfOrderShipped: (id: string, tracking_code: string, tracking_url: string | null) =>
-    adminFetch<AdminShelfOrder>(`shelf/orders/${id}/shipped`, { method: "POST", body: JSON.stringify({ tracking_code, tracking_url }) }),
+  shelfOrderShipped: (id: string, tracking_code: string, tracking_url: string | null, shipping_cost_eur: string | null = null) =>
+    adminFetch<AdminShelfOrder>(`shelf/orders/${id}/shipped`, {
+      method: "POST",
+      body: JSON.stringify({ tracking_code, tracking_url, shipping_cost_eur })
+    }),
+  shelfOrderShippingCost: (id: string, shipping_cost_eur: string | null) =>
+    adminFetch<AdminShelfOrder>(`shelf/orders/${id}/shipping-cost`, { method: "PUT", body: JSON.stringify({ shipping_cost_eur }) }),
   shelfOrderDelivered: (id: string) => adminFetch<AdminShelfOrder>(`shelf/orders/${id}/delivered`, { method: "POST" }),
   shelfOrderCancel: (id: string, reason: string, note: string) =>
     adminFetch<AdminShelfOrder>(`shelf/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason, note }) }),
@@ -834,6 +844,11 @@ export type BiOverview = {
     other_currency_lines: number;
     other_currency_costs: number;
     shelf_cost_not_set_orders: number | null;
+    refund_rate_assumed_cents: number;
+    tier_estimated_bookings: number;
+    raww_estimated_cents: number | null;
+    shelf_cost_estimated_orders: number | null;
+    shelf_shipping_not_set_orders: number | null;
   };
   previous: { from: string; to: string };
   filters: { niche: string | null; country: string | null; tier: string | null };
@@ -868,6 +883,7 @@ export type BiGroup = {
   retained_cents: number;
   avg_booking: BiHonest;
   take_rate_bp: BiHonest;
+  tier_estimated_n?: number;
 };
 
 export type BiBookingRow = {
@@ -876,6 +892,7 @@ export type BiBookingRow = {
   niche: string;
   country: string;
   tier: string;
+  tier_estimated: boolean;
   status: string;
   first_day: string;
   gmv_cents: number;
@@ -913,14 +930,32 @@ export type BiOwed = {
     owed_back_by_photographers_cents: number;
   };
   clients: { owed_cents: number; items: { kind: string; n: number; cents: number }[] };
-  raww: { outstanding_raww: number; outstanding_cents: number; valued_at_current_rate_cents: number; unvalued_lines: number };
-  client_credit: { month: string; budget_cents: number; used_cents: number; awarded_cents: number; remaining_cents: number };
+  raww: {
+    outstanding_raww: number;
+    outstanding_cents: number;
+    valued_at_current_rate_cents: number;
+    unvalued_lines: number;
+    face_value_cents: number | null;
+    rate: string | null;
+    at_cost_cents: number | null;
+    cost_per_face_euro: string | null;
+    cost_orders: number;
+  };
+  client_credit: {
+    month: string;
+    budget_cents: number;
+    used_cents: number;
+    awarded_cents: number;
+    remaining_cents: number;
+    outstanding_cents: number;
+  };
   company_cash: {
     total_cents: number | null;
     accounts: { account: string; date: string; currency: string; amount_cents: number }[];
   };
   stripe: { available_cents: number | null; pending_cents: number | null; reason: string | null };
   liquid: { cents: number | null; reason: string | null };
+  free_cash: { cents: number | null; reason: string | null; at_cost_cents: number | null; at_cost_reason: string | null };
 };
 
 export type BiCost = {

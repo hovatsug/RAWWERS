@@ -99,7 +99,7 @@ function Dashboard() {
         <div className="grid gap-4 md:grid-cols-2">
           <Breakdown title="By niche" by="niche" query={niches} current={current} />
           <Breakdown title="By country (photographer's)" by="country" query={countries} current={current} />
-          <Breakdown title="By tier (today's)" by="tier" query={tiers} current={current} />
+          <Breakdown title="By tier (at booking)" by="tier" query={tiers} current={current} />
           <TopPhotographers current={current} qs={qs} />
         </div>
       </Section>
@@ -117,7 +117,16 @@ function Warnings({ o }: { o: BiOverview }) {
   if (o.period.other_currency_lines) notes.push(`${o.period.other_currency_lines} money line(s) in another currency are left out.`);
   if (o.period.other_currency_costs) notes.push(`${o.period.other_currency_costs} cost(s) in another currency are left out.`);
   if (o.period.shelf_cost_not_set_orders) notes.push(`${o.period.shelf_cost_not_set_orders} Shelf order(s) have no item cost: left out of the Shelf margin.`);
-  if (!notes.length) return null;
+  if (o.period.shelf_shipping_not_set_orders)
+    notes.push(`${o.period.shelf_shipping_not_set_orders} shipped Shelf order(s) have no shipping cost entered: the Shelf margin is too high until it is.`);
+  // Estimated: values backfilled or read at today's rates (docs/BI.md, "Recorded, estimated").
+  const estimated: string[] = [];
+  if (o.period.refund_rate_assumed_cents)
+    estimated.push(`${eur(o.period.refund_rate_assumed_cents)} of refunds name no payment and are split at base rates`);
+  if (o.period.tier_estimated_bookings) estimated.push(`${o.period.tier_estimated_bookings} booking(s) use a backfilled tier`);
+  if (o.period.raww_estimated_cents) estimated.push(`${eur(o.period.raww_estimated_cents)} of RAWW expiries and adjustments are valued at today's rate`);
+  if (o.period.shelf_cost_estimated_orders) estimated.push(`${o.period.shelf_cost_estimated_orders} Shelf order(s) use a backfilled cost`);
+  if (!notes.length && !estimated.length) return null;
   return (
     <div className="mb-5 space-y-2">
       {notes.map((n) => (
@@ -125,6 +134,11 @@ function Warnings({ o }: { o: BiOverview }) {
           {n}
         </Notice>
       ))}
+      {estimated.length ? (
+        <p className="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-400">
+          <span className="font-medium text-slate-300">Estimated in this period:</span> {estimated.join("; ")}.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -139,6 +153,12 @@ function LiquidCard() {
         {d ? eur(d.liquid.cents) : "…"}
       </div>
       <div className="mt-0.5 text-xs text-slate-400">{d?.liquid.reason || "cash held minus money owed, as of now"}</div>
+      {d && d.free_cash.cents !== null ? (
+        <div className="mt-1 text-xs text-slate-300">
+          Free cash <span className="tabular-nums">{eur(d.free_cash.cents)}</span>
+          <span className="text-slate-500"> after RAWW at face value</span>
+        </div>
+      ) : null}
     </Panel>
   );
 }
@@ -229,7 +249,18 @@ function Breakdown({
     <Panel className="p-3">
       <div className="mb-2 text-sm text-slate-300">{title}</div>
       <BarList
-        rows={items.map((r) => ({ key: r.key, label: r.label, cents: r.gmv_cents, n: r.n, extra: groupExtra(r) }))}
+        rows={items.map((r) => ({
+          key: r.key,
+          label: r.label,
+          cents: r.gmv_cents,
+          n: r.n,
+          extra: (
+            <>
+              {groupExtra(r)}
+              {by === "tier" && r.tier_estimated_n ? <span className="text-slate-500"> · {r.tier_estimated_n} with an estimated tier</span> : null}
+            </>
+          )
+        }))}
         href={(key) => drillHref(current, { [by]: key })}
       />
     </Panel>
@@ -302,7 +333,11 @@ function OwedSection() {
     </div>
   );
   return (
-    <Section id="owed" title="Money owed and cash, now" description="Liquid = Stripe balance (available and pending) + company cash − photographer cash owed − money owed to clients. The RAWW liability is shown, not subtracted.">
+    <Section
+      id="owed"
+      title="Money owed and cash, now"
+      description="Liquid = Stripe balance (available and pending) + company cash − photographer cash owed − money owed to clients. Free cash also takes off the RAWW outstanding: at face value (today's rate), and underneath at what it would cost us. Client credit outstanding is shown, not subtracted."
+    >
       <div className="grid gap-4 md:grid-cols-2">
         <Panel className="grid grid-cols-2 gap-3 p-4">
           {card("Photographer cash in settlement", eur(d.photographers.in_settlement_cents), "the 7-day delay")}
@@ -317,11 +352,22 @@ function OwedSection() {
           {card("Stripe pending", eur(d.stripe.pending_cents), "not yet available (balance timing)")}
           {card("Company cash", eur(d.company_cash.total_cents, "not set"), d.company_cash.accounts.map((a) => `${a.account} (${a.date})`).join(", ") || "add it under Costs and company cash")}
           {card("Liquid", eur(d.liquid.cents), d.liquid.reason || undefined)}
+          <div>
+            <div className="text-xs uppercase text-slate-400">Free cash</div>
+            <div className="text-lg tabular-nums text-slate-50">{eur(d.free_cash.cents)}</div>
+            <div className="text-xs text-slate-500">{d.free_cash.reason || "liquid − RAWW at face value"}</div>
+            <div className="mt-1 text-sm tabular-nums text-slate-300">{eur(d.free_cash.at_cost_cents)}</div>
+            <div className="text-xs text-slate-500">
+              {d.free_cash.at_cost_reason ||
+                `at cost: RAWW × ${d.raww.cost_per_face_euro} (what ${d.raww.cost_orders} Shelf order(s) cost per euro of RAWW)`}
+            </div>
+          </div>
           {card(
             "RAWW outstanding (liability)",
-            eur(d.raww.outstanding_cents),
-            `${d.raww.outstanding_raww.toLocaleString("en-GB")} RAWW${d.raww.valued_at_current_rate_cents ? `, ${eur(d.raww.valued_at_current_rate_cents)} at today's rate` : ""}`
+            eur(d.raww.face_value_cents),
+            `${d.raww.outstanding_raww.toLocaleString("en-GB")} RAWW at ${d.raww.rate ?? "?"}; ${eur(d.raww.at_cost_cents)} at cost`
           )}
+          {card("Client credit outstanding", eur(d.client_credit.outstanding_cents), "awarded, not yet used: an obligation, not subtracted")}
           {card(
             `Client credit, ${d.client_credit.month}`,
             `${eur(d.client_credit.used_cents)} used`,

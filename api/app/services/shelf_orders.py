@@ -318,6 +318,29 @@ def _shipping(value: Decimal | None) -> Decimal | None:
     return value
 
 
+def in_legacy_shipping(until, shipped_at: datetime | None) -> bool:
+    """Shipped on or before `until`, the last day of a legacy `shelf_shipping`
+    cost (bi.legacy_shipping_until): its shipping is in those costs."""
+    from app.services.bi import LONDON
+
+    return until is not None and shipped_at is not None and shipped_at.astimezone(LONDON).date() <= until
+
+
+def _refuse_if_in_legacy_shipping(db: Session, shipped_at: datetime | None) -> None:
+    """Shipping entered per order may not double a legacy `shelf_shipping`
+    cost: an order shipped on or before the last one has its shipping in
+    those costs (docs/BI.md, "Shelf margin")."""
+    from app.services.bi import legacy_shipping_until
+
+    until = legacy_shipping_until(db)
+    if in_legacy_shipping(until, shipped_at or datetime.now(timezone.utc)):
+        raise APIError(
+            code="shipping_in_legacy_costs",
+            message=f"This order shipped on or before {until.isoformat()}: its shipping is in the legacy Shelf shipping costs.",
+            status_code=409,
+        )
+
+
 def admin_mark_shipped(db: Session, *, order_id: uuid.UUID, tracking_code: str, tracking_url: str | None, admin_user_id: uuid.UUID,
                        shipping_cost_eur: Decimal | None = None) -> ShelfOrder:
     code = (tracking_code or "").strip()
@@ -325,6 +348,8 @@ def admin_mark_shipped(db: Session, *, order_id: uuid.UUID, tracking_code: str, 
         raise APIError(code="validation_error", message="The tracking code is required", status_code=422)
     shipping = _shipping(shipping_cost_eur)
     order = _order_locked(db, order_id)
+    if shipping is not None:
+        _refuse_if_in_legacy_shipping(db, None)
     # Before the move, so its notification (and email) carries the tracking.
     order.tracking_code = code
     order.tracking_url = (tracking_url or "").strip() or None
@@ -340,6 +365,8 @@ def admin_set_shipping(db: Session, *, order_id: uuid.UUID, shipping_cost_eur: D
     value before."""
     shipping = _shipping(shipping_cost_eur)
     order = _order_locked(db, order_id)
+    if shipping is not None:
+        _refuse_if_in_legacy_shipping(db, order.shipped_at)
     before = order.shipping_cost_eur
     order.shipping_cost_eur = shipping
     return order, before

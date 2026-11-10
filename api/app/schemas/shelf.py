@@ -345,6 +345,9 @@ class AdminShelfOrderView(BaseModel):
     cost_eur_rate: Decimal | None = None
     cost_estimated: bool = False
     shipping_cost_eur: Decimal | None = None
+    #: Shipped on or before the last legacy shelf_shipping cost: its shipping
+    #: is in those costs and cannot be entered here.
+    shipping_in_legacy_costs: bool = False
     events: list[AdminShelfOrderEvent]
 
 

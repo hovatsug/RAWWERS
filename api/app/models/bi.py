@@ -27,9 +27,14 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-#: Manual cost categories. `ad_spend` and `marketing` are marketing spend;
-#: `shelf_shipping` comes off the Shelf margin; the rest are other costs.
-COST_CATEGORIES = ("ad_spend", "marketing", "shelf_shipping", "salaries", "software", "legal", "office", "other")
+#: Manual cost categories a new entry may use. `ad_spend` and `marketing`
+#: are marketing spend; the rest are other costs.
+COST_CATEGORIES = ("ad_spend", "marketing", "salaries", "software", "legal", "office", "other")
+#: Retired categories: rows already using them stay, shown "legacy", and
+#: still count; no new entry may use them. `shelf_shipping` comes off the
+#: Shelf margin (retired 2026-11-10: shipping is entered per order).
+LEGACY_COST_CATEGORIES = ("shelf_shipping",)
+SHELF_SHIPPING_RETIRED_ON = "2026-11-10"
 MARKETING_CATEGORIES = ("ad_spend", "marketing")
 
 
@@ -63,6 +68,9 @@ class BiDaily(Base):
     #: names no payment; bookings whose tier is estimated.
     refund_rate_assumed_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     tier_estimated_bookings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: Add-on refunds (positive) dated on the payment's last update: refunded
+    #: before each refund was recorded with its own date.
+    refund_date_estimated_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     # company scope
     stripe_synced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     stripe_fee_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)

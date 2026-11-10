@@ -9,7 +9,7 @@ from app.models import bi_views
 
 
 def _migration():
-    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "20261110_0093_bi_stamps.py"
+    path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions" / "20261110_0094_bi_shipping_addons.py"
     spec = importlib.util.spec_from_file_location("bi_migration", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

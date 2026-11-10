@@ -47,6 +47,7 @@ from app.services import shelf_items as si
 from app.services import shelf_orders as so
 from app.services import shelf_settings as ss
 from app.services.audit import add_admin_audit_log
+from app.services.bi import legacy_shipping_until
 
 router = APIRouter(prefix="/admin/shelf", tags=["admin"])
 
@@ -259,7 +260,9 @@ def delete_shelf_image(
 # --- orders ---------------------------------------------------------------------------------
 
 
-def _order_view(db: Session, order: ShelfOrder) -> AdminShelfOrderView:
+def _order_view(db: Session, order: ShelfOrder, legacy_until=...) -> AdminShelfOrderView:
+    if legacy_until is ...:
+        legacy_until = legacy_shipping_until(db)
     profile = db.get(ProProfile, order.pro_user_id)
     events = db.execute(select(ShelfOrderEvent).where(ShelfOrderEvent.order_id == order.id).order_by(ShelfOrderEvent.created_at)).scalars().all()
     return AdminShelfOrderView(
@@ -272,6 +275,7 @@ def _order_view(db: Session, order: ShelfOrder) -> AdminShelfOrderView:
         cancel_reason=order.cancel_reason, placed_at=order.placed_at,
         supplier_cost=order.supplier_cost, supplier_currency=order.supplier_currency, cost_eur_rate=order.cost_eur_rate,
         cost_estimated=order.cost_estimated, shipping_cost_eur=order.shipping_cost_eur,
+        shipping_in_legacy_costs=so.in_legacy_shipping(legacy_until, order.shipped_at),
         events=[AdminShelfOrderEvent.model_validate(e, from_attributes=True) for e in events],
     )
 
@@ -285,7 +289,8 @@ def list_shelf_orders(
     query = select(ShelfOrder).order_by(ShelfOrder.placed_at.asc() if status == ShelfOrderStatus.placed else ShelfOrder.placed_at.desc()).limit(200)
     if status is not None:
         query = query.where(ShelfOrder.status == status)
-    return AdminShelfOrdersResponse(items=[_order_view(db, o) for o in db.execute(query).scalars()])
+    until = legacy_shipping_until(db)
+    return AdminShelfOrdersResponse(items=[_order_view(db, o, until) for o in db.execute(query).scalars()])
 
 
 def _logged(db: Session, actor: CurrentUser, order: ShelfOrder, action: str, **meta) -> AdminShelfOrderView:

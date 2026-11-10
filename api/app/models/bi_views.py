@@ -83,33 +83,47 @@ SELECT le.id::text AS line_id, le.gig_id,
        CASE WHEN le.entry_type IN ('refund_succeeded', 'refund_failed') THEN 'card' ELSE 'chargeback' END AS source,
        le.entry_type::text AS entry_type, le.currency,
        round(le.amount * 100)::bigint AS amount_cents, le.created_at AS at, le.reference_id AS reference,
-       sp.kind::text AS payment_kind, (sp.id IS NULL) AS rate_assumed
+       sp.kind::text AS payment_kind, (sp.id IS NULL) AS rate_assumed, false AS date_estimated
 FROM ledger_entry le
 LEFT JOIN stripe_payment sp ON sp.id = le.stripe_payment_id
 WHERE le.entry_type IN ('refund_succeeded', 'refund_failed', 'chargeback_opened', 'chargeback_won')
 UNION ALL
 SELECT 'payment_refund:' || r.key, sp.gig_id, 'card', 'refund_succeeded', sp.currency,
        -round((r.value ->> 'amount')::numeric * 100)::bigint, (r.value ->> 'created')::timestamptz, r.key,
-       sp.kind::text, false
+       sp.kind::text, false, false
 FROM stripe_payment sp
 CROSS JOIN LATERAL jsonb_each(coalesce(sp.metadata -> 'refunds', '{}'::jsonb)) AS r
 WHERE r.value ->> 'status' = 'succeeded'
   AND NOT EXISTS (SELECT 1 FROM ledger_entry le WHERE le.entry_type = 'refund_succeeded' AND le.reference_id = r.key)
+UNION ALL
+-- A selection add-on refunded before its refunds were recorded one by one
+-- (2026-11-10): only the running total is known, so it counts in full on
+-- the payment's last update, date estimated.
+SELECT 'payment_refunded:' || sp.id::text, sp.gig_id, 'card', 'refund_succeeded', sp.currency,
+       -round(sp.amount_refunded * 100)::bigint, sp.updated_at, sp.stripe_payment_intent_id,
+       sp.kind::text, false, true
+FROM stripe_payment sp
+JOIN extra_image_purchase p ON p.stripe_payment_intent_id = sp.stripe_payment_intent_id
+WHERE sp.amount_refunded > 0
+  AND p.metadata ->> 'kind' = 'selection_addon'
+  AND NOT (sp.metadata ? 'refunds')
+  AND NOT EXISTS (SELECT 1 FROM ledger_entry le WHERE le.entry_type = 'refund_succeeded' AND le.stripe_payment_id = sp.id)
 """),
     # Every money line on a booking, signed, split at the booking's rates
     # (each share rounded, the photographer's cash the remainder).
     ("bi_lines", f"""
 WITH raw AS (
     SELECT line_id, gig_id, 'payment' AS movement, kind, 'card' AS source, currency, amount_cents, at, reference,
-           false AS rate_assumed FROM bi_payments
+           false AS rate_assumed, false AS date_estimated FROM bi_payments
     UNION ALL
-    SELECT line_id, gig_id, 'payment', 'base', 'credit', currency, amount_cents, at, reference, false
+    SELECT line_id, gig_id, 'payment', 'base', 'credit', currency, amount_cents, at, reference, false, false
     FROM bi_credit WHERE movement = 'used'
     UNION ALL
-    SELECT line_id, gig_id, 'refund', coalesce(payment_kind, 'base'), source, currency, amount_cents, at, reference, rate_assumed
+    SELECT line_id, gig_id, 'refund', coalesce(payment_kind, 'base'), source, currency, amount_cents, at, reference, rate_assumed,
+           date_estimated
     FROM bi_refunds
     UNION ALL
-    SELECT line_id, gig_id, 'refund', 'base', 'credit', currency, amount_cents, at, reference, false
+    SELECT line_id, gig_id, 'refund', 'base', 'credit', currency, amount_cents, at, reference, false, false
     FROM bi_credit WHERE movement = 'returned'
 ), rated AS (
     SELECT raw.*, b.pro_user_id, b.client_user_id, b.niche, b.country, b.tier, b.tier_estimated,
@@ -128,7 +142,7 @@ WITH raw AS (
     FROM rated
 )
 SELECT line_id, gig_id, pro_user_id, client_user_id, niche, country, tier, tier_estimated, movement, kind, source, currency,
-       at, day, reference, rate_assumed, amount_cents, retained_cents, pro_raww_cents, client_raww_cents,
+       at, day, reference, rate_assumed, date_estimated, amount_cents, retained_cents, pro_raww_cents, client_raww_cents,
        amount_cents - retained_cents - pro_raww_cents - client_raww_cents AS pro_cash_cents,
        r_pct AS retained_percent, w_pct AS pro_raww_percent, c_pct AS client_credit_percent
 FROM shares
@@ -149,6 +163,26 @@ WITH rated AS (
 )
 SELECT rated.*, round(amount_raww * rate * 100)::bigint AS value_cents FROM rated
 """),
+    # Manual costs, a recurring one repeated monthly on its day of the month.
+    # The retired category shelf_shipping (legacy) repeats no later than the
+    # day it was retired.
+    ("bi_costs", """
+WITH c AS (
+    SELECT c.*, CASE WHEN c.category = 'shelf_shipping'
+                     THEN least(coalesce(c.end_date, DATE '2026-11-10'), DATE '2026-11-10')
+                     ELSE coalesce(c.end_date, current_date + 400) END AS last_day
+    FROM bi_cost c WHERE c.deleted_at IS NULL
+)
+SELECT c.id AS cost_id, c.category, c.currency, c.amount_cents, c.recurring, c.note,
+       (c.date + make_interval(months => k))::date AS day, (c.category = 'shelf_shipping') AS legacy
+FROM c
+CROSS JOIN LATERAL generate_series(
+    0,
+    CASE WHEN c.recurring THEN
+        greatest((extract(year FROM age(c.last_day, c.date)) * 12 + extract(month FROM age(c.last_day, c.date)))::int, 0)
+    ELSE 0 END
+) AS k
+"""),
     # Shelf orders: placed (+), and reversed (-) when cancelled or refunded.
     # The cost is the one recorded on the order (supplier cost x its euro
     # rate); an order with none recorded falls back to the item's cost at
@@ -168,11 +202,17 @@ WITH o AS (
                      THEN round(i.supplier_cost * ss.gbp_eur_rate * 100)::bigint
                 ELSE NULL END AS cost_cents,
            (o.cost_estimated OR (o.supplier_cost IS NULL AND o.supplier_currency IS NULL)) AS cost_estimated,
-           coalesce(round(o.shipping_cost_eur * 100)::bigint, 0) AS shipping_cents,
-           (o.shipping_cost_eur IS NULL AND o.status::text IN ('shipped', 'delivered')) AS shipping_not_set
+           CASE WHEN lg.covered THEN 0 ELSE coalesce(round(o.shipping_cost_eur * 100)::bigint, 0) END AS shipping_cents,
+           (o.shipping_cost_eur IS NULL AND o.status::text IN ('shipped', 'delivered') AND NOT lg.covered) AS shipping_not_set
     FROM shelf_order o
     JOIN shelf_item i ON i.id = o.item_id
     LEFT JOIN shelf_settings ss ON ss.id = 1
+    -- Shipped on or before the last legacy shelf_shipping cost: its shipping
+    -- is in those costs, so its own is not counted again.
+    CROSS JOIN LATERAL (
+        SELECT coalesce(o.shipped_at IS NOT NULL AND (o.shipped_at AT TIME ZONE {LONDON})::date
+                        <= (SELECT max(c.day) FROM bi_costs c WHERE c.category = 'shelf_shipping'), false) AS covered
+    ) lg
 )
 SELECT order_id::text || ':placed' AS line_id, order_id, pro_user_id, 'placed' AS movement, placed_at AS at,
        (placed_at AT TIME ZONE {LONDON})::date AS day, value_cents, cost_cents, 1 AS orders,
@@ -212,20 +252,6 @@ FROM refund_case c WHERE c.status IN ('approved', 'processing', 'refund_initiate
 SELECT t.id, t.type, t.reporting_category, t.currency, t.amount_cents, t.fee_cents, t.net_cents, t.created_at AS at,
        (t.created_at AT TIME ZONE {LONDON})::date AS day, t.available_on, t.source_id, t.demo
 FROM bi_stripe_txn t
-"""),
-    # Manual costs, a recurring one repeated monthly on its day of the month.
-    ("bi_costs", """
-SELECT c.id AS cost_id, c.category, c.currency, c.amount_cents, c.recurring, c.note,
-       (c.date + make_interval(months => k))::date AS day
-FROM bi_cost c
-CROSS JOIN LATERAL generate_series(
-    0,
-    CASE WHEN c.recurring THEN
-        (extract(year FROM age(coalesce(c.end_date, current_date + 400), c.date)) * 12
-         + extract(month FROM age(coalesce(c.end_date, current_date + 400), c.date)))::int
-    ELSE 0 END
-) AS k
-WHERE c.deleted_at IS NULL
 """),
     # The latest balance of each company account.
     ("bi_cash", """

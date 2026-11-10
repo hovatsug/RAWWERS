@@ -266,3 +266,141 @@ def test_a_booking_records_the_tier_and_a_later_promotion_changes_nothing(db_ses
     db_session.commit()
     tier, estimated = db_session.execute(text("SELECT tier, tier_estimated FROM bi_bookings WHERE gig_id = :g"), {"g": gig.id}).one()
     assert (tier, estimated) == ("elite", True)
+
+
+# --- an add-on refunded before its refunds were recorded one by one -------------------------------
+
+
+def _old_addon(db, gig, amount, refunded, updated):
+    from app.models.client_rewards_pricing import ExtraImagePurchase
+
+    payment = _payment(db, _card(db, gig, amount, D1, kind=StripePaymentKind.extras, captured=False))
+    db.add(ExtraImagePurchase(
+        gig_id=gig.id, client_user_id=gig.client_user_id, pro_user_id=gig.pro_user_id, included_images=0, selected_images=3,
+        extra_images=3, unit_price_applied=Decimal("4.00"), unit_price_configured=Decimal("4.00"),
+        policy_unit_price_min=Decimal("1.00"), subtotal=Decimal(amount), total=Decimal(amount),
+        stripe_payment_intent_id=payment.stripe_payment_intent_id, meta={"kind": "selection_addon"},
+    ))
+    payment.amount_refunded = Decimal(refunded)
+    db.flush()
+    # The last update is the only date there is.
+    db.execute(update(StripePayment).where(StripePayment.id == payment.id).values(updated_at=updated))
+    db.commit()
+    return payment
+
+
+def test_an_old_add_on_refund_counts_on_the_payment_s_last_update_marked_estimated(db_session):
+    client, pro = uuid.uuid4(), uuid.uuid4()
+    _user(db_session, client)
+    _user(db_session, pro, pro_country="GB")
+    gig = _gig(db_session, client, pro, _niche(db_session))
+    _card(db_session, gig, "100.00", D1)
+    addon = _old_addon(db_session, gig, "12.00", "12.00", at(D2, 15))
+
+    [line] = db_session.execute(text(
+        "SELECT kind, day, date_estimated, rate_assumed, amount_cents, pro_cash_cents FROM bi_lines "
+        "WHERE gig_id = :g AND movement = 'refund'"), {"g": gig.id}).mappings().all()
+    assert dict(line) == {"kind": "extras", "day": D2, "date_estimated": True, "rate_assumed": False,
+                          "amount_cents": -1200, "pro_cash_cents": -960}
+    s = _summary(db_session)
+    assert (s.values["refund"], s.meta["refund_date_estimated_cents"]) == (1200, 1200)
+
+    # Once Stripe's refunds are on the payment, they are read instead: counted once, not estimated.
+    addon.meta = {"refunds": {"re_1": {"amount": "12.00", "status": "succeeded", "created": at(D2).isoformat()}}}
+    db_session.commit()
+    s = _summary(db_session)
+    assert (s.values["refund"], s.meta["refund_date_estimated_cents"]) == (1200, 0)
+    assert len(_refund_lines(db_session, gig)) == 1
+
+
+def test_an_old_add_on_refund_already_in_the_ledger_is_not_counted_again(db_session):
+    client, pro = uuid.uuid4(), uuid.uuid4()
+    _user(db_session, client)
+    _user(db_session, pro, pro_country="GB")
+    gig = _gig(db_session, client, pro, _niche(db_session))
+    _card(db_session, gig, "100.00", D1)
+    addon = _old_addon(db_session, gig, "12.00", "12.00", at(D2, 15))
+    _refund(db_session, gig, "12.00", "re_ledger", addon)
+    db_session.commit()
+
+    [line] = _refund_lines(db_session, gig)
+    assert line["reference"] == "re_ledger"
+    assert _summary(db_session).meta["refund_date_estimated_cents"] == 0
+
+
+# --- shipping: per order only; legacy shelf_shipping costs count, never twice ----------------------
+
+
+def _legacy_cost(db, day, cents, recurring=False):
+    from app.models.bi import BiCost
+
+    row = BiCost(date=day, category="shelf_shipping", amount_cents=cents, recurring=recurring, created_by=uuid.UUID(H["X-User-Id"]))
+    db.add(row)
+    db.commit()
+    return row
+
+
+def test_the_shelf_shipping_category_is_retired_for_new_entries(client, db_session):
+    from tests.test_bi_api import ADMIN as BI_ADMIN
+
+    body = {"date": "2026-10-05", "category": "shelf_shipping", "amount": "7.00"}
+    assert client.post("/v1/admin/bi/costs", headers=BI_ADMIN, json=body).status_code == 422
+    page = client.get("/v1/admin/bi/costs", headers=BI_ADMIN).json()
+    assert "shelf_shipping" not in page["categories"] and page["legacy_categories"] == ["shelf_shipping"]
+
+    # A row already using it stays, labelled legacy, and its amount can be corrected; not its dates.
+    legacy = _legacy_cost(db_session, D2, 700)
+    [row] = [r for r in client.get("/v1/admin/bi/costs", headers=BI_ADMIN).json()["items"] if r["id"] == str(legacy.id)]
+    assert row["legacy"] is True
+    url = f"/v1/admin/bi/costs/{legacy.id}"
+    assert client.patch(url, headers=BI_ADMIN, json={"amount": "8.00"}).json()["amount_cents"] == 800
+    assert client.patch(url, headers=BI_ADMIN, json={"date": "2026-10-07"}).status_code == 422
+    # Nothing else may move into it.
+    other = client.post("/v1/admin/bi/costs", headers=BI_ADMIN, json={**body, "category": "software"}).json()
+    assert client.patch(f"/v1/admin/bi/costs/{other['id']}", headers=BI_ADMIN, json={"category": "shelf_shipping"}).status_code == 422
+    # And it still counts.
+    assert _summary(db_session).values["shelf_shipping"] == 800
+
+
+def test_a_recurring_legacy_shipping_cost_stops_on_the_day_it_was_retired(db_session):
+    _legacy_cost(db_session, date(2026, 9, 1), 500, recurring=True)
+    days = db_session.execute(text("SELECT day FROM bi_costs WHERE category = 'shelf_shipping' ORDER BY day")).scalars().all()
+    assert days == [date(2026, 9, 1), date(2026, 10, 1), date(2026, 11, 1)]
+
+
+def test_shipping_is_never_counted_twice(client, db_session):
+    from datetime import datetime, timedelta, timezone
+
+    today = bi.london_today()
+    _legacy_cost(db_session, today - timedelta(days=1), 700)
+    orders = []
+    for _ in range(2):
+        _, _, order = _placed(client, db_session)
+        _post(client, order["id"], "ordered", {"supplier_order_ref": "WEX-1"})
+        _post(client, order["id"], "shipped", {"tracking_code": "RM1"})
+        orders.append(order["id"])
+    old, new = orders
+    # `old` shipped yesterday: its shipping is in the legacy cost.
+    row = db_session.get(ShelfOrder, uuid.UUID(old))
+    row.shipped_at = datetime.now(timezone.utc) - timedelta(days=1)
+    db_session.commit()
+
+    put = lambda o, eur: client.put(f"/v1/admin/shelf/orders/{o}/shipping-cost", headers=H, json={"shipping_cost_eur": eur})  # noqa: E731
+    refused = put(old, "5.00")
+    assert refused.status_code == 409 and refused.json()["error"]["code"] == "shipping_in_legacy_costs"
+    assert put(new, "4.50").status_code == 200
+    listed = {o["id"]: o for o in client.get("/v1/admin/shelf/orders", headers=H).json()["items"]}
+    assert (listed[old]["shipping_in_legacy_costs"], listed[new]["shipping_in_legacy_costs"]) == (True, False)
+
+    # Even with both somehow recorded, the order's own does not count.
+    db_session.get(ShelfOrder, uuid.UUID(old)).shipping_cost_eur = Decimal("5.00")
+    db_session.commit()
+    old_line, new_line = _shelf_line(db_session, old), _shelf_line(db_session, new)
+    assert (old_line["shipping_cents"], old_line["shipping_not_set_orders"]) == (0, 0), "not set is not asked of it either"
+    assert new_line["shipping_cents"] == 450
+    v = bi.summarize(db_session, today - timedelta(days=1), today).values
+    assert (v["shelf_order_shipping"], v["shelf_shipping"]) == (450, 700)
+    assert v["shelf_margin"] == v["shelf_value"] - v["shelf_cost"] - 450 - 700
+
+    # Clearing an order's shipping is always allowed.
+    assert put(old, None).status_code == 200

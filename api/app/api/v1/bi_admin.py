@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_admin_bi
 from app.core.errors import APIError
-from app.models.bi import COST_CATEGORIES, BiCompanyCash, BiCost
+from app.models.bi import COST_CATEGORIES, LEGACY_COST_CATEGORIES, BiCompanyCash, BiCost
 from app.schemas.media import CurrentUser
 from app.services import bi, bi_stripe
 from app.services.audit import add_admin_audit_log
@@ -206,7 +206,7 @@ def _currency(value: str) -> str:
 
 def _cost_view(row: BiCost) -> dict:
     return {"id": str(row.id), "date": row.date.isoformat(), "end_date": row.end_date.isoformat() if row.end_date else None,
-            "category": row.category, "amount_cents": row.amount_cents, "currency": row.currency, "note": row.note,
+            "category": row.category, "legacy": row.category in LEGACY_COST_CATEGORIES, "amount_cents": row.amount_cents, "currency": row.currency, "note": row.note,
             "recurring": row.recurring, "created_by": str(row.created_by), "created_at": row.created_at.isoformat(),
             "updated_by": str(row.updated_by) if row.updated_by else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None}
@@ -219,9 +219,13 @@ def _cash_view(row: BiCompanyCash) -> dict:
             "updated_at": row.updated_at.isoformat() if row.updated_at else None}
 
 
-def _check_cost(row: BiCost) -> None:
-    if row.category not in COST_CATEGORIES:
-        raise APIError(code="validation_error", message=f"Category is one of {', '.join(COST_CATEGORIES)}", status_code=422)
+def _check_cost(row: BiCost, was_legacy: bool = False) -> None:
+    # A retired (legacy) category is refused for new entries; a row already
+    # using it may keep it (docs/BI.md, owner's decision 2026-11-10).
+    if row.category not in COST_CATEGORIES and not (was_legacy and row.category in LEGACY_COST_CATEGORIES):
+        retired = " (shipping goes on its Shelf order)" if row.category in LEGACY_COST_CATEGORIES else ""
+        raise APIError(code="validation_error", message=f"Category is one of {', '.join(COST_CATEGORIES)}{retired}",
+                       status_code=422)
     if row.amount_cents <= 0:
         raise APIError(code="validation_error", message="A cost is more than zero", status_code=422)
     if row.end_date is not None and (not row.recurring or row.end_date < row.date):
@@ -245,7 +249,8 @@ def _live(db: Session, model, row_id: uuid.UUID):
 def list_costs(offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100),
                _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     query = select(BiCost).where(BiCost.deleted_at.is_(None)).order_by(BiCost.date.desc(), BiCost.created_at.desc(), BiCost.id)
-    return {**_page(query, offset, limit, db, _cost_view), "categories": list(COST_CATEGORIES)}
+    return {**_page(query, offset, limit, db, _cost_view), "categories": list(COST_CATEGORIES),
+            "legacy_categories": list(LEGACY_COST_CATEGORIES)}
 
 
 @router.post("/costs", status_code=201)
@@ -267,13 +272,19 @@ def update_cost(cost_id: uuid.UUID, body: CostPatch, actor: CurrentUser = Depend
     row = _live(db, BiCost, cost_id)
     before = _cost_view(row)
     fields = body.model_dump(exclude_unset=True)
+    was_legacy = row.category in LEGACY_COST_CATEGORIES
+    if was_legacy and fields.get("category", row.category) in LEGACY_COST_CATEGORIES:
+        # Its days decide which Shelf orders' shipping it covers.
+        moved = [k for k in ("date", "end_date", "recurring") if k in fields and fields[k] != getattr(row, k)]
+        if moved:
+            raise APIError(code="validation_error", message="A legacy Shelf shipping cost keeps its dates", status_code=422)
     if "amount" in fields:
         row.amount_cents = bi.euros_to_cents(fields.pop("amount"))
     if "currency" in fields:
         row.currency = _currency(fields.pop("currency"))
     for key, value in fields.items():
         setattr(row, key, value)
-    _check_cost(row)
+    _check_cost(row, was_legacy=was_legacy)
     row.updated_by, row.updated_at = actor.user_id, datetime.now(timezone.utc)
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="bi_cost", target_id=str(row.id), action="update",
                         metadata={"before": before, "after": _cost_view(row)})

@@ -40,7 +40,7 @@ LOW_SAMPLE = 30
 BOOKING_COLUMNS = (
     "gmv_cents", "gmv_card_cents", "gmv_credit_cents", "refund_cents", "refund_card_cents", "refund_chargeback_cents",
     "refund_credit_cents", "retained_cents", "pro_cash_cents", "pro_raww_cents", "client_raww_cents", "bookings",
-    "other_currency_lines", "refund_rate_assumed_cents", "tier_estimated_bookings",
+    "other_currency_lines", "refund_rate_assumed_cents", "tier_estimated_bookings", "refund_date_estimated_cents",
 )
 COMPANY_COLUMNS = (
     "stripe_fee_cents", "stripe_charge_cents", "stripe_refund_cents", "stripe_dispute_cents", "stripe_transfer_cents",
@@ -76,7 +76,8 @@ SELECT day, niche, country, tier,
     count(*) FILTER (WHERE NOT eur) AS other_currency_lines,
     -coalesce(sum(amount_cents) FILTER (WHERE eur AND movement = 'refund' AND rate_assumed), 0) AS refund_rate_assumed_cents,
     count(DISTINCT gig_id) FILTER (WHERE eur AND movement = 'payment' AND kind = 'base' AND day = first_day AND tier_estimated)
-        AS tier_estimated_bookings
+        AS tier_estimated_bookings,
+    -coalesce(sum(amount_cents) FILTER (WHERE eur AND movement = 'refund' AND date_estimated), 0) AS refund_date_estimated_cents
 FROM l GROUP BY day, niche, country, tier
 """
 
@@ -375,11 +376,18 @@ def summarize(db: Session, a: date, b: date, filters: Filters | None = None, now
         # Estimated values in the period (docs/BI.md, "Recorded, estimated").
         "refund_rate_assumed_cents": v["refund_rate_assumed"],
         "tier_estimated_bookings": v["tier_estimated_bookings"],
+        "refund_date_estimated_cents": v["refund_date_estimated"],
         "raww_estimated_cents": v.get("raww_estimated"),
         "shelf_cost_estimated_orders": v.get("shelf_cost_estimated_orders"),
         "shelf_shipping_not_set_orders": v.get("shelf_shipping_not_set_orders"),
     }
     return Summary(values=v, reasons=reasons, meta=meta)
+
+
+def legacy_shipping_until(db: Session) -> date | None:
+    """The last day of a legacy `shelf_shipping` cost, if any: orders shipped
+    on or before it have their shipping in those costs, not their own."""
+    return db.execute(text("SELECT max(day) FROM bi_costs WHERE category = 'shelf_shipping'")).scalar_one()
 
 
 def stripe_partial_days(db: Session, a: date, b: date) -> list[dict]:

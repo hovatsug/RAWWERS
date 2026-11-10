@@ -369,6 +369,8 @@ export type AdminShelfOrder = {
   cost_eur_rate: string | null;
   cost_estimated: boolean;
   shipping_cost_eur: string | null;
+  /** Shipped on or before the last legacy Shelf shipping cost: its shipping is in those costs. */
+  shipping_in_legacy_costs: boolean;
   events: ShelfOrderEvent[];
 };
 
@@ -846,6 +848,7 @@ export type BiOverview = {
     shelf_cost_not_set_orders: number | null;
     refund_rate_assumed_cents: number;
     tier_estimated_bookings: number;
+    refund_date_estimated_cents: number;
     raww_estimated_cents: number | null;
     shelf_cost_estimated_orders: number | null;
     shelf_shipping_not_set_orders: number | null;
@@ -963,6 +966,8 @@ export type BiCost = {
   date: string;
   end_date: string | null;
   category: string;
+  /** A retired category (shelf_shipping): still counted, kept, not offered for new costs. */
+  legacy: boolean;
   amount_cents: number;
   currency: string;
   note: string | null;
@@ -1005,7 +1010,7 @@ export const adminBi = {
   bookings: (qs: string) => adminFetch<BiPage<BiBookingRow> & { total: number }>(`bi/bookings?${qs}`),
   reconciliation: (qs: string) => adminFetch<BiReconciliation>(`bi/reconciliation?${qs}`),
   owed: () => adminFetch<BiOwed>("bi/owed"),
-  costs: (offset = 0) => adminFetch<BiPage<BiCost> & { categories: string[] }>(`bi/costs?offset=${offset}&limit=50`),
+  costs: (offset = 0) => adminFetch<BiPage<BiCost> & { categories: string[]; legacy_categories: string[] }>(`bi/costs?offset=${offset}&limit=50`),
   createCost: (body: BiCostInput) => adminFetch<BiCost>("bi/costs", { method: "POST", body: JSON.stringify(body) }),
   updateCost: (id: string, body: Partial<BiCostInput>) => adminFetch<BiCost>(`bi/costs/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteCost: (id: string) => adminFetch<{ deleted: boolean }>(`bi/costs/${id}`, { method: "DELETE" }),

@@ -9,9 +9,11 @@ import { eur } from "../_parts";
 
 /**
  * The dashboard's two manual tables (docs/BI.md):
- * - costs: ad spend and marketing (marketing spend), Shelf shipping (off
- *   the Shelf margin), everything else (other costs). A recurring cost
- *   repeats monthly on its day of the month until its end date.
+ * - costs: ad spend and marketing (marketing spend), everything else
+ *   (other costs). A recurring cost repeats monthly on its day of the month
+ *   until its end date. Shelf shipping is entered on each Shelf order; old
+ *   rows in the retired shelf_shipping category show "legacy" and still
+ *   come off the Shelf margin.
  * - company cash: an account's balance on a date; the latest per account is
  *   its balance now, used by the liquid view.
  * Amounts are typed in euros with at most two decimals and stored in cents.
@@ -64,6 +66,9 @@ function Costs({ done }: { done: Done }) {
   const blank: BiCostInput = { date: today(), category: "ad_spend", amount: "", currency: "EUR", note: "", recurring: false, end_date: null };
   const [form, setForm] = useState<BiCostInput>(blank);
   const [editing, setEditing] = useState<string | null>(null);
+  // Editing a row in a retired category: it keeps its category and dates
+  // (they decide which Shelf orders' shipping it covers); amount and note can change.
+  const legacy = !!editing && (page?.legacy_categories || ["shelf_shipping"]).includes(form.category);
   const edit = (row: BiCost) => {
     setEditing(row.id);
     setForm({ date: row.date, category: row.category, amount: asEuros(row.amount_cents), currency: row.currency, note: row.note || "", recurring: row.recurring, end_date: row.end_date });
@@ -82,16 +87,17 @@ function Costs({ done }: { done: Done }) {
       <Panel className="mb-3 grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-6">
         <div>
           <FieldLabel htmlFor="cost-date">Date</FieldLabel>
-          <TextField id="cost-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <TextField id="cost-date" type="date" disabled={legacy} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </div>
         <div>
           <FieldLabel htmlFor="cost-category">Category</FieldLabel>
           <SelectField id="cost-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-            {(page?.categories || ["ad_spend", "marketing", "shelf_shipping", "salaries", "software", "legal", "office", "other"]).map((c) => (
+            {(page?.categories || ["ad_spend", "marketing", "salaries", "software", "legal", "office", "other"]).map((c) => (
               <option key={c} value={c}>
                 {c.replace(/_/g, " ")}
               </option>
             ))}
+            {legacy ? <option value={form.category}>{form.category.replace(/_/g, " ")} (legacy)</option> : null}
           </SelectField>
         </div>
         <div>
@@ -107,13 +113,13 @@ function Costs({ done }: { done: Done }) {
           <TextField id="cost-note" value={form.note || ""} onChange={(e) => setForm({ ...form, note: e.target.value })} />
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-300">
-          <input type="checkbox" checked={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.checked })} />
+          <input type="checkbox" disabled={legacy} checked={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.checked })} />
           Repeats monthly
         </label>
         {form.recurring ? (
           <div>
             <FieldLabel htmlFor="cost-end">Until (optional)</FieldLabel>
-            <TextField id="cost-end" type="date" value={form.end_date || ""} onChange={(e) => setForm({ ...form, end_date: e.target.value || null })} />
+            <TextField id="cost-end" type="date" disabled={legacy} value={form.end_date || ""} onChange={(e) => setForm({ ...form, end_date: e.target.value || null })} />
           </div>
         ) : null}
         <div className="flex items-end gap-2 sm:col-span-2">
@@ -135,7 +141,19 @@ function Costs({ done }: { done: Done }) {
         empty={{ title: "No costs yet", body: "Add ad spend, marketing and running costs above." }}
         columns={[
           { header: "Date", cell: (row) => `${row.date}${row.recurring ? ` → monthly${row.end_date ? ` to ${row.end_date}` : ""}` : ""}` },
-          { header: "Category", cell: (row) => row.category.replace(/_/g, " ") },
+          {
+            header: "Category",
+            cell: (row) => (
+              <>
+                {row.category.replace(/_/g, " ")}
+                {row.legacy ? (
+                  <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300" title="Retired category: still counted; new shipping goes on each Shelf order">
+                    legacy
+                  </span>
+                ) : null}
+              </>
+            )
+          },
           { header: "Amount", cell: (row) => <span className="tabular-nums">{row.currency === "EUR" ? eur(row.amount_cents) : `${row.currency} ${asEuros(row.amount_cents)}`}</span> },
           { header: "Note", cell: (row) => row.note || "—" },
           { header: "Changed", cell: (row) => <span className="text-xs text-slate-400">{(row.updated_at || row.created_at).slice(0, 16).replace("T", " ")}</span> },

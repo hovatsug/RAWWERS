@@ -131,6 +131,8 @@ function Warnings({ o }: { o: BiOverview }) {
   const estimated: string[] = [];
   if (o.period.refund_rate_assumed_cents)
     estimated.push(`${eur(o.period.refund_rate_assumed_cents)} of refunds name no payment and are split at base rates`);
+  if (o.period.refund_date_estimated_cents)
+    estimated.push(`${eur(o.period.refund_date_estimated_cents)} of add-on refunds are dated on the payment's last update (refunded before refunds were dated)`);
   if (o.period.tier_estimated_bookings) estimated.push(`${o.period.tier_estimated_bookings} booking(s) use a backfilled tier`);
   if (o.period.raww_estimated_cents) estimated.push(`${eur(o.period.raww_estimated_cents)} of RAWW expiries and adjustments are valued at today's rate`);
   if (o.period.shelf_cost_estimated_orders) estimated.push(`${o.period.shelf_cost_estimated_orders} Shelf order(s) use a backfilled cost`);

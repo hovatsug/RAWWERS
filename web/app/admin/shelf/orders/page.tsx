@@ -194,7 +194,14 @@ function OrderPanel({
             ) : (
               <span className="text-slate-500">not set</span>
             )}
-            {" · "}shipping {order.shipping_cost_eur ? `€${order.shipping_cost_eur}` : <span className="text-slate-500">not entered</span>}
+            {" · "}shipping{" "}
+            {order.shipping_in_legacy_costs ? (
+              <span className="text-slate-500">in the legacy Shelf shipping costs</span>
+            ) : order.shipping_cost_eur ? (
+              `€${order.shipping_cost_eur}`
+            ) : (
+              <span className="text-slate-500">not entered</span>
+            )}
           </p>
         </div>
       </div>
@@ -265,7 +272,7 @@ function OrderPanel({
           </AdminButton>
         </div>
       ) : null}
-      {order.status === "shipped" || order.status === "delivered" ? (
+      {(order.status === "shipped" || order.status === "delivered") && !order.shipping_in_legacy_costs ? (
         <div className="flex flex-wrap items-end gap-3 border-t border-white/10 pt-3">
           <div>
             <FieldLabel htmlFor="shipping-edit">Shipping cost, €</FieldLabel>

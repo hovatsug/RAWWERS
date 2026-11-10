@@ -31,3 +31,9 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 59701d7 | 2026-11-10 | Web admin: Net GMV, free cash, estimated values marked, Shelf shipping cost (web only) | no |
 | 562a66e | 2026-11-10 | Docs: BI definitions for the owner's decisions | no |
 | 39b7529 | 2026-11-10 | Web admin BI: filter options stay selectable (web only) | no |
+| 0b33bb6 | 2026-11-10 | Docs: deploy checklist for migration 0093; UNGATED_COMMITS lists the batch | no |
+| d493aab | 2026-11-10 | Admin BI routes: own rate limit 240/min, other admin routes stay at 60; who you are checked before any limit | no |
+| a66d96b | 2026-11-10 | BI: migration 20261110_0094; old add-on refunds counted (date estimated), Shelf shipping per order only, never twice | **yes** (migration, money computed) |
+| 1f945d4 | 2026-11-10 | BI demo seed: legacy Shelf shipping cost, old add-on refund (dev only) | no |
+| f5ce0a7 | 2026-11-10 | Web admin: legacy cost label, Shelf shipping per order only, old add-on refunds estimated (web only) | no |
+| 287c0b0 | 2026-11-10 | Docs: BI decisions 10-12; deploy step for 0094 | no |

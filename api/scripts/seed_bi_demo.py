@@ -37,6 +37,7 @@ from app.core.config import get_settings  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.models.admin import MoneyAttentionItem, ProProfile, UserAccount, UserRole, UserRoleType  # noqa: E402
 from app.models.bi import BiCompanyCash, BiCost, BiStripeSyncDay, BiStripeTxn  # noqa: E402
+from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus  # noqa: E402
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType, PaymentStatus, StripePayment, StripePaymentKind  # noqa: E402
 from app.models.niche import Niche, ProNicheSkill, SkillTier  # noqa: E402
 from app.models.payouts import (  # noqa: E402
@@ -105,6 +106,7 @@ def remove(db) -> dict:
 
     run("reward_ledger_entry", "DELETE FROM reward_ledger_entry WHERE metadata ->> 'bi_demo' = 'true'")
     run("discount_redemption", "DELETE FROM discount_redemption WHERE context_id = ANY(CAST(:g AS uuid[]))", g=gigs)
+    run("extra_image_purchase", "DELETE FROM extra_image_purchase WHERE gig_id = ANY(CAST(:g AS uuid[]))", g=gigs)
     run("ledger_entry", "DELETE FROM ledger_entry WHERE gig_id = ANY(CAST(:g AS uuid[]))", g=gigs)
     run("stripe_payment", "DELETE FROM stripe_payment WHERE gig_id = ANY(CAST(:g AS uuid[]))", g=gigs)
     run("money_attention_item", "DELETE FROM money_attention_item WHERE gig_id = ANY(CAST(:g AS uuid[]))", g=gigs)
@@ -255,6 +257,26 @@ class Seeder:
                         earned += raww
         db.flush()
 
+        # One selection add-on refunded before refunds were recorded one by
+        # one: only its running total, so it counts on the payment's last
+        # update, date estimated.
+        gig = db.execute(select(Gig).where(Gig.meta["bi_demo"].astext == "true", Gig.status == GigStatus.completed)
+                         .order_by(Gig.created_at.desc())).scalars().first()
+        if gig is not None:
+            when = self.at(self.today - timedelta(days=12))
+            addon = self.card(gig, 1200, when, StripePaymentKind.extras)
+            db.add(ExtraImagePurchase(gig_id=gig.id, client_user_id=gig.client_user_id, pro_user_id=gig.pro_user_id,
+                                      niche_id=gig.niche_id, included_images=0, selected_images=3, extra_images=3,
+                                      unit_price_applied=Decimal("4.00"), unit_price_configured=Decimal("4.00"),
+                                      policy_unit_price_min=Decimal("1.00"), subtotal=_eur(1200), total=_eur(1200),
+                                      stripe_payment_intent_id=addon.stripe_payment_intent_id,
+                                      status=ExtraImagePurchaseStatus.refunded, meta={**TAG, "kind": "selection_addon"}))
+            addon.amount_refunded, addon.status = _eur(1200), PaymentStatus.refunded
+            db.flush()
+            db.execute(text("UPDATE stripe_payment SET updated_at = :t WHERE id = :i"),
+                       {"t": when + timedelta(days=2), "i": addon.id})
+            self.txn("refund", -1200, when + timedelta(days=2))
+
         # One chargeback, lost.
         gig = db.execute(select(Gig).where(Gig.meta["bi_demo"].astext == "true", Gig.status == GigStatus.completed)).scalars().first()
         if gig is not None:
@@ -345,7 +367,9 @@ class Seeder:
         cost(self.start + timedelta(days=3), "salaries", 1500, "Demo: contractor, monthly", recurring=True)
         cost(self.start + timedelta(days=20), "marketing", 350, "Demo: launch photoshoot")
         cost(self.start + timedelta(days=45), "legal", 600, "Demo: terms review")
-        cost(self.today - timedelta(days=10), "shelf_shipping", 24, "Demo: Shelf shipping")
+        # The retired category, as an entry from before it was retired (shown "legacy"); dated
+        # before every demo order ships, so none of their own shipping is set aside.
+        cost(self.start, "shelf_shipping", 24, "Demo: Shelf shipping, before shipping went on each order")
         balance = 18000_00
         for week in range(DAYS // 7 + 1):
             balance += rng.randint(-1500, 3500) * 100

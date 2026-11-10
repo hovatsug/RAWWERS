@@ -57,6 +57,7 @@ from app.models.reward import (  # noqa: E402
 from app.models.shelf import ProRawwLedgerEntry, RawwEntryKind, RawwEntryStatus, ShelfItem, ShelfOrder, ShelfOrderStatus  # noqa: E402
 from app.services import bi  # noqa: E402
 from app.services.commission import split_with_rates  # noqa: E402
+from app.services.shelf_orders import cost_snapshot  # noqa: E402
 from app.services.shelf_settings import shelf_settings  # noqa: E402
 
 DOMAIN = "bi-demo.rawwers.dev"
@@ -155,13 +156,16 @@ class Seeder:
 
     def card(self, gig, cents, when, kind=StripePaymentKind.base):
         pi = f"pi_demo_{uuid.uuid4().hex[:16]}"
-        self.db.add(StripePayment(gig_id=gig.id, kind=kind, client_user_id=gig.client_user_id, status=PaymentStatus.succeeded,
-                                  stripe_payment_intent_id=pi, amount=_eur(cents), currency="EUR", meta=dict(TAG),
-                                  created_at=when - timedelta(minutes=2)))
+        payment = StripePayment(gig_id=gig.id, kind=kind, client_user_id=gig.client_user_id, status=PaymentStatus.succeeded,
+                                stripe_payment_intent_id=pi, amount=_eur(cents), currency="EUR", meta=dict(TAG),
+                                created_at=when - timedelta(minutes=2))
+        self.db.add(payment)
         if kind != StripePaymentKind.extras:
             self.db.add(LedgerEntry(gig_id=gig.id, entry_type=LedgerEntryType.payment_captured, amount=_eur(cents), currency="EUR",
                                     reference_type="stripe_payment_intent", reference_id=pi, created_at=when))
         self.txn("charge", cents, when, fee=round(cents * 0.015) + 25)
+        self.db.flush()
+        return payment
 
     def run(self) -> dict:
         db, rng = self.db, self.rng
@@ -169,9 +173,11 @@ class Seeder:
         settings = shelf_settings(db)
         rate = Decimal(settings.raww_eur_value)
         pros = []
+        tier_of: dict[uuid.UUID, str] = {}
         for i, (name, country, niche) in enumerate(PHOTOGRAPHERS):
             uid = self.user(f"pro{i}", f"pro{i}@{DOMAIN}", UserRoleType.pro, name=name, country=country)
             db.add(ProNicheSkill(pro_user_id=uid, niche_id=niches[niche].id, tier=TIERS[i % len(TIERS)]))
+            tier_of[uid] = TIERS[i % len(TIERS)].value
             pros.append((uid, niches[niche]))
         clients = [self.user(f"client{i}", f"client{i}@{DOMAIN}", UserRoleType.client) for i in range(40)]
         db.flush()
@@ -193,7 +199,7 @@ class Seeder:
                 gig = Gig(client_user_id=rng.choice(clients), pro_user_id=pro, niche_id=niche.id, status=status, currency="EUR",
                           amount_minimum=_eur(price), amount_platform_fee=_eur(price * 20 // 100), amount_pro_gross=_eur(price * 80 // 100),
                           fee_percent=20, retained_percent=15, pro_raww_percent=5, client_credit_percent=cc,
-                          meta=dict(TAG), created_at=paid_at - timedelta(days=rng.randint(1, 5)))
+                          pro_tier=tier_of[pro], meta=dict(TAG), created_at=paid_at - timedelta(days=rng.randint(1, 5)))
                 db.add(gig)
                 db.flush()
                 gigs += 1
@@ -205,7 +211,7 @@ class Seeder:
                                               status=DiscountRedemptionStatus.applied, created_at=paid_at, updated_at=paid_at)
                     db.add(redemption)
                     db.flush()
-                self.card(gig, price - credit, paid_at)
+                base = self.card(gig, price - credit, paid_at)
                 total = price
                 if rng.random() < 0.25 and age > 3:
                     diff = rng.randint(2, 12) * 1000
@@ -220,7 +226,7 @@ class Seeder:
                     when = self.at(min(self.today, day + timedelta(days=rng.randint(1, 4))))
                     db.add(LedgerEntry(gig_id=gig.id, entry_type=LedgerEntryType.refund_succeeded, amount=-_eur(refunded),
                                        currency="EUR", reference_type="stripe_refund", reference_id=f"re_demo_{gig.id.hex[:10]}",
-                                       created_at=when))
+                                       stripe_payment_id=base.id, created_at=when))
                     self.txn("refund", -refunded, when)
                     if credit:
                         back = credit if refunded >= price - credit else credit // 2
@@ -254,8 +260,10 @@ class Seeder:
         if gig is not None:
             when = self.at(self.today - timedelta(days=20))
             amount = int(gig.amount_minimum * 100) // 2
+            disputed = db.execute(select(StripePayment).where(StripePayment.gig_id == gig.id, StripePayment.kind == StripePaymentKind.base)).scalars().first()
             db.add(LedgerEntry(gig_id=gig.id, entry_type=LedgerEntryType.chargeback_opened, amount=-_eur(amount), currency="EUR",
-                               reference_type="stripe_dispute", reference_id="dp_demo_1", created_at=when))
+                               reference_type="stripe_dispute", reference_id="dp_demo_1",
+                               stripe_payment_id=disputed.id if disputed else None, created_at=when))
             self.txn("adjustment", -amount, when, fee=1500, category="dispute")
             db.add(MoneyAttentionItem(kind="client_owed", status="open", gig_id=gig.id, client_user_id=gig.client_user_id,
                                       amount=Decimal("12.50"), currency="EUR"))
@@ -305,7 +313,11 @@ class Seeder:
                                supplier_name=item.supplier_name, level=item.level, price_raww=item.price_raww, raww_eur_value=rate,
                                status=ShelfOrderStatus.refunded if cancelled else ShelfOrderStatus.shipped, shipping_address={},
                                country="GB", placed_at=placed, refunded_at=placed + timedelta(days=1) if cancelled else None,
-                               shipped_at=None if cancelled else placed + timedelta(days=2))
+                               shipped_at=None if cancelled else placed + timedelta(days=2),
+                               # Recorded as the live flow records them; one shipped order still
+                               # without its shipping cost, to show the warning.
+                               **cost_snapshot(item, settings),
+                               shipping_cost_eur=None if cancelled or orders == 0 else Decimal(rng.choice(("3.20", "4.50", "6.95"))))
             db.add(order)
             db.flush()
             db.add(ProRawwLedgerEntry(pro_user_id=pro, kind=RawwEntryKind.spend_order, amount=-item.price_raww,
@@ -320,7 +332,7 @@ class Seeder:
         if quiet is not None:
             db.add(ProRawwLedgerEntry(pro_user_id=quiet, kind=RawwEntryKind.expire, amount=-min(raww_by_pro[quiet], 150),
                                       status=RawwEntryStatus.spendable, source_type="expiry", source_id="inactive-since:demo",
-                                      created_at=self.at(self.today - timedelta(days=5)), meta=dict(TAG)))
+                                      raww_eur_value=rate, created_at=self.at(self.today - timedelta(days=5)), meta=dict(TAG)))
 
         # Manual costs and company cash.
         def cost(day, category, euros, note, recurring=False):

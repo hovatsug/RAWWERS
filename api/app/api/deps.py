@@ -114,30 +114,47 @@ def get_db_session(db: Session = Depends(get_db_write_session)) -> Session:
     return db
 
 
-def require_admin(
-    request: Request,
-    user: CurrentUser = Depends(get_current_user),
-    x_admin_api_key: str | None = Header(default=None, alias="X-Admin-Api-Key"),
-    db: Session = Depends(get_db_write_session),
-) -> CurrentUser:
-    ip = request.client.host if request.client else None
-    if ip and settings.admin_ip_allowlist_set() and ip not in settings.admin_ip_allowlist_set():
-        raise APIError(code="forbidden", message="Admin endpoint not allowed from this IP", status_code=403)
-    if settings.admin_api_key_set() and x_admin_api_key not in settings.admin_api_key_set():
-        raise APIError(code="forbidden", message="Invalid admin API key", status_code=403)
+def _admin_gate(bucket: str):
+    """An admin-only dependency whose rate limit is the named bucket.
 
-    principal = f"{user.user_id}:{ip or 'unknown'}"
-    enforce_named_rate_limit("admin", principal=principal)
+    Who you are is settled before any limit applies: an anonymous caller gets
+    401 (get_current_user) and a non-admin 403 here, never a 429, and neither
+    spends an admin's allowance."""
 
-    ensure_user_account(db, user.user_id)
-    roles = get_user_roles(db, user.user_id)
-    db.commit()
-    if UserRoleType.admin not in roles:
-        raise APIError(code="forbidden", message="Admin access required", status_code=403)
-    # A banned or suspended admin keeps the role row but none of its powers.
-    enforce_not_banned(db, user.user_id)
-    user.roles = list(roles)
-    return user
+    def gate(
+        request: Request,
+        user: CurrentUser = Depends(get_current_user),
+        x_admin_api_key: str | None = Header(default=None, alias="X-Admin-Api-Key"),
+        db: Session = Depends(get_db_write_session),
+    ) -> CurrentUser:
+        ip = request.client.host if request.client else None
+        if ip and settings.admin_ip_allowlist_set() and ip not in settings.admin_ip_allowlist_set():
+            raise APIError(code="forbidden", message="Admin endpoint not allowed from this IP", status_code=403)
+        if settings.admin_api_key_set() and x_admin_api_key not in settings.admin_api_key_set():
+            raise APIError(code="forbidden", message="Invalid admin API key", status_code=403)
+
+        ensure_user_account(db, user.user_id)
+        roles = get_user_roles(db, user.user_id)
+        db.commit()
+        if UserRoleType.admin not in roles:
+            raise APIError(code="forbidden", message="Admin access required", status_code=403)
+        # A banned or suspended admin keeps the role row but none of its powers.
+        enforce_not_banned(db, user.user_id)
+
+        principal = f"{user.user_id}:{ip or 'unknown'}"
+        enforce_named_rate_limit(bucket, principal=principal)
+        user.roles = list(roles)
+        return user
+
+    return gate
+
+
+# Every admin route: RATE_LIMIT_ADMIN_PER_MIN (60) a minute per admin and address.
+require_admin = _admin_gate("admin")
+# /v1/admin/bi/* only: one dashboard load is about 13 requests, so it has its
+# own, higher allowance (RATE_LIMIT_ADMIN_BI_PER_MIN, 240) that does not spend
+# the 60 above.
+require_admin_bi = _admin_gate("admin_bi")
 
 
 def require_not_banned(

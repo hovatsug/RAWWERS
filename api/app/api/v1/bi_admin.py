@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, require_admin
+from app.api.deps import get_db_session, require_admin_bi
 from app.core.errors import APIError
 from app.models.bi import COST_CATEGORIES, BiCompanyCash, BiCost
 from app.schemas.media import CurrentUser
@@ -56,7 +56,7 @@ PeriodQ = Query(default=None, description="today, 7d, 30d, this_month, last_mont
 def overview(
     period: str | None = PeriodQ, start: date | None = None, end: date | None = None,
     niche: str | None = None, country: str | None = None, tier: str | None = None,
-    _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session),
+    _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session),
 ) -> dict:
     """The KPIs against the previous period of the same length, every
     number of docs/BI.md, and the waterfall."""
@@ -82,7 +82,7 @@ def overview(
 def series(
     period: str | None = PeriodQ, start: date | None = None, end: date | None = None, grain: str = "day",
     niche: str | None = None, country: str | None = None, tier: str | None = None,
-    _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session),
+    _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session),
 ) -> dict:
     a, b = _period(period, start, end)
     return {"grain": grain, "items": bi.series(db, a, b, grain, _filters(niche, country, tier))}
@@ -92,7 +92,7 @@ def series(
 def breakdown(
     by: str, period: str | None = PeriodQ, start: date | None = None, end: date | None = None,
     niche: str | None = None, country: str | None = None, tier: str | None = None,
-    _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session),
+    _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session),
 ) -> dict:
     a, b = _period(period, start, end)
     return {"by": by, "low_sample_below": bi.LOW_SAMPLE, "items": bi.breakdown(db, a, b, by, _filters(niche, country, tier))}
@@ -103,7 +103,7 @@ def bookings(
     period: str | None = PeriodQ, start: date | None = None, end: date | None = None,
     niche: str | None = None, country: str | None = None, tier: str | None = None, pro: uuid.UUID | None = None,
     offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100),
-    _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session),
+    _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session),
 ) -> dict:
     """The bookings behind a number (drill-down)."""
     a, b = _period(period, start, end)
@@ -113,7 +113,7 @@ def bookings(
 @router.get("/reconciliation")
 def reconciliation(
     period: str | None = PeriodQ, start: date | None = None, end: date | None = None,
-    _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session),
+    _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session),
 ) -> dict:
     a, b = _period(period, start, end)
     summary = bi.summarize(db, a, b)
@@ -121,7 +121,7 @@ def reconciliation(
 
 
 @router.get("/owed")
-def owed(_: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def owed(_: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     """Now: money owed, cash held, and the liquid view."""
     stripe_balance = (
         bi_stripe.balance() if bi_stripe.stripe_configured()
@@ -138,7 +138,7 @@ class RangeIn(BaseModel):
 
 
 @router.post("/recompute")
-def recompute(body: RangeIn, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def recompute(body: RangeIn, actor: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     rows = bi.recompute_days(db, body.start, body.end)
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="bi_daily", target_id=f"{body.start}:{body.end}",
                         action="recompute", metadata={"rows": rows})
@@ -147,7 +147,7 @@ def recompute(body: RangeIn, actor: CurrentUser = Depends(require_admin), db: Se
 
 
 @router.post("/stripe-sync")
-def stripe_sync(body: RangeIn, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def stripe_sync(body: RangeIn, actor: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     if not bi_stripe.stripe_configured():
         raise APIError(code="stripe_not_configured", message="Stripe is not configured", status_code=409)
     result = bi_stripe.sync_days(db, body.start, body.end)
@@ -243,13 +243,13 @@ def _live(db: Session, model, row_id: uuid.UUID):
 
 @router.get("/costs")
 def list_costs(offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100),
-               _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+               _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     query = select(BiCost).where(BiCost.deleted_at.is_(None)).order_by(BiCost.date.desc(), BiCost.created_at.desc(), BiCost.id)
     return {**_page(query, offset, limit, db, _cost_view), "categories": list(COST_CATEGORIES)}
 
 
 @router.post("/costs", status_code=201)
-def create_cost(body: CostIn, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def create_cost(body: CostIn, actor: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     row = BiCost(date=body.date, end_date=body.end_date, category=body.category, amount_cents=bi.euros_to_cents(body.amount),
                  currency=_currency(body.currency), note=body.note, recurring=body.recurring, created_by=actor.user_id)
     _check_cost(row)
@@ -262,7 +262,7 @@ def create_cost(body: CostIn, actor: CurrentUser = Depends(require_admin), db: S
 
 
 @router.patch("/costs/{cost_id}")
-def update_cost(cost_id: uuid.UUID, body: CostPatch, actor: CurrentUser = Depends(require_admin),
+def update_cost(cost_id: uuid.UUID, body: CostPatch, actor: CurrentUser = Depends(require_admin_bi),
                 db: Session = Depends(get_db_session)) -> dict:
     row = _live(db, BiCost, cost_id)
     before = _cost_view(row)
@@ -282,7 +282,7 @@ def update_cost(cost_id: uuid.UUID, body: CostPatch, actor: CurrentUser = Depend
 
 
 @router.delete("/costs/{cost_id}")
-def delete_cost(cost_id: uuid.UUID, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def delete_cost(cost_id: uuid.UUID, actor: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     row = _live(db, BiCost, cost_id)
     row.deleted_by, row.deleted_at = actor.user_id, datetime.now(timezone.utc)
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="bi_cost", target_id=str(row.id), action="delete",
@@ -293,14 +293,14 @@ def delete_cost(cost_id: uuid.UUID, actor: CurrentUser = Depends(require_admin),
 
 @router.get("/cash")
 def list_cash(offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100),
-              _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+              _: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     query = (select(BiCompanyCash).where(BiCompanyCash.deleted_at.is_(None))
              .order_by(BiCompanyCash.date.desc(), BiCompanyCash.created_at.desc(), BiCompanyCash.id))
     return _page(query, offset, limit, db, _cash_view)
 
 
 @router.post("/cash", status_code=201)
-def create_cash(body: CashIn, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def create_cash(body: CashIn, actor: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     row = BiCompanyCash(date=body.date, account=body.account.strip(), amount_cents=bi.euros_to_cents(body.amount),
                         currency=_currency(body.currency), note=body.note, created_by=actor.user_id)
     db.add(row)
@@ -312,7 +312,7 @@ def create_cash(body: CashIn, actor: CurrentUser = Depends(require_admin), db: S
 
 
 @router.patch("/cash/{cash_id}")
-def update_cash(cash_id: uuid.UUID, body: CashPatch, actor: CurrentUser = Depends(require_admin),
+def update_cash(cash_id: uuid.UUID, body: CashPatch, actor: CurrentUser = Depends(require_admin_bi),
                 db: Session = Depends(get_db_session)) -> dict:
     row = _live(db, BiCompanyCash, cash_id)
     before = _cash_view(row)
@@ -333,7 +333,7 @@ def update_cash(cash_id: uuid.UUID, body: CashPatch, actor: CurrentUser = Depend
 
 
 @router.delete("/cash/{cash_id}")
-def delete_cash(cash_id: uuid.UUID, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> dict:
+def delete_cash(cash_id: uuid.UUID, actor: CurrentUser = Depends(require_admin_bi), db: Session = Depends(get_db_session)) -> dict:
     row = _live(db, BiCompanyCash, cash_id)
     row.deleted_by, row.deleted_at = actor.user_id, datetime.now(timezone.utc)
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="bi_company_cash", target_id=str(row.id), action="delete",

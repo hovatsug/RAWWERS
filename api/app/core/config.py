@@ -198,6 +198,7 @@ class Settings(BaseSettings):
     # Uploads started and untouched this long are removed (owner's decision 4).
     unfinished_upload_max_age_hours: int = Field(default=24, alias="UNFINISHED_UPLOAD_MAX_AGE_HOURS")
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")
+    rate_limit_admin_bi_per_min: int = Field(default=240, alias="RATE_LIMIT_ADMIN_BI_PER_MIN")
     admin_ip_allowlist: str = Field(default="", alias="ADMIN_IP_ALLOWLIST")
     admin_api_keys: str = Field(default="", alias="ADMIN_API_KEYS")
     search_provider: str = Field(default="none", alias="SEARCH_PROVIDER")

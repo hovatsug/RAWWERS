@@ -170,3 +170,43 @@ def test_periods(client, db_session):
     assert period_bounds("this_month", None, None, now) == (date(2026, 11, 1), date(2026, 11, 9))
     assert period_bounds("last_month", None, None, now) == (date(2026, 10, 1), date(2026, 10, 31))
     assert client.get("/v1/admin/bi/overview", params={"period": "fortnight"}, headers=ADMIN).status_code == 422
+
+
+def test_the_bi_routes_have_their_own_higher_rate_limit(client, db_session, monkeypatch):
+    from app.services import rate_limit as rl
+
+    # The configured allowances: 240 a minute for /v1/admin/bi/*, 60 for the rest.
+    assert rl.RATE_LIMIT_RULES["admin_bi"] == (240, 60)
+    assert rl.RATE_LIMIT_RULES["admin"] == (60, 60)
+
+    # Scaled down to count them: BI 4, other admin routes 2. A fresh admin each
+    # run, since the counters live in the real Redis for a minute.
+    monkeypatch.setitem(rl.RATE_LIMIT_RULES, "admin_bi", (4, 60))
+    monkeypatch.setitem(rl.RATE_LIMIT_RULES, "admin", (2, 60))
+    admin = _person(db_session, UserRoleType.admin)
+    bi, other = "/v1/admin/bi/owed", "/v1/admin/shelf/settings"
+
+    assert [client.get(bi, headers=admin).status_code for _ in range(4)] == [200] * 4
+    assert client.get(bi, headers=admin).status_code == 429
+    # The BI calls spent none of the general allowance, which stays at its own 2.
+    assert [client.get(other, headers=admin).status_code for _ in range(2)] == [200] * 2
+    over = client.get(other, headers=admin)
+    assert over.status_code == 429 and over.json()["error"]["details"]["limit"] == 2
+
+
+def test_who_you_are_is_settled_before_any_rate_limit(client, db_session, monkeypatch):
+    from app.services import rate_limit as rl
+
+    # No allowance at all: an admin is limited, everyone else is still refused
+    # for who they are (401/403), never 429.
+    monkeypatch.setitem(rl.RATE_LIMIT_RULES, "admin_bi", (0, 60))
+    monkeypatch.setitem(rl.RATE_LIMIT_RULES, "admin", (0, 60))
+    callers = {
+        "anonymous": ({}, 401),
+        "client": (_person(db_session, UserRoleType.client), 403),
+        "photographer": (_person(db_session, UserRoleType.pro), 403),
+        "admin": (_person(db_session, UserRoleType.admin), 429),
+    }
+    for url in ("/v1/admin/bi/overview", "/v1/admin/shelf/settings"):
+        for who, (headers, expected) in callers.items():
+            assert client.get(url, headers=headers).status_code == expected, (who, url)

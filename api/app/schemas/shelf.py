@@ -338,6 +338,13 @@ class AdminShelfOrderView(BaseModel):
     tracking_url: str | None = None
     cancel_reason: str | None = None
     placed_at: datetime
+    #: What it cost us (recorded when placed; estimated on older orders),
+    #: and shipping, in euros.
+    supplier_cost: Decimal | None = None
+    supplier_currency: str | None = None
+    cost_eur_rate: Decimal | None = None
+    cost_estimated: bool = False
+    shipping_cost_eur: Decimal | None = None
     events: list[AdminShelfOrderEvent]
 
 
@@ -352,6 +359,12 @@ class AdminShelfOrderedRequest(BaseModel):
 class AdminShelfShippedRequest(BaseModel):
     tracking_code: str
     tracking_url: str | None = None
+    #: What shipping cost us, in euros, if known now (it can be set later).
+    shipping_cost_eur: Decimal | None = None
+
+
+class AdminShelfShippingRequest(BaseModel):
+    shipping_cost_eur: Decimal | None = None
 
 
 class AdminShelfCancelRequest(BaseModel):

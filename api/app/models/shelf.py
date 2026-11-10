@@ -270,6 +270,17 @@ class ShelfOrder(Base):
     level: Mapped[int] = mapped_column(nullable=False)
     price_raww: Mapped[int] = mapped_column(BigInteger, nullable=False)
     raww_eur_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    #: What the item cost us when the order was placed, in the supplier's
+    #: currency, and the euros per unit of that currency used (1 for EUR):
+    #: the Shelf margin reads these, never the item's cost today.
+    supplier_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    supplier_currency: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_eur_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    #: True on orders placed before the cost was recorded: backfilled with
+    #: the item's cost and the rate on the day the columns were added.
+    cost_estimated: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    #: What shipping it cost us, in euros; an admin enters it when it ships.
+    shipping_cost_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[ShelfOrderStatus] = mapped_column(
         Enum(ShelfOrderStatus, name="shelf_order_status", native_enum=False, length=16), nullable=False, index=True
     )

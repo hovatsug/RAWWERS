@@ -30,6 +30,7 @@ router = APIRouter(prefix="/admin/bi", tags=["admin_bi"])
 
 KPIS = (
     ("gmv", "GMV"),
+    ("net_gmv", "Net GMV"),
     ("retained", "Retained fee"),
     ("stripe_fees", "Stripe fees"),
     ("contribution", "Contribution profit"),

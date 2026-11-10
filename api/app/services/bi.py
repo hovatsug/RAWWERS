@@ -40,13 +40,14 @@ LOW_SAMPLE = 30
 BOOKING_COLUMNS = (
     "gmv_cents", "gmv_card_cents", "gmv_credit_cents", "refund_cents", "refund_card_cents", "refund_chargeback_cents",
     "refund_credit_cents", "retained_cents", "pro_cash_cents", "pro_raww_cents", "client_raww_cents", "bookings",
-    "other_currency_lines",
+    "other_currency_lines", "refund_rate_assumed_cents", "tier_estimated_bookings",
 )
 COMPANY_COLUMNS = (
     "stripe_fee_cents", "stripe_charge_cents", "stripe_refund_cents", "stripe_dispute_cents", "stripe_transfer_cents",
     "stripe_payout_cents", "payouts_paid_cents", "raww_issued_cents", "raww_reversed_cents", "raww_spent_cents",
     "raww_expired_cents", "raww_adjust_cents", "shelf_orders", "shelf_value_cents", "shelf_cost_cents",
-    "shelf_cost_not_set_orders", "shelf_cost_not_set_value_cents",
+    "shelf_cost_not_set_orders", "shelf_cost_not_set_value_cents", "shelf_cost_estimated_orders", "shelf_order_shipping_cents",
+    "shelf_shipping_not_set_orders", "raww_estimated_cents",
 )
 DIMENSIONS = ("niche", "country", "tier")
 
@@ -72,7 +73,10 @@ SELECT day, niche, country, tier,
     coalesce(sum(pro_raww_cents) FILTER (WHERE eur), 0) AS pro_raww_cents,
     coalesce(sum(client_raww_cents) FILTER (WHERE eur), 0) AS client_raww_cents,
     count(DISTINCT gig_id) FILTER (WHERE eur AND movement = 'payment' AND kind = 'base' AND day = first_day) AS bookings,
-    count(*) FILTER (WHERE NOT eur) AS other_currency_lines
+    count(*) FILTER (WHERE NOT eur) AS other_currency_lines,
+    -coalesce(sum(amount_cents) FILTER (WHERE eur AND movement = 'refund' AND rate_assumed), 0) AS refund_rate_assumed_cents,
+    count(DISTINCT gig_id) FILTER (WHERE eur AND movement = 'payment' AND kind = 'base' AND day = first_day AND tier_estimated)
+        AS tier_estimated_bookings
 FROM l GROUP BY day, niche, country, tier
 """
 
@@ -81,7 +85,9 @@ WITH days AS (
     SELECT d::date AS day FROM generate_series(CAST(:a AS date), CAST(:b AS date), interval '1 day') AS d
 ), st AS (
     SELECT day,
-        sum(fee_cents) AS fee,
+        -- Fees on transactions, and Stripe's own fees billed as their own
+        -- transactions (Radar, Connect: reporting category "fee").
+        sum(fee_cents) - coalesce(sum(amount_cents) FILTER (WHERE reporting_category = 'fee'), 0) AS fee,
         sum(amount_cents) FILTER (WHERE type IN ('charge', 'payment')) AS charge,
         -sum(amount_cents) FILTER (WHERE type IN ('refund', 'payment_refund', 'refund_failure')) AS refund,
         -sum(amount_cents) FILTER (WHERE reporting_category IN ('dispute', 'dispute_reversal')) AS dispute,
@@ -99,7 +105,8 @@ WITH days AS (
         -sum(value_cents) FILTER (WHERE kind IN ('reverse_booking', 'reverse_extras')) AS reversed,
         -sum(value_cents) FILTER (WHERE kind IN ('spend_order', 'refund_order')) AS spent,
         -sum(value_cents) FILTER (WHERE kind = 'expire') AS expired,
-        sum(value_cents) FILTER (WHERE kind = 'admin_adjust') AS adjust
+        sum(value_cents) FILTER (WHERE kind = 'admin_adjust') AS adjust,
+        sum(abs(value_cents)) FILTER (WHERE rate_source = 'current') AS estimated
     FROM bi_raww WHERE day BETWEEN :a AND :b GROUP BY day
 ), sh AS (
     SELECT day,
@@ -107,7 +114,10 @@ WITH days AS (
         sum(value_cents) FILTER (WHERE cost_cents IS NOT NULL) AS value,
         sum(cost_cents) AS cost,
         sum(orders) FILTER (WHERE cost_cents IS NULL) AS ns_orders,
-        sum(value_cents) FILTER (WHERE cost_cents IS NULL) AS ns_value
+        sum(value_cents) FILTER (WHERE cost_cents IS NULL) AS ns_value,
+        sum(cost_estimated_orders) AS est_orders,
+        sum(shipping_cents) AS shipping,
+        sum(shipping_not_set_orders) AS shipping_ns
     FROM bi_shelf WHERE day BETWEEN :a AND :b GROUP BY day
 )
 SELECT days.day,
@@ -128,7 +138,11 @@ SELECT days.day,
     coalesce(sh.value, 0) AS shelf_value_cents,
     coalesce(sh.cost, 0) AS shelf_cost_cents,
     coalesce(sh.ns_orders, 0) AS shelf_cost_not_set_orders,
-    coalesce(sh.ns_value, 0) AS shelf_cost_not_set_value_cents
+    coalesce(sh.ns_value, 0) AS shelf_cost_not_set_value_cents,
+    coalesce(sh.est_orders, 0) AS shelf_cost_estimated_orders,
+    coalesce(sh.shipping, 0) AS shelf_order_shipping_cents,
+    coalesce(sh.shipping_ns, 0) AS shelf_shipping_not_set_orders,
+    coalesce(rw.estimated, 0) AS raww_estimated_cents
 FROM days
 LEFT JOIN st ON st.day = days.day
 LEFT JOIN synced ON synced.day = days.day
@@ -345,7 +359,8 @@ def summarize(db: Session, a: date, b: date, filters: Filters | None = None, now
 
     derived("contribution", ["retained", "stripe_fees"], lambda: v["retained"] - v["stripe_fees"])
     derived("marketing_spend", ["ad_spend", "marketing_costs"], lambda: v["ad_spend"] + v["marketing_costs"] + v["client_credit_used"])
-    derived("shelf_margin", ["shelf_value", "shelf_cost", "shelf_shipping"], lambda: v["shelf_value"] - v["shelf_cost"] - v["shelf_shipping"])
+    derived("shelf_margin", ["shelf_value", "shelf_cost", "shelf_order_shipping", "shelf_shipping"],
+            lambda: v["shelf_value"] - v["shelf_cost"] - v["shelf_order_shipping"] - v["shelf_shipping"])
     derived("breakage", ["raww_expired"], lambda: v["raww_expired"])
     derived(
         "operating_profit",
@@ -357,6 +372,12 @@ def summarize(db: Session, a: date, b: date, filters: Filters | None = None, now
         "stripe_unsynced_days": len(unsynced), "stripe_partial_days": stripe_partial_days(db, a, b), "other_currency_lines": v["other_currency_lines"],
         "other_currency_costs": c["other_currency_entries"],
         "shelf_cost_not_set_orders": v.get("shelf_cost_not_set_orders"),
+        # Estimated values in the period (docs/BI.md, "Recorded, estimated").
+        "refund_rate_assumed_cents": v["refund_rate_assumed"],
+        "tier_estimated_bookings": v["tier_estimated_bookings"],
+        "raww_estimated_cents": v.get("raww_estimated"),
+        "shelf_cost_estimated_orders": v.get("shelf_cost_estimated_orders"),
+        "shelf_shipping_not_set_orders": v.get("shelf_shipping_not_set_orders"),
     }
     return Summary(values=v, reasons=reasons, meta=meta)
 
@@ -517,12 +538,14 @@ def breakdown(db: Session, a: date, b: date, by: str, filters: Filters | None = 
     for r in daily_rows(db, a, b, now).rows:
         if r["scope"] != "booking" or not filters.keeps(r):
             continue
-        g = groups.setdefault(r[by], [0, 0, 0, 0])
+        g = groups.setdefault(r[by], [0, 0, 0, 0, 0])
         g[0] += r["gmv_cents"]
         g[1] += r["refund_cents"]
         g[2] += r["retained_cents"]
         g[3] += r["bookings"]
-    out = [_group_stats(k, k, *g) for k, g in groups.items()]
+        g[4] += r["tier_estimated_bookings"]
+    # Bookings whose tier is estimated (backfilled): said beside the tier.
+    out = [{**_group_stats(k, k, *g[:4]), "tier_estimated_n": g[4]} for k, g in groups.items()]
     return sorted(out, key=lambda x: (-x["net_gmv_cents"], x["key"]))
 
 
@@ -552,7 +575,8 @@ def bookings(db: Session, a: date, b: date, filters: Filters | None = None, pro_
     total = db.execute(text(f"SELECT count(DISTINCT l.gig_id) FROM bi_lines l WHERE {where}"), params).scalar_one()
     rows = db.execute(text(f"""
         SELECT l.gig_id::text AS gig_id, max(b.pro_name) AS pro_name, max(l.niche) AS niche, max(l.country) AS country,
-               max(l.tier) AS tier, max(b.status) AS status, min(l.day) AS first_day,
+               max(l.tier) AS tier, bool_or(l.tier_estimated) AS tier_estimated, max(b.status) AS status,
+               min(l.day) AS first_day,
                coalesce(sum(l.amount_cents) FILTER (WHERE l.movement = 'payment'), 0) AS gmv_cents,
                -coalesce(sum(l.amount_cents) FILTER (WHERE l.movement = 'refund'), 0) AS refund_cents,
                coalesce(sum(l.retained_cents), 0) AS retained_cents
@@ -645,6 +669,18 @@ def owed(db: Session, stripe_balance: dict | None) -> dict:
     eur_cash = [r for r in cash_rows if r["currency"] == "EUR"]
     company_cash = sum(int(r["amount_cents"]) for r in eur_cash) if eur_cash else None
 
+    # RAWW outstanding at face value (today's admin rate), and at what it
+    # would cost us: face value x what Shelf orders have cost per euro of
+    # RAWW spent on them, over every order with a cost.
+    rate = db.execute(text("SELECT raww_eur_value FROM shelf_settings WHERE id = 1")).scalar()
+    face = int((Decimal(int(raww["raww"])) * Decimal(rate) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if rate is not None else None
+    shelf = db.execute(text(
+        "SELECT coalesce(sum(cost_cents), 0) AS cost, coalesce(sum(value_cents), 0) AS value, coalesce(sum(orders), 0) AS n "
+        "FROM bi_shelf WHERE cost_cents IS NOT NULL"
+    )).mappings().one()
+    cost_ratio = Decimal(int(shelf["cost"])) / Decimal(int(shelf["value"])) if int(shelf["value"]) > 0 else None
+    at_cost = int((Decimal(face) * cost_ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if face is not None and cost_ratio is not None else None
+
     credit = client_credit.budget_view(db)
     stripe_available = stripe_balance.get("available_cents") if stripe_balance else None
     stripe_pending = stripe_balance.get("pending_cents") if stripe_balance else None
@@ -656,22 +692,35 @@ def owed(db: Session, stripe_balance: dict | None) -> dict:
         liquid = stripe_available + stripe_pending + (company_cash or 0) - owed_photographers - owed_clients
         if company_cash is None:
             liquid_reason = "Company cash not set: counts Stripe only"
+    free_cash = liquid - face if liquid is not None and face is not None else None
+    free_cash_at_cost = liquid - at_cost if liquid is not None and at_cost is not None else None
+    free_cash_at_cost_reason = (
+        liquid_reason if liquid is None else None if at_cost is not None else "No Shelf order with a cost yet: no cost per RAWW"
+    )
     return {
         "photographers": {"in_settlement_cents": pending, "held_cents": held, "due_cents": due,
                           "owed_cents": owed_photographers, "paid_out_cents": int(photographers["paid"]),
                           "owed_back_by_photographers_cents": int(photographers["owed_back"])},
         "clients": {"owed_cents": owed_clients, "items": [{"kind": r["kind"], "n": int(r["n"]), "cents": int(r["cents"])} for r in clients]},
         "raww": {"outstanding_raww": int(raww["raww"]), "outstanding_cents": int(raww["cents"]),
-                 "valued_at_current_rate_cents": int(raww["at_current"]), "unvalued_lines": int(raww["unvalued"])},
+                 "valued_at_current_rate_cents": int(raww["at_current"]), "unvalued_lines": int(raww["unvalued"]),
+                 "face_value_cents": face, "rate": str(rate) if rate is not None else None,
+                 "at_cost_cents": at_cost, "cost_per_face_euro": str(cost_ratio.quantize(Decimal("0.0001"))) if cost_ratio is not None else None,
+                 "cost_orders": int(shelf["n"])},
         "client_credit": {"month": credit["month"], "budget_cents": _cents(credit["budget_eur"]),
                           "used_cents": _cents(credit["used_eur"]), "awarded_cents": _cents(credit["awarded_eur"]),
-                          "remaining_cents": _cents(credit["remaining_eur"])},
+                          "remaining_cents": _cents(credit["remaining_eur"]),
+                          # Awarded and not used yet, all clients: an obligation, not subtracted.
+                          "outstanding_cents": _cents(credit["outstanding_eur"])},
         "company_cash": {"total_cents": company_cash,
                          "accounts": [{"account": r["account"], "date": r["date"].isoformat(), "currency": r["currency"],
                                        "amount_cents": int(r["amount_cents"])} for r in cash_rows]},
         "stripe": {"available_cents": stripe_available, "pending_cents": stripe_pending,
                    "reason": (stripe_balance or {}).get("reason")},
         "liquid": {"cents": liquid, "reason": liquid_reason},
+        # Liquid minus the RAWW outstanding at face value; and at cost.
+        "free_cash": {"cents": free_cash, "reason": liquid_reason if liquid is None else None if face is not None else "No RAWW rate set",
+                      "at_cost_cents": free_cash_at_cost, "at_cost_reason": free_cash_at_cost_reason},
     }
 
 

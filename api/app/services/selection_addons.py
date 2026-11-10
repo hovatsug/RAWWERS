@@ -259,6 +259,20 @@ def reconcile_refunds(db: Session, payment, refunds) -> bool:
     if purchase is None or (purchase.meta or {}).get("kind") != ADDON_KIND:
         return False
     back = sum((Decimal(int(r.get("amount") or 0)) / 100 for r in refunds if r.get("status") == "succeeded"), Decimal("0.00"))
+    # Each refund as Stripe reports it, on the payment it refunds: add-on
+    # refunds write no booking ledger line, and the dashboard reads them
+    # from here (docs/BI.md). Rewritten whole each time, as Stripe says.
+    payment.meta = {
+        **(payment.meta or {}),
+        "refunds": {
+            str(r.get("id")): {
+                "amount": str((Decimal(int(r.get("amount") or 0)) / 100).quantize(Decimal("0.01"))),
+                "status": r.get("status"),
+                "created": datetime.fromtimestamp(int(r.get("created") or 0), tz=timezone.utc).isoformat(),
+            }
+            for r in refunds if r.get("id")
+        },
+    }
     payment.amount_refunded = min(back, payment.amount)
     if back >= payment.amount > 0:
         payment.status = PaymentStatus.refunded

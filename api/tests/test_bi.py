@@ -423,3 +423,43 @@ def test_a_day_mirrored_before_it_ended_says_as_of_when(db_session, world):
     db_session.get(BiStripeSyncDay, D2).synced_at = datetime(2026, 10, 6, 14, 5, tzinfo=timezone.utc)
     db_session.commit()
     assert _summary(db_session).meta["stripe_partial_days"] == [{"day": "2026-10-06", "as_of": "15:05"}]
+
+
+# --- recorded, or estimated (docs/BI.md) --------------------------------------------------------
+
+
+def test_what_the_world_estimates_is_counted(db_session, world):
+    """The world's lines predate the recorded stamps: the refund names no
+    payment (base rates), the bookings have no tier at booking (today's),
+    the expiry and the adjustment no rate (today's), the orders no cost
+    snapshot (the item's, at today's rate)."""
+    m = _summary(db_session).meta
+    assert m["refund_rate_assumed_cents"] == 2000  # the card refund; credit returned is always base
+    assert m["tier_estimated_bookings"] == 2
+    assert m["raww_estimated_cents"] == 1000 + 200
+    assert m["shelf_cost_estimated_orders"] == 2  # O1, O2 (O3 placed and reversed)
+    assert m["shelf_shipping_not_set_orders"] == 0
+
+
+def test_stripe_s_own_fees_count_as_stripe_fees(db_session, world):
+    # Radar, Connect: billed as their own balance transaction, category "fee".
+    db_session.add(BiStripeTxn(id="txn_fee", type="stripe_fee", reporting_category="fee", currency="EUR", amount_cents=-500,
+                               fee_cents=0, net_cents=-500, created_at=at(D2)))
+    db_session.commit()
+    v = _summary(db_session).values
+    assert v["stripe_fees"] == 309 + 500 and v["contribution"] == 1947 - 500
+
+
+def test_free_cash_takes_the_raww_outstanding_off_at_face_value_and_at_cost(db_session, world):
+    from app.models.reward import RewardBalance
+
+    db_session.add(RewardBalance(user_id=world.client, balance=250))
+    db_session.commit()
+    o = bi.owed(db_session, {"available_cents": 50000, "pending_cents": 7000, "reason": None})
+    liquid = 50000 + 7000 + 170000 - 13671 - 1100
+    assert o["raww"]["face_value_cents"] == 1120 * 10  # 1120 RAWW at 0.10
+    # Orders with a cost: O1 3600 for 5000; O3 placed and reversed. 0.72 per euro.
+    assert o["raww"]["cost_per_face_euro"] == "0.7200" and o["raww"]["at_cost_cents"] == 8064
+    assert o["free_cash"] == {"cents": liquid - 11200, "reason": None, "at_cost_cents": liquid - 8064, "at_cost_reason": None}
+    assert o["client_credit"]["outstanding_cents"] == 250  # 250 points, informational, not subtracted
+    assert o["liquid"]["cents"] == liquid

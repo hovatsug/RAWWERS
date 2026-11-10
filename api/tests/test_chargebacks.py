@@ -162,6 +162,8 @@ def test_an_open_chargeback_holds_the_booking_and_records_what_stripe_took(db_se
     state = _state(db_session, gig)
     assert state["gig"] == "disputed" and state["payment"] == "disputed"
     assert state["ledger"] == [("chargeback_fee", "-20.00"), ("chargeback_opened", "-120.00")]
+    payment_id = db_session.execute(select(StripePayment.id).where(StripePayment.gig_id == gig.id)).scalar_one()
+    assert set(db_session.execute(select(LedgerEntry.stripe_payment_id).where(LedgerEntry.gig_id == gig.id, LedgerEntry.reference_type == "stripe_dispute")).scalars()) == {payment_id}
     assert ("chargeback_evidence_due", "open", "120.00") in state["attention"]
     assert _holds_time(db_session, gig)
     assert state["finals"] is True

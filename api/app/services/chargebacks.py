@@ -64,7 +64,8 @@ def _amount(minor) -> Decimal:
     return (Decimal(int(minor or 0)) / 100).quantize(Decimal("0.01"))
 
 
-def _line(db: Session, gig: Gig, entry_type: LedgerEntryType, ref: str, amount: Decimal, description: str, *, legacy_ref: str | None = None) -> None:
+def _line(db: Session, gig: Gig, entry_type: LedgerEntryType, ref: str, amount: Decimal, description: str, *,
+          payment: StripePayment, legacy_ref: str | None = None) -> None:
     exists = db.execute(
         select(LedgerEntry).where(LedgerEntry.gig_id == gig.id, LedgerEntry.entry_type == entry_type, LedgerEntry.reference_id == ref)
     ).scalars().first()
@@ -80,9 +81,11 @@ def _line(db: Session, gig: Gig, entry_type: LedgerEntryType, ref: str, amount: 
         ).scalars().first()
         if legacy is not None:
             legacy.reference_id = ref
+            legacy.stripe_payment_id = payment.id
             return
     db.add(LedgerEntry(gig_id=gig.id, entry_type=entry_type, amount=amount, currency=gig.currency,
-                       description=description, reference_type="stripe_dispute", reference_id=ref))
+                       description=description, reference_type="stripe_dispute", reference_id=ref,
+                       stripe_payment_id=payment.id))
     db.flush()
 
 
@@ -140,13 +143,13 @@ def reconcile_chargeback(db: Session, dispute_id: str, *, trigger: str) -> bool:
         category = txn.get("reporting_category")
         if category == "dispute":
             _line(db, gig, LedgerEntryType.chargeback_opened, txn["id"], _amount(txn.get("amount")),
-                  "Chargeback: funds withdrawn", legacy_ref=dispute_id)
+                  "Chargeback: funds withdrawn", payment=payment, legacy_ref=dispute_id)
             if txn.get("fee"):
-                _line(db, gig, LedgerEntryType.chargeback_fee, f"{txn['id']}:fee", -_amount(txn["fee"]), "Chargeback: Stripe's dispute fee")
+                _line(db, gig, LedgerEntryType.chargeback_fee, f"{txn['id']}:fee", -_amount(txn["fee"]), "Chargeback: Stripe's dispute fee", payment=payment)
         elif category == "dispute_reversal":
-            _line(db, gig, LedgerEntryType.chargeback_won, txn["id"], _amount(txn.get("amount")), "Chargeback won: funds reinstated")
+            _line(db, gig, LedgerEntryType.chargeback_won, txn["id"], _amount(txn.get("amount")), "Chargeback won: funds reinstated", payment=payment)
             if txn.get("fee"):
-                _line(db, gig, LedgerEntryType.chargeback_fee, f"{txn['id']}:fee", -_amount(txn["fee"]), "Chargeback won: fee movement")
+                _line(db, gig, LedgerEntryType.chargeback_fee, f"{txn['id']}:fee", -_amount(txn["fee"]), "Chargeback won: fee movement", payment=payment)
 
     due_by = (dispute.get("evidence_details") or {}).get("due_by")
     due_at = datetime.fromtimestamp(due_by, timezone.utc) if due_by else None
@@ -158,7 +161,7 @@ def reconcile_chargeback(db: Session, dispute_id: str, *, trigger: str) -> bool:
     if status in _CLOSED and dispute_id not in settled:
         if status == "lost":
             fee = sum((_amount(t.get("fee")) for t in dispute.get("balance_transactions") or [] if t.get("reporting_category") == "dispute"), Decimal("0.00"))
-            _line(db, gig, LedgerEntryType.chargeback_lost, dispute_id, Decimal("0.00"), "Chargeback lost: absorbed by the platform")
+            _line(db, gig, LedgerEntryType.chargeback_lost, dispute_id, Decimal("0.00"), "Chargeback lost: absorbed by the platform", payment=payment)
             if gig.status != LOST_GIG_STATUS:
                 db.add(GigTransition(gig_id=gig.id, from_status=gig.status, to_status=LOST_GIG_STATUS, actor_user_id=SYSTEM_USER_ID,
                                      reason="Stripe chargeback lost: the client has their money back"))

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text
+from sqlalchemy import CHAR, Boolean, DateTime, Enum, ForeignKey, Index, Integer, Numeric, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -113,6 +113,11 @@ class Gig(Base):
     vat_rate_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     vat_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     vat_number: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The photographer's tier in this booking's niche when it was made
+    # (docs/BI.md). Estimated: backfilled with the tier on the day the
+    # column was added, not the tier at booking time.
+    pro_tier: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pro_tier_estimated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     scheduled_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     scheduled_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     location_text: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -182,6 +187,10 @@ class LedgerEntry(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The payment a refund or chargeback line came from, so it splits at
+    # that payment's rates (extras at the extras rates). Null on lines
+    # written before it was recorded that could not be tied to one.
+    stripe_payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("stripe_payment.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     gig: Mapped[Gig] = relationship(back_populates="ledger_entries")

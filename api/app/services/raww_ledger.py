@@ -254,6 +254,12 @@ def booking_net(db: Session, *, pro_user_id: uuid.UUID, gig_id: uuid.UUID) -> in
     )
 
 
+def _current_rate(db: Session) -> Decimal:
+    from app.services.shelf_settings import shelf_settings
+
+    return shelf_settings(db).raww_eur_value
+
+
 def admin_adjust(
     db: Session,
     *,
@@ -279,6 +285,8 @@ def admin_adjust(
         source_id=request_id or str(uuid.uuid4()),
         note=note,
         actor_user_id=actor_user_id,
+        # The rate on the day, so the dashboard values it as it was.
+        raww_eur_value=_current_rate(db),
     )
     assert entry is not None
     return entry
@@ -298,6 +306,7 @@ def expire_spendable(db: Session, *, pro_user_id: uuid.UUID) -> ProRawwLedgerEnt
         amount=-balance.spendable,
         source_type="expiry",
         source_id=f"inactive-since:{since}",
+        raww_eur_value=_current_rate(db),
     )
 
 

@@ -205,6 +205,9 @@ def test_two_partial_refunds_are_two_ledger_lines(db_session, stripe_truth):
     refunds = _refunds("two_partials")
     total = sum(r["amount"] for r in refunds)
     assert sorted(l[2] for l in state["ledger"]) == sorted(r["id"] for r in refunds), "one line per refund, by its id"
+    # Each line names the payment it refunds (the dashboard splits it at that payment's rates).
+    payment_ids = set(db_session.execute(select(LedgerEntry.stripe_payment_id).where(LedgerEntry.gig_id == gig.id, LedgerEntry.reference_type == "stripe_refund")).scalars())
+    assert payment_ids == {db_session.execute(select(StripePayment.id).where(StripePayment.gig_id == gig.id)).scalar_one()}
     assert state["payment"] == ("succeeded", str((Decimal(total) / 100).quantize(Decimal("0.01"))))
     assert state["gig"] == "paid"
 

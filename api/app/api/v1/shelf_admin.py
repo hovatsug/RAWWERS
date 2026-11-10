@@ -25,6 +25,7 @@ from app.schemas.shelf import (
     AdminShelfOrderedRequest,
     AdminShelfOrderEvent,
     AdminShelfOrdersResponse,
+    AdminShelfShippingRequest,
     AdminShelfOrderView,
     AdminShelfShippedRequest,
     AdminShelfItemRequest,
@@ -269,6 +270,8 @@ def _order_view(db: Session, order: ShelfOrder) -> AdminShelfOrderView:
         status=order.status.value, country=order.country, address=so.order_address(order),
         supplier_order_ref=order.supplier_order_ref, tracking_code=order.tracking_code, tracking_url=order.tracking_url,
         cancel_reason=order.cancel_reason, placed_at=order.placed_at,
+        supplier_cost=order.supplier_cost, supplier_currency=order.supplier_currency, cost_eur_rate=order.cost_eur_rate,
+        cost_estimated=order.cost_estimated, shipping_cost_eur=order.shipping_cost_eur,
         events=[AdminShelfOrderEvent.model_validate(e, from_attributes=True) for e in events],
     )
 
@@ -300,8 +303,19 @@ def shelf_order_ordered(order_id: uuid.UUID, body: AdminShelfOrderedRequest, act
 
 @router.post("/orders/{order_id}/shipped", response_model=AdminShelfOrderView)
 def shelf_order_shipped(order_id: uuid.UUID, body: AdminShelfShippedRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfOrderView:
-    order = so.admin_mark_shipped(db, order_id=order_id, tracking_code=body.tracking_code, tracking_url=body.tracking_url, admin_user_id=actor.user_id)
-    return _logged(db, actor, order, "shelf_order_shipped", tracking_code=order.tracking_code)
+    order = so.admin_mark_shipped(db, order_id=order_id, tracking_code=body.tracking_code, tracking_url=body.tracking_url,
+                                  admin_user_id=actor.user_id, shipping_cost_eur=body.shipping_cost_eur)
+    return _logged(db, actor, order, "shelf_order_shipped", tracking_code=order.tracking_code,
+                   shipping_cost_eur=str(order.shipping_cost_eur) if order.shipping_cost_eur is not None else None)
+
+
+@router.put("/orders/{order_id}/shipping-cost", response_model=AdminShelfOrderView)
+def shelf_order_shipping_cost(order_id: uuid.UUID, body: AdminShelfShippingRequest, actor: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> AdminShelfOrderView:
+    """What shipping this order cost us (the Shelf margin reads it)."""
+    order, before = so.admin_set_shipping(db, order_id=order_id, shipping_cost_eur=body.shipping_cost_eur)
+    return _logged(db, actor, order, "shelf_order_shipping_cost",
+                   before=str(before) if before is not None else None,
+                   after=str(order.shipping_cost_eur) if order.shipping_cost_eur is not None else None)
 
 
 @router.post("/orders/{order_id}/delivered", response_model=AdminShelfOrderView)

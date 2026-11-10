@@ -306,7 +306,7 @@ def test_a_refunded_add_on_takes_its_photos_and_earning_back(client, db_session,
     purchase = db_session.get(ExtraImagePurchase, uuid.UUID(started["addon_id"]))
     cents = int(Decimal(started["amount"]) * 100)
     monkeypatch.setattr(
-        "app.services.refund_reconcile.fetch_refunds", lambda pi: [{"id": "re_1", "status": "succeeded", "amount": cents}]
+        "app.services.refund_reconcile.fetch_refunds", lambda pi: [{"id": "re_1", "status": "succeeded", "amount": cents, "created": 1791370800}]
     )
 
     assert reconcile_payment_refunds(db_session, purchase.stripe_payment_intent_id, trigger="test") is True
@@ -318,3 +318,6 @@ def test_a_refunded_add_on_takes_its_photos_and_earning_back(client, db_session,
     assert entry.reversed_at is not None
     assert set(map(str, unlocked_final_asset_ids(db_session, gallery=gallery))) == set(assets[:20])
     assert db_session.get(Gig, gig.id).status == GigStatus.completed, "the booking is not touched"
+    # The refund is recorded on the payment it refunds (the dashboard reads it there).
+    payment = db_session.execute(select(StripePayment).where(StripePayment.stripe_payment_intent_id == purchase.stripe_payment_intent_id)).scalar_one()
+    assert payment.meta["refunds"]["re_1"] == {"amount": started["amount"], "status": "succeeded", "created": "2026-10-07T11:00:00+00:00"}

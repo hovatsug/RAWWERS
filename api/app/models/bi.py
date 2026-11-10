@@ -59,6 +59,10 @@ class BiDaily(Base):
     client_raww_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     bookings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     other_currency_lines: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: Refunds (as a positive amount) split at base rates because the line
+    #: names no payment; bookings whose tier is estimated.
+    refund_rate_assumed_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    tier_estimated_bookings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # company scope
     stripe_synced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     stripe_fee_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
@@ -78,6 +82,14 @@ class BiDaily(Base):
     shelf_cost_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     shelf_cost_not_set_orders: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     shelf_cost_not_set_value_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    #: Orders whose cost is estimated (backfilled), shipping entered per
+    #: order, and shipped orders with no shipping entered.
+    shelf_cost_estimated_orders: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    shelf_order_shipping_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    shelf_shipping_not_set_orders: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: RAWW expiries and adjustments (absolute value) valued at today's rate
+    #: because the line has none recorded.
+    raww_estimated_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
 
     __table_args__ = (CheckConstraint("scope IN ('booking','company')", name="ck_bi_daily_scope"),)

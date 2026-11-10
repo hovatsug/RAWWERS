@@ -91,10 +91,12 @@ def _adopt_legacy_line(db: Session, gig: Gig, payment: StripePayment, refund_id:
     if legacy is None:
         return False
     legacy.reference_id = refund_id
+    legacy.stripe_payment_id = payment.id
     return True
 
 
-def _add_line(db: Session, gig: Gig, entry_type: LedgerEntryType, refund_id: str, amount: Decimal, description: str) -> None:
+def _add_line(db: Session, gig: Gig, payment: StripePayment, entry_type: LedgerEntryType, refund_id: str, amount: Decimal,
+              description: str) -> None:
     db.add(
         LedgerEntry(
             gig_id=gig.id,
@@ -104,6 +106,8 @@ def _add_line(db: Session, gig: Gig, entry_type: LedgerEntryType, refund_id: str
             description=description,
             reference_type="stripe_refund",
             reference_id=refund_id,
+            # The payment refunded: the dashboard splits the line at its rates.
+            stripe_payment_id=payment.id,
         )
     )
     db.flush()
@@ -198,7 +202,7 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
         if status == "succeeded":
             back += amount
             if not _ledger_line(db, gig, LedgerEntryType.refund_succeeded, refund_id) and not _adopt_legacy_line(db, gig, payment, refund_id, amount):
-                _add_line(db, gig, LedgerEntryType.refund_succeeded, refund_id, -amount, f"Stripe refund {refund_id}")
+                _add_line(db, gig, payment, LedgerEntryType.refund_succeeded, refund_id, -amount, f"Stripe refund {refund_id}")
             if case is not None and case.status not in (RefundCaseStatus.refunded, RefundCaseStatus.succeeded):
                 finalize_refund_case_success(db, stripe_refund_id=refund_id)
         elif status in ("failed", "canceled"):
@@ -206,7 +210,7 @@ def reconcile_payment_refunds(db: Session, payment_intent_id: str, *, trigger: s
                 finalize_refund_case_failed(db, stripe_refund_id=refund_id, reason=refund.get("failure_reason") or status)
             # Reverse that refund's line - only if it was ever written, and once.
             if _ledger_line(db, gig, LedgerEntryType.refund_succeeded, refund_id) and not _ledger_line(db, gig, LedgerEntryType.refund_failed, refund_id):
-                _add_line(db, gig, LedgerEntryType.refund_failed, refund_id, amount, f"Stripe refund {refund_id} {status}")
+                _add_line(db, gig, payment, LedgerEntryType.refund_failed, refund_id, amount, f"Stripe refund {refund_id} {status}")
             _attention(
                 db, kind="client_owed", gig=gig, case=case, refund_id=refund_id, amount=amount,
                 note=f"Refund {status} ({refund.get('failure_reason') or 'no reason given'}): the client has not been paid back.",

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -131,6 +132,15 @@ def orders_this_month(db: Session, pro_user_id: uuid.UUID, now: datetime | None 
     ).scalar_one()
 
 
+def cost_snapshot(item: ShelfItem, settings) -> dict:
+    """The item's cost and the euros per unit of its currency, to record on
+    an order. No cost, or a currency without a rate: the cost is not set."""
+    cost = item.supplier_cost if item.supplier_cost and item.supplier_cost > 0 else None
+    currency = (item.supplier_currency or "").upper() or None
+    rate = Decimal("1") if currency == "EUR" else settings.gbp_eur_rate if currency == "GBP" else None
+    return {"supplier_cost": cost, "supplier_currency": currency, "cost_eur_rate": rate if cost is not None else None}
+
+
 def place_order(db: Session, *, pro_user_id: uuid.UUID, item_id: uuid.UUID, client_request_id: str) -> ShelfOrder:
     request_id = (client_request_id or "").strip()
     if not request_id or len(request_id) > 100:
@@ -197,6 +207,8 @@ def place_order(db: Session, *, pro_user_id: uuid.UUID, item_id: uuid.UUID, clie
         level=item.level,
         price_raww=item.price_raww,
         raww_eur_value=settings.raww_eur_value,
+        # What it costs us, as it stands now (docs/BI.md, the Shelf margin).
+        **cost_snapshot(item, settings),
         status=ShelfOrderStatus.placed,
         shipping_address=addresses.encrypt(fields),
         country=fields["country"],
@@ -297,16 +309,40 @@ def admin_mark_ordered(db: Session, *, order_id: uuid.UUID, supplier_order_ref: 
     return order
 
 
-def admin_mark_shipped(db: Session, *, order_id: uuid.UUID, tracking_code: str, tracking_url: str | None, admin_user_id: uuid.UUID) -> ShelfOrder:
+def _shipping(value: Decimal | None) -> Decimal | None:
+    if value is None:
+        return None
+    value = Decimal(value).quantize(Decimal("0.01"))
+    if value < 0 or value > Decimal("10000"):
+        raise APIError(code="validation_error", message="Shipping is between 0 and 10000 euros", status_code=422)
+    return value
+
+
+def admin_mark_shipped(db: Session, *, order_id: uuid.UUID, tracking_code: str, tracking_url: str | None, admin_user_id: uuid.UUID,
+                       shipping_cost_eur: Decimal | None = None) -> ShelfOrder:
     code = (tracking_code or "").strip()
     if not code:
         raise APIError(code="validation_error", message="The tracking code is required", status_code=422)
+    shipping = _shipping(shipping_cost_eur)
     order = _order_locked(db, order_id)
     # Before the move, so its notification (and email) carries the tracking.
     order.tracking_code = code
     order.tracking_url = (tracking_url or "").strip() or None
+    if shipping is not None:
+        order.shipping_cost_eur = shipping
     _move(db, order, ShelfOrderStatus.shipped, actor_type="admin", actor_user_id=admin_user_id, note=code)
     return order
+
+
+def admin_set_shipping(db: Session, *, order_id: uuid.UUID, shipping_cost_eur: Decimal | None) -> tuple[ShelfOrder, Decimal | None]:
+    """What shipping this order cost us, in euros (null clears it). Any
+    time: the invoice can come after the parcel. Returns the order and the
+    value before."""
+    shipping = _shipping(shipping_cost_eur)
+    order = _order_locked(db, order_id)
+    before = order.shipping_cost_eur
+    order.shipping_cost_eur = shipping
+    return order, before
 
 
 def admin_mark_delivered(db: Session, *, order_id: uuid.UUID, admin_user_id: uuid.UUID) -> ShelfOrder:

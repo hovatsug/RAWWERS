@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import APIError
 from app.models.booking import BookingRequest, ProPackage
 from app.models.gig import Gig, GigStatus
-from app.models.niche import Niche
+from app.models.niche import Niche, ProNicheSkill
 from app.services.bookable_time import request_preset
 from app.services.commission import split_for_pro, vat_stamp_for
 from app.services.deadlines import pay_deadline_for_request
@@ -30,6 +30,16 @@ def find_gig_for_request(db: Session, booking_request_id: uuid.UUID) -> Gig | No
     return db.execute(
         select(Gig).where(Gig.meta["booking_request_id"].astext == str(booking_request_id)).limit(1)
     ).scalar_one_or_none()
+
+
+def tier_now(db: Session, pro_user_id: uuid.UUID, niche_id: uuid.UUID | None) -> str | None:
+    """The photographer's tier in a niche now, as text; None without one."""
+    if niche_id is None:
+        return None
+    tier = db.execute(
+        select(ProNicheSkill.tier).where(ProNicheSkill.pro_user_id == pro_user_id, ProNicheSkill.niche_id == niche_id)
+    ).scalars().first()
+    return getattr(tier, "value", tier)
 
 
 def build_gig_for_request(
@@ -102,6 +112,9 @@ def build_gig_for_request(
         pro_raww_percent=split.pro_raww_percent,
         client_credit_percent=split.client_credit_percent,
         **vat_stamp_for(db, pro_user_id=request.pro_user_id),
+        # The photographer's tier in this niche now, for the dashboard's
+        # tier breakdown (docs/BI.md): a later promotion changes nothing here.
+        pro_tier=tier_now(db, request.pro_user_id, package.niche_id),
         scheduled_start=request.requested_start,
         scheduled_end=request.requested_end,
         location_text=request.location_text,

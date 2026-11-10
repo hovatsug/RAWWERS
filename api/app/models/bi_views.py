@@ -4,9 +4,10 @@ Each view is defined once here; docs/BI.md says what each number means.
 Amounts become integer cents here, once. Days are Europe/London.
 
 Created after the tables (`after_create` on the metadata, for the test
-suite's create_all) and by migration 20261109_0092, which carries a frozen
-copy of this SQL; tests/test_bi.py fails when the two differ, so a change
-here needs a migration that recreates the views. Dropped before the tables.
+suite's create_all) and by the latest BI migration (20261110_0093), which
+carries a frozen copy of this SQL; tests/test_bi_schema.py fails when the
+two differ, so a change here needs a migration that recreates the views.
+Dropped before the tables.
 """
 from __future__ import annotations
 
@@ -25,12 +26,15 @@ FROM (SELECT 1) AS one
 LEFT JOIN LATERAL (SELECT * FROM platform_fee_policy ORDER BY updated_at DESC LIMIT 1) AS p ON true
 """),
     # One row per booking: its dimensions and the rates its money splits at.
+    # The tier is the one recorded when it was made; estimated when that
+    # was backfilled, or is missing and today's is used.
     ("bi_bookings", """
 SELECT g.id AS gig_id, g.client_user_id, g.pro_user_id, pp.display_name AS pro_name, g.status::text AS status,
        g.currency, g.created_at,
        coalesce(n.slug, '-') AS niche,
        coalesce(upper(nullif(trim(pp.country), '')), '-') AS country,
-       coalesce(s.tier::text, '-') AS tier,
+       coalesce(g.pro_tier, s.tier::text, '-') AS tier,
+       (g.pro_tier IS NULL OR g.pro_tier_estimated) AS tier_estimated,
        round(coalesce(g.amount_final, g.amount_minimum) * 100)::bigint AS final_price_cents,
        coalesce(g.retained_percent, pol.retained_percent) AS retained_percent,
        coalesce(g.pro_raww_percent, pol.pro_raww_percent) AS pro_raww_percent,
@@ -70,28 +74,45 @@ FROM reward_ledger_entry r
 JOIN discount_redemption dr ON dr.id::text = r.metadata ->> 'refunded_redemption_id'
 WHERE r.reference_type = 'booking_refund' AND dr.points_spent > 0
 """),
-    # Card refunds (and refunds that failed, putting money back) and chargebacks.
+    # Card refunds (and refunds that failed, putting money back) and
+    # chargebacks, each with the kind of payment it came from; a line that
+    # names no payment is split at base rates (rate_assumed). Add-on
+    # refunds write no ledger line: they are read from their payment.
     ("bi_refunds", """
 SELECT le.id::text AS line_id, le.gig_id,
        CASE WHEN le.entry_type IN ('refund_succeeded', 'refund_failed') THEN 'card' ELSE 'chargeback' END AS source,
        le.entry_type::text AS entry_type, le.currency,
-       round(le.amount * 100)::bigint AS amount_cents, le.created_at AS at, le.reference_id AS reference
+       round(le.amount * 100)::bigint AS amount_cents, le.created_at AS at, le.reference_id AS reference,
+       sp.kind::text AS payment_kind, (sp.id IS NULL) AS rate_assumed
 FROM ledger_entry le
+LEFT JOIN stripe_payment sp ON sp.id = le.stripe_payment_id
 WHERE le.entry_type IN ('refund_succeeded', 'refund_failed', 'chargeback_opened', 'chargeback_won')
+UNION ALL
+SELECT 'payment_refund:' || r.key, sp.gig_id, 'card', 'refund_succeeded', sp.currency,
+       -round((r.value ->> 'amount')::numeric * 100)::bigint, (r.value ->> 'created')::timestamptz, r.key,
+       sp.kind::text, false
+FROM stripe_payment sp
+CROSS JOIN LATERAL jsonb_each(coalesce(sp.metadata -> 'refunds', '{}'::jsonb)) AS r
+WHERE r.value ->> 'status' = 'succeeded'
+  AND NOT EXISTS (SELECT 1 FROM ledger_entry le WHERE le.entry_type = 'refund_succeeded' AND le.reference_id = r.key)
 """),
     # Every money line on a booking, signed, split at the booking's rates
     # (each share rounded, the photographer's cash the remainder).
     ("bi_lines", f"""
 WITH raw AS (
-    SELECT line_id, gig_id, 'payment' AS movement, kind, 'card' AS source, currency, amount_cents, at, reference FROM bi_payments
+    SELECT line_id, gig_id, 'payment' AS movement, kind, 'card' AS source, currency, amount_cents, at, reference,
+           false AS rate_assumed FROM bi_payments
     UNION ALL
-    SELECT line_id, gig_id, 'payment', 'base', 'credit', currency, amount_cents, at, reference FROM bi_credit WHERE movement = 'used'
+    SELECT line_id, gig_id, 'payment', 'base', 'credit', currency, amount_cents, at, reference, false
+    FROM bi_credit WHERE movement = 'used'
     UNION ALL
-    SELECT line_id, gig_id, 'refund', 'base', source, currency, amount_cents, at, reference FROM bi_refunds
+    SELECT line_id, gig_id, 'refund', coalesce(payment_kind, 'base'), source, currency, amount_cents, at, reference, rate_assumed
+    FROM bi_refunds
     UNION ALL
-    SELECT line_id, gig_id, 'refund', 'base', 'credit', currency, amount_cents, at, reference FROM bi_credit WHERE movement = 'returned'
+    SELECT line_id, gig_id, 'refund', 'base', 'credit', currency, amount_cents, at, reference, false
+    FROM bi_credit WHERE movement = 'returned'
 ), rated AS (
-    SELECT raw.*, b.pro_user_id, b.client_user_id, b.niche, b.country, b.tier,
+    SELECT raw.*, b.pro_user_id, b.client_user_id, b.niche, b.country, b.tier, b.tier_estimated,
            (raw.at AT TIME ZONE {LONDON})::date AS day,
            CASE WHEN raw.kind = 'extras' THEN b.fee_percent_extras - least(b.fee_percent_extras, b.pro_raww_percent)
                 ELSE b.retained_percent END AS r_pct,
@@ -106,8 +127,8 @@ WITH raw AS (
            round(amount_cents * c_pct / 100.0)::bigint AS client_raww_cents
     FROM rated
 )
-SELECT line_id, gig_id, pro_user_id, client_user_id, niche, country, tier, movement, kind, source, currency, at, day,
-       reference, amount_cents, retained_cents, pro_raww_cents, client_raww_cents,
+SELECT line_id, gig_id, pro_user_id, client_user_id, niche, country, tier, tier_estimated, movement, kind, source, currency,
+       at, day, reference, rate_assumed, amount_cents, retained_cents, pro_raww_cents, client_raww_cents,
        amount_cents - retained_cents - pro_raww_cents - client_raww_cents AS pro_cash_cents,
        r_pct AS retained_percent, w_pct AS pro_raww_percent, c_pct AS client_credit_percent
 FROM shares
@@ -129,27 +150,38 @@ WITH rated AS (
 SELECT rated.*, round(amount_raww * rate * 100)::bigint AS value_cents FROM rated
 """),
     # Shelf orders: placed (+), and reversed (-) when cancelled or refunded.
-    # cost_cents null is "cost not set" (none, or a currency we cannot convert).
+    # The cost is the one recorded on the order (supplier cost x its euro
+    # rate); an order with none recorded falls back to the item's cost at
+    # today's rate, estimated. cost_cents null is "cost not set". Shipping
+    # is what an admin entered on the order, in euros.
     ("bi_shelf", f"""
 WITH o AS (
     SELECT o.id AS order_id, o.pro_user_id, o.item_id, o.status::text AS status, o.placed_at,
            coalesce(o.refunded_at, o.cancelled_at) AS reversed_at,
            round(o.price_raww * o.raww_eur_value * 100)::bigint AS value_cents,
-           CASE WHEN i.supplier_cost IS NULL OR i.supplier_cost <= 0 THEN NULL
+           CASE WHEN o.supplier_cost IS NOT NULL OR o.supplier_currency IS NOT NULL THEN
+                    CASE WHEN o.supplier_cost > 0 AND o.cost_eur_rate IS NOT NULL
+                         THEN round(o.supplier_cost * o.cost_eur_rate * 100)::bigint END
+                WHEN i.supplier_cost IS NULL OR i.supplier_cost <= 0 THEN NULL
                 WHEN upper(i.supplier_currency) = 'EUR' THEN round(i.supplier_cost * 100)::bigint
                 WHEN upper(i.supplier_currency) = 'GBP' AND ss.gbp_eur_rate IS NOT NULL
                      THEN round(i.supplier_cost * ss.gbp_eur_rate * 100)::bigint
-                ELSE NULL END AS cost_cents
+                ELSE NULL END AS cost_cents,
+           (o.cost_estimated OR (o.supplier_cost IS NULL AND o.supplier_currency IS NULL)) AS cost_estimated,
+           coalesce(round(o.shipping_cost_eur * 100)::bigint, 0) AS shipping_cents,
+           (o.shipping_cost_eur IS NULL AND o.status::text IN ('shipped', 'delivered')) AS shipping_not_set
     FROM shelf_order o
     JOIN shelf_item i ON i.id = o.item_id
     LEFT JOIN shelf_settings ss ON ss.id = 1
 )
 SELECT order_id::text || ':placed' AS line_id, order_id, pro_user_id, 'placed' AS movement, placed_at AS at,
-       (placed_at AT TIME ZONE {LONDON})::date AS day, value_cents, cost_cents, 1 AS orders
+       (placed_at AT TIME ZONE {LONDON})::date AS day, value_cents, cost_cents, 1 AS orders,
+       shipping_cents, cost_estimated::int AS cost_estimated_orders, shipping_not_set::int AS shipping_not_set_orders
 FROM o
 UNION ALL
 SELECT order_id::text || ':reversed', order_id, pro_user_id, 'reversed', reversed_at,
-       (reversed_at AT TIME ZONE {LONDON})::date, -value_cents, -cost_cents, -1
+       (reversed_at AT TIME ZONE {LONDON})::date, -value_cents, -cost_cents, -1,
+       -shipping_cents, -(cost_estimated::int), 0
 FROM o WHERE status IN ('cancelled', 'refunded') AND reversed_at IS NOT NULL
 """),
     ("bi_earnings", """

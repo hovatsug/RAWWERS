@@ -24,3 +24,10 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 0487106 | 2026-11-09 | Web admin: the business dashboard and the costs and cash forms (web only) | no |
 | 42b2b29 | 2026-11-09 | BI: a test that days are London days | no |
 | 536056a | 2026-11-09 | Docs: reading BI, refilling its tables; after-deploy Brevo and Mux tests | no |
+| d0c7376 | 2026-11-10 | Docs: UNGATED_COMMITS lists the BI batch | no |
+| b7e6e95 | 2026-11-10 | BI: phone-readable charts, Stripe mirrored hourly, today's Stripe data "as of" | no |
+| 11e30c5 | 2026-11-10 | BI: migration 20261110_0093; refunds, RAWW rates, Shelf costs and shipping, booking tier recorded; free cash | **yes** (migration, money recorded) |
+| 0caf8a7 | 2026-11-10 | BI demo seed records the new stamps (dev only) | no |
+| 59701d7 | 2026-11-10 | Web admin: Net GMV, free cash, estimated values marked, Shelf shipping cost (web only) | no |
+| 562a66e | 2026-11-10 | Docs: BI definitions for the owner's decisions | no |
+| 39b7529 | 2026-11-10 | Web admin BI: filter options stay selectable (web only) | no |

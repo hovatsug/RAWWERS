@@ -37,3 +37,4 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 1f945d4 | 2026-11-10 | BI demo seed: legacy Shelf shipping cost, old add-on refund (dev only) | no |
 | f5ce0a7 | 2026-11-10 | Web admin: legacy cost label, Shelf shipping per order only, old add-on refunds estimated (web only) | no |
 | 287c0b0 | 2026-11-10 | Docs: BI decisions 10-12; deploy step for 0094 | no |
+| c3587fc | 2026-11-10 | Docs: security audit list items 2-3 (known security test failures, error bodies) | no |

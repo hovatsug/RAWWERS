@@ -830,6 +830,7 @@ export type BiOverview = {
     days: number;
     live_days: number;
     stripe_unsynced_days: number;
+    stripe_partial_days: { day: string; as_of: string }[];
     other_currency_lines: number;
     other_currency_costs: number;
     shelf_cost_not_set_orders: number | null;

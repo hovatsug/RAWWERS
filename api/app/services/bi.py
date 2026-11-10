@@ -354,11 +354,21 @@ def summarize(db: Session, a: date, b: date, filters: Filters | None = None, now
     )
     meta = {
         "from": a.isoformat(), "to": b.isoformat(), "days": got.days, "live_days": got.live_days,
-        "stripe_unsynced_days": len(unsynced), "other_currency_lines": v["other_currency_lines"],
+        "stripe_unsynced_days": len(unsynced), "stripe_partial_days": stripe_partial_days(db, a, b), "other_currency_lines": v["other_currency_lines"],
         "other_currency_costs": c["other_currency_entries"],
         "shelf_cost_not_set_orders": v.get("shelf_cost_not_set_orders"),
     }
     return Summary(values=v, reasons=reasons, meta=meta)
+
+
+def stripe_partial_days(db: Session, a: date, b: date) -> list[dict]:
+    """Days in [a, b] last mirrored before they ended (today, mostly): their
+    Stripe numbers are as of that time, and the page says so."""
+    rows = db.execute(text(
+        "SELECT day, synced_at FROM bi_stripe_sync_day WHERE day BETWEEN :a AND :b "
+        "AND synced_at < ((day + 1)::timestamp AT TIME ZONE 'Europe/London') ORDER BY day"
+    ), {"a": a, "b": b}).mappings().all()
+    return [{"day": r["day"].isoformat(), "as_of": r["synced_at"].astimezone(LONDON).strftime("%H:%M")} for r in rows]
 
 
 # --- the waterfall ----------------------------------------------------------------------------

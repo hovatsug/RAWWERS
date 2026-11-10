@@ -415,3 +415,11 @@ def test_days_are_london_days(db_session, world):
     db_session.commit()
     days = {d["start"]: d["gmv_cents"] for d in bi.series(db_session, D1, D2, "day", now=NOW)}
     assert days == {"2026-10-05": 11000, "2026-10-06": 6243 + 100}
+
+
+def test_a_day_mirrored_before_it_ended_says_as_of_when(db_session, world):
+    # D2 last mirrored at 14:05 UTC that day (15:05 in London, BST): its
+    # Stripe numbers are as of then. D1 was mirrored after it ended.
+    db_session.get(BiStripeSyncDay, D2).synced_at = datetime(2026, 10, 6, 14, 5, tzinfo=timezone.utc)
+    db_session.commit()
+    assert _summary(db_session).meta["stripe_partial_days"] == [{"day": "2026-10-06", "as_of": "15:05"}]

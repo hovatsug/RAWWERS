@@ -212,9 +212,10 @@ def mux_sync_task() -> dict:
 
 @celery_app.task(name="app.tasks.scheduled.bi_nightly")
 def bi_nightly_task() -> dict:
-    """The business dashboard's night (docs/BI.md): mirror Stripe's last
-    three days, then recompute bi_daily for them. A Stripe failure leaves
-    those days "no data" and the recompute still runs."""
+    """The business dashboard's hourly run (docs/BI.md; named for when it
+    was nightly): mirror Stripe's last three days, then recompute bi_daily
+    for them. A Stripe failure leaves those days as they were ("no data"
+    if never mirrored) and the recompute still runs."""
     from datetime import timedelta
 
     from app.services import bi, bi_stripe

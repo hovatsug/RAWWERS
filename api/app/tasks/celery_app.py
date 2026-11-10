@@ -137,10 +137,11 @@ celery_app.conf.beat_schedule = {
         "schedule": timedelta(seconds=settings.mux_sync_interval_seconds),
     },
     # The business dashboard: Stripe's last three days mirrored and bi_daily
-    # recomputed for them, every night (docs/BI.md).
-    "bi-nightly": {
+    # recomputed for them, every hour, so today's Stripe fees are at most an
+    # hour old (docs/BI.md). The task keeps its first name.
+    "bi-hourly": {
         "task": "app.tasks.scheduled.bi_nightly",
-        "schedule": crontab(minute=30, hour=2),
+        "schedule": crontab(minute=30),
     },
     # The Shelf: RAWW expiry after long inactivity, and the warning before it.
     "shelf-raww-daily": {

@@ -112,6 +112,8 @@ function Dashboard() {
 function Warnings({ o }: { o: BiOverview }) {
   const notes: string[] = [];
   if (o.period.stripe_unsynced_days) notes.push(`${o.period.stripe_unsynced_days} day(s) have no Stripe data yet: Stripe fees and profit show "no data".`);
+  for (const d of o.period.stripe_partial_days ?? [])
+    notes.push(`Stripe data for ${d.day} is as of ${d.as_of} (London): fees after that are not in yet.`);
   if (o.period.other_currency_lines) notes.push(`${o.period.other_currency_lines} money line(s) in another currency are left out.`);
   if (o.period.other_currency_costs) notes.push(`${o.period.other_currency_costs} cost(s) in another currency are left out.`);
   if (o.period.shelf_cost_not_set_orders) notes.push(`${o.period.shelf_cost_not_set_orders} Shelf order(s) have no item cost: left out of the Shelf margin.`);
@@ -168,7 +170,7 @@ function SeriesSection({ current, qs }: { current: Record<string, string>; qs: s
     }
   ];
   return (
-    <Section id="series" title="Over time" description="Click a bar for its bookings. “?” is a bucket without Stripe data (or a filtered view, where Stripe fees are not split).">
+    <Section id="series" title="Over time" description="Click a bar for its bookings. A dashed stub is a bucket without Stripe data (or a filtered view, where Stripe fees are not split).">
       <div className="mb-3 flex gap-1" role="group" aria-label="Grain">
         {["day", "week", "month"].map((g) => (
           <button
@@ -197,8 +199,16 @@ function SeriesSection({ current, qs }: { current: Record<string, string>; qs: s
 function groupExtra(row: BiGroup) {
   return (
     <>
-      net {eur(row.net_gmv_cents)} · per booking <Honest value={row.avg_booking} format={(v) => eur(v)} /> · take rate{" "}
-      <Honest value={row.take_rate_bp} format={(v) => percent(v)} />
+      net {eur(row.net_gmv_cents)} ·{" "}
+      {row.avg_booking.low_sample ? (
+        // Said once, not once per average.
+        <span className="text-slate-500">averages: low sample (n={row.avg_booking.n})</span>
+      ) : (
+        <>
+          per booking <Honest value={row.avg_booking} format={(v) => eur(v)} /> · take rate{" "}
+          <Honest value={row.take_rate_bp} format={(v) => percent(v)} />
+        </>
+      )}
     </>
   );
 }

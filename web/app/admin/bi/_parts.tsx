@@ -203,35 +203,30 @@ export function Waterfall({ steps }: { steps: BiWaterfallStep[] }) {
   const max = Math.max(...values);
   const min = Math.min(...values);
   const span = max - min || 1;
-  const width = 760;
-  const rowH = 30;
-  const labelW = 230;
-  const valueW = 110;
-  const plotW = width - labelW - valueW;
-  const x = (v: number) => labelW + ((v - min) / span) * plotW;
+  const pct = (v: number) => ((v - min) / span) * 100;
+  // HTML rows rather than a scaled SVG: labels and values stay readable at
+  // phone width (label and value on one line, the bar under them).
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${bars.length * rowH + 10}`} className="min-w-[560px]" role="img" aria-label="Waterfall from GMV to operating profit">
-        <line x1={x(0)} x2={x(0)} y1={0} y2={bars.length * rowH} stroke={COLOURS.muted} strokeDasharray="2 3" />
-        {bars.map((b, i) => {
-          const left = x(Math.min(b.from, b.to));
-          const w = Math.max(1, Math.abs(x(b.to) - x(b.from)));
-          const colour = b.kind === "total" ? COLOURS.total : b.kind === "in" ? COLOURS.inflow : COLOURS.outflow;
-          return (
-            <g key={`${b.label}-${i}`} transform={`translate(0, ${i * rowH + 4})`}>
-              <text x={0} y={17} fill="#cbd5e1" fontSize={12} fontWeight={b.kind === "total" ? 600 : 400}>
-                {b.label}
-              </text>
-              <rect x={left} y={4} width={w} height={rowH - 12} rx={2} fill={colour} opacity={b.kind === "total" ? 0.95 : 0.8} />
-              <text x={width - 4} y={17} fill="#e2e8f0" fontSize={12} textAnchor="end" className="tabular-nums">
-                {b.kind === "step" && b.cents >= 0 ? "+" : ""}
-                {eur(b.cents)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
+    <ul className="space-y-2 sm:space-y-1" role="img" aria-label="Waterfall from GMV to operating profit">
+      {bars.map((b, i) => {
+        const left = pct(Math.min(b.from, b.to));
+        const w = Math.max(0.3, Math.abs(pct(b.to) - pct(b.from)));
+        const colour = b.kind === "total" ? COLOURS.total : b.kind === "in" ? COLOURS.inflow : COLOURS.outflow;
+        return (
+          <li key={`${b.label}-${i}`} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[14rem_1fr_7.5rem]">
+            <span className={`text-sm text-slate-300 ${b.kind === "total" ? "font-semibold text-slate-100" : ""}`}>{b.label}</span>
+            <span className="relative col-span-2 row-start-2 h-4 sm:col-span-1 sm:row-start-1 sm:col-start-2">
+              <span className="absolute inset-y-0 border-l border-dashed border-slate-600" style={{ left: `${pct(0)}%` }} />
+              <span className="absolute inset-y-0.5 rounded-sm" style={{ left: `${left}%`, width: `${w}%`, background: colour, opacity: b.kind === "total" ? 0.95 : 0.8 }} />
+            </span>
+            <span className="text-right text-sm tabular-nums text-slate-100 sm:col-start-3 sm:row-start-1">
+              {b.kind === "step" && b.cents >= 0 ? "+" : ""}
+              {eur(b.cents)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -249,45 +244,45 @@ export function SeriesBars({
   href: (start: string) => string;
   colour?: string;
 }) {
-  const height = 180;
-  const width = Math.max(320, points.length * 18);
+  const height = 140;
+  const width = Math.max(1, points.length) * 10;
   const vals = points.map((p) => p.value ?? 0);
   const max = Math.max(1, ...vals);
   const min = Math.min(0, ...vals);
   const span = max - min || 1;
   const bw = width / Math.max(points.length, 1);
-  const y = (v: number) => 10 + ((max - v) / span) * (height - 30);
+  const y = (v: number) => ((max - v) / span) * height;
+  // The SVG stretches to the card; every piece of text sits outside it in
+  // HTML so it never scales down to unreadable on a phone.
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[320px]" style={{ width: "100%", maxWidth: width * 2 }} role="img" aria-label={value}>
-        <line x1={0} x2={width} y1={y(0)} y2={y(0)} stroke={COLOURS.muted} strokeWidth={0.5} />
+    <div>
+      <div className="mb-1 text-right text-[11px] text-slate-400">max {format(max)}</div>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="block h-36 w-full" role="img" aria-label={value}>
+        <line x1={0} x2={width} y1={y(0)} y2={y(0)} stroke={COLOURS.muted} strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
         {points.map((p, i) => {
           if (p.value === null) {
+            // No data: a hatched stub at the axis, never a zero bar.
             return (
-              <text key={p.start} x={i * bw + bw / 2} y={y(0) - 4} fontSize={9} fill={COLOURS.muted} textAnchor="middle">
-                ?
-              </text>
+              <g key={p.start}>
+                <title>{`${p.start}: no data`}</title>
+                <rect x={i * bw + bw * 0.15} y={Math.max(0, y(0) - 6)} width={bw * 0.7} height={6} fill="none" stroke={COLOURS.muted} strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+              </g>
             );
           }
           const top = Math.min(y(p.value), y(0));
-          const h = Math.max(1, Math.abs(y(p.value) - y(0)));
+          const h = Math.max(0.5, Math.abs(y(p.value) - y(0)));
           return (
             <a key={p.start} href={href(p.start)}>
               <title>{`${p.start}: ${format(p.value)}`}</title>
-              <rect x={i * bw + 2} y={top} width={Math.max(2, bw - 4)} height={h} fill={colour} opacity={0.85} />
+              <rect x={i * bw + bw * 0.15} y={top} width={bw * 0.7} height={h} fill={colour} opacity={0.85} />
             </a>
           );
         })}
-        <text x={0} y={height - 4} fontSize={10} fill="#94a3b8">
-          {points[0]?.start}
-        </text>
-        <text x={width} y={height - 4} fontSize={10} fill="#94a3b8" textAnchor="end">
-          {points[points.length - 1]?.start}
-        </text>
-        <text x={width} y={10} fontSize={10} fill="#94a3b8" textAnchor="end">
-          max {format(max)}
-        </text>
       </svg>
+      <div className="mt-1 flex justify-between text-[11px] text-slate-400">
+        <span>{points[0]?.start}</span>
+        <span>{points[points.length - 1]?.start}</span>
+      </div>
     </div>
   );
 }

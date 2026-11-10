@@ -98,7 +98,7 @@ The number of bookings whose first card or credit payment fell on that day (base
 **`bi_daily`.** One row per day and booking dimension (scope `booking`), plus one per day for the company (scope `company`: Stripe, RAWW, the Shelf, payouts).
 - It is filled by the same two queries that answer for days not stored, so a stored day and a live day cannot disagree.
 - Today and the two days before are always computed live; their money is still moving.
-- `beat` runs `bi-nightly` at 02:30 UTC: it mirrors Stripe's last three days, then recomputes them.
+- `beat` runs `bi-hourly` at half past every hour: it mirrors Stripe's last three days, then recomputes them. A day last mirrored before it ended (today) says "Stripe data for <day> is as of HH:MM".
 - Recomputing a day replaces its rows, so re-running gives the same numbers.
 
 **Stripe fees.** Nothing stored Stripe's fees before this; only chargeback fees were on the ledger. They now come from Stripe's balance transactions, mirrored in `bi_stripe_txn`. That table also holds Stripe's side of the reconciliation.

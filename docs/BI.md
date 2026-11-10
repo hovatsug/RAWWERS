@@ -21,7 +21,7 @@ One row per money movement on a booking, signed (+ in, − back). Every booking 
 |---|---|---|---|
 | Card payment | + | `stripe_payment.amount`, status succeeded, refunded or disputed (money that reached us). Kinds base, difference and extras | the `payment_captured` ledger line's `created_at`; for extras (no such line), `stripe_payment.created_at` **[interpretation]** |
 | Credit payment | + | `discount_redemption.discount_amount`, status applied, context `gig_payment` (client credit used at checkout) | `discount_redemption.updated_at` (as `client_credit.budget_view`) |
-| Card refund | − | `ledger_entry` `refund_succeeded` (negative amount); a `refund_failed` line puts it back. Selection add-on refunds write no ledger line: they are read from their payment's `metadata.refunds` (each Stripe refund, recorded since 2026-11-10), counted once | the ledger line's `created_at`; for an add-on, the Stripe refund's `created` |
+| Card refund | − | `ledger_entry` `refund_succeeded` (negative amount); a `refund_failed` line puts it back. Selection add-on refunds write no ledger line: they are read from their payment's `metadata.refunds` (each Stripe refund, recorded since 2026-11-10), counted once. An add-on refunded before then has only its running total (`stripe_payment.amount_refunded`): that total counts as one refund, **date estimated** (owner's decision), unless the payment has a ledger refund line | the ledger line's `created_at`; for an add-on, the Stripe refund's `created`; for an older add-on refund, the payment's last update (`stripe_payment.updated_at`), estimated |
 | Chargeback | − | `ledger_entry` `chargeback_opened` (−), `chargeback_won` (+) | the ledger line's `created_at` |
 | Credit returned | − | `reward_ledger_entry`, reference `booking_refund` (credit given back on a refund), valued at its own redemption's rate: points × `discount_amount` / `points_spent` | its `created_at` |
 
@@ -60,8 +60,8 @@ One row per money movement on a booking, signed (+ in, − back). Every booking 
 | **Contribution profit** | Retained fee − Stripe fees | |
 | **Client credit used** | Credit payments − credit returned (the credit lines of `bi_lines`). A marketing cost, paid from the retained share. It is **not** taken off GMV or the retained fee: it appears once, in marketing spend. | `bi_credit` |
 | **Marketing spend** | Ad spend (manual, category `ad_spend`) + marketing costs (manual, category `marketing`) + client credit used | `bi_costs`, `bi_credit` |
-| **Other costs** | Every manual cost in any other category, except `shelf_shipping` | `bi_costs` |
-| **Shelf margin** | For each order: `price_raww × raww_eur_value` (recorded on the order) − its cost − its shipping; minus manual costs in category `shelf_shipping` (shipping not tied to one order). Since 2026-11-10 each order records, when placed, the supplier cost, its currency and the euros per unit used (`supplier_cost`, `supplier_currency`, `cost_eur_rate`: 1 for EUR, `gbp_eur_rate` for GBP), and the admin enters `shipping_cost_eur` when it ships or later (owner's decision). Orders placed before were backfilled with the item's cost and the rate on that day, marked `cost_estimated`. An order with no cost (≤ 0, or a currency without a rate) is "cost not set": counted and shown, excluded from the margin, never taken as zero. A shipped order with no shipping entered is counted and shown ("the Shelf margin is too high until it is"). Placed on `placed_at`; reversed on `refunded_at`/`cancelled_at` for cancelled and refunded orders. | `bi_shelf`, `bi_costs` |
+| **Other costs** | Every manual cost in any other category, except the legacy `shelf_shipping` | `bi_costs` |
+| **Shelf margin** | For each order: `price_raww × raww_eur_value` (recorded on the order) − its cost − its shipping; minus the **legacy** manual costs in category `shelf_shipping`. Shipping is entered per order only (owner's decision, 2026-11-10): the category is retired for new costs (the form does not offer it; the API refuses it), and rows already in it stay, shown "legacy", and still count. A recurring legacy row repeats no later than 2026-11-10, and a legacy row keeps its dates. **Never counted twice:** an order shipped on or before the last day of a legacy `shelf_shipping` cost has its shipping in those costs, so its own is not counted, it is not "shipping not set", and the API refuses to enter one (409; the Shelf orders page says "in the legacy Shelf shipping costs"). Since 2026-11-10 each order records, when placed, the supplier cost, its currency and the euros per unit used (`supplier_cost`, `supplier_currency`, `cost_eur_rate`: 1 for EUR, `gbp_eur_rate` for GBP), and the admin enters `shipping_cost_eur` when it ships or later (owner's decision). Orders placed before were backfilled with the item's cost and the rate on that day, marked `cost_estimated`. An order with no cost (≤ 0, or a currency without a rate) is "cost not set": counted and shown, excluded from the margin, never taken as zero. A shipped order with no shipping entered is counted and shown ("the Shelf margin is too high until it is"). Placed on `placed_at`; reversed on `refunded_at`/`cancelled_at` for cancelled and refunded orders. | `bi_shelf`, `bi_costs` |
 | **Breakage** | RAWW expired, as above | `bi_raww` |
 | **Operating profit** | Contribution profit − marketing spend − other costs + Shelf margin + breakage | |
 
@@ -98,9 +98,9 @@ The number of bookings whose first card or credit payment fell on that day (base
 
 ## Where it lives
 
-- **Views:** `api/app/models/bi_views.py` (the latest BI migration, `20261110_0093`, carries a frozen copy; `test_bi_schema.py` fails when they differ).
+- **Views:** `api/app/models/bi_views.py` (the latest BI migration, `20261110_0094`, carries a frozen copy; `test_bi_schema.py` fails when they differ).
 - **Numbers:** `api/app/services/bi.py`. **Stripe:** `api/app/services/bi_stripe.py`.
-- **API:** `/v1/admin/bi/*` (`api/app/api/v1/bi_admin.py`), admin only.
+- **API:** `/v1/admin/bi/*` (`api/app/api/v1/bi_admin.py`), admin only. It has its own rate limit, 240 requests a minute per admin and address (`RATE_LIMIT_ADMIN_BI_PER_MIN`), apart from the 60 of every other admin route (`RATE_LIMIT_ADMIN_PER_MIN`): one dashboard load is about 13 requests. Who the caller is is settled first, so a non-admin gets 401/403, never 429.
 - **Screens:** `/admin/bi`, `/admin/bi/bookings`, `/admin/bi/costs`.
 
 **`bi_daily`.** One row per day and booking dimension (scope `booking`), plus one per day for the company (scope `company`: Stripe, RAWW, the Shelf, payouts).
@@ -130,7 +130,7 @@ The number of bookings whose first card or credit payment fell on that day (base
 - money lines or costs in another currency, which are left out;
 - Shelf orders whose item has no cost, and shipped Shelf orders with no shipping cost entered.
 
-**Estimated in this period (grey line under the warnings).** Values that are backfilled or read at today's rate, each with its amount: refunds that name no payment (split at base rates), bookings with a backfilled tier, RAWW expiries and adjustments valued at today's rate, Shelf orders with a backfilled cost. As old data ages out of the period, the line goes away.
+**Estimated in this period (grey line under the warnings).** Values that are backfilled or read at today's rate, each with its amount: refunds that name no payment (split at base rates), add-on refunds dated on the payment's last update, bookings with a backfilled tier, RAWW expiries and adjustments valued at today's rate, Shelf orders with a backfilled cost. As old data ages out of the period, the line goes away.
 
 **From GMV to operating profit.**
 - Steps: GMV, then refunds, photographer cash, photographer RAWW credit and the photographer's credit to the client, giving the **retained fee**.
@@ -173,7 +173,8 @@ The number of bookings whose first card or credit payment fell on that day (base
 
 - **Costs.**
   - Each needs a date, a category, an amount (euros, at most two decimals) and a currency (EUR counts; any other is left out and counted on the overview).
-  - Categories: `ad_spend` and `marketing` (marketing spend), `shelf_shipping` (comes off the Shelf margin: only shipping not tied to one order; an order's own shipping goes on the order, under Shelf orders), and `salaries`, `software`, `legal`, `office`, `other` (other costs).
+  - Categories: `ad_spend` and `marketing` (marketing spend), and `salaries`, `software`, `legal`, `office`, `other` (other costs).
+  - Shelf shipping is not a cost here: enter it on the order, under Shelf orders, when it ships or later. Old rows in the retired category `shelf_shipping` are listed with a "legacy" tag and still come off the Shelf margin; their amount and note can be corrected, not their dates or category.
   - Tick *Repeats monthly* for a running cost: it repeats on the same day each month until its *Until* date, or open-ended.
   - Enter ad spend weekly or monthly, from the ad platforms' invoices.
 - **Company cash.**
@@ -214,7 +215,10 @@ The number of bookings whose first card or credit payment fell on that day (base
 8. **Client credit** counts as a marketing cost when used at checkout, as built.
 9. **Credit returned on a refund** lowers marketing spend and the refund is counted at the pre-discount price, as built. `test_bi_stamps.py` proves that a booking paid partly with credit and refunded in full nets to exactly zero on GMV, retained fee, marketing spend and the waterfall, and that a half refund nets to exactly half.
 
+10. **Rate limit:** `/v1/admin/bi/*` allows 240 requests a minute per admin; every other admin route stays at 60.
+11. **Add-on refunds before 2026-11-10** count on the payment's last update date, labelled estimated.
+12. **Shelf shipping** is entered per order only. The `shelf_shipping` category is retired for new costs; old rows stay, labelled legacy, and still count; shipping is never counted twice.
+
 ## Questions for the owner
 
-1. **Add-on refunds before 2026-11-10.** A selection add-on refunded before then left no dated record (only the payment's refunded amount). Those refunds are not counted, so that add-on's GMV stands. Count them on the payment's last update date, labelled estimated, or leave them out?
-2. **Shelf shipping, two places.** Shipping can now be entered per order; the `shelf_shipping` cost category still exists for shipping not tied to one order (a bulk courier invoice). Keep both, or retire the category so shipping cannot be entered twice?
+None open.

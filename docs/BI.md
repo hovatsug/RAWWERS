@@ -21,19 +21,22 @@ One row per money movement on a booking, signed (+ in, − back). Every booking 
 |---|---|---|---|
 | Card payment | + | `stripe_payment.amount`, status succeeded, refunded or disputed (money that reached us). Kinds base, difference and extras | the `payment_captured` ledger line's `created_at`; for extras (no such line), `stripe_payment.created_at` **[interpretation]** |
 | Credit payment | + | `discount_redemption.discount_amount`, status applied, context `gig_payment` (client credit used at checkout) | `discount_redemption.updated_at` (as `client_credit.budget_view`) |
-| Card refund | − | `ledger_entry` `refund_succeeded` (negative amount); a `refund_failed` line puts it back | the ledger line's `created_at` |
+| Card refund | − | `ledger_entry` `refund_succeeded` (negative amount); a `refund_failed` line puts it back. Selection add-on refunds write no ledger line: they are read from their payment's `metadata.refunds` (each Stripe refund, recorded since 2026-11-10), counted once | the ledger line's `created_at`; for an add-on, the Stripe refund's `created` |
 | Chargeback | − | `ledger_entry` `chargeback_opened` (−), `chargeback_won` (+) | the ledger line's `created_at` |
 | Credit returned | − | `reward_ledger_entry`, reference `booking_refund` (credit given back on a refund), valued at its own redemption's rate: points × `discount_amount` / `points_spent` | its `created_at` |
 
 **Rates for the split.**
 - Base and difference lines use the booking's stamped `fee_percent`, `retained_percent`, `pro_raww_percent` and `client_credit_percent`, or the current `platform_fee_policy` if the booking has none stamped.
 - Extras lines use the policy's `fee_percent_extras`, the booking's `pro_raww_percent`, and no client credit, the way `payouts.create_earnings_entry` splits extras.
-- Refunds, chargebacks and returned credit use the booking's base rates **[interpretation]**. The ledger does not say which payment a refund came from.
+- Refunds and chargebacks split at the rates of the payment they came from: `ledger_entry.stripe_payment_id`, recorded on every refund and chargeback line since 2026-11-10 (owner's decision). An extras refund uses the extras rates.
+  - Older lines were tied by the migration where possible: through their refund case, their old `refund:<payment intent>` reference, or a booking with a single payment.
+  - A line still naming no payment uses the base rates and is **estimated**: the overview says how much ("€… of refunds name no payment and are split at base rates").
+- Returned credit always uses the base rates: credit is only ever used on the booking's base payment.
 
 **Dimensions.**
 - Niche: `gig.niche_id`.
 - Country: the photographer's `pro_profile.country`.
-- Tier: the photographer's current `pro_niche_skill.tier` in that niche **[interpretation: the tier now, not at booking time; it is not stamped]**. A daily row keeps the tier as of when that day was computed.
+- Tier: the photographer's tier in that niche **when the booking was made**, `gig.pro_tier`, recorded at creation since 2026-11-10 (owner's decision). Bookings made before were backfilled with the tier on that day and are marked `pro_tier_estimated`; a booking with no tier recorded reads today's tier, also estimated. The drill-down marks them "(est.)" and the tier breakdown counts them.
 
 ## The definitions
 
@@ -51,14 +54,14 @@ One row per money movement on a booking, signed (+ in, − back). Every booking 
 | **Photographer cash (stock, now)** | From the earnings ledger, as `photographer_money`: **in settlement** (status pending, the 7-day delay), **held** (status held: a dispute, a reported problem, an admin hold), **due** (available + requested + approved, not yet paid), **paid out** (allocated to paid payouts). Owed = in settlement + held + due. | `bi_earnings`, `bi_payouts` |
 | **RAWW issued** | Σ RAWW `earn_booking` + `earn_extras`, each × its stamped `raww_eur_value`. Reversals (`reverse_*`) are shown beside it. | `bi_raww` |
 | **RAWW spent in the Shelf** | Σ `spend_order` − `refund_order`, each × the order's stamped `raww_eur_value` | `bi_raww` |
-| **RAWW expired (breakage)** | Σ `expire` × the current `shelf_settings.raww_eur_value` **[interpretation: an expiry line has no stamped rate]**. Recognised only when the expiry job has run (the line exists only then). | `bi_raww` |
-| **RAWW outstanding (liability)** | Σ every RAWW line to date, each at its value as above. Admin adjustments are valued at the current rate. | `bi_raww` |
-| **Stripe fees** | Σ `fee` of Stripe's balance transactions (processing, refund and dispute fees), mirrored daily into `bi_stripe_txn`. Not stored before this; never estimated. A day not yet mirrored makes the period's fees "no data". | `bi_stripe` |
+| **RAWW expired (breakage)** | Σ `expire` × the rate recorded on the line (`raww_eur_value`, recorded on every expiry and admin adjustment since 2026-11-10, owner's decision). Older lines without one use today's `shelf_settings.raww_eur_value` and are **estimated** (the overview says how much). Recognised only when the expiry job has run (the line exists only then). | `bi_raww` |
+| **RAWW outstanding (liability)** | Σ every RAWW line to date, each at its value as above. In the liquid view it is valued at **face value**: outstanding RAWW × today's admin rate. | `bi_raww` |
+| **Stripe fees** | Σ `fee` of Stripe's balance transactions (processing, refund and dispute fees), plus Stripe's own fees billed as their own transactions (reporting category `fee`: Radar, Connect), mirrored hourly into `bi_stripe_txn`. Not stored before this; never estimated. A day not yet mirrored makes the period's fees "no data". | `bi_stripe` |
 | **Contribution profit** | Retained fee − Stripe fees | |
 | **Client credit used** | Credit payments − credit returned (the credit lines of `bi_lines`). A marketing cost, paid from the retained share. It is **not** taken off GMV or the retained fee: it appears once, in marketing spend. | `bi_credit` |
 | **Marketing spend** | Ad spend (manual, category `ad_spend`) + marketing costs (manual, category `marketing`) + client credit used | `bi_costs`, `bi_credit` |
 | **Other costs** | Every manual cost in any other category, except `shelf_shipping` | `bi_costs` |
-| **Shelf margin** | For each order: `price_raww × raww_eur_value` (stamped on the order) − the item's `supplier_cost` in EUR, minus manual costs in category `shelf_shipping`. An order whose item has no cost (≤ 0, or in a currency other than EUR/GBP) is "cost not set": counted and shown, excluded from the margin, never taken as zero. GBP costs are converted at the current `shelf_settings.gbp_eur_rate` **[interpretation: the cost and the rate are not stamped on the order]**. Placed on `placed_at`; reversed on `refunded_at`/`cancelled_at` for cancelled and refunded orders. | `bi_shelf`, `bi_costs` |
+| **Shelf margin** | For each order: `price_raww × raww_eur_value` (recorded on the order) − its cost − its shipping; minus manual costs in category `shelf_shipping` (shipping not tied to one order). Since 2026-11-10 each order records, when placed, the supplier cost, its currency and the euros per unit used (`supplier_cost`, `supplier_currency`, `cost_eur_rate`: 1 for EUR, `gbp_eur_rate` for GBP), and the admin enters `shipping_cost_eur` when it ships or later (owner's decision). Orders placed before were backfilled with the item's cost and the rate on that day, marked `cost_estimated`. An order with no cost (≤ 0, or a currency without a rate) is "cost not set": counted and shown, excluded from the margin, never taken as zero. A shipped order with no shipping entered is counted and shown ("the Shelf margin is too high until it is"). Placed on `placed_at`; reversed on `refunded_at`/`cancelled_at` for cancelled and refunded orders. | `bi_shelf`, `bi_costs` |
 | **Breakage** | RAWW expired, as above | `bi_raww` |
 | **Operating profit** | Contribution profit − marketing spend − other costs + Shelf margin + breakage | |
 
@@ -75,9 +78,14 @@ One row per money movement on a booking, signed (+ in, − back). Every booking 
   owed           = photographer cash owed (in settlement + held + due)
                  + owed to clients (open "client owed" items + refunds approved and not yet made)
   liquid         = cash held − owed
+  free cash      = liquid − RAWW outstanding at face value (outstanding RAWW × today's admin rate)
+  free cash, at cost
+                 = liquid − RAWW outstanding at face value × cost per euro of RAWW
+  cost per euro of RAWW
+                 = Σ cost ÷ Σ RAWW value, over every Shelf order with a cost (net of reversed orders)
   ```
 
-  Stripe's pending balance is shown apart: money Stripe has not yet made available (the balance timing). The RAWW liability is shown in euros beside it and is **not** subtracted. It is settled in goods at cost (the Shelf margin), not in cash **[interpretation]**.
+  Owner's decision (2026-11-10): free cash subtracts the RAWW at face value; the at-cost line underneath is what settling it in goods would cost. With no Shelf order with a cost yet, the at-cost line says so. Stripe's pending balance is shown apart: money Stripe has not yet made available (the balance timing). **Client credit outstanding** (awarded to clients, not yet used: `client_credit.budget_view`'s outstanding) is shown as an obligation, informational, and is **not** subtracted.
 
 ## Bookings count
 
@@ -90,7 +98,7 @@ The number of bookings whose first card or credit payment fell on that day (base
 
 ## Where it lives
 
-- **Views:** `api/app/models/bi_views.py` (migration `20261109_0092` carries a frozen copy; `test_bi_schema.py` fails when they differ).
+- **Views:** `api/app/models/bi_views.py` (the latest BI migration, `20261110_0093`, carries a frozen copy; `test_bi_schema.py` fails when they differ).
 - **Numbers:** `api/app/services/bi.py`. **Stripe:** `api/app/services/bi_stripe.py`.
 - **API:** `/v1/admin/bi/*` (`api/app/api/v1/bi_admin.py`), admin only.
 - **Screens:** `/admin/bi`, `/admin/bi/bookings`, `/admin/bi/costs`.
@@ -112,15 +120,17 @@ The number of bookings whose first card or credit payment fell on that day (base
 - Under a filter, the numbers that are not split by booking (Stripe fees, costs, the Shelf, RAWW, and so profit) show "Not split".
 
 **Overview.**
-- Seven KPI cards, each with its change against the previous period of the same length.
+- KPI cards, each with its change against the previous period of the same length. **Net GMV** (GMV − refunds) sits next to GMV; GMV itself is not capped at the final price (owner's decision).
 - "no previous period to compare" means the previous value was zero or missing.
 - A card showing "no data" gives its reason underneath, usually "No Stripe data for n day(s)".
-- "Liquid now" is the liquid view (below) as of now. It has no previous period.
+- "Liquid now" is the liquid view (below) as of now, with free cash under it. It has no previous period.
 
 **Warnings (yellow).** They appear for:
-- days without Stripe data;
+- days without Stripe data, and a day whose Stripe data is "as of" a time (today);
 - money lines or costs in another currency, which are left out;
-- Shelf orders whose item has no cost.
+- Shelf orders whose item has no cost, and shipped Shelf orders with no shipping cost entered.
+
+**Estimated in this period (grey line under the warnings).** Values that are backfilled or read at today's rate, each with its amount: refunds that name no payment (split at base rates), bookings with a backfilled tier, RAWW expiries and adjustments valued at today's rate, Shelf orders with a backfilled cost. As old data ages out of the period, the line goes away.
 
 **From GMV to operating profit.**
 - Steps: GMV, then refunds, photographer cash, photographer RAWW credit and the photographer's credit to the client, giving the **retained fee**.
@@ -132,11 +142,12 @@ The number of bookings whose first card or credit payment fell on that day (base
 **Over time.**
 - GMV, bookings, retained fee and contribution profit, by day, week or month.
 - Click a bar to see that bucket's bookings.
-- "?" is a bucket with no Stripe data, or a filtered view.
+- A dashed stub is a bucket with no Stripe data, or a filtered view.
 
 **Breakdowns.**
 - By niche, by country, by tier and the top 10 photographers. Each shows GMV, its n (bookings started), net GMV, GMV per booking and take rate (retained ÷ net GMV).
-- Under 30 bookings, the last two read "low sample (n=…)".
+- Under 30 bookings, the two averages read "averages: low sample (n=…)".
+- The tier is the tier at booking; the tier breakdown says how many of a tier's bookings have an estimated tier.
 - Click a row to see its bookings.
 
 **Bookings behind the numbers (`/admin/bi/bookings`).**
@@ -153,14 +164,16 @@ The number of bookings whose first card or credit payment fell on that day (base
 - Money owed to clients; money owed back by photographers (refunds after a payout).
 - Stripe available and pending, live from Stripe; company cash, the latest balance per account.
 - **Liquid** = Stripe available + pending + company cash − photographer cash owed − money owed to clients.
-- The RAWW liability, in euros, is shown and not subtracted.
+- **Free cash** = liquid − the RAWW outstanding at face value; underneath, the same at cost.
+- The RAWW liability: at face value, and at cost.
+- **Client credit outstanding**: awarded, not yet used. An obligation, shown, not subtracted.
 - Also: client credit this month against its budget (`client_credit.budget_view`, the same numbers as the Client credit page).
 
 ## Refilling the manual tables (`/admin/bi/costs`)
 
 - **Costs.**
   - Each needs a date, a category, an amount (euros, at most two decimals) and a currency (EUR counts; any other is left out and counted on the overview).
-  - Categories: `ad_spend` and `marketing` (marketing spend), `shelf_shipping` (comes off the Shelf margin), and `salaries`, `software`, `legal`, `office`, `other` (other costs).
+  - Categories: `ad_spend` and `marketing` (marketing spend), `shelf_shipping` (comes off the Shelf margin: only shipping not tied to one order; an order's own shipping goes on the order, under Shelf orders), and `salaries`, `software`, `legal`, `office`, `other` (other costs).
   - Tick *Repeats monthly* for a running cost: it repeats on the same day each month until its *Until* date, or open-ended.
   - Enter ad spend weekly or monthly, from the ad platforms' invoices.
 - **Company cash.**
@@ -189,14 +202,19 @@ The number of bookings whose first card or credit payment fell on that day (base
   - A snapshot table can copy `bi_daily` and the summary for a closed month, with who closed it. Recomputing never touches a snapshot.
   - Exports read the same `summarize` output the screens read.
 
+## The owner's decisions (2026-11-10)
+
+1. **Refunds:** a refund tied to an extras payment uses the extras rates; one that cannot be tied uses the base rates, labelled estimated. Every refund and chargeback line now records its payment.
+2. **RAWW expiries and admin adjustments** record the RAWW rate when created. Older lines keep today's rate, labelled estimated.
+3. **Shelf orders** record the supplier cost, its currency, the exchange rate used and (entered by an admin) the shipping cost. The margin uses these. Older orders were backfilled with the item's cost and that day's rate, labelled estimated.
+4. **Bookings** record the photographer's tier when created; the tier breakdown uses it. Older bookings were backfilled with that day's tier, labelled estimated.
+5. **Liquid view:** free cash subtracts the RAWW outstanding at face value (the admin rate), with an at-cost line underneath; client credit outstanding is shown as an obligation, informational.
+6. **The waterfall** keeps the order as built.
+7. **GMV** is not capped; Net GMV is shown next to it.
+8. **Client credit** counts as a marketing cost when used at checkout, as built.
+9. **Credit returned on a refund** lowers marketing spend and the refund is counted at the pre-discount price, as built. `test_bi_stamps.py` proves that a booking paid partly with credit and refunded in full nets to exactly zero on GMV, retained fee, marketing spend and the waterfall, and that a half refund nets to exactly half.
+
 ## Questions for the owner
 
-1. Refunds use the booking's base rates. Should an extras refund use the extras rates? This needs the refund linked to its payment.
-2. Breakage and admin adjustments are valued at the current RAWW rate. Should the expiry stamp the rate (or FIFO the lots)?
-3. The Shelf cost is the item's current `supplier_cost`, converted at the current GBP rate. Should the order stamp its cost and rate?
-4. The tier is today's tier. Should the booking stamp the tier at acceptance?
-5. Should the RAWW liability be subtracted from liquid at cost (supplier cost / RAWW value) rather than left out?
-6. Should credit-returned lines count as refunds (they do now) and reduce marketing spend (they do now)?
-7. The waterfall in the request ran GMV → photographer cash → RAWW credit → Stripe fees → client credit → retained → operating profit. Built as: … → the photographer's shares → **retained** → Stripe fees → **contribution** → client credit and other marketing → other costs → + Shelf margin + breakage → **operating profit**. The definitions put the retained fee before Stripe fees and client credit, so the totals are where they are defined. Is that the order you want?
-8. GMV counts money when paid. A deposit paid above a cheaper final selection counts until it is refunded ("client owed" shows it meanwhile). Should GMV be capped at the final price instead?
-9. Client credit counts as a marketing cost when used at checkout, not when awarded. The month's awards are shown beside the budget. Is "used" the cost you want?
+1. **Add-on refunds before 2026-11-10.** A selection add-on refunded before then left no dated record (only the payment's refunded amount). Those refunds are not counted, so that add-on's GMV stands. Count them on the payment's last update date, labelled estimated, or leave them out?
+2. **Shelf shipping, two places.** Shipping can now be entered per order; the `shelf_shipping` cost category still exists for shipping not tied to one order (a bulk courier invoice). Keep both, or retire the category so shipping cannot be entered twice?

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db_session, require_admin, require_not_banned
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.admin import UserAccount, UserRole, UserRoleType
 from app.schemas.auth import (
     ImpersonationStartRequest,
@@ -314,7 +315,4 @@ def impersonate_end(
 
 
 def _request_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)

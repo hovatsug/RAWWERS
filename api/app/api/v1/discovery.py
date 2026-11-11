@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_write_session, get_optional_current_user, require_admin
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.admin import KYCStatus, ProProfile
 from app.models.booking import ProPackage
 from app.models.discovery import ProPublicIndex
@@ -492,12 +493,7 @@ def rebuild_all_index(
 
 
 def _request_ip(request: Request | None) -> str | None:
-    if not request:
-        return None
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)
 
 
 def _observe_scraping(db: Session, ip: str | None) -> None:

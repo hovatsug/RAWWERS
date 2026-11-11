@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.db.session import get_db_read, get_db_write
 from app.models.admin import UserRoleType
 from app.schemas.media import CurrentUser
@@ -127,7 +128,7 @@ def _admin_gate(bucket: str):
         x_admin_api_key: str | None = Header(default=None, alias="X-Admin-Api-Key"),
         db: Session = Depends(get_db_write_session),
     ) -> CurrentUser:
-        ip = request.client.host if request.client else None
+        ip = client_ip(request)
         if ip and settings.admin_ip_allowlist_set() and ip not in settings.admin_ip_allowlist_set():
             raise APIError(code="forbidden", message="Admin endpoint not allowed from this IP", status_code=403)
         if settings.admin_api_key_set() and x_admin_api_key not in settings.admin_api_key_set():
@@ -188,10 +189,7 @@ def require_pro_kyc_approved(
 
 
 def _request_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)
 
 
 def get_locale(request: Request) -> str:

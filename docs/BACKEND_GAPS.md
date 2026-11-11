@@ -2305,7 +2305,7 @@ A per-photographer cache of "has a bookable start" was considered and not added,
 
 **The app** fetches Discover again when it comes back into view (app resumed, Discover tab selected, a profile or niche page popped), at most every 15 seconds (`discover_freshness.dart`). Cards show "Ready in about N hours" while the server says the photographer is available now.
 
-## The client's IP is whatever `X-Forwarded-For` says - LOGGED
+## ~~The client's IP is whatever `X-Forwarded-For` says~~ - FIXED 2026-11-11 (`core/client_ip.py`, `TRUSTED_PROXY_IPS`, DEPLOY_CHECKLIST)
 
 `_request_ip` (in `app/api/v1/media_rights.py`, and the same function in `app/services/trust_safety.py`) takes the first entry of `X-Forwarded-For` when the header is present, and the socket address otherwise. Nothing in `deploy/` puts a proxy in front of the API (`compose.prod.yml` publishes port 8000 directly), so the header comes from the caller: anyone can set it to any address.
 

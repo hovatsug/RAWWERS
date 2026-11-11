@@ -69,7 +69,9 @@ def test_a_share_link_visitor_keeps_only_the_hash(db_session):
     assert row.ip_hash == hash_ip(IP)
 
 
-def test_the_signed_url_route_keeps_the_clients_ip(client, db_session, monkeypatch):
+def test_the_signed_url_route_keeps_the_clients_ip(proxied_client, db_session, monkeypatch):
+    # The address the proxy in front of the API saw (core/client_ip.py).
+    client = proxied_client
     gig, asset = _gig_with_asset(db_session)
     client.post(f"/v1/proof-galleries/{db_session.query(ProofGalleryItem).first().gallery_id}/publish", headers={"X-User-Id": str(gig.pro_user_id)})
     monkeypatch.setattr("app.api.v1.media_rights.create_presigned_get", lambda key, expires_in=120: f"https://signed/{key}")

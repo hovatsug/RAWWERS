@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db_read_session, get_db_session, get_optional_current_user, require_admin, require_not_banned
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.gig import Gig, GigStatus
 from app.models.niche import Niche
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose
@@ -391,9 +392,4 @@ def _to_public_review_view(db: Session, review: Review, niche: Niche, reply: Rev
 
 
 def _request_ip(request: Request | None) -> str | None:
-    if not request:
-        return None
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)

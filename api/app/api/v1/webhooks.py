@@ -14,6 +14,7 @@ from app.api.deps import get_db_session
 from app.core.config import get_settings
 from app.core.constants import SYSTEM_USER_ID
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.gig import (
     Gig,
     GigStatus,
@@ -1039,10 +1040,7 @@ def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, r
 
 
 def _request_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)
 
 
 def _log_webhook_security_event(

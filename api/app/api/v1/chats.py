@@ -13,6 +13,7 @@ from app.services.bookable_time import apply_request_terms
 from app.services.pro_standing import booking_block_reason
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.admin import UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, BookingRequestTransition, ProPackage, SchedulingPreset
 from app.models.chat import ChatHandoff, ChatMessage, ChatSenderType, ChatThread, ChatThreadStatus
@@ -460,9 +461,4 @@ def _message_view(item: ChatMessage) -> ChatMessageView:
 
 
 def _request_ip(request: Request | None) -> str | None:
-    if not request:
-        return None
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)

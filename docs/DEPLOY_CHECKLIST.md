@@ -89,6 +89,20 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
       docker run --rm --env-file deploy/.env.prod rawwers-api-runtime-check python -c "import app.main; print('ok')"
 
   Expect `ok`. Without the settings the import stops at the first required one (`Field required`), which says nothing about the image. Dev builds the `dev` stage (`BUILD_TARGET=dev`), which has every dev dependency too, so a production-only dependency that is missing never shows there: `httpx` was dev-only while the start-up warmup imported it, and the production image could not start. See [No dependency lockfile](BACKEND_GAPS.md#no-dependency-lockfile-pin-before-production---logged).
+- [ ] **Client IP: only Caddy is reachable, and the API knows it (2026-11-11, `api/app/core/client_ip.py`).** The admin IP allowlist, every rate limit, download evidence and the risk signals key on the client's address. The API reads `X-Forwarded-For` **only** when the connection comes from an address in `TRUSTED_PROXY_IPS`, and then from the right. Uvicorn runs with `--no-proxy-headers` (the image's CMD), so it never rewrites the address itself. Set up:
+  - **Caddy is the only thing published.** Remove `ports: "8000:8000"` from `api` (and any port on `web`) in `deploy/compose.prod.yml`; Caddy reaches them on the compose network. Anything that can reach the API or web directly can claim any address.
+  - **Caddyfile** (Caddy v2 replaces a client's own `X-Forwarded-For` unless that client is in Caddy's `trusted_proxies`; leave that unset while nothing sits in front of Caddy):
+
+        api.<domain> {
+            reverse_proxy api:8000
+        }
+        admin.<domain> {
+            reverse_proxy web:3000
+        }
+
+  - **`TRUSTED_PROXY_IPS`** on the API: the compose network's subnet, which covers Caddy and the web server (the web admin's proxy, `web/app/api/admin/[...path]/route.ts`, passes the admin's address on). Find it with `docker network inspect <project>_default --format '{{(index .IPAM.Config 0).Subnet}}'`, for example `172.18.0.0/16`. Pin the subnet in the compose file so it does not change on recreate.
+  - **`TRUSTED_PROXY_HOPS`**: `1` for Caddy alone. `2` if a CDN (for example Cloudflare) sits in front of Caddy, and then add the CDN's ranges to Caddy's `trusted_proxies` and to `TRUSTED_PROXY_IPS`.
+  - **Check after deploy** (with `ADMIN_IP_ALLOWLIST` set to your address): an admin page opens from your address. From another network, `curl -s -H 'X-Forwarded-For: <your address>' -H 'Authorization: Bearer <an admin token>' https://api.<domain>/v1/admin/shelf/settings` must still answer 403 "Admin endpoint not allowed from this IP".
 - [ ] **Build `api` and `worker` together** - `docker compose build api worker`. They are separate images from one Dockerfile; building only `api` leaves webhooks, outbox effects and photo processing on the old code with nothing failing. See [Rebuilding `api` does not rebuild `worker`](BACKEND_GAPS.md#rebuilding-api-does-not-rebuild-worker).
 - [ ] **Use `deploy/compose.prod.yml` / `compose.staging.yml`**, never the `deploy/docker-compose.*` pair beside them: those are stale copies, and the prod one has no `beat` service. See [stale duplicates](BACKEND_GAPS.md#deploydocker-composeprodstagingyml-are-stale-duplicates---logged).
   **Open question:** `make deploy` in `api/` is a second path - it rsyncs `api/` to the server and runs `docker compose up -d --build` with `api/docker-compose.yml`, not either file above. Which one production actually uses needs confirming; until then, check the server's running services against this list rather than assuming.

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, require_admin, require_not_banned
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.reward import RewardRule
 from app.schemas.media import CurrentUser
 from app.schemas.reward import (
@@ -282,12 +283,7 @@ def reserve_reward_spend(
 
 
 def _request_ip(request: Request | None) -> str | None:
-    if not request:
-        return None
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)
 
 
 @router.get("/admin/rewards/rules", response_model=list[AdminRewardRuleView])

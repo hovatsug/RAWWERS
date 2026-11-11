@@ -51,7 +51,7 @@ services:
       STRIPE_WEBHOOK_SECRET: whsec_dummy
       ALLOW_UNVERIFIED_PRO: true
     command: >-
-      sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"
     depends_on:
       postgres:
         condition: service_healthy

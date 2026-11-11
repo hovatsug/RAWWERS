@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_read_session, get_db_write_session, get_locale, require_admin, require_not_banned
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.admin import ProProfile, UserRoleType
 from app.models.studioverse import (
     ContentPack,
@@ -590,7 +591,4 @@ def _order_view(row: ContentPackOrder) -> StudioverseOrderView:
 
 
 def _request_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return client_ip(request)

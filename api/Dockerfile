@@ -22,7 +22,10 @@ RUN poetry config virtualenvs.create false && poetry install --no-interaction --
 
 COPY . /app
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-proxy-headers: Uvicorn never rewrites the client address from
+# X-Forwarded-For; the API decides that itself (app/core/client_ip.py,
+# TRUSTED_PROXY_IPS).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
 
 # Everything above is what ships. This stage exists because the runtime image
 # installs `--without dev`, so a freshly built API image has no pytest in it -

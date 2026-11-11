@@ -34,6 +34,12 @@ async function forward(req: NextRequest, path: string[]) {
   headers.set("X-Admin-Api-Key", ADMIN_API_KEY);
   const auth = req.headers.get("authorization");
   if (auth) headers.set("Authorization", auth);
+  // The admin's own address, as the proxy in front of this server (Caddy)
+  // recorded it, so the API's admin IP allowlist and rate limit see the
+  // admin, not this server. The API believes it only because this server is
+  // listed in its TRUSTED_PROXY_IPS (api/app/core/client_ip.py).
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) headers.set("X-Forwarded-For", forwarded);
 
   const body = req.method === "GET" || req.method === "HEAD" ? undefined : await req.text();
   const res = await fetch(url.toString(), { method: req.method, headers, body, cache: "no-store" });

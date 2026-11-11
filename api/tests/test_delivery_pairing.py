@@ -46,6 +46,13 @@ def _h(user_id):
     return {"X-User-Id": str(user_id)}
 
 
+@pytest.fixture
+def client(proxied_client):
+    # Each exchange comes from its own address (_ip), through a trusted proxy,
+    # so the per-address limit counts only what a test means it to.
+    return proxied_client
+
+
 def _ip():
     return {"X-Forwarded-For": f"10.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}"}
 
@@ -196,8 +203,8 @@ def test_exchanging_codes_is_limited_per_address(client, db_session, monkeypatch
 
 
 def test_exchanging_codes_is_limited_overall_whatever_the_address(client, db_session, monkeypatch):
-    # The address comes from X-Forwarded-For, which a guesser can set; this
-    # limit does not depend on it.
+    # A guesser behind a proxy, or with many addresses, gets a new address
+    # per try; this limit does not depend on it.
     monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "delivery_pair_all", (2, 600))
     get_redis_client().delete("ratelimit:delivery_pair_all:all:600")
     codes = [_pair(client, "ZZZZ-ZZZZ").status_code for _ in range(3)]

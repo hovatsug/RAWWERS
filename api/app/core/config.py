@@ -200,6 +200,13 @@ class Settings(BaseSettings):
     rate_limit_admin_per_min: int = Field(default=60, alias="RATE_LIMIT_ADMIN_PER_MIN")
     rate_limit_admin_bi_per_min: int = Field(default=240, alias="RATE_LIMIT_ADMIN_BI_PER_MIN")
     admin_ip_allowlist: str = Field(default="", alias="ADMIN_IP_ALLOWLIST")
+    # The proxies in front of the API (Caddy; the web server for admin calls),
+    # as IPs or CIDRs, comma-separated. X-Forwarded-For is read only on a
+    # request whose connection comes from one of them (core/client_ip.py).
+    # Empty: the header is never read and the connection address is used.
+    trusted_proxy_ips: str = Field(default="", alias="TRUSTED_PROXY_IPS")
+    # At most this many trusted proxies are stepped back through.
+    trusted_proxy_hops: int = Field(default=1, ge=1, le=5, alias="TRUSTED_PROXY_HOPS")
     admin_api_keys: str = Field(default="", alias="ADMIN_API_KEYS")
     search_provider: str = Field(default="none", alias="SEARCH_PROVIDER")
     search_enabled: bool = Field(default=False, alias="SEARCH_ENABLED")

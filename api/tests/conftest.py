@@ -284,6 +284,31 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     app.dependency_overrides.clear()
 
 
+#: The address `proxied_client` connects from, listed as the one trusted proxy.
+TEST_PROXY_IP = "10.255.255.1"
+
+
+@pytest.fixture
+def proxied_client(db_session: Session, monkeypatch) -> Generator[TestClient, None, None]:
+    """A client behind a trusted proxy: X-Forwarded-For is believed, as it is
+    in production when Caddy adds it (core/client_ip.py). For tests that set
+    the client's address through the header."""
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "trusted_proxy_ips", f"{TEST_PROXY_IP}/32")
+    monkeypatch.setattr(get_settings(), "trusted_proxy_hops", 1)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        yield db_session
+
+    app.dependency_overrides[get_db_session] = override_get_db
+    app.dependency_overrides[get_db_write_session] = override_get_db
+    app.dependency_overrides[get_db_read_session] = override_get_db
+    with TestClient(app, client=(TEST_PROXY_IP, 50000)) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
 @pytest.fixture
 def user_id() -> str:
     return str(uuid.uuid4())

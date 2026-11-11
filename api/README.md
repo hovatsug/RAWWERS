@@ -127,7 +127,8 @@ restarting the `api` container too.
 - `RATE_LIMIT_CHAT_MESSAGES_PER_MIN`, `RATE_LIMIT_REVIEWS_PER_DAY`
 - `RATE_LIMIT_REFERRAL_CLAIMS_PER_DAY`, `RATE_LIMIT_PAYMENTS_PER_HOUR`
 - `RATE_LIMIT_UPLOADS_PER_HOUR`, `RATE_LIMIT_ADMIN_PER_MIN` (60), `RATE_LIMIT_ADMIN_BI_PER_MIN` (240, /v1/admin/bi/* only)
-- `ADMIN_IP_ALLOWLIST` (optional CSV)
+- `ADMIN_IP_ALLOWLIST` (optional CSV), matched against the client address from `core/client_ip.py`
+- `TRUSTED_PROXY_IPS` (CSV of IPs or CIDRs; empty: `X-Forwarded-For` is never read), `TRUSTED_PROXY_HOPS` (1)
 - `ADMIN_API_KEYS` (optional CSV)
 - `SEARCH_PROVIDER`, `SEARCH_ENABLED`, `SEARCH_INDEX_PREFIX`
 - `MEILI_URL`, `MEILI_API_KEY`

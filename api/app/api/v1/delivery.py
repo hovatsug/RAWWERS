@@ -22,6 +22,7 @@ from app.api.v1 import media as media_routes
 from app.api.v1.proof_galleries import create_proof_gallery
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.core.client_ip import client_ip
 from app.models.admin import UserRoleType
 from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatus
 from app.models.media import MediaAsset, MediaPurpose, MediaStatus, MediaVisibility
@@ -108,10 +109,7 @@ def require_delivery_device(
 
 
 def _request_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    return client_ip(request) or "unknown"
 
 
 @router.post("/pair", response_model=PairResponse)

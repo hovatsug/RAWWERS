@@ -24,8 +24,8 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     "delivery_uploads": (settings.rate_limit_delivery_uploads_per_hour, 3600),
     "delivery_token_daily": (settings.rate_limit_delivery_token_uploads_per_day, 86400),
     # Pairing: codes issued per photographer, and exchanges per address and
-    # in all. The address can be spoofed (X-Forwarded-For, BACKEND_GAPS); the
-    # overall limit cannot, and against 31^8 possible codes it leaves a
+    # in all. The address is the connection's, or a trusted proxy's
+    # (core/client_ip.py); the overall limit backs it up, and against 31^8 possible codes it leaves a
     # guesser no real chance inside a code's ten minutes.
     "delivery_pairing_issue": (10, 3600),
     "delivery_pair_ip": (10, 600),

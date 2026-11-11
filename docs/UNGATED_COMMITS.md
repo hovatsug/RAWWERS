@@ -39,3 +39,10 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 287c0b0 | 2026-11-10 | Docs: BI decisions 10-12; deploy step for 0094 | no |
 | c3587fc | 2026-11-10 | Docs: security audit list items 2-3 (known security test failures, error bodies) | no |
 | 4e5deae | 2026-11-10 | Docs: BETA_SCOPE.md (beta scope check: journeys, MUST/SHOULD/LATER, freeze list) | no |
+| 4e5deae | 2026-11-10 | Docs: BETA_SCOPE.md (listed in deb165f) | no |
+| bdc80e8 | 2026-11-11 | Known failures: nine fixed (seven test bugs, one chat 500); KNOWN_FAILURES 25 -> 16 | no (tests; product fix in the chat route only) |
+| b3028c3 | 2026-11-11 | API: poetry.lock; the image installs from it; docs/DEPENDENCIES.md | no |
+| 9fd8a97 | 2026-11-11 | Docs: BETA_SCOPE records the owner's decisions; FEATURE FREEZE DECLARED | no |
+| 9225f10 | 2026-11-11 | Client IP: X-Forwarded-For only from a trusted proxy (core/client_ip.py) | **yes** (IP handling, authorization) |
+| fbcca1f | 2026-11-11 | Docs: MULTI_CURRENCY.md, the EUR and GBP design (not built) | no |
+| ead0fa2 | 2026-11-11 | Alerts: Sentry (API, worker, beat, web admin); failed emails retried, reported, listed, resent | **yes** (email) |

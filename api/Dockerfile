@@ -14,8 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
-COPY pyproject.toml /app/
-RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi --without dev
+# poetry.lock pins every package, direct and indirect, so two builds of one
+# commit install the same versions. `poetry install` refuses a lock that no
+# longer matches pyproject.toml. Updating: docs/DEPENDENCIES.md.
+COPY pyproject.toml poetry.lock /app/
+RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi --without dev --no-root
 
 COPY . /app
 
@@ -31,4 +34,4 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # the lean image, so production cannot acquire test dependencies by accident.
 FROM runtime AS dev
 
-RUN poetry install --no-interaction --no-ansi --with dev
+RUN poetry install --no-interaction --no-ansi --with dev --no-root

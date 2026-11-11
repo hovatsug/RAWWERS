@@ -25,7 +25,7 @@ The last full run, on 2026-11-08 (13148e8), took **9 h 34 min**: 26 failed (the 
    - Truncating instead of dropping also removes the "out of shared memory" lock-table limit that capped parallel runs at three.
    - With 2 and 3 together, a full run should take tens of minutes, not hours.
 4. **Run the suite on a quiet machine:** dev workers stopped, no simulators, and Docker Desktop given enough CPUs and memory. Or run it in CI.
-5. **CI.** GitHub Actions with Postgres 16 and Redis 7 as service containers, and the full repository checked out (some tests read the workflows and compose files). The database name must end in `_test`, as the conftest requires. Run `pytest -n auto`, or split the suite across 3 or 4 matrix jobs by the durations file from step 1 (`pytest-split`). Cache the Python dependencies (no lockfile yet: BACKEND_GAPS). Compare the failures with `KNOWN_FAILURES.txt` through `scripts/check_known_failures.py`. Steps 2 and 3 come first; without them, CI would take hours too.
+5. **CI.** GitHub Actions with Postgres 16 and Redis 7 as service containers, and the full repository checked out (some tests read the workflows and compose files). The database name must end in `_test`, as the conftest requires. Run `pytest -n auto`, or split the suite across 3 or 4 matrix jobs by the durations file from step 1 (`pytest-split`). Cache the Python dependencies (keyed on `api/poetry.lock`). Compare the failures with `KNOWN_FAILURES.txt` through `scripts/check_known_failures.py`. Steps 2 and 3 come first; without them, CI would take hours too.
 
 ## Open, logged 2026-11-09 (one line each)
 
@@ -2323,7 +2323,7 @@ The client's Booking screen lists **History** from `timeline` in `GET /v1/client
 
 The status chip at the top was a separate bug, fixed: it read the gig's status from a list of names the server never sends, so a completed booking showed "Accepted".
 
-## No dependency lockfile; pin before production - LOGGED
+## ~~No dependency lockfile; pin before production~~ - FIXED 2026-11-11 (`api/poetry.lock`, docs/DEPENDENCIES.md)
 
 Found 2026-10-30. `api/` has no `poetry.lock`: the Dockerfile copies only `pyproject.toml`, and `poetry install` resolves the caret ranges afresh on every build. Two builds of the same commit can install different versions, and nothing records which ones a running image has. Seen on 2026-10-30: two `runtime` builds of the same `pyproject.toml` had pydantic 2.13 and 2.14.
 

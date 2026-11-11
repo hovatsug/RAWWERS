@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.core.config import get_settings
+from app.services.auth_tokens import create_access_token
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
 from app.models.booking import BookingRequest, BookingRequestStatus, ProPackage
 from app.models.gig import Gig, StripePayment
@@ -94,9 +95,12 @@ def test_pro_cannot_activate_without_kyc_in_production(client, db_session):
     settings.app_env = "production"
     settings.allow_unverified_pro = False
 
+    # Production accepts no X-User-Id header: sign in as the pro does there.
+    token, _ttl = create_access_token(user_id=uuid.UUID(pro_id), roles=["pro"])
     try:
-        resp = client.post("/v1/pro/me/activate", headers={"X-User-Id": pro_id})
-        assert resp.status_code == 409
+        resp = client.post("/v1/pro/me/activate", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 409, resp.text
+        assert resp.json()["error"]["code"] == "kyc_required"
     finally:
         settings.app_env = orig_env
         settings.allow_unverified_pro = orig_allow

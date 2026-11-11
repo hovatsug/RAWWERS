@@ -11,6 +11,7 @@ from app.models.reward import DiscountRedemption, DiscountRedemptionStatus, Rede
 from app.models.ops import FeatureFlagScope
 from app.services.feature_flags import upsert_feature_flag
 from app.services.store import sync_partner_products
+from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
 
@@ -253,10 +254,16 @@ def test_payment_success_finalizes_redemption_and_advances_order(client, db_sess
         "type": "payment_intent.succeeded",
         "data": {"object": {"id": "pi_order_paid"}},
     }
-    wh1 = client.post("/v1/webhooks/stripe", json=event_payload)
-    wh2 = client.post("/v1/webhooks/stripe", json=event_payload)
+    # Signed in production; here the signature check is replaced, as in
+    # every other webhook test.
+    monkeypatch.setattr("app.api.v1.webhooks.construct_stripe_event", lambda raw, sig: event_payload)
+    wh1 = client.post("/v1/webhooks/stripe", data=b"{}", headers={"stripe-signature": "sig"})
+    wh2 = client.post("/v1/webhooks/stripe", data=b"{}", headers={"stripe-signature": "sig"})
     assert wh1.status_code == 200
     assert wh2.status_code == 200
+    # The webhook only records the event; the outbox applies it.
+    dispatch_outbox_events_task(limit=100)
+    db_session.expire_all()
 
     order = db_session.get(CommerceOrder, uuid.UUID(order_id))
     assert order is not None

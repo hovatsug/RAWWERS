@@ -15,6 +15,7 @@ from app.models.media import (
     ObjectStatus,
 )
 from tests.delivered import rate
+from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
 
 class DummyStripePI:
@@ -186,8 +187,9 @@ def test_upsell_webhook_idempotency(client, db_session, monkeypatch):
     pro_id = str(uuid.uuid4())
     client_id = str(uuid.uuid4())
     gig = _create_gig(db_session, client_id, pro_id)
-    a1 = _create_photo_asset(db_session, pro_id, with_wm=True)
-    a2 = _create_photo_asset(db_session, pro_id, with_wm=True)
+    # 10 photos selected (the platform-wide minimum), included_photos=9 so
+    # the 10th is an extra and the selection takes the upsell path.
+    assets = [_create_photo_asset(db_session, pro_id, with_wm=True) for _ in range(10)]
 
     monkeypatch.setattr(
         "app.api.v1.proof_galleries.stripe.PaymentIntent.create",
@@ -197,21 +199,23 @@ def test_upsell_webhook_idempotency(client, db_session, monkeypatch):
     gallery_id = client.post(
         f"/v1/gigs/{gig.id}/proof-gallery",
         headers={"X-User-Id": pro_id},
-        json={"included_photos": 1, "extra_photo_price": "10.00"},
+        json={"included_photos": 9, "extra_photo_price": "10.00"},
     ).json()["id"]
 
     client.post(
         f"/v1/proof-galleries/{gallery_id}/items",
         headers={"X-User-Id": pro_id},
-        json={"media_asset_ids": [str(a1.id), str(a2.id)]},
+        json={"media_asset_ids": [str(a.id) for a in assets]},
     )
     client.post(f"/v1/proof-galleries/{gallery_id}/publish", headers={"X-User-Id": pro_id})
     client.post(
         f"/v1/proof-galleries/{gallery_id}/selections",
         headers={"X-User-Id": client_id},
-        json={"media_asset_ids": [str(a1.id), str(a2.id)]},
+        json={"media_asset_ids": [str(a.id) for a in assets]},
     )
-    client.post(f"/v1/proof-galleries/{gallery_id}/selections/submit", headers={"X-User-Id": client_id})
+    submit = client.post(f"/v1/proof-galleries/{gallery_id}/selections/submit", headers={"X-User-Id": client_id})
+    assert submit.status_code == 200, submit.text
+    assert submit.json()["payment_intent_id"] == "pi_upsell_2"
 
     event = {
         "id": "evt_upsell_1",
@@ -225,6 +229,9 @@ def test_upsell_webhook_idempotency(client, db_session, monkeypatch):
 
     assert first.status_code == 200
     assert second.status_code == 200
+    # The webhook only records the event; the outbox applies it.
+    dispatch_outbox_events_task(limit=100)
+    db_session.expire_all()
 
     purchase = db_session.query(UpsellPurchase).filter_by(stripe_payment_intent_id="pi_upsell_2").one()
     assert purchase.status == UpsellPurchaseStatus.succeeded

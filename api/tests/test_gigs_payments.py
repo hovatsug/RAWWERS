@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
 from app.models.gig import Gig, GigStatus, LedgerEntry, LedgerEntryType
+from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
 
 class DummyStripeObject:
@@ -118,6 +119,10 @@ def test_stripe_webhook_idempotency_and_ledger_totals(client, db_session, user_i
 
     second = client.post("/v1/webhooks/stripe", data=b"{}", headers={"stripe-signature": "sig"})
     assert second.status_code == 200
+
+    # The webhook only records the event; the outbox applies it.
+    dispatch_outbox_events_task(limit=100)
+    db_session.expire_all()
 
     gig = db_session.get(Gig, uuid.UUID(gig_id))
     assert gig.status == GigStatus.paid

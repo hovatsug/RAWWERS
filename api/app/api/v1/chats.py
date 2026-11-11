@@ -167,6 +167,9 @@ def append_chat_message(
     if sender_type == ChatSenderType.client and thread.status == ChatThreadStatus.open:
         ai_message = _maybe_generate_ai_reply(db, thread)
         if ai_message:
+            # Its id and created_at are set on insert: flush before the view
+            # reads them (a 500 here before 2026-11-11).
+            db.flush()
             appended.append(_message_view(ai_message))
 
     db.commit()

@@ -14,6 +14,7 @@ from app.models.reward import (
     RewardRule,
 )
 from app.services.rewards import issue_reward, reserve_points_for_discount
+from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
 
 def _ensure_user(db_session, user_id: str, roles: list[UserRoleType] | None = None) -> None:
@@ -200,6 +201,9 @@ def test_payment_succeeded_finalizes_gig_redemption(client, db_session, monkeypa
     monkeypatch.setattr("app.api.v1.webhooks.construct_stripe_event", lambda raw, sig: event)
     resp = client.post("/v1/webhooks/stripe", data=b"{}", headers={"stripe-signature": "sig"})
     assert resp.status_code == 200
+    # The webhook only records the event; the outbox applies it.
+    dispatch_outbox_events_task(limit=100)
+    db_session.expire_all()
 
     redemption = db_session.query(DiscountRedemption).filter_by(context_type=RedemptionContextType.gig_payment, context_id=gig.id).one()
     assert redemption.status == DiscountRedemptionStatus.applied

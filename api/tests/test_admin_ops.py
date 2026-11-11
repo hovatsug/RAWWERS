@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.core.config import get_settings
+from app.services.auth_tokens import create_access_token
 from app.models.admin import (
     AdminAuditLog,
     BanAction,
@@ -105,13 +106,16 @@ def test_kyc_gating_blocks_payment_intent_in_production(client, db_session, user
     original_env = settings.app_env
     settings.app_env = "production"
 
+    # Production accepts no X-User-Id header: sign in as the client does there.
+    token, _ttl = create_access_token(user_id=uuid.UUID(user_id), roles=["client"])
     try:
         response = client.post(
             f"/v1/gigs/{gig.id}/payments/stripe/create-intent",
-            headers={"X-User-Id": user_id},
+            headers={"Authorization": f"Bearer {token}"},
             json={},
         )
-        assert response.status_code == 409
+        assert response.status_code == 409, response.text
+        assert response.json()["error"]["code"] == "kyc_required"
     finally:
         settings.app_env = original_env
 

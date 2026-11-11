@@ -15,10 +15,13 @@ Status (2026-11-09): **wired, dev only.** The API sends the nine approved emails
   - a tag with the email's type, so Brevo's reports split by type.
 
   Non-security mail adds a footer with the unsubscribe link, plus the `List-Unsubscribe` and `List-Unsubscribe-Post` headers. Security mail (codes, new sign-in, reset) has neither. Brevo's `messageId` is stored on `email_message.provider_message_id`.
-- **Failures:**
-  - 429 or 5xx: the message is marked failed and the outbox retries with back-off. The next try sends it, once.
-  - Any other 4xx: marked failed with Brevo's reason, not retried.
-  - A timeout: marked failed ("may have been sent"), and **not** resent. A duplicate email is worse than a late one.
+- **Failures** (2026-11-11, `services/email_alerts.py`). Each failed email is an `email_message` row with status `failed` and `metadata.failure`; the admin sees them on **Operations → Failed emails** (`/admin/emails`), with **Resend** (once per row; its new attempt has its own row).
+  - **No connection, 429 or 5xx** (`transient`): the outbox retries with back-off (2, 4, 8 … seconds, at most `OUTBOX_MAX_ATTEMPTS`, 10, about half an hour in all). The next successful try sends it, once. Giving up is logged at ERROR (`outbox_event_gave_up`), which is a Sentry event. The row can be resent once the hour after its last try has passed.
+  - **401 or 403** (`config`: our side, the API key, the sender, or this server's IP not authorised): **never retried**, since every email would fail the same way. It raises a Sentry event and an in-app alert to every admin in `ADMIN_USER_IDS` (`admin.email_failing`), at most once an hour. Fix the setting, then resend from Failed emails.
+  - **Any other 4xx** (`rejected`): marked failed with Brevo's reason, not retried, and a Sentry event.
+  - **A timeout** (`uncertain`): marked failed ("may have been sent"), and **not** retried. A Sentry event. A duplicate email is worse than a late one; resend by hand if the person did not get it.
+  - **A verify or reset code** that fails gets a row too, **without the code** (its subject is "Verification code (code not stored)"). It is never resent: the person asks for a new code.
+  - What reaches Sentry has no address and no code (`core/sentry.py` scrubs every event).
 - **Safety:**
   - **`EMAIL_SENDING_ENABLED`**. Unset, it is **off in production and on elsewhere**. While it is off, or without `BREVO_API_KEY` and `BREVO_SENDER_EMAIL`, email only goes to the console log.
   - **Production with sending on refuses to start** unless `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` and `UNSUBSCRIBE_SIGNING_KEYS` are all set.
@@ -39,7 +42,7 @@ Status (2026-11-09): **wired, dev only.** The API sends the nine approved emails
 | `BREVO_API_KEY` | set | its own key |
 | `BREVO_SENDER_EMAIL` | `rawwers@rawwers.com` | the same, or what you choose |
 | `BREVO_SENDER_NAME` | default `RAWWERS` | `RAWWERS` |
-| `BREVO_REPLY_TO` | optional | optional (`support@rawwers.com`?) |
+| `BREVO_REPLY_TO` | optional | `support@rawwers.com` (owner's decision, 2026-11-11) |
 | `EMAIL_SENDING_ENABLED` | unset (on) | `true` only when ready |
 | `EMAIL_DEV_ALLOWLIST` | **your one test address** | not used |
 | `BREVO_WEBHOOK_TOKEN` | empty (route off) | a long random token |
@@ -52,7 +55,7 @@ All of these are read by `api`, `worker`, `worker-photos` and `beat`: the worker
 
 ## Brevo's authorised IPs
 
-Brevo refuses an API key used from an IP it does not know: `401 "We have detected you are using an unrecognised IP address …"`. The first dev send (2026-11-09) hit this. In Brevo, *Security → Authorised IPs*: add the dev machine's public IP (it changes with the network), or turn the restriction off for the dev key. Production: add the server's outbound IP for the production key. The API treats this 401 as a rejection: logged, not retried.
+Brevo refuses an API key used from an IP it does not know: `401 "We have detected you are using an unrecognised IP address …"`. The first dev send (2026-11-09) hit this. In Brevo, *Security → Authorised IPs*: add the dev machine's public IP (it changes with the network), or turn the restriction off for the dev key. Production: add the server's outbound IP for the production key. The API treats this 401 as a configuration error: not retried, a Sentry event (`SENTRY_DSN`, DEPLOY_CHECKLIST) and an in-app alert to the admins; the emails wait on Failed emails to be resent.
 
 ## The sending domain: what Brevo needs verified
 

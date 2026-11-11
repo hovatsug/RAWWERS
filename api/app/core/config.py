@@ -20,6 +20,12 @@ class Settings(BaseSettings):
 
     app_env: str = Field(default="development", alias="APP_ENV")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    # Error reporting (core/sentry.py). Empty DSN: nothing is sent. Create the
+    # Sentry organisation in the EU region; its DSNs end in .de.sentry.io.
+    sentry_dsn: str = Field(default="", alias="SENTRY_DSN")
+    sentry_environment: str = Field(default="", alias="SENTRY_ENVIRONMENT")
+    sentry_release: str = Field(default="", alias="SENTRY_RELEASE")
+    sentry_traces_sample_rate: float = Field(default=0.0, ge=0.0, le=1.0, alias="SENTRY_TRACES_SAMPLE_RATE")
 
     database_url: str = Field(alias="DATABASE_URL")
     primary_database_url: str | None = Field(default=None, alias="PRIMARY_DATABASE_URL")

@@ -42,6 +42,12 @@ class MailUncertain(Exception):
     """No answer (a timeout): it may have been sent, so it is not resent."""
 
 
+class MailConfigError(MailRejected):
+    """401 or 403: our side is wrong (the API key, the sender, or this server's
+    IP not authorised in Brevo). Every email would fail the same way, so it is
+    never retried; it raises an alert instead (services/email_alerts.py)."""
+
+
 class MailProvider:
     provider_name: str = "unknown"
     #: True for a provider that puts mail in real inboxes. Only these are
@@ -149,6 +155,8 @@ class BrevoMailProvider(MailProvider):
             raise MailRetryable(f"brevo: {type(exc).__name__}") from exc
         if resp.status_code == 429 or resp.status_code >= 500:
             raise MailRetryable(f"brevo: {resp.status_code}")
+        if resp.status_code in (401, 403):
+            raise MailConfigError(f"brevo: {resp.status_code} {resp.text[:300]}")
         if resp.status_code >= 400:
             raise MailRejected(f"brevo: {resp.status_code} {resp.text[:300]}")
         message_id = (resp.json() or {}).get("messageId")
@@ -202,8 +210,9 @@ def send_email(
     unsubscribe_url: str | None = None,
     security: bool = False,
 ) -> SendOutcome:
-    """The one way an email leaves. Raises MailRetryable, MailRejected or
-    MailUncertain from the provider; the caller records them."""
+    """The one way an email leaves. Raises MailRetryable, MailRejected (its
+    MailConfigError for 401/403) or MailUncertain from the provider; the
+    caller records them."""
     from app.services.email_suppression import suppression_reason
 
     provider = get_mail_provider()

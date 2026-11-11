@@ -37,6 +37,9 @@ def register_error_handlers(app: FastAPI) -> None:
     async def handle_generic_error(request: Request, exc: Exception) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)
         logger.exception("unhandled_exception", extra={"request_id": request_id})
+        from app.core.sentry import capture_exception
+
+        capture_exception(exc)
         return JSONResponse(
             status_code=500,
             content={

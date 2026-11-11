@@ -119,8 +119,15 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
             outcome = send_email(db, email=payload["email"], template_key=kind, subject=subject, text_body=body, security=True)
         except (MailRejected, MailUncertain) as exc:
             # Refused, or maybe sent: not retried (a second code email is
-            # worse than none; the person can ask for a new code).
+            # worse than none; the person can ask for a new code). Recorded
+            # as a failed email without the code, which is never resent,
+            # and reported (Sentry; the admins too when it is our side).
+            from app.services.email_alerts import failure_kind, report_email_failure
+
+            failure = failure_kind(exc)
             logger.warning("security_email_not_sent", extra={"topic": topic, "error": str(exc)[:200]})
+            _record_failed_security_email(db, email=payload["email"], kind=kind, error=str(exc), failure=failure)
+            report_email_failure(db, kind=failure, template_key=kind, error=str(exc))
             return
         # MailRetryable propagates: the outbox tries again with back-off.
         if outcome.status != "sent":
@@ -299,3 +306,35 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         if job_id:
             run_print_export_job(db, print_export_job_id=uuid.UUID(job_id))
         return
+
+
+#: The subject stored for a failed code email. The real subject carries the
+#: code, which is never stored with the failure.
+_SECURITY_SUBJECTS = {"email.verify": "Verification code (code not stored)", "email.reset": "Password reset code (code not stored)"}
+
+
+def _record_failed_security_email(db, *, email: str, kind: str, error: str, failure: str) -> None:
+    """A verify or reset email that did not go: listed with the failed emails,
+    with no code in it, and marked so it is never resent."""
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from app.models.admin import UserAccount
+    from app.models.communication import EmailMessage, EmailMessageStatus
+
+    account = db.execute(select(UserAccount).where(UserAccount.email == email)).scalar_one_or_none()
+    db.add(
+        EmailMessage(
+            user_id=account.user_id if account else None,
+            to_email=email,
+            template_key=kind,
+            subject=_SECURITY_SUBJECTS.get(kind, kind),
+            provider="brevo",
+            status=EmailMessageStatus.failed,
+            error=error[:1000],
+            dedupe_key=f"security-failed:{_uuid.uuid4()}",
+            meta={"security": True, "failure": failure},
+        )
+    )
+    db.flush()

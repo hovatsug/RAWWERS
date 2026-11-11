@@ -430,9 +430,45 @@ def list_notifications(
     return build_page(rows, limit)
 
 
-def resend_email_message(db: Session, message: EmailMessage) -> None:
+def email_resendable(message: EmailMessage) -> bool:
+    """A failed notification email not yet resent. Security mail (a verify
+    or reset code) is never resent: the code inside has expired or been
+    replaced, and the person asks for a new one."""
+    meta = message.meta or {}
+    if message.status != EmailMessageStatus.failed or meta.get("security") or meta.get("resent_at"):
+        return False
+    return not _still_retrying(message)
+
+
+#: A transient failure (429, 5xx) is retried by the outbox for about half an
+#: hour (OUTBOX_MAX_ATTEMPTS back-off); until then a resend would duplicate it.
+TRANSIENT_RETRY_WINDOW = timedelta(hours=1)
+
+
+def _still_retrying(message: EmailMessage) -> bool:
+    if (message.meta or {}).get("failure") != "transient":
+        return False
+    updated = message.updated_at
+    if updated is not None and updated.tzinfo is None:
+        updated = updated.replace(tzinfo=timezone.utc)
+    return updated is not None and datetime.now(timezone.utc) - updated < TRANSIENT_RETRY_WINDOW
+
+
+def resend_email_message(db: Session, message: EmailMessage, *, actor_user_id: uuid.UUID | None = None) -> None:
     if message.status != EmailMessageStatus.failed:
         raise APIError(code="validation_error", message="Only failed emails can be resent", status_code=400)
+    meta = message.meta or {}
+    if meta.get("security"):
+        raise APIError(code="validation_error", message="A verification or reset code is not resent; the person asks for a new one", status_code=400)
+    if meta.get("resent_at"):
+        raise APIError(code="already_resent", message="This email was already resent; its new attempt has its own row", status_code=409)
+    if _still_retrying(message):
+        raise APIError(code="still_retrying", message="This email is still being retried; resend it if it has not gone out within the hour", status_code=409)
+    message.meta = {
+        **meta,
+        "resent_at": datetime.now(timezone.utc).isoformat(),
+        "resent_by": str(actor_user_id) if actor_user_id else None,
+    }
     user_id = message.user_id
     dedupe = f"{message.dedupe_key}:resend:{uuid.uuid4()}"
     payload = {
@@ -628,19 +664,29 @@ def _send_email_from_payload(db: Session, payload: dict, *, allow_schedule: bool
             security=security,
         )
     except Exception as exc:
+        from app.services.email_alerts import failure_kind, report_email_failure
+
         row.status = EmailMessageStatus.failed
         row.error = str(exc)[:1000]
         increment_notification_event("email", "failed")
-        logger.exception(
+        logger.warning(
             "notification_email_failed",
             extra={"template_key": rendered.template_key, "user_id": str(user_id) if user_id else None},
+            exc_info=True,
         )
         if isinstance(exc, MailRetryable):
             # Busy or down (429, 5xx): the outbox tries again with back-off,
-            # and the next try finds this row failed and sends it.
+            # and the next try finds this row failed and sends it. Giving up
+            # after OUTBOX_MAX_ATTEMPTS is logged as an error (an alert).
+            row.meta = {**(row.meta or {}), "failure": "transient"}
             db.flush()
             raise
+        # Not retried: refused, maybe sent (a timeout), or our configuration
+        # (401/403). Sentry, and the admins for the last (email_alerts).
+        kind = failure_kind(exc)
+        row.meta = {**(row.meta or {}), "failure": kind}
         db.flush()
+        report_email_failure(db, kind=kind, template_key=rendered.template_key, error=row.error)
         return row.status.value
     row.provider = outcome.provider
     if outcome.status != "sent":

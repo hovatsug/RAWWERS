@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -7,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.outbox import IdempotencyKey, OutboxEvent, OutboxEventStatus
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_idempotency_key(
@@ -89,6 +92,13 @@ def mark_outbox_failed(db: Session, row: OutboxEvent, *, max_attempts: int) -> N
     if row.attempts >= max_attempts:
         row.status = OutboxEventStatus.failed
         row.next_attempt_at = now + timedelta(hours=1)
+        # An ERROR line is a Sentry event (core/sentry.py): nothing retries
+        # this row any more. For an email, its email_message stays failed and
+        # is listed on the admin's Failed emails page.
+        logger.error(
+            "outbox_event_gave_up",
+            extra={"outbox_id": str(row.id), "topic": row.topic, "attempts": row.attempts},
+        )
     else:
         backoff_seconds = min(3600, 2 ** row.attempts)
         row.status = OutboxEventStatus.pending

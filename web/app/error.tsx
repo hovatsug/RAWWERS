@@ -1,8 +1,14 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
 import { Button, Card } from "@/design-system/primitives";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  // Reported once per error (off without a DSN; lib/sentry/options.ts).
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
   return (
     <Card>
       <p className="text-base font-semibold">Something failed</p>

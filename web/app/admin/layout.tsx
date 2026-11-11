@@ -31,13 +31,16 @@ function useQueueCounts() {
   const payouts = useQuery({ queryKey: ["admin", "payout-queue"], queryFn: () => admin.payoutQueue() });
   const disputes = useQuery({ queryKey: ["admin", "disputes"], queryFn: () => admin.disputes() });
   const money = useQuery({ queryKey: ["admin", "money-attention"], queryFn: () => admin.moneyAttention() });
+  const emails = useQuery({ queryKey: ["admin", "failed-emails"], queryFn: () => admin.failedEmails() });
 
   return {
     photographers: photographers.data?.ok ? photographers.data.data.items.length : null,
     gear: gear.data?.ok ? gear.data.data.items.length : null,
     payouts: payouts.data?.ok ? payouts.data.data.items.filter((p) => p.status === "requested").length : null,
     disputes: disputes.data?.ok && Array.isArray(disputes.data.data) ? disputes.data.data.filter(isOpenDispute).length : null,
-    money: money.data?.ok ? money.data.data.items.filter((item) => item.status === "open").length : null
+    money: money.data?.ok ? money.data.data.items.filter((item) => item.status === "open").length : null,
+    // Failed emails not yet dealt with (resent, or a code nobody resends).
+    emails: emails.data?.ok ? emails.data.data.items.filter((e) => !e.resent_at && !e.security).length : null
   };
 }
 
@@ -76,6 +79,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         { href: "/admin/money-attention", label: "Money to act on", count: counts.money },
         { href: "/admin/client-credit", label: "Client credit" }
       ]
+    },
+    {
+      title: "Operations",
+      items: [{ href: "/admin/emails", label: "Failed emails", count: counts.emails }]
     },
     {
       title: "The Shelf",

@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { getAccessToken, type Result } from "@/lib/api/client";
 
 /**
@@ -105,6 +106,14 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<Result<T
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       const message = payload?.error?.message || `Request failed (${res.status})`;
+      if (res.status >= 500) {
+        // The API's own 5xx are reported there; this records which admin
+        // screen hit it, under the same request id (off without a DSN).
+        Sentry.captureMessage(`admin API ${res.status}: ${path.split("?")[0]}`, {
+          level: "error",
+          tags: { request_id: payload?.error?.details?.request_id ?? res.headers.get("X-Request-Id") ?? "unknown" }
+        });
+      }
       return {
         ok: false,
         error: {
@@ -446,7 +455,28 @@ export type AccountabilityPolicy = {
   suspension_review_at: number;
 };
 
+/** A failed email (GET /v1/admin/notifications/logs?status=failed). */
+export type FailedEmail = {
+  id: string;
+  user_id: string | null;
+  to_email: string;
+  template_key: string;
+  subject: string;
+  status: string;
+  error: string | null;
+  /** config (401/403: our side), rejected, uncertain (no answer), transient (429/5xx, retried). */
+  failure: string | null;
+  security: boolean;
+  resendable: boolean;
+  resent_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export const admin = {
+  failedEmails: () => adminFetch<{ items: FailedEmail[] }>("notifications/logs?status=failed&limit=200"),
+  resendEmail: (id: string) =>
+    adminFetch<{ ok: boolean }>("notifications/resend", { method: "POST", body: JSON.stringify({ email_message_id: id }) }),
   niches: () => adminFetch<AdminNiche[]>("niches"),
   priceCaps: () => adminFetch<PriceCapRow[]>("pricing/niche-package-price-caps"),
   savePriceCaps: (

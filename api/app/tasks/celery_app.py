@@ -6,7 +6,9 @@ from datetime import timedelta
 from celery import Celery
 from celery.schedules import crontab
 from celery.signals import (
+    beat_init,
     before_task_publish,
+    celeryd_init,
     setup_logging,
     task_failure,
     task_postrun,
@@ -21,6 +23,22 @@ from app.services.metrics import increment_task_failures, observe_task_duration
 settings = get_settings()
 
 celery_app = Celery("rawwers_media", broker=settings.redis_url, backend=settings.redis_url)
+
+
+@celeryd_init.connect
+def _sentry_for_worker(**_kwargs) -> None:
+    # Error reporting for task failures and ERROR log lines (core/sentry.py);
+    # off unless SENTRY_DSN is set. Before the pool forks, so every child has it.
+    from app.core.sentry import init_sentry
+
+    init_sentry("worker")
+
+
+@beat_init.connect
+def _sentry_for_beat(**_kwargs) -> None:
+    from app.core.sentry import init_sentry
+
+    init_sentry("beat")
 
 
 @setup_logging.connect

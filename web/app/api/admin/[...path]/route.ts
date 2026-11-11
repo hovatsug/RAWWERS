@@ -47,7 +47,11 @@ async function forward(req: NextRequest, path: string[]) {
 
   return new NextResponse(text || null, {
     status: res.status,
-    headers: { "Content-Type": res.headers.get("Content-Type") || "application/json" }
+    headers: {
+      "Content-Type": res.headers.get("Content-Type") || "application/json",
+      // The API's request id, for an error report to match the API's log.
+      ...(res.headers.get("X-Request-Id") ? { "X-Request-Id": res.headers.get("X-Request-Id") as string } : {})
+    }
   });
 }
 

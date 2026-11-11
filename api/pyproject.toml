@@ -37,6 +37,8 @@ httpx = "^0.27.0"
 # Shipping addresses are encrypted on the server (services/addresses.py).
 # It was already installed as a dependency of a dependency; now it is used.
 cryptography = ">=44"
+# Error reporting (core/sentry.py): off unless SENTRY_DSN is set. EU region.
+sentry-sdk = { version = "~2.20.0", extras = ["fastapi", "celery"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"

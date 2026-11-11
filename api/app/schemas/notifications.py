@@ -80,6 +80,13 @@ class AdminNotificationLogItem(BaseModel):
     status: EmailMessageStatus
     dedupe_key: str
     error: str | None = None
+    #: Why it failed: config (401/403, our side), rejected, uncertain (no
+    #: answer), transient (429/5xx, retried by the outbox). Null otherwise.
+    failure: str | None = None
+    #: A verify or reset code email: never resent.
+    security: bool = False
+    resendable: bool = False
+    resent_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

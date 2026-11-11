@@ -24,6 +24,7 @@ from app.schemas.notifications import (
 )
 from app.services.audit import add_admin_audit_log
 from app.services.notifications import (
+    email_resendable,
     count_unread,
     get_or_create_preferences,
     list_notifications,
@@ -224,6 +225,10 @@ def admin_notification_logs(
                 status=row.status,
                 dedupe_key=row.dedupe_key,
                 error=row.error,
+                failure=(row.meta or {}).get("failure"),
+                security=bool((row.meta or {}).get("security")),
+                resendable=email_resendable(row),
+                resent_at=(row.meta or {}).get("resent_at"),
                 created_at=row.created_at,
                 updated_at=row.updated_at,
             )
@@ -241,7 +246,7 @@ def admin_notification_resend(
     row = db.get(EmailMessage, body.email_message_id)
     if not row:
         raise APIError(code="not_found", message="Email log not found", status_code=404)
-    resend_email_message(db, row)
+    resend_email_message(db, row, actor_user_id=actor.user_id)
     add_admin_audit_log(
         db,
         actor_user_id=actor.user_id,

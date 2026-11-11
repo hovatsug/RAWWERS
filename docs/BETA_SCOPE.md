@@ -1,17 +1,19 @@
-# Beta scope (closed beta, before the FEATURE FREEZE)
+# Beta scope (closed beta)
 
-Written 2026-11-10 on `the-shelf-wip` at 84ead7f. **Read-only check**: the code, routes and tests were read, nothing was run or built. The beta is a small invited group of real clients and photographers. The UK goes first and Portugal and Spain second. Stripe runs in test mode first, then live. `shelf_enabled` stays off in production.
+**FEATURE FREEZE DECLARED 2026-11-11.** From now on only the MUST items below and bug fixes are built. Everything else is LATER. The owner's decisions are in section 4.4, and the batch plan in 4.2.
 
-**Classes.** MUST: without it a real beta user cannot finish a core journey, or money, data or legal safety is at risk. A MUST is also anything that has to be in the first app build, because a build already installed cannot be changed later. Anything that can wait a month without harm is not MUST. SHOULD: worth doing during the beta. LATER: after the beta.
+Written 2026-11-10 on `the-shelf-wip` at 84ead7f. **Read-only check**: the code, routes and tests were read, nothing was run or built. The beta is a small invited group of real clients and photographers. Its countries and cities are to be decided by the owner; EUR and GBP are both required at launch. Stripe runs in test mode first, then live. `shelf_enabled` stays off in production. *(2026-11-11: city and country assumptions removed from this document, owner's decision.)*
+
+**Classes.** MUST: without it a real beta user cannot finish a core journey, or money, data or legal safety is at risk. A MUST is also anything that has to be in the first app build, because a build already installed cannot be changed later. Anything that can wait a month without harm is not MUST. BUG FIX: a defect, fixed after the freeze like any bug. LATER: after the beta. *(The SHOULD class of 2026-11-10 became LATER at the freeze, owner's decision.)*
 **Effort.** S: half a day of agent work or less. M: about a day. L: more than a day.
 
-**Counts:** 15 MUST (#1–13 always; #14 GBP while the UK goes first; #15 fixed at GATE 2) · 16 SHOULD · 22 LATER.
+**Counts (2026-11-11, after the decisions):** 17 MUST (#1–14; #15–17 at GATE 2, batch 4) · 1 BUG FIX (#19, dated) · 35 LATER.
 
 ---
 
 ## Part 1. The critical journeys
 
-The one end-to-end run on record is the Stage 1 loop (`docs/STAGE1_LOOP.md`, run 2026-10-28..30). It covered a seeded, already-approved Lisbon photographer, EUR and Stripe test mode, on simulators: payout setup → request → accept → pay → deliver → select → review → settle → payout → admin approval → transfer. Everything else below is read from code and tests.
+The one end-to-end run on record is the Stage 1 loop (`docs/STAGE1_LOOP.md`, run 2026-10-28..30). It covered a seeded, already-approved photographer paid in EUR, in Stripe test mode, on simulators: payout setup → request → accept → pay → deliver → select → review → settle → payout → admin approval → transfer. Everything else below is read from code and tests.
 
 ### a. Client: works end to end in EUR. Sign-up depends on Brevo being on. Nothing tells the client the rules or how to reach us.
 
@@ -22,9 +24,9 @@ The one end-to-end run on record is the Stage 1 loop (`docs/STAGE1_LOOP.md`, run
 | Book, pay | `client/booking_request`, `booking_payment_controller.dart`; `POST /v1/pros/{id}/booking-requests`, `/v1/client/bookings/{id}/pay`; `test_client_booking_pay.py`, `test_missed_payment_webhook.py`, `test_stripe_reconcile.py` | Works in EUR. **No cancellation or refund rules are shown anywhere before paying.** |
 | Gallery, choose, add-on window, download | `client/gallery/*`; `test_selection_*`, `test_selection_addons.py`, `test_download_payment_gate.py`, `test_review_gate.py` | Works. Downloads wait for a star rating or "Report a problem". |
 | Review | `bookings/review_panel.dart`; `POST /v1/gigs/{id}/review`; `test_reviews.py` | Works. |
-| **Breaks** | | GBP: the app formats every amount as € (`RMoney` falls back to EUR), so a UK booking reads wrong. A client cannot cancel a paid booking and cannot open a dispute before delivery: `/v1/disputes` exists, but no screen uses it. **There is no way to contact us** anywhere in the app. |
+| **Breaks** | | GBP: the app formats every amount as € (`RMoney` falls back to EUR), so a GBP booking reads wrong. A client cannot cancel a paid booking and cannot open a dispute before delivery: `/v1/disputes` exists, but no screen uses it. **There is no way to contact us** anywhere in the app. |
 
-### b. Photographer: works end to end for a Lisbon photographer the admin approves. A UK photographer is paid wrong. Nothing is missing on the road to going live.
+### b. Photographer: works end to end for a EUR photographer the admin approves. A GBP photographer is paid wrong. Nothing is missing on the road to going live.
 
 | Step | Evidence | Status |
 |---|---|---|
@@ -127,38 +129,38 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 
 | # | Item | What exists today (evidence) | Class | Effort | Risk if skipped | Who decides or provides |
 |---|---|---|---|---|---|---|
-| 1 | Triage the money and KYC known failures (KF: ledger totals, redemption, KYC gating ×2): is the product or the test wrong? | Never diagnosed; one fails 401 before reaching the gate (BG "Eleven test failures") | **MUST** | S | A real money or KYC bug ships unseen | — |
-| 2 | Dependency lockfile | No `poetry.lock`; two builds of one commit differed (BG) | **MUST** | S | Deploy-day breakage, unknown versions in production | — |
-| 3 | Trusted proxy IP (`TRUSTED_PROXY_IPS`, one helper) | Leftmost `X-Forwarded-For` trusted in about 10 places (BG; `deps.py:190`) | **MUST** | S | Admin IP allowlist and rate limits bypassable; download IP evidence forgeable | Host (which proxy) |
-| 4 | Server error alerting (API and worker), including mail and outbox failures | None (• Part 1g) | **MUST** | S | 500s, failed emails and stuck jobs go unseen during the beta | Owner: vendor and DPA |
-| 5 | Minimum app version and maintenance switch | None (•) | **MUST** | S | Build 1 can never be forced to update or stopped | — |
-| 6 | Support channel: "Get help" in both apps (with user id, app version and request id), support address as email reply-to, web support page; fix the "Get in touch" and stale email-switch texts | None (• Part 1g) | **MUST** | S | Users stuck with money problems cannot reach us; Apple requires contact information | Owner: support address |
-| 7 | Terms, privacy and photographer agreement: versioned, accepted at sign-up and on becoming a pro, linked in both apps and on the web | None (• Part 2) | **MUST** | M | No legal basis for contracts or processing; store listings need the privacy URL | **Lawyer** (texts), owner |
-| 8 | Cancellation and refund rules shown before sending a request and before paying, and on the booking; the admin applies them with price reductions | Admin tool exists (`price_reduction.py`); no rules, no text (•) | **MUST** | S | Consumer-law exposure and disputes with no agreed rule | **Owner** (policy), lawyer |
-| 9 | Account deletion in both apps (anonymise, keep money and tax records, withdraw marketing consents, end sessions; refused while a booking, balance or dispute is open) | Missing (BG "Account deletion") | **MUST** | L | Apple rejects; GDPR erasure requests unanswerable | Lawyer and accountant (retention) |
-| 10 | Google Play account-deletion web page | Missing (BG) | **MUST** | S | Play Data safety form cannot be completed | Lawyer (text) |
-| 11 | User-generated content safety: report a photographer, message or review; block in chat; admin report queue; admin hides a portfolio photo; photographer removes their own photo | None (• Part 1e) | **MUST** | M | App Store guideline 1.2 rejection; no takedown for an unlawful or unconsented photo | — |
-| 12 | Release builds: Android upload key, release manifest check, production env files (API URL, live Stripe publishable key), iOS archive | Debug signing, localhost env (•) | **MUST** | S | Nothing can be distributed | Owner: signing keys, Apple and Google accounts |
-| 13 | Database backups and a tested restore | None (`compose.prod.yml`) | **MUST** | S | One disk fault loses every booking and ledger | **Owner**: host or managed Postgres |
-| 14 | GBP end to end (UK first): a currency on every money response, payouts in the account's currency, apps format by currency, caps and pricing per currency, BI conversion, a GB Connect account tested on the PT platform | Package and gig carry a currency; payouts hard-coded to EUR; apps assume € (BG ×2) | **MUST** if the UK goes first | L (about 4 days) | UK clients and photographers see and receive wrong amounts | **Owner**, Stripe, accountant |
-| 15 | SA3: error bodies never leak internals | Open (SA) | **MUST** (GATE 2) | M | Information leak | — |
-| 16 | SA1: verify and reset codes in plain text in the outbox | Open (SA, BG) | SHOULD (GATE 2) | S | A database reader can take over accounts | — |
-| 17 | SA2: two security tests (and the 500 on the deprecated `/v1/chats` route, which the apps no longer use) | Open (SA) | SHOULD (GATE 2) | S | Spam signal untested; dead route errors | — |
-| 18 | Stripe call timeout and retry | Library defaults; 10–20 s stalls seen (BG) | SHOULD | S | Slow screens and timeouts; recovers on retry | — |
-| 19 | DST: bookable grid wrong on 2027-03-28 | Open (BG) | SHOULD, **dated**: fix by 2027-01-31 | M | Zero-length or doubled slots for that night | — |
-| 20 | Photographer "pause bookings" switch | One-way switch (BG) | SHOULD | S | Photographers who are away stay bookable (the workaround is clearing hours) | — |
-| 21 | Admin Users page: search, see email, suspend, ban, lift | API only (•) | SHOULD | M | The admin works through the API by hand | — |
-| 22 | Client notification settings screen | API only; unsubscribe links work (BG c1) | SHOULD | S | Switching email back on needs support | — |
-| 23 | Push notifications | Not built (BG) | SHOULD | L | Requests are seen later (email covers the 48 h window) | Apple and Google keys |
-| 24 | Self-service cancellation (client and photographer) | None; the admin does it (•) | SHOULD | M | Support load | Owner (policy first) |
-| 25 | Client dispute or "problem" screen before delivery | API `/v1/disputes`, no screen | SHOULD | M | No-shows reach us only by email | — |
-| 26 | App crash reporting | None; TestFlight and Play give basic crash data | SHOULD | S | Crashes are reported only by users | Owner: vendor |
-| 27 | Fee-policy PATCH or admin screen | `PUT` replaces every field (BG) | SHOULD | S | A typo changes a fee | — |
-| 28 | Remove the stale `deploy/docker-compose.{prod,staging}.yml` | Duplicates (BG) | SHOULD | S | Deploying the wrong file | — |
-| 29 | Notifications that link to screens the apps do not have | Open (BG b) | SHOULD | S | Tapping some notifications opens nothing | — |
-| 30 | Client invite gate at sign-up | Pros are gated; clients are open (•) | SHOULD | S | Strangers with a build could sign up (low risk while builds are invite-only) | Owner (decision 3) |
-| 31 | Rollout cities admin page | API only | SHOULD | S | London must be enabled by API call | — |
-| 32 | Portuguese and Spanish: the apps have no localisation layer at all; email texts are English | (BG; • no `.arb`, no `flutter_localizations`) | LATER, before the PT/ES wave | L | — | Owner, translators, lawyer (language law) |
+| 1 | Triage the money and KYC known failures (KF: ledger totals, redemption, KYC gating ×2): is the product or the test wrong? | Never diagnosed; one fails 401 before reaching the gate (BG "Eleven test failures") | **MUST** · batch 1 | S | A real money or KYC bug ships unseen | — |
+| 2 | Dependency lockfile | No `poetry.lock`; two builds of one commit differed (BG) | **MUST** · batch 1 | S | Deploy-day breakage, unknown versions in production | — |
+| 3 | Trusted proxy IP (`TRUSTED_PROXY_IPS`, one helper) | Leftmost `X-Forwarded-For` trusted in about 10 places (BG; `deps.py:190`) | **MUST** · batch 1 | S | Admin IP allowlist and rate limits bypassable; download IP evidence forgeable | Host (which proxy) |
+| 4 | Error alerting (Sentry, EU region) for API, worker, beat and web admin, including failed emails and an admin list to resend them | None (• Part 1g) | **MUST** · batch 1 | M | 500s, failed emails and stuck jobs go unseen during the beta | Owner: Sentry account and DPA |
+| 5 | Minimum app version and maintenance switch | None (•) | **MUST** · batch 2 | S | Build 1 can never be forced to update or stopped | — |
+| 6 | Support channel: support@rawwers.com behind "Get help" in both apps (with user id, app version and request id), and as the reply-to on every email; fix the "Get in touch" and stale email-switch texts | None (• Part 1g) | **MUST** · batch 2 | S | Users stuck with money problems cannot reach us; Apple requires contact information | — (decided) |
+| 7 | Terms, privacy and photographer agreement: versioned, accepted at sign-up and on becoming a pro, linked in both apps and on the web. Placeholder texts until the lawyer's | None (• Part 2) | **MUST** · batch 3 | M | No legal basis for contracts or processing; store listings need the privacy URL | **Lawyer** (texts) |
+| 8 | Cancellation rule (decided, 4.4): every number an admin setting; shown before booking and before paying; a "Request cancellation" button that shows the rule and the refund amount and creates an admin task; the admin applies it by hand (price reduction) | Admin tool exists (`price_reduction.py`); no rule, text or request (•) | **MUST** · batch 3 | M | Consumer-law exposure and disputes with no agreed rule | Lawyer (wording) |
+| 9 | Account deletion in both apps (anonymise, keep money records for the legal period, withdraw marketing consents, end sessions; refused while a booking, a balance or a dispute is open) | Missing (BG "Account deletion") | **MUST** · batch 3 | L | Apple rejects; GDPR erasure requests unanswerable | Lawyer and accountant (retention period) |
+| 10 | Google Play account-deletion web page | Missing (BG) | **MUST** · batch 3 | S | Play Data safety form cannot be completed | Lawyer (text) |
+| 11 | User-generated content safety: report a photographer, message or review; block in chat; admin report queue; admin hides a portfolio photo; photographer removes their own photo | None (• Part 1e) | **MUST** · batch 4 | M | App Store guideline 1.2 rejection; no takedown for an unlawful or unconsented photo | — |
+| 12 | Release builds: Android upload key, release manifest check, production env files (API URL, live Stripe publishable key), iOS archive | Debug signing, localhost env (•) | **MUST** · batch 2 | S | Nothing can be distributed | Owner: signing keys, Apple and Google accounts |
+| 13 | Database backups and a tested restore | None (`compose.prod.yml`) | **MUST** · batch 4 | S | One disk fault loses every booking and ledger | Owner: the deploy plan |
+| 14 | EUR and GBP (decided, option A): each photographer prices and is paid in one currency; each user picks a display currency and sees an approximate conversion labelled with the charged currency. Design: `docs/MULTI_CURRENCY.md` | Package and gig carry a currency; payouts hard-coded to EUR; apps assume € (BG ×2) | **MUST** · batch M, after the owner approves the design | L | GBP clients and photographers see and receive wrong amounts | **Owner** (design approval), Stripe, accountant |
+| 15 | SA3: error bodies never leak internals | Open (SA) | **MUST** · GATE 2, batch 4 | M | Information leak | — |
+| 16 | SA1: verify and reset codes in plain text in the outbox | Open (SA, BG) | **MUST** · GATE 2, batch 4 | S | A database reader can take over accounts | — |
+| 17 | SA2: the error-body security test (the chat-spam half was fixed in batch 1) | Open (SA) | **MUST** · GATE 2, batch 4 | S | The error-body rule stays untested | — |
+| 18 | Stripe call timeout and retry | Library defaults; 10–20 s stalls seen (BG) | LATER | S | Slow screens and timeouts; recovers on retry | — |
+| 19 | DST: bookable grid wrong on 2027-03-28 | Open (BG) | **BUG FIX**, dated: by 2027-01-31 | M | Zero-length or doubled slots for that night | — |
+| 20 | Photographer "pause bookings" switch | One-way switch (BG) | LATER | S | Photographers who are away stay bookable (the workaround is clearing hours) | — |
+| 21 | Admin Users page: search, see email, suspend, ban, lift | API only (•) | LATER | M | The admin works through the API by hand | — |
+| 22 | Client notification settings screen | API only; unsubscribe links work (BG c1) | LATER | S | Switching email back on needs support | — |
+| 23 | Push notifications | Not built (BG) | LATER (decided: none in the beta) | L | Requests are seen later (email covers the 48 h window) | — |
+| 24 | Self-service cancellation that refunds by itself (client and photographer) | The beta has the request button (#8); the admin applies it | LATER | M | Support load | — |
+| 25 | Client dispute or "problem" screen before delivery | API `/v1/disputes`, no screen; the cancellation request (#8) and support (#6) cover it | LATER | M | No-shows reach us only by email | — |
+| 26 | App crash reporting | None; TestFlight and Play give basic crash data | LATER | S | Crashes are reported only by users | — |
+| 27 | Fee-policy PATCH or admin screen | `PUT` replaces every field (BG) | LATER | S | A typo changes a fee | — |
+| 28 | Remove the stale `deploy/docker-compose.{prod,staging}.yml` | Duplicates (BG) | LATER (with the deploy plan) | S | Deploying the wrong file | — |
+| 29 | Notifications that link to screens the apps do not have | Open (BG b) | LATER | S | Tapping some notifications opens nothing | — |
+| 30 | Client invite gate at sign-up | Pros are gated; clients are open (•) | LATER (decided: tester lists only, no invite code) | S | Strangers with a build could sign up (low risk while builds are invite-only) | — |
+| 31 | Rollout cities admin page | API only | LATER | S | The owner's cities must be enabled by API call | — |
+| 32 | Portuguese and Spanish: the apps have no localisation layer at all; email texts are English | (BG; • no `.arb`, no `flutter_localizations`) | LATER (decided) | L | — | Owner, translators, lawyer (language law) |
 | 33 | Data export (self-service) | None; answer by email within a month | LATER | M | — | Lawyer |
 | 34 | Change email or password while signed in | Reset by email works | LATER | S | — | — |
 | 35 | Email verification required before booking | Not enforced | LATER | S | — | — |
@@ -166,7 +168,7 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 | 37 | Mux video upload screen | Backend only | LATER | M | — | — |
 | 38 | Referral screen | Backend only (BG) | LATER | M | — | — |
 | 39 | Print store | Off (`ecom_enabled`) | LATER | L | — | — |
-| 40 | The Shelf and RAWW in production | Built, off | LATER | — | — | Lawyer (terms) |
+| 40 | The Shelf and RAWW in production | Built, off. Stays off (it is UK and GBP only); RAWW keep accruing silently and the expiry clock starts the day the Shelf opens (decided) | LATER | — | — | Lawyer (terms) |
 | 41 | Short payment: nothing tells the client | Open (BG PRIORITY) | LATER | M | Rare with cards | — |
 | 42 | Delayed payment methods (Multibanco, SEPA) | Disabled in the Stripe dashboard (BG) | LATER | M | Keep them off in live mode | Owner (Stripe setting) |
 | 43 | Booking history shows only the request's changes | Open (BG) | LATER | M | — | — |
@@ -183,21 +185,19 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 
 ---
 
-## 4.2. The freeze list: MUST items in build order
+## 4.2. The batch plan (decided 2026-11-11)
 
-**High-risk** means money, a migration, authentication or security. The whole related test files are run before such a commit. Each batch is about a day of agent work.
+**High-risk** means money, authentication, authorization, IP handling, email or a migration. The whole related test files are run before such a commit. A batch is about a day of agent work unless noted.
 
 | Batch | Items | Notes |
 |---|---|---|
-| **B1. Safety rails** | #1 triage of the money and KYC known failures **(high-risk)**; #2 lockfile; #3 trusted proxy IP **(high-risk, security)**; #4 server error alerting | #1 first: if a product bug turns up, it is fixed here before anything is built on top. |
-| **B2. What build 1 must carry** | #5 minimum version and maintenance switch; #6 support channel and stale texts; #8 cancellation and refund text (placeholder until the owner's rule); #12 release builds | After B2 a TestFlight or Play internal build is possible. |
-| **B3. Legal acceptance** | #7 terms, privacy and photographer agreement, versioned and recorded **(high-risk: migration)**; web pages `/terms`, `/privacy`, `/photographer-terms` | Built like the Shelf terms: production refuses to show draft text until a reviewed version is approved. |
-| **B4–B5. Account deletion** | #9 deletion in both apps and the API **(high-risk: personal data, money records, migration)**; #10 Google Play web page | About 1.5 days. Needs decision 5 first. |
-| **B6. Content safety** | #11 report, block, admin queue, photo takedown and self-removal **(high-risk: migration, authorization)** | |
-| **B7. Backups** | #13 dump job to off-site storage, restore drill documented | Small; can join B1 once the host is chosen (decision 7). |
-| **B8–B11. GBP** (only if the UK stays first) | #14 currency on money responses and payouts **(high-risk)**; apps formatting; caps, pricing and BI per currency **(high-risk)**; GB Connect account and one transfer in test mode | About 4 days, all money. |
+| **1** | #1 money and KYC known failures; #2 lockfile; #3 client IP header **(high-risk)**; #4 Sentry and failed emails **(high-risk: email)** | Built 2026-11-11. |
+| **M. Multi-currency** | #14, from `docs/MULTI_CURRENCY.md` **(high-risk: money, migrations)** | Starts only after the owner approves the design. Several days; the estimate is in the design. |
+| **2** | #5 minimum app version and maintenance switch; #6 contact (support@rawwers.com); #12 release builds | After batch 2 a TestFlight or Play internal build is possible. |
+| **3** | #8 cancellation rule and request; #7 terms, privacy and photographer agreement acceptance with placeholder texts **(high-risk: migration)**; #9 account deletion **(high-risk: personal data, money records, migration)**; #10 Google Play deletion page | About 3 days. The lawyer writes the real texts. |
+| **4** | #11 report, block and takedown **(high-risk: migration, authorization)**; #13 backups; GATE 2 items #15–17 **(high-risk: security)** | Backups follow the deploy plan. |
 
-**Total:** about 7 days without GBP, about 11 with it. GATE 2 (#15–17) follows the freeze as fixes, not features.
+Bug fixes, such as #19 (dated), go in when found.
 
 ---
 
@@ -205,44 +205,49 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 
 | Item | Why it is safe to wait |
 |---|---|
-| Push (#23) | Email reaches the photographer within the 48 h request window, and in-app covers the rest. |
-| Self-service cancellation and the dispute screen (#24, #25) | With a small group, the admin applies the written rule from a support email. |
+| Push (#23) | Decided: none in the beta. Email reaches the photographer within the 48 h request window, and in-app covers the rest. |
+| Automatic self-service cancellation and the dispute screen (#24, #25) | The beta has the cancellation request (#8); with a small group, the admin applies the rule. |
 | Admin Users, rollout and fee pages (#21, #27, #31) | The API does all three. Each is an occasional admin act. |
 | Pause bookings (#20) | Clearing working hours or adding a blackout already stops bookings. |
 | Client notification switches (#22) | Every email has a working unsubscribe link. |
 | Crash SDK (#26) | TestFlight and Play Console collect crashes from testers; server errors are covered by #4. |
-| DST (#19) | The bad night is 2027-03-28. It is fixed as a dated bug fix before 2027-01-31. |
-| Portuguese and Spanish (#32) | The UK wave is English. They are needed before the PT/ES wave, not before the start. |
+| Client invite code (#30) | Decided: the TestFlight and Play tester lists are the gate. |
+| Portuguese and Spanish (#32) | Decided: LATER. |
 | Data export, email and password change (#33, #34) | Rare. Handled by email within the legal month. |
 | Referral, Mux video upload, print store, Shelf and RAWW (#37–#40) | Growth or optional features. All are off or unreachable. |
 | Short payment, delayed methods, booking history (#41–#43) | Delayed methods stay disabled in Stripe, so short payments do not occur with cards. History is cosmetic. |
+| Stripe timeouts (#18) | Retrying recovers; revisit with the deploy plan's network. |
 | Everything else marked LATER | No core journey depends on it. |
 
 ---
 
-## 4.4. Your decisions (questions, with my recommendation)
+## 4.4. The owner's decisions (decided 2026-11-11)
 
-1. **Which market goes first?** The UK needs GBP: about 4 days of high-risk money work, plus an unverified Stripe question (a GB connected account on the PT platform). Lisbon in EUR is the only path ever run end to end. Starting there would need either English-only acceptance from the lawyer or the localisation layer (L).
-   **Recommendation:** keep the UK first only if there is a business reason. Otherwise start with a small English-speaking Lisbon group in EUR, and build GBP during the beta for the UK wave. Either way, ask Stripe about GB accounts now.
-2. **What are the cancellation and refund rules?**
-   **Recommendation:**
-   - The client cancels free until 7 days before the shoot, gets 50% back up to 48 hours before, and nothing after.
-   - A photographer who cancels means a full refund and a recorded finding.
+1. **Currencies: EUR and GBP are both required for launch. Option A.**
+   - Each photographer prices and is paid in **one** currency, EUR or GBP.
+   - Each user chooses a display currency and sees an approximate conversion, clearly labelled with the currency actually charged (for example "about £850, charged in €1,000").
+   - The platform takes no exchange-rate risk. Paying in the client's own currency (option B) is not wanted.
+   - This moves GBP from LATER to MUST (#14). The design is `docs/MULTI_CURRENCY.md`.
+2. **The beta's countries and cities: to be decided by the owner.** Nothing in this document assumes one.
+3. **Cancellation rule.** These are defaults, and every number is an admin setting, not hard-coded:
+   - The client cancels free until 7 days before the shoot, gets 50% back until 48 hours before, and nothing after.
+   - A photographer who cancels means a full refund.
    - Weather or illness means a reschedule first.
-   - The admin applies all of these by hand during the beta.
-3. **Is store-level invite enough?** TestFlight and Play testers are named. **Recommendation:** yes. Skip the client invite gate (#30) unless a link leaks.
-4. **Push before the beta?** **Recommendation:** no. Email and in-app are enough for a small group.
-5. **When can an account be deleted, and what is kept?**
-   **Recommendation:**
-   - Refuse while a booking is open, a balance is unpaid or a dispute is open.
-   - Otherwise anonymise the person and keep invoices and ledger rows for the legal period (10 years for Portuguese accounting, to be confirmed by the accountant).
-   - Delete portfolio photos.
-   - Deliveries stay with the other party's booking until its own retention ends.
-6. **Which error-reporting vendor?** **Recommendation:** Sentry, EU region, with a DPA. The same one for the apps later.
-7. **Where does production run?** **Recommendation:** managed Postgres with point-in-time recovery (EU region) rather than Postgres in a container volume, behind a TLS proxy whose address goes into `TRUSTED_PROXY_IPS`.
-8. **Do RAWW keep accruing while the Shelf is off?** **Recommendation:** yes, silently. When the Shelf opens, start every balance's expiry clock from the opening day.
-9. **Does the PT/ES wave start inside this beta?** If yes, localisation (#32, L) becomes MUST before that wave. **Recommendation:** plan it as a post-freeze batch with its own gate.
-10. **Which support address?** **Recommendation:** `support@` on the sending domain, used both as the in-app contact and as the reply-to on every email.
+   - What the platform keeps from a client's cancellation is a normal earning: the photographer's share plus the fee, with the normal RAWW credit.
+   - **In the beta:**
+     - The apps show the rule before booking and before paying.
+     - A "Request cancellation" button shows the rule and the refund amount, and creates an admin task.
+     - The admin applies it by hand.
+   - The lawyer confirms the wording.
+4. **Entry:** TestFlight and Play tester lists only, no invite code.
+5. **No push notifications in the beta.**
+6. **Account deletion:** refused while a booking, a balance or a dispute is open. Otherwise the account is anonymised, and money records are kept for the legal period.
+7. **Error reporting:** Sentry, EU region.
+8. **Support address:** support@rawwers.com, in both apps and as the reply-to on every email.
+9. **RAWW while the Shelf is off:** keep accruing silently. The expiry clock starts the day the Shelf opens. The Shelf stays off (it remains UK and GBP only).
+10. **Hosting and backups:** decided in the deploy plan.
+11. **Portuguese and Spanish translations:** LATER.
+12. **After the freeze:** only MUST items and bug fixes. Anything else goes to LATER.
 
 ---
 
@@ -253,26 +258,27 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
   - Apple Developer Program and Google Play Console.
   - The Android upload key. iOS signing (team, profiles).
 - **Lawyer:**
-  - Terms, privacy policy, photographer agreement and cancellation text.
+  - Terms, privacy policy, photographer agreement and cancellation wording.
   - The deletion-page text and the marketing-consent wording.
-  - Whether a Portuguese company needs a UK GDPR Article 27 representative and ICO registration.
-  - The language rules for Portugal and Spain, and the IP retention figures (`PRIVACY_NOTICE_INPUTS.md`).
-- **Accountant:** VAT on the platform fee in the UK and Portugal, invoices, record retention, GBP handling and the FX cost.
-- **Stripe:**
+  - Data-protection registration and representatives for the countries the owner chooses (for example a UK GDPR Article 27 representative and ICO registration if UK users are served by a non-UK company).
+  - The language rules of those countries, and the IP retention figures (`PRIVACY_NOTICE_INPUTS.md`).
+- **Accountant:** VAT on the platform fee in each country chosen, invoices, record retention (the legal period for deletion), and handling of EUR and GBP.
+- **Stripe:** the questions in `docs/MULTI_CURRENCY.md`.
   - Live activation and the Connect platform profile and branding.
-  - The GB connected-account question, keeping delayed payment methods off in live mode, and live webhook endpoints and secrets.
-  - Statement descriptor.
+  - Keep delayed payment methods off in live mode.
+  - Live webhook endpoints and secrets, and the statement descriptor.
 - **Store listings:**
-  - Privacy policy URL, support URL, the App Privacy labels and Play Data safety (inventory above), screenshots and descriptions.
+  - Privacy policy URL, support URL (support@rawwers.com), the App Privacy labels and Play Data safety (inventory above), screenshots and descriptions.
   - TestFlight external group (Beta App Review) and Play internal testers.
   - **Reviewer accounts in production:** a client, plus an approved photographer already through Connect, in a city with browsing on.
 - **Domain and DNS:**
   - The API host with TLS, `API_PUBLIC_URL`, https `CONNECT_RETURN_URL` and `CONNECT_REFRESH_URL`.
   - Fix the dead SPF include on rawwers.com; DKIM and DMARC for the sender.
+- **Sentry:** an EU-region organisation, a DPA, and one DSN per service (DEPLOY_CHECKLIST).
 - **Brevo:** the DPA, authorised IPs (or none) for the production host, the sender address, then `EMAIL_SENDING_ENABLED=true`.
 - **Mux and R2:** production environments, the webhook secret and production buckets.
 - **Production data** (DEPLOY_CHECKLIST):
-  - Import the price caps (zero rows today) and the camera reference.
-  - Enable London (rollout city) and set `settlement_delay_days`.
+  - Import the price caps (zero rows today) and enable the cities the owner chooses.
+  - Import the camera reference and set `settlement_delay_days`.
   - Run the BI backfill.
   - Keep `shelf_enabled` off.

@@ -362,18 +362,23 @@ Hand-computed fixtures, written out in the tests, never computed by the code und
 5. **Rates:** a stale or wrong ECB rate only ever affects the approximation and BI stamps, never money. The staleness rule hides it rather than showing a wrong number.
 6. **Clients misreading the approximation as the price.** Mitigated by the wording, and by never putting an approximation on a line that is paid. The lawyer confirms the wording.
 
-### Decisions for the owner
+### The owner's decisions (decided 2026-11-13)
 
-| # | Question | Recommendation |
+| # | Question | Decision |
 |---|---|---|
-| M1 | Approve this design (option A as specified: currency from the Stripe account's country, nothing converted on the money path)? | Yes. |
-| M2 | Price caps per **currency** or per **city**? | Per currency now (a GBP and a EUR table); city overrides later if prices differ within one currency. |
-| M3 | Client credit: per currency (no conversion), or one EUR wallet converted at the day's rate? | Per currency: no rate exposure, and simpler to explain ("€5 credit on euro bookings"). |
-| M4 | The GBP withdrawal minimum? | £45.00 (close to €50). |
-| M5 | The RAWW value in GBP? | Set it together with the EUR one at the Shelf's opening; until then the GBP value stays unset and GBP earnings stamp RAWW at the ECB-converted EUR value of that day. |
-| M6 | Build batch M before batch 2 (the first distributed build)? | Yes, so the API contract changes before any app is installed, and no compatibility fields are needed. |
-| M7 | Send the Stripe questions (section 3.3) now? | Yes, today: their answers gate switching the flag on, and question 1 may change the charge model. |
-| M8 | The display rate source? | The ECB daily reference rates (free, official, once a working day), shown as "about". |
+| M1 | Approve this design (option A)? | **Approved.** The currency comes from the Stripe account's country; nothing is converted on the money path. |
+| M2 | Price caps per currency or per city? | **Per currency** (a GBP table and a EUR table); city overrides later. |
+| M3 | Client credit: per currency, or one EUR wallet? | **Per currency**, and the monthly budget too; no conversion. |
+| M4 | The GBP withdrawal minimum? | **£45.00.** |
+| M5 | The RAWW value in GBP? | **Approved as recommended:** set with the EUR one when the Shelf opens; until then GBP earnings stamp RAWW at the ECB-converted EUR value of that day. |
+| M6 | Batch M before batch 2 (the first distributed build)? | **Approved.** |
+| M7 | Send the Stripe questions? | **Sent.** Stripe's chat answered (section 9); a written confirmation by a Stripe human is requested for cross-border payout eligibility, the accepted GBP bank accounts and the exact fees. |
+| M8 | The display rate source? | **Approved:** the ECB daily reference rates, shown as "about". |
+| M9 | A lost dispute that is the photographer's fault? | **Approved:** recovered in this order: the held earning, then their future earnings, then a transfer reversal only if the admin chooses, then written off after 90 days. Not their fault: the platform absorbs it. The photographer agreement must say this (lawyer, `BETA_SCOPE.md` 4.5). |
+| M10 | Pass Stripe fees on to photographers? | **Never.** |
+| M11 | The company: UK (X) or Portuguese (Y)? | **OPEN.** The owner is taking advice. Neither is assumed: both scenarios stay open, and only the batches that are the same in both are built (section 12). |
+
+**The Shelf stays OFF** (2026-11-13): it needs the terms and the RAWW expiry review first.
 
 **Updates to section 8, 2026-11-13** (the text above is kept as the owner read it):
 - Risk 1's fallback, "destination charges with `on_behalf_of`", is withdrawn: Stripe says `on_behalf_of` is not part of the compatible flow, and the design never uses it (10.2). If multi-currency settlement were refused, the fallback is a UK company (section 11, Scenario X), not a different charge type.
@@ -546,10 +551,4 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 
 **Total: about 11.5 agent-days** (8 before, plus M7, M8 and M9). Batches 1 to 8 can start once the owner approves the design; M6 waits.
 
-**New decisions for the owner:**
-
-| # | Question | Recommendation |
-|---|---|---|
-| M9 | A lost dispute that is the photographer's fault: how far to recover? | Held earning first; then future earnings with a notice; a transfer reversal only by the admin's choice; written off after 90 days. Not their fault: absorbed. |
-| M10 | Recover Stripe's fees (international card, settlement) from photographers by lowering the transfer? | No: they are the platform's cost; price them into the fee policy if needed. |
-| M11 | Which company runs the platform: X (UK) or Y (Portuguese)? | It decides M6, the BI base currency, VAT and the representative. Everything else can be built first. |
+**Decisions M9 to M11:** decided 2026-11-13 except M11, which is open; see section 8.

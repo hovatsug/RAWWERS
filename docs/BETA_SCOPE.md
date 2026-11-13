@@ -262,7 +262,7 @@ Bug fixes, such as #19 (dated), go in when found.
 6. **Account deletion:** refused while a booking, a balance or a dispute is open. Otherwise the account is anonymised, and money records are kept for the legal period.
 7. **Error reporting:** Sentry, EU region.
 8. **Support address:** support@rawwers.com, in both apps and as the reply-to on every email.
-9. **RAWW while the Shelf is off:** keep accruing silently. The expiry clock starts the day the Shelf opens. The Shelf stays off (it remains UK and GBP only). *(2026-11-13: the owner notes the Shelf fits the UK wave; it stays off until the owner says to open it.)*
+9. **RAWW while the Shelf is off:** keep accruing silently. The expiry clock starts the day the Shelf opens. The Shelf stays off (it remains UK and GBP only). *(2026-11-13: the Shelf stays OFF: it needs the terms and the RAWW expiry review first.)*
 10. **Hosting and backups:** decided in the deploy plan.
 11. **Portuguese and Spanish translations:** LATER.
 12. **After the freeze:** only MUST items and bug fixes. Anything else goes to LATER.
@@ -277,6 +277,7 @@ Bug fixes, such as #19 (dated), go in when found.
   - The Android upload key. iOS signing (team, profiles).
 - **Lawyer:**
   - Terms, privacy policy, photographer agreement and cancellation wording.
+  - The photographer agreement states how a lost dispute that is the photographer's fault is recovered (M9, `MULTI_CURRENCY.md` section 8): the held earning, then future earnings, then a transfer reversal only if the admin chooses, then written off after 90 days; not their fault, the platform absorbs it. Stripe fees are never passed on (M10).
   - The deletion-page text and the marketing-consent wording.
   - UK data protection (#55): the ICO fee for a UK company, or a UK Article 27 representative for a non-UK one; an EU representative if a UK company serves EU photographers.
   - UK consumer law for the cancellation rule and reviews (#54).

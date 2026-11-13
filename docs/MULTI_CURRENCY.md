@@ -2,6 +2,8 @@
 
 Written 2026-11-11 on `the-shelf-wip`, read-only: nothing here is built. It is for the owner to approve before batch M starts (`docs/BETA_SCOPE.md` #14).
 
+**Updated 2026-11-13** for the owner's UK-first decision (GBP main and the default for new users, EUR second) and Stripe's answers. Sections 9 to 12 are new: Stripe's answers (9), what they change in the design (10), the two company scenarios (11) and the build order (12). Where an earlier section said otherwise, it is marked *superseded* and points to the new text.
+
 **The requirement (decided, option A).**
 - Each photographer prices and is paid in one currency, EUR or GBP.
 - Each user picks a display currency and sees an approximate conversion, labelled with the currency actually charged.
@@ -84,7 +86,8 @@ Key: **✓** currency known · **≈** a currency column exists but is defaulted
 
 - **New field `pro_profile.currency`** (EUR or GBP). It is set **from the country of their Stripe Connect account** when the account is created:
   - GB → GBP;
-  - an EEA country → EUR.
+  - a eurozone country → EUR.
+  - No exceptions (Stripe's answers, 10.3).
 - It is the default currency of that account's bank payouts. Stripe fixes an account's country at creation (`stripe_connect.py:50-57` already passes the profile's country).
 - Before a Connect account exists, the currency follows the profile's country, by the same rule.
 - **Every package must be in it.** The API refuses a package in another currency (today `currency` is free text on create).
@@ -96,13 +99,13 @@ Key: **✓** currency known · **≈** a currency column exists but is defaulted
 
 ### 2.2 The client's display currency
 
-- **New field `display_currency`** on the user (EUR or GBP; null means "use the default"). The default comes from the device: the app sends its locale (`Accept-Language`, already read, `middleware.py:25`), and a region of GB means GBP, anything else EUR.
+- **New field `display_currency`** on the user (EUR or GBP; null means "use the default"). *Superseded 2026-11-13:* the default is **GBP** for every new user (UK first); a device region in the eurozone may suggest EUR, but never sets it on its own (10.1).
 - It is **changeable in Account → Display currency**, and for photographers too (Settings).
 - It changes **only the approximation**. The amount charged and every amount stored stay in the photographer's currency.
 
 ### 2.3 The platform's base currency
 
-**EUR**, for reporting only (BI, the owner's totals). It is not a money-path currency.
+**EUR**, for reporting only (BI, the owner's totals). It is not a money-path currency. *Superseded 2026-11-13:* the base currency is the currency of the company's books, a setting: EUR for a Portuguese company, GBP for a UK one (section 11).
 
 ### 2.4 When the display currency differs from the charged currency
 
@@ -141,9 +144,9 @@ Key: **✓** currency known · **≈** a currency column exists but is defaulted
 
 1. **GBP charges.** Creating a PaymentIntent with `currency="gbp"` already works in code. **The risk:** a Portuguese account with only a EUR bank account converts GBP charges into EUR on settlement. Stripe then applies its conversion fee and rate, so the platform holds EUR against a GBP debt to the photographer. That is exactly the exchange-rate risk the requirement forbids.
    **Needed:** the platform account holds a **GBP balance**: Stripe's multi-currency settlement, with a GBP bank account added to the PT account. GBP charges then settle as GBP, and refunds, disputes and transfers come out of that GBP balance.
-2. **A UK photographer's connected account:** an Express account with `country="GB"`, `transfers` capability, created by a PT platform. This is a **cross-border connected account**. It needs the **recipient** service agreement (`tos_acceptance.service_agreement="recipient"`), which the code does not set today. Its default currency is GBP, and its payouts go to a UK bank account in GBP.
+2. **A UK photographer's connected account:** an Express account with `country="GB"`, `transfers` capability, created by a PT platform. This is a **cross-border connected account**. *Superseded by Stripe's answer (9, 10.2):* it needs the **full** service agreement, not the recipient one, and the agreement cannot be changed once accepted. Its default currency is GBP, and its payouts go to a UK bank account in GBP.
 3. **GBP transfers.** `Transfer.create(currency="gbp", destination=<GB account>)`, funded from the platform's GBP balance. The code change is the currency (the row's), and refusing a transfer whose currency is not the photographer's.
-4. **Optional, safer:** `source_transaction=<charge id>` on transfers, so a transfer is funded by the charge it pays out. Today one payout covers many bookings (allocations), so this is a larger change. Not proposed for batch M.
+4. **Optional, safer:** `source_transaction=<charge id>` on transfers, so a transfer is funded by the charge it pays out. Today one payout covers many bookings (allocations), so this is a larger change. Not proposed for batch M. *Superseded 2026-11-13:* every transfer uses `source_transaction` (10.4, batch M7).
 
 ### 3.3 What only Stripe can confirm, and the questions to send
 
@@ -271,6 +274,8 @@ Built dark: every path is currency-aware, but with the flag off only EUR can com
 
 It is an admin feature flag (the `feature_flags` table, as `client_browsing_enabled` is), so it switches on without a deploy. It is checked by one helper.
 
+*Superseded 2026-11-13 (UK first):* the boolean becomes a per-currency setting, `enabled_currencies` (admin, no deploy), because GBP is now the main currency and EUR the one that may wait (10.1).
+
 ---
 
 ## 7. Build plan
@@ -286,7 +291,7 @@ About a day each unless noted; agent-days.
 | **M3. Rates and display** | `fx_rate`, the ECB job and staleness alert, `GET /v1/fx/rates`, `display_currency` (default from the locale, a setting screen in both apps), the labels in section 2.4 on every screen listed | 1.5 | no (display only) |
 | **M4. Caps, discovery, credit, RAWW** | Caps keyed by currency, with the check fixed; the discovery base price and budget filter; credit and budget per currency; RAWW value per currency | 1.5 | **yes** (money, migrations) |
 | **M5. BI stamps** | Migration 2's stamps written where money moves; the Stripe mirror for every currency; BI views and `bi_daily` rebuilt; costs with currency; the dashboard split by currency | 1 | **yes** (money recorded, migration) |
-| **M6. Stripe GBP end to end (test mode)** | Recipient agreement for cross-border accounts; GB Express onboarding; GBP charge, refund and transfer run against Stripe test mode; the flag; docs (BI.md, DEPLOY_CHECKLIST, this file) | 1 | **yes** (money, Stripe) |
+| **M6. Stripe GBP end to end (test mode)** | ~~Recipient~~ **Full** service agreement for cross-border accounts (superseded, 10.2); GB Express onboarding; GBP charge, refund and transfer run against Stripe test mode; the flag; docs (BI.md, DEPLOY_CHECKLIST, this file) | 1 | **yes** (money, Stripe) |
 
 **Total: about 8 agent-days.** M6 needs Stripe's answers (section 3.3) before the live switch, not before the test-mode run.
 
@@ -369,3 +374,182 @@ Hand-computed fixtures, written out in the tests, never computed by the code und
 | M6 | Build batch M before batch 2 (the first distributed build)? | Yes, so the API contract changes before any app is installed, and no compatibility fields are needed. |
 | M7 | Send the Stripe questions (section 3.3) now? | Yes, today: their answers gate switching the flag on, and question 1 may change the charge model. |
 | M8 | The display rate source? | The ECB daily reference rates (free, official, once a working day), shown as "about". |
+
+**Updates to section 8, 2026-11-13** (the text above is kept as the owner read it):
+- Risk 1's fallback, "destination charges with `on_behalf_of`", is withdrawn: Stripe says `on_behalf_of` is not part of the compatible flow, and the design never uses it (10.2). If multi-currency settlement were refused, the fallback is a UK company (section 11, Scenario X), not a different charge type.
+- Risk 2 (cross-border limits) and risk 3 (refunds and disputes above the GBP balance) now have Stripe's answers (section 9) and a rule (10.5).
+- M2's GBP table comes first and is the default (UK first). M4's minimum is still the owner's. M5: the RAWW value is set in GBP first (11.3). M7 is done (questions sent; answers in section 9). New decisions M9 to M11 are in section 12.
+
+---
+
+## 9. Stripe answers (2026-11-13)
+
+Given by Stripe support's chat to the owner on **2026-11-13**, for the platform account `acct_1Sn1uOBYq7Jg3KEu` (Portugal). The chat reads as AI-generated: **every answer is indicative until a Stripe human confirms it in writing.** Where the owner asked for written confirmation, it says so. Recorded as stated.
+
+| # | Question (3.3) | Stripe's answer, as stated | Status |
+|---|---|---|---|
+| 1 | GBP settlement | A Portuguese account can settle in GBP with **Multi-Currency Settlement**. GBP must be **enabled as a settlement currency** and a **GBP bank account linked** (in the UK or Gibraltar). Without it, GBP payments are converted to EUR. With it, a GBP balance forms when charges are presented in GBP. | Indicative |
+| 2 | UK Express accounts | Yes, through **cross-border payouts** for EEA platforms with UK connected accounts, in **separate charges and transfers**. They do **not** work with the "recipient" service agreement: UK photographers need the **"full"** service agreement, and once accepted it **cannot be changed**. Eligibility for cross-border payouts is decided by Stripe. | Eligibility: **to be confirmed in writing by a Stripe human** |
+| 3 | Transfers and payouts | Conversion happens only when the sender's balance currency differs from the receiver's. A GBP transfer from our GBP balance to a UK account with a GBP balance involves **no conversion**, and the UK account's payout to a UK bank stays in GBP. A transfer **fails** if our available GBP balance is insufficient; **`source_transaction` avoids that**. Cross-border payout fees depend on the recipient's location. | Indicative |
+| 4 | Refunds and disputes | Refunds, disputes and fees are debited from the **platform** balance, **each currency separately**; Stripe never covers a negative in one currency with another. A refund on a low balance stays **pending**, is processed when funds arrive, and **fails with `insufficient_funds` after 45 days**. A disputed amount and its fee leave the platform balance, which **can go negative**; where supported, Stripe may debit the registered bank account within two business days. We can add funds to the GBP balance, or convert EUR to GBP with instant currency conversion (it has a fee). To recover from the photographer: a **transfer reversal**, which works only if their available balance covers it. | Indicative |
+| 5 | Fees | UK cards are **international** cards for a Portuguese account: an international card fee is added to the standard fee. Settling in GBP (not our main currency) adds the **Multi-Currency Settlement fee**, charged at settlement. If Stripe converts to EUR instead, the conversion fee applies. Stripe fees come out of the platform balance and can be recovered by adjusting the transferred amount. Exact figures are on Stripe's pricing pages. | Figures: **to be confirmed in writing by a Stripe human** (asked) |
+| 5b | `on_behalf_of` | **Not** part of the compatible flow. **Never use it.** | Indicative; the design follows it |
+| 6 | One currency per connected account | No explicit rule. Each connected account settles in its country's default currency. Extra currencies through platform configuration need the account in the **same region** as the platform; a UK account under an EEA platform does not qualify. Cross-border payouts are described as local-currency payments, with no confirmation of payouts in another currency. | Indicative; the design rule is 10.3 |
+| 7 | Platform agreement and profile | Nothing mandatory. To verify: Stripe decides cross-border eligibility; check the Connect settings and the platform profile; tax and reporting obligations in another country are ours. | Indicative |
+
+---
+
+## 10. What changes in the design
+
+### 10.1 UK first: GBP is the default
+
+- **New users** get `display_currency = GBP`. New photographers default to GBP until their Stripe account exists; then the account's country decides (10.3).
+- **Every `default="EUR"`** (20 columns, 9 schemas; `BETA_SCOPE.md` #59) is removed, not switched to GBP: a missing currency is a bug and raises. Where a default is genuinely needed (the display currency, a new photographer before Connect), it is **GBP**.
+- **`DEFAULT_CONNECT_COUNTRY`** stops defaulting to `PT`: the account is created in the photographer's profile country, and a profile without a country cannot start Connect. `notification_default_timezone` becomes `Europe/London` (same clock as Lisbon, so no behaviour changes).
+- **`enabled_currencies`** (admin setting) replaces the `multi_currency_enabled` flag: a currency not in it cannot get a package, a Connect account or a display setting. The UK beta starts with `{GBP}`; EUR is added when the owner says so (11.4).
+- The labels in 2.4 are written GBP-first: "about €1,180 · charged in £1,000".
+
+### 10.2 UK connected accounts: the full service agreement, never `on_behalf_of`
+
+- `stripe.Account.create` for a GB photographer passes `tos_acceptance={"service_agreement": "full"}`, with `country="GB"`, `type="express"`, `capabilities={"transfers": {"requested": True}}` (and, with the full agreement, whatever capabilities Stripe requires for it; checked in test mode).
+- **New column `payout_account.stripe_service_agreement`** (`full` or `recipient`), written when the account is created and **never updated**: Stripe says it cannot change. A photographer whose account was created with the wrong one needs a new account (admin-only, as for a change of country, 2.1).
+- A test asserts that no Stripe call anywhere in the code passes `on_behalf_of` (a source search in the test suite, plus a break check).
+
+### 10.3 The pricing currency is the Stripe account's country's currency
+
+- GB → GBP; a eurozone country → EUR. **No exceptions**, no override, no second currency per photographer.
+- A country that is neither (Ireland is EUR, so it is fine; Switzerland or Sweden are not) is refused at Connect creation with "not available yet".
+- Once the Connect account exists, `pro_profile.currency` is read from `account.default_currency` and checked against the rule; a mismatch raises a Sentry event and blocks packages until an admin looks.
+
+### 10.4 Every transfer uses `source_transaction`
+
+**Today** (`services/payouts.py:636-666, 496-500`): a photographer asks for a payout (at least €50, at most 2 a week); the admin approves; `_allocate_payout_amount` spreads it over the oldest **available** earnings entries (FIFO, partial entries allowed, `payout_allocation`); one `Transfer` for the total, no `source_transaction`. An entry becomes available `settlement_delay_days` (7) after delivery is accepted; a hold (`earnings_hold`: dispute, refund risk, compliance, a client's problem report) keeps it out of "available" until released. The charge id is **not stored** (only the PaymentIntent id).
+
+**`source_transaction` rules (Stripe's documented behaviour, to check in test mode):** one transfer is funded by one charge; the transfers from a charge add up to at most its amount; the transfer is in the charge's currency; it can be created while the charge's funds are still pending, and the connected account receives them when they become available.
+
+**What must change (batch M7):**
+1. **Store the charge:** `stripe_payment.stripe_charge_id` (the PaymentIntent's `latest_charge`), written by the payment webhook; backfilled from Stripe for existing rows.
+2. **Tie each earning to its payment:** `earnings_ledger_entry.stripe_payment_id`. A booking can have several payments (the booking, extras, add-ons); each earning comes from exactly one. Earnings with no payment behind them (an admin adjustment) are transferred without `source_transaction`, only when the available balance in that currency covers them, else they wait and the admin is told.
+3. **One transfer per payment, not per payout:** the payout request keeps its allocations; execution groups them by payment and creates one transfer each, with `source_transaction=<charge id>` and the idempotency key `payout-transfer:<payout id>:<payment id>`. New table `payout_transfer` (payout request, payment, amount, currency, Stripe transfer id, status). The payout is `paid` when all its transfers are; a failed one is retried alone.
+4. **The invariant, checked before each transfer:** the sum transferred from a charge ≤ the charge's amount minus what was refunded from it. The photographer's net (80%) is always below the charge, even with the 10% maximum client credit (90%), so this holds by construction; a breach is a bug and stops the payout.
+5. **Timing:** the 7-day settlement and the holds stay as they are, in our ledger, **before** allocation; `source_transaction` changes nothing about when an entry is available. It only means a transfer never fails for lack of balance: if the charge's funds are still pending at Stripe (possible right after a short settlement delay), the photographer's account receives them when Stripe releases them. The app says "on its way" either way.
+6. **Refunds and disputes after a payout** become exact: the transfer funded by that booking's charge is the one to reverse (10.5).
+7. The minimum and the 2-a-week limit stay on the request. Many small bookings mean many transfers per payout. Cross-border payout fees depend on the recipient (9, #3); whether any fee is per transfer or per bank payout is part of the fee figures asked from Stripe in writing.
+
+### 10.5 Platform balances per currency: monitoring, low balance, refunds and disputes
+
+- **Monitoring:** the hourly BI job already reads Stripe's balance (`bi_stripe.py`); it reads **every currency** (today EUR only). New settings: `stripe_balance_floor_gbp` and `_eur`. An alert (Sentry, and the in-app admin alert used for failed emails, at most once an hour) fires when a currency's available balance falls below its floor, **or** below what is due out of it in the next 7 days (approved payouts not yet transferred + pending refunds + open client-owed items in that currency).
+- **A refund on a low balance:** it is still created (the client's refund is never held back by us). Stripe keeps it pending; our refund case shows `pending_funds`, and a money-attention item "Refund waiting for GBP funds" opens at once, with the 45-day deadline. The admin tops the GBP balance up by bank transfer, or converts EUR to GBP with Stripe's instant conversion (its fee is recorded as a cost in BI). A second alert fires at day 3 and a third at day 30.
+- **A dispute:** Stripe takes the amount and its fee from that currency's balance, which may go negative (and Stripe may debit the bank). The booking's earnings get a `dispute_open` hold, as today. What happens to the photographer when it is lost:
+  - **Not the photographer's fault** (the beta policy, `DEPLOY_CHECKLIST.md` "Chargebacks"): the platform absorbs it. BI shows it as "chargebacks lost".
+  - **The photographer's fault** (an admin finding on the booking), in this order:
+    1. **Not yet transferred:** the held earning is reversed. This is the usual case, because the hold starts with the dispute and a dispute usually comes within the settlement window.
+    2. **Already transferred:** a negative entry on their ledger, taken from their **future earnings** before the next payout, with a notice to them.
+    3. **A transfer reversal**, only if the admin chooses it and their Stripe balance covers it (Stripe: it fails otherwise). `source_transaction` makes it exact: the transfer funded by that charge.
+    4. **Nothing recovered after 90 days:** written off as absorbed.
+  - Which of these the beta uses is decision M9.
+
+### 10.6 Card and settlement fees are real costs: BI
+
+- **Where they appear:** the international card fee is part of each charge's Stripe fee (its balance transaction `fee`, itemised in `fee_details`). The Multi-Currency Settlement fee is charged at settlement: it may be part of that fee or a separate balance transaction; test mode cannot show live fees (3.4), so the first live GBP charge is checked by hand and the mirror reads both forms. Instant conversions and cross-border payout fees are their own balance transactions.
+- **Change:** the mirror reads every currency and every fee type; each fee is stamped with its base value (as in 4.3). The dashboard's "Stripe fees" line splits into *card fees*, *settlement and conversion fees*, *payout and Connect fees*, per currency.
+- **Per booking:** the booking's own fee is its charge's balance transaction fee (now that the charge id is stored, 10.4). New view `bi_booking_contribution`: retained − that booking's Stripe fees − its share of the settlement fee, so a GBP booking's lower contribution is visible, not averaged away.
+- **Effect on contribution per booking.** Illustrative only: these are **not Stripe's figures**, which the owner has asked for in writing. A £200 booking, fee 20% (£40), retained 15% (**£30**), RAWW 5% (£10):
+
+| Setup | Assumed fees on the £200 charge | Stripe fees | Contribution | Share of retained lost |
+|---|---|---|---|---|
+| UK card, UK company (Scenario X) | 1.5% + £0.20 | £3.20 | **£26.80** | 11% |
+| UK card, PT company, GBP settled (Scenario Y) | 1.5% + £0.25, + 2.0% international, + 1.0% settlement | £9.25 | **£20.75** | 31% |
+| UK card, PT company, converted to EUR | 1.5% + £0.25, + 2.0% international, + 2.0% conversion | £11.25 | **£18.75** | 38% |
+
+  The real figures replace these in BI.md when Stripe confirms them. Recovering fees "by adjusting the transferred amount" (Stripe, #5) would charge the photographer; the design does not do it, and it is decision M10.
+
+### 10.7 BI: the liquid view and money owed per currency
+
+- `owed()` (`services/bi.py:633`) today reads EUR only (`bi_client_owed WHERE currency = 'EUR'`, the EUR Stripe balance). Every line becomes per currency: photographers owed (pending, held, due), clients owed, RAWW outstanding, client credit, company cash, Stripe available and pending.
+- **Liquid, per currency** = Stripe available + pending + company cash − photographers owed − clients owed, in that currency. A negative in one currency is shown as such, never netted with the other, as Stripe does (9, #4).
+- A total in the base currency is shown below, labelled "approximate, at today's rate".
+
+### 10.8 The GBP settlement account in the plans
+
+Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Stripe, accountant and lawyer lists): enable GBP settlement and link a GBP bank account before the first GBP booking; written confirmation of cross-border eligibility and fees; the full agreement for UK photographers.
+
+---
+
+## 11. Company scenarios
+
+**Scenario X:** the platform is a **UK company** with a **UK Stripe account**. GBP is native; UK photographers are domestic connected accounts; UK cards are domestic; EUR is the foreign currency.
+**Scenario Y:** the platform is a **Portuguese company** with a **Portuguese Stripe account**: the design above.
+
+### 11.1 Charges and payouts
+
+| | X: UK company | Y: Portuguese company |
+|---|---|---|
+| Charge model | Separate charges and transfers, as today | The same |
+| GBP | Native: GBP charges settle in GBP with no extra setup or fee | Needs Multi-Currency Settlement and a GBP bank account (9, #1) |
+| UK photographers | **Domestic** Express accounts: no cross-border payout | **Cross-border**, full agreement, Stripe decides eligibility (9, #2) |
+| EUR photographers | Cross-border from a UK platform to the EEA: needs EUR settlement and Stripe's rules for that direction | Domestic in the EEA |
+| `source_transaction` | Recommended (same code) | Required in practice (a short GBP balance fails transfers) |
+| `on_behalf_of` | Not used | Never used (9, #5b) |
+
+### 11.2 Stripe questions that still matter
+
+- **X:** most answers in section 9 become moot for GBP. To ask again **only when EUR is switched on**: EUR settlement on a UK account; cross-border payouts from a UK platform to EEA photographers (agreement type, eligibility); EU cards' fees on a UK account; the same refund and dispute rules for the EUR balance.
+- **Y:** all of section 9 stands; the written confirmations still owed are cross-border eligibility (#2) and the fee figures (#5).
+
+### 11.3 Fees, currencies and settings
+
+| | X: UK company | Y: Portuguese company |
+|---|---|---|
+| UK card fee | Domestic rate | International rate (standard + international fee) |
+| Settlement fee on GBP | None | Multi-Currency Settlement fee |
+| EUR (when on) | EU cards international on a UK account; EUR settlement fee | Native |
+| Can EUR ship switched off? | **Yes, completely**: no EUR settlement account or EUR questions until the owner switches it on | **Yes in the code** (`enabled_currencies = {GBP}`), though EUR is the company's own currency and costs nothing extra to switch on |
+| RAWW valuation | Set in GBP (`raww_value_gbp`); the Shelf is GBP, so nothing converts | Set in both; the books value RAWW in EUR at the stamped rate |
+| Client credit | Per currency (M3), GBP first | Per currency |
+| Monthly credit budget | One figure per currency, GBP first | The same |
+| Price caps | GBP table first, EUR when switched on | Both tables before their currency is enabled |
+| Withdrawal minimum | GBP (M4) first | Both |
+| BI base currency | **GBP** (the books) | **EUR** (the books) |
+| VAT on the fee | UK VAT: registration at £90,000, voluntary below; EU photographers need the accountant (B2B reverse charge, or EU VAT for unregistered ones) | UK VAT as a non-established taxable person, **no threshold**, for UK-taxable supplies; Portuguese VAT for EU ones; the accountant decides the place of supply |
+| Data protection | ICO fee; an **EU** representative if EU photographers are served | A **UK** representative (UK GDPR Art. 27) |
+
+### 11.4 Which batches are the same in both
+
+| Batch | Same in X and Y? | Why |
+|---|---|---|
+| **M1** currency on the photographer's money (GBP default) | **Same** | Pure data model and ledger; no Stripe account difference |
+| **M2** contract and apps | **Same** | Currency on every amount, the `_eur` names go |
+| **M7** `source_transaction`, per-payment transfers, the charge id | **Same** | Same code in both; required in Y, good practice in X |
+| **M4** caps, discovery, credit, RAWW per currency | **Same** | Per-currency tables and values; which currency is set first is data, not code |
+| **M3** rates and display | **Same** if rates are stored both ways | ECB rates are EUR-based; GBP-based display uses the inverse at full precision (4.1) |
+| **M5** BI stamps | **Same** if the base currency is a setting (`bi_base_currency`) | Only the setting's value depends on the company |
+| **M8** balance monitoring per currency, low-balance rule, dispute recovery | **Same** monitoring; the recovery rule waits for M9 | Stripe's per-currency balance rules are the same in both (to confirm for X) |
+| **M9** BI fees per booking, liquid and owed per currency | **Same** mechanism | The fee figures differ, but they come from Stripe's data |
+| **M6** Stripe end to end: the service agreement, eligibility, the live switch | **Depends** on the company and on Stripe's written answers | X: domestic UK accounts, no settlement setup. Y: cross-border, full agreement, GBP settlement account |
+
+---
+
+## 12. Build order (2026-11-13) and new decisions
+
+**Order**, GBP the default throughout; every batch is high-risk except M3 and M9, which are display and reporting:
+
+1. **M1** currency on the photographer's money (1.5 days)
+2. **M2** contract and apps (1.5)
+3. **M7** `source_transaction` and per-payment transfers (1.5)
+4. **M4** caps, discovery, credit, RAWW (1.5)
+5. **M3** rates and display (1.5)
+6. **M5** BI stamps, base currency a setting (1)
+7. **M8** balances per currency, alerts, the low-balance and dispute rules (1)
+8. **M9** BI fees per booking, liquid and owed per currency (1)
+9. **M6** Stripe end to end, **after** the company decision and Stripe's written answers (1)
+
+**Total: about 11.5 agent-days** (8 before, plus M7, M8 and M9). Batches 1 to 8 can start once the owner approves the design; M6 waits.
+
+**New decisions for the owner:**
+
+| # | Question | Recommendation |
+|---|---|---|
+| M9 | A lost dispute that is the photographer's fault: how far to recover? | Held earning first; then future earnings with a notice; a transfer reversal only by the admin's choice; written off after 90 days. Not their fault: absorbed. |
+| M10 | Recover Stripe's fees (international card, settlement) from photographers by lowering the transfer? | No: they are the platform's cost; price them into the fee policy if needed. |
+| M11 | Which company runs the platform: X (UK) or Y (Portuguese)? | It decides M6, the BI base currency, VAT and the representative. Everything else can be built first. |

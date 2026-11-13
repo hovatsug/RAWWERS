@@ -2,12 +2,14 @@
 
 **FEATURE FREEZE DECLARED 2026-11-11.** From now on only the MUST items below and bug fixes are built. Everything else is LATER. The owner's decisions are in section 4.4, and the batch plan in 4.2.
 
-Written 2026-11-10 on `the-shelf-wip` at 84ead7f. **Read-only check**: the code, routes and tests were read, nothing was run or built. The beta is a small invited group of real clients and photographers. Its countries and cities are to be decided by the owner; EUR and GBP are both required at launch. Stripe runs in test mode first, then live. `shelf_enabled` stays off in production. *(2026-11-11: city and country assumptions removed from this document, owner's decision.)*
+**UK FIRST (decided 2026-11-13).** The first wave is the United Kingdom. GBP is the main currency and the default for new users; EUR stays supported as the second currency. The apps stay in English. The UK items are #54–#59 (section 4.1) and decision 2 (section 4.4).
+
+Written 2026-11-10 on `the-shelf-wip` at 84ead7f. **Read-only check**: the code, routes and tests were read, nothing was run or built. The beta is a small invited group of real clients and photographers. Its first wave is the **United Kingdom** (decided 2026-11-13): GBP is the main currency and the default for new users, EUR the second; the UK cities are chosen by the owner later. Stripe runs in test mode first, then live. `shelf_enabled` stays off in production. *(2026-11-11: city and country assumptions removed; 2026-11-13: the country is the UK, the cities are still the owner's to choose.)*
 
 **Classes.** MUST: without it a real beta user cannot finish a core journey, or money, data or legal safety is at risk. A MUST is also anything that has to be in the first app build, because a build already installed cannot be changed later. Anything that can wait a month without harm is not MUST. BUG FIX: a defect, fixed after the freeze like any bug. LATER: after the beta. *(The SHOULD class of 2026-11-10 became LATER at the freeze, owner's decision.)*
 **Effort.** S: half a day of agent work or less. M: about a day. L: more than a day.
 
-**Counts (2026-11-11, after the decisions):** 17 MUST (#1–14; #15–17 at GATE 2, batch 4) · 1 BUG FIX (#19, dated) · 35 LATER.
+**Counts (2026-11-13, after the UK-first decision):** 22 MUST (#1–14, #54–56, #58–59; #15–17 at GATE 2, batch 4) · 1 BUG FIX (#19, dated) · 36 LATER (#57 added). *The owner's "SHOULD" maps to LATER since the freeze.*
 
 ---
 
@@ -142,7 +144,7 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 | 11 | User-generated content safety: report a photographer, message or review; block in chat; admin report queue; admin hides a portfolio photo; photographer removes their own photo | None (• Part 1e) | **MUST** · batch 4 | M | App Store guideline 1.2 rejection; no takedown for an unlawful or unconsented photo | — |
 | 12 | Release builds: Android upload key, release manifest check, production env files (API URL, live Stripe publishable key), iOS archive | Debug signing, localhost env (•) | **MUST** · batch 2 | S | Nothing can be distributed | Owner: signing keys, Apple and Google accounts |
 | 13 | Database backups and a tested restore | None (`compose.prod.yml`) | **MUST** · batch 4 | S | One disk fault loses every booking and ledger | Owner: the deploy plan |
-| 14 | EUR and GBP (decided, option A): each photographer prices and is paid in one currency; each user picks a display currency and sees an approximate conversion labelled with the charged currency. Design: `docs/MULTI_CURRENCY.md` | Package and gig carry a currency; payouts hard-coded to EUR; apps assume € (BG ×2) | **MUST** · batch M, after the owner approves the design | L | GBP clients and photographers see and receive wrong amounts | **Owner** (design approval), Stripe, accountant |
+| 14 | GBP and EUR (decided, option A; **GBP main and the default for new users**, 2026-11-13): each photographer prices and is paid in one currency, the currency of their Stripe account's country; each user picks a display currency and sees an approximate conversion labelled with the charged currency. Design: `docs/MULTI_CURRENCY.md` | Package and gig carry a currency; payouts hard-coded to EUR; apps assume € (BG ×2) | **MUST** · batch M, after the owner approves the design | L | GBP clients and photographers see and receive wrong amounts | **Owner** (design approval), Stripe, accountant |
 | 15 | SA3: error bodies never leak internals | Open (SA) | **MUST** · GATE 2, batch 4 | M | Information leak | — |
 | 16 | SA1: verify and reset codes in plain text in the outbox | Open (SA, BG) | **MUST** · GATE 2, batch 4 | S | A database reader can take over accounts | — |
 | 17 | SA2: the error-body security test (the chat-spam half was fixed in batch 1) | Open (SA) | **MUST** · GATE 2, batch 4 | S | The error-body rule stays untested | — |
@@ -182,6 +184,22 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 | 51 | Portfolio edge caching, video poster frames | Open (BG) | LATER | M | — | Owner (bucket) |
 | 52 | Address key rotation, admin-only credit never expires | Shelf only, off | LATER | S | — | — |
 | 53 | Test-suite run time (9 h 34 min) | Logged (BG) | LATER | M | Slow gates | — |
+| **54** | **UK consumer cancellation rules for dated leisure services.** The 14-day cancellation right of the Consumer Contracts Regulations 2013 has an exception for leisure services on a specific date (reg. 28(1)(b)); whether a photo shoot qualifies, and whether the 7-day and 48-hour defaults are fair under the Consumer Rights Act 2015 (Part 2, unfair terms), is the lawyer's call. The DMCC Act 2024 also bans fake or concealed-incentive reviews and requires the total price, with every mandatory charge, up front | The rule's numbers are admin settings (#8); the client pays the package price, with no fee on top; reviews come only from completed bookings (`test_reviews.py`); review rewards exist for clients (BG "client reward ladder") | **MUST** · in #8 and #7 (wording), no extra code expected | S | A cancellation term that is unenforceable, or a review incentive that breaks the DMCC Act | **Lawyer** |
+| **55** | **UK GDPR and the ICO.** A UK company pays the ICO data protection fee (registration). A company outside the UK serving UK users needs a UK representative (UK GDPR Art. 27) and, the lawyer to confirm, may not need the fee. A UK company serving EU photographers needs an **EU** representative (EU GDPR Art. 27) instead. Which applies depends on the company (`docs/MULTI_CURRENCY.md`, Company scenarios) | `PRIVACY_NOTICE_INPUTS.md` (inputs only) | **MUST** · outside the code, in the privacy notice (#7) | — | Processing without the registration or representative the law requires | **Lawyer**, owner (company) |
+| **56** | **UK VAT on the platform fee.** A UK company registers above the £90,000 threshold (voluntarily below it); a non-UK company supplying UK customers is a non-established taxable person with **no threshold**. Who the fee is supplied to (photographer, often unregistered) decides the place of supply | `country_tax_rule` holds one row per country (rate, threshold, number format); each gig stamps `vat_rate_percent`, `vat_status`, `vat_number` (`models/gig.py:110-115`); the invoice shows the fee and its VAT | **MUST** · outside the code; production data: a `GB` row in `country_tax_rule` | S | Wrong or missing VAT on every fee | **Accountant** |
+| **57** | **UK addresses and postcodes.** The shoot address is free text (`location_text`), so UK addresses work as typed. Shelf addresses require a postcode but do not check its format (`services/addresses.py:30-41`). No address autocomplete | Works for the beta | LATER (UK postcode format check with the Shelf; autocomplete after the beta) | S | A mistyped postcode on a Shelf order | — |
+| **58** | **Payout bank details for UK photographers.** Stripe's hosted Express onboarding collects the UK sort code and account number; we store none. Needed: `DEFAULT_CONNECT_COUNTRY` is `PT` (`config.py:60`) and must follow the photographer's country (GB); UK accounts are created with the **full** service agreement (Stripe's answer, `MULTI_CURRENCY.md`), recorded on the account. The manual bank method (`bank_details_encrypted`, a free-form dict) has no UK shape and is not used in the beta | Express onboarding works for a PT account in test mode | **MUST** · batch M **(high-risk: money)** | S | UK photographers cannot be paid | Stripe (cross-border eligibility, in writing) |
+| **59** | **Everything in the code that assumes the EU or the euro** (list below the table). GBP becomes the default | See the list | **MUST** · batch M **(high-risk: money, migration)** | in M's estimate | GBP users see €, and defaults create EUR rows for UK users | — |
+
+**#59, the EU and euro assumptions found (2026-11-13, read-only search):**
+- **Currency defaults:** `default="EUR"` on 20 currency columns (bookings, gigs, payments' neighbours, packages, price caps, galleries, credit, BI, dormant store tables) and `currency: str = "EUR"` in 9 schemas; `GET /v1/pro/me/pricing/niches/{id}` defaults to EUR; `or "EUR"` fallbacks (`MULTI_CURRENCY.md` 1.1). Batch M removes the defaults (a missing currency is a bug) and makes GBP the default where a default is still needed.
+- **Payouts:** `MIN_PAYOUT_EUR` 50 and `Transfer.create(currency="eur")` (`services/payouts.py:40, 498`); earnings, balances, holds and payouts are `_eur` columns.
+- **Apps and web:** `RMoney` falls back to EUR (`app/lib/core/format/money.dart:33`); "€" literals in four app screens; the web admin's `money()` defaults to EUR and BI formats €.
+- **Country:** `DEFAULT_CONNECT_COUNTRY=PT` and `WARMUP_HOME_COUNTRY=PT` (`config.py:38, 60`); the prints EU country list (`prints_fulfillment.py:44`, dormant).
+- **Time zone:** `Europe/Lisbon` is the default for notification quiet hours, email times and call compliance (`config.py:231`, `models/communication.py:108, 282`, `email_texts.py:70`, `call_compliance.py:30, 80`). Lisbon keeps the same clock as London all year, so nothing is wrong today; batch M changes the default to `Europe/London`.
+- **Reporting:** BI counts EUR only and leaves other lines out (`services/bi.py`, `bi_stripe.py:104`); the liquid and money-owed views read EUR only (`bi.py:666`).
+- **Payment methods:** automatic methods without redirects; the comment names iDEAL, Bancontact and Multibanco (`payment_intents.py:337`). Cards and wallets cover the UK; nothing to change.
+- **Not an assumption:** the web admin already formats dates `en-GB`; the apps' formatter already knows £.
 
 ---
 
@@ -192,7 +210,7 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 | Batch | Items | Notes |
 |---|---|---|
 | **1** | #1 money and KYC known failures; #2 lockfile; #3 client IP header **(high-risk)**; #4 Sentry and failed emails **(high-risk: email)** | Built 2026-11-11. |
-| **M. Multi-currency** | #14, from `docs/MULTI_CURRENCY.md` **(high-risk: money, migrations)** | Starts only after the owner approves the design. Several days; the estimate is in the design. |
+| **M. Multi-currency** | #14, #58, #59, from `docs/MULTI_CURRENCY.md` **(high-risk: money, migrations)**; GBP the default | Starts only after the owner approves the design. Several days; the estimate and the order (the batches safe in both company scenarios first) are in the design. |
 | **2** | #5 minimum app version and maintenance switch; #6 contact (support@rawwers.com); #12 release builds | After batch 2 a TestFlight or Play internal build is possible. |
 | **3** | #8 cancellation rule and request; #7 terms, privacy and photographer agreement acceptance with placeholder texts **(high-risk: migration)**; #9 account deletion **(high-risk: personal data, money records, migration)**; #10 Google Play deletion page | About 3 days. The lawyer writes the real texts. |
 | **4** | #11 report, block and takedown **(high-risk: migration, authorization)**; #13 backups; GATE 2 items #15–17 **(high-risk: security)** | Backups follow the deploy plan. |
@@ -228,7 +246,7 @@ Bug fixes, such as #19 (dated), go in when found.
    - Each user chooses a display currency and sees an approximate conversion, clearly labelled with the currency actually charged (for example "about £850, charged in €1,000").
    - The platform takes no exchange-rate risk. Paying in the client's own currency (option B) is not wanted.
    - This moves GBP from LATER to MUST (#14). The design is `docs/MULTI_CURRENCY.md`.
-2. **The beta's countries and cities: to be decided by the owner.** Nothing in this document assumes one.
+2. **UK first (decided 2026-11-13).** The first wave is the **United Kingdom**. GBP is the main currency and the default for new users; EUR stays supported as the second currency. The apps stay in English. The Shelf (UK, GBP) fits this wave. The UK cities are chosen by the owner later.
 3. **Cancellation rule.** These are defaults, and every number is an admin setting, not hard-coded:
    - The client cancels free until 7 days before the shoot, gets 50% back until 48 hours before, and nothing after.
    - A photographer who cancels means a full refund.
@@ -244,7 +262,7 @@ Bug fixes, such as #19 (dated), go in when found.
 6. **Account deletion:** refused while a booking, a balance or a dispute is open. Otherwise the account is anonymised, and money records are kept for the legal period.
 7. **Error reporting:** Sentry, EU region.
 8. **Support address:** support@rawwers.com, in both apps and as the reply-to on every email.
-9. **RAWW while the Shelf is off:** keep accruing silently. The expiry clock starts the day the Shelf opens. The Shelf stays off (it remains UK and GBP only).
+9. **RAWW while the Shelf is off:** keep accruing silently. The expiry clock starts the day the Shelf opens. The Shelf stays off (it remains UK and GBP only). *(2026-11-13: the owner notes the Shelf fits the UK wave; it stays off until the owner says to open it.)*
 10. **Hosting and backups:** decided in the deploy plan.
 11. **Portuguese and Spanish translations:** LATER.
 12. **After the freeze:** only MUST items and bug fixes. Anything else goes to LATER.
@@ -260,10 +278,15 @@ Bug fixes, such as #19 (dated), go in when found.
 - **Lawyer:**
   - Terms, privacy policy, photographer agreement and cancellation wording.
   - The deletion-page text and the marketing-consent wording.
-  - Data-protection registration and representatives for the countries the owner chooses (for example a UK GDPR Article 27 representative and ICO registration if UK users are served by a non-UK company).
-  - The language rules of those countries, and the IP retention figures (`PRIVACY_NOTICE_INPUTS.md`).
-- **Accountant:** VAT on the platform fee in each country chosen, invoices, record retention (the legal period for deletion), and handling of EUR and GBP.
-- **Stripe:** the questions in `docs/MULTI_CURRENCY.md`.
+  - UK data protection (#55): the ICO fee for a UK company, or a UK Article 27 representative for a non-UK one; an EU representative if a UK company serves EU photographers.
+  - UK consumer law for the cancellation rule and reviews (#54).
+  - The IP retention figures (`PRIVACY_NOTICE_INPUTS.md`).
+  - Stripe's cross-border payouts: the UK photographers accept Stripe's **full** service agreement, and Stripe's terms for them (`MULTI_CURRENCY.md`, Stripe answers).
+- **Accountant:** UK VAT on the platform fee (#56), invoices, record retention (the legal period for deletion), and handling of EUR and GBP: the GBP balance held at Stripe, the multi-currency settlement and international card fees as costs, and the base currency of the books (`MULTI_CURRENCY.md`, Company scenarios).
+- **Company:** which company runs the platform, UK or Portuguese (`MULTI_CURRENCY.md`, Company scenarios); it changes the Stripe account, VAT, data protection and the fees.
+- **Stripe:** answers received 2026-11-13 from Stripe's chat, to be confirmed in writing by a Stripe human (`docs/MULTI_CURRENCY.md`, Stripe answers).
+  - **Enable GBP as a settlement currency and link a GBP bank account** (UK or Gibraltar) to the platform account; without it GBP charges are converted to EUR.
+  - Written confirmation of cross-border payout eligibility for UK connected accounts and of the fee figures.
   - Live activation and the Connect platform profile and branding.
   - Keep delayed payment methods off in live mode.
   - Live webhook endpoints and secrets, and the statement descriptor.
@@ -278,7 +301,8 @@ Bug fixes, such as #19 (dated), go in when found.
 - **Brevo:** the DPA, authorised IPs (or none) for the production host, the sender address, then `EMAIL_SENDING_ENABLED=true`.
 - **Mux and R2:** production environments, the webhook secret and production buckets.
 - **Production data** (DEPLOY_CHECKLIST):
-  - Import the price caps (zero rows today) and enable the cities the owner chooses.
+  - Import the price caps (zero rows today; GBP caps for the UK) and enable the UK cities the owner chooses later.
+  - A `GB` row in `country_tax_rule` (#56).
   - Import the camera reference and set `settlement_delay_days`.
   - Run the BI backfill.
   - Keep `shelf_enabled` off.

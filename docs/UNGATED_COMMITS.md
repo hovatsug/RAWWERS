@@ -46,3 +46,6 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 9225f10 | 2026-11-11 | Client IP: X-Forwarded-For only from a trusted proxy (core/client_ip.py) | **yes** (IP handling, authorization) |
 | fbcca1f | 2026-11-11 | Docs: MULTI_CURRENCY.md, the EUR and GBP design (not built) | no |
 | ead0fa2 | 2026-11-11 | Alerts: Sentry (API, worker, beat, web admin); failed emails retried, reported, listed, resent | **yes** (email) |
+| 3c9c6f4 | 2026-11-13 | Errors: unhandled errors answered inside the request middleware; 500s carry X-Request-Id and the id in the body; the Sentry event carries the request_id tag; KNOWN_FAILURES 16 -> 15 | **yes** (error handling) |
+| 83d369e | 2026-11-13 | Docs: BETA_SCOPE records UK first; UK items #54-#59 | no |
+| 18eac9d | 2026-11-13 | Docs: MULTI_CURRENCY Stripe answers, design changes, company scenarios, build order; DEPLOY_CHECKLIST GBP settlement account | no |

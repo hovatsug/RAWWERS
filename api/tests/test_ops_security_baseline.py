@@ -93,6 +93,8 @@ def test_sensitive_errors_are_safe_and_include_request_id(client, monkeypatch):
         raise RuntimeError("boom")
 
     monkeypatch.setattr("app.api.v1.discovery.ensure_initial_niches", _boom)
+    # A search cached by an earlier test would answer without reaching _boom.
+    monkeypatch.setattr("app.api.v1.discovery.cache_get_json", lambda _key: None)
     resp = client.get("/v1/discover/pros", headers={"X-Request-Id": "req-safe-1"})
 
     assert resp.status_code == 500

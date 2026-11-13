@@ -190,12 +190,16 @@ def capture_message(message: str, *, level: str = "error", tags: dict[str, str] 
         logger.warning("sentry_capture_failed", exc_info=True)
 
 
-def capture_exception(exc: BaseException) -> None:
+def capture_exception(exc: BaseException, *, tags: dict[str, str] | None = None) -> None:
+    """Report one exception, when reporting is on. Never raises."""
     if not _initialised:
         return
     try:
         import sentry_sdk
 
-        sentry_sdk.capture_exception(exc)
+        with sentry_sdk.new_scope() as scope:
+            for key, value in (tags or {}).items():
+                scope.set_tag(key, value)
+            sentry_sdk.capture_exception(exc)
     except Exception:  # pragma: no cover
         logger.warning("sentry_capture_failed", exc_info=True)

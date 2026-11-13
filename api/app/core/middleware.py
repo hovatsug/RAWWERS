@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from app.core.config import get_settings
+from app.core.errors import internal_error_response
 from app.core.request_context import clear_request_context, set_request_context
 from app.services.i18n import resolve_locale_from_accept_language
 from app.services.metrics import monotonic_seconds, observe_http
@@ -33,7 +34,14 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         status_code = 500
 
         try:
-            response = await call_next(request)
+            try:
+                response = await call_next(request)
+            except Exception as exc:
+                # Answered here, not by the app's catch-all handler, which
+                # runs outside this middleware after the request context is
+                # cleared: so the log line and the Sentry event keep the
+                # request id, and the 500 carries the X-Request-Id header.
+                response = internal_error_response(request_id, exc)
             status_code = response.status_code
             response.headers["X-Request-Id"] = request_id
             return response

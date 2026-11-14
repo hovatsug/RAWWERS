@@ -19,14 +19,14 @@
 ///         },
 ///         "currency": {
 ///             "type": "string",
-///             "default": "EUR",
 ///             "title": "Currency"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
 ///         "items",
-///         "credit"
+///         "credit",
+///         "currency"
 ///     ],
 ///     "title": "GrantMarketingConsentResponse"
 /// }
@@ -57,9 +57,8 @@ abstract class GrantMarketingConsentResponse
     String creditAmount,
 
     /// currency
-    @Default('EUR')
     @JsonKey(name: GrantMarketingConsentResponse.currencyKey_)
-    String currency,
+    required String currency,
   }) = _GrantMarketingConsentResponse;
 
   factory GrantMarketingConsentResponse.fromJson(Map<String, dynamic> json) =>

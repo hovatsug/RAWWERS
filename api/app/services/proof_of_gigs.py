@@ -33,7 +33,7 @@ from app.services.analytics import log_event
 from app.services.feature_flags import is_feature_enabled
 from app.services.metrics import observe_business_event, observe_raww_mint
 from app.services.outbox import enqueue_outbox_event
-from app.services.rewards import add_reward_entry
+from app.services.rewards import LEGACY_POINTS_CURRENCY, add_reward_entry
 
 settings = get_settings()
 
@@ -283,6 +283,7 @@ def process_raww_mint_event(db: Session, *, payload: dict) -> RawwMintEvent | No
     idempotency_key = f"mint:{event_type.value}:{ctx.reference_type}:{ctx.reference_id}:{ctx.pro_user_id}"
     add_reward_entry(
         db,
+        currency=LEGACY_POINTS_CURRENCY,
         user_id=ctx.pro_user_id,
         amount=int(raw_after_caps),
         entry_type=RewardEntryType.earn,
@@ -339,6 +340,7 @@ def create_raww_clawback(
 
     entry = add_reward_entry(
         db,
+        currency=LEGACY_POINTS_CURRENCY,
         user_id=pro_user_id,
         amount=-int(amount_raww),
         entry_type=RewardEntryType.adjustment,
@@ -816,6 +818,7 @@ def _reverse_mint_rows(db: Session, *, rows: list[RawwMintEvent], reason: str, e
             continue
         adjustment = add_reward_entry(
             db,
+            currency=LEGACY_POINTS_CURRENCY,
             user_id=row.pro_user_id,
             amount=-left,
             entry_type=RewardEntryType.adjustment,

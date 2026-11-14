@@ -48,6 +48,8 @@ class MatchInput:
     budget_min: Decimal | None
     budget_max: Decimal | None
     style_tags: list[str]
+    #: The budget's currency (MULTI_CURRENCY.md 5, discovery).
+    currency: str
 
 
 @dataclass(frozen=True)
@@ -130,12 +132,20 @@ def score_pro_for_match(
     score += dist_score
     breakdown["distance"] = float(dist_score)
 
-    overlap = _budget_overlaps(
-        req_min=req.budget_min,
-        req_max=req.budget_max,
-        pro_min=pro.min_package_price,
-        pro_max=pro.max_package_price,
-    )
+    if pro.currency == req.currency or (req.budget_min is None and req.budget_max is None):
+        overlap = _budget_overlaps(
+            req_min=req.budget_min,
+            req_max=req.budget_max,
+            pro_min=pro.min_package_price,
+            pro_max=pro.max_package_price,
+        )
+    else:
+        # Another currency: compared by the euro value of the cheapest
+        # package, approximately, and only when it is known; never as if
+        # the two currencies were one.
+        from app.services.price_filter import within_budget
+
+        overlap = req.budget_max is not None and within_budget(db, pro, req.budget_max, req.currency)
     price_score = MATCH_SCORE_WEIGHTS["price_band"] if overlap else Decimal("0")
     score += price_score
     breakdown["price_band"] = float(price_score)

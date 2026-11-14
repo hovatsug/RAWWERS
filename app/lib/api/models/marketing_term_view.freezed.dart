@@ -216,7 +216,7 @@ return $default(_that.months,_that.credit,_that.creditAmount,_that.currency);cas
 
 @jsonSerializable
 class _MarketingTermView extends MarketingTermView {
-  const _MarketingTermView({@JsonKey(name: MarketingTermView.monthsKey_) required this.months, @JsonKey(name: MarketingTermView.creditKey_) required this.credit, @JsonKey(name: MarketingTermView.creditAmountKey_) this.creditAmount = '0.00', @JsonKey(name: MarketingTermView.currencyKey_) this.currency = 'EUR'}): super._();
+  const _MarketingTermView({@JsonKey(name: MarketingTermView.monthsKey_) required this.months, @JsonKey(name: MarketingTermView.creditKey_) required this.credit, @JsonKey(name: MarketingTermView.creditAmountKey_) this.creditAmount = '0.00', @JsonKey(name: MarketingTermView.currencyKey_) required this.currency}): super._();
   factory _MarketingTermView.fromJson(Map<String, dynamic> json) => _$MarketingTermViewFromJson(json);
 
 /// months

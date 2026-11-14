@@ -110,6 +110,8 @@ class ClientMatchCreateRequest(BaseModel):
     niche_slug: str
     budget_min: Decimal | None = None
     budget_max: Decimal | None = None
+    #: The budget's currency (the default currency when not given).
+    currency: str | None = None
     style_tags: list[str] = Field(default_factory=list)
 
 

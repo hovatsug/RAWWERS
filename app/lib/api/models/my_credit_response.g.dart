@@ -10,6 +10,11 @@ _MyCreditResponse _$MyCreditResponseFromJson(Map<String, dynamic> json) =>
     _MyCreditResponse(
       balance: json['balance'] as String,
       currency: json['currency'] as String,
+      balances:
+          (json['balances'] as List<dynamic>?)
+              ?.map((e) => CreditBalance.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
       maxDiscountPercent: (json['max_discount_percent'] as num).toInt(),
       items: (json['items'] as List<dynamic>)
           .map((e) => CreditHistoryItem.fromJson(e as Map<String, dynamic>))
@@ -20,6 +25,7 @@ Map<String, dynamic> _$MyCreditResponseToJson(_MyCreditResponse instance) =>
     <String, dynamic>{
       'balance': instance.balance,
       'currency': instance.currency,
+      'balances': instance.balances,
       'max_discount_percent': instance.maxDiscountPercent,
       'items': instance.items,
     };

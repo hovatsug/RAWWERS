@@ -689,7 +689,7 @@ def _fully_ready_pro(db_session, *, status=None):
             addons=[], is_active=True,
         )
     )
-    db_session.add(ProExtraImagePrice(pro_user_id=pro_id, niche_id=niche.id, configured_unit_price=Decimal("5.00")))
+    db_session.add(ProExtraImagePrice(pro_user_id=pro_id, niche_id=niche.id, configured_unit_price=Decimal("5.00"), currency="EUR"))
     for _ in range(12):
         db_session.add(
             MediaAsset(

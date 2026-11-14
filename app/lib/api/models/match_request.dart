@@ -33,6 +33,17 @@
 ///             ],
 ///             "title": "Budget"
 ///         },
+///         "currency": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Currency"
+///         },
 ///         "date_range": {
 ///             "anyOf": [
 ///                 {
@@ -85,6 +96,9 @@ abstract class MatchRequest with _$MatchRequest {
     /// budget
     @JsonKey(name: MatchRequest.budgetKey_) dynamic? budget,
 
+    /// currency
+    @JsonKey(name: MatchRequest.currencyKey_) String? currency,
+
     /// dateRange
     @JsonKey(name: MatchRequest.dateRangeKey_) Map<String, dynamic>? dateRange,
 
@@ -103,6 +117,8 @@ abstract class MatchRequest with _$MatchRequest {
   static const String stylesKey_ = r'styles';
 
   static const String budgetKey_ = r'budget';
+
+  static const String currencyKey_ = r'currency';
 
   static const String dateRangeKey_ = r'date_range';
 

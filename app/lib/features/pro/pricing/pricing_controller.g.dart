@@ -6,7 +6,7 @@ part of 'pricing_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pricingPreviewHash() => r'111c7adf6d77ced1cc63a434cc4511144fe38799';
+String _$pricingPreviewHash() => r'2aed2ec28972e4b0332e9813daee20cbf7268f0a';
 
 /// Copied from Dart SDK
 class _SystemHash {

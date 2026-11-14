@@ -232,7 +232,7 @@ class Seeder:
                     self.txn("refund", -refunded, when)
                     if credit:
                         back = credit if refunded >= price - credit else credit // 2
-                        db.add(RewardLedgerEntry(user_id=gig.client_user_id, entry_type=RewardEntryType.adjustment, amount=back,
+                        db.add(RewardLedgerEntry(user_id=gig.client_user_id, entry_type=RewardEntryType.adjustment, currency="EUR", amount=back,
                                                  balance_after=back, reference_type="booking_refund",
                                                  reference_id=f"{gig.id}:re_demo_{gig.id.hex[:10]}", created_at=when,
                                                  meta={**TAG, "refunded_redemption_id": str(redemption.id)}))

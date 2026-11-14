@@ -24,7 +24,7 @@ def test_an_event_mints_nothing_and_keeps_existing_balances(db_session):
     pro = uuid.uuid4()
     db_session.add(UserAccount(user_id=pro))
     db_session.flush()
-    db_session.add(RewardBalance(user_id=pro, balance=750))
+    db_session.add(RewardBalance(currency="EUR", user_id=pro, balance=750))
     db_session.commit()
 
     result = process_raww_mint_event(
@@ -35,4 +35,4 @@ def test_an_event_mints_nothing_and_keeps_existing_balances(db_session):
     assert result is None
     assert db_session.execute(select(func.count()).select_from(RawwMintEvent)).scalar_one() == 0
     assert db_session.execute(select(func.count()).select_from(RewardLedgerEntry)).scalar_one() == 0
-    assert db_session.get(RewardBalance, pro).balance == 750
+    assert db_session.get(RewardBalance, (pro, "EUR")).balance == 750

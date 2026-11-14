@@ -71,7 +71,7 @@ def get_marketing_consent_offer(
     if not offer.offered:
         return MarketingConsentOfferResponse(offered=False, reason=offer.reason)
     thumbs = resolve_image_urls(db, list(offer.photo_ids), expires_in=THUMB_TTL)
-    from app.services.client_credit import points_per_eur, to_eur
+    from app.services.client_credit import points_per_eur, to_money
 
     per_eur = points_per_eur(db)
     block = mc.credit_block(db, gig, user.user_id, 12)
@@ -82,7 +82,9 @@ def get_marketing_consent_offer(
         wording_version=offer.wording.version,
         wording_text=offer.wording.text,
         terms=[
-            MarketingTermView(months=m, credit=mc.credit_for_term(m), credit_amount=to_eur(mc.credit_for_term(m), per_eur))
+            MarketingTermView(
+                months=m, credit=mc.credit_for_term(m), credit_amount=to_money(mc.credit_for_term(m), per_eur), currency=gig.currency
+            )
             for m in sorted(TERM_CREDIT_PERCENT)
         ],
         photographer_credit=offer.photographer_credit,
@@ -108,9 +110,11 @@ def grant_marketing_consent(
     log_event(db, event_name="client.marketing_consent_granted", user_id=user.user_id,
               properties={"gig_id": str(gig.id), "photos": len(rows), "term_months": body.term_months, "credit": credit})
     db.commit()
-    from app.services.client_credit import points_per_eur, to_eur
+    from app.services.client_credit import points_per_eur, to_money
 
-    return GrantMarketingConsentResponse(items=_views(db, rows), credit=credit, credit_amount=to_eur(credit, points_per_eur(db)))
+    return GrantMarketingConsentResponse(
+        items=_views(db, rows), credit=credit, credit_amount=to_money(credit, points_per_eur(db)), currency=gig.currency
+    )
 
 
 @router.get("/me/marketing-consents", response_model=MyMarketingConsentsResponse)

@@ -251,10 +251,11 @@ def _capped_entry_rate(db: Session, *, niche: Niche, pro_user_id: uuid.UUID, fal
     The tier comes from the same function the enforcement calls, so the seed
     cannot be priced against a tier the API disagrees with.
     """
+    from app.services.currencies import require_pro_currency
     from app.services.package_pricing import get_price_cap, resolve_pro_tier_for_niche
 
     tier = resolve_pro_tier_for_niche(db, pro_user_id, niche.id)
-    cap = get_price_cap(db, niche_id=niche.id, tier=tier)
+    cap = get_price_cap(db, niche_id=niche.id, tier=tier, currency=require_pro_currency(db, pro_user_id))
     if cap is None or cap.entry_price_max is None:
         return fallback
     return (cap.entry_price_max * Decimal("0.8")).quantize(Decimal("0.01"))

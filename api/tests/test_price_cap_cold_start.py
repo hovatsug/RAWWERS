@@ -72,7 +72,7 @@ def test_a_save_with_one_bad_cap_writes_none_of_them(client, db_session):
 def test_the_refusal_names_the_niche_and_tier(client, db_session):
     _ensure_account(db_session, ADMIN_USER_ID)
     resp = _put(client, [_item(niche="food", tier="elite", maximum="2.00", minimum="3.00")])
-    assert resp.json()["error"]["message"] == "food · elite: the cap (2.00) is below the minimum (3.00)"
+    assert resp.json()["error"]["message"] == "food · elite · EUR: the cap (2.00) is below the minimum (3.00)"
 
 
 def test_uncapped_is_saved_as_a_real_setting(client, db_session):

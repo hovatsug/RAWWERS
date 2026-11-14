@@ -220,7 +220,7 @@ def test_points_the_older_consent_paid_on_the_booking_reduce_the_credit(client, 
 
     client_id, gig, assets = _booking(client, db_session)
     add_reward_entry(db_session, user_id=uuid.UUID(client_id), amount=80, entry_type=RewardEntryType.earn,
-                     reference_type="consent_reward", reference_id=f"{gig.id}:pro_marketing_only")
+                     reference_type="consent_reward", reference_id=f"{gig.id}:pro_marketing_only", currency="EUR")
     db_session.commit()
 
     assert _grant(client, gig, client_id, assets).json()["credit"] == 20

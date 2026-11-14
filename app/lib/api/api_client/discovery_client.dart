@@ -20,6 +20,7 @@ abstract class DiscoveryClient {
     @Query("styles") required String? styles,
     @Query("min_price") required double? minPrice,
     @Query("max_price") required double? maxPrice,
+    @Query("currency") required String? currency,
     @Query("sort") String sort = 'rank',
     @Query("niche") required String? niche,
     @Query("limit") int limit = 20,
@@ -93,6 +94,18 @@ abstract class DiscoveryClient {
               {'type': 'null'},
             ],
             'title': 'Max Price',
+          },
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Currency',
           },
         },
         {

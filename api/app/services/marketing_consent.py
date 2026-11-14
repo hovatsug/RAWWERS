@@ -350,7 +350,8 @@ def credit_block(db: Session, gig: Gig, client_user_id, term_months: int) -> str
     from app.services.client_credit import budget_left_for
 
     amount = credit_for_term(term_months) - _older_consent_points(db, gig, client_user_id)
-    if amount > 0 and not budget_left_for(db, amount):
+    # Against the budget of the booking's currency: the credit is in it.
+    if amount > 0 and not budget_left_for(db, amount, gig.currency):
         return "budget"
     return None
 

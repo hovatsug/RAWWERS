@@ -111,6 +111,7 @@ export 'create_review_reply_request.dart';
 export 'create_review_request.dart';
 export 'credential_mode.dart';
 export 'credential_view.dart';
+export 'credit_balance.dart';
 export 'credit_history_item.dart';
 export 'current_cycle_response.dart';
 export 'cycle_event_view.dart';

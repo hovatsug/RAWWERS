@@ -144,6 +144,7 @@ def apply_caps(db, *, dry_run: bool = False, verbose: bool = False) -> tuple[int
                 select(NichePackagePriceCap).where(
                     NichePackagePriceCap.niche_id == niches[slug].id,
                     NichePackagePriceCap.tier == tier,
+                    NichePackagePriceCap.currency == "EUR",
                 )
             ).scalar_one_or_none()
 

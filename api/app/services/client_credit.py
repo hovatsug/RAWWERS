@@ -8,13 +8,19 @@ sees of it (owner's decisions, 2026-11-07).
   towards the price), and nothing is transferred to the photographer as RAWW.
 - Today its only use is a discount on a booking, at most
   `max_discount_percent` of the payment (admin setting, default 10).
-- It is shown in euros: points / points_per_eur (100). Never called RAWW.
-- Awards for marketing permissions draw on a monthly budget
-  (`monthly_marketing_credit_budget_eur`, default 300; 0 means none). It
-  counts credit awarded in the calendar month in Europe/London, checked
-  under a lock on the settings row, so concurrent grants can never exceed
-  it. Admins are told at 80% and at 100%, once each a month. The per-client
-  monthly cap (3) and the per-grant amounts are unchanged.
+- It is per currency (MULTI_CURRENCY.md decision M3, batch M4): credit
+  earned on a booking is in that booking's currency, and pays only for
+  bookings in that currency; a client may hold credit in euros and in
+  pounds, never mixed or converted. Shown as points / points_per_eur (100)
+  units of its currency (the setting's name predates currencies: 100 points
+  are €1 or £1). Never called RAWW.
+- Awards for marketing permissions draw on a monthly budget per currency
+  (`monthly_marketing_credit_budget_eur` and `_gbp`, default 300 each; 0
+  means none). It counts credit awarded in the calendar month in
+  Europe/London, checked under a lock on the settings row, so concurrent
+  grants can never exceed it. Admins are told at 80% and at 100%, once each
+  a month and currency. The per-client monthly cap (3) and the per-grant
+  amounts are unchanged.
 - Credit used on a booking that is refunded goes back to the client
   (owner's decision, 2026-11-07): all of it on a full refund; on a partial
   refund the same share as the cash refunded, rounded down to the cent, so
@@ -64,8 +70,20 @@ def points_per_eur(db: Session) -> int:
     return _get_discount_conversion_settings(db)[0]
 
 
-def to_eur(points: int, per_eur: int) -> Decimal:
-    return (Decimal(int(points)) / Decimal(per_eur)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+def to_money(points: int, per_unit: int) -> Decimal:
+    """Points as an amount of their currency (100 points = 1.00)."""
+    return (Decimal(int(points)) / Decimal(per_unit)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+#: The settings that hold each currency's monthly budget and alert months.
+_BUDGET = {
+    "EUR": ("monthly_marketing_credit_budget_eur", "alerted_80_month", "alerted_100_month"),
+    "GBP": ("monthly_marketing_credit_budget_gbp", "alerted_80_month_gbp", "alerted_100_month_gbp"),
+}
+
+
+def monthly_budget(row: ClientCreditSettings, currency: str) -> Decimal:
+    return Decimal(getattr(row, _BUDGET[currency][0]))
 
 
 def month_bounds(now: datetime | None = None) -> tuple[str, datetime, datetime]:
@@ -76,73 +94,86 @@ def month_bounds(now: datetime | None = None) -> tuple[str, datetime, datetime]:
     return f"{start.year:04d}-{start.month:02d}", start.astimezone(timezone.utc), end.astimezone(timezone.utc)
 
 
-def awarded_eur(db: Session, now: datetime | None = None) -> Decimal:
-    """Marketing credit awarded this month, net of nothing: what was given."""
+def awarded(db: Session, currency: str, now: datetime | None = None) -> Decimal:
+    """Marketing credit in `currency` awarded this month, net of nothing:
+    what was given."""
     _key, start, end = month_bounds(now)
     points = db.execute(
         select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
             RewardLedgerEntry.reference_type == MARKETING_REFERENCE,
             RewardLedgerEntry.entry_type == RewardEntryType.earn,
+            RewardLedgerEntry.currency == currency,
             RewardLedgerEntry.created_at >= start,
             RewardLedgerEntry.created_at < end,
         )
     ).scalar_one()
-    return to_eur(points, points_per_eur(db))
+    return to_money(points, points_per_eur(db))
 
 
-def budget_view(db: Session, now: datetime | None = None) -> dict:
-    """The admin's month: budget, awarded, used at checkout, outstanding
-    (all clients' unspent credit) and remaining."""
+def budget_view(db: Session, currency: str, now: datetime | None = None) -> dict:
+    """The admin's month in one currency: budget, awarded, used at checkout,
+    outstanding (all clients' unspent credit) and remaining."""
+    from app.services.currencies import normalise
+
+    currency = normalise(currency)
     key, start, end = month_bounds(now)
     row = settings(db)
-    awarded = awarded_eur(db, now)
+    given = awarded(db, currency, now)
     used = db.execute(
         select(func.coalesce(func.sum(DiscountRedemption.discount_amount), 0)).where(
             DiscountRedemption.status == DiscountRedemptionStatus.applied,
+            DiscountRedemption.currency == currency,
             DiscountRedemption.updated_at >= start,
             DiscountRedemption.updated_at < end,
         )
     ).scalar_one()
-    outstanding_points = db.execute(select(func.coalesce(func.sum(RewardBalance.balance), 0)).where(RewardBalance.balance > 0)).scalar_one()
+    outstanding_points = db.execute(
+        select(func.coalesce(func.sum(RewardBalance.balance), 0)).where(RewardBalance.balance > 0, RewardBalance.currency == currency)
+    ).scalar_one()
     returned_points = db.execute(
         select(func.coalesce(func.sum(RewardLedgerEntry.amount), 0)).where(
             RewardLedgerEntry.reference_type == REFUND_REFERENCE,
+            RewardLedgerEntry.currency == currency,
             RewardLedgerEntry.created_at >= start,
             RewardLedgerEntry.created_at < end,
         )
     ).scalar_one()
-    budget = Decimal(row.monthly_marketing_credit_budget_eur)
+    budget = monthly_budget(row, currency)
     return {
         "month": key,
-        "currency": "EUR",
+        "currency": currency,
         "budget": budget,
-        "awarded": awarded,
+        "awarded": given,
         "used": Decimal(used).quantize(Decimal("0.01")),
-        "returned_on_refunds": to_eur(returned_points, points_per_eur(db)),
-        "outstanding": to_eur(outstanding_points, points_per_eur(db)),
-        "remaining": max(Decimal("0.00"), budget - awarded),
+        "returned_on_refunds": to_money(returned_points, points_per_eur(db)),
+        "outstanding": to_money(outstanding_points, points_per_eur(db)),
+        "remaining": max(Decimal("0.00"), budget - given),
         "max_discount_percent": row.max_discount_percent,
     }
 
 
-def budget_left_for(db: Session, amount_points: int, now: datetime | None = None) -> bool:
-    """Whether an award of `amount_points` fits this month's budget now."""
-    budget = Decimal(settings(db).monthly_marketing_credit_budget_eur)
+def budget_left_for(db: Session, amount_points: int, currency: str, now: datetime | None = None) -> bool:
+    """Whether an award of `amount_points` in `currency` fits this month's
+    budget in that currency now."""
+    budget = monthly_budget(settings(db), currency)
     if budget <= 0:
         return False
-    return awarded_eur(db, now) + to_eur(amount_points, points_per_eur(db)) <= budget
+    return awarded(db, currency, now) + to_money(amount_points, points_per_eur(db)) <= budget
 
 
 def award_marketing_credit(
     db: Session, *, client_user_id: uuid.UUID, amount_points: int, gig_id: uuid.UUID, metadata: dict, balance_floor: int
 ) -> RewardLedgerEntry | None:
-    """Award a marketing-permission credit if the month's budget allows it.
-    Under the settings row's lock: two grants at once are counted one after
-    the other, so the budget is never exceeded. None when it does not fit."""
+    """Award a marketing-permission credit, in the booking's currency, if
+    that currency's budget for the month allows it. Under the settings
+    row's lock: two grants at once are counted one after the other, so the
+    budget is never exceeded. None when it does not fit."""
+    from app.models.gig import Gig
     from app.services.rewards import add_reward_entry
 
+    currency = db.get(Gig, gig_id).currency
     row = settings(db, lock=True)
-    if not budget_left_for(db, amount_points):
+    if not budget_left_for(db, amount_points, currency):
         return None
     entry = add_reward_entry(
         db,
@@ -151,27 +182,32 @@ def award_marketing_credit(
         entry_type=RewardEntryType.earn,
         reference_type=MARKETING_REFERENCE,
         reference_id=str(gig_id),
+        currency=currency,
         metadata=metadata,
         min_balance_floor=balance_floor,
     )
     if entry is None:
         return None
-    _alert_admins_if_due(db, row)
+    _alert_admins_if_due(db, row, currency)
     notify_credit_earned(db, entry)
     return entry
 
 
-def _alert_admins_if_due(db: Session, row: ClientCreditSettings, now: datetime | None = None) -> None:
+def _alert_admins_if_due(db: Session, row: ClientCreditSettings, currency: str, now: datetime | None = None) -> None:
     from app.core.config import get_settings
+    from app.services.currencies import format_money
     from app.services.notifications import enqueue_notification
 
-    budget = Decimal(row.monthly_marketing_credit_budget_eur)
+    budget = monthly_budget(row, currency)
     if budget <= 0:
         return
     key, _start, _end = month_bounds(now)
-    awarded = awarded_eur(db, now)
-    for level, attr in ((100, "alerted_100_month"), (80, "alerted_80_month")):
-        if awarded * 100 >= budget * level and getattr(row, attr) != key:
+    given = awarded(db, currency, now)
+    _budget_attr, attr_80, attr_100 = _BUDGET[currency]
+    # The euro budget keeps its references from before budgets were per currency.
+    suffix = "" if currency == "EUR" else f":{currency}"
+    for level, attr in ((100, attr_100), (80, attr_80)):
+        if given * 100 >= budget * level and getattr(row, attr) != key:
             setattr(row, attr, key)
             for admin_id in get_settings().admin_user_id_set():
                 enqueue_notification(
@@ -179,29 +215,30 @@ def _alert_admins_if_due(db: Session, row: ClientCreditSettings, now: datetime |
                     user_id=admin_id,
                     notification_type="admin.marketing_budget",
                     payload={
-                        "title": f"Marketing credit budget at {level}%",
-                        "body": f"€{awarded} of €{budget} awarded this month ({key})."
-                        + (" No more credit is awarded until next month." if level == 100 else ""),
+                        "title": f"Marketing credit budget ({currency}) at {level}%",
+                        "body": f"{format_money(given, currency)} of {format_money(budget, currency)} awarded this month ({key})."
+                        + (f" No more credit in {currency} is awarded until next month." if level == 100 else ""),
                     },
                     reference_type="marketing_budget",
-                    reference_id=f"{key}:{level}",
-                    dedupe_key=f"marketing-budget:{key}:{level}:{admin_id}",
+                    reference_id=f"{key}:{level}{suffix}",
+                    dedupe_key=f"marketing-budget:{key}:{level}{suffix}:{admin_id}",
                 )
     db.flush()
 
 
 def notify_credit_earned(db: Session, entry: RewardLedgerEntry) -> None:
-    """"You earned €1.00 credit", once per award however often its event
-    is delivered."""
+    """"You earned £1.00 credit", in the credit's currency, once per award
+    however often its event is delivered."""
+    from app.services.currencies import format_money
     from app.services.notifications import enqueue_notification
 
-    euros = to_eur(entry.amount, points_per_eur(db))
+    amount = format_money(to_money(entry.amount, points_per_eur(db)), entry.currency)
     enqueue_notification(
         db,
         user_id=entry.user_id,
         notification_type="reward.credit_earned",
         payload={
-            "title": f"You earned €{euros} credit",
+            "title": f"You earned {amount} credit",
             "body": "Use it on your next booking.",
             "action": {"label": "See my credit", "url": "/account/credit"},
         },
@@ -231,31 +268,38 @@ def open_redemption(db: Session, *, client_user_id: uuid.UUID, gig_id: uuid.UUID
     ).scalar_one_or_none()
 
 
-def balance_points(db: Session, user_id: uuid.UUID) -> int:
-    row = db.get(RewardBalance, user_id)
+def balance_points(db: Session, user_id: uuid.UUID, currency: str) -> int:
+    """The user's credit in one currency, in points."""
+    row = db.get(RewardBalance, (user_id, currency))
     return int(row.balance) if row else 0
+
+
+def balances(db: Session, user_id: uuid.UUID) -> list[dict]:
+    """Every currency the user holds credit in (non-zero), as money."""
+    per_unit = points_per_eur(db)
+    rows = db.execute(
+        select(RewardBalance).where(RewardBalance.user_id == user_id, RewardBalance.balance != 0).order_by(RewardBalance.currency)
+    ).scalars().all()
+    return [{"currency": r.currency, "balance": to_money(r.balance, per_unit)} for r in rows]
 
 
 def checkout_preview(db: Session, *, client_user_id: uuid.UUID, gig) -> dict:
     """What credit would take off this booking's payment: the smaller of the
-    client's credit and the cap. Changes nothing."""
-    from app.services.rewards import CREDIT_CURRENCY
-
+    client's credit in the booking's currency and the cap. Changes nothing."""
     per_eur = points_per_eur(db)
     price = Decimal(gig.amount_minimum)
     existing = open_redemption(db, client_user_id=client_user_id, gig_id=gig.id)
     cap = (price * Decimal(max_discount_percent(db)) / Decimal("100")).quantize(Decimal("0.01"))
-    balance = to_eur(balance_points(db, client_user_id), per_eur)
+    # Credit in the booking's currency only (decision M3).
+    balance = to_money(balance_points(db, client_user_id, gig.currency), per_eur)
     if existing:
         discount = Decimal(existing.discount_amount)
-    elif str(gig.currency).upper() != CREDIT_CURRENCY:
-        discount = Decimal("0.00")  # euro credit pays for euro bookings only (M3)
     else:
         discount = min(balance, cap, price)
     discount = max(Decimal("0.00"), discount)
     return {
         "balance": balance,
-        "credit_currency": CREDIT_CURRENCY,
+        "credit_currency": gig.currency,
         "discount": discount,
         "price": price,
         "total": price - discount,
@@ -278,11 +322,10 @@ def set_for_payment(db: Session, *, client_user_id: uuid.UUID, gig, use_credit: 
     price = Decimal(gig.amount_minimum)
     existing = open_redemption(db, client_user_id=client_user_id, gig_id=gig.id)
     if use_credit is True and existing is None:
-        points = balance_points(db, client_user_id)
+        # The client's credit in the booking's currency; credit in another
+        # currency is never used (decision M3).
+        points = balance_points(db, client_user_id, gig.currency)
         if points > 0:
-            # Credit in another currency is refused by reserve_points_for_discount
-            # (credit_currency_mismatch) before it writes anything, and caught
-            # here like too little credit: the booking is paid in full.
             try:
                 existing = reserve_points_for_discount(
                     db, user_id=client_user_id, context_type=RedemptionContextType.gig_payment, context_id=gig.id,
@@ -364,7 +407,8 @@ def return_credit_on_refunds(db: Session, *, gig) -> list[RewardLedgerEntry]:
     refunds = [(rid, amount) for rid, amount in succeeded if rid not in reduction_ids]
     if base <= 0 or not refunds:
         return []
-    balance = _get_or_create_reward_balance_locked(db, redemption.user_id)
+    # Back into the credit it was spent from: the redemption's currency.
+    balance = _get_or_create_reward_balance_locked(db, redemption.user_id, redemption.currency)
     per_eur = points_per_eur(db)
     returned = returned_on_refunds_points(db, gig.id)  # under the balance lock
     written: list[RewardLedgerEntry] = []
@@ -391,7 +435,8 @@ def return_credit_on_refunds(db: Session, *, gig) -> list[RewardLedgerEntry]:
         balance.balance = int(balance.balance) + give
         balance.updated_at = datetime.now(timezone.utc)
         entry = RewardLedgerEntry(
-            user_id=redemption.user_id, entry_type=RewardEntryType.adjustment, rule_code=None, amount=give,
+            user_id=redemption.user_id, entry_type=RewardEntryType.adjustment, rule_code=None,
+            currency=redemption.currency, amount=give,
             balance_after=balance.balance, reference_type=REFUND_REFERENCE, reference_id=reference,
             meta={"kind": "refunded_credit", "gig_id": str(gig.id), "stripe_refund_id": refund_id,
                   "refunded_redemption_id": str(redemption.id)},
@@ -440,7 +485,7 @@ def history(db: Session, client_user_id: uuid.UUID, *, limit: int = 100) -> list
         else:
             kind = "adjustment"
         out.append({
-            "id": row.id, "created_at": row.created_at, "kind": kind, "amount": to_eur(row.amount, per_eur), "currency": "EUR",
+            "id": row.id, "created_at": row.created_at, "kind": kind, "amount": to_money(row.amount, per_eur), "currency": row.currency,
             "photographer_first_name": first_name,
         })
     return out

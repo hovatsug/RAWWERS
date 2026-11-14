@@ -16,6 +16,8 @@ class SearchProsItem(BaseModel):
     top_niche: str | None = None
     price_min: float | None = None
     price_max: float | None = None
+    #: The photographer's currency; price_min and price_max are in it.
+    currency: str | None = None
     avg_rating: float | None = None
     review_count: int = 0
     completed_gigs_total: int = 0

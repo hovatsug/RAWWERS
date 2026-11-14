@@ -194,6 +194,7 @@ def build_pro_document(db: Session, pro_user_id: uuid.UUID) -> dict | None:
         "verified_niches": list(idx.verified_niches or []),
         "confidence": confidence,
         "price_min": float(idx.min_package_price) if idx.min_package_price is not None else None,
+        "currency": idx.currency,
         "price_max": float(idx.max_package_price) if idx.max_package_price is not None else None,
         "avg_rating": float(idx.avg_rating),
         "review_count": int(idx.review_count),

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, Integer, Numeric, String, Text
+from sqlalchemy import CHAR, BigInteger, DateTime, Enum, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,7 +33,14 @@ class ProPublicIndex(Base):
     # How many photos that cheapest package's total covers - the third figure
     # the price component needs, and meaningless without the other two.
     min_entry_photos: Mapped[int | None] = mapped_column(nullable=True)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    #: The photographer's currency; the prices above are in it.
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    #: `min_package_price` in euro cents, for the budget filter and price
+    #: sort across currencies (MULTI_CURRENCY.md 5, discovery). Exact for
+    #: euros; for another currency converted at the day's display rate
+    #: (services/fx.py), null while no rate is known. Approximate by nature:
+    #: the card shows the exact price.
+    min_package_price_base_minor: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     is_accepting_bookings: Mapped[bool] = mapped_column(nullable=False, default=False, index=True)
     kyc_status: Mapped[KYCStatus] = mapped_column(
         Enum(KYCStatus, name="kyc_status", native_enum=False, length=64),

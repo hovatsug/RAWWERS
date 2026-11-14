@@ -24,6 +24,7 @@ class _DiscoveryClient implements DiscoveryClient {
     required String? styles,
     required double? minPrice,
     required double? maxPrice,
+    required String? currency,
     String sort = 'rank',
     required String? niche,
     int limit = 20,
@@ -96,6 +97,18 @@ class _DiscoveryClient implements DiscoveryClient {
               {'type': 'null'},
             ],
             'title': 'Max Price',
+          },
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Currency',
           },
         },
         {
@@ -192,6 +205,7 @@ class _DiscoveryClient implements DiscoveryClient {
       r'styles': styles,
       r'min_price': minPrice,
       r'max_price': maxPrice,
+      r'currency': currency,
       r'sort': sort,
       r'niche': niche,
       r'limit': limit,

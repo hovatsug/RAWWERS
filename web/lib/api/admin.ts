@@ -216,7 +216,12 @@ export type MarketingBudget = {
   remaining: string;
   max_discount_percent: number;
 };
-export type ClientCreditSettings = { max_discount_percent: number; monthly_marketing_credit_budget_eur: string };
+/** One monthly marketing budget per currency, each in its currency. */
+export type ClientCreditSettings = {
+  max_discount_percent: number;
+  monthly_marketing_credit_budget_eur: string;
+  monthly_marketing_credit_budget_gbp: string;
+};
 
 /** The Stripe reconcile job's last run, shown above Money attention. */
 export type StripeCheckRun = {
@@ -296,6 +301,8 @@ export type MarketingWording = {
 
 export type ShelfSettings = {
   raww_eur_value: string;
+  /** Pounds per RAWW; null: not set (pounds are valued at the euro value at the day's rate). */
+  raww_gbp_value: string | null;
   gbp_eur_rate: string;
   shelf_discount_percent: number;
   inactivity_months: number;
@@ -539,7 +546,7 @@ export const admin = {
     adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 
   bookingMoney: (gigId: string) => adminFetch<BookingMoney>(`gigs/${gigId}/money`),
-  marketingBudget: () => adminFetch<MarketingBudget>("client-credit/budget"),
+  marketingBudget: (currency: string) => adminFetch<MarketingBudget>(`client-credit/budget?currency=${currency}`),
   clientCreditSettings: () => adminFetch<ClientCreditSettings>("client-credit/settings"),
   saveClientCreditSettings: (body: Partial<ClientCreditSettings>) =>
     adminFetch<ClientCreditSettings>("client-credit/settings", { method: "PUT", body: JSON.stringify(body) }),

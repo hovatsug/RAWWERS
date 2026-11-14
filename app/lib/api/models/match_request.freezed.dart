@@ -18,7 +18,8 @@ mixin _$MatchRequest {
 /// city
 @JsonKey(name: MatchRequest.cityKey_) String? get city;/// styles
 @JsonKey(name: MatchRequest.stylesKey_) List<String>? get styles;/// budget
-@JsonKey(name: MatchRequest.budgetKey_) dynamic? get budget;/// dateRange
+@JsonKey(name: MatchRequest.budgetKey_) dynamic? get budget;/// currency
+@JsonKey(name: MatchRequest.currencyKey_) String? get currency;/// dateRange
 @JsonKey(name: MatchRequest.dateRangeKey_) Map<String, dynamic>? get dateRange;/// purpose
 @JsonKey(name: MatchRequest.purposeKey_) String? get purpose;/// limit
 @JsonKey(name: MatchRequest.limitKey_) int get limit;
@@ -34,16 +35,16 @@ $MatchRequestCopyWith<MatchRequest> get copyWith => _$MatchRequestCopyWithImpl<M
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MatchRequest&&(identical(other.city, city) || other.city == city)&&const DeepCollectionEquality().equals(other.styles, styles)&&const DeepCollectionEquality().equals(other.budget, budget)&&const DeepCollectionEquality().equals(other.dateRange, dateRange)&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.limit, limit) || other.limit == limit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MatchRequest&&(identical(other.city, city) || other.city == city)&&const DeepCollectionEquality().equals(other.styles, styles)&&const DeepCollectionEquality().equals(other.budget, budget)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other.dateRange, dateRange)&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.limit, limit) || other.limit == limit));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,city,const DeepCollectionEquality().hash(styles),const DeepCollectionEquality().hash(budget),const DeepCollectionEquality().hash(dateRange),purpose,limit);
+int get hashCode => Object.hash(runtimeType,city,const DeepCollectionEquality().hash(styles),const DeepCollectionEquality().hash(budget),currency,const DeepCollectionEquality().hash(dateRange),purpose,limit);
 
 @override
 String toString() {
-  return 'MatchRequest(city: $city, styles: $styles, budget: $budget, dateRange: $dateRange, purpose: $purpose, limit: $limit)';
+  return 'MatchRequest(city: $city, styles: $styles, budget: $budget, currency: $currency, dateRange: $dateRange, purpose: $purpose, limit: $limit)';
 }
 
 
@@ -54,7 +55,7 @@ abstract mixin class $MatchRequestCopyWith<$Res>  {
   factory $MatchRequestCopyWith(MatchRequest value, $Res Function(MatchRequest) _then) = _$MatchRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: MatchRequest.cityKey_) String? city,@JsonKey(name: MatchRequest.stylesKey_) List<String>? styles,@JsonKey(name: MatchRequest.budgetKey_) dynamic? budget,@JsonKey(name: MatchRequest.dateRangeKey_) Map<String, dynamic>? dateRange,@JsonKey(name: MatchRequest.purposeKey_) String? purpose,@JsonKey(name: MatchRequest.limitKey_) int limit
+@JsonKey(name: MatchRequest.cityKey_) String? city,@JsonKey(name: MatchRequest.stylesKey_) List<String>? styles,@JsonKey(name: MatchRequest.budgetKey_) dynamic? budget,@JsonKey(name: MatchRequest.currencyKey_) String? currency,@JsonKey(name: MatchRequest.dateRangeKey_) Map<String, dynamic>? dateRange,@JsonKey(name: MatchRequest.purposeKey_) String? purpose,@JsonKey(name: MatchRequest.limitKey_) int limit
 });
 
 
@@ -71,12 +72,13 @@ class _$MatchRequestCopyWithImpl<$Res>
 
 /// Create a copy of MatchRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? city = freezed,Object? styles = freezed,Object? budget = freezed,Object? dateRange = freezed,Object? purpose = freezed,Object? limit = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? city = freezed,Object? styles = freezed,Object? budget = freezed,Object? currency = freezed,Object? dateRange = freezed,Object? purpose = freezed,Object? limit = null,}) {
   return _then(_self.copyWith(
 city: freezed == city ? _self.city : city // ignore: cast_nullable_to_non_nullable
 as String?,styles: freezed == styles ? _self.styles : styles // ignore: cast_nullable_to_non_nullable
 as List<String>?,budget: freezed == budget ? _self.budget : budget // ignore: cast_nullable_to_non_nullable
-as dynamic?,dateRange: freezed == dateRange ? _self.dateRange : dateRange // ignore: cast_nullable_to_non_nullable
+as dynamic?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,dateRange: freezed == dateRange ? _self.dateRange : dateRange // ignore: cast_nullable_to_non_nullable
 as Map<String, dynamic>?,purpose: freezed == purpose ? _self.purpose : purpose // ignore: cast_nullable_to_non_nullable
 as String?,limit: null == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int,
@@ -164,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MatchRequest.cityKey_)  String? city, @JsonKey(name: MatchRequest.stylesKey_)  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_)  dynamic? budget, @JsonKey(name: MatchRequest.dateRangeKey_)  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_)  String? purpose, @JsonKey(name: MatchRequest.limitKey_)  int limit)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MatchRequest.cityKey_)  String? city, @JsonKey(name: MatchRequest.stylesKey_)  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_)  dynamic? budget, @JsonKey(name: MatchRequest.currencyKey_)  String? currency, @JsonKey(name: MatchRequest.dateRangeKey_)  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_)  String? purpose, @JsonKey(name: MatchRequest.limitKey_)  int limit)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MatchRequest() when $default != null:
-return $default(_that.city,_that.styles,_that.budget,_that.dateRange,_that.purpose,_that.limit);case _:
+return $default(_that.city,_that.styles,_that.budget,_that.currency,_that.dateRange,_that.purpose,_that.limit);case _:
   return orElse();
 
 }
@@ -185,10 +187,10 @@ return $default(_that.city,_that.styles,_that.budget,_that.dateRange,_that.purpo
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MatchRequest.cityKey_)  String? city, @JsonKey(name: MatchRequest.stylesKey_)  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_)  dynamic? budget, @JsonKey(name: MatchRequest.dateRangeKey_)  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_)  String? purpose, @JsonKey(name: MatchRequest.limitKey_)  int limit)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MatchRequest.cityKey_)  String? city, @JsonKey(name: MatchRequest.stylesKey_)  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_)  dynamic? budget, @JsonKey(name: MatchRequest.currencyKey_)  String? currency, @JsonKey(name: MatchRequest.dateRangeKey_)  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_)  String? purpose, @JsonKey(name: MatchRequest.limitKey_)  int limit)  $default,) {final _that = this;
 switch (_that) {
 case _MatchRequest():
-return $default(_that.city,_that.styles,_that.budget,_that.dateRange,_that.purpose,_that.limit);case _:
+return $default(_that.city,_that.styles,_that.budget,_that.currency,_that.dateRange,_that.purpose,_that.limit);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +207,10 @@ return $default(_that.city,_that.styles,_that.budget,_that.dateRange,_that.purpo
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MatchRequest.cityKey_)  String? city, @JsonKey(name: MatchRequest.stylesKey_)  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_)  dynamic? budget, @JsonKey(name: MatchRequest.dateRangeKey_)  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_)  String? purpose, @JsonKey(name: MatchRequest.limitKey_)  int limit)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MatchRequest.cityKey_)  String? city, @JsonKey(name: MatchRequest.stylesKey_)  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_)  dynamic? budget, @JsonKey(name: MatchRequest.currencyKey_)  String? currency, @JsonKey(name: MatchRequest.dateRangeKey_)  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_)  String? purpose, @JsonKey(name: MatchRequest.limitKey_)  int limit)?  $default,) {final _that = this;
 switch (_that) {
 case _MatchRequest() when $default != null:
-return $default(_that.city,_that.styles,_that.budget,_that.dateRange,_that.purpose,_that.limit);case _:
+return $default(_that.city,_that.styles,_that.budget,_that.currency,_that.dateRange,_that.purpose,_that.limit);case _:
   return null;
 
 }
@@ -220,7 +222,7 @@ return $default(_that.city,_that.styles,_that.budget,_that.dateRange,_that.purpo
 
 @jsonSerializable
 class _MatchRequest extends MatchRequest {
-  const _MatchRequest({@JsonKey(name: MatchRequest.cityKey_) this.city, @JsonKey(name: MatchRequest.stylesKey_) final  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_) this.budget, @JsonKey(name: MatchRequest.dateRangeKey_) final  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_) this.purpose, @JsonKey(name: MatchRequest.limitKey_) this.limit = 10}): _styles = styles,_dateRange = dateRange,super._();
+  const _MatchRequest({@JsonKey(name: MatchRequest.cityKey_) this.city, @JsonKey(name: MatchRequest.stylesKey_) final  List<String>? styles, @JsonKey(name: MatchRequest.budgetKey_) this.budget, @JsonKey(name: MatchRequest.currencyKey_) this.currency, @JsonKey(name: MatchRequest.dateRangeKey_) final  Map<String, dynamic>? dateRange, @JsonKey(name: MatchRequest.purposeKey_) this.purpose, @JsonKey(name: MatchRequest.limitKey_) this.limit = 10}): _styles = styles,_dateRange = dateRange,super._();
   factory _MatchRequest.fromJson(Map<String, dynamic> json) => _$MatchRequestFromJson(json);
 
 /// city
@@ -238,6 +240,8 @@ class _MatchRequest extends MatchRequest {
 
 /// budget
 @override@JsonKey(name: MatchRequest.budgetKey_) final  dynamic? budget;
+/// currency
+@override@JsonKey(name: MatchRequest.currencyKey_) final  String? currency;
 /// dateRange
  final  Map<String, dynamic>? _dateRange;
 /// dateRange
@@ -267,16 +271,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MatchRequest&&(identical(other.city, city) || other.city == city)&&const DeepCollectionEquality().equals(other._styles, _styles)&&const DeepCollectionEquality().equals(other.budget, budget)&&const DeepCollectionEquality().equals(other._dateRange, _dateRange)&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.limit, limit) || other.limit == limit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MatchRequest&&(identical(other.city, city) || other.city == city)&&const DeepCollectionEquality().equals(other._styles, _styles)&&const DeepCollectionEquality().equals(other.budget, budget)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other._dateRange, _dateRange)&&(identical(other.purpose, purpose) || other.purpose == purpose)&&(identical(other.limit, limit) || other.limit == limit));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,city,const DeepCollectionEquality().hash(_styles),const DeepCollectionEquality().hash(budget),const DeepCollectionEquality().hash(_dateRange),purpose,limit);
+int get hashCode => Object.hash(runtimeType,city,const DeepCollectionEquality().hash(_styles),const DeepCollectionEquality().hash(budget),currency,const DeepCollectionEquality().hash(_dateRange),purpose,limit);
 
 @override
 String toString() {
-  return 'MatchRequest(city: $city, styles: $styles, budget: $budget, dateRange: $dateRange, purpose: $purpose, limit: $limit)';
+  return 'MatchRequest(city: $city, styles: $styles, budget: $budget, currency: $currency, dateRange: $dateRange, purpose: $purpose, limit: $limit)';
 }
 
 
@@ -287,7 +291,7 @@ abstract mixin class _$MatchRequestCopyWith<$Res> implements $MatchRequestCopyWi
   factory _$MatchRequestCopyWith(_MatchRequest value, $Res Function(_MatchRequest) _then) = __$MatchRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: MatchRequest.cityKey_) String? city,@JsonKey(name: MatchRequest.stylesKey_) List<String>? styles,@JsonKey(name: MatchRequest.budgetKey_) dynamic? budget,@JsonKey(name: MatchRequest.dateRangeKey_) Map<String, dynamic>? dateRange,@JsonKey(name: MatchRequest.purposeKey_) String? purpose,@JsonKey(name: MatchRequest.limitKey_) int limit
+@JsonKey(name: MatchRequest.cityKey_) String? city,@JsonKey(name: MatchRequest.stylesKey_) List<String>? styles,@JsonKey(name: MatchRequest.budgetKey_) dynamic? budget,@JsonKey(name: MatchRequest.currencyKey_) String? currency,@JsonKey(name: MatchRequest.dateRangeKey_) Map<String, dynamic>? dateRange,@JsonKey(name: MatchRequest.purposeKey_) String? purpose,@JsonKey(name: MatchRequest.limitKey_) int limit
 });
 
 
@@ -304,12 +308,13 @@ class __$MatchRequestCopyWithImpl<$Res>
 
 /// Create a copy of MatchRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? city = freezed,Object? styles = freezed,Object? budget = freezed,Object? dateRange = freezed,Object? purpose = freezed,Object? limit = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? city = freezed,Object? styles = freezed,Object? budget = freezed,Object? currency = freezed,Object? dateRange = freezed,Object? purpose = freezed,Object? limit = null,}) {
   return _then(_MatchRequest(
 city: freezed == city ? _self.city : city // ignore: cast_nullable_to_non_nullable
 as String?,styles: freezed == styles ? _self._styles : styles // ignore: cast_nullable_to_non_nullable
 as List<String>?,budget: freezed == budget ? _self.budget : budget // ignore: cast_nullable_to_non_nullable
-as dynamic?,dateRange: freezed == dateRange ? _self._dateRange : dateRange // ignore: cast_nullable_to_non_nullable
+as dynamic?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,dateRange: freezed == dateRange ? _self._dateRange : dateRange // ignore: cast_nullable_to_non_nullable
 as Map<String, dynamic>?,purpose: freezed == purpose ? _self.purpose : purpose // ignore: cast_nullable_to_non_nullable
 as String?,limit: null == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int,

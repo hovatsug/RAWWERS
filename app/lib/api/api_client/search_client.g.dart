@@ -25,6 +25,7 @@ class _SearchClient implements SearchClient {
     required String? country,
     required double? minPrice,
     required double? maxPrice,
+    required String? currency,
     required SkillTier? tierMin,
     String sort = 'relevance',
     int limit = 20,
@@ -110,6 +111,18 @@ class _SearchClient implements SearchClient {
           },
         },
         {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Currency',
+          },
+        },
+        {
           'name': 'tier_min',
           'in': 'query',
           'required': false,
@@ -180,6 +193,7 @@ class _SearchClient implements SearchClient {
       r'country': country,
       r'min_price': minPrice,
       r'max_price': maxPrice,
+      r'currency': currency,
       r'tier_min': tierMin?.toJson(),
       r'sort': sort,
       r'limit': limit,

@@ -55,7 +55,7 @@ class PackageDecayCurve(Base):
 
 class NichePackagePriceCap(Base):
     """The cap a photographer's entry (per-photo) price is clamped/validated
-    against, keyed by (niche, tier) - mirrors ExtraImagePricingPolicy's
+    against, keyed by (niche, tier, currency) - mirrors ExtraImagePricingPolicy's
     shape for the extras system, kept as a separate table on purpose."""
 
     __tablename__ = "niche_package_price_cap"
@@ -65,9 +65,11 @@ class NichePackagePriceCap(Base):
     tier: Mapped[SkillTier] = mapped_column(Enum(SkillTier, name="skill_tier", native_enum=False, length=64), nullable=False)
     entry_price_min: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     entry_price_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    #: The cap is in this currency and applies to packages in it only
+    #: (MULTI_CURRENCY.md decision M2: one table per currency).
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )
 
-    __table_args__ = (UniqueConstraint("niche_id", "tier", name="uq_niche_package_price_cap_niche_tier"),)
+    __table_args__ = (UniqueConstraint("niche_id", "tier", "currency", name="uq_niche_package_price_cap_niche_tier_currency"),)

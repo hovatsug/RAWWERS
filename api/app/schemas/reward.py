@@ -66,13 +66,17 @@ class AdminReferralBlacklistResponse(BaseModel):
 
 
 class RewardBalanceResponse(BaseModel):
+    #: Points, in `currency` (credit is per currency; 100 points = 1 unit).
     balance: int
+    currency: str
 
 
 class RewardLedgerItemView(BaseModel):
     id: uuid.UUID
     entry_type: RewardEntryType
     rule_code: str | None = None
+    #: The credit the points are in (100 points = 1 unit of it).
+    currency: str
     amount: int
     balance_after: int
     reference_type: str | None = None
@@ -91,7 +95,8 @@ class RewardSpendRequest(BaseModel):
     context_id: uuid.UUID
     points: int = Field(gt=0)
     payment_amount: Decimal = Field(gt=Decimal("0"))
-    currency: str = "EUR"
+    #: The payment's currency: credit in that currency is spent (required).
+    currency: str
 
 
 class DiscountRedemptionView(BaseModel):
@@ -132,9 +137,13 @@ class AdminRewardAdjustRequest(BaseModel):
     user_id: uuid.UUID
     amount: int
     reason: str
+    #: Which of the user's credit balances (one per currency); the default
+    #: currency when not given.
+    currency: str | None = None
 
 
 class AdminRewardAdjustResponse(BaseModel):
     user_id: uuid.UUID
     amount: int
     balance_after: int
+    currency: str

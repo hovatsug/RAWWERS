@@ -551,20 +551,27 @@ def clawback_gig_rewards_for_fraud(db: Session, *, gig_id: uuid.UUID, user_id: u
             ),
         )
     ).scalars().all()
-    total = sum(max(0, int(item.amount)) for item in reward_refs)
-    if total <= 0:
-        return 0
-    adjustment = add_reward_entry(
-        db,
-        user_id=user_id,
-        amount=-total,
-        entry_type=RewardEntryType.adjustment,
-        reference_type="fraud_clawback",
-        reference_id=str(gig_id),
-        metadata={"gig_id": str(gig_id)},
-        min_balance_floor=settings.reward_balance_floor,
-    )
-    return abs(int(adjustment.amount)) if adjustment else 0
+    # Taken back in the currency each was earned in (credit is per currency).
+    by_currency: dict[str, int] = {}
+    for item in reward_refs:
+        by_currency[item.currency] = by_currency.get(item.currency, 0) + max(0, int(item.amount))
+    taken = 0
+    for currency, total in sorted(by_currency.items()):
+        if total <= 0:
+            continue
+        adjustment = add_reward_entry(
+            db,
+            user_id=user_id,
+            amount=-total,
+            entry_type=RewardEntryType.adjustment,
+            reference_type="fraud_clawback",
+            reference_id=str(gig_id) if currency == "EUR" else f"{gig_id}:{currency}",
+            currency=currency,
+            metadata={"gig_id": str(gig_id)},
+            min_balance_floor=settings.reward_balance_floor,
+        )
+        taken += abs(int(adjustment.amount)) if adjustment else 0
+    return taken
 
 
 def _refundable_on_intent(db: Session, row: RefundCase) -> Decimal | None:

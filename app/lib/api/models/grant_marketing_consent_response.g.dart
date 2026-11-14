@@ -14,7 +14,7 @@ _GrantMarketingConsentResponse _$GrantMarketingConsentResponseFromJson(
       .toList(),
   credit: (json['credit'] as num).toInt(),
   creditAmount: json['credit_amount'] as String? ?? '0.00',
-  currency: json['currency'] as String? ?? 'EUR',
+  currency: json['currency'] as String,
 );
 
 Map<String, dynamic> _$GrantMarketingConsentResponseToJson(

@@ -29,9 +29,50 @@ from app.services import raww_ledger as ledger
 from app.services.shelf_settings import shelf_settings
 
 
-def raww_for(eur: Decimal, raww_eur_value: Decimal) -> int:
-    """Whole RAWW for a euro amount, to the nearest."""
-    return int((Decimal(eur) / Decimal(raww_eur_value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+def raww_for(amount: Decimal, raww_value: Decimal) -> int:
+    """Whole RAWW for an amount, at a value in the same currency, to the nearest."""
+    return int((Decimal(amount) / Decimal(raww_value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def valuation(db: Session, currency: str) -> dict | None:
+    """What one RAWW stands for, for credit in `currency`, as the fields an
+    entry stamps (MULTI_CURRENCY.md 5, decision M5): euros at the euro value;
+    pounds at the pound value when the admin has set one, else at the euro
+    value converted at that day's rate. None while neither is known (no
+    pound value and no rate): the RAWW wait, they are never valued as if
+    pounds were euros."""
+    from app.services.fx import rate_from_base
+
+    settings = shelf_settings(db)
+    if currency == "EUR":
+        return {"raww_value": settings.raww_eur_value, "raww_value_currency": "EUR", "raww_eur_value": settings.raww_eur_value}
+    own = getattr(settings, f"raww_{currency.lower()}_value", None)
+    if own:
+        return {"raww_value": own, "raww_value_currency": currency, "raww_eur_value": None}
+    rate = rate_from_base(db, currency)
+    if rate is None:
+        return None
+    return {
+        "raww_value": (Decimal(settings.raww_eur_value) * rate).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP),
+        "raww_value_currency": currency,
+        "raww_eur_value": settings.raww_eur_value,
+    }
+
+
+def stamped_valuation(first) -> dict:
+    """The valuation an earlier entry of the same source stamped: every later
+    change to it uses the same value and currency."""
+    if first.raww_value is not None:
+        return {"raww_value": first.raww_value, "raww_value_currency": first.raww_value_currency, "raww_eur_value": first.raww_eur_value}
+    return {"raww_value": first.raww_eur_value, "raww_value_currency": "EUR", "raww_eur_value": first.raww_eur_value}
+
+
+def _unvalued(gig_or_entry, currency: str) -> None:
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "raww_not_valued", extra={"currency": currency, "source": str(getattr(gig_or_entry, "id", ""))}
+    )
 
 
 def _earning(db: Session, gig: Gig) -> EarningsLedgerEntry | None:
@@ -90,17 +131,21 @@ def sync_booking_raww(db: Session, gig: Gig) -> None:
     # are read and written as one, so two refunds at once cannot both apply
     # their difference to the same starting point.
     ledger.balance_locked(db, gig.pro_user_id)
-    rate = first.raww_eur_value if first is not None else shelf_settings(db).raww_eur_value
+    # Valued in the booking's currency (MULTI_CURRENCY.md 5).
+    value = stamped_valuation(first) if first is not None else valuation(db, gig.currency)
+    if value is None:
+        _unvalued(gig, gig.currency)
+        return
     earned = earning is not None and earning.status != EarningsEntryStatus.reversed and gig.final_pro_raww is not None
-    target = raww_for(gig.final_pro_raww, rate) if earned else 0
+    target = raww_for(gig.final_pro_raww, value["raww_value"]) if earned else 0
     status = _wanted(earning, _active_holds(db, gig.pro_user_id))
     common = dict(
         pro_user_id=gig.pro_user_id,
         status=status,
         gig_id=gig.id,
-        raww_eur_value=rate,
-        eur_basis=gig.final_pro_raww,
+        eur_basis=gig.final_pro_raww if value["raww_value_currency"] == "EUR" else None,
         source_type="gig",
+        **value,
     )
     if first is None:
         ledger.post_entry(db, kind=RawwEntryKind.earn_booking, amount=target, source_id=str(gig.id), **common)
@@ -156,17 +201,20 @@ def sync_extras_raww(db: Session, pro_user_id: uuid.UUID) -> int:
         credit = extras_credit(entry)
         if first is None and credit <= 0:
             continue
-        rate = first.raww_eur_value if first is not None else shelf_settings(db).raww_eur_value
-        target = raww_for(credit, rate)
+        value = stamped_valuation(first) if first is not None else valuation(db, entry.currency)
+        if value is None:
+            _unvalued(entry, entry.currency)
+            continue
+        target = raww_for(credit, value["raww_value"])
         status = _wanted(entry, holds)
         gig_id = (entry.meta or {}).get("gig_id")
         common = dict(
             pro_user_id=pro_user_id,
             status=status,
             gig_id=uuid.UUID(gig_id) if gig_id else None,
-            raww_eur_value=rate,
-            eur_basis=credit,
+            eur_basis=credit if value["raww_value_currency"] == "EUR" else None,
             source_type="extra_images",
+            **value,
         )
         moved = False
         if first is None:

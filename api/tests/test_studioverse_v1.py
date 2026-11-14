@@ -154,7 +154,7 @@ def test_purchase_flows_stripe_and_raww_credits(client, db_session, monkeypatch)
     _seed_user(db_session, buyer_credits, [UserRoleType.client])
     pack_id = _create_approved_pack(client, pro_id, price_eur="20.00", price_raww=1200)
 
-    db_session.add(RewardBalance(user_id=uuid.UUID(buyer_credits), balance=3000))
+    db_session.add(RewardBalance(currency="EUR", user_id=uuid.UUID(buyer_credits), balance=3000))
     db_session.commit()
 
     class _PI:
@@ -224,7 +224,7 @@ def test_royalty_reversal_on_refund(client, db_session):
     _seed_user(db_session, buyer_id, [UserRoleType.client])
     pack_id = _create_approved_pack(client, pro_id, price_eur="0.00", price_raww=1000)
 
-    db_session.add(RewardBalance(user_id=uuid.UUID(buyer_id), balance=3000))
+    db_session.add(RewardBalance(currency="EUR", user_id=uuid.UUID(buyer_id), balance=3000))
     db_session.commit()
 
     checkout = client.post(

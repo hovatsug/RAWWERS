@@ -187,7 +187,9 @@ class ExtraImagePricingPolicyUpsertItem(BaseModel):
     unit_price_max: Decimal | None = None
     max_extra_images: int | None = None
     bulk_curve: dict = Field(default_factory=dict)
-    currency: str = "EUR"
+    #: Required: the bounds are in it and apply to photographers paid in it
+    #: (one row per niche, tier and currency).
+    currency: str
     is_active: bool = True
 
 
@@ -233,7 +235,8 @@ class NichePackagePriceCapUpsertItem(BaseModel):
     tier: SkillTier
     entry_price_min: Decimal = Decimal("0.00")
     entry_price_max: Decimal | None = None
-    currency: str = "EUR"
+    #: Required: one cap table per currency (decision M2).
+    currency: str
 
 
 class NichePackagePriceCapUpsertRequest(BaseModel):
@@ -253,7 +256,9 @@ class NichePackagePriceCapView(BaseModel):
 class ProExtraImagePriceUpsertItem(BaseModel):
     niche_slug: str
     configured_unit_price: Decimal
-    currency: str = "EUR"
+    #: Ignored: the price is always in the photographer's currency. A
+    #: different one is refused.
+    currency: str | None = None
 
 
 class ProExtraImagePriceUpsertRequest(BaseModel):

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/booking_credit_preview.dart';
 import 'package:rawwers/api/models/client_booking_status_response.dart';
+import 'package:rawwers/api/models/credit_balance.dart';
 import 'package:rawwers/api/models/credit_history_item.dart';
 import 'package:rawwers/api/models/my_credit_response.dart';
 import 'package:rawwers/design/theme_client.dart';
@@ -55,6 +56,23 @@ void main() {
       expect(creditLabel(_item('reversed', '-1.00')), 'Reversed');
       expect(creditLabel(_item('refunded_credit', '5.00')), 'Refunded credit');
     });
+  });
+
+  testWidgets('My credit: credit in another currency is listed for bookings in it, never added up', (tester) async {
+    await _pumpCredit(
+      tester,
+      MyCreditResponse(
+        currency: 'GBP',
+        balance: '30.00',
+        balances: const [CreditBalance(balance: '12.00', currency: 'EUR'), CreditBalance(balance: '30.00', currency: 'GBP')],
+        maxDiscountPercent: 10,
+        items: const [],
+      ),
+    );
+
+    expect(find.text('£30.00 credit'), findsOneWidget);
+    expect(find.text('€12.00 credit for bookings in EUR'), findsOneWidget);
+    expect(find.textContaining('£42'), findsNothing);
   });
 
   testWidgets('My credit: the balance, how to use it, how to earn it, and the history', (tester) async {

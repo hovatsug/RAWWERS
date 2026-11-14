@@ -19,6 +19,7 @@ const TIERS = ["rookie", "skilled", "pro", "elite", "master"];
 
 type Form = {
   raww_eur_value: string;
+  raww_gbp_value: string;
   gbp_eur_rate: string;
   shelf_discount_percent: string;
   inactivity_months: string;
@@ -35,6 +36,7 @@ type Form = {
 function toForm(s: ShelfSettings): Form {
   return {
     raww_eur_value: s.raww_eur_value,
+    raww_gbp_value: s.raww_gbp_value ?? "",
     gbp_eur_rate: s.gbp_eur_rate,
     shelf_discount_percent: String(s.shelf_discount_percent),
     inactivity_months: String(s.inactivity_months),
@@ -52,6 +54,8 @@ function toForm(s: ShelfSettings): Form {
 function toBody(f: Form): Partial<ShelfSettings> {
   return {
     raww_eur_value: f.raww_eur_value.trim(),
+    // Empty leaves it as it is (unset until first saved).
+    ...(f.raww_gbp_value.trim() ? { raww_gbp_value: f.raww_gbp_value.trim() } : {}),
     gbp_eur_rate: f.gbp_eur_rate.trim(),
     shelf_discount_percent: Number(f.shelf_discount_percent),
     inactivity_months: Number(f.inactivity_months),
@@ -131,6 +135,13 @@ export default function ShelfSettingsPage() {
 
         <Panel className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField id="raww" label="Euros per RAWW" value={form.raww_eur_value} onChange={(v) => set("raww_eur_value", v)} hint="0.10 means a €150 booking's 5% (€7.50) earns 75 RAWW." />
+          <NumberField
+            id="raww-gbp"
+            label="Pounds per RAWW"
+            value={form.raww_gbp_value}
+            onChange={(v) => set("raww_gbp_value", v)}
+            hint="For bookings in pounds. Empty: the euro value at that day's exchange rate."
+          />
           <NumberField id="gbp" label="GBP to EUR (price suggestions only)" value={form.gbp_eur_rate} onChange={(v) => set("gbp_eur_rate", v)} />
           <NumberField id="discount" label="Below street price (%)" value={form.shelf_discount_percent} onChange={(v) => set("shelf_discount_percent", v)} hint="Used for the suggested price." />
           <NumberField id="inactivity" label="Expire after (months without earning or spending)" value={form.inactivity_months} onChange={(v) => set("inactivity_months", v)} />

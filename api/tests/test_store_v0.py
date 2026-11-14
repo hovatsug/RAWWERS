@@ -205,7 +205,7 @@ def test_checkout_creates_order_snapshot_and_reserves_points(client, db_session,
     pro_id = str(uuid.uuid4())
     _prepare_eligible_pro(db_session, pro_id, SkillTier.pro)
     _, product = _create_partner_product(db_session, sku="SKU-POINTS", price="100.00")
-    db_session.add(RewardBalance(user_id=uuid.UUID(pro_id), balance=5000))
+    db_session.add(RewardBalance(currency="EUR", user_id=uuid.UUID(pro_id), balance=5000))
     db_session.commit()
 
     monkeypatch.setattr("app.services.store.stripe.PaymentIntent.create", lambda **kwargs: DummyStripePI(pi_id="pi_checkout_points", client_secret="sec_checkout"))
@@ -233,7 +233,7 @@ def test_payment_success_finalizes_redemption_and_advances_order(client, db_sess
     pro_id = str(uuid.uuid4())
     _prepare_eligible_pro(db_session, pro_id, SkillTier.pro)
     _, product = _create_partner_product(db_session, sku="SKU-WH", price="100.00")
-    db_session.add(RewardBalance(user_id=uuid.UUID(pro_id), balance=5000))
+    db_session.add(RewardBalance(currency="EUR", user_id=uuid.UUID(pro_id), balance=5000))
     db_session.commit()
 
     monkeypatch.setattr("app.services.store.stripe.PaymentIntent.create", lambda **kwargs: DummyStripePI(pi_id="pi_order_paid", client_secret="sec_order_paid"))

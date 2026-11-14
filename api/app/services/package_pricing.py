@@ -338,19 +338,48 @@ def resolve_pro_tier_for_niche(db: Session, pro_user_id: uuid.UUID, niche_id: uu
     return skill.tier if skill else SkillTier.rookie
 
 
-def get_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier) -> NichePackagePriceCap | None:
+def get_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier, currency: str) -> NichePackagePriceCap | None:
+    """The cap for (niche, tier) in `currency`: caps are per currency
+    (MULTI_CURRENCY.md decision M2), never compared across them."""
     return db.execute(
-        select(NichePackagePriceCap).where(NichePackagePriceCap.niche_id == niche_id, NichePackagePriceCap.tier == tier)
+        select(NichePackagePriceCap).where(
+            NichePackagePriceCap.niche_id == niche_id,
+            NichePackagePriceCap.tier == tier,
+            NichePackagePriceCap.currency == currency,
+        )
     ).scalar_one_or_none()
 
 
-def enforce_entry_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier, entry_price: Decimal) -> None:
+def caps_in_other_currencies(db: Session, *, niche_id: uuid.UUID, tier: SkillTier, currency: str) -> list[str]:
+    return sorted(
+        db.execute(
+            select(NichePackagePriceCap.currency).where(
+                NichePackagePriceCap.niche_id == niche_id,
+                NichePackagePriceCap.tier == tier,
+                NichePackagePriceCap.currency != currency,
+            )
+        ).scalars().all()
+    )
+
+
+def enforce_entry_price_cap(db: Session, *, niche_id: uuid.UUID, tier: SkillTier, entry_price: Decimal, currency: str) -> None:
     """Raises a 422 if entry_price is outside the platform's cap for this
-    (niche, tier). No cap configured for a niche+tier means no restriction -
-    matches the "unconfigured niche behaves as if not yet decided" stance
-    taken for curves."""
-    cap = get_price_cap(db, niche_id=niche_id, tier=tier)
+    (niche, tier) in the package's currency. No cap at all for a niche+tier
+    means no restriction - matches the "unconfigured niche behaves as if not
+    yet decided" stance taken for curves. But a cap in another currency and
+    none in this one is refused (`no_price_cap_for_currency`): the platform
+    has decided a cap for that niche and tier, just not in this currency yet,
+    and a price is never checked against a cap in another currency."""
+    cap = get_price_cap(db, niche_id=niche_id, tier=tier, currency=currency)
     if not cap:
+        others = caps_in_other_currencies(db, niche_id=niche_id, tier=tier, currency=currency)
+        if others:
+            raise APIError(
+                code="no_price_cap_for_currency",
+                message=f"No price cap for {currency} yet for this niche and tier",
+                status_code=422,
+                details={"currency": currency, "caps_in": others},
+            )
         return
     if entry_price < cap.entry_price_min:
         raise APIError(

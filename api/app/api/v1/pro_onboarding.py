@@ -68,7 +68,7 @@ from app.schemas.launch_ops import (
     ProOnboardingStartRequest,
     ProOnboardingStatusResponse,
 )
-from app.services.currencies import follow_profile_country, package_currency
+from app.services.currencies import follow_profile_country, package_currency, require_pro_currency
 from app.services.notifications import enqueue_notification
 from app.services.audit import add_admin_audit_log
 from app.services.bookable_time import RequestTerms, apply_request_terms, check_bookable, check_requestable, request_preset, shape_for_package
@@ -388,7 +388,7 @@ def create_package(
     niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
     entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
-    enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price)
+    enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price, currency=currency)
     package = ProPackage(
         pro_user_id=user.user_id,
         niche_id=niche.id,
@@ -451,7 +451,7 @@ def update_package(
     if body.price is not None:
         entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
-        enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price)
+        enforce_entry_price_cap(db, niche_id=niche.id, tier=tier, entry_price=entry_price, currency=package.currency)
 
     for field in [
         "title",
@@ -829,7 +829,9 @@ def get_my_portfolio(
 def get_my_niche_pricing_preview(
     niche_id: uuid.UUID,
     entry_price: Decimal = Query(..., gt=0, description="Proposed entry rate per photo"),
-    currency: str = Query("EUR", min_length=3, max_length=3),
+    currency: str | None = Query(
+        None, min_length=3, max_length=3, description="Ignored: the preview is in the photographer's currency"
+    ),
     included_photos: int | None = Query(
         None, ge=1, le=10_000, description="Photos the package includes: the curve decays after them (10 if not given)"
     ),
@@ -852,7 +854,10 @@ def get_my_niche_pricing_preview(
 
     entry = entry_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
-    cap = get_price_cap(db, niche_id=niche.id, tier=tier)
+    # The photographer's own currency, whatever the query says: their
+    # packages can only be in it, so its cap is the one that applies.
+    currency = require_pro_currency(db, user.user_id)
+    cap = get_price_cap(db, niche_id=niche.id, tier=tier, currency=currency)
     minimum = cap.entry_price_min if cap else Decimal("0.00")
     maximum = cap.entry_price_max if cap else None
     within_cap = entry >= minimum and (maximum is None or entry <= maximum)
@@ -877,7 +882,7 @@ def get_my_niche_pricing_preview(
         niche_name=niche.name,
         tier=tier.value,
         entry_price=entry,
-        currency=currency.upper(),
+        currency=currency,
         entry_price_min=minimum,
         entry_price_max=maximum,
         within_cap=within_cap,
@@ -928,7 +933,10 @@ def put_my_extra_image_prices(
             )
         ).scalar_one_or_none()
         if not row:
-            row = ProExtraImagePrice(pro_user_id=user.user_id, niche_id=niche.id, configured_unit_price=price)
+            row = ProExtraImagePrice(
+                pro_user_id=user.user_id, niche_id=niche.id, configured_unit_price=price,
+                currency=require_pro_currency(db, user.user_id),
+            )
             db.add(row)
         row.configured_unit_price = price
 
@@ -1526,6 +1534,7 @@ def _extra_image_price_response(db: Session, pro_user_id: uuid.UUID) -> ProExtra
             select(ExtraImagePricingPolicy).where(
                 ExtraImagePricingPolicy.niche_id == row.niche_id,
                 ExtraImagePricingPolicy.tier == tier,
+                ExtraImagePricingPolicy.currency == row.currency,
                 ExtraImagePricingPolicy.is_active.is_(True),
             )
         ).scalar_one_or_none()

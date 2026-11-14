@@ -83,7 +83,7 @@ class MeiliSearchProvider(SearchProvider):
         settings_payload: dict = {}
         if suffix == "pros":
             settings_payload = {
-                "filterableAttributes": ["city", "country", "niche_slugs", "is_kyc_approved", "is_available", "price_min"],
+                "filterableAttributes": ["city", "country", "niche_slugs", "is_kyc_approved", "is_available", "price_min", "currency"],
                 "sortableAttributes": ["avg_rating", "price_min", "last_active_at", "completed_gigs_total"],
             }
         elif suffix == "courses":

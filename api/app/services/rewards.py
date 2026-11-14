@@ -34,9 +34,21 @@ DEFAULT_REWARD_RULES: dict[str, dict] = {
     "pro_referral_signup": {"amount": 700, "daily_cap_per_user": 7000, "lifetime_cap_per_user": 70000},
 }
 
-#: The currency client credit is in (points are euros: 100 points = €1)
-#: until batch M4 makes credit per currency.
-CREDIT_CURRENCY = "EUR"
+#: Client credit is per currency (MULTI_CURRENCY.md decision M3, batch M4):
+#: every ledger entry and balance is in one currency, 100 points to one unit
+#: of it (€1, £1). Credit earned on a booking is in that booking's currency
+#: and pays only for bookings in it; nothing is ever converted.
+#: Points that are not client credit (the dormant proof-of-gigs mints,
+#: Studioverse) are kept in euros, as those features are.
+LEGACY_POINTS_CURRENCY = "EUR"
+
+
+def _currency(currency: str | None) -> str:
+    """A credit currency: the one given, else the default (a sign-up reward
+    has no booking behind it)."""
+    from app.services.currencies import default_currency, normalise
+
+    return normalise(currency) if currency else default_currency()
 
 
 def ensure_default_reward_rules(db: Session) -> None:
@@ -128,12 +140,14 @@ def issue_reward(
     reference_type: str | None = None,
     reference_id: str | None = None,
     metadata: dict | None = None,
+    currency: str | None = None,
 ) -> RewardLedgerEntry | None:
     from app.models.risk import RiskActionType
     from app.services.trust_safety import has_active_risk_action
 
     if has_active_risk_action(db, user_id=user_id, action_type=RiskActionType.freeze_rewards):
         return None
+    currency = _currency(currency)
     ensure_default_reward_rules(db)
     rule = db.execute(select(RewardRule).where(RewardRule.code == rule_code)).scalar_one_or_none()
     if not rule or not rule.is_enabled or rule.amount <= 0:
@@ -155,7 +169,7 @@ def issue_reward(
     if not _is_within_caps(db, user_id, rule):
         return None
 
-    balance = _get_or_create_reward_balance_locked(db, user_id)
+    balance = _get_or_create_reward_balance_locked(db, user_id, currency)
     if reference_type and reference_id and _entry_for_reference(db, user_id, RewardEntryType.earn, reference_type, reference_id):
         return None
     new_balance = balance.balance + rule.amount
@@ -166,6 +180,7 @@ def issue_reward(
         user_id=user_id,
         entry_type=RewardEntryType.earn,
         rule_code=rule.code,
+        currency=currency,
         amount=rule.amount,
         balance_after=new_balance,
         reference_type=reference_type,
@@ -204,16 +219,11 @@ def reserve_points_for_discount(
         raise APIError(code="validation_error", message="Choose an amount of credit to use", status_code=422)
     if payment_amount <= Decimal("0.00"):
         raise APIError(code="validation_error", message="payment amount must be > 0", status_code=422)
-    if str(currency).upper() != CREDIT_CURRENCY:
-        # Credit is per currency (MULTI_CURRENCY.md decision M3): today's
-        # credit is in euros, so it pays only for euro payments, never a
-        # pound one at a euro value. Per-currency credit is batch M4.
-        raise APIError(
-            code="credit_currency_mismatch",
-            message="Your credit is in euros and can be used on bookings in euros only",
-            status_code=422,
-            details={"credit_currency": CREDIT_CURRENCY, "currency": str(currency).upper()},
-        )
+    # Spent from the client's credit in the payment's currency only
+    # (decision M3): credit in another currency is never touched.
+    from app.services.currencies import format_money, normalise
+
+    currency = normalise(currency)
 
     existing = _open_redemption(db, user_id, context_type, context_id)
     if existing:
@@ -224,13 +234,17 @@ def reserve_points_for_discount(
     raw_discount_amount = (Decimal(points) / Decimal(points_per_eur)).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
     discount_amount = min(raw_discount_amount, max_discount_amount, payment_amount)
     if discount_amount <= Decimal("0.00"):
-        raise APIError(code="validation_error", message="Your credit is less than €0.01, too little to take off this payment", status_code=422)
+        raise APIError(
+            code="validation_error",
+            message=f"Your credit is less than {format_money(Decimal('0.01'), currency)}, too little to take off this payment",
+            status_code=422,
+        )
 
     points_to_spend = int((discount_amount * Decimal(points_per_eur)).to_integral_value(rounding=ROUND_DOWN))
     if points_to_spend <= 0:
         raise APIError(code="validation_error", message="That amount of credit cannot be used", status_code=422)
 
-    balance = _get_or_create_reward_balance_locked(db, user_id)
+    balance = _get_or_create_reward_balance_locked(db, user_id, currency)
     # Again under the lock: a double tap's other request may have reserved
     # for this payment while this one waited. Spending twice is the bug.
     existing = _open_redemption(db, user_id, context_type, context_id)
@@ -249,7 +263,7 @@ def reserve_points_for_discount(
         context_id=context_id,
         points_spent=points_to_spend,
         discount_amount=discount_amount,
-        currency=currency.upper(),
+        currency=currency,
         status=DiscountRedemptionStatus.reserved,
     )
     db.add(redemption)
@@ -260,6 +274,7 @@ def reserve_points_for_discount(
             user_id=user_id,
             entry_type=RewardEntryType.spend,
             rule_code=None,
+            currency=currency,
             amount=-points_to_spend,
             balance_after=new_balance,
             reference_type=context_type.value,
@@ -307,7 +322,7 @@ def release_redemption_for_context(
     if not redemption:
         return None
 
-    balance = _get_or_create_reward_balance_locked(db, redemption.user_id)
+    balance = _get_or_create_reward_balance_locked(db, redemption.user_id, redemption.currency)
     new_balance = balance.balance + redemption.points_spent
     balance.balance = new_balance
     balance.updated_at = datetime.now(timezone.utc)
@@ -320,6 +335,7 @@ def release_redemption_for_context(
             user_id=redemption.user_id,
             entry_type=RewardEntryType.adjustment,
             rule_code=None,
+            currency=redemption.currency,
             amount=redemption.points_spent,
             balance_after=new_balance,
             reference_type=context_type.value,
@@ -345,8 +361,8 @@ def list_reward_ledger(db: Session, user_id: uuid.UUID, limit: int, offset: int)
     return total, rows
 
 
-def get_reward_balance(db: Session, user_id: uuid.UUID) -> RewardBalance:
-    return _get_or_create_reward_balance_locked(db, user_id)
+def get_reward_balance(db: Session, user_id: uuid.UUID, currency: str | None = None) -> RewardBalance:
+    return _get_or_create_reward_balance_locked(db, user_id, _currency(currency))
 
 
 def create_manual_adjustment(
@@ -355,11 +371,13 @@ def create_manual_adjustment(
     amount: int,
     reason: str,
     metadata: dict | None = None,
+    currency: str | None = None,
 ) -> RewardLedgerEntry:
     if amount == 0:
         raise APIError(code="validation_error", message="amount cannot be zero", status_code=422)
 
-    balance = _get_or_create_reward_balance_locked(db, user_id)
+    currency = _currency(currency)
+    balance = _get_or_create_reward_balance_locked(db, user_id, currency)
     new_balance = balance.balance + amount
     if new_balance < 0:
         raise APIError(code="validation_error", message="Adjustment would make balance negative", status_code=422)
@@ -370,6 +388,7 @@ def create_manual_adjustment(
         user_id=user_id,
         entry_type=RewardEntryType.adjustment,
         rule_code=None,
+        currency=currency,
         amount=amount,
         balance_after=new_balance,
         reference_type="admin_adjustment",
@@ -402,13 +421,18 @@ def add_reward_entry(
     entry_type: RewardEntryType,
     reference_type: str,
     reference_id: str,
+    currency: str,
     metadata: dict | None = None,
     rule_code: str | None = None,
     min_balance_floor: int | None = None,
 ) -> RewardLedgerEntry | None:
+    """One line on the user's credit in `currency` (required: a booking's
+    credit is in its currency; never defaulted)."""
     from app.models.risk import RiskActionType
+    from app.services.currencies import normalise
     from app.services.trust_safety import has_active_risk_action
 
+    currency = normalise(currency)
     if amount == 0:
         return None
     if has_active_risk_action(db, user_id=user_id, action_type=RiskActionType.freeze_rewards):
@@ -418,7 +442,7 @@ def add_reward_entry(
     if existing:
         return existing
 
-    balance = _get_or_create_reward_balance_locked(db, user_id)
+    balance = _get_or_create_reward_balance_locked(db, user_id, currency)
     # Again under the lock: a concurrent call for the same reference may have
     # written it while this one waited (the outbox delivers at least once).
     existing = _entry_for_reference(db, user_id, entry_type, reference_type, reference_id)
@@ -435,6 +459,7 @@ def add_reward_entry(
         user_id=user_id,
         entry_type=entry_type,
         rule_code=rule_code,
+        currency=currency,
         amount=int(amount),
         balance_after=new_balance,
         reference_type=reference_type,
@@ -473,11 +498,14 @@ def _is_within_caps(db: Session, user_id: uuid.UUID, rule: RewardRule) -> bool:
     return True
 
 
-def _get_or_create_reward_balance_locked(db: Session, user_id: uuid.UUID) -> RewardBalance:
+def _get_or_create_reward_balance_locked(db: Session, user_id: uuid.UUID, currency: str) -> RewardBalance:
+    """The user's balance in one currency, locked. Created empty on first use."""
     ensure_user_account(db, user_id)
-    balance = db.execute(select(RewardBalance).where(RewardBalance.user_id == user_id).with_for_update()).scalar_one_or_none()
+    balance = db.execute(
+        select(RewardBalance).where(RewardBalance.user_id == user_id, RewardBalance.currency == currency).with_for_update()
+    ).scalar_one_or_none()
     if balance is None:
-        balance = RewardBalance(user_id=user_id, balance=0)
+        balance = RewardBalance(user_id=user_id, currency=currency, balance=0)
         db.add(balance)
         db.flush()
     return balance

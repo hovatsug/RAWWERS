@@ -38,10 +38,10 @@ def fake_stripe(monkeypatch) -> FakeStripe:
     return fake
 
 
-def _give(db, user, points, reference="admin", ref_id=None):
+def _give(db, user, points, reference="admin", ref_id=None, currency="EUR"):
     entry = add_reward_entry(
         db, user_id=user, amount=points, entry_type=RewardEntryType.earn if points > 0 else RewardEntryType.adjustment,
-        reference_type=reference, reference_id=ref_id or str(uuid.uuid4()),
+        reference_type=reference, reference_id=ref_id or str(uuid.uuid4()), currency=currency,
     )
     db.commit()
     return entry
@@ -245,7 +245,7 @@ def test_concurrent_grants_never_exceed_the_budget(client, db_session, fake_stri
         t.join()
 
     assert results.count(True) == 3
-    assert client_credit.awarded_eur(db_session) == Decimal("3.00")
+    assert client_credit.awarded(db_session, "EUR") == Decimal("3.00")
 
 
 def test_the_month_is_londons_calendar_month():
@@ -278,7 +278,7 @@ def test_admins_are_told_at_80_and_100_percent_once_each(client, db_session, fak
 
     admin = next(iter(get_settings().admin_user_id_set()))
     titles = [n.title for n in db_session.execute(select(Notification).where(Notification.user_id == admin, Notification.type == "admin.marketing_budget")).scalars()]
-    assert sorted(titles) == ["Marketing credit budget at 100%", "Marketing credit budget at 80%"]
+    assert sorted(titles) == ["Marketing credit budget (EUR) at 100%", "Marketing credit budget (EUR) at 80%"]
 
 
 def test_each_award_tells_the_client_once(client, db_session, fake_stripe):

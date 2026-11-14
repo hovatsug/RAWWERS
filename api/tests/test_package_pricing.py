@@ -229,6 +229,7 @@ def test_enforce_entry_price_cap_allows_within_bounds_rejects_outside(db_session
     weddings = get_active_niche_by_slug(db_session, "weddings")
     db_session.add(
         NichePackagePriceCap(
+            currency="EUR",
             niche_id=weddings.id,
             tier=SkillTier.rookie,
             entry_price_min=Decimal("1.00"),
@@ -237,16 +238,16 @@ def test_enforce_entry_price_cap_allows_within_bounds_rejects_outside(db_session
     )
     db_session.commit()
 
-    enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.rookie, entry_price=Decimal("3.00"))
+    enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.rookie, entry_price=Decimal("3.00"), currency="EUR")
 
     try:
-        enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.rookie, entry_price=Decimal("0.50"))
+        enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.rookie, entry_price=Decimal("0.50"), currency="EUR")
         assert False, "expected APIError below min"
     except APIError as exc:
         assert exc.status_code == 422
 
     try:
-        enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.rookie, entry_price=Decimal("9.00"))
+        enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.rookie, entry_price=Decimal("9.00"), currency="EUR")
         assert False, "expected APIError above max"
     except APIError as exc:
         assert exc.status_code == 422
@@ -255,7 +256,7 @@ def test_enforce_entry_price_cap_allows_within_bounds_rejects_outside(db_session
 def test_enforce_entry_price_cap_is_noop_when_unconfigured(db_session):
     ensure_initial_niches(db_session)
     weddings = get_active_niche_by_slug(db_session, "weddings")
-    enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.master, entry_price=Decimal("999.00"))
+    enforce_entry_price_cap(db_session, niche_id=weddings.id, tier=SkillTier.master, entry_price=Decimal("999.00"), currency="EUR")
 
 
 def test_enforce_minimum_selection_count():
@@ -282,6 +283,7 @@ def test_create_package_rejects_price_above_tier_cap(client, db_session):
     weddings = get_active_niche_by_slug(db_session, "weddings")
     db_session.add(
         NichePackagePriceCap(
+            currency="EUR",
             niche_id=weddings.id,
             tier=SkillTier.rookie,
             entry_price_min=Decimal("1.00"),
@@ -315,6 +317,7 @@ def test_create_package_within_cap_succeeds_and_update_re_enforces_it(client, db
     weddings = get_active_niche_by_slug(db_session, "weddings")
     db_session.add(
         NichePackagePriceCap(
+            currency="EUR",
             niche_id=weddings.id,
             tier=SkillTier.rookie,
             entry_price_min=Decimal("1.00"),
@@ -380,6 +383,7 @@ def test_update_package_without_changing_price_does_not_re_check_cap(client, db_
     weddings = get_active_niche_by_slug(db_session, "weddings")
     db_session.add(
         NichePackagePriceCap(
+            currency="EUR",
             niche_id=weddings.id,
             tier=SkillTier.rookie,
             entry_price_min=Decimal("1.00"),

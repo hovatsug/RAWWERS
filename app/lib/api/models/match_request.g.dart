@@ -13,6 +13,7 @@ _MatchRequest _$MatchRequestFromJson(Map<String, dynamic> json) =>
           ?.map((e) => e as String)
           .toList(),
       budget: json['budget'],
+      currency: json['currency'] as String?,
       dateRange: json['date_range'] as Map<String, dynamic>?,
       purpose: json['purpose'] as String?,
       limit: (json['limit'] as num?)?.toInt() ?? 10,
@@ -23,6 +24,7 @@ Map<String, dynamic> _$MatchRequestToJson(_MatchRequest instance) =>
       'city': instance.city,
       'styles': instance.styles,
       'budget': instance.budget,
+      'currency': instance.currency,
       'date_range': instance.dateRange,
       'purpose': instance.purpose,
       'limit': instance.limit,

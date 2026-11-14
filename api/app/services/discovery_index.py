@@ -78,7 +78,11 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
         min_entry_rate = cheapest.price
         min_entry_photos = minimum_selection_for(cheapest.included_photos)
 
-    currency = packages[0].currency if packages else "EUR"
+    # The photographer's currency (every package is in it, MULTI_CURRENCY.md 2.1).
+    # A row with no profile and no package yet takes the default currency.
+    from app.services.currencies import default_currency
+
+    currency = profile.currency if profile else (packages[0].currency if packages else default_currency())
 
     portfolio_photos = db.execute(
         select(func.count())
@@ -155,7 +159,13 @@ def recompute_pro_public_index(db: Session, pro_user_id: uuid.UUID) -> ProPublic
     index.max_package_price = max_price
     index.min_entry_rate = min_entry_rate
     index.min_entry_photos = min_entry_photos
-    index.currency = currency
+    if currency is not None:
+        index.currency = currency
+    # The cheapest package in euro cents for the budget filter across
+    # currencies; null while the day's rate for its currency is unknown.
+    from app.services.fx import to_base_minor
+
+    index.min_package_price_base_minor = to_base_minor(db, min_price, index.currency) if index.currency else None
     # The photographer's own switch, and never while banned or suspended.
     index.is_accepting_bookings = bool(profile and profile.is_accepting_bookings) and booking_block_reason(db, pro_user_id) is None
     index.kyc_status = profile.kyc_status if profile else KYCStatus.unsubmitted

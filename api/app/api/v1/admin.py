@@ -2455,30 +2455,33 @@ def upsert_extra_image_pricing_policies(
     niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
     by_slug = {row.slug: row for row in niches}
 
+    from app.services.currencies import normalise
+
     for item in body.items:
         niche = by_slug.get(item.niche_slug)
         if not niche:
             raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        currency = normalise(item.currency)
         row = db.execute(
             select(ExtraImagePricingPolicy).where(
                 ExtraImagePricingPolicy.niche_id == niche.id,
                 ExtraImagePricingPolicy.tier == item.tier,
+                ExtraImagePricingPolicy.currency == currency,
             )
         ).scalar_one_or_none()
         if not row:
-            row = ExtraImagePricingPolicy(niche_id=niche.id, tier=item.tier)
+            row = ExtraImagePricingPolicy(niche_id=niche.id, tier=item.tier, currency=currency)
             db.add(row)
         row.unit_price_min = item.unit_price_min
         row.unit_price_max = item.unit_price_max
         row.max_extra_images = item.max_extra_images
         row.bulk_curve = item.bulk_curve
-        row.currency = item.currency.upper()
         row.is_active = item.is_active
         add_admin_audit_log(
             db,
             actor_user_id=actor.user_id,
             target_type="extra_image_pricing_policy",
-            target_id=f"{niche.id}:{item.tier.value}",
+            target_id=f"{niche.id}:{item.tier.value}:{currency}",
             action="extra_image_pricing_policy_upsert",
             metadata=item.model_dump(mode="json"),
         )
@@ -2585,14 +2588,17 @@ def upsert_niche_package_price_caps(
     # Checked whole before anything is written. This is how an empty table is
     # first filled - possibly sixty caps at once from a file - so a typo has
     # to stop the save, not land as the cap every photographer is held to.
-    seen: set[tuple[str, SkillTier]] = set()
+    from app.services.currencies import normalise
+
+    seen: set[tuple[str, SkillTier, str]] = set()
     for item in body.items:
-        where = f"{item.niche_slug} · {item.tier.value}"
+        currency = normalise(item.currency)
+        where = f"{item.niche_slug} · {item.tier.value} · {currency}"
         if item.niche_slug not in by_slug:
             raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
-        if (item.niche_slug, item.tier) in seen:
+        if (item.niche_slug, item.tier, currency) in seen:
             raise APIError(code="validation_error", message=f"{where} appears twice", status_code=422)
-        seen.add((item.niche_slug, item.tier))
+        seen.add((item.niche_slug, item.tier, currency))
         if item.entry_price_min < 0 or (item.entry_price_max is not None and item.entry_price_max < 0):
             raise APIError(code="validation_error", message=f"{where}: a price cannot be negative", status_code=422)
         if item.entry_price_max is not None and item.entry_price_max < item.entry_price_min:
@@ -2606,23 +2612,24 @@ def upsert_niche_package_price_caps(
         niche = by_slug.get(item.niche_slug)
         if not niche:
             raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        currency = normalise(item.currency)
         row = db.execute(
             select(NichePackagePriceCap).where(
                 NichePackagePriceCap.niche_id == niche.id,
                 NichePackagePriceCap.tier == item.tier,
+                NichePackagePriceCap.currency == currency,
             )
         ).scalar_one_or_none()
         if not row:
-            row = NichePackagePriceCap(niche_id=niche.id, tier=item.tier)
+            row = NichePackagePriceCap(niche_id=niche.id, tier=item.tier, currency=currency)
             db.add(row)
         row.entry_price_min = item.entry_price_min
         row.entry_price_max = item.entry_price_max
-        row.currency = item.currency.upper()
         add_admin_audit_log(
             db,
             actor_user_id=actor.user_id,
             target_type="niche_package_price_cap",
-            target_id=f"{niche.id}:{item.tier.value}",
+            target_id=f"{niche.id}:{item.tier.value}:{currency}",
             action="niche_package_price_cap_upsert",
             metadata=item.model_dump(mode="json"),
         )
@@ -2665,10 +2672,20 @@ def upsert_pro_extra_image_prices(
     slugs = [item.niche_slug for item in body.items]
     niches = db.execute(select(Niche).where(Niche.slug.in_(slugs))).scalars().all() if slugs else []
     by_slug = {row.slug: row for row in niches}
+    from app.services.currencies import normalise, require_pro_currency
+
+    own = require_pro_currency(db, pro_user_id)
     for item in body.items:
         niche = by_slug.get(item.niche_slug)
         if not niche:
             raise APIError(code="validation_error", message=f"Unknown niche slug: {item.niche_slug}", status_code=422)
+        if item.currency is not None and normalise(item.currency) != own:
+            raise APIError(
+                code="currency_mismatch",
+                message=f"This photographer's prices are in {own}",
+                status_code=422,
+                details={"currency": normalise(item.currency), "photographer_currency": own},
+            )
         row = db.execute(
             select(ProExtraImagePrice).where(
                 ProExtraImagePrice.pro_user_id == pro_user_id,
@@ -2676,10 +2693,12 @@ def upsert_pro_extra_image_prices(
             )
         ).scalar_one_or_none()
         if not row:
-            row = ProExtraImagePrice(pro_user_id=pro_user_id, niche_id=niche.id, configured_unit_price=item.configured_unit_price)
+            row = ProExtraImagePrice(
+                pro_user_id=pro_user_id, niche_id=niche.id, configured_unit_price=item.configured_unit_price, currency=own
+            )
             db.add(row)
         row.configured_unit_price = item.configured_unit_price
-        row.currency = item.currency.upper()
+        row.currency = own
         add_admin_audit_log(
             db,
             actor_user_id=actor.user_id,

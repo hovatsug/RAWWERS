@@ -727,12 +727,13 @@ def _compliant_price(db, *, niche, tier: SkillTier, city: str, rng: random.Rando
     from app.services.package_pricing import get_price_cap
 
     low_factor, high_factor = CITY_PRICE_FACTOR[city]
-    cap = get_price_cap(db, niche_id=niche.id, tier=tier)
+    # The demo photographers are priced in euros (their caps are the euro table).
+    cap = get_price_cap(db, niche_id=niche.id, tier=tier, currency="EUR")
 
     if cap is not None and cap.entry_price_max is not None:
         ceiling = float(cap.entry_price_max)
     else:
-        elite = get_price_cap(db, niche_id=niche.id, tier=SkillTier.elite)
+        elite = get_price_cap(db, niche_id=niche.id, tier=SkillTier.elite, currency="EUR")
         if elite is None or elite.entry_price_max is None:
             # No caps configured for this niche at all - the pre-cap state.
             return Decimal(rng.randint(80, 200)).quantize(Decimal("0.01"))

@@ -210,6 +210,7 @@ class _ClientLaunchClient implements ClientLaunchClient {
     required String? q,
     required double? minPrice,
     required double? maxPrice,
+    required String? currency,
     String sort = 'rank',
     int limit = 20,
     int offset = 0,
@@ -281,6 +282,18 @@ class _ClientLaunchClient implements ClientLaunchClient {
               {'type': 'null'},
             ],
             'title': 'Max Price',
+          },
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Currency',
           },
         },
         {
@@ -368,6 +381,7 @@ class _ClientLaunchClient implements ClientLaunchClient {
       r'q': q,
       r'min_price': minPrice,
       r'max_price': maxPrice,
+      r'currency': currency,
       r'sort': sort,
       r'limit': limit,
       r'offset': offset,

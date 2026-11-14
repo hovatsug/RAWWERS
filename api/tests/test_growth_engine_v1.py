@@ -91,14 +91,16 @@ def test_referral_rewards_are_idempotent(db_session):
         referee_user_id=referee,
         conversion_type=ReferralConversionType.booking_paid,
         conversion_id=conversion_id,
-        conversion_value_eur=Decimal("120.00"),
+        conversion_value=Decimal("120.00"),
+        currency="EUR",
     )
     second = maybe_issue_referral_conversion_reward(
         db_session,
         referee_user_id=referee,
         conversion_type=ReferralConversionType.booking_paid,
         conversion_id=conversion_id,
-        conversion_value_eur=Decimal("120.00"),
+        conversion_value=Decimal("120.00"),
+        currency="EUR",
     )
     db_session.commit()
 
@@ -124,7 +126,8 @@ def test_blacklist_blocks_referral_rewards(db_session):
         referee_user_id=referee,
         conversion_type=ReferralConversionType.booking_paid,
         conversion_id=uuid.uuid4(),
-        conversion_value_eur=Decimal("200.00"),
+        conversion_value=Decimal("200.00"),
+        currency="EUR",
     )
     db_session.commit()
 
@@ -161,7 +164,8 @@ def test_priority_referral_over_share_attribution(db_session):
         referee_user_id=referee,
         conversion_type=ReferralConversionType.booking_paid,
         conversion_id=conversion_id,
-        conversion_value_eur=Decimal("99.00"),
+        conversion_value=Decimal("99.00"),
+        currency="EUR",
         share_link_id=uuid.uuid4(),
     )
     db_session.commit()

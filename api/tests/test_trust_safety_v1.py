@@ -65,6 +65,7 @@ def test_freeze_rewards_blocks_reward_grants(db_session):
     apply_risk_action(db_session, user_id=user_id, action_type=RiskActionType.freeze_rewards, reason="test")
     row = add_reward_entry(
         db_session,
+        currency="EUR",
         user_id=user_id,
         amount=100,
         entry_type=RewardEntryType.earn,

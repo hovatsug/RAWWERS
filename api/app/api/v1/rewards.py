@@ -225,12 +225,14 @@ def claim_referral(
 @router.get("/rewards/balance", response_model=RewardBalanceResponse)
 @router.get("/me/rewards/balance", response_model=RewardBalanceResponse)
 def rewards_balance(
+    currency: str | None = None,
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> RewardBalanceResponse:
-    balance = get_reward_balance(db, user.user_id)
+    """Points in one currency's credit (the default currency's when none is asked for)."""
+    balance = get_reward_balance(db, user.user_id, currency)
     db.commit()
-    return RewardBalanceResponse(balance=balance.balance)
+    return RewardBalanceResponse(balance=balance.balance, currency=balance.currency)
 
 
 @router.get("/rewards/ledger", response_model=RewardLedgerResponse)
@@ -352,7 +354,9 @@ def admin_adjust_rewards(
     actor: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db_session),
 ) -> AdminRewardAdjustResponse:
-    entry = create_manual_adjustment(db, body.user_id, body.amount, body.reason, metadata={"actor_user_id": str(actor.user_id)})
+    entry = create_manual_adjustment(
+        db, body.user_id, body.amount, body.reason, metadata={"actor_user_id": str(actor.user_id)}, currency=body.currency
+    )
     add_admin_audit_log(
         db,
         actor_user_id=actor.user_id,
@@ -360,10 +364,10 @@ def admin_adjust_rewards(
         target_id=str(body.user_id),
         action="reward_adjustment",
         reason=body.reason,
-        metadata={"amount": body.amount, "balance_after": entry.balance_after},
+        metadata={"amount": body.amount, "balance_after": entry.balance_after, "currency": entry.currency},
     )
     db.commit()
-    return AdminRewardAdjustResponse(user_id=body.user_id, amount=body.amount, balance_after=entry.balance_after)
+    return AdminRewardAdjustResponse(user_id=body.user_id, amount=body.amount, balance_after=entry.balance_after, currency=entry.currency)
 
 
 @router.get("/admin/referrals/report", response_model=AdminReferralReportResponse)

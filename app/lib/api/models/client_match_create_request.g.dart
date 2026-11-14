@@ -14,6 +14,7 @@ _ClientMatchCreateRequest _$ClientMatchCreateRequestFromJson(
   nicheSlug: json['niche_slug'] as String,
   budgetMin: json['budget_min'],
   budgetMax: json['budget_max'],
+  currency: json['currency'] as String?,
   styleTags: (json['style_tags'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
@@ -27,5 +28,6 @@ Map<String, dynamic> _$ClientMatchCreateRequestToJson(
   'niche_slug': instance.nicheSlug,
   'budget_min': instance.budgetMin,
   'budget_max': instance.budgetMax,
+  'currency': instance.currency,
   'style_tags': instance.styleTags,
 };

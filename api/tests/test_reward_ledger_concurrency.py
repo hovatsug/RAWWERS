@@ -42,7 +42,7 @@ def _user_with_balance(points: int) -> uuid.UUID:
     try:
         db.add(UserAccount(user_id=user_id))
         db.flush()
-        db.add(RewardBalance(user_id=user_id, balance=points))
+        db.add(RewardBalance(currency="EUR", user_id=user_id, balance=points))
         db.commit()
     finally:
         db.close()
@@ -89,7 +89,7 @@ def _count(model, *where) -> int:
 def _balance(user_id) -> int:
     db = TestingSessionLocal()
     try:
-        return db.get(RewardBalance, user_id).balance
+        return db.get(RewardBalance, (user_id, "EUR")).balance
     finally:
         db.close()
 
@@ -100,7 +100,7 @@ def test_the_same_award_delivered_twice_at_once_credits_once():
     def award(db):
         return add_reward_entry(
             db, user_id=user_id, amount=100, entry_type=RewardEntryType.earn,
-            reference_type="marketing_consent", reference_id="gig-1",
+            reference_type="marketing_consent", reference_id="gig-1", currency="EUR",
         ).id
 
     first, second = _race(award, award)
@@ -135,7 +135,7 @@ def test_the_database_refuses_a_second_entry_for_the_same_reference():
     try:
         for _ in range(2):
             db.add(RewardLedgerEntry(
-                user_id=user_id, entry_type=RewardEntryType.earn, amount=100, balance_after=100,
+                currency="EUR", user_id=user_id, entry_type=RewardEntryType.earn, amount=100, balance_after=100,
                 reference_type="marketing_consent", reference_id="gig-1", meta={},
             ))
         with pytest.raises(IntegrityError):
@@ -151,7 +151,7 @@ def test_entries_without_a_reference_are_not_constrained():
     try:
         for _ in range(2):
             db.add(RewardLedgerEntry(
-                user_id=user_id, entry_type=RewardEntryType.adjustment, amount=1, balance_after=1, meta={},
+                currency="EUR", user_id=user_id, entry_type=RewardEntryType.adjustment, amount=1, balance_after=1, meta={},
             ))
         db.commit()
     finally:

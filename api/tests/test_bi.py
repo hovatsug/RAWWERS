@@ -113,7 +113,7 @@ def build_world(db) -> World:
     db.flush()
     db.add(LedgerEntry(gig_id=w.g1.id, entry_type=LedgerEntryType.refund_succeeded, amount=Decimal("-20.00"), currency="EUR",
                        reference_type="stripe_refund", reference_id="re_1", created_at=at(D2)))
-    db.add(RewardLedgerEntry(user_id=w.client, entry_type=RewardEntryType.adjustment, amount=200, balance_after=200,
+    db.add(RewardLedgerEntry(currency="EUR", user_id=w.client, entry_type=RewardEntryType.adjustment, amount=200, balance_after=200,
                              reference_type="booking_refund", reference_id=f"{w.g1.id}:re_1",
                              meta={"refunded_redemption_id": str(redemption.id)}, created_at=at(D2)))
 
@@ -453,7 +453,7 @@ def test_stripe_s_own_fees_count_as_stripe_fees(db_session, world):
 def test_free_cash_takes_the_raww_outstanding_off_at_face_value_and_at_cost(db_session, world):
     from app.models.reward import RewardBalance
 
-    db_session.add(RewardBalance(user_id=world.client, balance=250))
+    db_session.add(RewardBalance(currency="EUR", user_id=world.client, balance=250))
     db_session.commit()
     o = bi.owed(db_session, {"available_cents": 50000, "pending_cents": 7000, "reason": None})
     liquid = 50000 + 7000 + 170000 - 13671 - 1100

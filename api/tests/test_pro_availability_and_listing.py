@@ -407,6 +407,7 @@ def test_pricing_preview_reports_the_cap_rather_than_rejecting(client, db_sessio
     niche = db_session.query(Niche).filter_by(slug="portraits").one()
     db_session.add(
         NichePackagePriceCap(
+            currency="EUR",
             niche_id=niche.id,
             tier=SkillTier.rookie,
             entry_price_min=Decimal("5.00"),
@@ -443,6 +444,7 @@ def test_extra_image_price_shows_configured_and_applied(client, db_session):
     niche = db_session.query(Niche).filter_by(slug="portraits").one()
     db_session.add(
         ExtraImagePricingPolicy(
+            currency="EUR",
             niche_id=niche.id,
             tier=SkillTier.rookie,
             unit_price_min=Decimal("2.00"),

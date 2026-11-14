@@ -41,6 +41,17 @@
 ///             ],
 ///             "title": "Budget Max"
 ///         },
+///         "currency": {
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Currency"
+///         },
 ///         "style_tags": {
 ///             "type": "array",
 ///             "items": {
@@ -86,6 +97,9 @@ abstract class ClientMatchCreateRequest with _$ClientMatchCreateRequest {
     /// budgetMax
     @JsonKey(name: ClientMatchCreateRequest.budgetMaxKey_) dynamic? budgetMax,
 
+    /// currency
+    @JsonKey(name: ClientMatchCreateRequest.currencyKey_) String? currency,
+
     /// styleTags
     @JsonKey(name: ClientMatchCreateRequest.styleTagsKey_)
     List<String>? styleTags,
@@ -103,6 +117,8 @@ abstract class ClientMatchCreateRequest with _$ClientMatchCreateRequest {
   static const String budgetMinKey_ = r'budget_min';
 
   static const String budgetMaxKey_ = r'budget_max';
+
+  static const String currencyKey_ = r'currency';
 
   static const String styleTagsKey_ = r'style_tags';
 }

@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 
 class ShelfSettingsView(BaseModel):
     raww_eur_value: Decimal
+    #: Pounds per RAWW (null: not set; a booking in pounds is then valued at
+    #: the euro value at that day's rate).
+    raww_gbp_value: Decimal | None = None
     gbp_eur_rate: Decimal
     shelf_discount_percent: int
     inactivity_months: int
@@ -35,6 +38,7 @@ class ShelfSettingsView(BaseModel):
 
 class ShelfSettingsUpdateRequest(BaseModel):
     raww_eur_value: Decimal | None = None
+    raww_gbp_value: Decimal | None = None
     gbp_eur_rate: Decimal | None = None
     shelf_discount_percent: int | None = None
     inactivity_months: int | None = None

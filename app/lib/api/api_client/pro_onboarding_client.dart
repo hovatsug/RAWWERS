@@ -1486,7 +1486,7 @@ abstract class ProOnboardingClient {
   getMyNichePricingPreviewV1ProMePricingNichesNicheIdGet({
     @Path("niche_id") required String nicheId,
     @Query("entry_price") required dynamic entryPrice,
-    @Query("currency") String currency = 'EUR',
+    @Query("currency") required String? currency,
     @Query("included_photos") required int? includedPhotos,
     @Header("Authorization") required String? authorization,
     @Header("X-User-Id") required String? xMinusUserMinusId,
@@ -1527,12 +1527,16 @@ abstract class ProOnboardingClient {
           'in': 'query',
           'required': false,
           'schema': {
-            'type': 'string',
-            'minLength': 3,
-            'maxLength': 3,
-            'default': 'EUR',
+            'anyOf': [
+              {'type': 'string', 'minLength': 3, 'maxLength': 3},
+              {'type': 'null'},
+            ],
+            'description':
+                'Ignored: the preview is in the photographer\'s currency',
             'title': 'Currency',
           },
+          'description':
+              'Ignored: the preview is in the photographer\'s currency',
         },
         {
           'name': 'included_photos',

@@ -36,7 +36,9 @@ DEFAULTS = {
 }
 
 #: What an admin may change with PUT; the terms go through their own calls.
-EDITABLE = (*DEFAULTS.keys(), "shelf_enabled")
+#: `raww_gbp_value` (pounds per RAWW, decision M5) starts unset: a booking in
+#: pounds is valued at the euro value at that day's rate until it is set.
+EDITABLE = (*DEFAULTS.keys(), "shelf_enabled", "raww_gbp_value")
 
 
 def _is_production() -> bool:
@@ -80,6 +82,10 @@ def validate(values: dict) -> dict:
         out[key] = Decimal(str(out[key]))
         if out[key] <= 0 or out[key] > 100:
             raise _refuse(f"{key} must be above 0")
+    if out.get("raww_gbp_value") is not None:
+        out["raww_gbp_value"] = Decimal(str(out["raww_gbp_value"]))
+        if out["raww_gbp_value"] <= 0 or out["raww_gbp_value"] > 100:
+            raise _refuse("raww_gbp_value must be above 0")
     ranges = {
         "shelf_discount_percent": (0, 90),
         "inactivity_months": (1, 120),

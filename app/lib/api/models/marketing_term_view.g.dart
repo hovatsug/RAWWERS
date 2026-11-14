@@ -11,7 +11,7 @@ _MarketingTermView _$MarketingTermViewFromJson(Map<String, dynamic> json) =>
       months: (json['months'] as num).toInt(),
       credit: (json['credit'] as num).toInt(),
       creditAmount: json['credit_amount'] as String? ?? '0.00',
-      currency: json['currency'] as String? ?? 'EUR',
+      currency: json['currency'] as String,
     );
 
 Map<String, dynamic> _$MarketingTermViewToJson(_MarketingTermView instance) =>

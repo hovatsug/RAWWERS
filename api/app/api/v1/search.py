@@ -61,21 +61,32 @@ def search_pros(
     country: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
+    #: The currency min_price and max_price are in (the default currency when not given).
+    currency: str | None = None,
     tier_min: SkillTier | None = None,
     sort: str = "relevance",
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db_read_session),
 ) -> SearchResponse:
+    from app.services.price_filter import budget_currency
+
+    currency = budget_currency(currency)
     return _search_with_fallback(
         db=db,
         index_kind="pros",
         q=q,
-        filters=_pros_filter(q=q, niche=niche, city=city, country=country, min_price=min_price, max_price=max_price, tier_min=tier_min),
+        filters=_pros_filter(
+            q=q, niche=niche, city=city, country=country, min_price=min_price, max_price=max_price, tier_min=tier_min,
+            currency=currency,
+        ),
         sort=_pros_sort(sort, niche),
         limit=limit,
         offset=offset,
-        fallback_loader=lambda: _pros_fallback(db, q=q, niche=niche, city=city, country=country, min_price=min_price, max_price=max_price, tier_min=tier_min, sort=sort, limit=limit, offset=offset),
+        fallback_loader=lambda: _pros_fallback(
+            db, q=q, niche=niche, city=city, country=country, min_price=min_price, max_price=max_price, tier_min=tier_min,
+            sort=sort, limit=limit, offset=offset, currency=currency,
+        ),
     )
 
 
@@ -310,6 +321,7 @@ def _pros_filter(
     min_price: float | None,
     max_price: float | None,
     tier_min: SkillTier | None,
+    currency: str,
 ) -> str | None:
     clauses = ["is_kyc_approved = true", "is_available = true"]
     if niche:
@@ -318,6 +330,11 @@ def _pros_filter(
         clauses.append(f'city = "{city}"')
     if country:
         clauses.append(f'country = "{country}"')
+    # The search index compares prices exactly: only photographers priced
+    # in the budget's currency (the database fallback also compares others,
+    # approximately).
+    if min_price is not None or max_price is not None:
+        clauses.append(f'currency = "{currency}"')
     if min_price is not None:
         clauses.append(f"price_min >= {float(min_price)}")
     if max_price is not None:
@@ -400,6 +417,7 @@ def _pros_fallback(
     tier_min: SkillTier | None,
     sort: str,
     limit: int,
+    currency: str,
     offset: int,
 ) -> tuple[int, list[dict]]:
     stmt = (
@@ -425,10 +443,10 @@ def _pros_fallback(
         stmt = stmt.where(ProPublicIndex.city == city)
     if country:
         stmt = stmt.where(ProPublicIndex.country == country)
-    if min_price is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price >= min_price)
-    if max_price is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price <= max_price)
+    from app.services.price_filter import price_conditions, price_order
+
+    for condition in price_conditions(db, min_price=min_price, max_price=max_price, currency=currency):
+        stmt = stmt.where(condition)
 
     if tier_min and niche:
         stmt = stmt.join(ProNicheSkill, and_(ProNicheSkill.pro_user_id == ProPublicIndex.pro_user_id))
@@ -438,7 +456,7 @@ def _pros_fallback(
     if sort == "rating":
         stmt = stmt.order_by(ProPublicIndex.avg_rating.desc(), ProPublicIndex.review_count.desc())
     elif sort == "price":
-        stmt = stmt.order_by(ProPublicIndex.min_package_price.asc())
+        stmt = stmt.order_by(*price_order(descending=False))
     elif sort == "recent":
         stmt = stmt.order_by(ProPublicIndex.updated_at.desc())
     else:
@@ -461,6 +479,7 @@ def _pros_fallback(
                 "niche_slugs": [item.get("slug") for item in (idx.top_niches or []) if item.get("slug")],
                 "top_niche": (idx.top_niches or [{}])[0].get("slug") if idx.top_niches else None,
                 "price_min": float(idx.min_package_price) if idx.min_package_price is not None else None,
+                "currency": idx.currency,
                 "price_max": float(idx.max_package_price) if idx.max_package_price is not None else None,
                 "avg_rating": float(idx.avg_rating),
                 "review_count": idx.review_count,

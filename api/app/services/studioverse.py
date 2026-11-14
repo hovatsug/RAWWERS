@@ -37,7 +37,7 @@ from app.models.studioverse import (
 )
 from app.services.abuse import create_abuse_signal, hash_ip
 from app.services.authz import ensure_user_account, get_user_roles
-from app.services.rewards import add_reward_entry
+from app.services.rewards import LEGACY_POINTS_CURRENCY, add_reward_entry
 from app.services.storage import create_presigned_get
 from app.services.stripe_service import PAYMENT_METHODS, map_intent_status, to_cents
 from app.services.proof_of_gigs import reverse_raww_mints_for_reference
@@ -261,6 +261,7 @@ def reverse_paid_order(db: Session, *, order: ContentPackOrder, reason: str) -> 
             ensure_user_account(db, PLATFORM_TREASURY_USER_ID)
             add_reward_entry(
                 db,
+                currency=LEGACY_POINTS_CURRENCY,
                 user_id=pack.creator_user_id,
                 amount=-int(royalty.net_creator_raww if royalty else int(order.price_raww_paid)),
                 entry_type=RewardEntryType.adjustment,
@@ -271,6 +272,7 @@ def reverse_paid_order(db: Session, *, order: ContentPackOrder, reason: str) -> 
             )
             add_reward_entry(
                 db,
+                currency=LEGACY_POINTS_CURRENCY,
                 user_id=PLATFORM_TREASURY_USER_ID,
                 amount=-int(royalty.fee_raww if royalty else 0),
                 entry_type=RewardEntryType.adjustment,
@@ -281,6 +283,7 @@ def reverse_paid_order(db: Session, *, order: ContentPackOrder, reason: str) -> 
             )
             add_reward_entry(
                 db,
+                currency=LEGACY_POINTS_CURRENCY,
                 user_id=order.buyer_user_id,
                 amount=int(order.price_raww_paid),
                 entry_type=RewardEntryType.adjustment,
@@ -315,6 +318,7 @@ def process_raww_credit_split(db: Session, *, order: ContentPackOrder, pack: Con
 
     debit = add_reward_entry(
         db,
+        currency=LEGACY_POINTS_CURRENCY,
         user_id=order.buyer_user_id,
         amount=-gross,
         entry_type=RewardEntryType.spend,
@@ -328,6 +332,7 @@ def process_raww_credit_split(db: Session, *, order: ContentPackOrder, pack: Con
 
     add_reward_entry(
         db,
+        currency=LEGACY_POINTS_CURRENCY,
         user_id=pack.creator_user_id,
         amount=creator_take,
         entry_type=RewardEntryType.earn,
@@ -337,6 +342,7 @@ def process_raww_credit_split(db: Session, *, order: ContentPackOrder, pack: Con
     )
     add_reward_entry(
         db,
+        currency=LEGACY_POINTS_CURRENCY,
         user_id=PLATFORM_TREASURY_USER_ID,
         amount=fee,
         entry_type=RewardEntryType.earn,

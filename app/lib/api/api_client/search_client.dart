@@ -21,6 +21,7 @@ abstract class SearchClient {
     @Query("country") required String? country,
     @Query("min_price") required double? minPrice,
     @Query("max_price") required double? maxPrice,
+    @Query("currency") required String? currency,
     @Query("tier_min") required SkillTier? tierMin,
     @Query("sort") String sort = 'relevance',
     @Query("limit") int limit = 20,
@@ -104,6 +105,18 @@ abstract class SearchClient {
               {'type': 'null'},
             ],
             'title': 'Max Price',
+          },
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Currency',
           },
         },
         {

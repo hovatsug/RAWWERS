@@ -42,13 +42,14 @@ class ExtraImagePricingPolicy(Base):
     unit_price_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     max_extra_images: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bulk_curve: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    #: The bounds are in this currency and apply to photographers paid in it.
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )
 
-    __table_args__ = (UniqueConstraint("niche_id", "tier", name="uq_extra_image_pricing_policy_niche_tier"),)
+    __table_args__ = (UniqueConstraint("niche_id", "tier", "currency", name="uq_extra_image_pricing_policy_niche_tier_currency"),)
 
 
 class ProExtraImagePrice(Base):
@@ -58,7 +59,8 @@ class ProExtraImagePrice(Base):
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     niche_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), nullable=False, index=True)
     configured_unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    #: The photographer's currency (pro_profile.currency).
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )

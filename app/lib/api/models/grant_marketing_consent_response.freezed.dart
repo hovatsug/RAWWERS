@@ -216,7 +216,7 @@ return $default(_that.items,_that.credit,_that.creditAmount,_that.currency);case
 
 @jsonSerializable
 class _GrantMarketingConsentResponse extends GrantMarketingConsentResponse {
-  const _GrantMarketingConsentResponse({@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) required final  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_) required this.credit, @JsonKey(name: GrantMarketingConsentResponse.creditAmountKey_) this.creditAmount = '0.00', @JsonKey(name: GrantMarketingConsentResponse.currencyKey_) this.currency = 'EUR'}): _items = items,super._();
+  const _GrantMarketingConsentResponse({@JsonKey(name: GrantMarketingConsentResponse.itemsKey_) required final  List<MarketingConsentView> items, @JsonKey(name: GrantMarketingConsentResponse.creditKey_) required this.credit, @JsonKey(name: GrantMarketingConsentResponse.creditAmountKey_) this.creditAmount = '0.00', @JsonKey(name: GrantMarketingConsentResponse.currencyKey_) required this.currency}): _items = items,super._();
   factory _GrantMarketingConsentResponse.fromJson(Map<String, dynamic> json) => _$GrantMarketingConsentResponseFromJson(json);
 
 /// items

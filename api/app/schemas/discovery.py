@@ -76,6 +76,8 @@ class MatchRequest(BaseModel):
     city: str | None = None
     styles: list[str] = Field(default_factory=list)
     budget: Decimal | None = None
+    #: The budget's currency (the default currency when not given).
+    currency: str | None = None
     date_range: dict | None = None
     purpose: str | None = None
     limit: int = 10

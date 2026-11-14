@@ -10,7 +10,8 @@ import 'package:rawwers/features/client/credit/credit_controller.dart';
 import 'package:rawwers/features/client/credit/credit_labels.dart';
 
 /// Account > My credit: the balance, how to use it, how to earn it, and
-/// every entry newest first. Shown in euros.
+/// every entry newest first. Credit is per currency: each balance pays only
+/// for bookings in its own currency, and nothing is converted.
 class MyCreditScreen extends ConsumerWidget {
   const MyCreditScreen({super.key});
 
@@ -28,6 +29,14 @@ class MyCreditScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(RSpace.s16),
                 children: [
                   Text('${creditAmount(value.balance, currency: value.currency)} credit', style: theme.textTheme.headlineMedium),
+                  for (final other in value.balances.where((b) => b.currency != value.currency))
+                    Padding(
+                      padding: const EdgeInsets.only(top: RSpace.s4),
+                      child: Text(
+                        '${creditAmount(other.balance, currency: other.currency)} credit for bookings in ${other.currency}',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
                   const SizedBox(height: RSpace.s8),
                   Text(
                     'Use it on your next booking, up to ${value.maxDiscountPercent}% of the payment.',

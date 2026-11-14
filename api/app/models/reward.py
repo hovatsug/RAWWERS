@@ -223,6 +223,10 @@ class RewardLedgerEntry(Base):
         nullable=False,
     )
     rule_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The currency the points are credit in (MULTI_CURRENCY.md decision M3):
+    #: credit earned on a booking is in its currency and pays for bookings in
+    #: that currency only. 100 points are one unit (€1, £1) in every currency.
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
     balance_after: Mapped[int] = mapped_column(BigInteger, nullable=False)
     reference_type: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -250,6 +254,8 @@ class RewardBalance(Base):
     __tablename__ = "reward_balance"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    #: One balance per (user, currency): credit is never mixed or converted.
+    currency: Mapped[str] = mapped_column(CHAR(3), primary_key=True)
     balance: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -271,7 +277,7 @@ class DiscountRedemption(Base):
     context_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     points_spent: Mapped[int] = mapped_column(BigInteger, nullable=False)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     status: Mapped[DiscountRedemptionStatus] = mapped_column(
         Enum(DiscountRedemptionStatus, name="discount_redemption_status", native_enum=False, length=64),
         nullable=False,
@@ -331,7 +337,13 @@ class ClientCreditSettings(Base):
     #: Credit that may be awarded for marketing permissions in a calendar
     #: month (Europe/London), in euros. 0: no credit is awarded.
     monthly_marketing_credit_budget_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("300.00"))
-    #: The month ("2026-11") whose 80% and 100% admin alerts went out, so each is sent once.
+    #: The same, in pounds, for credit in pounds (decision M3: one budget per
+    #: currency, no conversion). 0: no credit in pounds is awarded.
+    monthly_marketing_credit_budget_gbp: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("300.00"))
+    #: The month ("2026-11") whose 80% and 100% admin alerts went out, so each
+    #: is sent once: for the euro budget, and for the pound budget.
     alerted_80_month: Mapped[str | None] = mapped_column(Text, nullable=True)
     alerted_100_month: Mapped[str | None] = mapped_column(Text, nullable=True)
+    alerted_80_month_gbp: Mapped[str | None] = mapped_column(Text, nullable=True)
+    alerted_100_month_gbp: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))

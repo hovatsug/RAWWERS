@@ -16,14 +16,14 @@
 ///         },
 ///         "currency": {
 ///             "type": "string",
-///             "default": "EUR",
 ///             "title": "Currency"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
 ///         "months",
-///         "credit"
+///         "credit",
+///         "currency"
 ///     ],
 ///     "title": "MarketingTermView"
 /// }
@@ -51,9 +51,7 @@ abstract class MarketingTermView with _$MarketingTermView {
     String creditAmount,
 
     /// currency
-    @Default('EUR')
-    @JsonKey(name: MarketingTermView.currencyKey_)
-    String currency,
+    @JsonKey(name: MarketingTermView.currencyKey_) required String currency,
   }) = _MarketingTermView;
 
   factory MarketingTermView.fromJson(Map<String, dynamic> json) =>

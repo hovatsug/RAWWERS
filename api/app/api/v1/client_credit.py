@@ -1,5 +1,6 @@
-"""The client's credit: balance and history (in euros), and what it would
-take off a booking's payment (services/client_credit.py)."""
+"""The client's credit: balances and history (per currency: MULTI_CURRENCY.md
+decision M3), and what it would take off a booking's payment
+(services/client_credit.py)."""
 from __future__ import annotations
 
 import uuid
@@ -25,15 +26,25 @@ class CreditHistoryItem(BaseModel):
     kind: str
     #: Signed: positive earned or given back, negative used or reversed.
     amount: Decimal
-    #: Credit is in euros until batch M4 (MULTI_CURRENCY.md, decision M3).
+    #: The credit's currency (each line is in the currency of its booking).
     currency: str
     #: For a marketing permission: the booking's photographer.
     photographer_first_name: str | None = None
 
 
-class MyCreditResponse(BaseModel):
+class CreditBalance(BaseModel):
     balance: Decimal
     currency: str
+
+
+class MyCreditResponse(BaseModel):
+    #: The client's credit in `currency`: the default currency's (until the
+    #: display currency, batch M3), or the only one they hold.
+    balance: Decimal
+    currency: str
+    #: Every currency they hold credit in. Credit pays only for bookings in
+    #: its own currency; nothing is converted.
+    balances: list[CreditBalance] = []
     #: Credit takes at most this much of a booking's payment.
     max_discount_percent: int
     items: list[CreditHistoryItem]
@@ -44,7 +55,7 @@ class BookingCreditPreview(BaseModel):
     balance: Decimal
     credit_currency: str
     #: What credit takes off, the price and what is left to pay, in `currency`
-    #: (the booking's). Euro credit takes nothing off a booking in pounds.
+    #: (the booking's). Only credit in the booking's currency is used.
     discount: Decimal
     price: Decimal
     total: Decimal
@@ -56,12 +67,15 @@ class BookingCreditPreview(BaseModel):
 
 @router.get("/me/credit", response_model=MyCreditResponse)
 def my_credit(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> MyCreditResponse:
-    per_eur = client_credit.points_per_eur(db)
-    from app.services.rewards import CREDIT_CURRENCY
+    from app.services.currencies import default_currency
 
+    held = client_credit.balances(db, user.user_id)
+    currency = held[0]["currency"] if len(held) == 1 else default_currency()
+    shown = next((b["balance"] for b in held if b["currency"] == currency), Decimal("0.00"))
     view = MyCreditResponse(
-        balance=client_credit.to_eur(client_credit.balance_points(db, user.user_id), per_eur),
-        currency=CREDIT_CURRENCY,
+        balance=shown,
+        currency=currency,
+        balances=[CreditBalance(**b) for b in held],
         max_discount_percent=client_credit.max_discount_percent(db),
         items=[CreditHistoryItem(**row) for row in client_credit.history(db, user.user_id)],
     )
@@ -93,17 +107,20 @@ def booking_credit(
 
 class CreditSettingsView(BaseModel):
     max_discount_percent: int
+    #: One monthly budget per currency (decision M3), each in its currency.
     monthly_marketing_credit_budget_eur: Decimal
+    monthly_marketing_credit_budget_gbp: Decimal
 
 
 class CreditSettingsIn(BaseModel):
     max_discount_percent: int | None = None
     monthly_marketing_credit_budget_eur: Decimal | None = None
+    monthly_marketing_credit_budget_gbp: Decimal | None = None
 
 
 class MarketingBudgetView(BaseModel):
     month: str
-    #: Every amount below is in it (euros until batch M4).
+    #: Every amount below is in it: one budget per currency (decision M3).
     currency: str
     budget: Decimal
     awarded: Decimal
@@ -116,19 +133,32 @@ class MarketingBudgetView(BaseModel):
 
 
 @router.get("/admin/client-credit/budget", response_model=MarketingBudgetView)
-def marketing_budget(_: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> MarketingBudgetView:
-    """This month (Europe/London): budget, awarded, used at checkout,
-    outstanding (every client's unspent credit) and remaining."""
-    view = MarketingBudgetView(**client_credit.budget_view(db))
+def marketing_budget(
+    currency: str | None = None, _: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)
+) -> MarketingBudgetView:
+    """This month (Europe/London), in one currency (the default when none is
+    asked for): budget, awarded, used at checkout, outstanding (every
+    client's unspent credit) and remaining."""
+    from app.services.currencies import default_currency
+
+    view = MarketingBudgetView(**client_credit.budget_view(db, currency or default_currency()))
     db.commit()
     return view
+
+
+def _settings_view(row) -> CreditSettingsView:
+    return CreditSettingsView(
+        max_discount_percent=row.max_discount_percent,
+        monthly_marketing_credit_budget_eur=row.monthly_marketing_credit_budget_eur,
+        monthly_marketing_credit_budget_gbp=row.monthly_marketing_credit_budget_gbp,
+    )
 
 
 @router.get("/admin/client-credit/settings", response_model=CreditSettingsView)
 def credit_settings(_: CurrentUser = Depends(require_admin), db: Session = Depends(get_db_session)) -> CreditSettingsView:
     row = client_credit.settings(db)
     db.commit()
-    return CreditSettingsView(max_discount_percent=row.max_discount_percent, monthly_marketing_credit_budget_eur=row.monthly_marketing_credit_budget_eur)
+    return _settings_view(row)
 
 
 @router.put("/admin/client-credit/settings", response_model=CreditSettingsView)
@@ -144,12 +174,15 @@ def update_credit_settings(
             raise APIError(code="validation_error", message="The cap is a percent, 0 to 100", status_code=422)
         changes["max_discount_percent"] = {"from": row.max_discount_percent, "to": body.max_discount_percent}
         row.max_discount_percent = body.max_discount_percent
-    if body.monthly_marketing_credit_budget_eur is not None:
-        if body.monthly_marketing_credit_budget_eur < 0:
+    for name in ("monthly_marketing_credit_budget_eur", "monthly_marketing_credit_budget_gbp"):
+        value = getattr(body, name)
+        if value is None:
+            continue
+        if value < 0:
             raise APIError(code="validation_error", message="The budget cannot be negative", status_code=422)
-        changes["monthly_marketing_credit_budget_eur"] = {"from": str(row.monthly_marketing_credit_budget_eur), "to": str(body.monthly_marketing_credit_budget_eur)}
-        row.monthly_marketing_credit_budget_eur = body.monthly_marketing_credit_budget_eur
+        changes[name] = {"from": str(getattr(row, name)), "to": str(value)}
+        setattr(row, name, value)
     add_admin_audit_log(db, actor_user_id=actor.user_id, target_type="client_credit_settings", target_id="1",
                         action="client_credit_settings_updated", reason=None, metadata=changes)
     db.commit()
-    return CreditSettingsView(max_discount_percent=row.max_discount_percent, monthly_marketing_credit_budget_eur=row.monthly_marketing_credit_budget_eur)
+    return _settings_view(row)

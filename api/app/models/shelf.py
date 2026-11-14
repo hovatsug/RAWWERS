@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy import CHAR, BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Index, Numeric, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -87,8 +87,15 @@ class ProRawwLedgerEntry(Base):
     #: The gig a booking entry belongs to (also inside source_id), for lookups.
     gig_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     #: Euros per RAWW when the entry was made, and the euros it stood for.
+    #: Null on an entry valued in another currency (below).
     raww_eur_value: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     eur_basis: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    #: The value one RAWW stood for when the entry was made, in the currency
+    #: of the money it came from (MULTI_CURRENCY.md 5, RAWW): a booking in
+    #: pounds is valued at the pound value. Every later change to the same
+    #: booking's RAWW uses the first entry's value and currency.
+    raww_value: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    raww_value_currency: Mapped[str | None] = mapped_column(CHAR(3), nullable=True)
     #: When a booking entry became spendable.
     spendable_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -135,6 +142,10 @@ class ShelfSettings(Base):
     id: Mapped[int] = mapped_column(primary_key=True, default=1)
     #: Euros one RAWW stands for (an earning is credit in euros / this).
     raww_eur_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    #: Pounds one RAWW stands for, for credit in pounds (decision M5). Null
+    #: until the admin sets it: a booking in pounds is then valued at the
+    #: euro value converted at that day's rate (services/raww_earning.py).
+    raww_gbp_value: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     #: Used only to suggest a RAWW price from a GBP street price.
     gbp_eur_rate: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     #: How far below street price the suggested price sits.

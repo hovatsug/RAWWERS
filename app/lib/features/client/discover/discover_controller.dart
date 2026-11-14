@@ -90,6 +90,7 @@ class DiscoverController extends _$DiscoverController {
         // filter belongs behind the Decimal wrappers if it's added later.
         minPrice: null,
         maxPrice: null,
+        currency: null,
         offset: offset,
         authorization: null,
         xMinusUserMinusId: null,

@@ -427,9 +427,14 @@ def maybe_issue_referral_conversion_reward(
     referee_user_id: uuid.UUID,
     conversion_type: ReferralConversionType,
     conversion_id: uuid.UUID,
-    conversion_value_eur: Decimal,
+    conversion_value: Decimal,
+    currency: str,
     share_link_id: uuid.UUID | None = None,
 ) -> ReferralConversionResult:
+    """`currency`: the booking's; the credit both sides earn is in it
+    (MULTI_CURRENCY.md decision M3). The policy's minimum
+    (`min_conversion_value_eur`) is compared in that currency's units: it
+    has no pound twin yet."""
     ensure_default_referral_reward_policies(db)
 
     attribution = ensure_conversion_attribution(
@@ -459,7 +464,7 @@ def maybe_issue_referral_conversion_reward(
     if policy is None:
         return ReferralConversionResult(grant=None, reward_entry_ids=[])
 
-    if conversion_value_eur < (policy.min_conversion_value_eur or Decimal("0.00")):
+    if conversion_value < (policy.min_conversion_value_eur or Decimal("0.00")):
         return ReferralConversionResult(grant=None, reward_entry_ids=[])
 
     is_blacklisted = db.execute(
@@ -511,6 +516,7 @@ def maybe_issue_referral_conversion_reward(
             entry_type=RewardEntryType.earn,
             reference_type="referral_conversion",
             reference_id=f"{conversion_type.value}:{conversion_id}:referrer",
+            currency=currency,
             metadata={
                 "conversion_type": conversion_type.value,
                 "conversion_id": str(conversion_id),
@@ -527,6 +533,7 @@ def maybe_issue_referral_conversion_reward(
             entry_type=RewardEntryType.earn,
             reference_type="referral_conversion",
             reference_id=f"{conversion_type.value}:{conversion_id}:referee",
+            currency=currency,
             metadata={
                 "conversion_type": conversion_type.value,
                 "conversion_id": str(conversion_id),

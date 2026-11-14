@@ -2277,7 +2277,7 @@ class _ProOnboardingClient implements ProOnboardingClient {
   getMyNichePricingPreviewV1ProMePricingNichesNicheIdGet({
     required String nicheId,
     required dynamic entryPrice,
-    String currency = 'EUR',
+    required String? currency,
     required int? includedPhotos,
     required String? authorization,
     required String? xMinusUserMinusId,
@@ -2317,12 +2317,16 @@ class _ProOnboardingClient implements ProOnboardingClient {
           'in': 'query',
           'required': false,
           'schema': {
-            'type': 'string',
-            'minLength': 3,
-            'maxLength': 3,
-            'default': 'EUR',
+            'anyOf': [
+              {'type': 'string', 'minLength': 3, 'maxLength': 3},
+              {'type': 'null'},
+            ],
+            'description':
+                'Ignored: the preview is in the photographer\'s currency',
             'title': 'Currency',
           },
+          'description':
+              'Ignored: the preview is in the photographer\'s currency',
         },
         {
           'name': 'included_photos',

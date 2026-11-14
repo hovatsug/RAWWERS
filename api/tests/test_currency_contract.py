@@ -15,7 +15,7 @@ from app.core.errors import APIError
 from app.models.gig import GigStatus
 from app.models.reward import RedemptionContextType
 from app.services import email_texts
-from app.services.rewards import CREDIT_CURRENCY, reserve_points_for_discount
+from app.services.rewards import reserve_points_for_discount
 
 from tests.test_booking_close import _ensure_account
 from tests.test_client_booking_pay import _booking_with_gig
@@ -35,7 +35,10 @@ ALLOWED_WITHOUT_CURRENCY = {
 }
 #: Per-currency settings: the suffix names the currency the setting is for
 #: (a `_gbp` twin comes with batch M4), not an amount sent without one.
-PER_CURRENCY_SETTINGS = {"monthly_marketing_credit_budget_eur", "min_conversion_value_eur", "min_eur_value", "raww_eur_value"}
+PER_CURRENCY_SETTINGS = {
+    "monthly_marketing_credit_budget_eur", "monthly_marketing_credit_budget_gbp",
+    "min_conversion_value_eur", "min_eur_value", "raww_eur_value", "raww_gbp_value",
+}
 #: Response models of dormant features reached through a shared route.
 DORMANT_MODULES = ("app.schemas.learning", "app.schemas.studioverse", "app.schemas.store", "app.schemas.prints", "app.schemas.repair", "app.schemas.legacy_shoot")
 
@@ -96,17 +99,19 @@ def test_no_amount_in_a_response_is_named_in_euros():
     assert named == []
 
 
-# --- client credit is in euros, and pays for euro bookings only (decision M3) -------------------
+# --- client credit is per currency (decision M3, batch M4) -------------------------------------
 
 
 def test_euro_credit_never_pays_for_a_booking_in_pounds(db_session):
+    user = uuid.uuid4()
+    _ensure_account(db_session, str(user))
+    _give(db_session, user, 1000)  # €10.00 of credit, none in pounds
     with pytest.raises(APIError) as err:
         reserve_points_for_discount(
-            db_session, user_id=uuid.uuid4(), context_type=RedemptionContextType.gig_payment, context_id=uuid.uuid4(),
+            db_session, user_id=user, context_type=RedemptionContextType.gig_payment, context_id=uuid.uuid4(),
             points=1000, payment_amount=Decimal("100.00"), currency="GBP",
         )
-    assert err.value.code == "credit_currency_mismatch"
-    assert CREDIT_CURRENCY == "EUR"
+    assert err.value.code == "validation_error"  # nothing in pounds to spend
 
 
 def test_a_pound_booking_offers_no_euro_credit_and_charges_in_full(client, db_session, fake_stripe):  # noqa: F811
@@ -115,10 +120,10 @@ def test_a_pound_booking_offers_no_euro_credit_and_charges_in_full(client, db_se
     booking, gig = _booking_with_gig(db_session, user_id, str(uuid.uuid4()), gig_status=GigStatus.payment_pending)
     gig.currency = "GBP"
     db_session.commit()
-    _give(db_session, uuid.UUID(user_id), 3000)
+    _give(db_session, uuid.UUID(user_id), 3000)  # €30.00
 
     preview = client.get(f"/v1/client/bookings/{booking.id}/credit", headers=_h(user_id)).json()
-    assert (preview["balance"], preview["credit_currency"]) == ("30.00", "EUR")
+    assert (preview["balance"], preview["credit_currency"]) == ("0.00", "GBP")
     assert (preview["discount"], preview["total"], preview["currency"]) == ("0.00", "100.00", "GBP")
 
     resp = client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id)).json()

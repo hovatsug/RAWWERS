@@ -57,6 +57,7 @@ from app.schemas.client_launch import (
 )
 from app.schemas.media import CurrentUser
 from app.api.v1.reviews import build_review_view
+from app.services.price_filter import budget_currency, price_conditions, price_order
 from app.services.analytics import log_event
 from app.services.availability_blocks import blocked_intervals
 from app.services.bookable_time import (
@@ -192,6 +193,8 @@ def client_discover(
     q: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
+    #: The currency min_price and max_price are in (the default currency when not given).
+    currency: str | None = None,
     sort: str = "rank",
     limit: int = Query(default=20, ge=1, le=40),
     offset: int = Query(default=0, ge=0),
@@ -208,7 +211,8 @@ def client_discover(
 
     cache_key = (
         f"client:discover:v{get_public_index_version()}:country={country.upper()}:city={city.lower()}:"
-        f"niche={niche_slug or ''}:q={q or ''}:min={min_price or ''}:max={max_price or ''}:sort={sort}:limit={limit}:offset={offset}:guest={not bool(user)}"
+        f"niche={niche_slug or ''}:q={q or ''}:min={min_price or ''}:max={max_price or ''}:cur={budget_currency(currency)}:"
+        f"sort={sort}:limit={limit}:offset={offset}:guest={not bool(user)}"
     )
     cached = cache_get_json(cache_key)
     if cached:
@@ -222,6 +226,7 @@ def client_discover(
         niche_slug=niche_slug,
         min_price=min_price,
         max_price=max_price,
+        currency=budget_currency(currency),
         sort=sort,
         limit=limit,
         offset=offset,
@@ -274,6 +279,7 @@ def client_match(
                 budget_min=req.budget_min,
                 budget_max=req.budget_max,
                 style_tags=req.style_tags or [],
+                currency=budget_currency(body.currency),
             ),
             limit=20,
         )
@@ -1451,12 +1457,18 @@ def _discover_rows(
     sort: str,
     limit: int,
     offset: int,
+    currency: str,
 ) -> list[ProPublicIndex]:
     if search_provider_enabled():
         try:
             filters = [f'country = "{country.strip().upper()}"', f'city = "{city.strip()}"', "is_kyc_approved = true", "is_available = true"]
             if niche_slug:
                 filters.append(f'niche_slugs = "{niche_slug}"')
+            # The search index compares a price exactly: only photographers
+            # priced in the budget's currency (the SQL path below also
+            # compares other currencies, approximately).
+            if min_price is not None or max_price is not None:
+                filters.append(f'currency = "{currency}"')
             if min_price is not None:
                 filters.append(f"price_min >= {float(min_price)}")
             if max_price is not None:
@@ -1504,14 +1516,12 @@ def _discover_rows(
         )
     if niche_slug:
         stmt = stmt.where(ProPublicIndex.top_niches.contains([{"slug": niche_slug}]))
-    if min_price is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price >= min_price)
-    if max_price is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price <= max_price)
+    for condition in price_conditions(db, min_price=min_price, max_price=max_price, currency=currency):
+        stmt = stmt.where(condition)
     if sort == "price_asc":
-        stmt = stmt.order_by(ProPublicIndex.min_package_price.asc(), ProPublicIndex.ranking_score.desc())
+        stmt = stmt.order_by(*price_order(descending=False), ProPublicIndex.ranking_score.desc())
     elif sort == "price_desc":
-        stmt = stmt.order_by(ProPublicIndex.min_package_price.desc(), ProPublicIndex.ranking_score.desc())
+        stmt = stmt.order_by(*price_order(descending=True), ProPublicIndex.ranking_score.desc())
     elif sort == "rating":
         stmt = stmt.order_by(ProPublicIndex.avg_rating.desc(), ProPublicIndex.review_count.desc())
     else:

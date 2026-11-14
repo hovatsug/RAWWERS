@@ -25,6 +25,10 @@ import { AdminButton, ConfirmDialog, Notice, PageHeader, Panel } from "@/app/adm
  * is sent, and sends only those. "Import CSV" fills the grid from a file and
  * goes through the same review; "Download CSV" writes the same columns, so
  * caps can be moved from one database to another.
+ *
+ * One grid per currency (MULTI_CURRENCY.md decision M2): a cap applies only
+ * to packages in its currency, and a currency with no caps while another has
+ * them refuses packages in that niche and tier until its caps are set.
  */
 
 const TIERS = ["rookie", "skilled", "pro", "elite", "master"] as const;
@@ -34,6 +38,7 @@ type Draft = Record<string, string>;
 const cellKey = (niche: string, tier: Tier) => `${niche}:${tier}`;
 const shown = (value: string | null | undefined) => (value === null || value === undefined || value === "" ? "uncapped" : value);
 const PRICE = /^\d+(\.\d{1,2})?$/;
+const CURRENCIES = ["GBP", "EUR"] as const;
 
 export default function AdminPricingCapsPage() {
   const queryClient = useQueryClient();
@@ -42,10 +47,14 @@ export default function AdminPricingCapsPage() {
   const [saved, setSaved] = useState(false);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("GBP");
 
   const query = useQuery({ queryKey: ["admin", "price-caps"], queryFn: () => admin.priceCaps() });
   const nicheQuery = useQuery({ queryKey: ["admin", "niches"], queryFn: () => admin.niches() });
-  const rows: PriceCapRow[] = useMemo(() => (query.data?.ok ? query.data.data : []), [query.data]);
+  const rows: PriceCapRow[] = useMemo(
+    () => (query.data?.ok ? query.data.data.filter((row) => row.currency === currency) : []),
+    [query.data, currency]
+  );
 
   const byCell = useMemo(() => {
     const map = new Map<string, PriceCapRow>();
@@ -113,11 +122,16 @@ export default function AdminPricingCapsPage() {
       description={
         <>
           The most a photographer may charge <strong className="text-slate-200">per photo</strong> in each niche, by the tier they
-          hold in that niche. Leave a cell empty for uncapped.
+          hold in that niche, in {currency}. Leave a cell empty for uncapped.
         </>
       }
       actions={
         <>
+          {CURRENCIES.map((code) => (
+            <AdminButton key={code} tone={code === currency ? "primary" : "secondary"} onClick={() => setCurrency(code)}>
+              {code}
+            </AdminButton>
+          ))}
           <AdminButton tone="secondary" disabled={rows.length === 0} onClick={() => downloadCsv(rows)}>
             Download CSV
           </AdminButton>
@@ -281,7 +295,7 @@ export default function AdminPricingCapsPage() {
               // An empty box means uncapped, which is a real setting; null
               // is the value the enforcement already understands.
               entry_price_max: after === "" ? null : after,
-              currency: row?.currency ?? "EUR"
+              currency: row?.currency ?? currency
             };
           });
           const res = await admin.savePriceCaps(items);

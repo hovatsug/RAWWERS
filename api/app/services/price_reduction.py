@@ -384,10 +384,11 @@ def adjust_raww_to_value(db: Session, gig: Gig) -> int:
             continue
         from app.core.config import get_settings
         from app.models.reward import RewardEntryType
-        from app.services.rewards import add_reward_entry
+        from app.services.rewards import LEGACY_POINTS_CURRENCY, add_reward_entry
 
         entry = add_reward_entry(
-            db, user_id=mint.pro_user_id, amount=-due, entry_type=RewardEntryType.adjustment,
+            db,
+            currency=LEGACY_POINTS_CURRENCY, user_id=mint.pro_user_id, amount=-due, entry_type=RewardEntryType.adjustment,
             reference_type="raww_mint_partial_reversal", reference_id=f"{mint.id}:{value}",
             metadata={"gig_id": str(gig.id), "minted_on_eur": str(minted_on), "value_now_eur": str(value)},
             min_balance_floor=get_settings().reward_balance_floor,

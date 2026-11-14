@@ -464,7 +464,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     referee_user_id=snapshot.client_user_id,
                     conversion_type=ReferralConversionType.extras_paid,
                     conversion_id=snapshot.id,
-                    conversion_value_eur=Decimal(str(snapshot.total or 0)),
+                    conversion_value=Decimal(str(snapshot.total or 0)),
+                    currency=db.get(Gig, snapshot.gig_id).currency,
                     share_link_id=snapshot.share_link_id,
                 )
                 if referral_result.grant:
@@ -735,7 +736,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             referee_user_id=gig.client_user_id,
             conversion_type=ReferralConversionType.booking_paid,
             conversion_id=gig.id,
-            conversion_value_eur=Decimal(gig.amount_minimum),
+            conversion_value=Decimal(gig.amount_minimum),
+            currency=gig.currency,
             share_link_id=None,
         )
         if referral_result.grant:

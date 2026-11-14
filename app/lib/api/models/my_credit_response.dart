@@ -9,6 +9,14 @@
 ///             "type": "string",
 ///             "title": "Currency"
 ///         },
+///         "balances": {
+///             "type": "array",
+///             "items": {
+///                 "$ref": "#/components/schemas/CreditBalance"
+///             },
+///             "default": [],
+///             "title": "Balances"
+///         },
 ///         "max_discount_percent": {
 ///             "type": "integer",
 ///             "title": "Max Discount Percent"
@@ -48,6 +56,11 @@ abstract class MyCreditResponse with _$MyCreditResponse {
     /// currency
     @JsonKey(name: MyCreditResponse.currencyKey_) required String currency,
 
+    /// balances
+    @Default(const [])
+    @JsonKey(name: MyCreditResponse.balancesKey_)
+    List<CreditBalance> balances,
+
     /// maxDiscountPercent
     @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)
     required int maxDiscountPercent,
@@ -63,6 +76,8 @@ abstract class MyCreditResponse with _$MyCreditResponse {
   static const String balanceKey_ = r'balance';
 
   static const String currencyKey_ = r'currency';
+
+  static const String balancesKey_ = r'balances';
 
   static const String maxDiscountPercentKey_ = r'max_discount_percent';
 

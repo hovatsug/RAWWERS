@@ -42,11 +42,12 @@ DEFAULT_FRAUD_SETTINGS: dict[str, int] = {
 }
 
 
-def _credit_eur(db: Session, points: int) -> Decimal:
-    """Client credit is shown in euros, never as points."""
-    from app.services.client_credit import points_per_eur, to_eur
+def _credit_text(db: Session, points: int, currency: str) -> str:
+    """Client credit is shown as money in its currency, never as points."""
+    from app.services.client_credit import points_per_eur, to_money
+    from app.services.currencies import format_money
 
-    return to_eur(points, points_per_eur(db))
+    return format_money(to_money(points, points_per_eur(db)), currency)
 
 
 def ensure_default_consent_reward_policies(db: Session) -> None:
@@ -146,6 +147,8 @@ def compute_extra_image_unit_price(
             select(ExtraImagePricingPolicy).where(
                 ExtraImagePricingPolicy.niche_id == niche_id,
                 ExtraImagePricingPolicy.tier == tier,
+                # Bounds in the booking's currency only (decision M2).
+                ExtraImagePricingPolicy.currency == gig.currency,
                 ExtraImagePricingPolicy.is_active.is_(True),
             )
         ).scalar_one_or_none()
@@ -185,6 +188,7 @@ def enforce_max_extra_images(db: Session, *, gig: Gig, tier: SkillTier, extra_im
         select(ExtraImagePricingPolicy).where(
             ExtraImagePricingPolicy.niche_id == gig.niche_id,
             ExtraImagePricingPolicy.tier == tier,
+            ExtraImagePricingPolicy.currency == gig.currency,
             ExtraImagePricingPolicy.is_active.is_(True),
         )
     ).scalar_one_or_none()
@@ -336,6 +340,7 @@ def maybe_award_consent_points(
         entry_type=RewardEntryType.earn,
         reference_type="consent_reward",
         reference_id=f"{gig_id}:{level.value}",
+        currency=_gig_currency(db, gig_id),
         metadata={"gig_id": str(gig_id), "consent_level": level.value},
         min_balance_floor=settings.reward_balance_floor,
     )
@@ -400,6 +405,7 @@ def maybe_clawback_consent_points(
         entry_type=RewardEntryType.adjustment,
         reference_type="consent_clawback",
         reference_id=f"{gig_id}:{from_level}:{to_level}",
+        currency=_gig_currency(db, gig_id),
         metadata={"gig_id": str(gig_id), "from_level": from_level, "to_level": to_level},
         min_balance_floor=settings.reward_balance_floor,
     )
@@ -418,7 +424,7 @@ def maybe_clawback_consent_points(
             notification_type="consent.updated",
             payload={
                 "title": "Your credit was adjusted",
-                "body": f"€{_credit_eur(db, delta)} credit was taken back after a marketing permission changed.",
+                "body": f"{_credit_text(db, delta, entry.currency)} credit was taken back after a marketing permission changed.",
                 "action": {"label": "Open gig", "url": f"/gigs/{gig_id}"},
             },
             reference_type="gig",
@@ -590,6 +596,14 @@ def increment_share_link_conversion(db: Session, *, share_link_id: uuid.UUID, co
     return row
 
 
+def _gig_currency(db: Session, gig_id) -> str:
+    """Credit about a booking is in the booking's currency (decision M3)."""
+    gig = db.get(Gig, gig_id)
+    if gig is None:
+        raise ValueError(f"no booking {gig_id} for this credit")
+    return gig.currency
+
+
 def evaluate_share_reward_thresholds(db: Session, *, share_link_id: uuid.UUID) -> list[ShareRewardGrant]:
     ensure_default_share_thresholds(db)
     refresh_share_link_engagement(db, share_link_id=share_link_id)
@@ -641,6 +655,7 @@ def evaluate_share_reward_thresholds(db: Session, *, share_link_id: uuid.UUID) -
             entry_type=RewardEntryType.earn,
             reference_type="share_reward",
             reference_id=f"{share_link_id}:{threshold.metric.value}:{threshold.threshold_value}",
+            currency=_gig_currency(db, link.gig_id),
             metadata={"metric": threshold.metric.value, "threshold": threshold.threshold_value},
             min_balance_floor=settings.reward_balance_floor,
         )

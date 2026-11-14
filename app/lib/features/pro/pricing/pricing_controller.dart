@@ -182,6 +182,8 @@ Future<ProNichePricingPreviewResponse> pricingPreview(
       nicheId: nicheId,
       entryPrice: entryPrice,
       includedPhotos: includedPhotos,
+      // The server previews in the photographer's own currency.
+      currency: null,
       authorization: null,
       xMinusUserMinusId: null,
     ),

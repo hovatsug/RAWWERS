@@ -345,7 +345,7 @@ def test_points_redemption_cannot_exceed_subtotal(client, db_session, monkeypatc
     gig = _create_gig(db_session, client_id, pro_id)
     gallery, _, _ = _create_gallery_with_selection(db_session, gig, pro_id, client_id, selected=2)
 
-    db_session.add(RewardBalance(user_id=uuid.UUID(client_id), balance=100000))
+    db_session.add(RewardBalance(currency="EUR", user_id=uuid.UUID(client_id), balance=100000))
     db_session.commit()
 
     monkeypatch.setattr(

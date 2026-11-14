@@ -42,6 +42,7 @@ from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services.response_time import ResponseBucket, client_label
 from app.services.storage import create_presigned_get
 from app.services.launch_ops import is_pro_publicly_discoverable
+from app.services.price_filter import budget_currency, price_conditions, price_order, within_budget
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
 
 
@@ -57,6 +58,8 @@ def discover_pros(
     styles: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
+    #: The currency min_price and max_price are in (the default currency when not given).
+    currency: str | None = None,
     sort: str = "rank",
     niche: str | None = None,
     limit: int = Query(default=20, ge=1, le=50),
@@ -80,6 +83,7 @@ def discover_pros(
         niche=niche,
         limit=limit,
         offset=offset,
+        currency=budget_currency(currency),
     )
     cached = cache_get_json(cache_key)
     if cached:
@@ -105,10 +109,7 @@ def discover_pros(
         conditions.append(ProPublicIndex.city == city)
     if country:
         conditions.append(ProPublicIndex.country == country)
-    if min_price is not None:
-        conditions.append(ProPublicIndex.min_package_price >= min_price)
-    if max_price is not None:
-        conditions.append(ProPublicIndex.min_package_price <= max_price)
+    conditions.extend(price_conditions(db, min_price=min_price, max_price=max_price, currency=budget_currency(currency)))
     if styles:
         style_tokens = [s.strip() for s in styles.split(",") if s.strip()]
         if style_tokens:
@@ -171,11 +172,11 @@ def discover_pros(
                     break
             total += db.execute(select(func.count()).select_from(rookie_stmt.subquery())).scalar_one()
     elif sort == "price_asc":
-        stmt = stmt.order_by(ProPublicIndex.min_package_price.asc(), ProPublicIndex.ranking_score.desc())
+        stmt = stmt.order_by(*price_order(descending=False), ProPublicIndex.ranking_score.desc())
         rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
         total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     elif sort == "price_desc":
-        stmt = stmt.order_by(ProPublicIndex.min_package_price.desc(), ProPublicIndex.ranking_score.desc())
+        stmt = stmt.order_by(*price_order(descending=True), ProPublicIndex.ranking_score.desc())
         rows = db.execute(stmt.offset(offset).limit(limit)).scalars().all()
         total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     elif sort == "newest":
@@ -402,8 +403,9 @@ def discover_match(
 
     if body.city:
         stmt = stmt.where(ProPublicIndex.city == body.city)
+    currency = budget_currency(body.currency)
     if body.budget is not None:
-        stmt = stmt.where(ProPublicIndex.min_package_price <= body.budget)
+        stmt = stmt.where(*price_conditions(db, min_price=None, max_price=body.budget, currency=currency))
 
     candidates = db.execute(stmt.order_by(ProPublicIndex.ranking_score.desc()).limit(max(body.limit, 1))).scalars().all()
 
@@ -414,7 +416,7 @@ def discover_match(
             matched = [s for s in body.styles if s in (candidate.styles or [])]
             if matched:
                 reasons.append("matched_styles")
-        if body.budget is not None and candidate.min_package_price is not None and candidate.min_package_price <= body.budget:
+        if within_budget(db, candidate, body.budget, currency):
             reasons.append("within_budget")
         if candidate.disputes_count == 0 and candidate.gigs_cancelled == 0:
             reasons.append("high_reliability")
@@ -458,13 +460,14 @@ def _discover_cache_key(
     niche: str | None,
     limit: int,
     offset: int,
+    currency: str = "",
 ) -> str:
     version = get_public_index_version()
     return (
         "discover:pros:"
         f"v{version}:city={city or ''}:country={country or ''}:styles={styles or ''}:"
         f"min={min_price if min_price is not None else ''}:max={max_price if max_price is not None else ''}:"
-        f"sort={sort}:niche={niche or ''}:limit={limit}:offset={offset}"
+        f"cur={currency}:sort={sort}:niche={niche or ''}:limit={limit}:offset={offset}"
     )
 
 

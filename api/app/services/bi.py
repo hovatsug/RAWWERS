@@ -689,7 +689,7 @@ def owed(db: Session, stripe_balance: dict | None) -> dict:
     cost_ratio = Decimal(int(shelf["cost"])) / Decimal(int(shelf["value"])) if int(shelf["value"]) > 0 else None
     at_cost = int((Decimal(face) * cost_ratio).quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if face is not None and cost_ratio is not None else None
 
-    credit = client_credit.budget_view(db)
+    credit = client_credit.budget_view(db, "EUR")  # BI counts euros only until batch M5
     stripe_available = stripe_balance.get("available_cents") if stripe_balance else None
     stripe_pending = stripe_balance.get("pending_cents") if stripe_balance else None
     liquid = None

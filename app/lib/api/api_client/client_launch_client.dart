@@ -138,6 +138,7 @@ abstract class ClientLaunchClient {
     @Query("q") required String? q,
     @Query("min_price") required double? minPrice,
     @Query("max_price") required double? maxPrice,
+    @Query("currency") required String? currency,
     @Query("sort") String sort = 'rank',
     @Query("limit") int limit = 20,
     @Query("offset") int offset = 0,
@@ -210,6 +211,18 @@ abstract class ClientLaunchClient {
               {'type': 'null'},
             ],
             'title': 'Max Price',
+          },
+        },
+        {
+          'name': 'currency',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Currency',
           },
         },
         {

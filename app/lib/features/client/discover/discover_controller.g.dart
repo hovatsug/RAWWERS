@@ -27,7 +27,7 @@ final discoverFiltersControllerProvider =
 
 typedef _$DiscoverFiltersController = AutoDisposeNotifier<DiscoverFilters>;
 String _$discoverControllerHash() =>
-    r'417dd0b51e454dde93178eff81e6e148faec841c';
+    r'2362219bb2b85ec4f0a79620b967e87533cdc8b6';
 
 /// See also [DiscoverController].
 @ProviderFor(DiscoverController)

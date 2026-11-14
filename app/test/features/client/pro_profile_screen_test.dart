@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../support/fake_fx.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/pro_reviews_response.dart';
@@ -86,7 +87,7 @@ ClientProProfileResponse _profile({
     );
 
 Widget _wrap(Override override) => ProviderScope(
-      overrides: [
+      overrides: [...fxTestOverrides, 
         override,
         // The profile's reviews section loads its own list; these tests are
         // about the rest of the profile, so it has nothing to show.

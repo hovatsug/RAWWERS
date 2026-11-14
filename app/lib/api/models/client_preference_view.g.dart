@@ -14,6 +14,7 @@ _ClientPreferenceView _$ClientPreferenceViewFromJson(
       .toList(),
   budgetMin: json['budget_min'] as String?,
   budgetMax: json['budget_max'] as String?,
+  currency: json['currency'] as String,
   styleTags: (json['style_tags'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
@@ -28,6 +29,7 @@ Map<String, dynamic> _$ClientPreferenceViewToJson(
   'preferred_niches': instance.preferredNiches,
   'budget_min': instance.budgetMin,
   'budget_max': instance.budgetMax,
+  'currency': instance.currency,
   'style_tags': instance.styleTags,
   'location': instance.location,
   'consent_default': instance.consentDefault,

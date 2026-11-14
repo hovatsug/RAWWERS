@@ -197,7 +197,7 @@ Sources: this check (marked •), `docs/BACKEND_GAPS.md` (BG), `docs/SECURITY_AU
 - **Payouts:** `MIN_PAYOUT_EUR` 50 and `Transfer.create(currency="eur")` (`services/payouts.py:40, 498`); earnings, balances, holds and payouts are `_eur` columns.
 - **Apps and web:** `RMoney` falls back to EUR (`app/lib/core/format/money.dart:33`); "€" literals in four app screens; the web admin's `money()` defaults to EUR and BI formats €.
 - **Country:** `DEFAULT_CONNECT_COUNTRY=PT` and `WARMUP_HOME_COUNTRY=PT` (`config.py:38, 60`); the prints EU country list (`prints_fulfillment.py:44`, dormant).
-- **Time zone:** `Europe/Lisbon` is the default for notification quiet hours, email times and call compliance (`config.py:231`, `models/communication.py:108, 282`, `email_texts.py:70`, `call_compliance.py:30, 80`). Lisbon keeps the same clock as London all year, so nothing is wrong today; batch M changes the default to `Europe/London`.
+- **Time zone:** `Europe/Lisbon` is the default for notification quiet hours, email times and call compliance (`config.py:231`, `models/communication.py:108, 282`, `email_texts.py:70`, `call_compliance.py:30, 80`). Lisbon keeps the same clock as London all year. **Changed to `Europe/London` in M3 (2026-11-14)**; existing rows keep theirs.
 - **Reporting:** BI counts EUR only and leaves other lines out (`services/bi.py`, `bi_stripe.py:104`); the liquid and money-owed views read EUR only (`bi.py:666`).
 - **Payment methods:** automatic methods without redirects; the comment names iDEAL, Bancontact and Multibanco (`payment_intents.py:337`). Cards and wallets cover the UK; nothing to change.
 - **Not an assumption:** the web admin already formats dates `en-GB`; the apps' formatter already knows £.

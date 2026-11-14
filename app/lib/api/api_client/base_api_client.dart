@@ -21,6 +21,10 @@ class BaseApiClient {
     return AuthClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
+  FxClient get fxClient {
+    return FxClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   AIConciergeClient get aIConciergeClient {
     return AIConciergeClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

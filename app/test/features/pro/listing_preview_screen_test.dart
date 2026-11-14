@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../support/fake_fx.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
@@ -56,7 +57,7 @@ ProListingPreviewResponse _preview({
     );
 
 Widget _wrap(ProListingPreviewResponse preview) => ProviderScope(
-      overrides: [
+      overrides: [...fxTestOverrides, 
         listingPreviewControllerProvider.overrideWith(() => _FakePreview(preview)),
       ],
       child: MaterialApp(
@@ -163,7 +164,7 @@ void main() {
     _usePhoneSurface(tester);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [listingPreviewControllerProvider.overrideWith(_FailingPreview.new)],
+        overrides: [...fxTestOverrides, listingPreviewControllerProvider.overrideWith(_FailingPreview.new)],
         child: MaterialApp(
           theme: buildProTheme(),
           home: const ListingPreviewScreen(

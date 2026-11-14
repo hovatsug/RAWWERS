@@ -2,6 +2,7 @@ library exports.dart;
 
 export 'dart:typed_data';
 export 'auth_client.dart';
+export 'fx_client.dart';
 export 'ai_concierge_client.dart';
 export 'chats_client.dart';
 export 'presence_client.dart';

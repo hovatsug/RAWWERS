@@ -23,7 +23,7 @@ class _Backend {
 
   Future<ResponseBody> handle(RequestOptions o) async {
     if (o.uri.path == '/v1/me') {
-      return jsonResponseBody(jsonEncode({'user_id': 'pro-1', 'status': 'active', 'roles': ['pro', 'client']}), 200);
+      return jsonResponseBody(jsonEncode({'user_id': 'pro-1', 'status': 'active', 'display_currency': 'GBP', 'roles': ['pro', 'client']}), 200);
     }
     if (o.uri.path == '/v1/auth/logout') {
       if (down) throw DioException.connectionError(requestOptions: o, reason: 'offline');

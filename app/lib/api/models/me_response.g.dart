@@ -17,6 +17,7 @@ _MeResponse _$MeResponseFromJson(Map<String, dynamic> json) => _MeResponse(
       ?.map((e) => UserRoleType.fromJson(e as String))
       .toList(),
   locale: json['locale'] as String? ?? 'en-GB',
+  displayCurrency: json['display_currency'] as String,
   isImpersonating: json['is_impersonating'] as bool? ?? false,
   impersonationAdminUserId: json['impersonation_admin_user_id'] as String?,
 );
@@ -29,6 +30,7 @@ Map<String, dynamic> _$MeResponseToJson(_MeResponse instance) =>
       'status': instance.status,
       'roles': instance.roles,
       'locale': instance.locale,
+      'display_currency': instance.displayCurrency,
       'is_impersonating': instance.isImpersonating,
       'impersonation_admin_user_id': instance.impersonationAdminUserId,
     };

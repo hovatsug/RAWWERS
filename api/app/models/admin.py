@@ -134,6 +134,9 @@ class UserAccount(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The currency approximations are shown in (MULTI_CURRENCY.md 2.2).
+    #: Null: the default (GBP). Changes nothing charged or stored.
+    display_currency: Mapped[str | None] = mapped_column(CHAR(3), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

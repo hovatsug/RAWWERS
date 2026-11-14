@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/api/models/teaser_kind.dart';
 import 'package:rawwers/features/shared/meet/meet_section.dart';
@@ -189,6 +190,7 @@ class _Card extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall,
               ),
+            if (card.minPrice != null) ApproxLine(amount: card.minPrice!, currency: card.currency),
           ],
         ),
       ),

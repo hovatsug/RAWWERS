@@ -63,6 +63,8 @@ class MeResponse(BaseModel):
     status: str
     roles: list[UserRoleType] = Field(default_factory=list)
     locale: str = "en-GB"
+    #: What approximations are shown in (MULTI_CURRENCY.md 2.2).
+    display_currency: str
     is_impersonating: bool = False
     impersonation_admin_user_id: uuid.UUID | None = None
 

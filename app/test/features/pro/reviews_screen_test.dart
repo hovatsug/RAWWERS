@@ -24,7 +24,7 @@ const _me = 'pro-me';
 
 class _SignedIn extends AuthController {
   @override
-  Future<AuthState> build() async => const AuthAuthenticated(MeResponse(userId: _me, status: 'active'));
+  Future<AuthState> build() async => const AuthAuthenticated(MeResponse(userId: _me, status: 'active', displayCurrency: 'GBP'));
 }
 
 class _Backend {

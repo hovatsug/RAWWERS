@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/api/models/selection_quote_response.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_empty_state.dart';
@@ -304,10 +305,22 @@ class _PriceBar extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm your selection?'),
-        content: Text(
-          '${count == 1 ? '1 photo' : '$count photos'} chosen. '
-          '${owed ? 'You will be charged ${_money(quote.amountDue, quote.currency)}.' : _refundSentence(quote)} '
-          '${_afterSentence(quote)}',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${count == 1 ? '1 photo' : '$count photos'} chosen. '
+              '${owed ? 'You will be charged ${_money(quote.amountDue, quote.currency)}.' : _refundSentence(quote)} '
+              '${_afterSentence(quote)}',
+            ),
+            // The amount charged stays exact; in another display currency the
+            // approximation follows it (2.4).
+            if (owed) ...[
+              const SizedBox(height: 8),
+              BeforePayingLine(total: quote.amountDue, currency: quote.currency),
+            ],
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Not yet')),

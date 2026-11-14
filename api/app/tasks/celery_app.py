@@ -161,6 +161,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.scheduled.bi_nightly",
         "schedule": crontab(minute=30),
     },
+    # Display rates (docs/MULTI_CURRENCY.md 4.1): the ECB publishes once a
+    # working day around 16:00 CET; every hour keeps the newest.
+    "fx-refresh": {
+        "task": "app.tasks.scheduled.fx_refresh",
+        "schedule": crontab(minute=15),
+    },
     # The Shelf: RAWW expiry after long inactivity, and the warning before it.
     "shelf-raww-daily": {
         "task": "app.tasks.scheduled.shelf_raww_daily",

@@ -39,6 +39,8 @@ class ClientPreferenceView(BaseModel):
     preferred_niches: list[str] = Field(default_factory=list)
     budget_min: Decimal | None = None
     budget_max: Decimal | None = None
+    #: The budget's currency: the client's display currency.
+    currency: str
     style_tags: list[str] = Field(default_factory=list)
     location: dict = Field(default_factory=dict)
     consent_default: GigConsentLevel

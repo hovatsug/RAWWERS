@@ -3,6 +3,7 @@ import 'package:rawwers/features/shared/notifications/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rawwers/core/auth/auth_controller.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/core/auth/auth_state.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -49,6 +50,8 @@ class AccountScreen extends ConsumerWidget {
               const SizedBox(height: RSpace.s12),
               RTextLink(label: 'Marketing permissions', onPressed: () => context.push(path)),
             ],
+            const SizedBox(height: RSpace.s12),
+            const DisplayCurrencyTile(),
             const Spacer(),
             RButton(label: 'Log out', onPressed: () => ref.read(authControllerProvider.notifier).logout()),
           ],

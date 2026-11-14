@@ -7,6 +7,7 @@
 // collapsing four different facts into one message: no city, no such niche,
 // nobody here yet, and a failure.
 import 'package:flutter/material.dart';
+import '../../support/fake_fx.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
@@ -59,7 +60,7 @@ Future<void> _pump(WidgetTester tester, NicheController Function() controller, {
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [nicheControllerProvider('weddings').overrideWith(controller)],
+      overrides: [...fxTestOverrides, nicheControllerProvider('weddings').overrideWith(controller)],
       child: MaterialApp(
         theme: buildClientTheme(),
         home: NicheScreen(nicheSlug: 'weddings', onOpenPro: onOpenPro),

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Postgres advisory-lock keys, one per sweep. These two run every minute; a
 # run that starts while the previous one is still going skips rather than
 # working the same rows twice (a Stripe cancel twice, a transition twice).
-SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003, "mux_sync": 720_004, "bi_nightly": 720_005}
+SWEEP_LOCK_KEYS = {"expire_booking_requests": 720_001, "expire_unpaid_gigs": 720_002, "stripe_reconcile": 720_003, "mux_sync": 720_004, "bi_nightly": 720_005, "fx_refresh": 720_006}
 
 
 def _run_exclusively(name: str, sweep, limit: int | None) -> int:
@@ -253,5 +253,24 @@ def selection_addon_reminders_task() -> int:
         sent = send_closing_reminders(db)
         db.commit()
         return sent
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.tasks.scheduled.fx_refresh")
+def fx_refresh_task() -> dict:
+    """The display rates (services/fx.py): the ECB's newest publication, then
+    the discovery index's euro values and RAWW waiting for a rate."""
+    from app.services import fx
+
+    db = SessionLocal()
+    try:
+        if not db.execute(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": SWEEP_LOCK_KEYS["fx_refresh"]}).scalar():
+            logger.info("sweep_skipped_overlap", extra={"sweep": "fx_refresh"})
+            db.rollback()
+            return {"skipped": True}
+        result = fx.refresh_rates(db)
+        db.commit()
+        return result
     finally:
         db.close()

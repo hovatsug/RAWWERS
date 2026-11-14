@@ -83,7 +83,7 @@ def discover_pros(
         niche=niche,
         limit=limit,
         offset=offset,
-        currency=budget_currency(currency),
+        currency=budget_currency(currency, db, user.user_id if user else None),
     )
     cached = cache_get_json(cache_key)
     if cached:
@@ -109,7 +109,9 @@ def discover_pros(
         conditions.append(ProPublicIndex.city == city)
     if country:
         conditions.append(ProPublicIndex.country == country)
-    conditions.extend(price_conditions(db, min_price=min_price, max_price=max_price, currency=budget_currency(currency)))
+    conditions.extend(
+        price_conditions(db, min_price=min_price, max_price=max_price, currency=budget_currency(currency, db, user.user_id if user else None))
+    )
     if styles:
         style_tokens = [s.strip() for s in styles.split(",") if s.strip()]
         if style_tokens:
@@ -403,7 +405,7 @@ def discover_match(
 
     if body.city:
         stmt = stmt.where(ProPublicIndex.city == body.city)
-    currency = budget_currency(body.currency)
+    currency = budget_currency(body.currency, db, user.user_id if user else None)
     if body.budget is not None:
         stmt = stmt.where(*price_conditions(db, min_price=None, max_price=body.budget, currency=currency))
 

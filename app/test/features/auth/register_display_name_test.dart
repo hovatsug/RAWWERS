@@ -45,6 +45,7 @@ Dio _dio(void Function(RequestOptions) onRegister) {
         'email': 'dana@example.com',
         'roles': ['client'],
         'status': 'active',
+        'display_currency': 'GBP',
         'email_verified': false,
       }),
       200,

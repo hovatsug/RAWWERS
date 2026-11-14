@@ -28,7 +28,7 @@ import 'package:rawwers/features/client/discover/widgets/hero_carousel.dart';
 
 class _SignedIn extends AuthController {
   @override
-  Future<AuthState> build() async => const AuthAuthenticated(MeResponse(userId: 'client-1', status: 'active'));
+  Future<AuthState> build() async => const AuthAuthenticated(MeResponse(userId: 'client-1', status: 'active', displayCurrency: 'GBP'));
 }
 
 class _Home extends HomeController {

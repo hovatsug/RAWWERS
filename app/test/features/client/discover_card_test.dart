@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../support/fake_fx.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
@@ -45,7 +47,7 @@ Widget _wrap(ClientDiscoverCard card) => MaterialApp(
         // reasons that have nothing to do with the card.
         body: ListView(
           padding: const EdgeInsets.all(16),
-          children: [DiscoverCard(card: card, onTap: () {})],
+          children: [ProviderScope(overrides: [...fxTestOverrides], child: DiscoverCard(card: card, onTap: () {}))],
         ),
       ),
     );

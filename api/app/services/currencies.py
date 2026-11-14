@@ -210,3 +210,30 @@ def package_currency(db: Session, profile: ProProfile, requested: str | None) ->
                 details={"currency": asked, "photographer_currency": own},
             )
     return require_enabled(db, own)
+
+
+# --- the display currency (batch M3) ---------------------------------------------------------
+
+
+def display_currency(db: Session, user_id) -> str:
+    """The currency a user's approximations are shown in: their choice while
+    it is switched on, else the default (MULTI_CURRENCY.md 2.2, 10.1)."""
+    from app.models.admin import UserAccount
+
+    account = db.get(UserAccount, user_id) if user_id else None
+    chosen = account.display_currency if account else None
+    if chosen and chosen in enabled_currencies(db):
+        return chosen
+    return default_currency()
+
+
+def set_display_currency(db: Session, user_id, currency: str | None) -> str:
+    """Choose (a currency switched on) or clear (None: the default)."""
+    from app.models.admin import UserAccount
+
+    account = db.get(UserAccount, user_id)
+    if account is None:
+        raise APIError(code="not_found", message="User not found", status_code=404)
+    account.display_currency = require_enabled(db, currency) if currency else None
+    db.flush()
+    return display_currency(db, user_id)

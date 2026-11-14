@@ -19,10 +19,16 @@ from app.models.discovery import ProPublicIndex
 from app.services import fx
 
 
-def budget_currency(currency: str | None) -> str:
-    from app.services.currencies import default_currency, normalise
+def budget_currency(currency: str | None, db: Session | None = None, user_id=None) -> str:
+    """The currency a budget is in: the one the request names, else the
+    signed-in user's display currency, else the default."""
+    from app.services.currencies import default_currency, display_currency, normalise
 
-    return normalise(currency) if currency else default_currency()
+    if currency:
+        return normalise(currency)
+    if db is not None and user_id is not None:
+        return display_currency(db, user_id)
+    return default_currency()
 
 
 def price_conditions(db: Session | None, *, min_price, max_price, currency: str) -> list:

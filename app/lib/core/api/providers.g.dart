@@ -492,5 +492,22 @@ final meetClientProvider = AutoDisposeProvider<MeetClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MeetClientRef = AutoDisposeProviderRef<MeetClient>;
+String _$fxClientHash() => r'9cd3c2a03e101658aa863304aade73c317f3ef6e';
+
+/// See also [fxClient].
+@ProviderFor(fxClient)
+final fxClientProvider = AutoDisposeProvider<FxClient>.internal(
+  fxClient,
+  name: r'fxClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$fxClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef FxClientRef = AutoDisposeProviderRef<FxClient>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

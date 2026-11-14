@@ -232,7 +232,7 @@ class Settings(BaseSettings):
     auth_email_verification_ttl_minutes: int = Field(default=30, alias="AUTH_EMAIL_VERIFICATION_TTL_MINUTES")
     auth_password_reset_ttl_minutes: int = Field(default=30, alias="AUTH_PASSWORD_RESET_TTL_MINUTES")
     auth_dev_bypass: bool = Field(default=False, alias="AUTH_DEV_BYPASS")
-    notification_default_timezone: str = Field(default="Europe/Lisbon", alias="NOTIFICATION_DEFAULT_TIMEZONE")
+    notification_default_timezone: str = Field(default="Europe/London", alias="NOTIFICATION_DEFAULT_TIMEZONE")
     notification_critical_bypass_quiet_hours: bool = Field(default=True, alias="NOTIFICATION_CRITICAL_BYPASS_QUIET_HOURS")
     rate_limit_notifications_email_per_day: int = Field(default=20, alias="RATE_LIMIT_NOTIFICATIONS_EMAIL_PER_DAY")
     rate_limit_notifications_inapp_per_day: int = Field(default=60, alias="RATE_LIMIT_NOTIFICATIONS_INAPP_PER_DAY")

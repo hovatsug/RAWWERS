@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/api/models/client_portfolio_item.dart';
 import 'package:rawwers/api/models/client_pro_profile_response.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
@@ -567,6 +568,7 @@ class _PackageCard extends StatelessWidget {
             startingTotal: package.startingTotal,
             currency: package.currency,
           ),
+          ApproxLine(amount: package.startingTotal, currency: package.currency),
           if (package.description != null && package.description!.isNotEmpty) ...[
             const SizedBox(height: RSpace.s4),
             Text(package.description!, style: theme.textTheme.bodyMedium),

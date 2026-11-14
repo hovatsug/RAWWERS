@@ -45,6 +45,10 @@
 ///             "default": "en-GB",
 ///             "title": "Locale"
 ///         },
+///         "display_currency": {
+///             "type": "string",
+///             "title": "Display Currency"
+///         },
 ///         "is_impersonating": {
 ///             "type": "boolean",
 ///             "default": false,
@@ -66,7 +70,8 @@
 ///     "type": "object",
 ///     "required": [
 ///         "user_id",
-///         "status"
+///         "status",
+///         "display_currency"
 ///     ],
 ///     "title": "MeResponse"
 /// }
@@ -100,6 +105,10 @@ abstract class MeResponse with _$MeResponse {
     /// locale
     @Default('en-GB') @JsonKey(name: MeResponse.localeKey_) String locale,
 
+    /// displayCurrency
+    @JsonKey(name: MeResponse.displayCurrencyKey_)
+    required String displayCurrency,
+
     /// isImpersonating
     @Default(false)
     @JsonKey(name: MeResponse.isImpersonatingKey_)
@@ -124,6 +133,8 @@ abstract class MeResponse with _$MeResponse {
   static const String rolesKey_ = r'roles';
 
   static const String localeKey_ = r'locale';
+
+  static const String displayCurrencyKey_ = r'display_currency';
 
   static const String isImpersonatingKey_ = r'is_impersonating';
 

@@ -19,6 +19,7 @@ from app.api.v1.shelf_admin import router as shelf_admin_router
 from app.api.v1.bi_admin import router as bi_admin_router
 from app.api.v1.shelf import router as shelf_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.fx import router as fx_router
 from app.api.v1.chats import router as chats_router
 from app.api.v1.client_launch import router as client_launch_router
 from app.api.v1.communications import router as communications_router
@@ -57,6 +58,7 @@ from app.api.v1.prints import router as prints_router
 
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(auth_router)
+api_router.include_router(fx_router)
 api_router.include_router(admin_router)
 api_router.include_router(ai_concierge_router)
 api_router.include_router(chats_router)

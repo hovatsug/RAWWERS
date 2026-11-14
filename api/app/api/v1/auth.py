@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.services.currencies import display_currency
 from app.api.deps import get_current_user, get_db_session, require_admin, require_not_banned
 from app.core.errors import APIError
 from app.core.client_ip import client_ip
@@ -220,6 +221,7 @@ def me(
         status=account.status.value,
         roles=roles,
         locale=get_user_locale_preference(db, user_id=user.user_id),
+        display_currency=display_currency(db, user.user_id),
         is_impersonating=user.is_impersonating,
         impersonation_admin_user_id=user.impersonation_admin_user_id,
     )

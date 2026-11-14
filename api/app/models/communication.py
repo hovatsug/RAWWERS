@@ -105,7 +105,7 @@ class UserContact(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     phone_e164: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
-    timezone_name: Mapped[str] = mapped_column("timezone", Text, nullable=False, default="Europe/Lisbon")
+    timezone_name: Mapped[str] = mapped_column("timezone", Text, nullable=False, default="Europe/London")
     quiet_hours_start: Mapped[time] = mapped_column(Time(timezone=False), nullable=False, default=lambda: time(hour=22, minute=0))
     quiet_hours_end: Mapped[time] = mapped_column(Time(timezone=False), nullable=False, default=lambda: time(hour=8, minute=0))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -279,7 +279,7 @@ class NotificationPreference(Base):
     __tablename__ = "notification_preference"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
-    timezone_name: Mapped[str] = mapped_column("timezone", Text, nullable=False, default="Europe/Lisbon")
+    timezone_name: Mapped[str] = mapped_column("timezone", Text, nullable=False, default="Europe/London")
     quiet_hours_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     quiet_start_local: Mapped[time | None] = mapped_column(Time(timezone=False), nullable=True)
     quiet_end_local: Mapped[time | None] = mapped_column(Time(timezone=False), nullable=True)

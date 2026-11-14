@@ -30,8 +30,6 @@ NOT_MONEY = ("progress", "percent", "rate", "ratio", "score", "_km", "rating", "
 ALLOWED_WITHOUT_CURRENCY = {
     # A point on a pricing curve; the response holding the curve has `currency`.
     "ProPricingCurvePoint",
-    # The client's budget filter: in their display currency, which is batch M3.
-    "ClientPreferenceView",
 }
 #: Per-currency settings: the suffix names the currency the setting is for
 #: (a `_gbp` twin comes with batch M4), not an amount sent without one.

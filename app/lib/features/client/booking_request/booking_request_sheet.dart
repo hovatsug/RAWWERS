@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/api/models/client_profile_package.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_input.dart';
@@ -146,6 +147,8 @@ class _BookingRequestFormState extends ConsumerState<_BookingRequestForm> {
             startingTotal: widget.package.startingTotal,
             currency: widget.package.currency,
           ),
+          ApproxLine(amount: widget.package.startingTotal, currency: widget.package.currency),
+          RequestCurrencyNote(currency: widget.package.currency),
           const SizedBox(height: RSpace.s24),
           if (pick == null)
             AvailabilityCalendar(

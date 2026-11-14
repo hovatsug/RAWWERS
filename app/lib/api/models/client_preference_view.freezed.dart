@@ -18,7 +18,8 @@ mixin _$ClientPreferenceView {
 /// preferredNiches
 @JsonKey(name: ClientPreferenceView.preferredNichesKey_) List<String>? get preferredNiches;/// budgetMin
 @JsonKey(name: ClientPreferenceView.budgetMinKey_) String? get budgetMin;/// budgetMax
-@JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? get budgetMax;/// styleTags
+@JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? get budgetMax;/// currency
+@JsonKey(name: ClientPreferenceView.currencyKey_) String get currency;/// styleTags
 @JsonKey(name: ClientPreferenceView.styleTagsKey_) List<String>? get styleTags;/// location
 @JsonKey(name: ClientPreferenceView.locationKey_) Map<String, dynamic>? get location;/// consentDefault
 @JsonKey(name: ClientPreferenceView.consentDefaultKey_) GigConsentLevel get consentDefault;/// updatedAt
@@ -35,16 +36,16 @@ $ClientPreferenceViewCopyWith<ClientPreferenceView> get copyWith => _$ClientPref
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientPreferenceView&&const DeepCollectionEquality().equals(other.preferredNiches, preferredNiches)&&(identical(other.budgetMin, budgetMin) || other.budgetMin == budgetMin)&&(identical(other.budgetMax, budgetMax) || other.budgetMax == budgetMax)&&const DeepCollectionEquality().equals(other.styleTags, styleTags)&&const DeepCollectionEquality().equals(other.location, location)&&(identical(other.consentDefault, consentDefault) || other.consentDefault == consentDefault)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientPreferenceView&&const DeepCollectionEquality().equals(other.preferredNiches, preferredNiches)&&(identical(other.budgetMin, budgetMin) || other.budgetMin == budgetMin)&&(identical(other.budgetMax, budgetMax) || other.budgetMax == budgetMax)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other.styleTags, styleTags)&&const DeepCollectionEquality().equals(other.location, location)&&(identical(other.consentDefault, consentDefault) || other.consentDefault == consentDefault)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(preferredNiches),budgetMin,budgetMax,const DeepCollectionEquality().hash(styleTags),const DeepCollectionEquality().hash(location),consentDefault,updatedAt);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(preferredNiches),budgetMin,budgetMax,currency,const DeepCollectionEquality().hash(styleTags),const DeepCollectionEquality().hash(location),consentDefault,updatedAt);
 
 @override
 String toString() {
-  return 'ClientPreferenceView(preferredNiches: $preferredNiches, budgetMin: $budgetMin, budgetMax: $budgetMax, styleTags: $styleTags, location: $location, consentDefault: $consentDefault, updatedAt: $updatedAt)';
+  return 'ClientPreferenceView(preferredNiches: $preferredNiches, budgetMin: $budgetMin, budgetMax: $budgetMax, currency: $currency, styleTags: $styleTags, location: $location, consentDefault: $consentDefault, updatedAt: $updatedAt)';
 }
 
 
@@ -55,7 +56,7 @@ abstract mixin class $ClientPreferenceViewCopyWith<$Res>  {
   factory $ClientPreferenceViewCopyWith(ClientPreferenceView value, $Res Function(ClientPreferenceView) _then) = _$ClientPreferenceViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientPreferenceView.preferredNichesKey_) List<String>? preferredNiches,@JsonKey(name: ClientPreferenceView.budgetMinKey_) String? budgetMin,@JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? budgetMax,@JsonKey(name: ClientPreferenceView.styleTagsKey_) List<String>? styleTags,@JsonKey(name: ClientPreferenceView.locationKey_) Map<String, dynamic>? location,@JsonKey(name: ClientPreferenceView.consentDefaultKey_) GigConsentLevel consentDefault,@JsonKey(name: ClientPreferenceView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: ClientPreferenceView.preferredNichesKey_) List<String>? preferredNiches,@JsonKey(name: ClientPreferenceView.budgetMinKey_) String? budgetMin,@JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? budgetMax,@JsonKey(name: ClientPreferenceView.currencyKey_) String currency,@JsonKey(name: ClientPreferenceView.styleTagsKey_) List<String>? styleTags,@JsonKey(name: ClientPreferenceView.locationKey_) Map<String, dynamic>? location,@JsonKey(name: ClientPreferenceView.consentDefaultKey_) GigConsentLevel consentDefault,@JsonKey(name: ClientPreferenceView.updatedAtKey_) DateTime updatedAt
 });
 
 
@@ -72,12 +73,13 @@ class _$ClientPreferenceViewCopyWithImpl<$Res>
 
 /// Create a copy of ClientPreferenceView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? preferredNiches = freezed,Object? budgetMin = freezed,Object? budgetMax = freezed,Object? styleTags = freezed,Object? location = freezed,Object? consentDefault = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? preferredNiches = freezed,Object? budgetMin = freezed,Object? budgetMax = freezed,Object? currency = null,Object? styleTags = freezed,Object? location = freezed,Object? consentDefault = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 preferredNiches: freezed == preferredNiches ? _self.preferredNiches : preferredNiches // ignore: cast_nullable_to_non_nullable
 as List<String>?,budgetMin: freezed == budgetMin ? _self.budgetMin : budgetMin // ignore: cast_nullable_to_non_nullable
 as String?,budgetMax: freezed == budgetMax ? _self.budgetMax : budgetMax // ignore: cast_nullable_to_non_nullable
-as String?,styleTags: freezed == styleTags ? _self.styleTags : styleTags // ignore: cast_nullable_to_non_nullable
+as String?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,styleTags: freezed == styleTags ? _self.styleTags : styleTags // ignore: cast_nullable_to_non_nullable
 as List<String>?,location: freezed == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as Map<String, dynamic>?,consentDefault: null == consentDefault ? _self.consentDefault : consentDefault // ignore: cast_nullable_to_non_nullable
 as GigConsentLevel,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPreferenceView.preferredNichesKey_)  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_)  String? budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_)  String? budgetMax, @JsonKey(name: ClientPreferenceView.styleTagsKey_)  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_)  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_)  GigConsentLevel consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPreferenceView.preferredNichesKey_)  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_)  String? budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_)  String? budgetMax, @JsonKey(name: ClientPreferenceView.currencyKey_)  String currency, @JsonKey(name: ClientPreferenceView.styleTagsKey_)  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_)  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_)  GigConsentLevel consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientPreferenceView() when $default != null:
-return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.styleTags,_that.location,_that.consentDefault,_that.updatedAt);case _:
+return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.currency,_that.styleTags,_that.location,_that.consentDefault,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.styl
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPreferenceView.preferredNichesKey_)  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_)  String? budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_)  String? budgetMax, @JsonKey(name: ClientPreferenceView.styleTagsKey_)  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_)  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_)  GigConsentLevel consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientPreferenceView.preferredNichesKey_)  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_)  String? budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_)  String? budgetMax, @JsonKey(name: ClientPreferenceView.currencyKey_)  String currency, @JsonKey(name: ClientPreferenceView.styleTagsKey_)  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_)  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_)  GigConsentLevel consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _ClientPreferenceView():
-return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.styleTags,_that.location,_that.consentDefault,_that.updatedAt);case _:
+return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.currency,_that.styleTags,_that.location,_that.consentDefault,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.styl
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientPreferenceView.preferredNichesKey_)  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_)  String? budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_)  String? budgetMax, @JsonKey(name: ClientPreferenceView.styleTagsKey_)  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_)  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_)  GigConsentLevel consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientPreferenceView.preferredNichesKey_)  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_)  String? budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_)  String? budgetMax, @JsonKey(name: ClientPreferenceView.currencyKey_)  String currency, @JsonKey(name: ClientPreferenceView.styleTagsKey_)  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_)  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_)  GigConsentLevel consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientPreferenceView() when $default != null:
-return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.styleTags,_that.location,_that.consentDefault,_that.updatedAt);case _:
+return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.currency,_that.styleTags,_that.location,_that.consentDefault,_that.updatedAt);case _:
   return null;
 
 }
@@ -222,7 +224,7 @@ return $default(_that.preferredNiches,_that.budgetMin,_that.budgetMax,_that.styl
 
 @jsonSerializable
 class _ClientPreferenceView extends ClientPreferenceView {
-  const _ClientPreferenceView({@JsonKey(name: ClientPreferenceView.preferredNichesKey_) final  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_) this.budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_) this.budgetMax, @JsonKey(name: ClientPreferenceView.styleTagsKey_) final  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_) final  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_) required this.consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_) required this.updatedAt}): _preferredNiches = preferredNiches,_styleTags = styleTags,_location = location,super._();
+  const _ClientPreferenceView({@JsonKey(name: ClientPreferenceView.preferredNichesKey_) final  List<String>? preferredNiches, @JsonKey(name: ClientPreferenceView.budgetMinKey_) this.budgetMin, @JsonKey(name: ClientPreferenceView.budgetMaxKey_) this.budgetMax, @JsonKey(name: ClientPreferenceView.currencyKey_) required this.currency, @JsonKey(name: ClientPreferenceView.styleTagsKey_) final  List<String>? styleTags, @JsonKey(name: ClientPreferenceView.locationKey_) final  Map<String, dynamic>? location, @JsonKey(name: ClientPreferenceView.consentDefaultKey_) required this.consentDefault, @JsonKey(name: ClientPreferenceView.updatedAtKey_) required this.updatedAt}): _preferredNiches = preferredNiches,_styleTags = styleTags,_location = location,super._();
   factory _ClientPreferenceView.fromJson(Map<String, dynamic> json) => _$ClientPreferenceViewFromJson(json);
 
 /// preferredNiches
@@ -240,6 +242,8 @@ class _ClientPreferenceView extends ClientPreferenceView {
 @override@JsonKey(name: ClientPreferenceView.budgetMinKey_) final  String? budgetMin;
 /// budgetMax
 @override@JsonKey(name: ClientPreferenceView.budgetMaxKey_) final  String? budgetMax;
+/// currency
+@override@JsonKey(name: ClientPreferenceView.currencyKey_) final  String currency;
 /// styleTags
  final  List<String>? _styleTags;
 /// styleTags
@@ -280,16 +284,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientPreferenceView&&const DeepCollectionEquality().equals(other._preferredNiches, _preferredNiches)&&(identical(other.budgetMin, budgetMin) || other.budgetMin == budgetMin)&&(identical(other.budgetMax, budgetMax) || other.budgetMax == budgetMax)&&const DeepCollectionEquality().equals(other._styleTags, _styleTags)&&const DeepCollectionEquality().equals(other._location, _location)&&(identical(other.consentDefault, consentDefault) || other.consentDefault == consentDefault)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientPreferenceView&&const DeepCollectionEquality().equals(other._preferredNiches, _preferredNiches)&&(identical(other.budgetMin, budgetMin) || other.budgetMin == budgetMin)&&(identical(other.budgetMax, budgetMax) || other.budgetMax == budgetMax)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other._styleTags, _styleTags)&&const DeepCollectionEquality().equals(other._location, _location)&&(identical(other.consentDefault, consentDefault) || other.consentDefault == consentDefault)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_preferredNiches),budgetMin,budgetMax,const DeepCollectionEquality().hash(_styleTags),const DeepCollectionEquality().hash(_location),consentDefault,updatedAt);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_preferredNiches),budgetMin,budgetMax,currency,const DeepCollectionEquality().hash(_styleTags),const DeepCollectionEquality().hash(_location),consentDefault,updatedAt);
 
 @override
 String toString() {
-  return 'ClientPreferenceView(preferredNiches: $preferredNiches, budgetMin: $budgetMin, budgetMax: $budgetMax, styleTags: $styleTags, location: $location, consentDefault: $consentDefault, updatedAt: $updatedAt)';
+  return 'ClientPreferenceView(preferredNiches: $preferredNiches, budgetMin: $budgetMin, budgetMax: $budgetMax, currency: $currency, styleTags: $styleTags, location: $location, consentDefault: $consentDefault, updatedAt: $updatedAt)';
 }
 
 
@@ -300,7 +304,7 @@ abstract mixin class _$ClientPreferenceViewCopyWith<$Res> implements $ClientPref
   factory _$ClientPreferenceViewCopyWith(_ClientPreferenceView value, $Res Function(_ClientPreferenceView) _then) = __$ClientPreferenceViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientPreferenceView.preferredNichesKey_) List<String>? preferredNiches,@JsonKey(name: ClientPreferenceView.budgetMinKey_) String? budgetMin,@JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? budgetMax,@JsonKey(name: ClientPreferenceView.styleTagsKey_) List<String>? styleTags,@JsonKey(name: ClientPreferenceView.locationKey_) Map<String, dynamic>? location,@JsonKey(name: ClientPreferenceView.consentDefaultKey_) GigConsentLevel consentDefault,@JsonKey(name: ClientPreferenceView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: ClientPreferenceView.preferredNichesKey_) List<String>? preferredNiches,@JsonKey(name: ClientPreferenceView.budgetMinKey_) String? budgetMin,@JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? budgetMax,@JsonKey(name: ClientPreferenceView.currencyKey_) String currency,@JsonKey(name: ClientPreferenceView.styleTagsKey_) List<String>? styleTags,@JsonKey(name: ClientPreferenceView.locationKey_) Map<String, dynamic>? location,@JsonKey(name: ClientPreferenceView.consentDefaultKey_) GigConsentLevel consentDefault,@JsonKey(name: ClientPreferenceView.updatedAtKey_) DateTime updatedAt
 });
 
 
@@ -317,12 +321,13 @@ class __$ClientPreferenceViewCopyWithImpl<$Res>
 
 /// Create a copy of ClientPreferenceView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? preferredNiches = freezed,Object? budgetMin = freezed,Object? budgetMax = freezed,Object? styleTags = freezed,Object? location = freezed,Object? consentDefault = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? preferredNiches = freezed,Object? budgetMin = freezed,Object? budgetMax = freezed,Object? currency = null,Object? styleTags = freezed,Object? location = freezed,Object? consentDefault = null,Object? updatedAt = null,}) {
   return _then(_ClientPreferenceView(
 preferredNiches: freezed == preferredNiches ? _self._preferredNiches : preferredNiches // ignore: cast_nullable_to_non_nullable
 as List<String>?,budgetMin: freezed == budgetMin ? _self.budgetMin : budgetMin // ignore: cast_nullable_to_non_nullable
 as String?,budgetMax: freezed == budgetMax ? _self.budgetMax : budgetMax // ignore: cast_nullable_to_non_nullable
-as String?,styleTags: freezed == styleTags ? _self._styleTags : styleTags // ignore: cast_nullable_to_non_nullable
+as String?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,styleTags: freezed == styleTags ? _self._styleTags : styleTags // ignore: cast_nullable_to_non_nullable
 as List<String>?,location: freezed == location ? _self._location : location // ignore: cast_nullable_to_non_nullable
 as Map<String, dynamic>?,consentDefault: null == consentDefault ? _self.consentDefault : consentDefault // ignore: cast_nullable_to_non_nullable
 as GigConsentLevel,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable

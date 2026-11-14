@@ -21,7 +21,8 @@ mixin _$MeResponse {
 @JsonKey(name: MeResponse.emailVerifiedAtKey_) DateTime? get emailVerifiedAt;/// status
 @JsonKey(name: MeResponse.statusKey_) String get status;/// roles
 @JsonKey(name: MeResponse.rolesKey_) List<UserRoleType>? get roles;/// locale
-@JsonKey(name: MeResponse.localeKey_) String get locale;/// isImpersonating
+@JsonKey(name: MeResponse.localeKey_) String get locale;/// displayCurrency
+@JsonKey(name: MeResponse.displayCurrencyKey_) String get displayCurrency;/// isImpersonating
 @JsonKey(name: MeResponse.isImpersonatingKey_) bool get isImpersonating;/// impersonationAdminUserId
 @JsonKey(name: MeResponse.impersonationAdminUserIdKey_) String? get impersonationAdminUserId;
 /// Create a copy of MeResponse
@@ -36,16 +37,16 @@ $MeResponseCopyWith<MeResponse> get copyWith => _$MeResponseCopyWithImpl<MeRespo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MeResponse&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerifiedAt, emailVerifiedAt) || other.emailVerifiedAt == emailVerifiedAt)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.roles, roles)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.isImpersonating, isImpersonating) || other.isImpersonating == isImpersonating)&&(identical(other.impersonationAdminUserId, impersonationAdminUserId) || other.impersonationAdminUserId == impersonationAdminUserId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MeResponse&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerifiedAt, emailVerifiedAt) || other.emailVerifiedAt == emailVerifiedAt)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.roles, roles)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.displayCurrency, displayCurrency) || other.displayCurrency == displayCurrency)&&(identical(other.isImpersonating, isImpersonating) || other.isImpersonating == isImpersonating)&&(identical(other.impersonationAdminUserId, impersonationAdminUserId) || other.impersonationAdminUserId == impersonationAdminUserId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,email,emailVerifiedAt,status,const DeepCollectionEquality().hash(roles),locale,isImpersonating,impersonationAdminUserId);
+int get hashCode => Object.hash(runtimeType,userId,email,emailVerifiedAt,status,const DeepCollectionEquality().hash(roles),locale,displayCurrency,isImpersonating,impersonationAdminUserId);
 
 @override
 String toString() {
-  return 'MeResponse(userId: $userId, email: $email, emailVerifiedAt: $emailVerifiedAt, status: $status, roles: $roles, locale: $locale, isImpersonating: $isImpersonating, impersonationAdminUserId: $impersonationAdminUserId)';
+  return 'MeResponse(userId: $userId, email: $email, emailVerifiedAt: $emailVerifiedAt, status: $status, roles: $roles, locale: $locale, displayCurrency: $displayCurrency, isImpersonating: $isImpersonating, impersonationAdminUserId: $impersonationAdminUserId)';
 }
 
 
@@ -56,7 +57,7 @@ abstract mixin class $MeResponseCopyWith<$Res>  {
   factory $MeResponseCopyWith(MeResponse value, $Res Function(MeResponse) _then) = _$MeResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: MeResponse.userIdKey_) String userId,@JsonKey(name: MeResponse.emailKey_) String? email,@JsonKey(name: MeResponse.emailVerifiedAtKey_) DateTime? emailVerifiedAt,@JsonKey(name: MeResponse.statusKey_) String status,@JsonKey(name: MeResponse.rolesKey_) List<UserRoleType>? roles,@JsonKey(name: MeResponse.localeKey_) String locale,@JsonKey(name: MeResponse.isImpersonatingKey_) bool isImpersonating,@JsonKey(name: MeResponse.impersonationAdminUserIdKey_) String? impersonationAdminUserId
+@JsonKey(name: MeResponse.userIdKey_) String userId,@JsonKey(name: MeResponse.emailKey_) String? email,@JsonKey(name: MeResponse.emailVerifiedAtKey_) DateTime? emailVerifiedAt,@JsonKey(name: MeResponse.statusKey_) String status,@JsonKey(name: MeResponse.rolesKey_) List<UserRoleType>? roles,@JsonKey(name: MeResponse.localeKey_) String locale,@JsonKey(name: MeResponse.displayCurrencyKey_) String displayCurrency,@JsonKey(name: MeResponse.isImpersonatingKey_) bool isImpersonating,@JsonKey(name: MeResponse.impersonationAdminUserIdKey_) String? impersonationAdminUserId
 });
 
 
@@ -73,7 +74,7 @@ class _$MeResponseCopyWithImpl<$Res>
 
 /// Create a copy of MeResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? email = freezed,Object? emailVerifiedAt = freezed,Object? status = null,Object? roles = freezed,Object? locale = null,Object? isImpersonating = null,Object? impersonationAdminUserId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? email = freezed,Object? emailVerifiedAt = freezed,Object? status = null,Object? roles = freezed,Object? locale = null,Object? displayCurrency = null,Object? isImpersonating = null,Object? impersonationAdminUserId = freezed,}) {
   return _then(_self.copyWith(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -81,6 +82,7 @@ as String?,emailVerifiedAt: freezed == emailVerifiedAt ? _self.emailVerifiedAt :
 as DateTime?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as String,roles: freezed == roles ? _self.roles : roles // ignore: cast_nullable_to_non_nullable
 as List<UserRoleType>?,locale: null == locale ? _self.locale : locale // ignore: cast_nullable_to_non_nullable
+as String,displayCurrency: null == displayCurrency ? _self.displayCurrency : displayCurrency // ignore: cast_nullable_to_non_nullable
 as String,isImpersonating: null == isImpersonating ? _self.isImpersonating : isImpersonating // ignore: cast_nullable_to_non_nullable
 as bool,impersonationAdminUserId: freezed == impersonationAdminUserId ? _self.impersonationAdminUserId : impersonationAdminUserId // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -168,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MeResponse.userIdKey_)  String userId, @JsonKey(name: MeResponse.emailKey_)  String? email, @JsonKey(name: MeResponse.emailVerifiedAtKey_)  DateTime? emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_)  String status, @JsonKey(name: MeResponse.rolesKey_)  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_)  String locale, @JsonKey(name: MeResponse.isImpersonatingKey_)  bool isImpersonating, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_)  String? impersonationAdminUserId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MeResponse.userIdKey_)  String userId, @JsonKey(name: MeResponse.emailKey_)  String? email, @JsonKey(name: MeResponse.emailVerifiedAtKey_)  DateTime? emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_)  String status, @JsonKey(name: MeResponse.rolesKey_)  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_)  String locale, @JsonKey(name: MeResponse.displayCurrencyKey_)  String displayCurrency, @JsonKey(name: MeResponse.isImpersonatingKey_)  bool isImpersonating, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_)  String? impersonationAdminUserId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MeResponse() when $default != null:
-return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_that.roles,_that.locale,_that.isImpersonating,_that.impersonationAdminUserId);case _:
+return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_that.roles,_that.locale,_that.displayCurrency,_that.isImpersonating,_that.impersonationAdminUserId);case _:
   return orElse();
 
 }
@@ -189,10 +191,10 @@ return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MeResponse.userIdKey_)  String userId, @JsonKey(name: MeResponse.emailKey_)  String? email, @JsonKey(name: MeResponse.emailVerifiedAtKey_)  DateTime? emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_)  String status, @JsonKey(name: MeResponse.rolesKey_)  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_)  String locale, @JsonKey(name: MeResponse.isImpersonatingKey_)  bool isImpersonating, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_)  String? impersonationAdminUserId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MeResponse.userIdKey_)  String userId, @JsonKey(name: MeResponse.emailKey_)  String? email, @JsonKey(name: MeResponse.emailVerifiedAtKey_)  DateTime? emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_)  String status, @JsonKey(name: MeResponse.rolesKey_)  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_)  String locale, @JsonKey(name: MeResponse.displayCurrencyKey_)  String displayCurrency, @JsonKey(name: MeResponse.isImpersonatingKey_)  bool isImpersonating, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_)  String? impersonationAdminUserId)  $default,) {final _that = this;
 switch (_that) {
 case _MeResponse():
-return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_that.roles,_that.locale,_that.isImpersonating,_that.impersonationAdminUserId);case _:
+return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_that.roles,_that.locale,_that.displayCurrency,_that.isImpersonating,_that.impersonationAdminUserId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -209,10 +211,10 @@ return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MeResponse.userIdKey_)  String userId, @JsonKey(name: MeResponse.emailKey_)  String? email, @JsonKey(name: MeResponse.emailVerifiedAtKey_)  DateTime? emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_)  String status, @JsonKey(name: MeResponse.rolesKey_)  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_)  String locale, @JsonKey(name: MeResponse.isImpersonatingKey_)  bool isImpersonating, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_)  String? impersonationAdminUserId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MeResponse.userIdKey_)  String userId, @JsonKey(name: MeResponse.emailKey_)  String? email, @JsonKey(name: MeResponse.emailVerifiedAtKey_)  DateTime? emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_)  String status, @JsonKey(name: MeResponse.rolesKey_)  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_)  String locale, @JsonKey(name: MeResponse.displayCurrencyKey_)  String displayCurrency, @JsonKey(name: MeResponse.isImpersonatingKey_)  bool isImpersonating, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_)  String? impersonationAdminUserId)?  $default,) {final _that = this;
 switch (_that) {
 case _MeResponse() when $default != null:
-return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_that.roles,_that.locale,_that.isImpersonating,_that.impersonationAdminUserId);case _:
+return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_that.roles,_that.locale,_that.displayCurrency,_that.isImpersonating,_that.impersonationAdminUserId);case _:
   return null;
 
 }
@@ -224,7 +226,7 @@ return $default(_that.userId,_that.email,_that.emailVerifiedAt,_that.status,_tha
 
 @jsonSerializable
 class _MeResponse extends MeResponse {
-  const _MeResponse({@JsonKey(name: MeResponse.userIdKey_) required this.userId, @JsonKey(name: MeResponse.emailKey_) this.email, @JsonKey(name: MeResponse.emailVerifiedAtKey_) this.emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_) required this.status, @JsonKey(name: MeResponse.rolesKey_) final  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_) this.locale = 'en-GB', @JsonKey(name: MeResponse.isImpersonatingKey_) this.isImpersonating = false, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_) this.impersonationAdminUserId}): _roles = roles,super._();
+  const _MeResponse({@JsonKey(name: MeResponse.userIdKey_) required this.userId, @JsonKey(name: MeResponse.emailKey_) this.email, @JsonKey(name: MeResponse.emailVerifiedAtKey_) this.emailVerifiedAt, @JsonKey(name: MeResponse.statusKey_) required this.status, @JsonKey(name: MeResponse.rolesKey_) final  List<UserRoleType>? roles, @JsonKey(name: MeResponse.localeKey_) this.locale = 'en-GB', @JsonKey(name: MeResponse.displayCurrencyKey_) required this.displayCurrency, @JsonKey(name: MeResponse.isImpersonatingKey_) this.isImpersonating = false, @JsonKey(name: MeResponse.impersonationAdminUserIdKey_) this.impersonationAdminUserId}): _roles = roles,super._();
   factory _MeResponse.fromJson(Map<String, dynamic> json) => _$MeResponseFromJson(json);
 
 /// userId
@@ -248,6 +250,8 @@ class _MeResponse extends MeResponse {
 
 /// locale
 @override@JsonKey(name: MeResponse.localeKey_) final  String locale;
+/// displayCurrency
+@override@JsonKey(name: MeResponse.displayCurrencyKey_) final  String displayCurrency;
 /// isImpersonating
 @override@JsonKey(name: MeResponse.isImpersonatingKey_) final  bool isImpersonating;
 /// impersonationAdminUserId
@@ -266,16 +270,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MeResponse&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerifiedAt, emailVerifiedAt) || other.emailVerifiedAt == emailVerifiedAt)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._roles, _roles)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.isImpersonating, isImpersonating) || other.isImpersonating == isImpersonating)&&(identical(other.impersonationAdminUserId, impersonationAdminUserId) || other.impersonationAdminUserId == impersonationAdminUserId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MeResponse&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerifiedAt, emailVerifiedAt) || other.emailVerifiedAt == emailVerifiedAt)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._roles, _roles)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.displayCurrency, displayCurrency) || other.displayCurrency == displayCurrency)&&(identical(other.isImpersonating, isImpersonating) || other.isImpersonating == isImpersonating)&&(identical(other.impersonationAdminUserId, impersonationAdminUserId) || other.impersonationAdminUserId == impersonationAdminUserId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,email,emailVerifiedAt,status,const DeepCollectionEquality().hash(_roles),locale,isImpersonating,impersonationAdminUserId);
+int get hashCode => Object.hash(runtimeType,userId,email,emailVerifiedAt,status,const DeepCollectionEquality().hash(_roles),locale,displayCurrency,isImpersonating,impersonationAdminUserId);
 
 @override
 String toString() {
-  return 'MeResponse(userId: $userId, email: $email, emailVerifiedAt: $emailVerifiedAt, status: $status, roles: $roles, locale: $locale, isImpersonating: $isImpersonating, impersonationAdminUserId: $impersonationAdminUserId)';
+  return 'MeResponse(userId: $userId, email: $email, emailVerifiedAt: $emailVerifiedAt, status: $status, roles: $roles, locale: $locale, displayCurrency: $displayCurrency, isImpersonating: $isImpersonating, impersonationAdminUserId: $impersonationAdminUserId)';
 }
 
 
@@ -286,7 +290,7 @@ abstract mixin class _$MeResponseCopyWith<$Res> implements $MeResponseCopyWith<$
   factory _$MeResponseCopyWith(_MeResponse value, $Res Function(_MeResponse) _then) = __$MeResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: MeResponse.userIdKey_) String userId,@JsonKey(name: MeResponse.emailKey_) String? email,@JsonKey(name: MeResponse.emailVerifiedAtKey_) DateTime? emailVerifiedAt,@JsonKey(name: MeResponse.statusKey_) String status,@JsonKey(name: MeResponse.rolesKey_) List<UserRoleType>? roles,@JsonKey(name: MeResponse.localeKey_) String locale,@JsonKey(name: MeResponse.isImpersonatingKey_) bool isImpersonating,@JsonKey(name: MeResponse.impersonationAdminUserIdKey_) String? impersonationAdminUserId
+@JsonKey(name: MeResponse.userIdKey_) String userId,@JsonKey(name: MeResponse.emailKey_) String? email,@JsonKey(name: MeResponse.emailVerifiedAtKey_) DateTime? emailVerifiedAt,@JsonKey(name: MeResponse.statusKey_) String status,@JsonKey(name: MeResponse.rolesKey_) List<UserRoleType>? roles,@JsonKey(name: MeResponse.localeKey_) String locale,@JsonKey(name: MeResponse.displayCurrencyKey_) String displayCurrency,@JsonKey(name: MeResponse.isImpersonatingKey_) bool isImpersonating,@JsonKey(name: MeResponse.impersonationAdminUserIdKey_) String? impersonationAdminUserId
 });
 
 
@@ -303,7 +307,7 @@ class __$MeResponseCopyWithImpl<$Res>
 
 /// Create a copy of MeResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? email = freezed,Object? emailVerifiedAt = freezed,Object? status = null,Object? roles = freezed,Object? locale = null,Object? isImpersonating = null,Object? impersonationAdminUserId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? email = freezed,Object? emailVerifiedAt = freezed,Object? status = null,Object? roles = freezed,Object? locale = null,Object? displayCurrency = null,Object? isImpersonating = null,Object? impersonationAdminUserId = freezed,}) {
   return _then(_MeResponse(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -311,6 +315,7 @@ as String?,emailVerifiedAt: freezed == emailVerifiedAt ? _self.emailVerifiedAt :
 as DateTime?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as String,roles: freezed == roles ? _self._roles : roles // ignore: cast_nullable_to_non_nullable
 as List<UserRoleType>?,locale: null == locale ? _self.locale : locale // ignore: cast_nullable_to_non_nullable
+as String,displayCurrency: null == displayCurrency ? _self.displayCurrency : displayCurrency // ignore: cast_nullable_to_non_nullable
 as String,isImpersonating: null == isImpersonating ? _self.isImpersonating : isImpersonating // ignore: cast_nullable_to_non_nullable
 as bool,impersonationAdminUserId: freezed == impersonationAdminUserId ? _self.impersonationAdminUserId : impersonationAdminUserId // ignore: cast_nullable_to_non_nullable
 as String?,

@@ -211,7 +211,7 @@ def client_discover(
 
     cache_key = (
         f"client:discover:v{get_public_index_version()}:country={country.upper()}:city={city.lower()}:"
-        f"niche={niche_slug or ''}:q={q or ''}:min={min_price or ''}:max={max_price or ''}:cur={budget_currency(currency)}:"
+        f"niche={niche_slug or ''}:q={q or ''}:min={min_price or ''}:max={max_price or ''}:cur={budget_currency(currency, db, user.user_id if user else None)}:"
         f"sort={sort}:limit={limit}:offset={offset}:guest={not bool(user)}"
     )
     cached = cache_get_json(cache_key)
@@ -226,7 +226,7 @@ def client_discover(
         niche_slug=niche_slug,
         min_price=min_price,
         max_price=max_price,
-        currency=budget_currency(currency),
+        currency=budget_currency(currency, db, user.user_id if user else None),
         sort=sort,
         limit=limit,
         offset=offset,
@@ -279,7 +279,7 @@ def client_match(
                 budget_min=req.budget_min,
                 budget_max=req.budget_max,
                 style_tags=req.style_tags or [],
-                currency=budget_currency(body.currency),
+                currency=budget_currency(body.currency, db, user.user_id if user else None),
             ),
             limit=20,
         )
@@ -1086,7 +1086,7 @@ def get_client_preference(
         db.add(row)
         db.flush()
     db.commit()
-    return _preference_view(row)
+    return _preference_view(row, db)
 
 
 @router.put("/me/client-preference", response_model=ClientPreferenceView)
@@ -1109,7 +1109,7 @@ def put_client_preference(
     row.consent_default = body.consent_default
     db.commit()
     db.refresh(row)
-    return _preference_view(row)
+    return _preference_view(row, db)
 
 
 # How many cards a row carries. A horizontal shelf that cannot be scrolled to
@@ -1676,11 +1676,14 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
     return cards
 
 
-def _preference_view(row: ClientPreference) -> ClientPreferenceView:
+def _preference_view(row: ClientPreference, db: Session) -> ClientPreferenceView:
+    from app.services.currencies import display_currency
+
     return ClientPreferenceView(
         preferred_niches=[str(item) for item in (row.preferred_niches or [])],
         budget_min=row.budget_min,
         budget_max=row.budget_max,
+        currency=display_currency(db, row.user_id),
         style_tags=[str(item) for item in (row.style_tags or [])],
         location=row.location or {},
         consent_default=row.consent_default,

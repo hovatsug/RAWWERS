@@ -10,6 +10,7 @@
 // Plus the honest-absence rule: "no city chosen" and "no photographers here"
 // are different facts and must never render as the same message.
 import 'dart:async';
+import '../../support/fake_fx.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,7 +84,7 @@ Future<void> _pump(WidgetTester tester, HomeState state, {void Function(String)?
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [homeControllerProvider.overrideWith(() => _FakeHome(state))],
+      overrides: [...fxTestOverrides, homeControllerProvider.overrideWith(() => _FakeHome(state))],
       child: MaterialApp(
         theme: buildClientTheme(),
         home: Scaffold(body: ClientHomeScreen(onOpenNiche: onOpenNiche)),
@@ -234,7 +235,7 @@ void main() {
   testWidgets('a failure is retryable rather than silently empty', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [homeControllerProvider.overrideWith(_FailingHome.new)],
+        overrides: [...fxTestOverrides, homeControllerProvider.overrideWith(_FailingHome.new)],
         child: MaterialApp(theme: buildClientTheme(), home: const Scaffold(body: ClientHomeScreen())),
       ),
     );
@@ -323,7 +324,7 @@ void main() {
         // resolved rows stay in place, and the "loading" measurement is taken
         // against loaded content.
         key: const ValueKey('loading-scope'),
-        overrides: [homeControllerProvider.overrideWith(_NeverLoadingHome.new)],
+        overrides: [...fxTestOverrides, homeControllerProvider.overrideWith(_NeverLoadingHome.new)],
         child: MaterialApp(
           theme: buildClientTheme(),
           home: const Scaffold(body: ClientHomeScreen()),

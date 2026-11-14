@@ -121,6 +121,7 @@ from app.models.booking import (
 )
 from app.models.chat import ChatHandoff, ChatMessage, ChatThread, PlatformPolicy
 from app.models.package_pricing import NichePackagePriceCap, PackageDecayCurve
+from app.models.fx import FxRate  # noqa: F401
 from app.models.client_rewards_pricing import (
     ConsentRewardPolicy,
     ExtraImagePricingPolicy,

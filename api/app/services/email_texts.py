@@ -69,7 +69,7 @@ def _money(amount, currency) -> str | None:
     return f"{symbol}{value}" if symbol else f"{value} {code}"
 
 
-def render(kind: str, payload: dict | None, *, tz: str = "Europe/Lisbon") -> tuple[str, str]:
+def render(kind: str, payload: dict | None, *, tz: str = "Europe/London") -> tuple[str, str]:
     """(subject, body) for an approved email. KeyError for any other kind."""
     p = payload or {}
     if kind == "email.verify":

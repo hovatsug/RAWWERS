@@ -27,7 +27,7 @@ def get_or_create_user_contact(db: Session, user_id: uuid.UUID) -> UserContact:
         return row
     row = UserContact(
         user_id=user_id,
-        timezone_name="Europe/Lisbon",
+        timezone_name="Europe/London",
         quiet_hours_start=time(hour=22, minute=0),
         quiet_hours_end=time(hour=8, minute=0),
     )
@@ -77,7 +77,7 @@ def is_quiet_hours_now(contact: UserContact, now_utc: datetime | None = None) ->
     try:
         tz = ZoneInfo(contact.timezone_name)
     except Exception:
-        tz = ZoneInfo("Europe/Lisbon")
+        tz = ZoneInfo("Europe/London")
     local_now = now_utc.astimezone(tz).time()
     start = contact.quiet_hours_start
     end = contact.quiet_hours_end

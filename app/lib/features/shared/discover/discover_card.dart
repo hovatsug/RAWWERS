@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
@@ -102,6 +103,9 @@ class DiscoverCard extends StatelessWidget {
                           _priceLine(card),
                           style: theme.textTheme.titleSmall?.copyWith(fontFeatures: RType.tabularFigures),
                         ),
+                      // An approximation in the client's display currency,
+                      // beside the exact price, never instead of it (2.4).
+                      if (card.minPrice != null) ApproxLine(amount: card.minPrice!, currency: card.currency),
                       if ((card.topNiches ?? const []).isNotEmpty) ...[
                         const SizedBox(height: RSpace.s8),
                         Text(

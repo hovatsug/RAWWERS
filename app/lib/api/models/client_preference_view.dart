@@ -30,6 +30,10 @@
 ///             ],
 ///             "title": "Budget Max"
 ///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
+///         },
 ///         "style_tags": {
 ///             "type": "array",
 ///             "items": {
@@ -52,6 +56,7 @@
 ///     },
 ///     "type": "object",
 ///     "required": [
+///         "currency",
 ///         "consent_default",
 ///         "updated_at"
 ///     ],
@@ -79,6 +84,9 @@ abstract class ClientPreferenceView with _$ClientPreferenceView {
     /// budgetMax
     @JsonKey(name: ClientPreferenceView.budgetMaxKey_) String? budgetMax,
 
+    /// currency
+    @JsonKey(name: ClientPreferenceView.currencyKey_) required String currency,
+
     /// styleTags
     @JsonKey(name: ClientPreferenceView.styleTagsKey_) List<String>? styleTags,
 
@@ -103,6 +111,8 @@ abstract class ClientPreferenceView with _$ClientPreferenceView {
   static const String budgetMinKey_ = r'budget_min';
 
   static const String budgetMaxKey_ = r'budget_max';
+
+  static const String currencyKey_ = r'currency';
 
   static const String styleTagsKey_ = r'style_tags';
 

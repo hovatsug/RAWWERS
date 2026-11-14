@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/api/models/payout_account_status.dart';
 import 'package:rawwers/api/models/payout_account_view.dart';
 import 'package:rawwers/api/models/pro_profile_view.dart';
@@ -97,6 +98,9 @@ class ProSettingsScreen extends ConsumerWidget {
                       Text('Verified', style: theme.textTheme.bodySmall)
                     else
                       RTextLink(label: 'Verify your email', onPressed: () => context.push(verifyEmailPath)),
+                    // Approximations only: earnings, payouts and invoices
+                    // stay in the photographer's own currency, exact (2.4).
+                    const DisplayCurrencyTile(),
                   ],
                 ),
               ),

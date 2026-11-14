@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/features/client/credit/credit_labels.dart';
 import 'package:rawwers/features/client/credit/credit_controller.dart';
 import 'package:decimal/decimal.dart';
@@ -227,6 +228,12 @@ class _PayPanelState extends ConsumerState<_PayPanel> {
           ),
           const SizedBox(height: RSpace.s8),
           Text(depositExplainer, style: theme.textTheme.bodySmall),
+          // What is charged, exact, in its own currency; the approximation
+          // only beside it (2.4).
+          if (credit != null) ...[
+            const SizedBox(height: RSpace.s8),
+            BeforePayingLine(total: useCredit ? credit.total : credit.price, currency: credit.currency),
+          ],
           if (hasCredit) ...[
             const SizedBox(height: RSpace.s8),
             SwitchListTile(

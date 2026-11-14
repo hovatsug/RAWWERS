@@ -16,6 +16,7 @@ _ProProfileView _$ProProfileViewFromJson(
   bio: json['bio'] as String?,
   city: json['city'] as String?,
   country: json['country'] as String?,
+  currency: json['currency'] as String,
   languages: (json['languages'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
@@ -39,6 +40,7 @@ Map<String, dynamic> _$ProProfileViewToJson(_ProProfileView instance) =>
       'bio': instance.bio,
       'city': instance.city,
       'country': instance.country,
+      'currency': instance.currency,
       'languages': instance.languages,
       'styles': instance.styles,
       'gear': instance.gear,

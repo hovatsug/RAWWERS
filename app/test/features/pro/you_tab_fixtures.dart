@@ -38,14 +38,18 @@ WalletData wallet({
   String pending = '120.00',
   String held = '15.96',
   PayoutAccountStatus account = PayoutAccountStatus.active,
+  String currency = 'EUR',
+  String payoutMinimum = '50.00',
 }) =>
     WalletData(
       balance: EarningsBalanceView(
-        pendingEur: pending,
-        availableEur: available ?? withdrawable,
-        heldEur: held,
-        reservedEur: '0.00',
-        withdrawableEur: withdrawable,
+        currency: currency,
+        payoutMinimum: payoutMinimum,
+        pending: pending,
+        available: available ?? withdrawable,
+        held: held,
+        reserved: '0.00',
+        withdrawable: withdrawable,
       ),
       ledger: const [],
       payouts: const [],
@@ -68,7 +72,8 @@ WalletData walletWithRecentPayouts({required String withdrawable, required int c
         PayoutRequestView.fromJson({
           'id': 'p$i',
           'pro_user_id': 'pro-me',
-          'amount_eur': '50.00',
+          'currency': 'EUR',
+          'amount': '50.00',
           'status': 'requested',
           'requested_at': DateTime.now().toUtc().subtract(Duration(days: i + 1)).toIso8601String(),
           'created_at': DateTime.now().toUtc().subtract(Duration(days: i + 1)).toIso8601String(),
@@ -131,7 +136,7 @@ class FakeGigs extends GigsController {
 
 class FakeProfile extends ProProfileController {
   @override
-  Future<ProProfileView> build() async => const ProProfileView(
+  Future<ProProfileView> build() async => const ProProfileView(currency: 'EUR', 
         userId: 'pro-me',
         displayName: 'Alex Lens',
         headline: 'Portraits, quietly',

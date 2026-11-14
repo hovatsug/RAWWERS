@@ -25,8 +25,7 @@
 ///                     "type": "number"
 ///                 },
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"

@@ -13,7 +13,7 @@ import 'package:rawwers/design/components/r_online_dot.dart';
 /// the widget tree rather than pixels: that the server's `cover_url` becomes
 /// the image's URL, and that its absence degrades to a placeholder instead of
 /// a broken frame.
-ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false, int? readyInMinutes, int? answerWithinMinutes}) => ClientDiscoverCard(
+ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false, int? readyInMinutes, int? answerWithinMinutes, String currency = 'EUR'}) => ClientDiscoverCard(
       proUserId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
@@ -22,7 +22,7 @@ ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online =
       country: 'US',
       minPrice: '120.00',
       maxPrice: '340.00',
-      currency: 'EUR',
+      currency: currency,
       avgRating: '4.80',
       reviewCount: 12,
       topNiches: const [
@@ -84,6 +84,12 @@ void main() {
     expect(find.text('From €120.00 to €340.00'), findsOneWidget);
     expect(find.text('Weddings · Portraits'), findsOneWidget);
     expect(find.text('4.80'), findsOneWidget);
+  });
+
+  testWidgets('the price range is in the photographer\'s currency', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_card(coverUrl: 'https://media.example/cover.jpg', currency: 'GBP')));
+    expect(find.text('From £120.00 to £340.00'), findsOneWidget);
   });
 
   testWidgets('the photo leads the card', (tester) async {

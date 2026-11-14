@@ -18,13 +18,13 @@ final _dates = RDates.forLocale(const Locale('en', 'GB'));
 final _now = DateTime.utc(2026, 10, 31, 12);
 
 EarningsLedgerItemView _entry(String net, DateTime availableAt, {EarningsEntryStatus status = EarningsEntryStatus.pending}) =>
-    EarningsLedgerItemView(
+    EarningsLedgerItemView(currency: 'EUR', 
       id: 'e-$net',
       sourceType: EarningsSourceType.gigBase,
       sourceId: 'gig-$net',
-      grossEur: net,
-      platformFeeEur: '0.00',
-      netEur: net,
+      gross: net,
+      platformFee: '0.00',
+      net: net,
       status: status,
       availableAt: availableAt,
       createdAt: availableAt.subtract(const Duration(days: 7)),
@@ -85,17 +85,17 @@ void main() {
     final held = _entry('10.00', DateTime.utc(2026, 11, 1, 12), status: EarningsEntryStatus.held);
 
     test('is the pending earning due first, whatever the list order', () {
-      expect(nextPending([late, settled, early, held], pendingEur: '144.67'), early);
+      expect(nextPending([late, settled, early, held], pending: '144.67'), early);
     });
 
     test('ignores earnings that are available or on hold', () {
-      expect(nextPending([settled, held], pendingEur: '0.00'), isNull);
+      expect(nextPending([settled, held], pending: '0.00'), isNull);
     });
 
     test('says nothing when the list does not hold every pending earning', () {
       // 100 most recent only: the oldest pending ones - due first - can be
       // the ones cut off, and the next date would then be wrong.
-      expect(nextPending([late], pendingEur: '144.67'), isNull);
+      expect(nextPending([late], pending: '144.67'), isNull);
     });
   });
 }

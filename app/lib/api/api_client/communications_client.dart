@@ -216,58 +216,6 @@ abstract class CommunicationsClient {
       },
     },
   });
-  @POST("/v1/webhooks/telephony")
-  Future<HttpResponse<Map<String, dynamic>>>
-  telephonyWebhookV1WebhooksTelephonyPost({
-    @Header("X-Telephony-Signature")
-    required String? xMinusTelephonyMinusSignature,
-    @CancelRequest() CancelToken? cancelToken,
-    @SendProgress() ProgressCallback? onSendProgress,
-    @ReceiveProgress() ProgressCallback? onReceiveProgress,
-    @Extras()
-    Map<String, dynamic>? extras = const {
-      'tags': ['communications'],
-      'summary': 'Telephony Webhook',
-      'operationId': 'telephony_webhook_v1_webhooks_telephony_post',
-      'parameters': [
-        {
-          'name': 'X-Telephony-Signature',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-Telephony-Signature',
-          },
-        },
-      ],
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {
-                'type': 'object',
-                'additionalProperties': true,
-                'title':
-                    'Response Telephony Webhook V1 Webhooks Telephony Post',
-              },
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  });
   @POST("/v1/calls/{call_session_id}/ai/summary")
   Future<HttpResponse<CallSummaryResponse>>
   summarizeCallV1CallsCallSessionIdAISummaryPost({
@@ -325,6 +273,58 @@ abstract class CommunicationsClient {
           'content': {
             'application/json': {
               'schema': {'\$ref': '#/components/schemas/CallSummaryResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @POST("/v1/webhooks/telephony")
+  Future<HttpResponse<Map<String, dynamic>>>
+  telephonyWebhookV1WebhooksTelephonyPost({
+    @Header("X-Telephony-Signature")
+    required String? xMinusTelephonyMinusSignature,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['communications'],
+      'summary': 'Telephony Webhook',
+      'operationId': 'telephony_webhook_v1_webhooks_telephony_post',
+      'parameters': [
+        {
+          'name': 'X-Telephony-Signature',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-Telephony-Signature',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                'type': 'object',
+                'additionalProperties': true,
+                'title':
+                    'Response Telephony Webhook V1 Webhooks Telephony Post',
+              },
             },
           },
         },

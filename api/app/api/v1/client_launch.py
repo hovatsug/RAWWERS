@@ -1061,8 +1061,9 @@ def client_booking_pay(
         payment_intent_id=intent.id,
         payment_intent_client_secret=intent.client_secret,
         mode=mode,
-        credit_eur=gig.amount_minimum - payable if payable < gig.amount_minimum else Decimal("0.00"),
-        amount_eur=payable,
+        credit=gig.amount_minimum - payable if payable < gig.amount_minimum else Decimal("0.00"),
+        amount=payable,
+        currency=gig.currency,
     )
 
 

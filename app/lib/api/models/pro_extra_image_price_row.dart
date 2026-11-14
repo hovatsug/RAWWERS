@@ -11,24 +11,20 @@
 ///         },
 ///         "configured_unit_price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Configured Unit Price"
 ///         },
 ///         "applied_unit_price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Applied Unit Price"
 ///         },
 ///         "policy_min": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Policy Min"
 ///         },
 ///         "policy_max": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"

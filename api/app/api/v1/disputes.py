@@ -68,7 +68,9 @@ def create_dispute_endpoint(
         category=body.category,
         reason=reason,
         requested_refund_amount=body.requested_refund_amount,
-        currency=body.currency,
+        # The booking's currency (or the extras purchase's booking's); the
+        # request no longer chooses it.
+        currency=(gig.currency if gig else db.get(Gig, purchase.gig_id).currency),
     )
 
     if gig and gig.status != GigStatus.disputed:

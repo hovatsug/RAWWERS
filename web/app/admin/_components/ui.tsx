@@ -392,10 +392,14 @@ export function ConfirmDialog({
 
 // ─── Formatting ────────────────────────────────────────────────────────────
 
-/** Amounts arrive as decimal strings; shown as they are, never as floats. */
-export function money(amount: string | null | undefined, currency = "EUR"): string {
+/** Amounts arrive as decimal strings; shown as they are, never as floats.
+ * The currency is required: every money value the API sends carries one
+ * (docs/MULTI_CURRENCY.md 6.2). */
+export function money(amount: string | null | undefined, currency: string | null | undefined): string {
   if (amount === null || amount === undefined || amount === "") return "—";
-  const symbol = currency === "EUR" ? "€" : currency === "GBP" ? "£" : `${currency} `;
+  if (!currency) throw new Error("money() needs a currency");
+  const code = currency.toUpperCase();
+  const symbol = code === "EUR" ? "€" : code === "GBP" ? "£" : `${code} `;
   return `${symbol}${amount}`;
 }
 

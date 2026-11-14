@@ -65,7 +65,7 @@ ProProfileView _profile({
   bool live = true,
   int completeness = 92,
 }) =>
-    ProProfileView(
+    ProProfileView(currency: 'EUR', 
       userId: 'pro-1',
       displayName: 'Alex Lens',
       isAcceptingBookings: live,

@@ -7,7 +7,7 @@ part of 'marketing_consent_controllers.dart';
 // **************************************************************************
 
 String _$marketingOfferControllerHash() =>
-    r'867767b132ea547514bb1b63d2b3daa5418fc1b0';
+    r'2263e762aff7399b062d73850957ac8dda6876e0';
 
 /// Copied from Dart SDK
 class _SystemHash {

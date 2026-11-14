@@ -52,7 +52,7 @@ class _FakeProfile extends ProProfileController {
   final String _kyc;
 
   @override
-  Future<ProProfileView> build() async => ProProfileView(
+  Future<ProProfileView> build() async => ProProfileView(currency: 'EUR', 
         userId: 'pro-1',
         displayName: 'Alex Lens',
         isAcceptingBookings: false,

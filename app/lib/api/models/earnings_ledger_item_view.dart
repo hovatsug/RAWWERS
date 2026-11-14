@@ -14,20 +14,21 @@
 ///             "format": "uuid",
 ///             "title": "Source Id"
 ///         },
-///         "gross_eur": {
+///         "currency": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Gross Eur"
+///             "title": "Currency"
 ///         },
-///         "platform_fee_eur": {
+///         "gross": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Platform Fee Eur"
+///             "title": "Gross"
 ///         },
-///         "net_eur": {
+///         "platform_fee": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Net Eur"
+///             "title": "Platform Fee"
+///         },
+///         "net": {
+///             "type": "string",
+///             "title": "Net"
 ///         },
 ///         "status": {
 ///             "$ref": "#/components/schemas/EarningsEntryStatus"
@@ -64,9 +65,10 @@
 ///         "id",
 ///         "source_type",
 ///         "source_id",
-///         "gross_eur",
-///         "platform_fee_eur",
-///         "net_eur",
+///         "currency",
+///         "gross",
+///         "platform_fee",
+///         "net",
 ///         "status",
 ///         "available_at",
 ///         "created_at"
@@ -96,16 +98,19 @@ abstract class EarningsLedgerItemView with _$EarningsLedgerItemView {
     @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)
     required String sourceId,
 
-    /// grossEur
-    @JsonKey(name: EarningsLedgerItemView.grossEurKey_)
-    required String grossEur,
+    /// currency
+    @JsonKey(name: EarningsLedgerItemView.currencyKey_)
+    required String currency,
 
-    /// platformFeeEur
-    @JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_)
-    required String platformFeeEur,
+    /// gross
+    @JsonKey(name: EarningsLedgerItemView.grossKey_) required String gross,
 
-    /// netEur
-    @JsonKey(name: EarningsLedgerItemView.netEurKey_) required String netEur,
+    /// platformFee
+    @JsonKey(name: EarningsLedgerItemView.platformFeeKey_)
+    required String platformFee,
+
+    /// net
+    @JsonKey(name: EarningsLedgerItemView.netKey_) required String net,
 
     /// status
     @JsonKey(name: EarningsLedgerItemView.statusKey_)
@@ -135,11 +140,13 @@ abstract class EarningsLedgerItemView with _$EarningsLedgerItemView {
 
   static const String sourceIdKey_ = r'source_id';
 
-  static const String grossEurKey_ = r'gross_eur';
+  static const String currencyKey_ = r'currency';
 
-  static const String platformFeeEurKey_ = r'platform_fee_eur';
+  static const String grossKey_ = r'gross';
 
-  static const String netEurKey_ = r'net_eur';
+  static const String platformFeeKey_ = r'platform_fee';
+
+  static const String netKey_ = r'net';
 
   static const String statusKey_ = r'status';
 

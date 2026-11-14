@@ -23,7 +23,8 @@ class DisputeCreateV1Request(BaseModel):
     reason: str | None = None
     summary: str | None = None
     requested_refund_amount: Decimal | None = None
-    currency: str = "EUR"
+    #: Ignored: a dispute is in its booking's currency.
+    currency: str | None = None
 
 
 class DisputeMessageCreateRequest(BaseModel):

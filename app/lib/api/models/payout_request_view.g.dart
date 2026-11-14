@@ -10,7 +10,8 @@ _PayoutRequestView _$PayoutRequestViewFromJson(Map<String, dynamic> json) =>
     _PayoutRequestView(
       id: json['id'] as String,
       proUserId: json['pro_user_id'] as String,
-      amountEur: json['amount_eur'] as String,
+      currency: json['currency'] as String,
+      amount: json['amount'] as String,
       status: PayoutRequestStatus.fromJson(json['status'] as String),
       requestedAt: DateTime.parse(json['requested_at'] as String),
       approvedByAdminId: json['approved_by_admin_id'] as String?,
@@ -30,7 +31,8 @@ Map<String, dynamic> _$PayoutRequestViewToJson(_PayoutRequestView instance) =>
     <String, dynamic>{
       'id': instance.id,
       'pro_user_id': instance.proUserId,
-      'amount_eur': instance.amountEur,
+      'currency': instance.currency,
+      'amount': instance.amount,
       'status': instance.status,
       'requested_at': instance.requestedAt.toIso8601String(),
       'approved_by_admin_id': instance.approvedByAdminId,

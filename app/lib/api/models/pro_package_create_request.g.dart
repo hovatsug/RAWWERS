@@ -15,7 +15,7 @@ _ProPackageCreateRequest _$ProPackageCreateRequestFromJson(
   description: json['description'] as String?,
   durationMinutes: (json['duration_minutes'] as num).toInt(),
   price: json['price'],
-  currency: json['currency'] as String? ?? 'EUR',
+  currency: json['currency'] as String?,
   includedPhotos: (json['included_photos'] as num).toInt(),
   extraPhotoPrice: json['extra_photo_price'],
   proofsSlaDays: (json['proofs_sla_days'] as num?)?.toInt() ?? 3,

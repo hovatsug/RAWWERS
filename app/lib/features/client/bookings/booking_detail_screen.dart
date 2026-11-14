@@ -207,7 +207,7 @@ class _PayPanelState extends ConsumerState<_PayPanel> {
     final progress = ref.watch(bookingPaymentControllerProvider(bookingId));
     final notifier = ref.read(bookingPaymentControllerProvider(bookingId).notifier);
     final credit = ref.watch(bookingCreditProvider(bookingId)).valueOrNull;
-    final hasCredit = credit != null && Decimal.parse(credit.discountEur) > Decimal.zero;
+    final hasCredit = credit != null && Decimal.parse(credit.discount) > Decimal.zero;
     final useCredit = _useCredit ?? (credit?.applied ?? false);
 
     return RCard(
@@ -231,10 +231,10 @@ class _PayPanelState extends ConsumerState<_PayPanel> {
             const SizedBox(height: RSpace.s8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text('Use my credit (${creditEuros(credit.balanceEur)})'),
+              title: Text('Use my credit (${creditAmount(credit.balance, currency: credit.creditCurrency)})'),
               subtitle: Text(
                 useCredit
-                    ? '${creditEuros('-${credit.discountEur}')} · you pay ${creditEuros(credit.totalEur)}'
+                    ? '${creditAmount('-${credit.discount}', currency: credit.currency)} · you pay ${creditAmount(credit.total, currency: credit.currency)}'
                     : 'Up to ${credit.maxDiscountPercent}% of this payment',
               ),
               value: useCredit,

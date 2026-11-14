@@ -48,7 +48,7 @@ export default function AdminDisputesPage() {
     {
       header: "Asked for",
       className: "tabular-nums",
-      cell: (d) => (d.requested_refund_amount ? money(d.requested_refund_amount, d.currency || "EUR") : "—")
+      cell: (d) => (d.requested_refund_amount ? money(d.requested_refund_amount, d.currency) : "—")
     },
     {
       header: "",
@@ -108,7 +108,7 @@ function ResolveDialog({ dispute, onClose, onDone }: { dispute: DisputeRow; onCl
   const [amount, setAmount] = useState("");
   const needsAmount = decision !== "no_refund";
   const amountOk = !needsAmount || /^\d+(\.\d{1,2})?$/.test(amount.trim());
-  const currency = dispute.currency || "EUR";
+  const currency = dispute.currency;
 
   return (
     <ConfirmDialog

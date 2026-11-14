@@ -73,6 +73,10 @@
 ///             ],
 ///             "title": "Country"
 ///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
+///         },
 ///         "languages": {
 ///             "type": "array",
 ///             "items": {
@@ -128,6 +132,7 @@
 ///     "type": "object",
 ///     "required": [
 ///         "user_id",
+///         "currency",
 ///         "is_accepting_bookings",
 ///         "completeness_score",
 ///         "kyc_status"
@@ -167,6 +172,9 @@ abstract class ProProfileView with _$ProProfileView {
 
     /// country
     @JsonKey(name: ProProfileView.countryKey_) String? country,
+
+    /// currency
+    @JsonKey(name: ProProfileView.currencyKey_) required String currency,
 
     /// languages
     @JsonKey(name: ProProfileView.languagesKey_) List<String>? languages,
@@ -218,6 +226,8 @@ abstract class ProProfileView with _$ProProfileView {
   static const String cityKey_ = r'city';
 
   static const String countryKey_ = r'country';
+
+  static const String currencyKey_ = r'currency';
 
   static const String languagesKey_ = r'languages';
 

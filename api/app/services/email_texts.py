@@ -62,7 +62,9 @@ def _money(amount, currency) -> str | None:
         value = Decimal(str(amount)).quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError):
         return None
-    code = str(currency or "EUR").upper()
+    if not currency:
+        return None  # a money line without its currency is left out, never shown as euros
+    code = str(currency).upper()
     symbol = _SYMBOLS.get(code)
     return f"{symbol}{value}" if symbol else f"{value} {code}"
 

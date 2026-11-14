@@ -56,8 +56,7 @@
 ///                     "type": "number"
 ///                 },
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -66,8 +65,14 @@
 ///             "title": "Requested Refund Amount"
 ///         },
 ///         "currency": {
-///             "type": "string",
-///             "default": "EUR",
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
 ///             "title": "Currency"
 ///         }
 ///     },
@@ -111,9 +116,7 @@ abstract class DisputeCreateV1Request with _$DisputeCreateV1Request {
     dynamic? requestedRefundAmount,
 
     /// currency
-    @Default('EUR')
-    @JsonKey(name: DisputeCreateV1Request.currencyKey_)
-    String currency,
+    @JsonKey(name: DisputeCreateV1Request.currencyKey_) String? currency,
   }) = _DisputeCreateV1Request;
 
   factory DisputeCreateV1Request.fromJson(Map<String, dynamic> json) =>

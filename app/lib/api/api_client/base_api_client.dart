@@ -137,14 +137,6 @@ class BaseApiClient {
     return LightroomClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
-  I18nClient get i18nClient {
-    return I18nClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
-  }
-
-  DefaultClient get defaultClient {
-    return DefaultClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
-  }
-
   MarketingConsentClient get marketingConsentClient {
     return MarketingConsentClient(
       dio,
@@ -153,11 +145,23 @@ class BaseApiClient {
     );
   }
 
+  ClientCreditClient get clientCreditClient {
+    return ClientCreditClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
+  EmailClient get emailClient {
+    return EmailClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
   ShelfClient get shelfClient {
     return ShelfClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
-  ClientCreditClient get clientCreditClient {
-    return ClientCreditClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  I18nClient get i18nClient {
+    return I18nClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
+  }
+
+  DefaultClient get defaultClient {
+    return DefaultClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 }

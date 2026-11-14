@@ -17,8 +17,9 @@ mixin _$MarketingTermView {
 
 /// months
 @JsonKey(name: MarketingTermView.monthsKey_) int get months;/// credit
-@JsonKey(name: MarketingTermView.creditKey_) int get credit;/// creditEur
-@JsonKey(name: MarketingTermView.creditEurKey_) String get creditEur;
+@JsonKey(name: MarketingTermView.creditKey_) int get credit;/// creditAmount
+@JsonKey(name: MarketingTermView.creditAmountKey_) String get creditAmount;/// currency
+@JsonKey(name: MarketingTermView.currencyKey_) String get currency;
 /// Create a copy of MarketingTermView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +32,16 @@ $MarketingTermViewCopyWith<MarketingTermView> get copyWith => _$MarketingTermVie
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MarketingTermView&&(identical(other.months, months) || other.months == months)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.creditEur, creditEur) || other.creditEur == creditEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MarketingTermView&&(identical(other.months, months) || other.months == months)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.creditAmount, creditAmount) || other.creditAmount == creditAmount)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,months,credit,creditEur);
+int get hashCode => Object.hash(runtimeType,months,credit,creditAmount,currency);
 
 @override
 String toString() {
-  return 'MarketingTermView(months: $months, credit: $credit, creditEur: $creditEur)';
+  return 'MarketingTermView(months: $months, credit: $credit, creditAmount: $creditAmount, currency: $currency)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $MarketingTermViewCopyWith<$Res>  {
   factory $MarketingTermViewCopyWith(MarketingTermView value, $Res Function(MarketingTermView) _then) = _$MarketingTermViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: MarketingTermView.monthsKey_) int months,@JsonKey(name: MarketingTermView.creditKey_) int credit,@JsonKey(name: MarketingTermView.creditEurKey_) String creditEur
+@JsonKey(name: MarketingTermView.monthsKey_) int months,@JsonKey(name: MarketingTermView.creditKey_) int credit,@JsonKey(name: MarketingTermView.creditAmountKey_) String creditAmount,@JsonKey(name: MarketingTermView.currencyKey_) String currency
 });
 
 
@@ -68,11 +69,12 @@ class _$MarketingTermViewCopyWithImpl<$Res>
 
 /// Create a copy of MarketingTermView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? months = null,Object? credit = null,Object? creditEur = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? months = null,Object? credit = null,Object? creditAmount = null,Object? currency = null,}) {
   return _then(_self.copyWith(
 months: null == months ? _self.months : months // ignore: cast_nullable_to_non_nullable
 as int,credit: null == credit ? _self.credit : credit // ignore: cast_nullable_to_non_nullable
-as int,creditEur: null == creditEur ? _self.creditEur : creditEur // ignore: cast_nullable_to_non_nullable
+as int,creditAmount: null == creditAmount ? _self.creditAmount : creditAmount // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -158,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingTermView.monthsKey_)  int months, @JsonKey(name: MarketingTermView.creditKey_)  int credit, @JsonKey(name: MarketingTermView.creditEurKey_)  String creditEur)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingTermView.monthsKey_)  int months, @JsonKey(name: MarketingTermView.creditKey_)  int credit, @JsonKey(name: MarketingTermView.creditAmountKey_)  String creditAmount, @JsonKey(name: MarketingTermView.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MarketingTermView() when $default != null:
-return $default(_that.months,_that.credit,_that.creditEur);case _:
+return $default(_that.months,_that.credit,_that.creditAmount,_that.currency);case _:
   return orElse();
 
 }
@@ -179,10 +181,10 @@ return $default(_that.months,_that.credit,_that.creditEur);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingTermView.monthsKey_)  int months, @JsonKey(name: MarketingTermView.creditKey_)  int credit, @JsonKey(name: MarketingTermView.creditEurKey_)  String creditEur)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MarketingTermView.monthsKey_)  int months, @JsonKey(name: MarketingTermView.creditKey_)  int credit, @JsonKey(name: MarketingTermView.creditAmountKey_)  String creditAmount, @JsonKey(name: MarketingTermView.currencyKey_)  String currency)  $default,) {final _that = this;
 switch (_that) {
 case _MarketingTermView():
-return $default(_that.months,_that.credit,_that.creditEur);case _:
+return $default(_that.months,_that.credit,_that.creditAmount,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +201,10 @@ return $default(_that.months,_that.credit,_that.creditEur);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MarketingTermView.monthsKey_)  int months, @JsonKey(name: MarketingTermView.creditKey_)  int credit, @JsonKey(name: MarketingTermView.creditEurKey_)  String creditEur)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MarketingTermView.monthsKey_)  int months, @JsonKey(name: MarketingTermView.creditKey_)  int credit, @JsonKey(name: MarketingTermView.creditAmountKey_)  String creditAmount, @JsonKey(name: MarketingTermView.currencyKey_)  String currency)?  $default,) {final _that = this;
 switch (_that) {
 case _MarketingTermView() when $default != null:
-return $default(_that.months,_that.credit,_that.creditEur);case _:
+return $default(_that.months,_that.credit,_that.creditAmount,_that.currency);case _:
   return null;
 
 }
@@ -214,15 +216,17 @@ return $default(_that.months,_that.credit,_that.creditEur);case _:
 
 @jsonSerializable
 class _MarketingTermView extends MarketingTermView {
-  const _MarketingTermView({@JsonKey(name: MarketingTermView.monthsKey_) required this.months, @JsonKey(name: MarketingTermView.creditKey_) required this.credit, @JsonKey(name: MarketingTermView.creditEurKey_) this.creditEur = '0.00'}): super._();
+  const _MarketingTermView({@JsonKey(name: MarketingTermView.monthsKey_) required this.months, @JsonKey(name: MarketingTermView.creditKey_) required this.credit, @JsonKey(name: MarketingTermView.creditAmountKey_) this.creditAmount = '0.00', @JsonKey(name: MarketingTermView.currencyKey_) this.currency = 'EUR'}): super._();
   factory _MarketingTermView.fromJson(Map<String, dynamic> json) => _$MarketingTermViewFromJson(json);
 
 /// months
 @override@JsonKey(name: MarketingTermView.monthsKey_) final  int months;
 /// credit
 @override@JsonKey(name: MarketingTermView.creditKey_) final  int credit;
-/// creditEur
-@override@JsonKey(name: MarketingTermView.creditEurKey_) final  String creditEur;
+/// creditAmount
+@override@JsonKey(name: MarketingTermView.creditAmountKey_) final  String creditAmount;
+/// currency
+@override@JsonKey(name: MarketingTermView.currencyKey_) final  String currency;
 
 /// Create a copy of MarketingTermView
 /// with the given fields replaced by the non-null parameter values.
@@ -237,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MarketingTermView&&(identical(other.months, months) || other.months == months)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.creditEur, creditEur) || other.creditEur == creditEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MarketingTermView&&(identical(other.months, months) || other.months == months)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.creditAmount, creditAmount) || other.creditAmount == creditAmount)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,months,credit,creditEur);
+int get hashCode => Object.hash(runtimeType,months,credit,creditAmount,currency);
 
 @override
 String toString() {
-  return 'MarketingTermView(months: $months, credit: $credit, creditEur: $creditEur)';
+  return 'MarketingTermView(months: $months, credit: $credit, creditAmount: $creditAmount, currency: $currency)';
 }
 
 
@@ -257,7 +261,7 @@ abstract mixin class _$MarketingTermViewCopyWith<$Res> implements $MarketingTerm
   factory _$MarketingTermViewCopyWith(_MarketingTermView value, $Res Function(_MarketingTermView) _then) = __$MarketingTermViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: MarketingTermView.monthsKey_) int months,@JsonKey(name: MarketingTermView.creditKey_) int credit,@JsonKey(name: MarketingTermView.creditEurKey_) String creditEur
+@JsonKey(name: MarketingTermView.monthsKey_) int months,@JsonKey(name: MarketingTermView.creditKey_) int credit,@JsonKey(name: MarketingTermView.creditAmountKey_) String creditAmount,@JsonKey(name: MarketingTermView.currencyKey_) String currency
 });
 
 
@@ -274,11 +278,12 @@ class __$MarketingTermViewCopyWithImpl<$Res>
 
 /// Create a copy of MarketingTermView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? months = null,Object? credit = null,Object? creditEur = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? months = null,Object? credit = null,Object? creditAmount = null,Object? currency = null,}) {
   return _then(_MarketingTermView(
 months: null == months ? _self.months : months // ignore: cast_nullable_to_non_nullable
 as int,credit: null == credit ? _self.credit : credit // ignore: cast_nullable_to_non_nullable
-as int,creditEur: null == creditEur ? _self.creditEur : creditEur // ignore: cast_nullable_to_non_nullable
+as int,creditAmount: null == creditAmount ? _self.creditAmount : creditAmount // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

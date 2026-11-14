@@ -27,7 +27,8 @@ class MarketingOfferCard extends ConsumerWidget {
     final offer = ref.watch(marketingOfferControllerProvider(gigId)).valueOrNull;
     if (offer == null || !offer.offered) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final credit = [for (final t in offer.terms ?? const []) if (t.months == offer.defaultTermMonths) t.creditEur].firstOrNull;
+    final term = [for (final t in offer.terms ?? const []) if (t.months == offer.defaultTermMonths) t].firstOrNull;
+    final credit = term?.creditAmount;
     final earns = offer.creditAvailable && credit != null && credit != '0.00';
     return Padding(
       padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s16, RSpace.s16, 0),
@@ -39,7 +40,7 @@ class MarketingOfferCard extends ConsumerWidget {
             const SizedBox(height: RSpace.s4),
             Text(
               'Optional. You choose which photos and for how long'
-              '${earns ? ', and earn up to ${creditEuros(credit)} credit' : ''}. '
+              '${earns ? ', and earn up to ${creditAmount(credit, currency: term!.currency)} credit' : ''}. '
               'Credited to ${offer.photographerCredit ?? 'your photographer'}.',
               style: theme.textTheme.bodySmall,
             ),
@@ -106,11 +107,11 @@ class _MarketingConsentFormState extends ConsumerState<MarketingConsentForm> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          outcome.creditEur != '0.00'
-              ? 'Thank you. ${creditEuros(outcome.creditEur)} credit added.'
+          outcome.creditAmount != '0.00'
+              ? 'Thank you. ${creditAmount(outcome.creditAmount, currency: outcome.currency)} credit added.'
               : 'Thank you. You can change this in Account > Marketing permissions.',
         ),
-        action: outcome.creditEur != '0.00' && widget.creditPath != null && router != null
+        action: outcome.creditAmount != '0.00' && widget.creditPath != null && router != null
             ? SnackBarAction(label: 'See my credit', onPressed: () => router.push(widget.creditPath!))
             : null,
       ),
@@ -178,7 +179,11 @@ class _MarketingConsentFormState extends ConsumerState<MarketingConsentForm> {
               children: [
                 for (final t in terms)
                   ChoiceChip(
-                    label: Text(widget.offer.creditAvailable && t.creditEur != '0.00' ? '${t.months} months · ${creditEuros(t.creditEur)}' : '${t.months} months'),
+                    label: Text(
+                      widget.offer.creditAvailable && t.creditAmount != '0.00'
+                          ? '${t.months} months · ${creditAmount(t.creditAmount, currency: t.currency)}'
+                          : '${t.months} months',
+                    ),
                     selected: _term == t.months,
                     onSelected: _sending ? null : (_) => setState(() => _term = t.months),
                   ),

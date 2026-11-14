@@ -49,15 +49,20 @@
 ///                     "type": "number"
 ///                 },
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 }
 ///             ],
 ///             "title": "Price"
 ///         },
 ///         "currency": {
-///             "type": "string",
-///             "default": "EUR",
+///             "anyOf": [
+///                 {
+///                     "type": "string"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
 ///             "title": "Currency"
 ///         },
 ///         "included_photos": {
@@ -70,8 +75,7 @@
 ///                     "type": "number"
 ///                 },
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 }
 ///             ],
 ///             "title": "Extra Photo Price"
@@ -169,9 +173,7 @@ abstract class ProPackageCreateRequest with _$ProPackageCreateRequest {
     @JsonKey(name: ProPackageCreateRequest.priceKey_) required dynamic price,
 
     /// currency
-    @Default('EUR')
-    @JsonKey(name: ProPackageCreateRequest.currencyKey_)
-    String currency,
+    @JsonKey(name: ProPackageCreateRequest.currencyKey_) String? currency,
 
     /// includedPhotos
     @JsonKey(name: ProPackageCreateRequest.includedPhotosKey_)

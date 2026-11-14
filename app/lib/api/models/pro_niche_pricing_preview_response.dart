@@ -20,7 +20,6 @@
 ///         },
 ///         "entry_price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Entry Price"
 ///         },
 ///         "currency": {
@@ -29,14 +28,12 @@
 ///         },
 ///         "entry_price_min": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Entry Price Min"
 ///         },
 ///         "entry_price_max": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"

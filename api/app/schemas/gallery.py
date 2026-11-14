@@ -104,6 +104,8 @@ class SubmitSelectionResponse(BaseModel):
     payment_intent_client_secret: str | None = None
     difference_required: bool = False
     difference_amount: Decimal | None = None
+    #: The gallery's (the booking's) currency; `difference_amount` is in it.
+    currency: str
     difference_payment_intent_id: str | None = None
     difference_payment_intent_client_secret: str | None = None
 
@@ -115,6 +117,7 @@ class UpsellCreateIntentResponse(BaseModel):
     status: UpsellPurchaseStatus
     discount_amount: Decimal | None = None
     points_spent: int | None = None
+    currency: str
 
 
 class UpsellCreateIntentRequest(BaseModel):

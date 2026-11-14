@@ -49,13 +49,13 @@ String pendingLine(DateTime availableAt, DateTime now, RDates dates) => switch (
 /// would name a later date as the next. So it answers only when the pending
 /// earnings in the list add up to the balance's pending figure, which the
 /// server sums over every pending earning (photographer_money.py).
-EarningsLedgerItemView? nextPending(List<EarningsLedgerItemView> ledger, {required String pendingEur}) {
+EarningsLedgerItemView? nextPending(List<EarningsLedgerItemView> ledger, {required String pending}) {
   EarningsLedgerItemView? next;
   var listed = Decimal.zero;
   for (final entry in ledger) {
     if (entry.status != EarningsEntryStatus.pending) continue;
-    listed += Decimal.parse(entry.netEur);
+    listed += Decimal.parse(entry.net);
     if (next == null || entry.availableAt.isBefore(next.availableAt)) next = entry;
   }
-  return listed == Decimal.parse(pendingEur) ? next : null;
+  return listed == Decimal.parse(pending) ? next : null;
 }

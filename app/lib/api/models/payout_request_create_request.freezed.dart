@@ -15,8 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PayoutRequestCreateRequest {
 
-/// amountEur
-@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_) dynamic get amountEur;
+/// amount
+@JsonKey(name: PayoutRequestCreateRequest.amountKey_) dynamic get amount;
 /// Create a copy of PayoutRequestCreateRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $PayoutRequestCreateRequestCopyWith<PayoutRequestCreateRequest> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PayoutRequestCreateRequest&&const DeepCollectionEquality().equals(other.amountEur, amountEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PayoutRequestCreateRequest&&const DeepCollectionEquality().equals(other.amount, amount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(amountEur));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(amount));
 
 @override
 String toString() {
-  return 'PayoutRequestCreateRequest(amountEur: $amountEur)';
+  return 'PayoutRequestCreateRequest(amount: $amount)';
 }
 
 
@@ -49,7 +49,7 @@ abstract mixin class $PayoutRequestCreateRequestCopyWith<$Res>  {
   factory $PayoutRequestCreateRequestCopyWith(PayoutRequestCreateRequest value, $Res Function(PayoutRequestCreateRequest) _then) = _$PayoutRequestCreateRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_) dynamic amountEur
+@JsonKey(name: PayoutRequestCreateRequest.amountKey_) dynamic amount
 });
 
 
@@ -66,9 +66,9 @@ class _$PayoutRequestCreateRequestCopyWithImpl<$Res>
 
 /// Create a copy of PayoutRequestCreateRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? amountEur = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? amount = freezed,}) {
   return _then(_self.copyWith(
-amountEur: freezed == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
+amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as dynamic,
   ));
 }
@@ -154,10 +154,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_)  dynamic amountEur)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestCreateRequest.amountKey_)  dynamic amount)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PayoutRequestCreateRequest() when $default != null:
-return $default(_that.amountEur);case _:
+return $default(_that.amount);case _:
   return orElse();
 
 }
@@ -175,10 +175,10 @@ return $default(_that.amountEur);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_)  dynamic amountEur)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestCreateRequest.amountKey_)  dynamic amount)  $default,) {final _that = this;
 switch (_that) {
 case _PayoutRequestCreateRequest():
-return $default(_that.amountEur);case _:
+return $default(_that.amount);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +195,10 @@ return $default(_that.amountEur);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_)  dynamic amountEur)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PayoutRequestCreateRequest.amountKey_)  dynamic amount)?  $default,) {final _that = this;
 switch (_that) {
 case _PayoutRequestCreateRequest() when $default != null:
-return $default(_that.amountEur);case _:
+return $default(_that.amount);case _:
   return null;
 
 }
@@ -210,11 +210,11 @@ return $default(_that.amountEur);case _:
 
 @jsonSerializable
 class _PayoutRequestCreateRequest extends PayoutRequestCreateRequest {
-  const _PayoutRequestCreateRequest({@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_) required this.amountEur}): super._();
+  const _PayoutRequestCreateRequest({@JsonKey(name: PayoutRequestCreateRequest.amountKey_) required this.amount}): super._();
   factory _PayoutRequestCreateRequest.fromJson(Map<String, dynamic> json) => _$PayoutRequestCreateRequestFromJson(json);
 
-/// amountEur
-@override@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_) final  dynamic amountEur;
+/// amount
+@override@JsonKey(name: PayoutRequestCreateRequest.amountKey_) final  dynamic amount;
 
 /// Create a copy of PayoutRequestCreateRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +229,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PayoutRequestCreateRequest&&const DeepCollectionEquality().equals(other.amountEur, amountEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PayoutRequestCreateRequest&&const DeepCollectionEquality().equals(other.amount, amount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(amountEur));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(amount));
 
 @override
 String toString() {
-  return 'PayoutRequestCreateRequest(amountEur: $amountEur)';
+  return 'PayoutRequestCreateRequest(amount: $amount)';
 }
 
 
@@ -249,7 +249,7 @@ abstract mixin class _$PayoutRequestCreateRequestCopyWith<$Res> implements $Payo
   factory _$PayoutRequestCreateRequestCopyWith(_PayoutRequestCreateRequest value, $Res Function(_PayoutRequestCreateRequest) _then) = __$PayoutRequestCreateRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: PayoutRequestCreateRequest.amountEurKey_) dynamic amountEur
+@JsonKey(name: PayoutRequestCreateRequest.amountKey_) dynamic amount
 });
 
 
@@ -266,9 +266,9 @@ class __$PayoutRequestCreateRequestCopyWithImpl<$Res>
 
 /// Create a copy of PayoutRequestCreateRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? amountEur = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? amount = freezed,}) {
   return _then(_PayoutRequestCreateRequest(
-amountEur: freezed == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
+amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as dynamic,
   ));
 }

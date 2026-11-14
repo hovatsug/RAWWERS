@@ -20,9 +20,10 @@ mixin _$ClientBookingPayResponse {
 @JsonKey(name: ClientBookingPayResponse.gigIdKey_) String get gigId;/// paymentIntentId
 @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) String get paymentIntentId;/// paymentIntentClientSecret
 @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) String get paymentIntentClientSecret;/// mode
-@JsonKey(name: ClientBookingPayResponse.modeKey_) String get mode;/// creditEur
-@JsonKey(name: ClientBookingPayResponse.creditEurKey_) String get creditEur;/// amountEur
-@JsonKey(name: ClientBookingPayResponse.amountEurKey_) String? get amountEur;
+@JsonKey(name: ClientBookingPayResponse.modeKey_) String get mode;/// credit
+@JsonKey(name: ClientBookingPayResponse.creditKey_) String get credit;/// amount
+@JsonKey(name: ClientBookingPayResponse.amountKey_) String? get amount;/// currency
+@JsonKey(name: ClientBookingPayResponse.currencyKey_) String get currency;
 /// Create a copy of ClientBookingPayResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -35,16 +36,16 @@ $ClientBookingPayResponseCopyWith<ClientBookingPayResponse> get copyWith => _$Cl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingPayResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.creditEur, creditEur) || other.creditEur == creditEur)&&(identical(other.amountEur, amountEur) || other.amountEur == amountEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClientBookingPayResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookingId,gigId,paymentIntentId,paymentIntentClientSecret,mode,creditEur,amountEur);
+int get hashCode => Object.hash(runtimeType,bookingId,gigId,paymentIntentId,paymentIntentClientSecret,mode,credit,amount,currency);
 
 @override
 String toString() {
-  return 'ClientBookingPayResponse(bookingId: $bookingId, gigId: $gigId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, mode: $mode, creditEur: $creditEur, amountEur: $amountEur)';
+  return 'ClientBookingPayResponse(bookingId: $bookingId, gigId: $gigId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, mode: $mode, credit: $credit, amount: $amount, currency: $currency)';
 }
 
 
@@ -55,7 +56,7 @@ abstract mixin class $ClientBookingPayResponseCopyWith<$Res>  {
   factory $ClientBookingPayResponseCopyWith(ClientBookingPayResponse value, $Res Function(ClientBookingPayResponse) _then) = _$ClientBookingPayResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ClientBookingPayResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingPayResponse.gigIdKey_) String gigId,@JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: ClientBookingPayResponse.modeKey_) String mode,@JsonKey(name: ClientBookingPayResponse.creditEurKey_) String creditEur,@JsonKey(name: ClientBookingPayResponse.amountEurKey_) String? amountEur
+@JsonKey(name: ClientBookingPayResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingPayResponse.gigIdKey_) String gigId,@JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: ClientBookingPayResponse.modeKey_) String mode,@JsonKey(name: ClientBookingPayResponse.creditKey_) String credit,@JsonKey(name: ClientBookingPayResponse.amountKey_) String? amount,@JsonKey(name: ClientBookingPayResponse.currencyKey_) String currency
 });
 
 
@@ -72,16 +73,17 @@ class _$ClientBookingPayResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingPayResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? bookingId = null,Object? gigId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? mode = null,Object? creditEur = null,Object? amountEur = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? bookingId = null,Object? gigId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? mode = null,Object? credit = null,Object? amount = freezed,Object? currency = null,}) {
   return _then(_self.copyWith(
 bookingId: null == bookingId ? _self.bookingId : bookingId // ignore: cast_nullable_to_non_nullable
 as String,gigId: null == gigId ? _self.gigId : gigId // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentId: null == paymentIntentId ? _self.paymentIntentId : paymentIntentId // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentClientSecret: null == paymentIntentClientSecret ? _self.paymentIntentClientSecret : paymentIntentClientSecret // ignore: cast_nullable_to_non_nullable
 as String,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
-as String,creditEur: null == creditEur ? _self.creditEur : creditEur // ignore: cast_nullable_to_non_nullable
-as String,amountEur: freezed == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,credit: null == credit ? _self.credit : credit // ignore: cast_nullable_to_non_nullable
+as String,amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as String?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_)  String gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_)  String mode, @JsonKey(name: ClientBookingPayResponse.creditEurKey_)  String creditEur, @JsonKey(name: ClientBookingPayResponse.amountEurKey_)  String? amountEur)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_)  String gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_)  String mode, @JsonKey(name: ClientBookingPayResponse.creditKey_)  String credit, @JsonKey(name: ClientBookingPayResponse.amountKey_)  String? amount, @JsonKey(name: ClientBookingPayResponse.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ClientBookingPayResponse() when $default != null:
-return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.mode,_that.creditEur,_that.amountEur);case _:
+return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.mode,_that.credit,_that.amount,_that.currency);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentI
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_)  String gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_)  String mode, @JsonKey(name: ClientBookingPayResponse.creditEurKey_)  String creditEur, @JsonKey(name: ClientBookingPayResponse.amountEurKey_)  String? amountEur)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ClientBookingPayResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_)  String gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_)  String mode, @JsonKey(name: ClientBookingPayResponse.creditKey_)  String credit, @JsonKey(name: ClientBookingPayResponse.amountKey_)  String? amount, @JsonKey(name: ClientBookingPayResponse.currencyKey_)  String currency)  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingPayResponse():
-return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.mode,_that.creditEur,_that.amountEur);case _:
+return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.mode,_that.credit,_that.amount,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentI
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingPayResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_)  String gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_)  String mode, @JsonKey(name: ClientBookingPayResponse.creditEurKey_)  String creditEur, @JsonKey(name: ClientBookingPayResponse.amountEurKey_)  String? amountEur)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ClientBookingPayResponse.bookingIdKey_)  String bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_)  String gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_)  String mode, @JsonKey(name: ClientBookingPayResponse.creditKey_)  String credit, @JsonKey(name: ClientBookingPayResponse.amountKey_)  String? amount, @JsonKey(name: ClientBookingPayResponse.currencyKey_)  String currency)?  $default,) {final _that = this;
 switch (_that) {
 case _ClientBookingPayResponse() when $default != null:
-return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.mode,_that.creditEur,_that.amountEur);case _:
+return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.mode,_that.credit,_that.amount,_that.currency);case _:
   return null;
 
 }
@@ -222,7 +224,7 @@ return $default(_that.bookingId,_that.gigId,_that.paymentIntentId,_that.paymentI
 
 @jsonSerializable
 class _ClientBookingPayResponse extends ClientBookingPayResponse {
-  const _ClientBookingPayResponse({@JsonKey(name: ClientBookingPayResponse.bookingIdKey_) required this.bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_) required this.gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) required this.paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) required this.paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_) required this.mode, @JsonKey(name: ClientBookingPayResponse.creditEurKey_) this.creditEur = '0.00', @JsonKey(name: ClientBookingPayResponse.amountEurKey_) this.amountEur}): super._();
+  const _ClientBookingPayResponse({@JsonKey(name: ClientBookingPayResponse.bookingIdKey_) required this.bookingId, @JsonKey(name: ClientBookingPayResponse.gigIdKey_) required this.gigId, @JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) required this.paymentIntentId, @JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) required this.paymentIntentClientSecret, @JsonKey(name: ClientBookingPayResponse.modeKey_) required this.mode, @JsonKey(name: ClientBookingPayResponse.creditKey_) this.credit = '0.00', @JsonKey(name: ClientBookingPayResponse.amountKey_) this.amount, @JsonKey(name: ClientBookingPayResponse.currencyKey_) required this.currency}): super._();
   factory _ClientBookingPayResponse.fromJson(Map<String, dynamic> json) => _$ClientBookingPayResponseFromJson(json);
 
 /// bookingId
@@ -235,10 +237,12 @@ class _ClientBookingPayResponse extends ClientBookingPayResponse {
 @override@JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) final  String paymentIntentClientSecret;
 /// mode
 @override@JsonKey(name: ClientBookingPayResponse.modeKey_) final  String mode;
-/// creditEur
-@override@JsonKey(name: ClientBookingPayResponse.creditEurKey_) final  String creditEur;
-/// amountEur
-@override@JsonKey(name: ClientBookingPayResponse.amountEurKey_) final  String? amountEur;
+/// credit
+@override@JsonKey(name: ClientBookingPayResponse.creditKey_) final  String credit;
+/// amount
+@override@JsonKey(name: ClientBookingPayResponse.amountKey_) final  String? amount;
+/// currency
+@override@JsonKey(name: ClientBookingPayResponse.currencyKey_) final  String currency;
 
 /// Create a copy of ClientBookingPayResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -253,16 +257,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingPayResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.creditEur, creditEur) || other.creditEur == creditEur)&&(identical(other.amountEur, amountEur) || other.amountEur == amountEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClientBookingPayResponse&&(identical(other.bookingId, bookingId) || other.bookingId == bookingId)&&(identical(other.gigId, gigId) || other.gigId == gigId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.credit, credit) || other.credit == credit)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bookingId,gigId,paymentIntentId,paymentIntentClientSecret,mode,creditEur,amountEur);
+int get hashCode => Object.hash(runtimeType,bookingId,gigId,paymentIntentId,paymentIntentClientSecret,mode,credit,amount,currency);
 
 @override
 String toString() {
-  return 'ClientBookingPayResponse(bookingId: $bookingId, gigId: $gigId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, mode: $mode, creditEur: $creditEur, amountEur: $amountEur)';
+  return 'ClientBookingPayResponse(bookingId: $bookingId, gigId: $gigId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, mode: $mode, credit: $credit, amount: $amount, currency: $currency)';
 }
 
 
@@ -273,7 +277,7 @@ abstract mixin class _$ClientBookingPayResponseCopyWith<$Res> implements $Client
   factory _$ClientBookingPayResponseCopyWith(_ClientBookingPayResponse value, $Res Function(_ClientBookingPayResponse) _then) = __$ClientBookingPayResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ClientBookingPayResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingPayResponse.gigIdKey_) String gigId,@JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: ClientBookingPayResponse.modeKey_) String mode,@JsonKey(name: ClientBookingPayResponse.creditEurKey_) String creditEur,@JsonKey(name: ClientBookingPayResponse.amountEurKey_) String? amountEur
+@JsonKey(name: ClientBookingPayResponse.bookingIdKey_) String bookingId,@JsonKey(name: ClientBookingPayResponse.gigIdKey_) String gigId,@JsonKey(name: ClientBookingPayResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: ClientBookingPayResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: ClientBookingPayResponse.modeKey_) String mode,@JsonKey(name: ClientBookingPayResponse.creditKey_) String credit,@JsonKey(name: ClientBookingPayResponse.amountKey_) String? amount,@JsonKey(name: ClientBookingPayResponse.currencyKey_) String currency
 });
 
 
@@ -290,16 +294,17 @@ class __$ClientBookingPayResponseCopyWithImpl<$Res>
 
 /// Create a copy of ClientBookingPayResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? bookingId = null,Object? gigId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? mode = null,Object? creditEur = null,Object? amountEur = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? bookingId = null,Object? gigId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? mode = null,Object? credit = null,Object? amount = freezed,Object? currency = null,}) {
   return _then(_ClientBookingPayResponse(
 bookingId: null == bookingId ? _self.bookingId : bookingId // ignore: cast_nullable_to_non_nullable
 as String,gigId: null == gigId ? _self.gigId : gigId // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentId: null == paymentIntentId ? _self.paymentIntentId : paymentIntentId // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentClientSecret: null == paymentIntentClientSecret ? _self.paymentIntentClientSecret : paymentIntentClientSecret // ignore: cast_nullable_to_non_nullable
 as String,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
-as String,creditEur: null == creditEur ? _self.creditEur : creditEur // ignore: cast_nullable_to_non_nullable
-as String,amountEur: freezed == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,credit: null == credit ? _self.credit : credit // ignore: cast_nullable_to_non_nullable
+as String,amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as String?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

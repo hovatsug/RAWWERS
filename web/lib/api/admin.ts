@@ -162,7 +162,7 @@ export type DisputeRow = {
   reason?: string | null;
   summary?: string | null;
   requested_refund_amount?: string | null;
-  currency?: string | null;
+  currency: string;
   opened_at?: string | null;
   due_response_at?: string | null;
 };
@@ -200,15 +200,16 @@ export type NicheSkillRow = {
   active_override: { tier: SkillTier | null; by: string | null; at: string | null; reason: string | null } | null;
 };
 
-/** This month's marketing credit (Europe/London), in euros. */
+/** This month's marketing credit (Europe/London), in `currency` (euros until batch M4). */
 export type MarketingBudget = {
   month: string;
-  budget_eur: string;
-  awarded_eur: string;
-  used_eur: string;
-  returned_on_refunds_eur: string;
-  outstanding_eur: string;
-  remaining_eur: string;
+  currency: string;
+  budget: string;
+  awarded: string;
+  used: string;
+  returned_on_refunds: string;
+  outstanding: string;
+  remaining: string;
   max_discount_percent: number;
 };
 export type ClientCreditSettings = { max_discount_percent: number; monthly_marketing_credit_budget_eur: string };
@@ -355,6 +356,10 @@ export type ShelfOrderEvent = {
   note: string | null;
   created_at: string;
 };
+
+/** The Shelf values RAWW and prices its helper in euros until batch M4 makes
+ * the RAWW value per currency (docs/MULTI_CURRENCY.md 5). */
+export const SHELF_VALUE_CURRENCY = "EUR";
 
 export type AdminShelfOrder = {
   id: string;

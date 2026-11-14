@@ -444,6 +444,233 @@ class _ProofGalleriesClient implements ProofGalleriesClient {
   }
 
   @override
+  Future<HttpResponse<AddonQuoteResponse>>
+  getAddonQuoteV1ProofGalleriesGalleryIdAddonQuoteGet({
+    required String galleryId,
+    required int adding,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['proof_galleries'],
+      'summary': 'Get Addon Quote',
+      'description':
+          'What adding `adding` photos after the selection closed costs now.',
+      'operationId':
+          'get_addon_quote_v1_proof_galleries__gallery_id__addon_quote_get',
+      'parameters': [
+        {
+          'name': 'gallery_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
+        },
+        {
+          'name': 'adding',
+          'in': 'query',
+          'required': true,
+          'schema': {
+            'type': 'integer',
+            'maximum': 5000,
+            'minimum': 0,
+            'title': 'Adding',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/AddonQuoteResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{r'adding': adding};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<AddonQuoteResponse>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/proof-galleries/${galleryId}/addon-quote',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late AddonQuoteResponse _value;
+    try {
+      _value = AddonQuoteResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<StartAddonResponse>>
+  startAddonV1ProofGalleriesGalleryIdAddonsPost({
+    required StartAddonRequest requestBody,
+    required String galleryId,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['proof_galleries'],
+      'summary': 'Start Addon',
+      'description':
+          'Add photos after the selection closed, while its window is open. Pay\nwith the returned client secret; nothing is owed when it is null.',
+      'operationId': 'start_addon_v1_proof_galleries__gallery_id__addons_post',
+      'parameters': [
+        {
+          'name': 'gallery_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {'\$ref': '#/components/schemas/StartAddonRequest'},
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/StartAddonResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    final _data = <String, dynamic>{};
+    _data.addAll(requestBody.toJson());
+    final _options = _setStreamType<HttpResponse<StartAddonResponse>>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/proof-galleries/${galleryId}/addons',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late StartAddonResponse _value;
+    try {
+      _value = StartAddonResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<SelectionResponse>>
   saveSelectionV1ProofGalleriesGalleryIdSelectionsPost({
     required SaveSelectionRequest requestBody,
@@ -990,233 +1217,6 @@ class _ProofGalleriesClient implements ProofGalleriesClient {
     late DownloadsResponse _value;
     try {
       _value = DownloadsResponse.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<AddonQuoteResponse>>
-  getAddonQuoteV1ProofGalleriesGalleryIdAddonQuoteGet({
-    required String galleryId,
-    required int adding,
-    required String? authorization,
-    required String? xMinusUserMinusId,
-    CancelToken? cancelToken,
-    void Function(int, int)? onSendProgress,
-    void Function(int, int)? onReceiveProgress,
-    Map<String, dynamic>? extras = const {
-      'tags': ['proof_galleries'],
-      'summary': 'Get Addon Quote',
-      'description':
-          'What adding `adding` photos after the selection closed costs now.',
-      'operationId':
-          'get_addon_quote_v1_proof_galleries__gallery_id__addon_quote_get',
-      'parameters': [
-        {
-          'name': 'gallery_id',
-          'in': 'path',
-          'required': true,
-          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
-        },
-        {
-          'name': 'adding',
-          'in': 'query',
-          'required': true,
-          'schema': {
-            'type': 'integer',
-            'maximum': 5000,
-            'minimum': 0,
-            'title': 'Adding',
-          },
-        },
-        {
-          'name': 'Authorization',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'Authorization',
-          },
-        },
-        {
-          'name': 'X-User-Id',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-User-Id',
-          },
-        },
-      ],
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/AddonQuoteResponse'},
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  }) async {
-    final _extra = <String, dynamic>{};
-    _extra.addAll(extras ?? <String, dynamic>{});
-    final queryParameters = <String, dynamic>{r'adding': adding};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{
-      r'Authorization': authorization,
-      r'X-User-Id': xMinusUserMinusId,
-    };
-    _headers.removeWhere((k, v) => v == null);
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<AddonQuoteResponse>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/v1/proof-galleries/${galleryId}/addon-quote',
-            queryParameters: queryParameters,
-            data: _data,
-            cancelToken: cancelToken,
-            onSendProgress: onSendProgress,
-            onReceiveProgress: onReceiveProgress,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AddonQuoteResponse _value;
-    try {
-      _value = AddonQuoteResponse.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<StartAddonResponse>>
-  startAddonV1ProofGalleriesGalleryIdAddonsPost({
-    required StartAddonRequest requestBody,
-    required String galleryId,
-    required String? authorization,
-    required String? xMinusUserMinusId,
-    CancelToken? cancelToken,
-    void Function(int, int)? onSendProgress,
-    void Function(int, int)? onReceiveProgress,
-    Map<String, dynamic>? extras = const {
-      'tags': ['proof_galleries'],
-      'summary': 'Start Addon',
-      'description':
-          'Add photos after the selection closed, while its window is open. Pay\nwith the returned client secret; nothing is owed when it is null.',
-      'operationId': 'start_addon_v1_proof_galleries__gallery_id__addons_post',
-      'parameters': [
-        {
-          'name': 'gallery_id',
-          'in': 'path',
-          'required': true,
-          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
-        },
-        {
-          'name': 'Authorization',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'Authorization',
-          },
-        },
-        {
-          'name': 'X-User-Id',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-User-Id',
-          },
-        },
-      ],
-      'requestBody': {
-        'required': true,
-        'content': {
-          'application/json': {
-            'schema': {'\$ref': '#/components/schemas/StartAddonRequest'},
-          },
-        },
-      },
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/StartAddonResponse'},
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  }) async {
-    final _extra = <String, dynamic>{};
-    _extra.addAll(extras ?? <String, dynamic>{});
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{
-      r'Authorization': authorization,
-      r'X-User-Id': xMinusUserMinusId,
-    };
-    _headers.removeWhere((k, v) => v == null);
-    final _data = <String, dynamic>{};
-    _data.addAll(requestBody.toJson());
-    final _options = _setStreamType<HttpResponse<StartAddonResponse>>(
-      Options(method: 'POST', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/v1/proof-galleries/${galleryId}/addons',
-            queryParameters: queryParameters,
-            data: _data,
-            cancelToken: cancelToken,
-            onSendProgress: onSendProgress,
-            onReceiveProgress: onReceiveProgress,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late StartAddonResponse _value;
-    try {
-      _value = StartAddonResponse.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

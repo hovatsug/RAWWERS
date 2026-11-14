@@ -340,7 +340,7 @@ void main() {
 
 /// A photographer whose client-credit setting is untouched, so the card at the
 /// top of Pricing renders without reaching the network.
-ProProfileView _creditProfile({int credit = 0, int cap = 10}) => ProProfileView(
+ProProfileView _creditProfile({int credit = 0, int cap = 10}) => ProProfileView(currency: 'EUR', 
       userId: 'pro-1',
       displayName: 'Test Pro',
       isAcceptingBookings: true,

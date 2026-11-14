@@ -47,7 +47,7 @@ class _RecordingEditor extends ProfileEditorController {
   }
 }
 
-ProProfileView _profile({int? travelRadiusKm, List<String>? styles}) => ProProfileView(
+ProProfileView _profile({int? travelRadiusKm, List<String>? styles}) => ProProfileView(currency: 'EUR', 
       userId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits in daylight',

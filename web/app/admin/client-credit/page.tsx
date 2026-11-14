@@ -35,16 +35,16 @@ export default function AdminClientCreditPage() {
         {b ? (
           <Panel className="grid gap-4 p-4 sm:grid-cols-6">
             {[
-              ["Budget", b.budget_eur],
-              ["Awarded", b.awarded_eur],
-              ["Used at checkout", b.used_eur],
-              ["Returned on refunds", b.returned_on_refunds_eur],
-              ["Outstanding", b.outstanding_eur],
-              ["Remaining", b.remaining_eur]
+              ["Budget", b.budget],
+              ["Awarded", b.awarded],
+              ["Used at checkout", b.used],
+              ["Returned on refunds", b.returned_on_refunds],
+              ["Outstanding", b.outstanding],
+              ["Remaining", b.remaining]
             ].map(([label, value]) => (
               <div key={label}>
                 <div className="text-xs uppercase text-slate-400">{label}</div>
-                <div className="text-xl tabular-nums">{money(value, "EUR")}</div>
+                <div className="text-xl tabular-nums">{money(value, b.currency)}</div>
               </div>
             ))}
             <p className="text-xs text-slate-400 sm:col-span-6">{b.month}, Europe/London. Outstanding is every client&apos;s unspent credit, whenever earned.</p>

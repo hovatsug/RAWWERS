@@ -1515,10 +1515,7 @@ abstract class ProOnboardingClient {
           'schema': {
             'anyOf': [
               {'type': 'number', 'exclusiveMinimum': 0.0},
-              {
-                'type': 'string',
-                'pattern': '^(?!^[-+.]*\$)[+-]?0*\\d*\\.?\\d*\$',
-              },
+              {'type': 'string'},
             ],
             'description': 'Proposed entry rate per photo',
             'title': 'Entry Price',

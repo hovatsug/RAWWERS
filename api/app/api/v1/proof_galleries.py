@@ -674,6 +674,7 @@ def submit_selection(
         purchase, client_secret, _ = _ensure_upsell_intent(db, gallery, selection, extras_count, points_to_spend=None)
         db.commit()
         return SubmitSelectionResponse(
+            currency=gallery.currency,
             selection_id=selection.id,
             selected_count=selected_count,
             included_photos=gallery.included_photos,
@@ -692,6 +693,7 @@ def submit_selection(
         cancel_proof_selection_reminders(db, gallery.client_user_id, gallery.id)
         db.commit()
         return SubmitSelectionResponse(
+            currency=gallery.currency,
             selection_id=selection.id,
             selected_count=selected_count,
             included_photos=gallery.included_photos,
@@ -716,6 +718,7 @@ def submit_selection(
     db.commit()
     observe_business_event("proof_selection_submitted")
     return SubmitSelectionResponse(
+        currency=gallery.currency,
         selection_id=selection.id,
         selected_count=selected_count,
         included_photos=gallery.included_photos,
@@ -775,6 +778,7 @@ def create_upsell_intent(
         payment_intent_id=purchase.stripe_payment_intent_id or "",
         payment_intent_client_secret=client_secret,
         status=purchase.status,
+        currency=gallery.currency,
         discount_amount=redemption.discount_amount if redemption else None,
         points_spent=redemption.points_spent if redemption else None,
     )

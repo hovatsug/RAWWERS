@@ -15,8 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MyCreditResponse {
 
-/// balanceEur
-@JsonKey(name: MyCreditResponse.balanceEurKey_) String get balanceEur;/// maxDiscountPercent
+/// balance
+@JsonKey(name: MyCreditResponse.balanceKey_) String get balance;/// currency
+@JsonKey(name: MyCreditResponse.currencyKey_) String get currency;/// maxDiscountPercent
 @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) int get maxDiscountPercent;/// items
 @JsonKey(name: MyCreditResponse.itemsKey_) List<CreditHistoryItem> get items;
 /// Create a copy of MyCreditResponse
@@ -31,16 +32,16 @@ $MyCreditResponseCopyWith<MyCreditResponse> get copyWith => _$MyCreditResponseCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MyCreditResponse&&(identical(other.balanceEur, balanceEur) || other.balanceEur == balanceEur)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&const DeepCollectionEquality().equals(other.items, items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MyCreditResponse&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&const DeepCollectionEquality().equals(other.items, items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,balanceEur,maxDiscountPercent,const DeepCollectionEquality().hash(items));
+int get hashCode => Object.hash(runtimeType,balance,currency,maxDiscountPercent,const DeepCollectionEquality().hash(items));
 
 @override
 String toString() {
-  return 'MyCreditResponse(balanceEur: $balanceEur, maxDiscountPercent: $maxDiscountPercent, items: $items)';
+  return 'MyCreditResponse(balance: $balance, currency: $currency, maxDiscountPercent: $maxDiscountPercent, items: $items)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $MyCreditResponseCopyWith<$Res>  {
   factory $MyCreditResponseCopyWith(MyCreditResponse value, $Res Function(MyCreditResponse) _then) = _$MyCreditResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: MyCreditResponse.balanceEurKey_) String balanceEur,@JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: MyCreditResponse.itemsKey_) List<CreditHistoryItem> items
+@JsonKey(name: MyCreditResponse.balanceKey_) String balance,@JsonKey(name: MyCreditResponse.currencyKey_) String currency,@JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: MyCreditResponse.itemsKey_) List<CreditHistoryItem> items
 });
 
 
@@ -68,9 +69,10 @@ class _$MyCreditResponseCopyWithImpl<$Res>
 
 /// Create a copy of MyCreditResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? balanceEur = null,Object? maxDiscountPercent = null,Object? items = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? balance = null,Object? currency = null,Object? maxDiscountPercent = null,Object? items = null,}) {
   return _then(_self.copyWith(
-balanceEur: null == balanceEur ? _self.balanceEur : balanceEur // ignore: cast_nullable_to_non_nullable
+balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,maxDiscountPercent: null == maxDiscountPercent ? _self.maxDiscountPercent : maxDiscountPercent // ignore: cast_nullable_to_non_nullable
 as int,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<CreditHistoryItem>,
@@ -158,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MyCreditResponse.balanceEurKey_)  String balanceEur, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_)  List<CreditHistoryItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: MyCreditResponse.balanceKey_)  String balance, @JsonKey(name: MyCreditResponse.currencyKey_)  String currency, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_)  List<CreditHistoryItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MyCreditResponse() when $default != null:
-return $default(_that.balanceEur,_that.maxDiscountPercent,_that.items);case _:
+return $default(_that.balance,_that.currency,_that.maxDiscountPercent,_that.items);case _:
   return orElse();
 
 }
@@ -179,10 +181,10 @@ return $default(_that.balanceEur,_that.maxDiscountPercent,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MyCreditResponse.balanceEurKey_)  String balanceEur, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_)  List<CreditHistoryItem> items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: MyCreditResponse.balanceKey_)  String balance, @JsonKey(name: MyCreditResponse.currencyKey_)  String currency, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_)  List<CreditHistoryItem> items)  $default,) {final _that = this;
 switch (_that) {
 case _MyCreditResponse():
-return $default(_that.balanceEur,_that.maxDiscountPercent,_that.items);case _:
+return $default(_that.balance,_that.currency,_that.maxDiscountPercent,_that.items);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +201,10 @@ return $default(_that.balanceEur,_that.maxDiscountPercent,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MyCreditResponse.balanceEurKey_)  String balanceEur, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_)  List<CreditHistoryItem> items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: MyCreditResponse.balanceKey_)  String balance, @JsonKey(name: MyCreditResponse.currencyKey_)  String currency, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_)  List<CreditHistoryItem> items)?  $default,) {final _that = this;
 switch (_that) {
 case _MyCreditResponse() when $default != null:
-return $default(_that.balanceEur,_that.maxDiscountPercent,_that.items);case _:
+return $default(_that.balance,_that.currency,_that.maxDiscountPercent,_that.items);case _:
   return null;
 
 }
@@ -214,11 +216,13 @@ return $default(_that.balanceEur,_that.maxDiscountPercent,_that.items);case _:
 
 @jsonSerializable
 class _MyCreditResponse extends MyCreditResponse {
-  const _MyCreditResponse({@JsonKey(name: MyCreditResponse.balanceEurKey_) required this.balanceEur, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) required this.maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_) required final  List<CreditHistoryItem> items}): _items = items,super._();
+  const _MyCreditResponse({@JsonKey(name: MyCreditResponse.balanceKey_) required this.balance, @JsonKey(name: MyCreditResponse.currencyKey_) required this.currency, @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) required this.maxDiscountPercent, @JsonKey(name: MyCreditResponse.itemsKey_) required final  List<CreditHistoryItem> items}): _items = items,super._();
   factory _MyCreditResponse.fromJson(Map<String, dynamic> json) => _$MyCreditResponseFromJson(json);
 
-/// balanceEur
-@override@JsonKey(name: MyCreditResponse.balanceEurKey_) final  String balanceEur;
+/// balance
+@override@JsonKey(name: MyCreditResponse.balanceKey_) final  String balance;
+/// currency
+@override@JsonKey(name: MyCreditResponse.currencyKey_) final  String currency;
 /// maxDiscountPercent
 @override@JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) final  int maxDiscountPercent;
 /// items
@@ -244,16 +248,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MyCreditResponse&&(identical(other.balanceEur, balanceEur) || other.balanceEur == balanceEur)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&const DeepCollectionEquality().equals(other._items, _items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MyCreditResponse&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&const DeepCollectionEquality().equals(other._items, _items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,balanceEur,maxDiscountPercent,const DeepCollectionEquality().hash(_items));
+int get hashCode => Object.hash(runtimeType,balance,currency,maxDiscountPercent,const DeepCollectionEquality().hash(_items));
 
 @override
 String toString() {
-  return 'MyCreditResponse(balanceEur: $balanceEur, maxDiscountPercent: $maxDiscountPercent, items: $items)';
+  return 'MyCreditResponse(balance: $balance, currency: $currency, maxDiscountPercent: $maxDiscountPercent, items: $items)';
 }
 
 
@@ -264,7 +268,7 @@ abstract mixin class _$MyCreditResponseCopyWith<$Res> implements $MyCreditRespon
   factory _$MyCreditResponseCopyWith(_MyCreditResponse value, $Res Function(_MyCreditResponse) _then) = __$MyCreditResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: MyCreditResponse.balanceEurKey_) String balanceEur,@JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: MyCreditResponse.itemsKey_) List<CreditHistoryItem> items
+@JsonKey(name: MyCreditResponse.balanceKey_) String balance,@JsonKey(name: MyCreditResponse.currencyKey_) String currency,@JsonKey(name: MyCreditResponse.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: MyCreditResponse.itemsKey_) List<CreditHistoryItem> items
 });
 
 
@@ -281,9 +285,10 @@ class __$MyCreditResponseCopyWithImpl<$Res>
 
 /// Create a copy of MyCreditResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? balanceEur = null,Object? maxDiscountPercent = null,Object? items = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? balance = null,Object? currency = null,Object? maxDiscountPercent = null,Object? items = null,}) {
   return _then(_MyCreditResponse(
-balanceEur: null == balanceEur ? _self.balanceEur : balanceEur // ignore: cast_nullable_to_non_nullable
+balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,maxDiscountPercent: null == maxDiscountPercent ? _self.maxDiscountPercent : maxDiscountPercent // ignore: cast_nullable_to_non_nullable
 as int,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<CreditHistoryItem>,

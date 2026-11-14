@@ -14,6 +14,7 @@ _CreatePaymentIntentResponse _$CreatePaymentIntentResponseFromJson(
   status: json['status'] as String,
   discountAmount: json['discount_amount'] as String?,
   pointsSpent: (json['points_spent'] as num?)?.toInt(),
+  currency: json['currency'] as String,
 );
 
 Map<String, dynamic> _$CreatePaymentIntentResponseToJson(
@@ -24,4 +25,5 @@ Map<String, dynamic> _$CreatePaymentIntentResponseToJson(
   'status': instance.status,
   'discount_amount': instance.discountAmount,
   'points_spent': instance.pointsSpent,
+  'currency': instance.currency,
 };

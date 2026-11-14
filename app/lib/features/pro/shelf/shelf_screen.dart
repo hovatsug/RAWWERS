@@ -197,7 +197,8 @@ class _LevelHeading extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Level ${level.level} · about ${RMoney.of(context).format(level.bandEur)} · ${level.bandRaww} RAWW',
+          // Shelf levels are valued in euros until batch M4.
+          'Level ${level.level} · about ${RMoney.of(context).format(level.bandEur, currency: 'EUR')} · ${level.bandRaww} RAWW',
           style: theme.textTheme.titleMedium,
         ),
         if (level.locked)

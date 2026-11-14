@@ -1567,6 +1567,7 @@ def _profile_view(profile: ProProfile, db: Session | None = None) -> ProProfileV
         bio=profile.bio,
         city=profile.city,
         country=profile.country,
+        currency=profile.currency,
         languages=profile.languages or [],
         styles=profile.styles or [],
         gear=profile.gear or {},

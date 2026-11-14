@@ -28,7 +28,7 @@ InvoiceSummaryView _summary({
   int? proRawwRawws,
   String extrasProRaww = '0.00',
 }) =>
-    InvoiceSummaryView(
+    InvoiceSummaryView(currency: 'EUR', 
       proRawwRawws: proRawwRawws,
       extrasProRaww: extrasProRaww,
       bookings: bookings,
@@ -162,7 +162,7 @@ void main() {
       testWidgets('the visible rows sum to Cash earned: ${raw['name']}, $locale', (tester) async {
         tester.platformDispatcher.localeTestValue = locale;
         addTearDown(tester.platformDispatcher.clearLocaleTestValue);
-        await tester.pumpWidget(_wrap(InvoiceSummaryView.fromJson(raw)));
+        await tester.pumpWidget(_wrap(InvoiceSummaryView.fromJson({...raw, 'currency': 'EUR'})));
         await tester.pumpAndSettle();
 
         final rows = {

@@ -59,18 +59,21 @@ class _Summary extends StatelessWidget {
           // the server splits it (platform_fees already holds the RAWW
           // credit, which is part of the fee). The RAWW credit sits under
           // the total, apart from the sum, because it is not cash.
-          RAmountRow(label: 'Booked', amount: money.format(summary.gross)),
-          RAmountRow(label: 'Platform fees', amount: money.minus(summary.platformFees)),
+          RAmountRow(label: 'Booked', amount: money.format(summary.gross, currency: summary.currency)),
+          RAmountRow(label: 'Platform fees', amount: money.minus(summary.platformFees, currency: summary.currency)),
           if (summary.clientRaww != '0.00')
-            RAmountRow(label: 'Given to clients', amount: money.minus(summary.clientRaww)),
+            RAmountRow(label: 'Given to clients', amount: money.minus(summary.clientRaww, currency: summary.currency)),
           const Divider(height: RSpace.s16),
-          RAmountRow(label: 'Cash earned', amount: money.format(summary.proCash), total: true),
+          RAmountRow(label: 'Cash earned', amount: money.format(summary.proCash, currency: summary.currency), total: true),
           const SizedBox(height: RSpace.s12),
           // Bookings' credit and their extras', which the sum above leaves
           // out (extras are not on invoices).
           RAmountRow(
             label: 'Your RAWW credit',
-            amount: money.format((Decimal.parse(summary.proRaww) + Decimal.parse(summary.extrasProRaww)).toStringAsFixed(2)),
+            amount: money.format(
+              (Decimal.parse(summary.proRaww) + Decimal.parse(summary.extrasProRaww)).toStringAsFixed(2),
+              currency: summary.currency,
+            ),
           ),
           const SizedBox(height: RSpace.s4),
           Text('Gear credit, part of the platform fee. Not withdrawable.', style: muted),
@@ -83,7 +86,7 @@ class _Summary extends StatelessWidget {
 
           if (summary.averageGross != null) ...[
             const SizedBox(height: RSpace.s12),
-            Text('Averaging ${money.format(summary.averageGross!)} a booking', style: muted),
+            Text('Averaging ${money.format(summary.averageGross!, currency: summary.currency)} a booking', style: muted),
           ],
 
           if (summary.reconstructed > 0) ...[

@@ -1,22 +1,21 @@
 /// PayoutRequestCreateRequest
 /// {
 ///     "properties": {
-///         "amount_eur": {
+///         "amount": {
 ///             "anyOf": [
 ///                 {
 ///                     "type": "number"
 ///                 },
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 }
 ///             ],
-///             "title": "Amount Eur"
+///             "title": "Amount"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
-///         "amount_eur"
+///         "amount"
 ///     ],
 ///     "title": "PayoutRequestCreateRequest"
 /// }
@@ -32,13 +31,13 @@ abstract class PayoutRequestCreateRequest with _$PayoutRequestCreateRequest {
 
   @jsonSerializable
   const factory PayoutRequestCreateRequest({
-    /// amountEur
-    @JsonKey(name: PayoutRequestCreateRequest.amountEurKey_)
-    required dynamic amountEur,
+    /// amount
+    @JsonKey(name: PayoutRequestCreateRequest.amountKey_)
+    required dynamic amount,
   }) = _PayoutRequestCreateRequest;
 
   factory PayoutRequestCreateRequest.fromJson(Map<String, dynamic> json) =>
       _$PayoutRequestCreateRequestFromJson(json);
 
-  static const String amountEurKey_ = r'amount_eur';
+  static const String amountKey_ = r'amount';
 }

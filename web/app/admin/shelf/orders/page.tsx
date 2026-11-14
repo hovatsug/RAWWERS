@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { admin, type AdminShelfOrder } from "@/lib/api/admin";
+import { admin, SHELF_VALUE_CURRENCY, type AdminShelfOrder } from "@/lib/api/admin";
 import {
   AdminButton,
   DataTable,
@@ -81,7 +81,7 @@ export default function ShelfOrdersPage() {
       cell: (row) => (
         <div>
           {row.price_raww}
-          <div className="text-xs text-slate-400">{money(row.price_eur)}</div>
+          <div className="text-xs text-slate-400">{money(row.price_eur, SHELF_VALUE_CURRENCY)}</div>
         </div>
       )
     },

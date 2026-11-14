@@ -15,7 +15,7 @@ _DisputeCreateV1Request _$DisputeCreateV1RequestFromJson(
   reason: json['reason'] as String?,
   summary: json['summary'] as String?,
   requestedRefundAmount: json['requested_refund_amount'],
-  currency: json['currency'] as String? ?? 'EUR',
+  currency: json['currency'] as String?,
 );
 
 Map<String, dynamic> _$DisputeCreateV1RequestToJson(

@@ -15,9 +15,13 @@
 ///             "type": "string",
 ///             "title": "Kind"
 ///         },
-///         "amount_eur": {
+///         "amount": {
 ///             "type": "string",
-///             "title": "Amount Eur"
+///             "title": "Amount"
+///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
 ///         },
 ///         "photographer_first_name": {
 ///             "anyOf": [
@@ -36,7 +40,8 @@
 ///         "id",
 ///         "created_at",
 ///         "kind",
-///         "amount_eur"
+///         "amount",
+///         "currency"
 ///     ],
 ///     "title": "CreditHistoryItem"
 /// }
@@ -61,8 +66,11 @@ abstract class CreditHistoryItem with _$CreditHistoryItem {
     /// kind
     @JsonKey(name: CreditHistoryItem.kindKey_) required String kind,
 
-    /// amountEur
-    @JsonKey(name: CreditHistoryItem.amountEurKey_) required String amountEur,
+    /// amount
+    @JsonKey(name: CreditHistoryItem.amountKey_) required String amount,
+
+    /// currency
+    @JsonKey(name: CreditHistoryItem.currencyKey_) required String currency,
 
     /// photographerFirstName
     @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)
@@ -78,7 +86,9 @@ abstract class CreditHistoryItem with _$CreditHistoryItem {
 
   static const String kindKey_ = r'kind';
 
-  static const String amountEurKey_ = r'amount_eur';
+  static const String amountKey_ = r'amount';
+
+  static const String currencyKey_ = r'currency';
 
   static const String photographerFirstNameKey_ = r'photographer_first_name';
 }

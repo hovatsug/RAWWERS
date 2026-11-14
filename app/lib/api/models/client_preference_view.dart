@@ -11,8 +11,7 @@
 ///         "budget_min": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -23,8 +22,7 @@
 ///         "budget_max": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"

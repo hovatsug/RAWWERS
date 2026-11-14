@@ -158,7 +158,7 @@ class _Money extends StatelessWidget {
       children: [
         RBandHero(
           label: 'Available to withdraw',
-          value: money.format(balance.withdrawableEur),
+          value: money.format(balance.withdrawable, currency: balance.currency),
           valueKey: YouBand.amountKey,
           sortKey: const OrdinalSortKey(0),
         ),
@@ -167,7 +167,8 @@ class _Money extends StatelessWidget {
           container: true,
           sortKey: const OrdinalSortKey(3),
           child: Text(
-            '${money.format(balance.pendingEur)} pending · ${money.format(balance.heldEur)} on hold',
+            '${money.format(balance.pending, currency: balance.currency)} pending · '
+            '${money.format(balance.held, currency: balance.currency)} on hold',
             style: theme.textTheme.bodySmall?.copyWith(
               fontFeatures: RType.tabularFigures,
             ),
@@ -198,14 +199,14 @@ class _Money extends StatelessWidget {
 }
 
 /// Why there is no "Request payout", in one line, from the Wallet's own
-/// rules: its minimum (PayoutRules.minimum, the figure the Wallet itself
+/// rules: its minimum (WalletData.minimum, the figure the Wallet itself
 /// checks), or its own refusal message for anything else.
 String _whyNot(WalletData data, RMoney money) {
   if (data.account.status != PayoutAccountStatus.active) {
     return 'Payouts need a verified account. Set it up in the Wallet.';
   }
-  if (data.withdrawable < PayoutRules.minimum) {
-    return 'Payouts start at ${money.format(PayoutRules.minimum.toStringAsFixed(2))}.';
+  if (data.withdrawable < data.minimum) {
+    return 'Payouts start at ${money.format(data.minimum.toStringAsFixed(2), currency: data.currency)}.';
   }
   return data.payoutBlockedReason ?? '';
 }

@@ -15,16 +15,18 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$EarningsBalanceView {
 
-/// pendingEur
-@JsonKey(name: EarningsBalanceView.pendingEurKey_) String get pendingEur;/// availableEur
-@JsonKey(name: EarningsBalanceView.availableEurKey_) String get availableEur;/// heldEur
-@JsonKey(name: EarningsBalanceView.heldEurKey_) String get heldEur;/// requestedEur
-@JsonKey(name: EarningsBalanceView.requestedEurKey_) String get requestedEur;/// reservedEur
-@JsonKey(name: EarningsBalanceView.reservedEurKey_) String get reservedEur;/// paidOutEur
-@JsonKey(name: EarningsBalanceView.paidOutEurKey_) String get paidOutEur;/// lifetimeEur
-@JsonKey(name: EarningsBalanceView.lifetimeEurKey_) String get lifetimeEur;/// withdrawableEur
-@JsonKey(name: EarningsBalanceView.withdrawableEurKey_) String get withdrawableEur;/// adjustmentOwedEur
-@JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_) String get adjustmentOwedEur;
+/// currency
+@JsonKey(name: EarningsBalanceView.currencyKey_) String get currency;/// pending
+@JsonKey(name: EarningsBalanceView.pendingKey_) String get pending;/// available
+@JsonKey(name: EarningsBalanceView.availableKey_) String get available;/// held
+@JsonKey(name: EarningsBalanceView.heldKey_) String get held;/// requested
+@JsonKey(name: EarningsBalanceView.requestedKey_) String get requested;/// reserved
+@JsonKey(name: EarningsBalanceView.reservedKey_) String get reserved;/// paidOut
+@JsonKey(name: EarningsBalanceView.paidOutKey_) String get paidOut;/// lifetime
+@JsonKey(name: EarningsBalanceView.lifetimeKey_) String get lifetime;/// withdrawable
+@JsonKey(name: EarningsBalanceView.withdrawableKey_) String get withdrawable;/// adjustmentOwed
+@JsonKey(name: EarningsBalanceView.adjustmentOwedKey_) String get adjustmentOwed;/// payoutMinimum
+@JsonKey(name: EarningsBalanceView.payoutMinimumKey_) String get payoutMinimum;
 /// Create a copy of EarningsBalanceView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -37,16 +39,16 @@ $EarningsBalanceViewCopyWith<EarningsBalanceView> get copyWith => _$EarningsBala
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EarningsBalanceView&&(identical(other.pendingEur, pendingEur) || other.pendingEur == pendingEur)&&(identical(other.availableEur, availableEur) || other.availableEur == availableEur)&&(identical(other.heldEur, heldEur) || other.heldEur == heldEur)&&(identical(other.requestedEur, requestedEur) || other.requestedEur == requestedEur)&&(identical(other.reservedEur, reservedEur) || other.reservedEur == reservedEur)&&(identical(other.paidOutEur, paidOutEur) || other.paidOutEur == paidOutEur)&&(identical(other.lifetimeEur, lifetimeEur) || other.lifetimeEur == lifetimeEur)&&(identical(other.withdrawableEur, withdrawableEur) || other.withdrawableEur == withdrawableEur)&&(identical(other.adjustmentOwedEur, adjustmentOwedEur) || other.adjustmentOwedEur == adjustmentOwedEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EarningsBalanceView&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.available, available) || other.available == available)&&(identical(other.held, held) || other.held == held)&&(identical(other.requested, requested) || other.requested == requested)&&(identical(other.reserved, reserved) || other.reserved == reserved)&&(identical(other.paidOut, paidOut) || other.paidOut == paidOut)&&(identical(other.lifetime, lifetime) || other.lifetime == lifetime)&&(identical(other.withdrawable, withdrawable) || other.withdrawable == withdrawable)&&(identical(other.adjustmentOwed, adjustmentOwed) || other.adjustmentOwed == adjustmentOwed)&&(identical(other.payoutMinimum, payoutMinimum) || other.payoutMinimum == payoutMinimum));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pendingEur,availableEur,heldEur,requestedEur,reservedEur,paidOutEur,lifetimeEur,withdrawableEur,adjustmentOwedEur);
+int get hashCode => Object.hash(runtimeType,currency,pending,available,held,requested,reserved,paidOut,lifetime,withdrawable,adjustmentOwed,payoutMinimum);
 
 @override
 String toString() {
-  return 'EarningsBalanceView(pendingEur: $pendingEur, availableEur: $availableEur, heldEur: $heldEur, requestedEur: $requestedEur, reservedEur: $reservedEur, paidOutEur: $paidOutEur, lifetimeEur: $lifetimeEur, withdrawableEur: $withdrawableEur, adjustmentOwedEur: $adjustmentOwedEur)';
+  return 'EarningsBalanceView(currency: $currency, pending: $pending, available: $available, held: $held, requested: $requested, reserved: $reserved, paidOut: $paidOut, lifetime: $lifetime, withdrawable: $withdrawable, adjustmentOwed: $adjustmentOwed, payoutMinimum: $payoutMinimum)';
 }
 
 
@@ -57,7 +59,7 @@ abstract mixin class $EarningsBalanceViewCopyWith<$Res>  {
   factory $EarningsBalanceViewCopyWith(EarningsBalanceView value, $Res Function(EarningsBalanceView) _then) = _$EarningsBalanceViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: EarningsBalanceView.pendingEurKey_) String pendingEur,@JsonKey(name: EarningsBalanceView.availableEurKey_) String availableEur,@JsonKey(name: EarningsBalanceView.heldEurKey_) String heldEur,@JsonKey(name: EarningsBalanceView.requestedEurKey_) String requestedEur,@JsonKey(name: EarningsBalanceView.reservedEurKey_) String reservedEur,@JsonKey(name: EarningsBalanceView.paidOutEurKey_) String paidOutEur,@JsonKey(name: EarningsBalanceView.lifetimeEurKey_) String lifetimeEur,@JsonKey(name: EarningsBalanceView.withdrawableEurKey_) String withdrawableEur,@JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_) String adjustmentOwedEur
+@JsonKey(name: EarningsBalanceView.currencyKey_) String currency,@JsonKey(name: EarningsBalanceView.pendingKey_) String pending,@JsonKey(name: EarningsBalanceView.availableKey_) String available,@JsonKey(name: EarningsBalanceView.heldKey_) String held,@JsonKey(name: EarningsBalanceView.requestedKey_) String requested,@JsonKey(name: EarningsBalanceView.reservedKey_) String reserved,@JsonKey(name: EarningsBalanceView.paidOutKey_) String paidOut,@JsonKey(name: EarningsBalanceView.lifetimeKey_) String lifetime,@JsonKey(name: EarningsBalanceView.withdrawableKey_) String withdrawable,@JsonKey(name: EarningsBalanceView.adjustmentOwedKey_) String adjustmentOwed,@JsonKey(name: EarningsBalanceView.payoutMinimumKey_) String payoutMinimum
 });
 
 
@@ -74,17 +76,19 @@ class _$EarningsBalanceViewCopyWithImpl<$Res>
 
 /// Create a copy of EarningsBalanceView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? pendingEur = null,Object? availableEur = null,Object? heldEur = null,Object? requestedEur = null,Object? reservedEur = null,Object? paidOutEur = null,Object? lifetimeEur = null,Object? withdrawableEur = null,Object? adjustmentOwedEur = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? currency = null,Object? pending = null,Object? available = null,Object? held = null,Object? requested = null,Object? reserved = null,Object? paidOut = null,Object? lifetime = null,Object? withdrawable = null,Object? adjustmentOwed = null,Object? payoutMinimum = null,}) {
   return _then(_self.copyWith(
-pendingEur: null == pendingEur ? _self.pendingEur : pendingEur // ignore: cast_nullable_to_non_nullable
-as String,availableEur: null == availableEur ? _self.availableEur : availableEur // ignore: cast_nullable_to_non_nullable
-as String,heldEur: null == heldEur ? _self.heldEur : heldEur // ignore: cast_nullable_to_non_nullable
-as String,requestedEur: null == requestedEur ? _self.requestedEur : requestedEur // ignore: cast_nullable_to_non_nullable
-as String,reservedEur: null == reservedEur ? _self.reservedEur : reservedEur // ignore: cast_nullable_to_non_nullable
-as String,paidOutEur: null == paidOutEur ? _self.paidOutEur : paidOutEur // ignore: cast_nullable_to_non_nullable
-as String,lifetimeEur: null == lifetimeEur ? _self.lifetimeEur : lifetimeEur // ignore: cast_nullable_to_non_nullable
-as String,withdrawableEur: null == withdrawableEur ? _self.withdrawableEur : withdrawableEur // ignore: cast_nullable_to_non_nullable
-as String,adjustmentOwedEur: null == adjustmentOwedEur ? _self.adjustmentOwedEur : adjustmentOwedEur // ignore: cast_nullable_to_non_nullable
+currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,pending: null == pending ? _self.pending : pending // ignore: cast_nullable_to_non_nullable
+as String,available: null == available ? _self.available : available // ignore: cast_nullable_to_non_nullable
+as String,held: null == held ? _self.held : held // ignore: cast_nullable_to_non_nullable
+as String,requested: null == requested ? _self.requested : requested // ignore: cast_nullable_to_non_nullable
+as String,reserved: null == reserved ? _self.reserved : reserved // ignore: cast_nullable_to_non_nullable
+as String,paidOut: null == paidOut ? _self.paidOut : paidOut // ignore: cast_nullable_to_non_nullable
+as String,lifetime: null == lifetime ? _self.lifetime : lifetime // ignore: cast_nullable_to_non_nullable
+as String,withdrawable: null == withdrawable ? _self.withdrawable : withdrawable // ignore: cast_nullable_to_non_nullable
+as String,adjustmentOwed: null == adjustmentOwed ? _self.adjustmentOwed : adjustmentOwed // ignore: cast_nullable_to_non_nullable
+as String,payoutMinimum: null == payoutMinimum ? _self.payoutMinimum : payoutMinimum // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -170,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsBalanceView.pendingEurKey_)  String pendingEur, @JsonKey(name: EarningsBalanceView.availableEurKey_)  String availableEur, @JsonKey(name: EarningsBalanceView.heldEurKey_)  String heldEur, @JsonKey(name: EarningsBalanceView.requestedEurKey_)  String requestedEur, @JsonKey(name: EarningsBalanceView.reservedEurKey_)  String reservedEur, @JsonKey(name: EarningsBalanceView.paidOutEurKey_)  String paidOutEur, @JsonKey(name: EarningsBalanceView.lifetimeEurKey_)  String lifetimeEur, @JsonKey(name: EarningsBalanceView.withdrawableEurKey_)  String withdrawableEur, @JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_)  String adjustmentOwedEur)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsBalanceView.currencyKey_)  String currency, @JsonKey(name: EarningsBalanceView.pendingKey_)  String pending, @JsonKey(name: EarningsBalanceView.availableKey_)  String available, @JsonKey(name: EarningsBalanceView.heldKey_)  String held, @JsonKey(name: EarningsBalanceView.requestedKey_)  String requested, @JsonKey(name: EarningsBalanceView.reservedKey_)  String reserved, @JsonKey(name: EarningsBalanceView.paidOutKey_)  String paidOut, @JsonKey(name: EarningsBalanceView.lifetimeKey_)  String lifetime, @JsonKey(name: EarningsBalanceView.withdrawableKey_)  String withdrawable, @JsonKey(name: EarningsBalanceView.adjustmentOwedKey_)  String adjustmentOwed, @JsonKey(name: EarningsBalanceView.payoutMinimumKey_)  String payoutMinimum)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _EarningsBalanceView() when $default != null:
-return $default(_that.pendingEur,_that.availableEur,_that.heldEur,_that.requestedEur,_that.reservedEur,_that.paidOutEur,_that.lifetimeEur,_that.withdrawableEur,_that.adjustmentOwedEur);case _:
+return $default(_that.currency,_that.pending,_that.available,_that.held,_that.requested,_that.reserved,_that.paidOut,_that.lifetime,_that.withdrawable,_that.adjustmentOwed,_that.payoutMinimum);case _:
   return orElse();
 
 }
@@ -191,10 +195,10 @@ return $default(_that.pendingEur,_that.availableEur,_that.heldEur,_that.requeste
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsBalanceView.pendingEurKey_)  String pendingEur, @JsonKey(name: EarningsBalanceView.availableEurKey_)  String availableEur, @JsonKey(name: EarningsBalanceView.heldEurKey_)  String heldEur, @JsonKey(name: EarningsBalanceView.requestedEurKey_)  String requestedEur, @JsonKey(name: EarningsBalanceView.reservedEurKey_)  String reservedEur, @JsonKey(name: EarningsBalanceView.paidOutEurKey_)  String paidOutEur, @JsonKey(name: EarningsBalanceView.lifetimeEurKey_)  String lifetimeEur, @JsonKey(name: EarningsBalanceView.withdrawableEurKey_)  String withdrawableEur, @JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_)  String adjustmentOwedEur)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsBalanceView.currencyKey_)  String currency, @JsonKey(name: EarningsBalanceView.pendingKey_)  String pending, @JsonKey(name: EarningsBalanceView.availableKey_)  String available, @JsonKey(name: EarningsBalanceView.heldKey_)  String held, @JsonKey(name: EarningsBalanceView.requestedKey_)  String requested, @JsonKey(name: EarningsBalanceView.reservedKey_)  String reserved, @JsonKey(name: EarningsBalanceView.paidOutKey_)  String paidOut, @JsonKey(name: EarningsBalanceView.lifetimeKey_)  String lifetime, @JsonKey(name: EarningsBalanceView.withdrawableKey_)  String withdrawable, @JsonKey(name: EarningsBalanceView.adjustmentOwedKey_)  String adjustmentOwed, @JsonKey(name: EarningsBalanceView.payoutMinimumKey_)  String payoutMinimum)  $default,) {final _that = this;
 switch (_that) {
 case _EarningsBalanceView():
-return $default(_that.pendingEur,_that.availableEur,_that.heldEur,_that.requestedEur,_that.reservedEur,_that.paidOutEur,_that.lifetimeEur,_that.withdrawableEur,_that.adjustmentOwedEur);case _:
+return $default(_that.currency,_that.pending,_that.available,_that.held,_that.requested,_that.reserved,_that.paidOut,_that.lifetime,_that.withdrawable,_that.adjustmentOwed,_that.payoutMinimum);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +215,10 @@ return $default(_that.pendingEur,_that.availableEur,_that.heldEur,_that.requeste
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: EarningsBalanceView.pendingEurKey_)  String pendingEur, @JsonKey(name: EarningsBalanceView.availableEurKey_)  String availableEur, @JsonKey(name: EarningsBalanceView.heldEurKey_)  String heldEur, @JsonKey(name: EarningsBalanceView.requestedEurKey_)  String requestedEur, @JsonKey(name: EarningsBalanceView.reservedEurKey_)  String reservedEur, @JsonKey(name: EarningsBalanceView.paidOutEurKey_)  String paidOutEur, @JsonKey(name: EarningsBalanceView.lifetimeEurKey_)  String lifetimeEur, @JsonKey(name: EarningsBalanceView.withdrawableEurKey_)  String withdrawableEur, @JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_)  String adjustmentOwedEur)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: EarningsBalanceView.currencyKey_)  String currency, @JsonKey(name: EarningsBalanceView.pendingKey_)  String pending, @JsonKey(name: EarningsBalanceView.availableKey_)  String available, @JsonKey(name: EarningsBalanceView.heldKey_)  String held, @JsonKey(name: EarningsBalanceView.requestedKey_)  String requested, @JsonKey(name: EarningsBalanceView.reservedKey_)  String reserved, @JsonKey(name: EarningsBalanceView.paidOutKey_)  String paidOut, @JsonKey(name: EarningsBalanceView.lifetimeKey_)  String lifetime, @JsonKey(name: EarningsBalanceView.withdrawableKey_)  String withdrawable, @JsonKey(name: EarningsBalanceView.adjustmentOwedKey_)  String adjustmentOwed, @JsonKey(name: EarningsBalanceView.payoutMinimumKey_)  String payoutMinimum)?  $default,) {final _that = this;
 switch (_that) {
 case _EarningsBalanceView() when $default != null:
-return $default(_that.pendingEur,_that.availableEur,_that.heldEur,_that.requestedEur,_that.reservedEur,_that.paidOutEur,_that.lifetimeEur,_that.withdrawableEur,_that.adjustmentOwedEur);case _:
+return $default(_that.currency,_that.pending,_that.available,_that.held,_that.requested,_that.reserved,_that.paidOut,_that.lifetime,_that.withdrawable,_that.adjustmentOwed,_that.payoutMinimum);case _:
   return null;
 
 }
@@ -226,27 +230,31 @@ return $default(_that.pendingEur,_that.availableEur,_that.heldEur,_that.requeste
 
 @jsonSerializable
 class _EarningsBalanceView extends EarningsBalanceView {
-  const _EarningsBalanceView({@JsonKey(name: EarningsBalanceView.pendingEurKey_) required this.pendingEur, @JsonKey(name: EarningsBalanceView.availableEurKey_) required this.availableEur, @JsonKey(name: EarningsBalanceView.heldEurKey_) required this.heldEur, @JsonKey(name: EarningsBalanceView.requestedEurKey_) this.requestedEur = '0.00', @JsonKey(name: EarningsBalanceView.reservedEurKey_) required this.reservedEur, @JsonKey(name: EarningsBalanceView.paidOutEurKey_) this.paidOutEur = '0.00', @JsonKey(name: EarningsBalanceView.lifetimeEurKey_) this.lifetimeEur = '0.00', @JsonKey(name: EarningsBalanceView.withdrawableEurKey_) required this.withdrawableEur, @JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_) this.adjustmentOwedEur = '0.00'}): super._();
+  const _EarningsBalanceView({@JsonKey(name: EarningsBalanceView.currencyKey_) required this.currency, @JsonKey(name: EarningsBalanceView.pendingKey_) required this.pending, @JsonKey(name: EarningsBalanceView.availableKey_) required this.available, @JsonKey(name: EarningsBalanceView.heldKey_) required this.held, @JsonKey(name: EarningsBalanceView.requestedKey_) this.requested = '0.00', @JsonKey(name: EarningsBalanceView.reservedKey_) required this.reserved, @JsonKey(name: EarningsBalanceView.paidOutKey_) this.paidOut = '0.00', @JsonKey(name: EarningsBalanceView.lifetimeKey_) this.lifetime = '0.00', @JsonKey(name: EarningsBalanceView.withdrawableKey_) required this.withdrawable, @JsonKey(name: EarningsBalanceView.adjustmentOwedKey_) this.adjustmentOwed = '0.00', @JsonKey(name: EarningsBalanceView.payoutMinimumKey_) required this.payoutMinimum}): super._();
   factory _EarningsBalanceView.fromJson(Map<String, dynamic> json) => _$EarningsBalanceViewFromJson(json);
 
-/// pendingEur
-@override@JsonKey(name: EarningsBalanceView.pendingEurKey_) final  String pendingEur;
-/// availableEur
-@override@JsonKey(name: EarningsBalanceView.availableEurKey_) final  String availableEur;
-/// heldEur
-@override@JsonKey(name: EarningsBalanceView.heldEurKey_) final  String heldEur;
-/// requestedEur
-@override@JsonKey(name: EarningsBalanceView.requestedEurKey_) final  String requestedEur;
-/// reservedEur
-@override@JsonKey(name: EarningsBalanceView.reservedEurKey_) final  String reservedEur;
-/// paidOutEur
-@override@JsonKey(name: EarningsBalanceView.paidOutEurKey_) final  String paidOutEur;
-/// lifetimeEur
-@override@JsonKey(name: EarningsBalanceView.lifetimeEurKey_) final  String lifetimeEur;
-/// withdrawableEur
-@override@JsonKey(name: EarningsBalanceView.withdrawableEurKey_) final  String withdrawableEur;
-/// adjustmentOwedEur
-@override@JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_) final  String adjustmentOwedEur;
+/// currency
+@override@JsonKey(name: EarningsBalanceView.currencyKey_) final  String currency;
+/// pending
+@override@JsonKey(name: EarningsBalanceView.pendingKey_) final  String pending;
+/// available
+@override@JsonKey(name: EarningsBalanceView.availableKey_) final  String available;
+/// held
+@override@JsonKey(name: EarningsBalanceView.heldKey_) final  String held;
+/// requested
+@override@JsonKey(name: EarningsBalanceView.requestedKey_) final  String requested;
+/// reserved
+@override@JsonKey(name: EarningsBalanceView.reservedKey_) final  String reserved;
+/// paidOut
+@override@JsonKey(name: EarningsBalanceView.paidOutKey_) final  String paidOut;
+/// lifetime
+@override@JsonKey(name: EarningsBalanceView.lifetimeKey_) final  String lifetime;
+/// withdrawable
+@override@JsonKey(name: EarningsBalanceView.withdrawableKey_) final  String withdrawable;
+/// adjustmentOwed
+@override@JsonKey(name: EarningsBalanceView.adjustmentOwedKey_) final  String adjustmentOwed;
+/// payoutMinimum
+@override@JsonKey(name: EarningsBalanceView.payoutMinimumKey_) final  String payoutMinimum;
 
 /// Create a copy of EarningsBalanceView
 /// with the given fields replaced by the non-null parameter values.
@@ -261,16 +269,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EarningsBalanceView&&(identical(other.pendingEur, pendingEur) || other.pendingEur == pendingEur)&&(identical(other.availableEur, availableEur) || other.availableEur == availableEur)&&(identical(other.heldEur, heldEur) || other.heldEur == heldEur)&&(identical(other.requestedEur, requestedEur) || other.requestedEur == requestedEur)&&(identical(other.reservedEur, reservedEur) || other.reservedEur == reservedEur)&&(identical(other.paidOutEur, paidOutEur) || other.paidOutEur == paidOutEur)&&(identical(other.lifetimeEur, lifetimeEur) || other.lifetimeEur == lifetimeEur)&&(identical(other.withdrawableEur, withdrawableEur) || other.withdrawableEur == withdrawableEur)&&(identical(other.adjustmentOwedEur, adjustmentOwedEur) || other.adjustmentOwedEur == adjustmentOwedEur));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EarningsBalanceView&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.available, available) || other.available == available)&&(identical(other.held, held) || other.held == held)&&(identical(other.requested, requested) || other.requested == requested)&&(identical(other.reserved, reserved) || other.reserved == reserved)&&(identical(other.paidOut, paidOut) || other.paidOut == paidOut)&&(identical(other.lifetime, lifetime) || other.lifetime == lifetime)&&(identical(other.withdrawable, withdrawable) || other.withdrawable == withdrawable)&&(identical(other.adjustmentOwed, adjustmentOwed) || other.adjustmentOwed == adjustmentOwed)&&(identical(other.payoutMinimum, payoutMinimum) || other.payoutMinimum == payoutMinimum));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pendingEur,availableEur,heldEur,requestedEur,reservedEur,paidOutEur,lifetimeEur,withdrawableEur,adjustmentOwedEur);
+int get hashCode => Object.hash(runtimeType,currency,pending,available,held,requested,reserved,paidOut,lifetime,withdrawable,adjustmentOwed,payoutMinimum);
 
 @override
 String toString() {
-  return 'EarningsBalanceView(pendingEur: $pendingEur, availableEur: $availableEur, heldEur: $heldEur, requestedEur: $requestedEur, reservedEur: $reservedEur, paidOutEur: $paidOutEur, lifetimeEur: $lifetimeEur, withdrawableEur: $withdrawableEur, adjustmentOwedEur: $adjustmentOwedEur)';
+  return 'EarningsBalanceView(currency: $currency, pending: $pending, available: $available, held: $held, requested: $requested, reserved: $reserved, paidOut: $paidOut, lifetime: $lifetime, withdrawable: $withdrawable, adjustmentOwed: $adjustmentOwed, payoutMinimum: $payoutMinimum)';
 }
 
 
@@ -281,7 +289,7 @@ abstract mixin class _$EarningsBalanceViewCopyWith<$Res> implements $EarningsBal
   factory _$EarningsBalanceViewCopyWith(_EarningsBalanceView value, $Res Function(_EarningsBalanceView) _then) = __$EarningsBalanceViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: EarningsBalanceView.pendingEurKey_) String pendingEur,@JsonKey(name: EarningsBalanceView.availableEurKey_) String availableEur,@JsonKey(name: EarningsBalanceView.heldEurKey_) String heldEur,@JsonKey(name: EarningsBalanceView.requestedEurKey_) String requestedEur,@JsonKey(name: EarningsBalanceView.reservedEurKey_) String reservedEur,@JsonKey(name: EarningsBalanceView.paidOutEurKey_) String paidOutEur,@JsonKey(name: EarningsBalanceView.lifetimeEurKey_) String lifetimeEur,@JsonKey(name: EarningsBalanceView.withdrawableEurKey_) String withdrawableEur,@JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_) String adjustmentOwedEur
+@JsonKey(name: EarningsBalanceView.currencyKey_) String currency,@JsonKey(name: EarningsBalanceView.pendingKey_) String pending,@JsonKey(name: EarningsBalanceView.availableKey_) String available,@JsonKey(name: EarningsBalanceView.heldKey_) String held,@JsonKey(name: EarningsBalanceView.requestedKey_) String requested,@JsonKey(name: EarningsBalanceView.reservedKey_) String reserved,@JsonKey(name: EarningsBalanceView.paidOutKey_) String paidOut,@JsonKey(name: EarningsBalanceView.lifetimeKey_) String lifetime,@JsonKey(name: EarningsBalanceView.withdrawableKey_) String withdrawable,@JsonKey(name: EarningsBalanceView.adjustmentOwedKey_) String adjustmentOwed,@JsonKey(name: EarningsBalanceView.payoutMinimumKey_) String payoutMinimum
 });
 
 
@@ -298,17 +306,19 @@ class __$EarningsBalanceViewCopyWithImpl<$Res>
 
 /// Create a copy of EarningsBalanceView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? pendingEur = null,Object? availableEur = null,Object? heldEur = null,Object? requestedEur = null,Object? reservedEur = null,Object? paidOutEur = null,Object? lifetimeEur = null,Object? withdrawableEur = null,Object? adjustmentOwedEur = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? currency = null,Object? pending = null,Object? available = null,Object? held = null,Object? requested = null,Object? reserved = null,Object? paidOut = null,Object? lifetime = null,Object? withdrawable = null,Object? adjustmentOwed = null,Object? payoutMinimum = null,}) {
   return _then(_EarningsBalanceView(
-pendingEur: null == pendingEur ? _self.pendingEur : pendingEur // ignore: cast_nullable_to_non_nullable
-as String,availableEur: null == availableEur ? _self.availableEur : availableEur // ignore: cast_nullable_to_non_nullable
-as String,heldEur: null == heldEur ? _self.heldEur : heldEur // ignore: cast_nullable_to_non_nullable
-as String,requestedEur: null == requestedEur ? _self.requestedEur : requestedEur // ignore: cast_nullable_to_non_nullable
-as String,reservedEur: null == reservedEur ? _self.reservedEur : reservedEur // ignore: cast_nullable_to_non_nullable
-as String,paidOutEur: null == paidOutEur ? _self.paidOutEur : paidOutEur // ignore: cast_nullable_to_non_nullable
-as String,lifetimeEur: null == lifetimeEur ? _self.lifetimeEur : lifetimeEur // ignore: cast_nullable_to_non_nullable
-as String,withdrawableEur: null == withdrawableEur ? _self.withdrawableEur : withdrawableEur // ignore: cast_nullable_to_non_nullable
-as String,adjustmentOwedEur: null == adjustmentOwedEur ? _self.adjustmentOwedEur : adjustmentOwedEur // ignore: cast_nullable_to_non_nullable
+currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,pending: null == pending ? _self.pending : pending // ignore: cast_nullable_to_non_nullable
+as String,available: null == available ? _self.available : available // ignore: cast_nullable_to_non_nullable
+as String,held: null == held ? _self.held : held // ignore: cast_nullable_to_non_nullable
+as String,requested: null == requested ? _self.requested : requested // ignore: cast_nullable_to_non_nullable
+as String,reserved: null == reserved ? _self.reserved : reserved // ignore: cast_nullable_to_non_nullable
+as String,paidOut: null == paidOut ? _self.paidOut : paidOut // ignore: cast_nullable_to_non_nullable
+as String,lifetime: null == lifetime ? _self.lifetime : lifetime // ignore: cast_nullable_to_non_nullable
+as String,withdrawable: null == withdrawable ? _self.withdrawable : withdrawable // ignore: cast_nullable_to_non_nullable
+as String,adjustmentOwed: null == adjustmentOwed ? _self.adjustmentOwed : adjustmentOwed // ignore: cast_nullable_to_non_nullable
+as String,payoutMinimum: null == payoutMinimum ? _self.payoutMinimum : payoutMinimum // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

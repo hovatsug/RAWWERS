@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LedgerSummary {
 
-/// totalInflow
+/// currency
+@JsonKey(name: LedgerSummary.currencyKey_) String get currency;/// totalInflow
 @JsonKey(name: LedgerSummary.totalInflowKey_) String get totalInflow;/// totalOutflow
 @JsonKey(name: LedgerSummary.totalOutflowKey_) String get totalOutflow;/// net
 @JsonKey(name: LedgerSummary.netKey_) String get net;
@@ -31,16 +32,16 @@ $LedgerSummaryCopyWith<LedgerSummary> get copyWith => _$LedgerSummaryCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LedgerSummary&&(identical(other.totalInflow, totalInflow) || other.totalInflow == totalInflow)&&(identical(other.totalOutflow, totalOutflow) || other.totalOutflow == totalOutflow)&&(identical(other.net, net) || other.net == net));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LedgerSummary&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.totalInflow, totalInflow) || other.totalInflow == totalInflow)&&(identical(other.totalOutflow, totalOutflow) || other.totalOutflow == totalOutflow)&&(identical(other.net, net) || other.net == net));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,totalInflow,totalOutflow,net);
+int get hashCode => Object.hash(runtimeType,currency,totalInflow,totalOutflow,net);
 
 @override
 String toString() {
-  return 'LedgerSummary(totalInflow: $totalInflow, totalOutflow: $totalOutflow, net: $net)';
+  return 'LedgerSummary(currency: $currency, totalInflow: $totalInflow, totalOutflow: $totalOutflow, net: $net)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $LedgerSummaryCopyWith<$Res>  {
   factory $LedgerSummaryCopyWith(LedgerSummary value, $Res Function(LedgerSummary) _then) = _$LedgerSummaryCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: LedgerSummary.totalInflowKey_) String totalInflow,@JsonKey(name: LedgerSummary.totalOutflowKey_) String totalOutflow,@JsonKey(name: LedgerSummary.netKey_) String net
+@JsonKey(name: LedgerSummary.currencyKey_) String currency,@JsonKey(name: LedgerSummary.totalInflowKey_) String totalInflow,@JsonKey(name: LedgerSummary.totalOutflowKey_) String totalOutflow,@JsonKey(name: LedgerSummary.netKey_) String net
 });
 
 
@@ -68,9 +69,10 @@ class _$LedgerSummaryCopyWithImpl<$Res>
 
 /// Create a copy of LedgerSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? totalInflow = null,Object? totalOutflow = null,Object? net = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? currency = null,Object? totalInflow = null,Object? totalOutflow = null,Object? net = null,}) {
   return _then(_self.copyWith(
-totalInflow: null == totalInflow ? _self.totalInflow : totalInflow // ignore: cast_nullable_to_non_nullable
+currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,totalInflow: null == totalInflow ? _self.totalInflow : totalInflow // ignore: cast_nullable_to_non_nullable
 as String,totalOutflow: null == totalOutflow ? _self.totalOutflow : totalOutflow // ignore: cast_nullable_to_non_nullable
 as String,net: null == net ? _self.net : net // ignore: cast_nullable_to_non_nullable
 as String,
@@ -158,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: LedgerSummary.totalInflowKey_)  String totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_)  String totalOutflow, @JsonKey(name: LedgerSummary.netKey_)  String net)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: LedgerSummary.currencyKey_)  String currency, @JsonKey(name: LedgerSummary.totalInflowKey_)  String totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_)  String totalOutflow, @JsonKey(name: LedgerSummary.netKey_)  String net)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LedgerSummary() when $default != null:
-return $default(_that.totalInflow,_that.totalOutflow,_that.net);case _:
+return $default(_that.currency,_that.totalInflow,_that.totalOutflow,_that.net);case _:
   return orElse();
 
 }
@@ -179,10 +181,10 @@ return $default(_that.totalInflow,_that.totalOutflow,_that.net);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: LedgerSummary.totalInflowKey_)  String totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_)  String totalOutflow, @JsonKey(name: LedgerSummary.netKey_)  String net)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: LedgerSummary.currencyKey_)  String currency, @JsonKey(name: LedgerSummary.totalInflowKey_)  String totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_)  String totalOutflow, @JsonKey(name: LedgerSummary.netKey_)  String net)  $default,) {final _that = this;
 switch (_that) {
 case _LedgerSummary():
-return $default(_that.totalInflow,_that.totalOutflow,_that.net);case _:
+return $default(_that.currency,_that.totalInflow,_that.totalOutflow,_that.net);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +201,10 @@ return $default(_that.totalInflow,_that.totalOutflow,_that.net);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: LedgerSummary.totalInflowKey_)  String totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_)  String totalOutflow, @JsonKey(name: LedgerSummary.netKey_)  String net)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: LedgerSummary.currencyKey_)  String currency, @JsonKey(name: LedgerSummary.totalInflowKey_)  String totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_)  String totalOutflow, @JsonKey(name: LedgerSummary.netKey_)  String net)?  $default,) {final _that = this;
 switch (_that) {
 case _LedgerSummary() when $default != null:
-return $default(_that.totalInflow,_that.totalOutflow,_that.net);case _:
+return $default(_that.currency,_that.totalInflow,_that.totalOutflow,_that.net);case _:
   return null;
 
 }
@@ -214,9 +216,11 @@ return $default(_that.totalInflow,_that.totalOutflow,_that.net);case _:
 
 @jsonSerializable
 class _LedgerSummary extends LedgerSummary {
-  const _LedgerSummary({@JsonKey(name: LedgerSummary.totalInflowKey_) required this.totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_) required this.totalOutflow, @JsonKey(name: LedgerSummary.netKey_) required this.net}): super._();
+  const _LedgerSummary({@JsonKey(name: LedgerSummary.currencyKey_) required this.currency, @JsonKey(name: LedgerSummary.totalInflowKey_) required this.totalInflow, @JsonKey(name: LedgerSummary.totalOutflowKey_) required this.totalOutflow, @JsonKey(name: LedgerSummary.netKey_) required this.net}): super._();
   factory _LedgerSummary.fromJson(Map<String, dynamic> json) => _$LedgerSummaryFromJson(json);
 
+/// currency
+@override@JsonKey(name: LedgerSummary.currencyKey_) final  String currency;
 /// totalInflow
 @override@JsonKey(name: LedgerSummary.totalInflowKey_) final  String totalInflow;
 /// totalOutflow
@@ -237,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LedgerSummary&&(identical(other.totalInflow, totalInflow) || other.totalInflow == totalInflow)&&(identical(other.totalOutflow, totalOutflow) || other.totalOutflow == totalOutflow)&&(identical(other.net, net) || other.net == net));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LedgerSummary&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.totalInflow, totalInflow) || other.totalInflow == totalInflow)&&(identical(other.totalOutflow, totalOutflow) || other.totalOutflow == totalOutflow)&&(identical(other.net, net) || other.net == net));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,totalInflow,totalOutflow,net);
+int get hashCode => Object.hash(runtimeType,currency,totalInflow,totalOutflow,net);
 
 @override
 String toString() {
-  return 'LedgerSummary(totalInflow: $totalInflow, totalOutflow: $totalOutflow, net: $net)';
+  return 'LedgerSummary(currency: $currency, totalInflow: $totalInflow, totalOutflow: $totalOutflow, net: $net)';
 }
 
 
@@ -257,7 +261,7 @@ abstract mixin class _$LedgerSummaryCopyWith<$Res> implements $LedgerSummaryCopy
   factory _$LedgerSummaryCopyWith(_LedgerSummary value, $Res Function(_LedgerSummary) _then) = __$LedgerSummaryCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: LedgerSummary.totalInflowKey_) String totalInflow,@JsonKey(name: LedgerSummary.totalOutflowKey_) String totalOutflow,@JsonKey(name: LedgerSummary.netKey_) String net
+@JsonKey(name: LedgerSummary.currencyKey_) String currency,@JsonKey(name: LedgerSummary.totalInflowKey_) String totalInflow,@JsonKey(name: LedgerSummary.totalOutflowKey_) String totalOutflow,@JsonKey(name: LedgerSummary.netKey_) String net
 });
 
 
@@ -274,9 +278,10 @@ class __$LedgerSummaryCopyWithImpl<$Res>
 
 /// Create a copy of LedgerSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? totalInflow = null,Object? totalOutflow = null,Object? net = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? currency = null,Object? totalInflow = null,Object? totalOutflow = null,Object? net = null,}) {
   return _then(_LedgerSummary(
-totalInflow: null == totalInflow ? _self.totalInflow : totalInflow // ignore: cast_nullable_to_non_nullable
+currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,totalInflow: null == totalInflow ? _self.totalInflow : totalInflow // ignore: cast_nullable_to_non_nullable
 as String,totalOutflow: null == totalOutflow ? _self.totalOutflow : totalOutflow // ignore: cast_nullable_to_non_nullable
 as String,net: null == net ? _self.net : net // ignore: cast_nullable_to_non_nullable
 as String,

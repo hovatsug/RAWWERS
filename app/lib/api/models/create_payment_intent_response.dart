@@ -16,8 +16,7 @@
 ///         "discount_amount": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -35,13 +34,18 @@
 ///                 }
 ///             ],
 ///             "title": "Points Spent"
+///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
 ///         "payment_intent_client_secret",
 ///         "payment_intent_id",
-///         "status"
+///         "status",
+///         "currency"
 ///     ],
 ///     "title": "CreatePaymentIntentResponse"
 /// }
@@ -76,6 +80,10 @@ abstract class CreatePaymentIntentResponse with _$CreatePaymentIntentResponse {
     /// pointsSpent
     @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)
     int? pointsSpent,
+
+    /// currency
+    @JsonKey(name: CreatePaymentIntentResponse.currencyKey_)
+    required String currency,
   }) = _CreatePaymentIntentResponse;
 
   factory CreatePaymentIntentResponse.fromJson(Map<String, dynamic> json) =>
@@ -91,4 +99,6 @@ abstract class CreatePaymentIntentResponse with _$CreatePaymentIntentResponse {
   static const String discountAmountKey_ = r'discount_amount';
 
   static const String pointsSpentKey_ = r'points_spent';
+
+  static const String currencyKey_ = r'currency';
 }

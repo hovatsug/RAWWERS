@@ -459,7 +459,8 @@ class AdminProReviewRow(BaseModel):
     portfolio_minimum: int
     active_packages: int
     min_price: Decimal | None = None
-    currency: str = "EUR"
+    #: Null only for an account with no photographer profile yet.
+    currency: str | None = None
     cover_url: str | None = None
     ready_to_approve: bool
     missing: list[str] = Field(default_factory=list)

@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from decimal import Decimal
 
+from app.services.rewards import CREDIT_CURRENCY
 from pydantic import BaseModel, Field
 
 
@@ -14,7 +15,9 @@ class MarketingTermView(BaseModel):
     #: once-per-booking and monthly limits.
     credit: int
     #: The same in euros (points / 100), which is how the app shows it.
-    credit_eur: Decimal = Decimal("0.00")
+    #: What `credit` is worth, in `currency` (euros until batch M4).
+    credit_amount: Decimal = Decimal("0.00")
+    currency: str = CREDIT_CURRENCY
 
 
 class MarketingPhotoView(BaseModel):
@@ -72,7 +75,9 @@ class GrantMarketingConsentResponse(BaseModel):
     #: booking, the monthly limit reached, or the setting is 0).
     credit: int
     #: The credit given, in euros.
-    credit_eur: Decimal = Decimal("0.00")
+    #: What `credit` is worth, in `currency` (euros until batch M4).
+    credit_amount: Decimal = Decimal("0.00")
+    currency: str = CREDIT_CURRENCY
 
 
 class MyMarketingConsentsResponse(BaseModel):

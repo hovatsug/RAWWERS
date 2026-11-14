@@ -40,16 +40,16 @@ WalletData _wallet({
   PayoutAccountStatus accountStatus = PayoutAccountStatus.active,
 }) {
   return WalletData(
-    balance: EarningsBalanceView(
-      pendingEur: pending,
-      availableEur: available,
-      heldEur: '10.00',
-      requestedEur: '30.00',
-      reservedEur: '0.00',
-      paidOutEur: '120.00',
-      lifetimeEur: '420.00',
-      withdrawableEur: withdrawable,
-      adjustmentOwedEur: adjustmentOwed,
+    balance: EarningsBalanceView(currency: 'EUR', payoutMinimum: '50.00', 
+      pending: pending,
+      available: available,
+      held: '10.00',
+      requested: '30.00',
+      reserved: '0.00',
+      paidOut: '120.00',
+      lifetime: '420.00',
+      withdrawable: withdrawable,
+      adjustmentOwed: adjustmentOwed,
     ),
     ledger: ledger,
     payouts: const [],
@@ -66,13 +66,13 @@ EarningsLedgerItemView _earning(
   String net,
   DateTime availableAt, {
   EarningsEntryStatus status = EarningsEntryStatus.pending,
-}) => EarningsLedgerItemView(
+}) => EarningsLedgerItemView(currency: 'EUR', 
   id: 'e-$net',
   sourceType: EarningsSourceType.extraImages,
   sourceId: 'src-$net',
-  grossEur: net,
-  platformFeeEur: '0.00',
-  netEur: net,
+  gross: net,
+  platformFee: '0.00',
+  net: net,
   status: status,
   availableAt: availableAt,
   createdAt: availableAt.subtract(const Duration(days: 7)),
@@ -171,7 +171,7 @@ void main() {
     tester.view.physicalSize = const Size(390, 2400) * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    const summary = InvoiceSummaryView(
+    const summary = InvoiceSummaryView(currency: 'EUR', 
       bookings: 3,
       gross: '2310.00',
       platformFees: '462.00',
@@ -207,8 +207,8 @@ void main() {
         earningsSummaryProvider.overrideWith((ref) async {
           fetches++;
           return fetches == 1
-              ? const InvoiceSummaryView(bookings: 1, gross: '52.43', platformFees: '10.48', proRaww: '2.62', clientRaww: '0.00', proCash: '41.95')
-              : const InvoiceSummaryView(bookings: 2, gross: '139.26', platformFees: '27.84', proRaww: '6.96', clientRaww: '0.00', proCash: '111.42');
+              ? const InvoiceSummaryView(currency: 'EUR', bookings: 1, gross: '52.43', platformFees: '10.48', proRaww: '2.62', clientRaww: '0.00', proCash: '41.95')
+              : const InvoiceSummaryView(currency: 'EUR', bookings: 2, gross: '139.26', platformFees: '27.84', proRaww: '6.96', clientRaww: '0.00', proCash: '111.42');
         }),
         rawwProvider.overrideWith((ref) async => closedRaww),
       ],
@@ -348,7 +348,7 @@ void main() {
 
 /// A photographer with no completed work, so the summary card renders nothing
 /// and these tests stay about the balance and the payout form.
-InvoiceSummaryView _summary() => const InvoiceSummaryView(
+InvoiceSummaryView _summary() => const InvoiceSummaryView(currency: 'EUR', 
       bookings: 0,
       gross: '0.00',
       platformFees: '0.00',

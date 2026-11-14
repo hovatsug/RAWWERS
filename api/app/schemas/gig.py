@@ -35,6 +35,7 @@ class PaymentSummary(BaseModel):
 
 
 class LedgerSummary(BaseModel):
+    currency: str
     total_inflow: Decimal
     total_outflow: Decimal
     net: Decimal
@@ -71,6 +72,7 @@ class CreatePaymentIntentResponse(BaseModel):
     status: str
     discount_amount: Decimal | None = None
     points_spent: int | None = None
+    currency: str
 
 
 class CreateRefundRequest(BaseModel):

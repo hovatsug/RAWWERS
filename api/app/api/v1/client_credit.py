@@ -24,23 +24,30 @@ class CreditHistoryItem(BaseModel):
     #: marketing_permission, used_on_booking, returned, refunded_credit, reversed, earned, adjustment.
     kind: str
     #: Signed: positive earned or given back, negative used or reversed.
-    amount_eur: Decimal
+    amount: Decimal
+    #: Credit is in euros until batch M4 (MULTI_CURRENCY.md, decision M3).
+    currency: str
     #: For a marketing permission: the booking's photographer.
     photographer_first_name: str | None = None
 
 
 class MyCreditResponse(BaseModel):
-    balance_eur: Decimal
+    balance: Decimal
+    currency: str
     #: Credit takes at most this much of a booking's payment.
     max_discount_percent: int
     items: list[CreditHistoryItem]
 
 
 class BookingCreditPreview(BaseModel):
-    balance_eur: Decimal
-    discount_eur: Decimal
-    price_eur: Decimal
-    total_eur: Decimal
+    #: The client's credit, in `credit_currency`.
+    balance: Decimal
+    credit_currency: str
+    #: What credit takes off, the price and what is left to pay, in `currency`
+    #: (the booking's). Euro credit takes nothing off a booking in pounds.
+    discount: Decimal
+    price: Decimal
+    total: Decimal
     max_discount_percent: int
     #: Already set aside for this payment.
     applied: bool
@@ -50,8 +57,11 @@ class BookingCreditPreview(BaseModel):
 @router.get("/me/credit", response_model=MyCreditResponse)
 def my_credit(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> MyCreditResponse:
     per_eur = client_credit.points_per_eur(db)
+    from app.services.rewards import CREDIT_CURRENCY
+
     view = MyCreditResponse(
-        balance_eur=client_credit.to_eur(client_credit.balance_points(db, user.user_id), per_eur),
+        balance=client_credit.to_eur(client_credit.balance_points(db, user.user_id), per_eur),
+        currency=CREDIT_CURRENCY,
         max_discount_percent=client_credit.max_discount_percent(db),
         items=[CreditHistoryItem(**row) for row in client_credit.history(db, user.user_id)],
     )
@@ -93,13 +103,15 @@ class CreditSettingsIn(BaseModel):
 
 class MarketingBudgetView(BaseModel):
     month: str
-    budget_eur: Decimal
-    awarded_eur: Decimal
-    used_eur: Decimal
+    #: Every amount below is in it (euros until batch M4).
+    currency: str
+    budget: Decimal
+    awarded: Decimal
+    used: Decimal
     #: Credit given back this month because a booking it was used on was refunded.
-    returned_on_refunds_eur: Decimal = Decimal("0.00")
-    outstanding_eur: Decimal
-    remaining_eur: Decimal
+    returned_on_refunds: Decimal = Decimal("0.00")
+    outstanding: Decimal
+    remaining: Decimal
     max_discount_percent: int
 
 

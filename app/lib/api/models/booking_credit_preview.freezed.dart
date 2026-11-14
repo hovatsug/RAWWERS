@@ -15,11 +15,12 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BookingCreditPreview {
 
-/// balanceEur
-@JsonKey(name: BookingCreditPreview.balanceEurKey_) String get balanceEur;/// discountEur
-@JsonKey(name: BookingCreditPreview.discountEurKey_) String get discountEur;/// priceEur
-@JsonKey(name: BookingCreditPreview.priceEurKey_) String get priceEur;/// totalEur
-@JsonKey(name: BookingCreditPreview.totalEurKey_) String get totalEur;/// maxDiscountPercent
+/// balance
+@JsonKey(name: BookingCreditPreview.balanceKey_) String get balance;/// creditCurrency
+@JsonKey(name: BookingCreditPreview.creditCurrencyKey_) String get creditCurrency;/// discount
+@JsonKey(name: BookingCreditPreview.discountKey_) String get discount;/// price
+@JsonKey(name: BookingCreditPreview.priceKey_) String get price;/// total
+@JsonKey(name: BookingCreditPreview.totalKey_) String get total;/// maxDiscountPercent
 @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) int get maxDiscountPercent;/// applied
 @JsonKey(name: BookingCreditPreview.appliedKey_) bool get applied;/// currency
 @JsonKey(name: BookingCreditPreview.currencyKey_) String get currency;
@@ -35,16 +36,16 @@ $BookingCreditPreviewCopyWith<BookingCreditPreview> get copyWith => _$BookingCre
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BookingCreditPreview&&(identical(other.balanceEur, balanceEur) || other.balanceEur == balanceEur)&&(identical(other.discountEur, discountEur) || other.discountEur == discountEur)&&(identical(other.priceEur, priceEur) || other.priceEur == priceEur)&&(identical(other.totalEur, totalEur) || other.totalEur == totalEur)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&(identical(other.applied, applied) || other.applied == applied)&&(identical(other.currency, currency) || other.currency == currency));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BookingCreditPreview&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.creditCurrency, creditCurrency) || other.creditCurrency == creditCurrency)&&(identical(other.discount, discount) || other.discount == discount)&&(identical(other.price, price) || other.price == price)&&(identical(other.total, total) || other.total == total)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&(identical(other.applied, applied) || other.applied == applied)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,balanceEur,discountEur,priceEur,totalEur,maxDiscountPercent,applied,currency);
+int get hashCode => Object.hash(runtimeType,balance,creditCurrency,discount,price,total,maxDiscountPercent,applied,currency);
 
 @override
 String toString() {
-  return 'BookingCreditPreview(balanceEur: $balanceEur, discountEur: $discountEur, priceEur: $priceEur, totalEur: $totalEur, maxDiscountPercent: $maxDiscountPercent, applied: $applied, currency: $currency)';
+  return 'BookingCreditPreview(balance: $balance, creditCurrency: $creditCurrency, discount: $discount, price: $price, total: $total, maxDiscountPercent: $maxDiscountPercent, applied: $applied, currency: $currency)';
 }
 
 
@@ -55,7 +56,7 @@ abstract mixin class $BookingCreditPreviewCopyWith<$Res>  {
   factory $BookingCreditPreviewCopyWith(BookingCreditPreview value, $Res Function(BookingCreditPreview) _then) = _$BookingCreditPreviewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: BookingCreditPreview.balanceEurKey_) String balanceEur,@JsonKey(name: BookingCreditPreview.discountEurKey_) String discountEur,@JsonKey(name: BookingCreditPreview.priceEurKey_) String priceEur,@JsonKey(name: BookingCreditPreview.totalEurKey_) String totalEur,@JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: BookingCreditPreview.appliedKey_) bool applied,@JsonKey(name: BookingCreditPreview.currencyKey_) String currency
+@JsonKey(name: BookingCreditPreview.balanceKey_) String balance,@JsonKey(name: BookingCreditPreview.creditCurrencyKey_) String creditCurrency,@JsonKey(name: BookingCreditPreview.discountKey_) String discount,@JsonKey(name: BookingCreditPreview.priceKey_) String price,@JsonKey(name: BookingCreditPreview.totalKey_) String total,@JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: BookingCreditPreview.appliedKey_) bool applied,@JsonKey(name: BookingCreditPreview.currencyKey_) String currency
 });
 
 
@@ -72,12 +73,13 @@ class _$BookingCreditPreviewCopyWithImpl<$Res>
 
 /// Create a copy of BookingCreditPreview
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? balanceEur = null,Object? discountEur = null,Object? priceEur = null,Object? totalEur = null,Object? maxDiscountPercent = null,Object? applied = null,Object? currency = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? balance = null,Object? creditCurrency = null,Object? discount = null,Object? price = null,Object? total = null,Object? maxDiscountPercent = null,Object? applied = null,Object? currency = null,}) {
   return _then(_self.copyWith(
-balanceEur: null == balanceEur ? _self.balanceEur : balanceEur // ignore: cast_nullable_to_non_nullable
-as String,discountEur: null == discountEur ? _self.discountEur : discountEur // ignore: cast_nullable_to_non_nullable
-as String,priceEur: null == priceEur ? _self.priceEur : priceEur // ignore: cast_nullable_to_non_nullable
-as String,totalEur: null == totalEur ? _self.totalEur : totalEur // ignore: cast_nullable_to_non_nullable
+balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
+as String,creditCurrency: null == creditCurrency ? _self.creditCurrency : creditCurrency // ignore: cast_nullable_to_non_nullable
+as String,discount: null == discount ? _self.discount : discount // ignore: cast_nullable_to_non_nullable
+as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
+as String,total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
 as String,maxDiscountPercent: null == maxDiscountPercent ? _self.maxDiscountPercent : maxDiscountPercent // ignore: cast_nullable_to_non_nullable
 as int,applied: null == applied ? _self.applied : applied // ignore: cast_nullable_to_non_nullable
 as bool,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: BookingCreditPreview.balanceEurKey_)  String balanceEur, @JsonKey(name: BookingCreditPreview.discountEurKey_)  String discountEur, @JsonKey(name: BookingCreditPreview.priceEurKey_)  String priceEur, @JsonKey(name: BookingCreditPreview.totalEurKey_)  String totalEur, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_)  bool applied, @JsonKey(name: BookingCreditPreview.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: BookingCreditPreview.balanceKey_)  String balance, @JsonKey(name: BookingCreditPreview.creditCurrencyKey_)  String creditCurrency, @JsonKey(name: BookingCreditPreview.discountKey_)  String discount, @JsonKey(name: BookingCreditPreview.priceKey_)  String price, @JsonKey(name: BookingCreditPreview.totalKey_)  String total, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_)  bool applied, @JsonKey(name: BookingCreditPreview.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BookingCreditPreview() when $default != null:
-return $default(_that.balanceEur,_that.discountEur,_that.priceEur,_that.totalEur,_that.maxDiscountPercent,_that.applied,_that.currency);case _:
+return $default(_that.balance,_that.creditCurrency,_that.discount,_that.price,_that.total,_that.maxDiscountPercent,_that.applied,_that.currency);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.balanceEur,_that.discountEur,_that.priceEur,_that.totalEur
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: BookingCreditPreview.balanceEurKey_)  String balanceEur, @JsonKey(name: BookingCreditPreview.discountEurKey_)  String discountEur, @JsonKey(name: BookingCreditPreview.priceEurKey_)  String priceEur, @JsonKey(name: BookingCreditPreview.totalEurKey_)  String totalEur, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_)  bool applied, @JsonKey(name: BookingCreditPreview.currencyKey_)  String currency)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: BookingCreditPreview.balanceKey_)  String balance, @JsonKey(name: BookingCreditPreview.creditCurrencyKey_)  String creditCurrency, @JsonKey(name: BookingCreditPreview.discountKey_)  String discount, @JsonKey(name: BookingCreditPreview.priceKey_)  String price, @JsonKey(name: BookingCreditPreview.totalKey_)  String total, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_)  bool applied, @JsonKey(name: BookingCreditPreview.currencyKey_)  String currency)  $default,) {final _that = this;
 switch (_that) {
 case _BookingCreditPreview():
-return $default(_that.balanceEur,_that.discountEur,_that.priceEur,_that.totalEur,_that.maxDiscountPercent,_that.applied,_that.currency);case _:
+return $default(_that.balance,_that.creditCurrency,_that.discount,_that.price,_that.total,_that.maxDiscountPercent,_that.applied,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.balanceEur,_that.discountEur,_that.priceEur,_that.totalEur
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: BookingCreditPreview.balanceEurKey_)  String balanceEur, @JsonKey(name: BookingCreditPreview.discountEurKey_)  String discountEur, @JsonKey(name: BookingCreditPreview.priceEurKey_)  String priceEur, @JsonKey(name: BookingCreditPreview.totalEurKey_)  String totalEur, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_)  bool applied, @JsonKey(name: BookingCreditPreview.currencyKey_)  String currency)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: BookingCreditPreview.balanceKey_)  String balance, @JsonKey(name: BookingCreditPreview.creditCurrencyKey_)  String creditCurrency, @JsonKey(name: BookingCreditPreview.discountKey_)  String discount, @JsonKey(name: BookingCreditPreview.priceKey_)  String price, @JsonKey(name: BookingCreditPreview.totalKey_)  String total, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)  int maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_)  bool applied, @JsonKey(name: BookingCreditPreview.currencyKey_)  String currency)?  $default,) {final _that = this;
 switch (_that) {
 case _BookingCreditPreview() when $default != null:
-return $default(_that.balanceEur,_that.discountEur,_that.priceEur,_that.totalEur,_that.maxDiscountPercent,_that.applied,_that.currency);case _:
+return $default(_that.balance,_that.creditCurrency,_that.discount,_that.price,_that.total,_that.maxDiscountPercent,_that.applied,_that.currency);case _:
   return null;
 
 }
@@ -222,17 +224,19 @@ return $default(_that.balanceEur,_that.discountEur,_that.priceEur,_that.totalEur
 
 @jsonSerializable
 class _BookingCreditPreview extends BookingCreditPreview {
-  const _BookingCreditPreview({@JsonKey(name: BookingCreditPreview.balanceEurKey_) required this.balanceEur, @JsonKey(name: BookingCreditPreview.discountEurKey_) required this.discountEur, @JsonKey(name: BookingCreditPreview.priceEurKey_) required this.priceEur, @JsonKey(name: BookingCreditPreview.totalEurKey_) required this.totalEur, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) required this.maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_) required this.applied, @JsonKey(name: BookingCreditPreview.currencyKey_) required this.currency}): super._();
+  const _BookingCreditPreview({@JsonKey(name: BookingCreditPreview.balanceKey_) required this.balance, @JsonKey(name: BookingCreditPreview.creditCurrencyKey_) required this.creditCurrency, @JsonKey(name: BookingCreditPreview.discountKey_) required this.discount, @JsonKey(name: BookingCreditPreview.priceKey_) required this.price, @JsonKey(name: BookingCreditPreview.totalKey_) required this.total, @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) required this.maxDiscountPercent, @JsonKey(name: BookingCreditPreview.appliedKey_) required this.applied, @JsonKey(name: BookingCreditPreview.currencyKey_) required this.currency}): super._();
   factory _BookingCreditPreview.fromJson(Map<String, dynamic> json) => _$BookingCreditPreviewFromJson(json);
 
-/// balanceEur
-@override@JsonKey(name: BookingCreditPreview.balanceEurKey_) final  String balanceEur;
-/// discountEur
-@override@JsonKey(name: BookingCreditPreview.discountEurKey_) final  String discountEur;
-/// priceEur
-@override@JsonKey(name: BookingCreditPreview.priceEurKey_) final  String priceEur;
-/// totalEur
-@override@JsonKey(name: BookingCreditPreview.totalEurKey_) final  String totalEur;
+/// balance
+@override@JsonKey(name: BookingCreditPreview.balanceKey_) final  String balance;
+/// creditCurrency
+@override@JsonKey(name: BookingCreditPreview.creditCurrencyKey_) final  String creditCurrency;
+/// discount
+@override@JsonKey(name: BookingCreditPreview.discountKey_) final  String discount;
+/// price
+@override@JsonKey(name: BookingCreditPreview.priceKey_) final  String price;
+/// total
+@override@JsonKey(name: BookingCreditPreview.totalKey_) final  String total;
 /// maxDiscountPercent
 @override@JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) final  int maxDiscountPercent;
 /// applied
@@ -253,16 +257,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BookingCreditPreview&&(identical(other.balanceEur, balanceEur) || other.balanceEur == balanceEur)&&(identical(other.discountEur, discountEur) || other.discountEur == discountEur)&&(identical(other.priceEur, priceEur) || other.priceEur == priceEur)&&(identical(other.totalEur, totalEur) || other.totalEur == totalEur)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&(identical(other.applied, applied) || other.applied == applied)&&(identical(other.currency, currency) || other.currency == currency));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BookingCreditPreview&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.creditCurrency, creditCurrency) || other.creditCurrency == creditCurrency)&&(identical(other.discount, discount) || other.discount == discount)&&(identical(other.price, price) || other.price == price)&&(identical(other.total, total) || other.total == total)&&(identical(other.maxDiscountPercent, maxDiscountPercent) || other.maxDiscountPercent == maxDiscountPercent)&&(identical(other.applied, applied) || other.applied == applied)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,balanceEur,discountEur,priceEur,totalEur,maxDiscountPercent,applied,currency);
+int get hashCode => Object.hash(runtimeType,balance,creditCurrency,discount,price,total,maxDiscountPercent,applied,currency);
 
 @override
 String toString() {
-  return 'BookingCreditPreview(balanceEur: $balanceEur, discountEur: $discountEur, priceEur: $priceEur, totalEur: $totalEur, maxDiscountPercent: $maxDiscountPercent, applied: $applied, currency: $currency)';
+  return 'BookingCreditPreview(balance: $balance, creditCurrency: $creditCurrency, discount: $discount, price: $price, total: $total, maxDiscountPercent: $maxDiscountPercent, applied: $applied, currency: $currency)';
 }
 
 
@@ -273,7 +277,7 @@ abstract mixin class _$BookingCreditPreviewCopyWith<$Res> implements $BookingCre
   factory _$BookingCreditPreviewCopyWith(_BookingCreditPreview value, $Res Function(_BookingCreditPreview) _then) = __$BookingCreditPreviewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: BookingCreditPreview.balanceEurKey_) String balanceEur,@JsonKey(name: BookingCreditPreview.discountEurKey_) String discountEur,@JsonKey(name: BookingCreditPreview.priceEurKey_) String priceEur,@JsonKey(name: BookingCreditPreview.totalEurKey_) String totalEur,@JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: BookingCreditPreview.appliedKey_) bool applied,@JsonKey(name: BookingCreditPreview.currencyKey_) String currency
+@JsonKey(name: BookingCreditPreview.balanceKey_) String balance,@JsonKey(name: BookingCreditPreview.creditCurrencyKey_) String creditCurrency,@JsonKey(name: BookingCreditPreview.discountKey_) String discount,@JsonKey(name: BookingCreditPreview.priceKey_) String price,@JsonKey(name: BookingCreditPreview.totalKey_) String total,@JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_) int maxDiscountPercent,@JsonKey(name: BookingCreditPreview.appliedKey_) bool applied,@JsonKey(name: BookingCreditPreview.currencyKey_) String currency
 });
 
 
@@ -290,12 +294,13 @@ class __$BookingCreditPreviewCopyWithImpl<$Res>
 
 /// Create a copy of BookingCreditPreview
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? balanceEur = null,Object? discountEur = null,Object? priceEur = null,Object? totalEur = null,Object? maxDiscountPercent = null,Object? applied = null,Object? currency = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? balance = null,Object? creditCurrency = null,Object? discount = null,Object? price = null,Object? total = null,Object? maxDiscountPercent = null,Object? applied = null,Object? currency = null,}) {
   return _then(_BookingCreditPreview(
-balanceEur: null == balanceEur ? _self.balanceEur : balanceEur // ignore: cast_nullable_to_non_nullable
-as String,discountEur: null == discountEur ? _self.discountEur : discountEur // ignore: cast_nullable_to_non_nullable
-as String,priceEur: null == priceEur ? _self.priceEur : priceEur // ignore: cast_nullable_to_non_nullable
-as String,totalEur: null == totalEur ? _self.totalEur : totalEur // ignore: cast_nullable_to_non_nullable
+balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
+as String,creditCurrency: null == creditCurrency ? _self.creditCurrency : creditCurrency // ignore: cast_nullable_to_non_nullable
+as String,discount: null == discount ? _self.discount : discount // ignore: cast_nullable_to_non_nullable
+as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
+as String,total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
 as String,maxDiscountPercent: null == maxDiscountPercent ? _self.maxDiscountPercent : maxDiscountPercent // ignore: cast_nullable_to_non_nullable
 as int,applied: null == applied ? _self.applied : applied // ignore: cast_nullable_to_non_nullable
 as bool,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable

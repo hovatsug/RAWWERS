@@ -37,12 +37,12 @@ class _Balance extends EarningsBalanceController {
   Future<EarningsBalanceView> build() async => _balance;
 }
 
-EarningsBalanceView _money({required String withdrawable, required String pending}) => EarningsBalanceView(
-      pendingEur: pending,
-      availableEur: withdrawable,
-      heldEur: '0.00',
-      reservedEur: '0.00',
-      withdrawableEur: withdrawable,
+EarningsBalanceView _money({required String withdrawable, required String pending}) => EarningsBalanceView(currency: 'EUR', payoutMinimum: '50.00', 
+      pending: pending,
+      available: withdrawable,
+      held: '0.00',
+      reserved: '0.00',
+      withdrawable: withdrawable,
     );
 
 /// What Stripe listed for the gate run's fresh account (2026-10-28), in

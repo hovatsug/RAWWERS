@@ -38,8 +38,7 @@
 ///         "min_price": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -61,7 +60,6 @@
 ///         },
 ///         "avg_rating": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Avg Rating"
 ///         },
 ///         "review_count": {
@@ -70,7 +68,6 @@
 ///         },
 ///         "ranking_score": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Ranking Score"
 ///         },
 ///         "primary_niche_id": {

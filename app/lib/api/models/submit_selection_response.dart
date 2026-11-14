@@ -55,14 +55,17 @@
 ///         "difference_amount": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
 ///                 }
 ///             ],
 ///             "title": "Difference Amount"
+///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
 ///         },
 ///         "difference_payment_intent_id": {
 ///             "anyOf": [
@@ -94,7 +97,8 @@
 ///         "included_photos",
 ///         "extras_count",
 ///         "gallery_status",
-///         "upsell_required"
+///         "upsell_required",
+///         "currency"
 ///     ],
 ///     "title": "SubmitSelectionResponse"
 /// }
@@ -151,6 +155,10 @@ abstract class SubmitSelectionResponse with _$SubmitSelectionResponse {
     @JsonKey(name: SubmitSelectionResponse.differenceAmountKey_)
     String? differenceAmount,
 
+    /// currency
+    @JsonKey(name: SubmitSelectionResponse.currencyKey_)
+    required String currency,
+
     /// differencePaymentIntentId
     @JsonKey(name: SubmitSelectionResponse.differencePaymentIntentIdKey_)
     String? differencePaymentIntentId,
@@ -185,6 +193,8 @@ abstract class SubmitSelectionResponse with _$SubmitSelectionResponse {
   static const String differenceRequiredKey_ = r'difference_required';
 
   static const String differenceAmountKey_ = r'difference_amount';
+
+  static const String currencyKey_ = r'currency';
 
   static const String differencePaymentIntentIdKey_ =
       r'difference_payment_intent_id';

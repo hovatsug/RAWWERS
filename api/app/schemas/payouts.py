@@ -38,6 +38,8 @@ class EarningsBalanceView(BaseModel):
     lifetime: Decimal = Decimal("0.00")
     withdrawable: Decimal
     adjustment_owed: Decimal = Decimal("0.00")
+    #: The smallest payout in `currency` (an admin setting: GBP 45.00, EUR 50.00).
+    payout_minimum: Decimal
 
 
 class EarningsLedgerItemView(BaseModel):

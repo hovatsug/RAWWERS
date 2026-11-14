@@ -6,7 +6,7 @@ import 'package:rawwers/core/api_wrappers/pro_profile_update.dart';
 
 void main() {
   test('buildProProfileUpdateRequest carries every field from current, so the PUT never wipes untouched fields', () {
-    final current = ProProfileView(
+    final current = ProProfileView(currency: 'EUR', 
       userId: 'user-1',
       displayName: 'Ada Lovelace',
       headline: 'Portrait photographer',

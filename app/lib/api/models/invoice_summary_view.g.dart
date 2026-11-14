@@ -8,6 +8,7 @@ part of 'invoice_summary_view.dart';
 
 _InvoiceSummaryView _$InvoiceSummaryViewFromJson(Map<String, dynamic> json) =>
     _InvoiceSummaryView(
+      currency: json['currency'] as String,
       bookings: (json['bookings'] as num).toInt(),
       gross: json['gross'] as String,
       platformFees: json['platform_fees'] as String,
@@ -22,6 +23,7 @@ _InvoiceSummaryView _$InvoiceSummaryViewFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$InvoiceSummaryViewToJson(_InvoiceSummaryView instance) =>
     <String, dynamic>{
+      'currency': instance.currency,
       'bookings': instance.bookings,
       'gross': instance.gross,
       'platform_fees': instance.platformFees,

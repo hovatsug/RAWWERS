@@ -76,8 +76,7 @@
 ///         "min_price": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -88,8 +87,7 @@
 ///         "max_price": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -100,8 +98,7 @@
 ///         "min_entry_rate": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -126,7 +123,6 @@
 ///         },
 ///         "avg_rating": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Avg Rating"
 ///         },
 ///         "review_count": {

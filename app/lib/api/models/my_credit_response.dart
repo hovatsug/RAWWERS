@@ -1,9 +1,13 @@
 /// MyCreditResponse
 /// {
 ///     "properties": {
-///         "balance_eur": {
+///         "balance": {
 ///             "type": "string",
-///             "title": "Balance Eur"
+///             "title": "Balance"
+///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
 ///         },
 ///         "max_discount_percent": {
 ///             "type": "integer",
@@ -19,7 +23,8 @@
 ///     },
 ///     "type": "object",
 ///     "required": [
-///         "balance_eur",
+///         "balance",
+///         "currency",
 ///         "max_discount_percent",
 ///         "items"
 ///     ],
@@ -37,8 +42,11 @@ abstract class MyCreditResponse with _$MyCreditResponse {
 
   @jsonSerializable
   const factory MyCreditResponse({
-    /// balanceEur
-    @JsonKey(name: MyCreditResponse.balanceEurKey_) required String balanceEur,
+    /// balance
+    @JsonKey(name: MyCreditResponse.balanceKey_) required String balance,
+
+    /// currency
+    @JsonKey(name: MyCreditResponse.currencyKey_) required String currency,
 
     /// maxDiscountPercent
     @JsonKey(name: MyCreditResponse.maxDiscountPercentKey_)
@@ -52,7 +60,9 @@ abstract class MyCreditResponse with _$MyCreditResponse {
   factory MyCreditResponse.fromJson(Map<String, dynamic> json) =>
       _$MyCreditResponseFromJson(json);
 
-  static const String balanceEurKey_ = r'balance_eur';
+  static const String balanceKey_ = r'balance';
+
+  static const String currencyKey_ = r'currency';
 
   static const String maxDiscountPercentKey_ = r'max_discount_percent';
 

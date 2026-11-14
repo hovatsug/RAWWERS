@@ -17,7 +17,8 @@ ProPackageCreateRequest createProPackageRequest({
   String? description,
   required int durationMinutes,
   required Decimal price,
-  String currency = 'EUR',
+  // Not sent: a package is always in the photographer's own currency, which
+  // the server sets (MULTI_CURRENCY.md 2.1).
   required int includedPhotos,
   required Decimal extraPhotoPrice,
   int proofsSlaDays = 3,
@@ -31,7 +32,6 @@ ProPackageCreateRequest createProPackageRequest({
     description: description,
     durationMinutes: durationMinutes,
     price: price.toStringAsFixed(2),
-    currency: currency,
     includedPhotos: includedPhotos,
     extraPhotoPrice: extraPhotoPrice.toStringAsFixed(2),
     proofsSlaDays: proofsSlaDays,

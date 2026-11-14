@@ -20,7 +20,7 @@ import '../../support/fake_http_client_adapter.dart';
 class _Profile extends ProProfileController {
   @override
   Future<ProProfileView> build() async =>
-      const ProProfileView(userId: 'pro-me', displayName: 'Ana', isAcceptingBookings: true, completenessScore: 90, kycStatus: 'approved');
+      const ProProfileView(currency: 'EUR', userId: 'pro-me', displayName: 'Ana', isAcceptingBookings: true, completenessScore: 90, kycStatus: 'approved');
 }
 
 class _Backend {

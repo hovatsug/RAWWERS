@@ -14,8 +14,9 @@ _ClientBookingPayResponse _$ClientBookingPayResponseFromJson(
   paymentIntentId: json['payment_intent_id'] as String,
   paymentIntentClientSecret: json['payment_intent_client_secret'] as String,
   mode: json['mode'] as String,
-  creditEur: json['credit_eur'] as String? ?? '0.00',
-  amountEur: json['amount_eur'] as String?,
+  credit: json['credit'] as String? ?? '0.00',
+  amount: json['amount'] as String?,
+  currency: json['currency'] as String,
 );
 
 Map<String, dynamic> _$ClientBookingPayResponseToJson(
@@ -26,6 +27,7 @@ Map<String, dynamic> _$ClientBookingPayResponseToJson(
   'payment_intent_id': instance.paymentIntentId,
   'payment_intent_client_secret': instance.paymentIntentClientSecret,
   'mode': instance.mode,
-  'credit_eur': instance.creditEur,
-  'amount_eur': instance.amountEur,
+  'credit': instance.credit,
+  'amount': instance.amount,
+  'currency': instance.currency,
 };

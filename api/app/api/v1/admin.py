@@ -684,7 +684,8 @@ def _review_row(db: Session, onboarding: ProOnboarding) -> AdminProReviewRow:
         portfolio_minimum=int(checks.get("portfolio_min_required") or 12),
         active_packages=int(checks.get("active_packages_count") or 0),
         min_price=index.min_package_price if index else None,
-        currency=index.currency if index else "EUR",
+        # The photographer's own currency (their packages' and min_price's).
+        currency=profile.currency if profile else (index.currency if index else None),
         cover_url=cover_url,
         ready_to_approve=not missing,
         missing=missing,

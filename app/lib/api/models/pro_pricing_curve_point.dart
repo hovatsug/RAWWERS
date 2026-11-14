@@ -7,12 +7,10 @@
 ///         },
 ///         "total": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Total"
 ///         },
 ///         "per_photo": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Per Photo"
 ///         }
 ///     },

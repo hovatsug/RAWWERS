@@ -13,7 +13,8 @@ _GrantMarketingConsentResponse _$GrantMarketingConsentResponseFromJson(
       .map((e) => MarketingConsentView.fromJson(e as Map<String, dynamic>))
       .toList(),
   credit: (json['credit'] as num).toInt(),
-  creditEur: json['credit_eur'] as String? ?? '0.00',
+  creditAmount: json['credit_amount'] as String? ?? '0.00',
+  currency: json['currency'] as String? ?? 'EUR',
 );
 
 Map<String, dynamic> _$GrantMarketingConsentResponseToJson(
@@ -21,5 +22,6 @@ Map<String, dynamic> _$GrantMarketingConsentResponseToJson(
 ) => <String, dynamic>{
   'items': instance.items,
   'credit': instance.credit,
-  'credit_eur': instance.creditEur,
+  'credit_amount': instance.creditAmount,
+  'currency': instance.currency,
 };

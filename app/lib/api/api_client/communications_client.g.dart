@@ -326,90 +326,6 @@ class _CommunicationsClient implements CommunicationsClient {
   }
 
   @override
-  Future<HttpResponse<Map<String, dynamic>>>
-  telephonyWebhookV1WebhooksTelephonyPost({
-    required String? xMinusTelephonyMinusSignature,
-    CancelToken? cancelToken,
-    void Function(int, int)? onSendProgress,
-    void Function(int, int)? onReceiveProgress,
-    Map<String, dynamic>? extras = const {
-      'tags': ['communications'],
-      'summary': 'Telephony Webhook',
-      'operationId': 'telephony_webhook_v1_webhooks_telephony_post',
-      'parameters': [
-        {
-          'name': 'X-Telephony-Signature',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-Telephony-Signature',
-          },
-        },
-      ],
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {
-                'type': 'object',
-                'additionalProperties': true,
-                'title':
-                    'Response Telephony Webhook V1 Webhooks Telephony Post',
-              },
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  }) async {
-    final _extra = <String, dynamic>{};
-    _extra.addAll(extras ?? <String, dynamic>{});
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{
-      r'X-Telephony-Signature': xMinusTelephonyMinusSignature,
-    };
-    _headers.removeWhere((k, v) => v == null);
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<Map<String, dynamic>>>(
-      Options(method: 'POST', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/v1/webhooks/telephony',
-            queryParameters: queryParameters,
-            data: _data,
-            cancelToken: cancelToken,
-            onSendProgress: onSendProgress,
-            onReceiveProgress: onReceiveProgress,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late Map<String, dynamic> _value;
-    try {
-      _value = _result.data!;
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
   Future<HttpResponse<CallSummaryResponse>>
   summarizeCallV1CallsCallSessionIdAISummaryPost({
     required String callSessionId,
@@ -506,6 +422,90 @@ class _CommunicationsClient implements CommunicationsClient {
     late CallSummaryResponse _value;
     try {
       _value = CallSummaryResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<Map<String, dynamic>>>
+  telephonyWebhookV1WebhooksTelephonyPost({
+    required String? xMinusTelephonyMinusSignature,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['communications'],
+      'summary': 'Telephony Webhook',
+      'operationId': 'telephony_webhook_v1_webhooks_telephony_post',
+      'parameters': [
+        {
+          'name': 'X-Telephony-Signature',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-Telephony-Signature',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                'type': 'object',
+                'additionalProperties': true,
+                'title':
+                    'Response Telephony Webhook V1 Webhooks Telephony Post',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'X-Telephony-Signature': xMinusTelephonyMinusSignature,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<Map<String, dynamic>>>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/webhooks/telephony',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late Map<String, dynamic> _value;
+    try {
+      _value = _result.data!;
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

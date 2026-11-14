@@ -301,6 +301,164 @@ abstract class ProofGalleriesClient {
       },
     },
   });
+  @GET("/v1/proof-galleries/{gallery_id}/addon-quote")
+  Future<HttpResponse<AddonQuoteResponse>>
+  getAddonQuoteV1ProofGalleriesGalleryIdAddonQuoteGet({
+    @Path("gallery_id") required String galleryId,
+    @Query("adding") required int adding,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['proof_galleries'],
+      'summary': 'Get Addon Quote',
+      'description':
+          'What adding `adding` photos after the selection closed costs now.',
+      'operationId':
+          'get_addon_quote_v1_proof_galleries__gallery_id__addon_quote_get',
+      'parameters': [
+        {
+          'name': 'gallery_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
+        },
+        {
+          'name': 'adding',
+          'in': 'query',
+          'required': true,
+          'schema': {
+            'type': 'integer',
+            'maximum': 5000,
+            'minimum': 0,
+            'title': 'Adding',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/AddonQuoteResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @POST("/v1/proof-galleries/{gallery_id}/addons")
+  Future<HttpResponse<StartAddonResponse>>
+  startAddonV1ProofGalleriesGalleryIdAddonsPost({
+    @Body() required StartAddonRequest requestBody,
+    @Path("gallery_id") required String galleryId,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['proof_galleries'],
+      'summary': 'Start Addon',
+      'description':
+          'Add photos after the selection closed, while its window is open. Pay\nwith the returned client secret; nothing is owed when it is null.',
+      'operationId': 'start_addon_v1_proof_galleries__gallery_id__addons_post',
+      'parameters': [
+        {
+          'name': 'gallery_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {'\$ref': '#/components/schemas/StartAddonRequest'},
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/StartAddonResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @POST("/v1/proof-galleries/{gallery_id}/selections")
   Future<HttpResponse<SelectionResponse>>
   saveSelectionV1ProofGalleriesGalleryIdSelectionsPost({
@@ -670,164 +828,6 @@ abstract class ProofGalleriesClient {
           'content': {
             'application/json': {
               'schema': {'\$ref': '#/components/schemas/DownloadsResponse'},
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  });
-  @GET("/v1/proof-galleries/{gallery_id}/addon-quote")
-  Future<HttpResponse<AddonQuoteResponse>>
-  getAddonQuoteV1ProofGalleriesGalleryIdAddonQuoteGet({
-    @Path("gallery_id") required String galleryId,
-    @Query("adding") required int adding,
-    @Header("Authorization") required String? authorization,
-    @Header("X-User-Id") required String? xMinusUserMinusId,
-    @CancelRequest() CancelToken? cancelToken,
-    @SendProgress() ProgressCallback? onSendProgress,
-    @ReceiveProgress() ProgressCallback? onReceiveProgress,
-    @Extras()
-    Map<String, dynamic>? extras = const {
-      'tags': ['proof_galleries'],
-      'summary': 'Get Addon Quote',
-      'description':
-          'What adding `adding` photos after the selection closed costs now.',
-      'operationId':
-          'get_addon_quote_v1_proof_galleries__gallery_id__addon_quote_get',
-      'parameters': [
-        {
-          'name': 'gallery_id',
-          'in': 'path',
-          'required': true,
-          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
-        },
-        {
-          'name': 'adding',
-          'in': 'query',
-          'required': true,
-          'schema': {
-            'type': 'integer',
-            'maximum': 5000,
-            'minimum': 0,
-            'title': 'Adding',
-          },
-        },
-        {
-          'name': 'Authorization',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'Authorization',
-          },
-        },
-        {
-          'name': 'X-User-Id',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-User-Id',
-          },
-        },
-      ],
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/AddonQuoteResponse'},
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  });
-  @POST("/v1/proof-galleries/{gallery_id}/addons")
-  Future<HttpResponse<StartAddonResponse>>
-  startAddonV1ProofGalleriesGalleryIdAddonsPost({
-    @Body() required StartAddonRequest requestBody,
-    @Path("gallery_id") required String galleryId,
-    @Header("Authorization") required String? authorization,
-    @Header("X-User-Id") required String? xMinusUserMinusId,
-    @CancelRequest() CancelToken? cancelToken,
-    @SendProgress() ProgressCallback? onSendProgress,
-    @ReceiveProgress() ProgressCallback? onReceiveProgress,
-    @Extras()
-    Map<String, dynamic>? extras = const {
-      'tags': ['proof_galleries'],
-      'summary': 'Start Addon',
-      'description':
-          'Add photos after the selection closed, while its window is open. Pay\nwith the returned client secret; nothing is owed when it is null.',
-      'operationId': 'start_addon_v1_proof_galleries__gallery_id__addons_post',
-      'parameters': [
-        {
-          'name': 'gallery_id',
-          'in': 'path',
-          'required': true,
-          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gallery Id'},
-        },
-        {
-          'name': 'Authorization',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'Authorization',
-          },
-        },
-        {
-          'name': 'X-User-Id',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-User-Id',
-          },
-        },
-      ],
-      'requestBody': {
-        'required': true,
-        'content': {
-          'application/json': {
-            'schema': {'\$ref': '#/components/schemas/StartAddonRequest'},
-          },
-        },
-      },
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/StartAddonResponse'},
             },
           },
         },

@@ -34,6 +34,10 @@ DEFAULT_REWARD_RULES: dict[str, dict] = {
     "pro_referral_signup": {"amount": 700, "daily_cap_per_user": 7000, "lifetime_cap_per_user": 70000},
 }
 
+#: The currency client credit is in (points are euros: 100 points = €1)
+#: until batch M4 makes credit per currency.
+CREDIT_CURRENCY = "EUR"
+
 
 def ensure_default_reward_rules(db: Session) -> None:
     now = datetime.now(timezone.utc)
@@ -200,6 +204,16 @@ def reserve_points_for_discount(
         raise APIError(code="validation_error", message="Choose an amount of credit to use", status_code=422)
     if payment_amount <= Decimal("0.00"):
         raise APIError(code="validation_error", message="payment amount must be > 0", status_code=422)
+    if str(currency).upper() != CREDIT_CURRENCY:
+        # Credit is per currency (MULTI_CURRENCY.md decision M3): today's
+        # credit is in euros, so it pays only for euro payments, never a
+        # pound one at a euro value. Per-currency credit is batch M4.
+        raise APIError(
+            code="credit_currency_mismatch",
+            message="Your credit is in euros and can be used on bookings in euros only",
+            status_code=422,
+            details={"credit_currency": CREDIT_CURRENCY, "currency": str(currency).upper()},
+        )
 
     existing = _open_redemption(db, user_id, context_type, context_id)
     if existing:

@@ -12,7 +12,6 @@
 ///         },
 ///         "entry_price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Entry Price"
 ///         },
 ///         "currency": {

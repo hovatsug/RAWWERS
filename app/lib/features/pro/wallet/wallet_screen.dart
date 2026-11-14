@@ -80,7 +80,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 // The headline number, on the band under the title.
                 RHeaderBand(
                   padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s8, RSpace.s16, RSpace.s24),
-                  child: RBandHero(label: 'Available to withdraw', value: RMoney.of(context).format(value.balance.withdrawableEur)),
+                  child: RBandHero(label: 'Available to withdraw', value: RMoney.of(context).format(value.balance.withdrawable, currency: value.currency)),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(RSpace.s16),
@@ -123,7 +123,7 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final money = RMoney.of(context);
-    final next = nextPending(data.ledger, pendingEur: data.balance.pendingEur);
+    final next = nextPending(data.ledger, pending: data.balance.pending);
     return RCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,13 +131,13 @@ class _BalanceCard extends StatelessWidget {
           // The withdrawable figure is the band's headline above; this card
           // is where the rest of the money is.
           Text('Where your money is', style: theme.textTheme.titleMedium),
-          if (data.balance.adjustmentOwedEur != '0.00') ...[
+          if (data.balance.adjustmentOwed != '0.00') ...[
             const SizedBox(height: RSpace.s8),
             // Money paid out that a refund later took back. The server holds
             // the real (negative) balance; this screen shows 0 to withdraw
             // and says plainly what is owed and where it comes from.
             Text(
-              'Adjustment owed: ${money.format(data.balance.adjustmentOwedEur)}. A booking was refunded after '
+              'Adjustment owed: ${money.format(data.balance.adjustmentOwed, currency: data.currency)}. A booking was refunded after '
               'its earnings were paid out; this comes off your next earnings.',
               style: theme.textTheme.bodySmall,
             ),
@@ -146,24 +146,24 @@ class _BalanceCard extends StatelessWidget {
           // The other buckets exist because money moves through stages -
           // showing only the withdrawable figure would make a photographer
           // think earnings vanished between a shoot and a payout.
-          RAmountRow(label: 'Pending', amount: money.format(data.balance.pendingEur)),
+          RAmountRow(label: 'Pending', amount: money.format(data.balance.pending, currency: data.currency)),
           if (next != null)
             Padding(
               padding: const EdgeInsets.only(bottom: RSpace.s8),
               child: Text(
                 switch (whenAvailable(next.availableAt, now, RDates.of(context))) {
-                  final phrase? => 'Next: ${money.format(next.netEur)} available $phrase.',
-                  null => 'Next: ${money.format(next.netEur)} is being released. Pull down to refresh.',
+                  final phrase? => 'Next: ${money.format(next.net, currency: data.currency)} available $phrase.',
+                  null => 'Next: ${money.format(next.net, currency: data.currency)} is being released. Pull down to refresh.',
                 },
                 style: theme.textTheme.bodySmall,
               ),
             ),
-          RAmountRow(label: 'On hold', amount: money.format(data.balance.heldEur)),
+          RAmountRow(label: 'On hold', amount: money.format(data.balance.held, currency: data.currency)),
           // Asked for, not yet decided: out of what can be withdrawn the
           // moment it is asked for, back again if the request is rejected.
-          RAmountRow(label: 'Requested', amount: money.format(data.balance.requestedEur)),
-          RAmountRow(label: 'Reserved for payouts', amount: money.format(data.balance.reservedEur)),
-          RAmountRow(label: 'Paid out', amount: money.format(data.balance.paidOutEur)),
+          RAmountRow(label: 'Requested', amount: money.format(data.balance.requested, currency: data.currency)),
+          RAmountRow(label: 'Reserved for payouts', amount: money.format(data.balance.reserved, currency: data.currency)),
+          RAmountRow(label: 'Paid out', amount: money.format(data.balance.paidOut, currency: data.currency)),
         ],
       ),
     );
@@ -196,17 +196,17 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
       setState(() => _error = 'Enter an amount.');
       return;
     }
-    if (parsed < PayoutRules.minimum) {
+    if (parsed < widget.data.minimum) {
       setState(
         () => _error =
-            'The minimum payout is ${RMoney.of(context).format(PayoutRules.minimum.toStringAsFixed(2))}.',
+            'The minimum payout is ${RMoney.of(context).format(widget.data.minimum.toStringAsFixed(2), currency: widget.data.currency)}.',
       );
       return;
     }
     if (parsed > widget.data.withdrawable) {
       setState(
         () => _error =
-            'You can withdraw up to ${RMoney.of(context).format(widget.data.withdrawable.toStringAsFixed(2))}.',
+            'You can withdraw up to ${RMoney.of(context).format(widget.data.withdrawable.toStringAsFixed(2), currency: widget.data.currency)}.',
       );
       return;
     }
@@ -256,7 +256,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
           ] else ...[
             const SizedBox(height: RSpace.s12),
             RInput(
-              label: 'Amount (${RMoney.symbolFor(null)})',
+              label: 'Amount (${RMoney.symbolFor(widget.data.currency)})',
               controller: _amount,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -275,7 +275,7 @@ class _PayoutCardState extends ConsumerState<_PayoutCard> {
             ),
             const SizedBox(height: RSpace.s8),
             Text(
-              'Minimum ${RMoney.of(context).format(PayoutRules.minimum.toStringAsFixed(2))}. '
+              'Minimum ${RMoney.of(context).format(widget.data.minimum.toStringAsFixed(2), currency: widget.data.currency)}. '
               'Up to ${PayoutRules.requestsPer7Days} requests every 7 days.',
               style: theme.textTheme.bodySmall,
             ),
@@ -353,7 +353,7 @@ class _PayoutHistory extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    RMoney.of(context).format(payout.amountEur),
+                    RMoney.of(context).format(payout.amount, currency: payout.currency),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontFeatures: RType.tabularFigures,
                     ),
@@ -414,7 +414,7 @@ class _Ledger extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      RMoney.of(context).format(entry.netEur),
+                      RMoney.of(context).format(entry.net, currency: entry.currency),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontFeatures: RType.tabularFigures,
                       ),

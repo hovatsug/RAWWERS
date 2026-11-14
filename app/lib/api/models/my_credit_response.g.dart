@@ -8,7 +8,8 @@ part of 'my_credit_response.dart';
 
 _MyCreditResponse _$MyCreditResponseFromJson(Map<String, dynamic> json) =>
     _MyCreditResponse(
-      balanceEur: json['balance_eur'] as String,
+      balance: json['balance'] as String,
+      currency: json['currency'] as String,
       maxDiscountPercent: (json['max_discount_percent'] as num).toInt(),
       items: (json['items'] as List<dynamic>)
           .map((e) => CreditHistoryItem.fromJson(e as Map<String, dynamic>))
@@ -17,7 +18,8 @@ _MyCreditResponse _$MyCreditResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$MyCreditResponseToJson(_MyCreditResponse instance) =>
     <String, dynamic>{
-      'balance_eur': instance.balanceEur,
+      'balance': instance.balance,
+      'currency': instance.currency,
       'max_discount_percent': instance.maxDiscountPercent,
       'items': instance.items,
     };

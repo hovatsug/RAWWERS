@@ -15,6 +15,7 @@ _UpsellCreateIntentResponse _$UpsellCreateIntentResponseFromJson(
   status: UpsellPurchaseStatus.fromJson(json['status'] as String),
   discountAmount: json['discount_amount'] as String?,
   pointsSpent: (json['points_spent'] as num?)?.toInt(),
+  currency: json['currency'] as String,
 );
 
 Map<String, dynamic> _$UpsellCreateIntentResponseToJson(
@@ -26,4 +27,5 @@ Map<String, dynamic> _$UpsellCreateIntentResponseToJson(
   'status': instance.status,
   'discount_amount': instance.discountAmount,
   'points_spent': instance.pointsSpent,
+  'currency': instance.currency,
 };

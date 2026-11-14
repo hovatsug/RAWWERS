@@ -8,7 +8,10 @@
 //         "thumbnail",
 //         "banner_tile",
 //         "banner_hero",
-//         "banner_placeholder"
+//         "banner_placeholder",
+//         "shelf_400",
+//         "shelf_800",
+//         "shelf_1600"
 //     ],
 //     "title": "MediaDerivativeKind"
 // }
@@ -33,7 +36,13 @@ enum MediaDerivativeKind {
   @JsonValue("banner_hero")
   bannerHero,
   @JsonValue("banner_placeholder")
-  bannerPlaceholder;
+  bannerPlaceholder,
+  @JsonValue("shelf_400")
+  shelf400,
+  @JsonValue("shelf_800")
+  shelf800,
+  @JsonValue("shelf_1600")
+  shelf1600;
 
   factory MediaDerivativeKind.fromJson(String json) =>
       MediaDerivativeKind.values.firstWhere(

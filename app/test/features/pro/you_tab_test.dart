@@ -90,7 +90,8 @@ void main() {
     testWidgets('below the minimum: no Request payout, and one line saying why, from the Wallet\'s own minimum', (tester) async {
       await _pump(tester, youTab(walletData: wallet(withdrawable: '12.00')));
       expect(find.text('Request payout'), findsNothing);
-      expect(find.text('Payouts start at ${RMoney.ofDevice().format(PayoutRules.minimum.toStringAsFixed(2))}.'), findsOneWidget);
+      // The minimum comes with the balance (payout_minimum), in its currency.
+      expect(find.text('Payouts start at ${RMoney.ofDevice().format('50.00', currency: 'EUR')}.'), findsOneWidget);
     });
 
     testWidgets('any other refusal: the Wallet\'s own message, word for word', (tester) async {

@@ -246,6 +246,116 @@ class _NotificationsClient implements NotificationsClient {
   }
 
   @override
+  Future<HttpResponse<NotificationUnreadCount>>
+  getMyUnreadCountV1MeNotificationsUnreadCountGet({
+    required String? typePrefix,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['notifications'],
+      'summary': 'Get My Unread Count',
+      'description':
+          'The bell\'s number: unread notifications, all of them or those whose\ntype starts with `type_prefix` (e.g. "shelf.order_" for My orders).',
+      'operationId': 'get_my_unread_count_v1_me_notifications_unread_count_get',
+      'parameters': [
+        {
+          'name': 'type_prefix',
+          'in': 'query',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string', 'maxLength': 64},
+              {'type': 'null'},
+            ],
+            'title': 'Type Prefix',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/NotificationUnreadCount',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{r'type_prefix': typePrefix};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<NotificationUnreadCount>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/me/notifications/unread-count',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late NotificationUnreadCount _value;
+    try {
+      _value = NotificationUnreadCount.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<dynamic>>
   readAllNotificationsV1MeNotificationsReadAllPost({
     required String? typePrefix,
@@ -771,116 +881,6 @@ class _NotificationsClient implements NotificationsClient {
             ),
           )
           .toList();
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<NotificationUnreadCount>>
-  getMyUnreadCountV1MeNotificationsUnreadCountGet({
-    required String? typePrefix,
-    required String? authorization,
-    required String? xMinusUserMinusId,
-    CancelToken? cancelToken,
-    void Function(int, int)? onSendProgress,
-    void Function(int, int)? onReceiveProgress,
-    Map<String, dynamic>? extras = const {
-      'tags': ['notifications'],
-      'summary': 'Get My Unread Count',
-      'description':
-          'The bell\'s number: unread notifications, all of them or those whose\ntype starts with `type_prefix` (e.g. "shelf.order_" for My orders).',
-      'operationId': 'get_my_unread_count_v1_me_notifications_unread_count_get',
-      'parameters': [
-        {
-          'name': 'type_prefix',
-          'in': 'query',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string', 'maxLength': 64},
-              {'type': 'null'},
-            ],
-            'title': 'Type Prefix',
-          },
-        },
-        {
-          'name': 'Authorization',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'Authorization',
-          },
-        },
-        {
-          'name': 'X-User-Id',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-User-Id',
-          },
-        },
-      ],
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {
-                '\$ref': '#/components/schemas/NotificationUnreadCount',
-              },
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  }) async {
-    final _extra = <String, dynamic>{};
-    _extra.addAll(extras ?? <String, dynamic>{});
-    final queryParameters = <String, dynamic>{r'type_prefix': typePrefix};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{
-      r'Authorization': authorization,
-      r'X-User-Id': xMinusUserMinusId,
-    };
-    _headers.removeWhere((k, v) => v == null);
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<NotificationUnreadCount>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/v1/me/notifications/unread-count',
-            queryParameters: queryParameters,
-            data: _data,
-            cancelToken: cancelToken,
-            onSendProgress: onSendProgress,
-            onReceiveProgress: onReceiveProgress,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late NotificationUnreadCount _value;
-    try {
-      _value = NotificationUnreadCount.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

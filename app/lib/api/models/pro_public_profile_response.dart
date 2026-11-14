@@ -126,7 +126,6 @@
 ///         },
 ///         "avg_rating": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Avg Rating"
 ///         },
 ///         "review_count": {
@@ -135,7 +134,6 @@
 ///         },
 ///         "ranking_score": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Ranking Score"
 ///         }
 ///     },

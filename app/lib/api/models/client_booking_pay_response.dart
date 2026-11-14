@@ -23,12 +23,12 @@
 ///             "type": "string",
 ///             "title": "Mode"
 ///         },
-///         "credit_eur": {
+///         "credit": {
 ///             "type": "string",
 ///             "default": "0.00",
-///             "title": "Credit Eur"
+///             "title": "Credit"
 ///         },
-///         "amount_eur": {
+///         "amount": {
 ///             "anyOf": [
 ///                 {
 ///                     "type": "string"
@@ -37,7 +37,11 @@
 ///                     "type": "null"
 ///                 }
 ///             ],
-///             "title": "Amount Eur"
+///             "title": "Amount"
+///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
 ///         }
 ///     },
 ///     "type": "object",
@@ -46,7 +50,8 @@
 ///         "gig_id",
 ///         "payment_intent_id",
 ///         "payment_intent_client_secret",
-///         "mode"
+///         "mode",
+///         "currency"
 ///     ],
 ///     "title": "ClientBookingPayResponse"
 /// }
@@ -80,13 +85,17 @@ abstract class ClientBookingPayResponse with _$ClientBookingPayResponse {
     /// mode
     @JsonKey(name: ClientBookingPayResponse.modeKey_) required String mode,
 
-    /// creditEur
+    /// credit
     @Default('0.00')
-    @JsonKey(name: ClientBookingPayResponse.creditEurKey_)
-    String creditEur,
+    @JsonKey(name: ClientBookingPayResponse.creditKey_)
+    String credit,
 
-    /// amountEur
-    @JsonKey(name: ClientBookingPayResponse.amountEurKey_) String? amountEur,
+    /// amount
+    @JsonKey(name: ClientBookingPayResponse.amountKey_) String? amount,
+
+    /// currency
+    @JsonKey(name: ClientBookingPayResponse.currencyKey_)
+    required String currency,
   }) = _ClientBookingPayResponse;
 
   factory ClientBookingPayResponse.fromJson(Map<String, dynamic> json) =>
@@ -103,7 +112,9 @@ abstract class ClientBookingPayResponse with _$ClientBookingPayResponse {
 
   static const String modeKey_ = r'mode';
 
-  static const String creditEurKey_ = r'credit_eur';
+  static const String creditKey_ = r'credit';
 
-  static const String amountEurKey_ = r'amount_eur';
+  static const String amountKey_ = r'amount';
+
+  static const String currencyKey_ = r'currency';
 }

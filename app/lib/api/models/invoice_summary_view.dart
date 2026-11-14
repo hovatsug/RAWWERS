@@ -1,6 +1,10 @@
 /// InvoiceSummaryView
 /// {
 ///     "properties": {
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
+///         },
 ///         "bookings": {
 ///             "type": "integer",
 ///             "title": "Bookings"
@@ -60,6 +64,7 @@
 ///     },
 ///     "type": "object",
 ///     "required": [
+///         "currency",
 ///         "bookings",
 ///         "gross",
 ///         "platform_fees",
@@ -68,7 +73,7 @@
 ///         "pro_cash"
 ///     ],
 ///     "title": "InvoiceSummaryView",
-///     "description": "Totals across every completed, invoiced gig."
+///     "description": "Totals across every completed, invoiced gig, in the photographer's\none currency."
 /// }
 library invoice_summary_view;
 
@@ -82,6 +87,9 @@ abstract class InvoiceSummaryView with _$InvoiceSummaryView {
 
   @jsonSerializable
   const factory InvoiceSummaryView({
+    /// currency
+    @JsonKey(name: InvoiceSummaryView.currencyKey_) required String currency,
+
     /// bookings
     @JsonKey(name: InvoiceSummaryView.bookingsKey_) required int bookings,
 
@@ -121,6 +129,8 @@ abstract class InvoiceSummaryView with _$InvoiceSummaryView {
 
   factory InvoiceSummaryView.fromJson(Map<String, dynamic> json) =>
       _$InvoiceSummaryViewFromJson(json);
+
+  static const String currencyKey_ = r'currency';
 
   static const String bookingsKey_ = r'bookings';
 

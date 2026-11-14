@@ -43,10 +43,10 @@ def _paid_with_credit(client, db, *, price="150.00", status=GigStatus.payment_pe
     db.commit()
     _give(db, uuid.UUID(user_id), 500)
     resp = client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id)).json()
-    assert (resp["credit_eur"], resp["amount_eur"]) == ("5.00", f"{Decimal(price) - 5:.2f}")
+    assert (resp["credit"], resp["amount"]) == ("5.00", f"{Decimal(price) - 5:.2f}")
     _apply_stripe_event(db, "payment_intent.succeeded", {"id": resp["payment_intent_id"], "amount_received": int((Decimal(price) - 5) * 100)})
     db.commit()
-    assert client.get("/v1/me/credit", headers=_h(user_id)).json()["balance_eur"] == "0.00"
+    assert client.get("/v1/me/credit", headers=_h(user_id)).json()["balance"] == "0.00"
     return user_id, gig, resp["payment_intent_id"]
 
 
@@ -68,7 +68,7 @@ def _returns(db, gig):
 
 
 def _balance(client, user_id):
-    return client.get("/v1/me/credit", headers=_h(user_id)).json()["balance_eur"]
+    return client.get("/v1/me/credit", headers=_h(user_id)).json()["balance"]
 
 
 def test_a_full_refund_gives_all_the_credit_back_as_its_own_line(client, db_session, fake_stripe, refunds):
@@ -81,7 +81,7 @@ def test_a_full_refund_gives_all_the_credit_back_as_its_own_line(client, db_sess
     assert (line.amount, line.reference_id, line.meta["kind"]) == (500, f"{gig.id}:re_full", "refunded_credit")
     assert _balance(client, user_id) == "5.00"
     [item] = [i for i in client.get("/v1/me/credit", headers=_h(user_id)).json()["items"] if i["kind"] == "refunded_credit"]
-    assert item["amount_eur"] == "5.00"
+    assert item["amount"] == "5.00"
 
 
 def test_a_partial_refund_gives_back_the_same_share_rounded_down(client, db_session, fake_stripe, refunds):
@@ -157,8 +157,8 @@ def test_refunded_credit_is_not_marketing_credit_and_shows_on_the_admin_month(cl
 
     month = client.get("/v1/admin/client-credit/budget", headers=ADMIN).json()
 
-    assert (month["awarded_eur"], month["remaining_eur"]) == ("0.00", "10.00")
-    assert Decimal(month["returned_on_refunds_eur"]) >= Decimal("5.00")
+    assert (month["awarded"], month["remaining"]) == ("0.00", "10.00")
+    assert Decimal(month["returned_on_refunds"]) >= Decimal("5.00")
 
 
 def test_returned_credit_can_be_spent_again(client, db_session, fake_stripe, refunds):
@@ -169,7 +169,7 @@ def test_returned_credit_can_be_spent_again(client, db_session, fake_stripe, ref
     booking, _other = _booking_with_gig(db_session, user_id, str(uuid.uuid4()), gig_status=GigStatus.payment_pending)
     resp = client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id)).json()
 
-    assert resp["credit_eur"] == "5.00"
+    assert resp["credit"] == "5.00"
 
 
 def test_a_booking_paid_without_credit_gets_none(client, db_session, fake_stripe, refunds):

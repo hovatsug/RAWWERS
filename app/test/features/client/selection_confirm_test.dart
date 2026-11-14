@@ -141,6 +141,7 @@ class _FakeBackend {
         'upsell_required': false,
         'difference_required': owes,
         'difference_amount': owes ? amountDue : null,
+        'currency': 'EUR',
         'difference_payment_intent_id': owes ? 'pi_1' : null,
         'difference_payment_intent_client_secret': owes ? 'sec_1' : null,
       };

@@ -573,3 +573,18 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 - **EUR defaults left for their batches:** price caps, the extra-image price policy and per-photographer extra prices, and `pro_public_index` (M4); BI tables (M5); dormant tables (store, prints, learning, Studioverse, repairs) stay EUR-only, as section 1.1 says.
 - **Left for M6** (Stripe-dependent): `DEFAULT_CONNECT_COUNTRY` still falls back to `PT` (a PT account is refused while EUR is off), the full service agreement and its column.
 - **Not yet done from 10.1:** the default time zone `Europe/London` (no behaviour changes; with M3).
+
+### M2: contract and apps (built 2026-11-14, high-risk: money display, contract)
+
+- **API:** every money value in a live response carries its currency, and no amount is named `_eur` (tests/test_currency_contract.py walks every response model of every live route and fails on either). Renamed with a `currency` beside them: the client's payment (`credit`, `amount`), the credit balance, history and checkout preview (`balance` with `credit_currency`; `discount`, `price`, `total` in the booking's `currency`), the marketing-credit budget (`budget`, `awarded`, `used`, `returned_on_refunds`, `outstanding`, `remaining`), the marketing consent credit (`credit_amount`). `currency` added to the selection submit, the add-on and legacy payment intents, a gig's ledger summary, the earnings summary and the photographer's profile (read-only). The balance carries the withdrawal minimum (`payout_minimum`), so the app no longer copies it.
+- **Client credit is in euros and pays for euro bookings only** (decision M3, ahead of M4): `reserve_points_for_discount` refuses another currency (`credit_currency_mismatch`), and the preview and the pay route offer no credit on a booking in pounds.
+- **A dispute is in its booking's currency**; the request no longer chooses it. The admin's photographer row shows the photographer's currency, not a EUR default.
+- **Emails:** a money line without a currency is left out, never shown as euros.
+- **Apps:** the API client regenerated from the schema (`make gen-api`); `RMoney` has no fallback (the currency is a required argument, so an amount without one does not compile); the four "€" literals are gone (the discover card and credit labels take the currency; the RAWW card and Shelf levels say EUR explicitly, as RAWW are valued in euros until M4); payout requests and the wallet use the balance's currency and minimum; packages are created without a currency (the server sets the photographer's).
+- **Web admin:** `money()` requires a currency; the payout queue, disputes and client credit pass the one the API sends; the Shelf pages pass EUR explicitly (`SHELF_VALUE_CURRENCY`).
+
+**Not as the design said, and why:**
+- The regenerated API client also picked up routes the committed client was missing (the email unsubscribe client and models, reordered gallery, review and notification clients): the client had not been regenerated since those routes were added. Nothing in the app uses them yet.
+- **Left as named per currency** (the suffix names the currency a setting is for; a `_gbp` twin comes with M4): `monthly_marketing_credit_budget_eur`, `min_conversion_value_eur`, `raww_eur_value`, `gbp_eur_rate`. The Shelf's amounts (off) and BI's cents (EUR by design) are M4 and M5.
+- **Client credit earned on a booking in pounds** is still counted in euro points: per-currency credit is M4, which comes before any app is distributed.
+- **The client's budget filter** (`ClientPreferenceView.budget_min/max`) has no currency yet: it is the display currency, batch M3.

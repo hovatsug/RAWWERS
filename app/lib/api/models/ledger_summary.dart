@@ -1,24 +1,26 @@
 /// LedgerSummary
 /// {
 ///     "properties": {
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
+///         },
 ///         "total_inflow": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Total Inflow"
 ///         },
 ///         "total_outflow": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Total Outflow"
 ///         },
 ///         "net": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Net"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
+///         "currency",
 ///         "total_inflow",
 ///         "total_outflow",
 ///         "net"
@@ -37,6 +39,9 @@ abstract class LedgerSummary with _$LedgerSummary {
 
   @jsonSerializable
   const factory LedgerSummary({
+    /// currency
+    @JsonKey(name: LedgerSummary.currencyKey_) required String currency,
+
     /// totalInflow
     @JsonKey(name: LedgerSummary.totalInflowKey_) required String totalInflow,
 
@@ -49,6 +54,8 @@ abstract class LedgerSummary with _$LedgerSummary {
 
   factory LedgerSummary.fromJson(Map<String, dynamic> json) =>
       _$LedgerSummaryFromJson(json);
+
+  static const String currencyKey_ = r'currency';
 
   static const String totalInflowKey_ = r'total_inflow';
 

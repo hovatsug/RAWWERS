@@ -396,9 +396,10 @@ class ClientBookingPayResponse(BaseModel):
     payment_intent_id: str
     payment_intent_client_secret: str
     mode: str
-    #: Credit taken off this payment, and what is charged.
-    credit_eur: Decimal = Decimal("0.00")
-    amount_eur: Decimal | None = None
+    #: Credit taken off this payment, and what is charged, in `currency`.
+    credit: Decimal = Decimal("0.00")
+    amount: Decimal | None = None
+    currency: str
 
 
 class ClientFunnelCityMetrics(BaseModel):

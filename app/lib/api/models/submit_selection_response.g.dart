@@ -19,6 +19,7 @@ _SubmitSelectionResponse _$SubmitSelectionResponseFromJson(
   paymentIntentClientSecret: json['payment_intent_client_secret'] as String?,
   differenceRequired: json['difference_required'] as bool? ?? false,
   differenceAmount: json['difference_amount'] as String?,
+  currency: json['currency'] as String,
   differencePaymentIntentId: json['difference_payment_intent_id'] as String?,
   differencePaymentIntentClientSecret:
       json['difference_payment_intent_client_secret'] as String?,
@@ -37,6 +38,7 @@ Map<String, dynamic> _$SubmitSelectionResponseToJson(
   'payment_intent_client_secret': instance.paymentIntentClientSecret,
   'difference_required': instance.differenceRequired,
   'difference_amount': instance.differenceAmount,
+  'currency': instance.currency,
   'difference_payment_intent_id': instance.differencePaymentIntentId,
   'difference_payment_intent_client_secret':
       instance.differencePaymentIntentClientSecret,

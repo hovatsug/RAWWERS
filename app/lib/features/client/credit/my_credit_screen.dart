@@ -27,7 +27,7 @@ class MyCreditScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.all(RSpace.s16),
                 children: [
-                  Text('${creditEuros(value.balanceEur)} credit', style: theme.textTheme.headlineMedium),
+                  Text('${creditAmount(value.balance, currency: value.currency)} credit', style: theme.textTheme.headlineMedium),
                   const SizedBox(height: RSpace.s8),
                   Text(
                     'Use it on your next booking, up to ${value.maxDiscountPercent}% of the payment.',
@@ -62,7 +62,7 @@ class MyCreditScreen extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         title: Text(creditLabel(item)),
                         subtitle: Text(RDates.of(context).date(item.createdAt)),
-                        trailing: Text(signedCreditEuros(item.amountEur), style: theme.textTheme.titleSmall),
+                        trailing: Text(signedCreditAmount(item.amount, currency: item.currency), style: theme.textTheme.titleSmall),
                       ),
                 ],
               ),

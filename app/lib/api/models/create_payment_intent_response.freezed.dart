@@ -20,7 +20,8 @@ mixin _$CreatePaymentIntentResponse {
 @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) String get paymentIntentId;/// status
 @JsonKey(name: CreatePaymentIntentResponse.statusKey_) String get status;/// discountAmount
 @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) String? get discountAmount;/// pointsSpent
-@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) int? get pointsSpent;
+@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) int? get pointsSpent;/// currency
+@JsonKey(name: CreatePaymentIntentResponse.currencyKey_) String get currency;
 /// Create a copy of CreatePaymentIntentResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -33,16 +34,16 @@ $CreatePaymentIntentResponseCopyWith<CreatePaymentIntentResponse> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatePaymentIntentResponse&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatePaymentIntentResponse&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,paymentIntentClientSecret,paymentIntentId,status,discountAmount,pointsSpent);
+int get hashCode => Object.hash(runtimeType,paymentIntentClientSecret,paymentIntentId,status,discountAmount,pointsSpent,currency);
 
 @override
 String toString() {
-  return 'CreatePaymentIntentResponse(paymentIntentClientSecret: $paymentIntentClientSecret, paymentIntentId: $paymentIntentId, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent)';
+  return 'CreatePaymentIntentResponse(paymentIntentClientSecret: $paymentIntentClientSecret, paymentIntentId: $paymentIntentId, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent, currency: $currency)';
 }
 
 
@@ -53,7 +54,7 @@ abstract mixin class $CreatePaymentIntentResponseCopyWith<$Res>  {
   factory $CreatePaymentIntentResponseCopyWith(CreatePaymentIntentResponse value, $Res Function(CreatePaymentIntentResponse) _then) = _$CreatePaymentIntentResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: CreatePaymentIntentResponse.statusKey_) String status,@JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) int? pointsSpent
+@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: CreatePaymentIntentResponse.statusKey_) String status,@JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) int? pointsSpent,@JsonKey(name: CreatePaymentIntentResponse.currencyKey_) String currency
 });
 
 
@@ -70,14 +71,15 @@ class _$CreatePaymentIntentResponseCopyWithImpl<$Res>
 
 /// Create a copy of CreatePaymentIntentResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? paymentIntentClientSecret = null,Object? paymentIntentId = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? paymentIntentClientSecret = null,Object? paymentIntentId = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,Object? currency = null,}) {
   return _then(_self.copyWith(
 paymentIntentClientSecret: null == paymentIntentClientSecret ? _self.paymentIntentClientSecret : paymentIntentClientSecret // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentId: null == paymentIntentId ? _self.paymentIntentId : paymentIntentId // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as String,discountAmount: freezed == discountAmount ? _self.discountAmount : discountAmount // ignore: cast_nullable_to_non_nullable
 as String?,pointsSpent: freezed == pointsSpent ? _self.pointsSpent : pointsSpent // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -162,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_)  String status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)  int? pointsSpent)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_)  String status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)  int? pointsSpent, @JsonKey(name: CreatePaymentIntentResponse.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreatePaymentIntentResponse() when $default != null:
-return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.status,_that.discountAmount,_that.pointsSpent);case _:
+return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.status,_that.discountAmount,_that.pointsSpent,_that.currency);case _:
   return orElse();
 
 }
@@ -183,10 +185,10 @@ return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.stat
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_)  String status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)  int? pointsSpent)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_)  String status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)  int? pointsSpent, @JsonKey(name: CreatePaymentIntentResponse.currencyKey_)  String currency)  $default,) {final _that = this;
 switch (_that) {
 case _CreatePaymentIntentResponse():
-return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.status,_that.discountAmount,_that.pointsSpent);case _:
+return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.status,_that.discountAmount,_that.pointsSpent,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +205,10 @@ return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.stat
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_)  String status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)  int? pointsSpent)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_)  String status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_)  int? pointsSpent, @JsonKey(name: CreatePaymentIntentResponse.currencyKey_)  String currency)?  $default,) {final _that = this;
 switch (_that) {
 case _CreatePaymentIntentResponse() when $default != null:
-return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.status,_that.discountAmount,_that.pointsSpent);case _:
+return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.status,_that.discountAmount,_that.pointsSpent,_that.currency);case _:
   return null;
 
 }
@@ -218,7 +220,7 @@ return $default(_that.paymentIntentClientSecret,_that.paymentIntentId,_that.stat
 
 @jsonSerializable
 class _CreatePaymentIntentResponse extends CreatePaymentIntentResponse {
-  const _CreatePaymentIntentResponse({@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_) required this.paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) required this.paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_) required this.status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) this.discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) this.pointsSpent}): super._();
+  const _CreatePaymentIntentResponse({@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_) required this.paymentIntentClientSecret, @JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) required this.paymentIntentId, @JsonKey(name: CreatePaymentIntentResponse.statusKey_) required this.status, @JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) this.discountAmount, @JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) this.pointsSpent, @JsonKey(name: CreatePaymentIntentResponse.currencyKey_) required this.currency}): super._();
   factory _CreatePaymentIntentResponse.fromJson(Map<String, dynamic> json) => _$CreatePaymentIntentResponseFromJson(json);
 
 /// paymentIntentClientSecret
@@ -231,6 +233,8 @@ class _CreatePaymentIntentResponse extends CreatePaymentIntentResponse {
 @override@JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) final  String? discountAmount;
 /// pointsSpent
 @override@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) final  int? pointsSpent;
+/// currency
+@override@JsonKey(name: CreatePaymentIntentResponse.currencyKey_) final  String currency;
 
 /// Create a copy of CreatePaymentIntentResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreatePaymentIntentResponse&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreatePaymentIntentResponse&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,paymentIntentClientSecret,paymentIntentId,status,discountAmount,pointsSpent);
+int get hashCode => Object.hash(runtimeType,paymentIntentClientSecret,paymentIntentId,status,discountAmount,pointsSpent,currency);
 
 @override
 String toString() {
-  return 'CreatePaymentIntentResponse(paymentIntentClientSecret: $paymentIntentClientSecret, paymentIntentId: $paymentIntentId, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent)';
+  return 'CreatePaymentIntentResponse(paymentIntentClientSecret: $paymentIntentClientSecret, paymentIntentId: $paymentIntentId, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent, currency: $currency)';
 }
 
 
@@ -265,7 +269,7 @@ abstract mixin class _$CreatePaymentIntentResponseCopyWith<$Res> implements $Cre
   factory _$CreatePaymentIntentResponseCopyWith(_CreatePaymentIntentResponse value, $Res Function(_CreatePaymentIntentResponse) _then) = __$CreatePaymentIntentResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: CreatePaymentIntentResponse.statusKey_) String status,@JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) int? pointsSpent
+@JsonKey(name: CreatePaymentIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: CreatePaymentIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: CreatePaymentIntentResponse.statusKey_) String status,@JsonKey(name: CreatePaymentIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: CreatePaymentIntentResponse.pointsSpentKey_) int? pointsSpent,@JsonKey(name: CreatePaymentIntentResponse.currencyKey_) String currency
 });
 
 
@@ -282,14 +286,15 @@ class __$CreatePaymentIntentResponseCopyWithImpl<$Res>
 
 /// Create a copy of CreatePaymentIntentResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? paymentIntentClientSecret = null,Object? paymentIntentId = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? paymentIntentClientSecret = null,Object? paymentIntentId = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,Object? currency = null,}) {
   return _then(_CreatePaymentIntentResponse(
 paymentIntentClientSecret: null == paymentIntentClientSecret ? _self.paymentIntentClientSecret : paymentIntentClientSecret // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentId: null == paymentIntentId ? _self.paymentIntentId : paymentIntentId // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as String,discountAmount: freezed == discountAmount ? _self.discountAmount : discountAmount // ignore: cast_nullable_to_non_nullable
 as String?,pointsSpent: freezed == pointsSpent ? _self.pointsSpent : pointsSpent // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

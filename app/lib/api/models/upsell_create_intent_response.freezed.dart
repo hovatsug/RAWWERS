@@ -21,7 +21,8 @@ mixin _$UpsellCreateIntentResponse {
 @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) String get paymentIntentClientSecret;/// status
 @JsonKey(name: UpsellCreateIntentResponse.statusKey_) UpsellPurchaseStatus get status;/// discountAmount
 @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) String? get discountAmount;/// pointsSpent
-@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? get pointsSpent;
+@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? get pointsSpent;/// currency
+@JsonKey(name: UpsellCreateIntentResponse.currencyKey_) String get currency;
 /// Create a copy of UpsellCreateIntentResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -34,16 +35,16 @@ $UpsellCreateIntentResponseCopyWith<UpsellCreateIntentResponse> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpsellCreateIntentResponse&&(identical(other.purchaseId, purchaseId) || other.purchaseId == purchaseId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpsellCreateIntentResponse&&(identical(other.purchaseId, purchaseId) || other.purchaseId == purchaseId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,purchaseId,paymentIntentId,paymentIntentClientSecret,status,discountAmount,pointsSpent);
+int get hashCode => Object.hash(runtimeType,purchaseId,paymentIntentId,paymentIntentClientSecret,status,discountAmount,pointsSpent,currency);
 
 @override
 String toString() {
-  return 'UpsellCreateIntentResponse(purchaseId: $purchaseId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent)';
+  return 'UpsellCreateIntentResponse(purchaseId: $purchaseId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent, currency: $currency)';
 }
 
 
@@ -54,7 +55,7 @@ abstract mixin class $UpsellCreateIntentResponseCopyWith<$Res>  {
   factory $UpsellCreateIntentResponseCopyWith(UpsellCreateIntentResponse value, $Res Function(UpsellCreateIntentResponse) _then) = _$UpsellCreateIntentResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_) String purchaseId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: UpsellCreateIntentResponse.statusKey_) UpsellPurchaseStatus status,@JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? pointsSpent
+@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_) String purchaseId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: UpsellCreateIntentResponse.statusKey_) UpsellPurchaseStatus status,@JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? pointsSpent,@JsonKey(name: UpsellCreateIntentResponse.currencyKey_) String currency
 });
 
 
@@ -71,7 +72,7 @@ class _$UpsellCreateIntentResponseCopyWithImpl<$Res>
 
 /// Create a copy of UpsellCreateIntentResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? purchaseId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? purchaseId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,Object? currency = null,}) {
   return _then(_self.copyWith(
 purchaseId: null == purchaseId ? _self.purchaseId : purchaseId // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentId: null == paymentIntentId ? _self.paymentIntentId : paymentIntentId // ignore: cast_nullable_to_non_nullable
@@ -79,7 +80,8 @@ as String,paymentIntentClientSecret: null == paymentIntentClientSecret ? _self.p
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as UpsellPurchaseStatus,discountAmount: freezed == discountAmount ? _self.discountAmount : discountAmount // ignore: cast_nullable_to_non_nullable
 as String?,pointsSpent: freezed == pointsSpent ? _self.pointsSpent : pointsSpent // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -164,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_)  String purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_)  UpsellPurchaseStatus status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_)  int? pointsSpent)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_)  String purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_)  UpsellPurchaseStatus status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_)  int? pointsSpent, @JsonKey(name: UpsellCreateIntentResponse.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UpsellCreateIntentResponse() when $default != null:
-return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.status,_that.discountAmount,_that.pointsSpent);case _:
+return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.status,_that.discountAmount,_that.pointsSpent,_that.currency);case _:
   return orElse();
 
 }
@@ -185,10 +187,10 @@ return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClient
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_)  String purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_)  UpsellPurchaseStatus status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_)  int? pointsSpent)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_)  String purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_)  UpsellPurchaseStatus status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_)  int? pointsSpent, @JsonKey(name: UpsellCreateIntentResponse.currencyKey_)  String currency)  $default,) {final _that = this;
 switch (_that) {
 case _UpsellCreateIntentResponse():
-return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.status,_that.discountAmount,_that.pointsSpent);case _:
+return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.status,_that.discountAmount,_that.pointsSpent,_that.currency);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +207,10 @@ return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClient
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_)  String purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_)  UpsellPurchaseStatus status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_)  int? pointsSpent)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_)  String purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_)  String paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_)  String paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_)  UpsellPurchaseStatus status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_)  String? discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_)  int? pointsSpent, @JsonKey(name: UpsellCreateIntentResponse.currencyKey_)  String currency)?  $default,) {final _that = this;
 switch (_that) {
 case _UpsellCreateIntentResponse() when $default != null:
-return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.status,_that.discountAmount,_that.pointsSpent);case _:
+return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClientSecret,_that.status,_that.discountAmount,_that.pointsSpent,_that.currency);case _:
   return null;
 
 }
@@ -220,7 +222,7 @@ return $default(_that.purchaseId,_that.paymentIntentId,_that.paymentIntentClient
 
 @jsonSerializable
 class _UpsellCreateIntentResponse extends UpsellCreateIntentResponse {
-  const _UpsellCreateIntentResponse({@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_) required this.purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_) required this.paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) required this.paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_) required this.status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) this.discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) this.pointsSpent}): super._();
+  const _UpsellCreateIntentResponse({@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_) required this.purchaseId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_) required this.paymentIntentId, @JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) required this.paymentIntentClientSecret, @JsonKey(name: UpsellCreateIntentResponse.statusKey_) required this.status, @JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) this.discountAmount, @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) this.pointsSpent, @JsonKey(name: UpsellCreateIntentResponse.currencyKey_) required this.currency}): super._();
   factory _UpsellCreateIntentResponse.fromJson(Map<String, dynamic> json) => _$UpsellCreateIntentResponseFromJson(json);
 
 /// purchaseId
@@ -235,6 +237,8 @@ class _UpsellCreateIntentResponse extends UpsellCreateIntentResponse {
 @override@JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) final  String? discountAmount;
 /// pointsSpent
 @override@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) final  int? pointsSpent;
+/// currency
+@override@JsonKey(name: UpsellCreateIntentResponse.currencyKey_) final  String currency;
 
 /// Create a copy of UpsellCreateIntentResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -249,16 +253,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpsellCreateIntentResponse&&(identical(other.purchaseId, purchaseId) || other.purchaseId == purchaseId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpsellCreateIntentResponse&&(identical(other.purchaseId, purchaseId) || other.purchaseId == purchaseId)&&(identical(other.paymentIntentId, paymentIntentId) || other.paymentIntentId == paymentIntentId)&&(identical(other.paymentIntentClientSecret, paymentIntentClientSecret) || other.paymentIntentClientSecret == paymentIntentClientSecret)&&(identical(other.status, status) || other.status == status)&&(identical(other.discountAmount, discountAmount) || other.discountAmount == discountAmount)&&(identical(other.pointsSpent, pointsSpent) || other.pointsSpent == pointsSpent)&&(identical(other.currency, currency) || other.currency == currency));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,purchaseId,paymentIntentId,paymentIntentClientSecret,status,discountAmount,pointsSpent);
+int get hashCode => Object.hash(runtimeType,purchaseId,paymentIntentId,paymentIntentClientSecret,status,discountAmount,pointsSpent,currency);
 
 @override
 String toString() {
-  return 'UpsellCreateIntentResponse(purchaseId: $purchaseId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent)';
+  return 'UpsellCreateIntentResponse(purchaseId: $purchaseId, paymentIntentId: $paymentIntentId, paymentIntentClientSecret: $paymentIntentClientSecret, status: $status, discountAmount: $discountAmount, pointsSpent: $pointsSpent, currency: $currency)';
 }
 
 
@@ -269,7 +273,7 @@ abstract mixin class _$UpsellCreateIntentResponseCopyWith<$Res> implements $Upse
   factory _$UpsellCreateIntentResponseCopyWith(_UpsellCreateIntentResponse value, $Res Function(_UpsellCreateIntentResponse) _then) = __$UpsellCreateIntentResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_) String purchaseId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: UpsellCreateIntentResponse.statusKey_) UpsellPurchaseStatus status,@JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? pointsSpent
+@JsonKey(name: UpsellCreateIntentResponse.purchaseIdKey_) String purchaseId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentIdKey_) String paymentIntentId,@JsonKey(name: UpsellCreateIntentResponse.paymentIntentClientSecretKey_) String paymentIntentClientSecret,@JsonKey(name: UpsellCreateIntentResponse.statusKey_) UpsellPurchaseStatus status,@JsonKey(name: UpsellCreateIntentResponse.discountAmountKey_) String? discountAmount,@JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? pointsSpent,@JsonKey(name: UpsellCreateIntentResponse.currencyKey_) String currency
 });
 
 
@@ -286,7 +290,7 @@ class __$UpsellCreateIntentResponseCopyWithImpl<$Res>
 
 /// Create a copy of UpsellCreateIntentResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? purchaseId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? purchaseId = null,Object? paymentIntentId = null,Object? paymentIntentClientSecret = null,Object? status = null,Object? discountAmount = freezed,Object? pointsSpent = freezed,Object? currency = null,}) {
   return _then(_UpsellCreateIntentResponse(
 purchaseId: null == purchaseId ? _self.purchaseId : purchaseId // ignore: cast_nullable_to_non_nullable
 as String,paymentIntentId: null == paymentIntentId ? _self.paymentIntentId : paymentIntentId // ignore: cast_nullable_to_non_nullable
@@ -294,7 +298,8 @@ as String,paymentIntentClientSecret: null == paymentIntentClientSecret ? _self.p
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as UpsellPurchaseStatus,discountAmount: freezed == discountAmount ? _self.discountAmount : discountAmount // ignore: cast_nullable_to_non_nullable
 as String?,pointsSpent: freezed == pointsSpent ? _self.pointsSpent : pointsSpent // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

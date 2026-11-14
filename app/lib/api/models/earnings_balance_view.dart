@@ -1,66 +1,67 @@
 /// EarningsBalanceView
 /// {
 ///     "properties": {
-///         "pending_eur": {
+///         "currency": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Pending Eur"
+///             "title": "Currency"
 ///         },
-///         "available_eur": {
+///         "pending": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Available Eur"
+///             "title": "Pending"
 ///         },
-///         "held_eur": {
+///         "available": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Held Eur"
+///             "title": "Available"
 ///         },
-///         "requested_eur": {
+///         "held": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+///             "title": "Held"
+///         },
+///         "requested": {
+///             "type": "string",
 ///             "default": "0.00",
-///             "title": "Requested Eur"
+///             "title": "Requested"
 ///         },
-///         "reserved_eur": {
+///         "reserved": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Reserved Eur"
+///             "title": "Reserved"
 ///         },
-///         "paid_out_eur": {
+///         "paid_out": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "default": "0.00",
-///             "title": "Paid Out Eur"
+///             "title": "Paid Out"
 ///         },
-///         "lifetime_eur": {
+///         "lifetime": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "default": "0.00",
-///             "title": "Lifetime Eur"
+///             "title": "Lifetime"
 ///         },
-///         "withdrawable_eur": {
+///         "withdrawable": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Withdrawable Eur"
+///             "title": "Withdrawable"
 ///         },
-///         "adjustment_owed_eur": {
+///         "adjustment_owed": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "default": "0.00",
-///             "title": "Adjustment Owed Eur"
+///             "title": "Adjustment Owed"
+///         },
+///         "payout_minimum": {
+///             "type": "string",
+///             "title": "Payout Minimum"
 ///         }
 ///     },
 ///     "type": "object",
 ///     "required": [
-///         "pending_eur",
-///         "available_eur",
-///         "held_eur",
-///         "reserved_eur",
-///         "withdrawable_eur"
+///         "currency",
+///         "pending",
+///         "available",
+///         "held",
+///         "reserved",
+///         "withdrawable",
+///         "payout_minimum"
 ///     ],
 ///     "title": "EarningsBalanceView",
-///     "description": "available + requested + reserved + paid_out + pending + held == lifetime, always.\n\n`available_eur` is the real figure and may be negative - money paid out\nthat a later refund took back. A photographer's screen shows\n`withdrawable_eur` (never below 0) and `adjustment_owed_eur` instead."
+///     "description": "available + requested + reserved + paid_out + pending + held == lifetime, always.\n\n`available` is the real figure and may be negative - money paid out\nthat a later refund took back. A photographer's screen shows\n`withdrawable` (never below 0) and `adjustment_owed` instead.\n\nEvery amount is in `currency`, the photographer's one currency."
 /// }
 library earnings_balance_view;
 
@@ -74,64 +75,72 @@ abstract class EarningsBalanceView with _$EarningsBalanceView {
 
   @jsonSerializable
   const factory EarningsBalanceView({
-    /// pendingEur
-    @JsonKey(name: EarningsBalanceView.pendingEurKey_)
-    required String pendingEur,
+    /// currency
+    @JsonKey(name: EarningsBalanceView.currencyKey_) required String currency,
 
-    /// availableEur
-    @JsonKey(name: EarningsBalanceView.availableEurKey_)
-    required String availableEur,
+    /// pending
+    @JsonKey(name: EarningsBalanceView.pendingKey_) required String pending,
 
-    /// heldEur
-    @JsonKey(name: EarningsBalanceView.heldEurKey_) required String heldEur,
+    /// available
+    @JsonKey(name: EarningsBalanceView.availableKey_) required String available,
 
-    /// requestedEur
+    /// held
+    @JsonKey(name: EarningsBalanceView.heldKey_) required String held,
+
+    /// requested
     @Default('0.00')
-    @JsonKey(name: EarningsBalanceView.requestedEurKey_)
-    String requestedEur,
+    @JsonKey(name: EarningsBalanceView.requestedKey_)
+    String requested,
 
-    /// reservedEur
-    @JsonKey(name: EarningsBalanceView.reservedEurKey_)
-    required String reservedEur,
+    /// reserved
+    @JsonKey(name: EarningsBalanceView.reservedKey_) required String reserved,
 
-    /// paidOutEur
+    /// paidOut
     @Default('0.00')
-    @JsonKey(name: EarningsBalanceView.paidOutEurKey_)
-    String paidOutEur,
+    @JsonKey(name: EarningsBalanceView.paidOutKey_)
+    String paidOut,
 
-    /// lifetimeEur
+    /// lifetime
     @Default('0.00')
-    @JsonKey(name: EarningsBalanceView.lifetimeEurKey_)
-    String lifetimeEur,
+    @JsonKey(name: EarningsBalanceView.lifetimeKey_)
+    String lifetime,
 
-    /// withdrawableEur
-    @JsonKey(name: EarningsBalanceView.withdrawableEurKey_)
-    required String withdrawableEur,
+    /// withdrawable
+    @JsonKey(name: EarningsBalanceView.withdrawableKey_)
+    required String withdrawable,
 
-    /// adjustmentOwedEur
+    /// adjustmentOwed
     @Default('0.00')
-    @JsonKey(name: EarningsBalanceView.adjustmentOwedEurKey_)
-    String adjustmentOwedEur,
+    @JsonKey(name: EarningsBalanceView.adjustmentOwedKey_)
+    String adjustmentOwed,
+
+    /// payoutMinimum
+    @JsonKey(name: EarningsBalanceView.payoutMinimumKey_)
+    required String payoutMinimum,
   }) = _EarningsBalanceView;
 
   factory EarningsBalanceView.fromJson(Map<String, dynamic> json) =>
       _$EarningsBalanceViewFromJson(json);
 
-  static const String pendingEurKey_ = r'pending_eur';
+  static const String currencyKey_ = r'currency';
 
-  static const String availableEurKey_ = r'available_eur';
+  static const String pendingKey_ = r'pending';
 
-  static const String heldEurKey_ = r'held_eur';
+  static const String availableKey_ = r'available';
 
-  static const String requestedEurKey_ = r'requested_eur';
+  static const String heldKey_ = r'held';
 
-  static const String reservedEurKey_ = r'reserved_eur';
+  static const String requestedKey_ = r'requested';
 
-  static const String paidOutEurKey_ = r'paid_out_eur';
+  static const String reservedKey_ = r'reserved';
 
-  static const String lifetimeEurKey_ = r'lifetime_eur';
+  static const String paidOutKey_ = r'paid_out';
 
-  static const String withdrawableEurKey_ = r'withdrawable_eur';
+  static const String lifetimeKey_ = r'lifetime';
 
-  static const String adjustmentOwedEurKey_ = r'adjustment_owed_eur';
+  static const String withdrawableKey_ = r'withdrawable';
+
+  static const String adjustmentOwedKey_ = r'adjustment_owed';
+
+  static const String payoutMinimumKey_ = r'payout_minimum';
 }

@@ -131,7 +131,8 @@ class _EditorState extends ConsumerState<_Editor> {
                 // Never phrased as a failing. Zero is a normal choice and the
                 // client is never told a photographer gives nothing.
                 ? 'You keep your full payment.'
-                : 'On a ${RMoney.of(context).format('1000')} booking your client gets ${RMoney.of(context).format('${_percent * 10}')} in credit.',
+                : 'On a ${RMoney.of(context).format('1000', currency: widget.profile.currency)} booking your client gets '
+                    '${RMoney.of(context).format('${_percent * 10}', currency: widget.profile.currency)} in credit.',
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           if (_error != null) ...[

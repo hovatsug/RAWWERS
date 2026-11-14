@@ -129,7 +129,7 @@ def get_gig(
     return GigDetailResponse(
         gig=_gig_response(gig),
         payment=payment_summary,
-        ledger_summary=LedgerSummary(total_inflow=sums[0], total_outflow=sums[1], net=sums[2]),
+        ledger_summary=LedgerSummary(currency=gig.currency, total_inflow=sums[0], total_outflow=sums[1], net=sums[2]),
     )
 
 
@@ -211,6 +211,7 @@ def create_payment_intent(
         payment_intent_client_secret=pi.client_secret,
         payment_intent_id=pi.id,
         status=pi.status,
+        currency=gig.currency,
         discount_amount=points_redemption.discount_amount if points_redemption else None,
         points_spent=points_redemption.points_spent if points_redemption else None,
     )

@@ -95,19 +95,19 @@ class _Balance extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(money.format(balance.withdrawableEur), style: theme.textTheme.headlineSmall),
+          Text(money.format(balance.withdrawable, currency: balance.currency), style: theme.textTheme.headlineSmall),
           Text('ready to withdraw', style: theme.textTheme.bodySmall),
           const Divider(height: RSpace.s24),
-          _Line(label: 'Earned, still settling', value: money.format(balance.pendingEur)),
+          _Line(label: 'Earned, still settling', value: money.format(balance.pending, currency: balance.currency)),
           const SizedBox(height: RSpace.s4),
           // "Pending" should read as when, not whether.
           Text(
             'Money from a finished shoot settles before it can be withdrawn.',
             style: theme.textTheme.bodySmall,
           ),
-          if (balance.heldEur != '0.00') ...[
+          if (balance.held != '0.00') ...[
             const SizedBox(height: RSpace.s12),
-            _Line(label: 'On hold', value: money.format(balance.heldEur)),
+            _Line(label: 'On hold', value: money.format(balance.held, currency: balance.currency)),
           ],
         ],
       ),

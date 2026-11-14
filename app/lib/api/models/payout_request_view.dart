@@ -11,10 +11,13 @@
 ///             "format": "uuid",
 ///             "title": "Pro User Id"
 ///         },
-///         "amount_eur": {
+///         "currency": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-///             "title": "Amount Eur"
+///             "title": "Currency"
+///         },
+///         "amount": {
+///             "type": "string",
+///             "title": "Amount"
 ///         },
 ///         "status": {
 ///             "$ref": "#/components/schemas/PayoutRequestStatus"
@@ -90,7 +93,8 @@
 ///     "required": [
 ///         "id",
 ///         "pro_user_id",
-///         "amount_eur",
+///         "currency",
+///         "amount",
 ///         "status",
 ///         "requested_at",
 ///         "created_at",
@@ -116,8 +120,11 @@ abstract class PayoutRequestView with _$PayoutRequestView {
     /// proUserId
     @JsonKey(name: PayoutRequestView.proUserIdKey_) required String proUserId,
 
-    /// amountEur
-    @JsonKey(name: PayoutRequestView.amountEurKey_) required String amountEur,
+    /// currency
+    @JsonKey(name: PayoutRequestView.currencyKey_) required String currency,
+
+    /// amount
+    @JsonKey(name: PayoutRequestView.amountKey_) required String amount,
 
     /// status
     @JsonKey(name: PayoutRequestView.statusKey_)
@@ -158,7 +165,9 @@ abstract class PayoutRequestView with _$PayoutRequestView {
 
   static const String proUserIdKey_ = r'pro_user_id';
 
-  static const String amountEurKey_ = r'amount_eur';
+  static const String currencyKey_ = r'currency';
+
+  static const String amountKey_ = r'amount';
 
   static const String statusKey_ = r'status';
 

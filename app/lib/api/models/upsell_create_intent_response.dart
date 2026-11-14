@@ -20,8 +20,7 @@
 ///         "discount_amount": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -39,6 +38,10 @@
 ///                 }
 ///             ],
 ///             "title": "Points Spent"
+///         },
+///         "currency": {
+///             "type": "string",
+///             "title": "Currency"
 ///         }
 ///     },
 ///     "type": "object",
@@ -46,7 +49,8 @@
 ///         "purchase_id",
 ///         "payment_intent_id",
 ///         "payment_intent_client_secret",
-///         "status"
+///         "status",
+///         "currency"
 ///     ],
 ///     "title": "UpsellCreateIntentResponse"
 /// }
@@ -84,6 +88,10 @@ abstract class UpsellCreateIntentResponse with _$UpsellCreateIntentResponse {
 
     /// pointsSpent
     @JsonKey(name: UpsellCreateIntentResponse.pointsSpentKey_) int? pointsSpent,
+
+    /// currency
+    @JsonKey(name: UpsellCreateIntentResponse.currencyKey_)
+    required String currency,
   }) = _UpsellCreateIntentResponse;
 
   factory UpsellCreateIntentResponse.fromJson(Map<String, dynamic> json) =>
@@ -101,4 +109,6 @@ abstract class UpsellCreateIntentResponse with _$UpsellCreateIntentResponse {
   static const String discountAmountKey_ = r'discount_amount';
 
   static const String pointsSpentKey_ = r'points_spent';
+
+  static const String currencyKey_ = r'currency';
 }

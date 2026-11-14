@@ -37,7 +37,6 @@
 ///         },
 ///         "price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Price"
 ///         },
 ///         "currency": {
@@ -50,7 +49,6 @@
 ///         },
 ///         "extra_photo_price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Extra Photo Price"
 ///         },
 ///         "proofs_sla_days": {

@@ -17,8 +17,9 @@ mixin _$PayoutRequestView {
 
 /// id
 @JsonKey(name: PayoutRequestView.idKey_) String get id;/// proUserId
-@JsonKey(name: PayoutRequestView.proUserIdKey_) String get proUserId;/// amountEur
-@JsonKey(name: PayoutRequestView.amountEurKey_) String get amountEur;/// status
+@JsonKey(name: PayoutRequestView.proUserIdKey_) String get proUserId;/// currency
+@JsonKey(name: PayoutRequestView.currencyKey_) String get currency;/// amount
+@JsonKey(name: PayoutRequestView.amountKey_) String get amount;/// status
 @JsonKey(name: PayoutRequestView.statusKey_) PayoutRequestStatus get status;/// requestedAt
 @JsonKey(name: PayoutRequestView.requestedAtKey_) DateTime get requestedAt;/// approvedByAdminId
 @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) String? get approvedByAdminId;/// approvedAt
@@ -40,16 +41,16 @@ $PayoutRequestViewCopyWith<PayoutRequestView> get copyWith => _$PayoutRequestVie
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PayoutRequestView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.amountEur, amountEur) || other.amountEur == amountEur)&&(identical(other.status, status) || other.status == status)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.approvedByAdminId, approvedByAdminId) || other.approvedByAdminId == approvedByAdminId)&&(identical(other.approvedAt, approvedAt) || other.approvedAt == approvedAt)&&(identical(other.paidAt, paidAt) || other.paidAt == paidAt)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason)&&const DeepCollectionEquality().equals(other.reference, reference)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PayoutRequestView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.status, status) || other.status == status)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.approvedByAdminId, approvedByAdminId) || other.approvedByAdminId == approvedByAdminId)&&(identical(other.approvedAt, approvedAt) || other.approvedAt == approvedAt)&&(identical(other.paidAt, paidAt) || other.paidAt == paidAt)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason)&&const DeepCollectionEquality().equals(other.reference, reference)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,amountEur,status,requestedAt,approvedByAdminId,approvedAt,paidAt,failureReason,const DeepCollectionEquality().hash(reference),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,proUserId,currency,amount,status,requestedAt,approvedByAdminId,approvedAt,paidAt,failureReason,const DeepCollectionEquality().hash(reference),createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'PayoutRequestView(id: $id, proUserId: $proUserId, amountEur: $amountEur, status: $status, requestedAt: $requestedAt, approvedByAdminId: $approvedByAdminId, approvedAt: $approvedAt, paidAt: $paidAt, failureReason: $failureReason, reference: $reference, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'PayoutRequestView(id: $id, proUserId: $proUserId, currency: $currency, amount: $amount, status: $status, requestedAt: $requestedAt, approvedByAdminId: $approvedByAdminId, approvedAt: $approvedAt, paidAt: $paidAt, failureReason: $failureReason, reference: $reference, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -60,7 +61,7 @@ abstract mixin class $PayoutRequestViewCopyWith<$Res>  {
   factory $PayoutRequestViewCopyWith(PayoutRequestView value, $Res Function(PayoutRequestView) _then) = _$PayoutRequestViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: PayoutRequestView.idKey_) String id,@JsonKey(name: PayoutRequestView.proUserIdKey_) String proUserId,@JsonKey(name: PayoutRequestView.amountEurKey_) String amountEur,@JsonKey(name: PayoutRequestView.statusKey_) PayoutRequestStatus status,@JsonKey(name: PayoutRequestView.requestedAtKey_) DateTime requestedAt,@JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) String? approvedByAdminId,@JsonKey(name: PayoutRequestView.approvedAtKey_) DateTime? approvedAt,@JsonKey(name: PayoutRequestView.paidAtKey_) DateTime? paidAt,@JsonKey(name: PayoutRequestView.failureReasonKey_) String? failureReason,@JsonKey(name: PayoutRequestView.referenceKey_) Map<String, dynamic>? reference,@JsonKey(name: PayoutRequestView.createdAtKey_) DateTime createdAt,@JsonKey(name: PayoutRequestView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: PayoutRequestView.idKey_) String id,@JsonKey(name: PayoutRequestView.proUserIdKey_) String proUserId,@JsonKey(name: PayoutRequestView.currencyKey_) String currency,@JsonKey(name: PayoutRequestView.amountKey_) String amount,@JsonKey(name: PayoutRequestView.statusKey_) PayoutRequestStatus status,@JsonKey(name: PayoutRequestView.requestedAtKey_) DateTime requestedAt,@JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) String? approvedByAdminId,@JsonKey(name: PayoutRequestView.approvedAtKey_) DateTime? approvedAt,@JsonKey(name: PayoutRequestView.paidAtKey_) DateTime? paidAt,@JsonKey(name: PayoutRequestView.failureReasonKey_) String? failureReason,@JsonKey(name: PayoutRequestView.referenceKey_) Map<String, dynamic>? reference,@JsonKey(name: PayoutRequestView.createdAtKey_) DateTime createdAt,@JsonKey(name: PayoutRequestView.updatedAtKey_) DateTime updatedAt
 });
 
 
@@ -77,11 +78,12 @@ class _$PayoutRequestViewCopyWithImpl<$Res>
 
 /// Create a copy of PayoutRequestView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? amountEur = null,Object? status = null,Object? requestedAt = null,Object? approvedByAdminId = freezed,Object? approvedAt = freezed,Object? paidAt = freezed,Object? failureReason = freezed,Object? reference = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? proUserId = null,Object? currency = null,Object? amount = null,Object? status = null,Object? requestedAt = null,Object? approvedByAdminId = freezed,Object? approvedAt = freezed,Object? paidAt = freezed,Object? failureReason = freezed,Object? reference = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
-as String,amountEur: null == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PayoutRequestStatus,requestedAt: null == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,approvedByAdminId: freezed == approvedByAdminId ? _self.approvedByAdminId : approvedByAdminId // ignore: cast_nullable_to_non_nullable
@@ -176,10 +178,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestView.idKey_)  String id, @JsonKey(name: PayoutRequestView.proUserIdKey_)  String proUserId, @JsonKey(name: PayoutRequestView.amountEurKey_)  String amountEur, @JsonKey(name: PayoutRequestView.statusKey_)  PayoutRequestStatus status, @JsonKey(name: PayoutRequestView.requestedAtKey_)  DateTime requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_)  String? approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_)  DateTime? approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_)  DateTime? paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_)  String? failureReason, @JsonKey(name: PayoutRequestView.referenceKey_)  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_)  DateTime createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestView.idKey_)  String id, @JsonKey(name: PayoutRequestView.proUserIdKey_)  String proUserId, @JsonKey(name: PayoutRequestView.currencyKey_)  String currency, @JsonKey(name: PayoutRequestView.amountKey_)  String amount, @JsonKey(name: PayoutRequestView.statusKey_)  PayoutRequestStatus status, @JsonKey(name: PayoutRequestView.requestedAtKey_)  DateTime requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_)  String? approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_)  DateTime? approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_)  DateTime? paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_)  String? failureReason, @JsonKey(name: PayoutRequestView.referenceKey_)  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_)  DateTime createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_)  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PayoutRequestView() when $default != null:
-return $default(_that.id,_that.proUserId,_that.amountEur,_that.status,_that.requestedAt,_that.approvedByAdminId,_that.approvedAt,_that.paidAt,_that.failureReason,_that.reference,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.proUserId,_that.currency,_that.amount,_that.status,_that.requestedAt,_that.approvedByAdminId,_that.approvedAt,_that.paidAt,_that.failureReason,_that.reference,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -197,10 +199,10 @@ return $default(_that.id,_that.proUserId,_that.amountEur,_that.status,_that.requ
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestView.idKey_)  String id, @JsonKey(name: PayoutRequestView.proUserIdKey_)  String proUserId, @JsonKey(name: PayoutRequestView.amountEurKey_)  String amountEur, @JsonKey(name: PayoutRequestView.statusKey_)  PayoutRequestStatus status, @JsonKey(name: PayoutRequestView.requestedAtKey_)  DateTime requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_)  String? approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_)  DateTime? approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_)  DateTime? paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_)  String? failureReason, @JsonKey(name: PayoutRequestView.referenceKey_)  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_)  DateTime createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PayoutRequestView.idKey_)  String id, @JsonKey(name: PayoutRequestView.proUserIdKey_)  String proUserId, @JsonKey(name: PayoutRequestView.currencyKey_)  String currency, @JsonKey(name: PayoutRequestView.amountKey_)  String amount, @JsonKey(name: PayoutRequestView.statusKey_)  PayoutRequestStatus status, @JsonKey(name: PayoutRequestView.requestedAtKey_)  DateTime requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_)  String? approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_)  DateTime? approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_)  DateTime? paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_)  String? failureReason, @JsonKey(name: PayoutRequestView.referenceKey_)  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_)  DateTime createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_)  DateTime updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _PayoutRequestView():
-return $default(_that.id,_that.proUserId,_that.amountEur,_that.status,_that.requestedAt,_that.approvedByAdminId,_that.approvedAt,_that.paidAt,_that.failureReason,_that.reference,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.proUserId,_that.currency,_that.amount,_that.status,_that.requestedAt,_that.approvedByAdminId,_that.approvedAt,_that.paidAt,_that.failureReason,_that.reference,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -217,10 +219,10 @@ return $default(_that.id,_that.proUserId,_that.amountEur,_that.status,_that.requ
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PayoutRequestView.idKey_)  String id, @JsonKey(name: PayoutRequestView.proUserIdKey_)  String proUserId, @JsonKey(name: PayoutRequestView.amountEurKey_)  String amountEur, @JsonKey(name: PayoutRequestView.statusKey_)  PayoutRequestStatus status, @JsonKey(name: PayoutRequestView.requestedAtKey_)  DateTime requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_)  String? approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_)  DateTime? approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_)  DateTime? paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_)  String? failureReason, @JsonKey(name: PayoutRequestView.referenceKey_)  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_)  DateTime createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PayoutRequestView.idKey_)  String id, @JsonKey(name: PayoutRequestView.proUserIdKey_)  String proUserId, @JsonKey(name: PayoutRequestView.currencyKey_)  String currency, @JsonKey(name: PayoutRequestView.amountKey_)  String amount, @JsonKey(name: PayoutRequestView.statusKey_)  PayoutRequestStatus status, @JsonKey(name: PayoutRequestView.requestedAtKey_)  DateTime requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_)  String? approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_)  DateTime? approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_)  DateTime? paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_)  String? failureReason, @JsonKey(name: PayoutRequestView.referenceKey_)  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_)  DateTime createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_)  DateTime updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _PayoutRequestView() when $default != null:
-return $default(_that.id,_that.proUserId,_that.amountEur,_that.status,_that.requestedAt,_that.approvedByAdminId,_that.approvedAt,_that.paidAt,_that.failureReason,_that.reference,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.proUserId,_that.currency,_that.amount,_that.status,_that.requestedAt,_that.approvedByAdminId,_that.approvedAt,_that.paidAt,_that.failureReason,_that.reference,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -232,15 +234,17 @@ return $default(_that.id,_that.proUserId,_that.amountEur,_that.status,_that.requ
 
 @jsonSerializable
 class _PayoutRequestView extends PayoutRequestView {
-  const _PayoutRequestView({@JsonKey(name: PayoutRequestView.idKey_) required this.id, @JsonKey(name: PayoutRequestView.proUserIdKey_) required this.proUserId, @JsonKey(name: PayoutRequestView.amountEurKey_) required this.amountEur, @JsonKey(name: PayoutRequestView.statusKey_) required this.status, @JsonKey(name: PayoutRequestView.requestedAtKey_) required this.requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) this.approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_) this.approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_) this.paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_) this.failureReason, @JsonKey(name: PayoutRequestView.referenceKey_) final  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_) required this.createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_) required this.updatedAt}): _reference = reference,super._();
+  const _PayoutRequestView({@JsonKey(name: PayoutRequestView.idKey_) required this.id, @JsonKey(name: PayoutRequestView.proUserIdKey_) required this.proUserId, @JsonKey(name: PayoutRequestView.currencyKey_) required this.currency, @JsonKey(name: PayoutRequestView.amountKey_) required this.amount, @JsonKey(name: PayoutRequestView.statusKey_) required this.status, @JsonKey(name: PayoutRequestView.requestedAtKey_) required this.requestedAt, @JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) this.approvedByAdminId, @JsonKey(name: PayoutRequestView.approvedAtKey_) this.approvedAt, @JsonKey(name: PayoutRequestView.paidAtKey_) this.paidAt, @JsonKey(name: PayoutRequestView.failureReasonKey_) this.failureReason, @JsonKey(name: PayoutRequestView.referenceKey_) final  Map<String, dynamic>? reference, @JsonKey(name: PayoutRequestView.createdAtKey_) required this.createdAt, @JsonKey(name: PayoutRequestView.updatedAtKey_) required this.updatedAt}): _reference = reference,super._();
   factory _PayoutRequestView.fromJson(Map<String, dynamic> json) => _$PayoutRequestViewFromJson(json);
 
 /// id
 @override@JsonKey(name: PayoutRequestView.idKey_) final  String id;
 /// proUserId
 @override@JsonKey(name: PayoutRequestView.proUserIdKey_) final  String proUserId;
-/// amountEur
-@override@JsonKey(name: PayoutRequestView.amountEurKey_) final  String amountEur;
+/// currency
+@override@JsonKey(name: PayoutRequestView.currencyKey_) final  String currency;
+/// amount
+@override@JsonKey(name: PayoutRequestView.amountKey_) final  String amount;
 /// status
 @override@JsonKey(name: PayoutRequestView.statusKey_) final  PayoutRequestStatus status;
 /// requestedAt
@@ -282,16 +286,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PayoutRequestView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.amountEur, amountEur) || other.amountEur == amountEur)&&(identical(other.status, status) || other.status == status)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.approvedByAdminId, approvedByAdminId) || other.approvedByAdminId == approvedByAdminId)&&(identical(other.approvedAt, approvedAt) || other.approvedAt == approvedAt)&&(identical(other.paidAt, paidAt) || other.paidAt == paidAt)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason)&&const DeepCollectionEquality().equals(other._reference, _reference)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PayoutRequestView&&(identical(other.id, id) || other.id == id)&&(identical(other.proUserId, proUserId) || other.proUserId == proUserId)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.status, status) || other.status == status)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.approvedByAdminId, approvedByAdminId) || other.approvedByAdminId == approvedByAdminId)&&(identical(other.approvedAt, approvedAt) || other.approvedAt == approvedAt)&&(identical(other.paidAt, paidAt) || other.paidAt == paidAt)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason)&&const DeepCollectionEquality().equals(other._reference, _reference)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,proUserId,amountEur,status,requestedAt,approvedByAdminId,approvedAt,paidAt,failureReason,const DeepCollectionEquality().hash(_reference),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,proUserId,currency,amount,status,requestedAt,approvedByAdminId,approvedAt,paidAt,failureReason,const DeepCollectionEquality().hash(_reference),createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'PayoutRequestView(id: $id, proUserId: $proUserId, amountEur: $amountEur, status: $status, requestedAt: $requestedAt, approvedByAdminId: $approvedByAdminId, approvedAt: $approvedAt, paidAt: $paidAt, failureReason: $failureReason, reference: $reference, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'PayoutRequestView(id: $id, proUserId: $proUserId, currency: $currency, amount: $amount, status: $status, requestedAt: $requestedAt, approvedByAdminId: $approvedByAdminId, approvedAt: $approvedAt, paidAt: $paidAt, failureReason: $failureReason, reference: $reference, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -302,7 +306,7 @@ abstract mixin class _$PayoutRequestViewCopyWith<$Res> implements $PayoutRequest
   factory _$PayoutRequestViewCopyWith(_PayoutRequestView value, $Res Function(_PayoutRequestView) _then) = __$PayoutRequestViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: PayoutRequestView.idKey_) String id,@JsonKey(name: PayoutRequestView.proUserIdKey_) String proUserId,@JsonKey(name: PayoutRequestView.amountEurKey_) String amountEur,@JsonKey(name: PayoutRequestView.statusKey_) PayoutRequestStatus status,@JsonKey(name: PayoutRequestView.requestedAtKey_) DateTime requestedAt,@JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) String? approvedByAdminId,@JsonKey(name: PayoutRequestView.approvedAtKey_) DateTime? approvedAt,@JsonKey(name: PayoutRequestView.paidAtKey_) DateTime? paidAt,@JsonKey(name: PayoutRequestView.failureReasonKey_) String? failureReason,@JsonKey(name: PayoutRequestView.referenceKey_) Map<String, dynamic>? reference,@JsonKey(name: PayoutRequestView.createdAtKey_) DateTime createdAt,@JsonKey(name: PayoutRequestView.updatedAtKey_) DateTime updatedAt
+@JsonKey(name: PayoutRequestView.idKey_) String id,@JsonKey(name: PayoutRequestView.proUserIdKey_) String proUserId,@JsonKey(name: PayoutRequestView.currencyKey_) String currency,@JsonKey(name: PayoutRequestView.amountKey_) String amount,@JsonKey(name: PayoutRequestView.statusKey_) PayoutRequestStatus status,@JsonKey(name: PayoutRequestView.requestedAtKey_) DateTime requestedAt,@JsonKey(name: PayoutRequestView.approvedByAdminIdKey_) String? approvedByAdminId,@JsonKey(name: PayoutRequestView.approvedAtKey_) DateTime? approvedAt,@JsonKey(name: PayoutRequestView.paidAtKey_) DateTime? paidAt,@JsonKey(name: PayoutRequestView.failureReasonKey_) String? failureReason,@JsonKey(name: PayoutRequestView.referenceKey_) Map<String, dynamic>? reference,@JsonKey(name: PayoutRequestView.createdAtKey_) DateTime createdAt,@JsonKey(name: PayoutRequestView.updatedAtKey_) DateTime updatedAt
 });
 
 
@@ -319,11 +323,12 @@ class __$PayoutRequestViewCopyWithImpl<$Res>
 
 /// Create a copy of PayoutRequestView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? amountEur = null,Object? status = null,Object? requestedAt = null,Object? approvedByAdminId = freezed,Object? approvedAt = freezed,Object? paidAt = freezed,Object? failureReason = freezed,Object? reference = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? proUserId = null,Object? currency = null,Object? amount = null,Object? status = null,Object? requestedAt = null,Object? approvedByAdminId = freezed,Object? approvedAt = freezed,Object? paidAt = freezed,Object? failureReason = freezed,Object? reference = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_PayoutRequestView(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,proUserId: null == proUserId ? _self.proUserId : proUserId // ignore: cast_nullable_to_non_nullable
-as String,amountEur: null == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PayoutRequestStatus,requestedAt: null == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,approvedByAdminId: freezed == approvedByAdminId ? _self.approvedByAdminId : approvedByAdminId // ignore: cast_nullable_to_non_nullable

@@ -31,7 +31,6 @@
 ///         },
 ///         "price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Price"
 ///         },
 ///         "currency": {
@@ -44,7 +43,6 @@
 ///         },
 ///         "entry_rate": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Entry Rate"
 ///         },
 ///         "minimum_photos": {
@@ -53,12 +51,10 @@
 ///         },
 ///         "starting_total": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Starting Total"
 ///         },
 ///         "extra_photo_price": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Extra Photo Price"
 ///         },
 ///         "proofs_sla_days": {

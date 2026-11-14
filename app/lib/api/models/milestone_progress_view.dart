@@ -11,7 +11,6 @@
 ///         },
 ///         "progress_value": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Progress Value"
 ///         },
 ///         "progress_meta": {

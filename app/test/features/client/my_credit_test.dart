@@ -13,11 +13,11 @@ import 'package:rawwers/features/client/credit/credit_controller.dart';
 import 'package:rawwers/features/client/credit/credit_labels.dart';
 import 'package:rawwers/features/client/credit/my_credit_screen.dart';
 
-CreditHistoryItem _item(String kind, String amount, {String? name, DateTime? at}) => CreditHistoryItem(
+CreditHistoryItem _item(String kind, String amount, {String? name, DateTime? at}) => CreditHistoryItem(currency: 'EUR', 
       id: '$kind-$amount',
       createdAt: at ?? DateTime.utc(2026, 11, 5, 12),
       kind: kind,
-      amountEur: amount,
+      amount: amount,
       photographerFirstName: name,
     );
 
@@ -42,9 +42,10 @@ class _FakePay extends BookingPaymentController {
 void main() {
   group('labels and euros', () {
     test('credit is euros, never points', () {
-      expect(creditEuros('1.00'), '€1.00');
-      expect(signedCreditEuros('1.00'), '+€1.00');
-      expect(signedCreditEuros('-2.00'), '−€2.00');
+      expect(creditAmount('1.00', currency: 'EUR'), '€1.00');
+      expect(creditAmount('1.00', currency: 'GBP'), '£1.00');
+      expect(signedCreditAmount('1.00', currency: 'EUR'), '+€1.00');
+      expect(signedCreditAmount('-2.00', currency: 'EUR'), '−€2.00');
     });
 
     test('each kind in the client\'s words', () {
@@ -59,8 +60,8 @@ void main() {
   testWidgets('My credit: the balance, how to use it, how to earn it, and the history', (tester) async {
     await _pumpCredit(
       tester,
-      MyCreditResponse(
-        balanceEur: '1.00',
+      MyCreditResponse(currency: 'EUR', 
+        balance: '1.00',
         maxDiscountPercent: 10,
         items: [
           _item('refunded_credit', '5.00', at: DateTime.utc(2026, 11, 7, 12)),
@@ -86,7 +87,7 @@ void main() {
   });
 
   testWidgets('with no credit yet it says so', (tester) async {
-    await _pumpCredit(tester, const MyCreditResponse(balanceEur: '0.00', maxDiscountPercent: 10, items: []));
+    await _pumpCredit(tester, const MyCreditResponse(currency: 'EUR', balance: '0.00', maxDiscountPercent: 10, items: []));
     expect(find.text('No credit yet'), findsOneWidget);
   });
 
@@ -98,8 +99,8 @@ void main() {
           (ref) async => const ClientBookingStatusResponse(bookingId: 'b1', bookingStatus: 'accepted', gigStatus: 'payment_pending'),
         ),
         bookingCreditProvider('b1').overrideWith(
-          (ref) async => const BookingCreditPreview(
-            balanceEur: '30.00', discountEur: '10.00', priceEur: '100.00', totalEur: '90.00', maxDiscountPercent: 10, applied: false, currency: 'EUR',
+          (ref) async => const BookingCreditPreview(creditCurrency: 'EUR', 
+            balance: '30.00', discount: '10.00', price: '100.00', total: '90.00', maxDiscountPercent: 10, applied: false, currency: 'EUR',
           ),
         ),
         bookingPaymentControllerProvider('b1').overrideWith(() => pay),
@@ -127,8 +128,8 @@ void main() {
           (ref) async => const ClientBookingStatusResponse(bookingId: 'b1', bookingStatus: 'accepted', gigStatus: 'payment_pending'),
         ),
         bookingCreditProvider('b1').overrideWith(
-          (ref) async => const BookingCreditPreview(
-            balanceEur: '0.00', discountEur: '0.00', priceEur: '100.00', totalEur: '100.00', maxDiscountPercent: 10, applied: false, currency: 'EUR',
+          (ref) async => const BookingCreditPreview(creditCurrency: 'EUR', 
+            balance: '0.00', discount: '0.00', price: '100.00', total: '100.00', maxDiscountPercent: 10, applied: false, currency: 'EUR',
           ),
         ),
         bookingPaymentControllerProvider('b1').overrideWith(() => pay),

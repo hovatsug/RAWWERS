@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { admin, type ShelfItem, type ShelfItemInput, type ShelfPriceHelper } from "@/lib/api/admin";
+import { admin, SHELF_VALUE_CURRENCY, type ShelfItem, type ShelfItemInput, type ShelfPriceHelper } from "@/lib/api/admin";
 import {
   AdminButton,
   DataTable,
@@ -97,11 +97,11 @@ export default function ShelfItemsPage() {
       cell: (row) => (
         <div>
           <div>{row.price_raww} RAWW</div>
-          <div className="text-xs text-slate-400">{money(row.helper.price_eur)} · suggested {row.helper.suggested_price_raww}</div>
+          <div className="text-xs text-slate-400">{money(row.helper.price_eur, SHELF_VALUE_CURRENCY)} · suggested {row.helper.suggested_price_raww}</div>
         </div>
       )
     },
-    { header: "Margin", className: "whitespace-nowrap tabular-nums", cell: (row) => money(row.helper.margin_eur) },
+    { header: "Margin", className: "whitespace-nowrap tabular-nums", cell: (row) => money(row.helper.margin_eur, SHELF_VALUE_CURRENCY) },
     {
       header: "",
       cell: (row) => (
@@ -295,7 +295,7 @@ function ItemForm({
               </div>
               {helper.price_eur ? (
                 <div className="text-slate-400">
-                  Worth {money(helper.price_eur)} · cost {money(helper.supplier_cost_eur)} · margin {money(helper.margin_eur)}
+                  Worth {money(helper.price_eur, SHELF_VALUE_CURRENCY)} · cost {money(helper.supplier_cost_eur, SHELF_VALUE_CURRENCY)} · margin {money(helper.margin_eur, SHELF_VALUE_CURRENCY)}
                 </div>
               ) : null}
               {helper.band_warning ? <StatusBadge label={helper.band_warning} tone="attention" /> : null}

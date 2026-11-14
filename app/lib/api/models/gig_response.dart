@@ -37,14 +37,12 @@
 ///         },
 ///         "amount_minimum": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Minimum"
 ///         },
 ///         "amount_final": {
 ///             "anyOf": [
 ///                 {
-///                     "type": "string",
-///                     "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+///                     "type": "string"
 ///                 },
 ///                 {
 ///                     "type": "null"
@@ -54,12 +52,10 @@
 ///         },
 ///         "amount_platform_fee": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Platform Fee"
 ///         },
 ///         "amount_pro_gross": {
 ///             "type": "string",
-///             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
 ///             "title": "Amount Pro Gross"
 ///         },
 ///         "location_text": {

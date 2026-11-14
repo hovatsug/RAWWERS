@@ -50,6 +50,8 @@ class _Card extends StatelessWidget {
     final dates = RDates.of(context);
     final euros = RMoney.of(context).format(
       (Decimal.fromInt(view.spendable < 0 ? 0 : view.spendable) * Decimal.parse(view.rawwEurValue)).toStringAsFixed(2),
+      // RAWW are valued in euros until batch M4 makes the value per currency.
+      currency: 'EUR',
     );
 
     return RCard(

@@ -114,12 +114,13 @@ def budget_view(db: Session, now: datetime | None = None) -> dict:
     budget = Decimal(row.monthly_marketing_credit_budget_eur)
     return {
         "month": key,
-        "budget_eur": budget,
-        "awarded_eur": awarded,
-        "used_eur": Decimal(used).quantize(Decimal("0.01")),
-        "returned_on_refunds_eur": to_eur(returned_points, points_per_eur(db)),
-        "outstanding_eur": to_eur(outstanding_points, points_per_eur(db)),
-        "remaining_eur": max(Decimal("0.00"), budget - awarded),
+        "currency": "EUR",
+        "budget": budget,
+        "awarded": awarded,
+        "used": Decimal(used).quantize(Decimal("0.01")),
+        "returned_on_refunds": to_eur(returned_points, points_per_eur(db)),
+        "outstanding": to_eur(outstanding_points, points_per_eur(db)),
+        "remaining": max(Decimal("0.00"), budget - awarded),
         "max_discount_percent": row.max_discount_percent,
     }
 
@@ -238,18 +239,26 @@ def balance_points(db: Session, user_id: uuid.UUID) -> int:
 def checkout_preview(db: Session, *, client_user_id: uuid.UUID, gig) -> dict:
     """What credit would take off this booking's payment: the smaller of the
     client's credit and the cap. Changes nothing."""
+    from app.services.rewards import CREDIT_CURRENCY
+
     per_eur = points_per_eur(db)
     price = Decimal(gig.amount_minimum)
     existing = open_redemption(db, client_user_id=client_user_id, gig_id=gig.id)
     cap = (price * Decimal(max_discount_percent(db)) / Decimal("100")).quantize(Decimal("0.01"))
     balance = to_eur(balance_points(db, client_user_id), per_eur)
-    discount = Decimal(existing.discount_amount) if existing else min(balance, cap, price)
+    if existing:
+        discount = Decimal(existing.discount_amount)
+    elif str(gig.currency).upper() != CREDIT_CURRENCY:
+        discount = Decimal("0.00")  # euro credit pays for euro bookings only (M3)
+    else:
+        discount = min(balance, cap, price)
     discount = max(Decimal("0.00"), discount)
     return {
-        "balance_eur": balance,
-        "discount_eur": discount,
-        "price_eur": price,
-        "total_eur": price - discount,
+        "balance": balance,
+        "credit_currency": CREDIT_CURRENCY,
+        "discount": discount,
+        "price": price,
+        "total": price - discount,
         "max_discount_percent": max_discount_percent(db),
         "applied": existing is not None,
         "currency": gig.currency,
@@ -266,9 +275,11 @@ def set_for_payment(db: Session, *, client_user_id: uuid.UUID, gig, use_credit: 
     from app.models.reward import RedemptionContextType
     from app.services.rewards import release_redemption_for_context, reserve_points_for_discount
 
+    from app.services.rewards import CREDIT_CURRENCY
+
     price = Decimal(gig.amount_minimum)
     existing = open_redemption(db, client_user_id=client_user_id, gig_id=gig.id)
-    if use_credit is True and existing is None:
+    if use_credit is True and existing is None and str(gig.currency).upper() == CREDIT_CURRENCY:
         points = balance_points(db, client_user_id)
         if points > 0:
             try:
@@ -428,7 +439,7 @@ def history(db: Session, client_user_id: uuid.UUID, *, limit: int = 100) -> list
         else:
             kind = "adjustment"
         out.append({
-            "id": row.id, "created_at": row.created_at, "kind": kind, "amount_eur": to_eur(row.amount, per_eur),
+            "id": row.id, "created_at": row.created_at, "kind": kind, "amount": to_eur(row.amount, per_eur), "currency": "EUR",
             "photographer_first_name": first_name,
         })
     return out

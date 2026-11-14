@@ -73,12 +73,12 @@ EarningsBalanceView _balance({
   String withdrawable = '0.00',
   String held = '0.00',
 }) =>
-    EarningsBalanceView(
-      pendingEur: pending,
-      availableEur: withdrawable,
-      heldEur: held,
-      reservedEur: '0.00',
-      withdrawableEur: withdrawable,
+    EarningsBalanceView(currency: 'EUR', payoutMinimum: '50.00', 
+      pending: pending,
+      available: withdrawable,
+      held: held,
+      reserved: '0.00',
+      withdrawable: withdrawable,
     );
 
 ConnectStatusResponse _status(

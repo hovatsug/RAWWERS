@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
@@ -187,8 +188,9 @@ String _priceLine(ClientDiscoverCard card) {
   final min = card.minPrice;
   final max = card.maxPrice;
   if (min == null && max == null) return 'Price on request';
-  if (min != null && max != null && min != max) return 'From €$min to €$max';
-  return 'From €${min ?? max}';
+  final symbol = RMoney.symbolFor(card.currency);
+  if (min != null && max != null && min != max) return 'From $symbol$min to $symbol$max';
+  return 'From $symbol${min ?? max}';
 }
 
 /// `top_niches` is an untyped list of maps in the schema, so this reads keys

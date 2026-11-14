@@ -18,15 +18,12 @@ part 'wallet_controller.g.dart';
 /// Payout rules, mirrored from the backend so they can be enforced before a
 /// request is sent rather than surfaced as a 422 afterwards.
 ///
-/// These are duplicated from `api/app/services/payouts.py`, which is a real
-/// (if small) coupling: if the server changes them this copy goes stale and
-/// the UI will let through a request the server rejects. The server stays the
-/// authority - a rejection is still handled - this only avoids making the
-/// photographer discover the floor by hitting it.
+/// The weekly limit is duplicated from `api/app/services/payouts.py`, which
+/// is a real (if small) coupling: if the server changes it this copy goes
+/// stale. The minimum is not copied: it is per currency and an admin
+/// setting, so the balance carries it (`payout_minimum`, [WalletData.minimum]).
+/// The server stays the authority - a rejection is still handled.
 abstract final class PayoutRules {
-  /// MIN_PAYOUT_EUR in payouts.py.
-  static final minimum = Decimal.parse('50.00');
-
   /// PAYOUT_REQUEST_LIMIT_7D in payouts.py.
   static const requestsPer7Days = 2;
 }
@@ -50,7 +47,14 @@ class WalletData {
   final List<PayoutRequestView> payouts;
   final PayoutAccountView account;
 
-  Decimal get withdrawable => Decimal.parse(balance.withdrawableEur);
+  Decimal get withdrawable => Decimal.parse(balance.withdrawable);
+
+  /// The photographer's one currency: every amount in [balance], [ledger]
+  /// and [payouts] is in it.
+  String get currency => balance.currency;
+
+  /// The smallest payout, in [currency] (the server's setting).
+  Decimal get minimum => Decimal.parse(balance.payoutMinimum);
 
   /// Payout requests inside the rolling 7-day window the backend counts.
   int get recentRequestCount {
@@ -67,10 +71,10 @@ class WalletData {
       return 'You\'ve made ${PayoutRules.requestsPer7Days} payout requests in the last 7 days. '
           'You can request again once one of them falls outside the window.';
     }
-    if (withdrawable < PayoutRules.minimum) {
+    if (withdrawable < minimum) {
       final money = RMoney.ofDevice();
-      return 'You need at least ${money.format(PayoutRules.minimum.toStringAsFixed(2))} available to request a payout. '
-          'You have ${money.format(withdrawable.toStringAsFixed(2))}.';
+      return 'You need at least ${money.format(minimum.toStringAsFixed(2), currency: currency)} available to request a payout. '
+          'You have ${money.format(withdrawable.toStringAsFixed(2), currency: currency)}.';
     }
     return null;
   }
@@ -136,8 +140,8 @@ class WalletController extends _$WalletController {
     final result = await apiCall(
       () => client.requestMyPayoutV1ProPayoutsRequestPost(
         // Built through the money wrapper, never the raw generated
-        // constructor - the generated amountEur is typed dynamic.
-        requestBody: createPayoutRequest(amountEur: amount),
+        // constructor - the generated amount is typed dynamic.
+        requestBody: createPayoutRequest(amount: amount),
         authorization: null,
         xMinusUserMinusId: null,
       ),

@@ -70,6 +70,60 @@ class _WebhooksClient implements WebhooksClient {
   }
 
   @override
+  Future<HttpResponse<WebhookAckResponse>> brevoWebhookV1WebhooksBrevoPost({
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['webhooks'],
+      'summary': 'Brevo Webhook',
+      'description':
+          'Brevo\'s delivery events: bounces, complaints, unsubscribes\n(services/brevo_events.py). Off (404) while BREVO_WEBHOOK_TOKEN is empty,\nas in dev. The token comes as a Bearer header or ?token=.',
+      'operationId': 'brevo_webhook_v1_webhooks_brevo_post',
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/WebhookAckResponse'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<WebhookAckResponse>>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/webhooks/brevo',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late WebhookAckResponse _value;
+    try {
+      _value = WebhookAckResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<WebhookAckResponse>> stripeWebhookV1WebhooksStripePost({
     CancelToken? cancelToken,
     void Function(int, int)? onSendProgress,

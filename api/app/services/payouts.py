@@ -373,6 +373,8 @@ def payout_balance_view(db: Session, *, pro_user_id: uuid.UUID) -> dict:
     """photographer_money, as the routes return it. `available` is the
     real figure and may be negative (admins see it); the photographer's
     screen uses `withdrawable` and `adjustment_owed`."""
+    from app.services.currencies import payout_minimum
+
     money = photographer_money(db, pro_user_id)
     return {
         "currency": money.currency,
@@ -385,6 +387,7 @@ def payout_balance_view(db: Session, *, pro_user_id: uuid.UUID) -> dict:
         "lifetime": money.lifetime,
         "withdrawable": money.withdrawable,
         "adjustment_owed": money.adjustment_owed,
+        "payout_minimum": payout_minimum(db, money.currency),
     }
 
 

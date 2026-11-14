@@ -157,13 +157,13 @@ class _Unread extends ProUnreadController {
 
 // --- Wallet -----------------------------------------------------------------
 
-EarningsLedgerItemView _entry(String id, String net, EarningsEntryStatus status, int daysAgo) => EarningsLedgerItemView(
+EarningsLedgerItemView _entry(String id, String net, EarningsEntryStatus status, int daysAgo) => EarningsLedgerItemView(currency: 'EUR', 
       id: id,
       sourceType: EarningsSourceType.gigBase,
       sourceId: 'g$id',
-      grossEur: net,
-      platformFeeEur: '0.00',
-      netEur: net,
+      gross: net,
+      platformFee: '0.00',
+      net: net,
       status: status,
       availableAt: _days(-daysAgo + 7),
       createdAt: _days(-daysAgo),
@@ -172,16 +172,16 @@ EarningsLedgerItemView _entry(String id, String net, EarningsEntryStatus status,
 class _Wallet extends WalletController {
   @override
   Future<WalletData> build() async => WalletData(
-        balance: const EarningsBalanceView(
-          pendingEur: '144.00',
-          availableEur: '412.50',
-          heldEur: '15.96',
-          requestedEur: '0.00',
-          reservedEur: '0.00',
-          paidOutEur: '1350.00',
-          lifetimeEur: '1922.46',
-          withdrawableEur: '412.50',
-          adjustmentOwedEur: '0.00',
+        balance: const EarningsBalanceView(currency: 'EUR', payoutMinimum: '50.00', 
+          pending: '144.00',
+          available: '412.50',
+          held: '15.96',
+          requested: '0.00',
+          reserved: '0.00',
+          paidOut: '1350.00',
+          lifetime: '1922.46',
+          withdrawable: '412.50',
+          adjustmentOwed: '0.00',
         ),
         ledger: [
           _entry('1', '144.00', EarningsEntryStatus.pending, 2),
@@ -198,7 +198,7 @@ class _Wallet extends WalletController {
       );
 }
 
-const _summary = InvoiceSummaryView(
+const _summary = InvoiceSummaryView(currency: 'EUR', 
   bookings: 14,
   gross: '2310.00',
   platformFees: '462.00',
@@ -288,7 +288,7 @@ class _Uploads extends PortfolioUploadController {
 
 class _Profile extends ProProfileController {
   @override
-  Future<ProProfileView> build() async => const ProProfileView(
+  Future<ProProfileView> build() async => const ProProfileView(currency: 'EUR', 
         userId: 'pro-me',
         displayName: 'Alex Lens',
         headline: 'Portraits, quietly',

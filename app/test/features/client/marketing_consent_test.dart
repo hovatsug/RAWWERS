@@ -34,9 +34,9 @@ const _offer = MarketingConsentOfferResponse(
   wordingVersion: 'client-draft-1',
   wordingText: 'DRAFT wording shown to the client.',
   terms: [
-    MarketingTermView(months: 6, credit: 50, creditEur: '0.50'),
-    MarketingTermView(months: 12, credit: 100, creditEur: '1.00'),
-    MarketingTermView(months: 24, credit: 150, creditEur: '1.50'),
+    MarketingTermView(currency: 'EUR', months: 6, credit: 50, creditAmount: '0.50'),
+    MarketingTermView(currency: 'EUR', months: 12, credit: 100, creditAmount: '1.00'),
+    MarketingTermView(currency: 'EUR', months: 24, credit: 150, creditAmount: '1.50'),
   ],
   photographerCredit: 'Alex Lens',
   photos: [
@@ -47,10 +47,10 @@ const _offer = MarketingConsentOfferResponse(
 );
 
 class _FakeOffer extends MarketingOfferController {
-  _FakeOffer(this.offer, {this.problem, this.creditEur = '1.00'});
+  _FakeOffer(this.offer, {this.problem, this.creditAmount = '1.00'});
   final MarketingConsentOfferResponse offer;
   final String? problem;
-  final String creditEur;
+  final String creditAmount;
   final grants = <({List<String> assetIds, int termMonths, bool peopleConfirmed})>[];
 
   @override
@@ -59,7 +59,7 @@ class _FakeOffer extends MarketingOfferController {
   @override
   Future<GrantOutcome> grant({required List<String> assetIds, required int termMonths, required bool peopleConfirmed}) async {
     grants.add((assetIds: assetIds, termMonths: termMonths, peopleConfirmed: peopleConfirmed));
-    return (problem: problem, creditEur: problem == null ? creditEur : '0.00');
+    return (problem: problem, creditAmount: problem == null ? creditAmount : '0.00', currency: 'EUR');
   }
 }
 
@@ -163,7 +163,7 @@ void main() {
     });
 
     testWidgets('sends the photos, the term and the confirmation, and says what was earned', (tester) async {
-      final fake = _FakeOffer(_offer, creditEur: '1.50');
+      final fake = _FakeOffer(_offer, creditAmount: '1.50');
       await _pumpCard(tester, fake);
       await tester.tap(find.text('Choose photos'));
       await tester.pumpAndSettle();
@@ -297,7 +297,7 @@ void main() {
         ..httpClientAdapter = FakeHttpClientAdapter((o) async {
           if (o.method == 'POST') sent.add((o.uri.path, Map<String, dynamic>.from(jsonDecode(jsonEncode(o.data)) as Map)));
           if (o.uri.path.endsWith('/withdraw')) return jsonResponseBody(jsonEncode({'withdrawn': 1}), 200);
-          if (o.uri.path.endsWith('/marketing-consent')) return jsonResponseBody(jsonEncode({'items': [], 'credit': 100, 'credit_eur': '1.00'}), 200);
+          if (o.uri.path.endsWith('/marketing-consent')) return jsonResponseBody(jsonEncode({'items': [], 'credit': 100, 'credit_amount': '1.00', 'currency': 'EUR'}), 200);
           if (o.uri.path.endsWith('/offer')) return jsonResponseBody(jsonEncode({'offered': false}), 200);
           return jsonResponseBody(jsonEncode({'items': []}), 200);
         });
@@ -312,7 +312,7 @@ void main() {
           .read(marketingOfferControllerProvider('gig-1').notifier)
           .grant(assetIds: ['a1', 'a2'], termMonths: 6, peopleConfirmed: true);
 
-      expect(outcome, (problem: null, creditEur: '1.00'));
+      expect(outcome, (problem: null, creditAmount: '1.00', currency: 'EUR'));
       expect(sent.single.$1, '/v1/gigs/gig-1/marketing-consent');
       expect(sent.single.$2, {'media_asset_ids': ['a1', 'a2'], 'term_months': 6, 'people_confirmed': true});
     });

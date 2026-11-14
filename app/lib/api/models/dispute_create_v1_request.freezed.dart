@@ -22,7 +22,7 @@ mixin _$DisputeCreateV1Request {
 @JsonKey(name: DisputeCreateV1Request.reasonKey_) String? get reason;/// summary
 @JsonKey(name: DisputeCreateV1Request.summaryKey_) String? get summary;/// requestedRefundAmount
 @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) dynamic? get requestedRefundAmount;/// currency
-@JsonKey(name: DisputeCreateV1Request.currencyKey_) String get currency;
+@JsonKey(name: DisputeCreateV1Request.currencyKey_) String? get currency;
 /// Create a copy of DisputeCreateV1Request
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -55,7 +55,7 @@ abstract mixin class $DisputeCreateV1RequestCopyWith<$Res>  {
   factory $DisputeCreateV1RequestCopyWith(DisputeCreateV1Request value, $Res Function(DisputeCreateV1Request) _then) = _$DisputeCreateV1RequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: DisputeCreateV1Request.gigIdKey_) String? gigId,@JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_) String? extraPurchaseId,@JsonKey(name: DisputeCreateV1Request.categoryKey_) DisputeCategory category,@JsonKey(name: DisputeCreateV1Request.reasonKey_) String? reason,@JsonKey(name: DisputeCreateV1Request.summaryKey_) String? summary,@JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) dynamic? requestedRefundAmount,@JsonKey(name: DisputeCreateV1Request.currencyKey_) String currency
+@JsonKey(name: DisputeCreateV1Request.gigIdKey_) String? gigId,@JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_) String? extraPurchaseId,@JsonKey(name: DisputeCreateV1Request.categoryKey_) DisputeCategory category,@JsonKey(name: DisputeCreateV1Request.reasonKey_) String? reason,@JsonKey(name: DisputeCreateV1Request.summaryKey_) String? summary,@JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) dynamic? requestedRefundAmount,@JsonKey(name: DisputeCreateV1Request.currencyKey_) String? currency
 });
 
 
@@ -72,7 +72,7 @@ class _$DisputeCreateV1RequestCopyWithImpl<$Res>
 
 /// Create a copy of DisputeCreateV1Request
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? gigId = freezed,Object? extraPurchaseId = freezed,Object? category = null,Object? reason = freezed,Object? summary = freezed,Object? requestedRefundAmount = freezed,Object? currency = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? gigId = freezed,Object? extraPurchaseId = freezed,Object? category = null,Object? reason = freezed,Object? summary = freezed,Object? requestedRefundAmount = freezed,Object? currency = freezed,}) {
   return _then(_self.copyWith(
 gigId: freezed == gigId ? _self.gigId : gigId // ignore: cast_nullable_to_non_nullable
 as String?,extraPurchaseId: freezed == extraPurchaseId ? _self.extraPurchaseId : extraPurchaseId // ignore: cast_nullable_to_non_nullable
@@ -80,8 +80,8 @@ as String?,category: null == category ? _self.category : category // ignore: cas
 as DisputeCategory,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as String?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as String?,requestedRefundAmount: freezed == requestedRefundAmount ? _self.requestedRefundAmount : requestedRefundAmount // ignore: cast_nullable_to_non_nullable
-as dynamic?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,
+as dynamic?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -166,7 +166,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: DisputeCreateV1Request.gigIdKey_)  String? gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_)  String? extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_)  DisputeCategory category, @JsonKey(name: DisputeCreateV1Request.reasonKey_)  String? reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_)  String? summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_)  dynamic? requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_)  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: DisputeCreateV1Request.gigIdKey_)  String? gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_)  String? extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_)  DisputeCategory category, @JsonKey(name: DisputeCreateV1Request.reasonKey_)  String? reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_)  String? summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_)  dynamic? requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_)  String? currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DisputeCreateV1Request() when $default != null:
 return $default(_that.gigId,_that.extraPurchaseId,_that.category,_that.reason,_that.summary,_that.requestedRefundAmount,_that.currency);case _:
@@ -187,7 +187,7 @@ return $default(_that.gigId,_that.extraPurchaseId,_that.category,_that.reason,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: DisputeCreateV1Request.gigIdKey_)  String? gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_)  String? extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_)  DisputeCategory category, @JsonKey(name: DisputeCreateV1Request.reasonKey_)  String? reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_)  String? summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_)  dynamic? requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_)  String currency)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: DisputeCreateV1Request.gigIdKey_)  String? gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_)  String? extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_)  DisputeCategory category, @JsonKey(name: DisputeCreateV1Request.reasonKey_)  String? reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_)  String? summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_)  dynamic? requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_)  String? currency)  $default,) {final _that = this;
 switch (_that) {
 case _DisputeCreateV1Request():
 return $default(_that.gigId,_that.extraPurchaseId,_that.category,_that.reason,_that.summary,_that.requestedRefundAmount,_that.currency);case _:
@@ -207,7 +207,7 @@ return $default(_that.gigId,_that.extraPurchaseId,_that.category,_that.reason,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: DisputeCreateV1Request.gigIdKey_)  String? gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_)  String? extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_)  DisputeCategory category, @JsonKey(name: DisputeCreateV1Request.reasonKey_)  String? reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_)  String? summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_)  dynamic? requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_)  String currency)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: DisputeCreateV1Request.gigIdKey_)  String? gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_)  String? extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_)  DisputeCategory category, @JsonKey(name: DisputeCreateV1Request.reasonKey_)  String? reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_)  String? summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_)  dynamic? requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_)  String? currency)?  $default,) {final _that = this;
 switch (_that) {
 case _DisputeCreateV1Request() when $default != null:
 return $default(_that.gigId,_that.extraPurchaseId,_that.category,_that.reason,_that.summary,_that.requestedRefundAmount,_that.currency);case _:
@@ -222,7 +222,7 @@ return $default(_that.gigId,_that.extraPurchaseId,_that.category,_that.reason,_t
 
 @jsonSerializable
 class _DisputeCreateV1Request extends DisputeCreateV1Request {
-  const _DisputeCreateV1Request({@JsonKey(name: DisputeCreateV1Request.gigIdKey_) this.gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_) this.extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_) required this.category, @JsonKey(name: DisputeCreateV1Request.reasonKey_) this.reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_) this.summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) this.requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_) this.currency = 'EUR'}): super._();
+  const _DisputeCreateV1Request({@JsonKey(name: DisputeCreateV1Request.gigIdKey_) this.gigId, @JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_) this.extraPurchaseId, @JsonKey(name: DisputeCreateV1Request.categoryKey_) required this.category, @JsonKey(name: DisputeCreateV1Request.reasonKey_) this.reason, @JsonKey(name: DisputeCreateV1Request.summaryKey_) this.summary, @JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) this.requestedRefundAmount, @JsonKey(name: DisputeCreateV1Request.currencyKey_) this.currency}): super._();
   factory _DisputeCreateV1Request.fromJson(Map<String, dynamic> json) => _$DisputeCreateV1RequestFromJson(json);
 
 /// gigId
@@ -238,7 +238,7 @@ class _DisputeCreateV1Request extends DisputeCreateV1Request {
 /// requestedRefundAmount
 @override@JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) final  dynamic? requestedRefundAmount;
 /// currency
-@override@JsonKey(name: DisputeCreateV1Request.currencyKey_) final  String currency;
+@override@JsonKey(name: DisputeCreateV1Request.currencyKey_) final  String? currency;
 
 /// Create a copy of DisputeCreateV1Request
 /// with the given fields replaced by the non-null parameter values.
@@ -273,7 +273,7 @@ abstract mixin class _$DisputeCreateV1RequestCopyWith<$Res> implements $DisputeC
   factory _$DisputeCreateV1RequestCopyWith(_DisputeCreateV1Request value, $Res Function(_DisputeCreateV1Request) _then) = __$DisputeCreateV1RequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: DisputeCreateV1Request.gigIdKey_) String? gigId,@JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_) String? extraPurchaseId,@JsonKey(name: DisputeCreateV1Request.categoryKey_) DisputeCategory category,@JsonKey(name: DisputeCreateV1Request.reasonKey_) String? reason,@JsonKey(name: DisputeCreateV1Request.summaryKey_) String? summary,@JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) dynamic? requestedRefundAmount,@JsonKey(name: DisputeCreateV1Request.currencyKey_) String currency
+@JsonKey(name: DisputeCreateV1Request.gigIdKey_) String? gigId,@JsonKey(name: DisputeCreateV1Request.extraPurchaseIdKey_) String? extraPurchaseId,@JsonKey(name: DisputeCreateV1Request.categoryKey_) DisputeCategory category,@JsonKey(name: DisputeCreateV1Request.reasonKey_) String? reason,@JsonKey(name: DisputeCreateV1Request.summaryKey_) String? summary,@JsonKey(name: DisputeCreateV1Request.requestedRefundAmountKey_) dynamic? requestedRefundAmount,@JsonKey(name: DisputeCreateV1Request.currencyKey_) String? currency
 });
 
 
@@ -290,7 +290,7 @@ class __$DisputeCreateV1RequestCopyWithImpl<$Res>
 
 /// Create a copy of DisputeCreateV1Request
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? gigId = freezed,Object? extraPurchaseId = freezed,Object? category = null,Object? reason = freezed,Object? summary = freezed,Object? requestedRefundAmount = freezed,Object? currency = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? gigId = freezed,Object? extraPurchaseId = freezed,Object? category = null,Object? reason = freezed,Object? summary = freezed,Object? requestedRefundAmount = freezed,Object? currency = freezed,}) {
   return _then(_DisputeCreateV1Request(
 gigId: freezed == gigId ? _self.gigId : gigId // ignore: cast_nullable_to_non_nullable
 as String?,extraPurchaseId: freezed == extraPurchaseId ? _self.extraPurchaseId : extraPurchaseId // ignore: cast_nullable_to_non_nullable
@@ -298,8 +298,8 @@ as String?,category: null == category ? _self.category : category // ignore: cas
 as DisputeCategory,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as String?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as String?,requestedRefundAmount: freezed == requestedRefundAmount ? _self.requestedRefundAmount : requestedRefundAmount // ignore: cast_nullable_to_non_nullable
-as dynamic?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,
+as dynamic?,currency: freezed == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

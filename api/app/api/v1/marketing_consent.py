@@ -82,7 +82,7 @@ def get_marketing_consent_offer(
         wording_version=offer.wording.version,
         wording_text=offer.wording.text,
         terms=[
-            MarketingTermView(months=m, credit=mc.credit_for_term(m), credit_eur=to_eur(mc.credit_for_term(m), per_eur))
+            MarketingTermView(months=m, credit=mc.credit_for_term(m), credit_amount=to_eur(mc.credit_for_term(m), per_eur))
             for m in sorted(TERM_CREDIT_PERCENT)
         ],
         photographer_credit=offer.photographer_credit,
@@ -110,7 +110,7 @@ def grant_marketing_consent(
     db.commit()
     from app.services.client_credit import points_per_eur, to_eur
 
-    return GrantMarketingConsentResponse(items=_views(db, rows), credit=credit, credit_eur=to_eur(credit, points_per_eur(db)))
+    return GrantMarketingConsentResponse(items=_views(db, rows), credit=credit, credit_amount=to_eur(credit, points_per_eur(db)))
 
 
 @router.get("/me/marketing-consents", response_model=MyMarketingConsentsResponse)

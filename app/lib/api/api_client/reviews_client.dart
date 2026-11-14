@@ -87,6 +87,85 @@ abstract class ReviewsClient {
       },
     },
   });
+  @POST("/v1/gigs/{gig_id}/problem-report")
+  Future<HttpResponse<ProblemReportView>>
+  reportAProblemV1GigsGigIdProblemReportPost({
+    @Body() required CreateProblemReportRequest requestBody,
+    @Path("gig_id") required String gigId,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['reviews'],
+      'summary': 'Report A Problem',
+      'description':
+          '"Report a problem": the other way past the review gate. Unlocks the\noriginals at once, holds the photographer\'s earning for this booking\nthrough the existing earnings hold - released by an admin, never by a\ndate - and raises it to an admin as a money-attention item.',
+      'operationId': 'report_a_problem_v1_gigs__gig_id__problem_report_post',
+      'parameters': [
+        {
+          'name': 'gig_id',
+          'in': 'path',
+          'required': true,
+          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gig Id'},
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              '\$ref': '#/components/schemas/CreateProblemReportRequest',
+            },
+          },
+        },
+      },
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ProblemReportView'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
   @GET("/v1/pros/{pro_user_id}/reviews")
   Future<HttpResponse<ProReviewsResponse>>
   listProReviewsV1ProsProUserIdReviewsGet({
@@ -258,85 +337,6 @@ abstract class ReviewsClient {
           'content': {
             'application/json': {
               'schema': {'\$ref': '#/components/schemas/ReviewReplyView'},
-            },
-          },
-        },
-        '422': {
-          'description': 'Validation Error',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
-            },
-          },
-        },
-      },
-    },
-  });
-  @POST("/v1/gigs/{gig_id}/problem-report")
-  Future<HttpResponse<ProblemReportView>>
-  reportAProblemV1GigsGigIdProblemReportPost({
-    @Body() required CreateProblemReportRequest requestBody,
-    @Path("gig_id") required String gigId,
-    @Header("Authorization") required String? authorization,
-    @Header("X-User-Id") required String? xMinusUserMinusId,
-    @CancelRequest() CancelToken? cancelToken,
-    @SendProgress() ProgressCallback? onSendProgress,
-    @ReceiveProgress() ProgressCallback? onReceiveProgress,
-    @Extras()
-    Map<String, dynamic>? extras = const {
-      'tags': ['reviews'],
-      'summary': 'Report A Problem',
-      'description':
-          '"Report a problem": the other way past the review gate. Unlocks the\noriginals at once, holds the photographer\'s earning for this booking\nthrough the existing earnings hold - released by an admin, never by a\ndate - and raises it to an admin as a money-attention item.',
-      'operationId': 'report_a_problem_v1_gigs__gig_id__problem_report_post',
-      'parameters': [
-        {
-          'name': 'gig_id',
-          'in': 'path',
-          'required': true,
-          'schema': {'type': 'string', 'format': 'uuid', 'title': 'Gig Id'},
-        },
-        {
-          'name': 'Authorization',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'Authorization',
-          },
-        },
-        {
-          'name': 'X-User-Id',
-          'in': 'header',
-          'required': false,
-          'schema': {
-            'anyOf': [
-              {'type': 'string'},
-              {'type': 'null'},
-            ],
-            'title': 'X-User-Id',
-          },
-        },
-      ],
-      'requestBody': {
-        'required': true,
-        'content': {
-          'application/json': {
-            'schema': {
-              '\$ref': '#/components/schemas/CreateProblemReportRequest',
-            },
-          },
-        },
-      },
-      'responses': {
-        '200': {
-          'description': 'Successful Response',
-          'content': {
-            'application/json': {
-              'schema': {'\$ref': '#/components/schemas/ProblemReportView'},
             },
           },
         },

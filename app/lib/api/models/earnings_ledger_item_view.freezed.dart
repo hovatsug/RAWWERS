@@ -18,10 +18,11 @@ mixin _$EarningsLedgerItemView {
 /// id
 @JsonKey(name: EarningsLedgerItemView.idKey_) String get id;/// sourceType
 @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) EarningsSourceType get sourceType;/// sourceId
-@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) String get sourceId;/// grossEur
-@JsonKey(name: EarningsLedgerItemView.grossEurKey_) String get grossEur;/// platformFeeEur
-@JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_) String get platformFeeEur;/// netEur
-@JsonKey(name: EarningsLedgerItemView.netEurKey_) String get netEur;/// status
+@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) String get sourceId;/// currency
+@JsonKey(name: EarningsLedgerItemView.currencyKey_) String get currency;/// gross
+@JsonKey(name: EarningsLedgerItemView.grossKey_) String get gross;/// platformFee
+@JsonKey(name: EarningsLedgerItemView.platformFeeKey_) String get platformFee;/// net
+@JsonKey(name: EarningsLedgerItemView.netKey_) String get net;/// status
 @JsonKey(name: EarningsLedgerItemView.statusKey_) EarningsEntryStatus get status;/// availableAt
 @JsonKey(name: EarningsLedgerItemView.availableAtKey_) DateTime get availableAt;/// reversedAt
 @JsonKey(name: EarningsLedgerItemView.reversedAtKey_) DateTime? get reversedAt;/// meta
@@ -39,16 +40,16 @@ $EarningsLedgerItemViewCopyWith<EarningsLedgerItemView> get copyWith => _$Earnin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EarningsLedgerItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceType, sourceType) || other.sourceType == sourceType)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.grossEur, grossEur) || other.grossEur == grossEur)&&(identical(other.platformFeeEur, platformFeeEur) || other.platformFeeEur == platformFeeEur)&&(identical(other.netEur, netEur) || other.netEur == netEur)&&(identical(other.status, status) || other.status == status)&&(identical(other.availableAt, availableAt) || other.availableAt == availableAt)&&(identical(other.reversedAt, reversedAt) || other.reversedAt == reversedAt)&&const DeepCollectionEquality().equals(other.meta, meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EarningsLedgerItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceType, sourceType) || other.sourceType == sourceType)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.gross, gross) || other.gross == gross)&&(identical(other.platformFee, platformFee) || other.platformFee == platformFee)&&(identical(other.net, net) || other.net == net)&&(identical(other.status, status) || other.status == status)&&(identical(other.availableAt, availableAt) || other.availableAt == availableAt)&&(identical(other.reversedAt, reversedAt) || other.reversedAt == reversedAt)&&const DeepCollectionEquality().equals(other.meta, meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourceType,sourceId,grossEur,platformFeeEur,netEur,status,availableAt,reversedAt,const DeepCollectionEquality().hash(meta),createdAt);
+int get hashCode => Object.hash(runtimeType,id,sourceType,sourceId,currency,gross,platformFee,net,status,availableAt,reversedAt,const DeepCollectionEquality().hash(meta),createdAt);
 
 @override
 String toString() {
-  return 'EarningsLedgerItemView(id: $id, sourceType: $sourceType, sourceId: $sourceId, grossEur: $grossEur, platformFeeEur: $platformFeeEur, netEur: $netEur, status: $status, availableAt: $availableAt, reversedAt: $reversedAt, meta: $meta, createdAt: $createdAt)';
+  return 'EarningsLedgerItemView(id: $id, sourceType: $sourceType, sourceId: $sourceId, currency: $currency, gross: $gross, platformFee: $platformFee, net: $net, status: $status, availableAt: $availableAt, reversedAt: $reversedAt, meta: $meta, createdAt: $createdAt)';
 }
 
 
@@ -59,7 +60,7 @@ abstract mixin class $EarningsLedgerItemViewCopyWith<$Res>  {
   factory $EarningsLedgerItemViewCopyWith(EarningsLedgerItemView value, $Res Function(EarningsLedgerItemView) _then) = _$EarningsLedgerItemViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: EarningsLedgerItemView.idKey_) String id,@JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) EarningsSourceType sourceType,@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) String sourceId,@JsonKey(name: EarningsLedgerItemView.grossEurKey_) String grossEur,@JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_) String platformFeeEur,@JsonKey(name: EarningsLedgerItemView.netEurKey_) String netEur,@JsonKey(name: EarningsLedgerItemView.statusKey_) EarningsEntryStatus status,@JsonKey(name: EarningsLedgerItemView.availableAtKey_) DateTime availableAt,@JsonKey(name: EarningsLedgerItemView.reversedAtKey_) DateTime? reversedAt,@JsonKey(name: EarningsLedgerItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: EarningsLedgerItemView.createdAtKey_) DateTime createdAt
+@JsonKey(name: EarningsLedgerItemView.idKey_) String id,@JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) EarningsSourceType sourceType,@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) String sourceId,@JsonKey(name: EarningsLedgerItemView.currencyKey_) String currency,@JsonKey(name: EarningsLedgerItemView.grossKey_) String gross,@JsonKey(name: EarningsLedgerItemView.platformFeeKey_) String platformFee,@JsonKey(name: EarningsLedgerItemView.netKey_) String net,@JsonKey(name: EarningsLedgerItemView.statusKey_) EarningsEntryStatus status,@JsonKey(name: EarningsLedgerItemView.availableAtKey_) DateTime availableAt,@JsonKey(name: EarningsLedgerItemView.reversedAtKey_) DateTime? reversedAt,@JsonKey(name: EarningsLedgerItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: EarningsLedgerItemView.createdAtKey_) DateTime createdAt
 });
 
 
@@ -76,14 +77,15 @@ class _$EarningsLedgerItemViewCopyWithImpl<$Res>
 
 /// Create a copy of EarningsLedgerItemView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sourceType = null,Object? sourceId = null,Object? grossEur = null,Object? platformFeeEur = null,Object? netEur = null,Object? status = null,Object? availableAt = null,Object? reversedAt = freezed,Object? meta = freezed,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sourceType = null,Object? sourceId = null,Object? currency = null,Object? gross = null,Object? platformFee = null,Object? net = null,Object? status = null,Object? availableAt = null,Object? reversedAt = freezed,Object? meta = freezed,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sourceType: null == sourceType ? _self.sourceType : sourceType // ignore: cast_nullable_to_non_nullable
 as EarningsSourceType,sourceId: null == sourceId ? _self.sourceId : sourceId // ignore: cast_nullable_to_non_nullable
-as String,grossEur: null == grossEur ? _self.grossEur : grossEur // ignore: cast_nullable_to_non_nullable
-as String,platformFeeEur: null == platformFeeEur ? _self.platformFeeEur : platformFeeEur // ignore: cast_nullable_to_non_nullable
-as String,netEur: null == netEur ? _self.netEur : netEur // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,gross: null == gross ? _self.gross : gross // ignore: cast_nullable_to_non_nullable
+as String,platformFee: null == platformFee ? _self.platformFee : platformFee // ignore: cast_nullable_to_non_nullable
+as String,net: null == net ? _self.net : net // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as EarningsEntryStatus,availableAt: null == availableAt ? _self.availableAt : availableAt // ignore: cast_nullable_to_non_nullable
 as DateTime,reversedAt: freezed == reversedAt ? _self.reversedAt : reversedAt // ignore: cast_nullable_to_non_nullable
@@ -174,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsLedgerItemView.idKey_)  String id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_)  EarningsSourceType sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)  String sourceId, @JsonKey(name: EarningsLedgerItemView.grossEurKey_)  String grossEur, @JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_)  String platformFeeEur, @JsonKey(name: EarningsLedgerItemView.netEurKey_)  String netEur, @JsonKey(name: EarningsLedgerItemView.statusKey_)  EarningsEntryStatus status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_)  DateTime availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_)  DateTime? reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_)  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsLedgerItemView.idKey_)  String id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_)  EarningsSourceType sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)  String sourceId, @JsonKey(name: EarningsLedgerItemView.currencyKey_)  String currency, @JsonKey(name: EarningsLedgerItemView.grossKey_)  String gross, @JsonKey(name: EarningsLedgerItemView.platformFeeKey_)  String platformFee, @JsonKey(name: EarningsLedgerItemView.netKey_)  String net, @JsonKey(name: EarningsLedgerItemView.statusKey_)  EarningsEntryStatus status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_)  DateTime availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_)  DateTime? reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_)  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _EarningsLedgerItemView() when $default != null:
-return $default(_that.id,_that.sourceType,_that.sourceId,_that.grossEur,_that.platformFeeEur,_that.netEur,_that.status,_that.availableAt,_that.reversedAt,_that.meta,_that.createdAt);case _:
+return $default(_that.id,_that.sourceType,_that.sourceId,_that.currency,_that.gross,_that.platformFee,_that.net,_that.status,_that.availableAt,_that.reversedAt,_that.meta,_that.createdAt);case _:
   return orElse();
 
 }
@@ -195,10 +197,10 @@ return $default(_that.id,_that.sourceType,_that.sourceId,_that.grossEur,_that.pl
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsLedgerItemView.idKey_)  String id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_)  EarningsSourceType sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)  String sourceId, @JsonKey(name: EarningsLedgerItemView.grossEurKey_)  String grossEur, @JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_)  String platformFeeEur, @JsonKey(name: EarningsLedgerItemView.netEurKey_)  String netEur, @JsonKey(name: EarningsLedgerItemView.statusKey_)  EarningsEntryStatus status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_)  DateTime availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_)  DateTime? reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_)  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: EarningsLedgerItemView.idKey_)  String id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_)  EarningsSourceType sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)  String sourceId, @JsonKey(name: EarningsLedgerItemView.currencyKey_)  String currency, @JsonKey(name: EarningsLedgerItemView.grossKey_)  String gross, @JsonKey(name: EarningsLedgerItemView.platformFeeKey_)  String platformFee, @JsonKey(name: EarningsLedgerItemView.netKey_)  String net, @JsonKey(name: EarningsLedgerItemView.statusKey_)  EarningsEntryStatus status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_)  DateTime availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_)  DateTime? reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_)  DateTime createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _EarningsLedgerItemView():
-return $default(_that.id,_that.sourceType,_that.sourceId,_that.grossEur,_that.platformFeeEur,_that.netEur,_that.status,_that.availableAt,_that.reversedAt,_that.meta,_that.createdAt);case _:
+return $default(_that.id,_that.sourceType,_that.sourceId,_that.currency,_that.gross,_that.platformFee,_that.net,_that.status,_that.availableAt,_that.reversedAt,_that.meta,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +217,10 @@ return $default(_that.id,_that.sourceType,_that.sourceId,_that.grossEur,_that.pl
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: EarningsLedgerItemView.idKey_)  String id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_)  EarningsSourceType sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)  String sourceId, @JsonKey(name: EarningsLedgerItemView.grossEurKey_)  String grossEur, @JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_)  String platformFeeEur, @JsonKey(name: EarningsLedgerItemView.netEurKey_)  String netEur, @JsonKey(name: EarningsLedgerItemView.statusKey_)  EarningsEntryStatus status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_)  DateTime availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_)  DateTime? reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_)  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: EarningsLedgerItemView.idKey_)  String id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_)  EarningsSourceType sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_)  String sourceId, @JsonKey(name: EarningsLedgerItemView.currencyKey_)  String currency, @JsonKey(name: EarningsLedgerItemView.grossKey_)  String gross, @JsonKey(name: EarningsLedgerItemView.platformFeeKey_)  String platformFee, @JsonKey(name: EarningsLedgerItemView.netKey_)  String net, @JsonKey(name: EarningsLedgerItemView.statusKey_)  EarningsEntryStatus status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_)  DateTime availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_)  DateTime? reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_)  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_)  DateTime createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _EarningsLedgerItemView() when $default != null:
-return $default(_that.id,_that.sourceType,_that.sourceId,_that.grossEur,_that.platformFeeEur,_that.netEur,_that.status,_that.availableAt,_that.reversedAt,_that.meta,_that.createdAt);case _:
+return $default(_that.id,_that.sourceType,_that.sourceId,_that.currency,_that.gross,_that.platformFee,_that.net,_that.status,_that.availableAt,_that.reversedAt,_that.meta,_that.createdAt);case _:
   return null;
 
 }
@@ -230,7 +232,7 @@ return $default(_that.id,_that.sourceType,_that.sourceId,_that.grossEur,_that.pl
 
 @jsonSerializable
 class _EarningsLedgerItemView extends EarningsLedgerItemView {
-  const _EarningsLedgerItemView({@JsonKey(name: EarningsLedgerItemView.idKey_) required this.id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) required this.sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_) required this.sourceId, @JsonKey(name: EarningsLedgerItemView.grossEurKey_) required this.grossEur, @JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_) required this.platformFeeEur, @JsonKey(name: EarningsLedgerItemView.netEurKey_) required this.netEur, @JsonKey(name: EarningsLedgerItemView.statusKey_) required this.status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_) required this.availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_) this.reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_) final  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_) required this.createdAt}): _meta = meta,super._();
+  const _EarningsLedgerItemView({@JsonKey(name: EarningsLedgerItemView.idKey_) required this.id, @JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) required this.sourceType, @JsonKey(name: EarningsLedgerItemView.sourceIdKey_) required this.sourceId, @JsonKey(name: EarningsLedgerItemView.currencyKey_) required this.currency, @JsonKey(name: EarningsLedgerItemView.grossKey_) required this.gross, @JsonKey(name: EarningsLedgerItemView.platformFeeKey_) required this.platformFee, @JsonKey(name: EarningsLedgerItemView.netKey_) required this.net, @JsonKey(name: EarningsLedgerItemView.statusKey_) required this.status, @JsonKey(name: EarningsLedgerItemView.availableAtKey_) required this.availableAt, @JsonKey(name: EarningsLedgerItemView.reversedAtKey_) this.reversedAt, @JsonKey(name: EarningsLedgerItemView.metaKey_) final  Map<String, dynamic>? meta, @JsonKey(name: EarningsLedgerItemView.createdAtKey_) required this.createdAt}): _meta = meta,super._();
   factory _EarningsLedgerItemView.fromJson(Map<String, dynamic> json) => _$EarningsLedgerItemViewFromJson(json);
 
 /// id
@@ -239,12 +241,14 @@ class _EarningsLedgerItemView extends EarningsLedgerItemView {
 @override@JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) final  EarningsSourceType sourceType;
 /// sourceId
 @override@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) final  String sourceId;
-/// grossEur
-@override@JsonKey(name: EarningsLedgerItemView.grossEurKey_) final  String grossEur;
-/// platformFeeEur
-@override@JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_) final  String platformFeeEur;
-/// netEur
-@override@JsonKey(name: EarningsLedgerItemView.netEurKey_) final  String netEur;
+/// currency
+@override@JsonKey(name: EarningsLedgerItemView.currencyKey_) final  String currency;
+/// gross
+@override@JsonKey(name: EarningsLedgerItemView.grossKey_) final  String gross;
+/// platformFee
+@override@JsonKey(name: EarningsLedgerItemView.platformFeeKey_) final  String platformFee;
+/// net
+@override@JsonKey(name: EarningsLedgerItemView.netKey_) final  String net;
 /// status
 @override@JsonKey(name: EarningsLedgerItemView.statusKey_) final  EarningsEntryStatus status;
 /// availableAt
@@ -278,16 +282,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EarningsLedgerItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceType, sourceType) || other.sourceType == sourceType)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.grossEur, grossEur) || other.grossEur == grossEur)&&(identical(other.platformFeeEur, platformFeeEur) || other.platformFeeEur == platformFeeEur)&&(identical(other.netEur, netEur) || other.netEur == netEur)&&(identical(other.status, status) || other.status == status)&&(identical(other.availableAt, availableAt) || other.availableAt == availableAt)&&(identical(other.reversedAt, reversedAt) || other.reversedAt == reversedAt)&&const DeepCollectionEquality().equals(other._meta, _meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EarningsLedgerItemView&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceType, sourceType) || other.sourceType == sourceType)&&(identical(other.sourceId, sourceId) || other.sourceId == sourceId)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.gross, gross) || other.gross == gross)&&(identical(other.platformFee, platformFee) || other.platformFee == platformFee)&&(identical(other.net, net) || other.net == net)&&(identical(other.status, status) || other.status == status)&&(identical(other.availableAt, availableAt) || other.availableAt == availableAt)&&(identical(other.reversedAt, reversedAt) || other.reversedAt == reversedAt)&&const DeepCollectionEquality().equals(other._meta, _meta)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourceType,sourceId,grossEur,platformFeeEur,netEur,status,availableAt,reversedAt,const DeepCollectionEquality().hash(_meta),createdAt);
+int get hashCode => Object.hash(runtimeType,id,sourceType,sourceId,currency,gross,platformFee,net,status,availableAt,reversedAt,const DeepCollectionEquality().hash(_meta),createdAt);
 
 @override
 String toString() {
-  return 'EarningsLedgerItemView(id: $id, sourceType: $sourceType, sourceId: $sourceId, grossEur: $grossEur, platformFeeEur: $platformFeeEur, netEur: $netEur, status: $status, availableAt: $availableAt, reversedAt: $reversedAt, meta: $meta, createdAt: $createdAt)';
+  return 'EarningsLedgerItemView(id: $id, sourceType: $sourceType, sourceId: $sourceId, currency: $currency, gross: $gross, platformFee: $platformFee, net: $net, status: $status, availableAt: $availableAt, reversedAt: $reversedAt, meta: $meta, createdAt: $createdAt)';
 }
 
 
@@ -298,7 +302,7 @@ abstract mixin class _$EarningsLedgerItemViewCopyWith<$Res> implements $Earnings
   factory _$EarningsLedgerItemViewCopyWith(_EarningsLedgerItemView value, $Res Function(_EarningsLedgerItemView) _then) = __$EarningsLedgerItemViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: EarningsLedgerItemView.idKey_) String id,@JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) EarningsSourceType sourceType,@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) String sourceId,@JsonKey(name: EarningsLedgerItemView.grossEurKey_) String grossEur,@JsonKey(name: EarningsLedgerItemView.platformFeeEurKey_) String platformFeeEur,@JsonKey(name: EarningsLedgerItemView.netEurKey_) String netEur,@JsonKey(name: EarningsLedgerItemView.statusKey_) EarningsEntryStatus status,@JsonKey(name: EarningsLedgerItemView.availableAtKey_) DateTime availableAt,@JsonKey(name: EarningsLedgerItemView.reversedAtKey_) DateTime? reversedAt,@JsonKey(name: EarningsLedgerItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: EarningsLedgerItemView.createdAtKey_) DateTime createdAt
+@JsonKey(name: EarningsLedgerItemView.idKey_) String id,@JsonKey(name: EarningsLedgerItemView.sourceTypeKey_) EarningsSourceType sourceType,@JsonKey(name: EarningsLedgerItemView.sourceIdKey_) String sourceId,@JsonKey(name: EarningsLedgerItemView.currencyKey_) String currency,@JsonKey(name: EarningsLedgerItemView.grossKey_) String gross,@JsonKey(name: EarningsLedgerItemView.platformFeeKey_) String platformFee,@JsonKey(name: EarningsLedgerItemView.netKey_) String net,@JsonKey(name: EarningsLedgerItemView.statusKey_) EarningsEntryStatus status,@JsonKey(name: EarningsLedgerItemView.availableAtKey_) DateTime availableAt,@JsonKey(name: EarningsLedgerItemView.reversedAtKey_) DateTime? reversedAt,@JsonKey(name: EarningsLedgerItemView.metaKey_) Map<String, dynamic>? meta,@JsonKey(name: EarningsLedgerItemView.createdAtKey_) DateTime createdAt
 });
 
 
@@ -315,14 +319,15 @@ class __$EarningsLedgerItemViewCopyWithImpl<$Res>
 
 /// Create a copy of EarningsLedgerItemView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sourceType = null,Object? sourceId = null,Object? grossEur = null,Object? platformFeeEur = null,Object? netEur = null,Object? status = null,Object? availableAt = null,Object? reversedAt = freezed,Object? meta = freezed,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sourceType = null,Object? sourceId = null,Object? currency = null,Object? gross = null,Object? platformFee = null,Object? net = null,Object? status = null,Object? availableAt = null,Object? reversedAt = freezed,Object? meta = freezed,Object? createdAt = null,}) {
   return _then(_EarningsLedgerItemView(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sourceType: null == sourceType ? _self.sourceType : sourceType // ignore: cast_nullable_to_non_nullable
 as EarningsSourceType,sourceId: null == sourceId ? _self.sourceId : sourceId // ignore: cast_nullable_to_non_nullable
-as String,grossEur: null == grossEur ? _self.grossEur : grossEur // ignore: cast_nullable_to_non_nullable
-as String,platformFeeEur: null == platformFeeEur ? _self.platformFeeEur : platformFeeEur // ignore: cast_nullable_to_non_nullable
-as String,netEur: null == netEur ? _self.netEur : netEur // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,gross: null == gross ? _self.gross : gross // ignore: cast_nullable_to_non_nullable
+as String,platformFee: null == platformFee ? _self.platformFee : platformFee // ignore: cast_nullable_to_non_nullable
+as String,net: null == net ? _self.net : net // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as EarningsEntryStatus,availableAt: null == availableAt ? _self.availableAt : availableAt // ignore: cast_nullable_to_non_nullable
 as DateTime,reversedAt: freezed == reversedAt ? _self.reversedAt : reversedAt // ignore: cast_nullable_to_non_nullable

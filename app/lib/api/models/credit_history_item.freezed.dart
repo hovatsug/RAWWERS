@@ -18,8 +18,9 @@ mixin _$CreditHistoryItem {
 /// id
 @JsonKey(name: CreditHistoryItem.idKey_) String get id;/// createdAt
 @JsonKey(name: CreditHistoryItem.createdAtKey_) DateTime get createdAt;/// kind
-@JsonKey(name: CreditHistoryItem.kindKey_) String get kind;/// amountEur
-@JsonKey(name: CreditHistoryItem.amountEurKey_) String get amountEur;/// photographerFirstName
+@JsonKey(name: CreditHistoryItem.kindKey_) String get kind;/// amount
+@JsonKey(name: CreditHistoryItem.amountKey_) String get amount;/// currency
+@JsonKey(name: CreditHistoryItem.currencyKey_) String get currency;/// photographerFirstName
 @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) String? get photographerFirstName;
 /// Create a copy of CreditHistoryItem
 /// with the given fields replaced by the non-null parameter values.
@@ -33,16 +34,16 @@ $CreditHistoryItemCopyWith<CreditHistoryItem> get copyWith => _$CreditHistoryIte
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreditHistoryItem&&(identical(other.id, id) || other.id == id)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.amountEur, amountEur) || other.amountEur == amountEur)&&(identical(other.photographerFirstName, photographerFirstName) || other.photographerFirstName == photographerFirstName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreditHistoryItem&&(identical(other.id, id) || other.id == id)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.photographerFirstName, photographerFirstName) || other.photographerFirstName == photographerFirstName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,createdAt,kind,amountEur,photographerFirstName);
+int get hashCode => Object.hash(runtimeType,id,createdAt,kind,amount,currency,photographerFirstName);
 
 @override
 String toString() {
-  return 'CreditHistoryItem(id: $id, createdAt: $createdAt, kind: $kind, amountEur: $amountEur, photographerFirstName: $photographerFirstName)';
+  return 'CreditHistoryItem(id: $id, createdAt: $createdAt, kind: $kind, amount: $amount, currency: $currency, photographerFirstName: $photographerFirstName)';
 }
 
 
@@ -53,7 +54,7 @@ abstract mixin class $CreditHistoryItemCopyWith<$Res>  {
   factory $CreditHistoryItemCopyWith(CreditHistoryItem value, $Res Function(CreditHistoryItem) _then) = _$CreditHistoryItemCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: CreditHistoryItem.idKey_) String id,@JsonKey(name: CreditHistoryItem.createdAtKey_) DateTime createdAt,@JsonKey(name: CreditHistoryItem.kindKey_) String kind,@JsonKey(name: CreditHistoryItem.amountEurKey_) String amountEur,@JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) String? photographerFirstName
+@JsonKey(name: CreditHistoryItem.idKey_) String id,@JsonKey(name: CreditHistoryItem.createdAtKey_) DateTime createdAt,@JsonKey(name: CreditHistoryItem.kindKey_) String kind,@JsonKey(name: CreditHistoryItem.amountKey_) String amount,@JsonKey(name: CreditHistoryItem.currencyKey_) String currency,@JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) String? photographerFirstName
 });
 
 
@@ -70,12 +71,13 @@ class _$CreditHistoryItemCopyWithImpl<$Res>
 
 /// Create a copy of CreditHistoryItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? createdAt = null,Object? kind = null,Object? amountEur = null,Object? photographerFirstName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? createdAt = null,Object? kind = null,Object? amount = null,Object? currency = null,Object? photographerFirstName = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
-as String,amountEur: null == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,photographerFirstName: freezed == photographerFirstName ? _self.photographerFirstName : photographerFirstName // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -162,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: CreditHistoryItem.idKey_)  String id, @JsonKey(name: CreditHistoryItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: CreditHistoryItem.kindKey_)  String kind, @JsonKey(name: CreditHistoryItem.amountEurKey_)  String amountEur, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)  String? photographerFirstName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: CreditHistoryItem.idKey_)  String id, @JsonKey(name: CreditHistoryItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: CreditHistoryItem.kindKey_)  String kind, @JsonKey(name: CreditHistoryItem.amountKey_)  String amount, @JsonKey(name: CreditHistoryItem.currencyKey_)  String currency, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)  String? photographerFirstName)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreditHistoryItem() when $default != null:
-return $default(_that.id,_that.createdAt,_that.kind,_that.amountEur,_that.photographerFirstName);case _:
+return $default(_that.id,_that.createdAt,_that.kind,_that.amount,_that.currency,_that.photographerFirstName);case _:
   return orElse();
 
 }
@@ -183,10 +185,10 @@ return $default(_that.id,_that.createdAt,_that.kind,_that.amountEur,_that.photog
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: CreditHistoryItem.idKey_)  String id, @JsonKey(name: CreditHistoryItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: CreditHistoryItem.kindKey_)  String kind, @JsonKey(name: CreditHistoryItem.amountEurKey_)  String amountEur, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)  String? photographerFirstName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: CreditHistoryItem.idKey_)  String id, @JsonKey(name: CreditHistoryItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: CreditHistoryItem.kindKey_)  String kind, @JsonKey(name: CreditHistoryItem.amountKey_)  String amount, @JsonKey(name: CreditHistoryItem.currencyKey_)  String currency, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)  String? photographerFirstName)  $default,) {final _that = this;
 switch (_that) {
 case _CreditHistoryItem():
-return $default(_that.id,_that.createdAt,_that.kind,_that.amountEur,_that.photographerFirstName);case _:
+return $default(_that.id,_that.createdAt,_that.kind,_that.amount,_that.currency,_that.photographerFirstName);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +205,10 @@ return $default(_that.id,_that.createdAt,_that.kind,_that.amountEur,_that.photog
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: CreditHistoryItem.idKey_)  String id, @JsonKey(name: CreditHistoryItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: CreditHistoryItem.kindKey_)  String kind, @JsonKey(name: CreditHistoryItem.amountEurKey_)  String amountEur, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)  String? photographerFirstName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: CreditHistoryItem.idKey_)  String id, @JsonKey(name: CreditHistoryItem.createdAtKey_)  DateTime createdAt, @JsonKey(name: CreditHistoryItem.kindKey_)  String kind, @JsonKey(name: CreditHistoryItem.amountKey_)  String amount, @JsonKey(name: CreditHistoryItem.currencyKey_)  String currency, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_)  String? photographerFirstName)?  $default,) {final _that = this;
 switch (_that) {
 case _CreditHistoryItem() when $default != null:
-return $default(_that.id,_that.createdAt,_that.kind,_that.amountEur,_that.photographerFirstName);case _:
+return $default(_that.id,_that.createdAt,_that.kind,_that.amount,_that.currency,_that.photographerFirstName);case _:
   return null;
 
 }
@@ -218,7 +220,7 @@ return $default(_that.id,_that.createdAt,_that.kind,_that.amountEur,_that.photog
 
 @jsonSerializable
 class _CreditHistoryItem extends CreditHistoryItem {
-  const _CreditHistoryItem({@JsonKey(name: CreditHistoryItem.idKey_) required this.id, @JsonKey(name: CreditHistoryItem.createdAtKey_) required this.createdAt, @JsonKey(name: CreditHistoryItem.kindKey_) required this.kind, @JsonKey(name: CreditHistoryItem.amountEurKey_) required this.amountEur, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) this.photographerFirstName}): super._();
+  const _CreditHistoryItem({@JsonKey(name: CreditHistoryItem.idKey_) required this.id, @JsonKey(name: CreditHistoryItem.createdAtKey_) required this.createdAt, @JsonKey(name: CreditHistoryItem.kindKey_) required this.kind, @JsonKey(name: CreditHistoryItem.amountKey_) required this.amount, @JsonKey(name: CreditHistoryItem.currencyKey_) required this.currency, @JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) this.photographerFirstName}): super._();
   factory _CreditHistoryItem.fromJson(Map<String, dynamic> json) => _$CreditHistoryItemFromJson(json);
 
 /// id
@@ -227,8 +229,10 @@ class _CreditHistoryItem extends CreditHistoryItem {
 @override@JsonKey(name: CreditHistoryItem.createdAtKey_) final  DateTime createdAt;
 /// kind
 @override@JsonKey(name: CreditHistoryItem.kindKey_) final  String kind;
-/// amountEur
-@override@JsonKey(name: CreditHistoryItem.amountEurKey_) final  String amountEur;
+/// amount
+@override@JsonKey(name: CreditHistoryItem.amountKey_) final  String amount;
+/// currency
+@override@JsonKey(name: CreditHistoryItem.currencyKey_) final  String currency;
 /// photographerFirstName
 @override@JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) final  String? photographerFirstName;
 
@@ -245,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreditHistoryItem&&(identical(other.id, id) || other.id == id)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.amountEur, amountEur) || other.amountEur == amountEur)&&(identical(other.photographerFirstName, photographerFirstName) || other.photographerFirstName == photographerFirstName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreditHistoryItem&&(identical(other.id, id) || other.id == id)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.photographerFirstName, photographerFirstName) || other.photographerFirstName == photographerFirstName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,createdAt,kind,amountEur,photographerFirstName);
+int get hashCode => Object.hash(runtimeType,id,createdAt,kind,amount,currency,photographerFirstName);
 
 @override
 String toString() {
-  return 'CreditHistoryItem(id: $id, createdAt: $createdAt, kind: $kind, amountEur: $amountEur, photographerFirstName: $photographerFirstName)';
+  return 'CreditHistoryItem(id: $id, createdAt: $createdAt, kind: $kind, amount: $amount, currency: $currency, photographerFirstName: $photographerFirstName)';
 }
 
 
@@ -265,7 +269,7 @@ abstract mixin class _$CreditHistoryItemCopyWith<$Res> implements $CreditHistory
   factory _$CreditHistoryItemCopyWith(_CreditHistoryItem value, $Res Function(_CreditHistoryItem) _then) = __$CreditHistoryItemCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: CreditHistoryItem.idKey_) String id,@JsonKey(name: CreditHistoryItem.createdAtKey_) DateTime createdAt,@JsonKey(name: CreditHistoryItem.kindKey_) String kind,@JsonKey(name: CreditHistoryItem.amountEurKey_) String amountEur,@JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) String? photographerFirstName
+@JsonKey(name: CreditHistoryItem.idKey_) String id,@JsonKey(name: CreditHistoryItem.createdAtKey_) DateTime createdAt,@JsonKey(name: CreditHistoryItem.kindKey_) String kind,@JsonKey(name: CreditHistoryItem.amountKey_) String amount,@JsonKey(name: CreditHistoryItem.currencyKey_) String currency,@JsonKey(name: CreditHistoryItem.photographerFirstNameKey_) String? photographerFirstName
 });
 
 
@@ -282,12 +286,13 @@ class __$CreditHistoryItemCopyWithImpl<$Res>
 
 /// Create a copy of CreditHistoryItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? createdAt = null,Object? kind = null,Object? amountEur = null,Object? photographerFirstName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? createdAt = null,Object? kind = null,Object? amount = null,Object? currency = null,Object? photographerFirstName = freezed,}) {
   return _then(_CreditHistoryItem(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
-as String,amountEur: null == amountEur ? _self.amountEur : amountEur // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,photographerFirstName: freezed == photographerFirstName ? _self.photographerFirstName : photographerFirstName // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

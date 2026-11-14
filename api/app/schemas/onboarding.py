@@ -15,6 +15,9 @@ class ProProfileView(BaseModel):
     bio: str | None = None
     city: str | None = None
     country: str | None = None
+    #: The photographer's one currency (packages, earnings, payouts); read-only
+    #: (MULTI_CURRENCY.md 6.2), set from their country and Stripe account.
+    currency: str
     languages: list[str] = Field(default_factory=list)
     styles: list[str] = Field(default_factory=list)
     gear: dict = Field(default_factory=dict)

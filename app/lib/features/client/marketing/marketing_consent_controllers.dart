@@ -21,7 +21,7 @@ String _explain(ApiFailure failure) => switch (failure) {
 /// What a grant did: null [problem] when it went through, with the RAW
 /// credit it earned (0 when none: already credited for this booking, or the
 /// month's limit reached).
-typedef GrantOutcome = ({String? problem, String creditEur});
+typedef GrantOutcome = ({String? problem, String creditAmount, String currency});
 
 /// "Let RAWWERS feature your photos? Earn RAW credit." for one booking: the
 /// server says whether to offer it, the wording, the terms and the photos.
@@ -60,9 +60,9 @@ class MarketingOfferController extends _$MarketingOfferController {
         ref.invalidateSelf();
         ref.invalidate(myMarketingConsentsControllerProvider);
         ref.invalidate(myCreditProvider);
-        return (problem: null, creditEur: value.creditEur);
+        return (problem: null, creditAmount: value.creditAmount, currency: value.currency);
       case Err(:final failure):
-        return (problem: _explain(failure), creditEur: '0.00');
+        return (problem: _explain(failure), creditAmount: '0.00', currency: 'EUR');
     }
   }
 }

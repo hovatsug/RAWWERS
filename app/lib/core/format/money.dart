@@ -4,11 +4,10 @@ import 'package:flutter/widgets.dart';
 /// Every amount of money the pro app shows, in one place.
 ///
 /// The device's locale decides how the number is written: an English phone
-/// reads "€1,350.00", a Portuguese one "1 350,00 €". The currency is the
-/// server's - the `currency` a response carries - and only where a response
-/// sends none (the balance, earnings and payout fields, which are named for
-/// EUR: `withdrawable_eur`) does it fall back to [fallbackCurrency]. See
-/// docs/BACKEND_GAPS.md.
+/// reads "£1,350.00", a Portuguese one "1 350,00 €". The currency is always
+/// the server's: every money value the API sends carries one
+/// (docs/MULTI_CURRENCY.md 6.2), so there is no fallback and an amount
+/// without a currency cannot be formatted.
 ///
 /// Amounts arrive as decimal strings and stay strings: nothing here goes
 /// through a double. A fraction is shown as sent ("12.00" keeps its cents,
@@ -29,9 +28,6 @@ class RMoney {
   /// The same, for code with no BuildContext (a controller's message).
   static RMoney ofDevice() => RMoney.forLocale(WidgetsBinding.instance.platformDispatcher.locale);
 
-  /// For responses that carry no currency. The one place EUR is assumed.
-  static const fallbackCurrency = 'EUR';
-
   /// A no-break space, so "1 350,00 €" never wraps inside the number.
   static const _nbsp = ' ';
 
@@ -41,16 +37,15 @@ class RMoney {
 
   /// "€", "£", "$" - or the code itself for a currency without a symbol
   /// here, so an unfamiliar one is named rather than mislabelled.
-  static String symbolFor(String? currency) => switch ((currency ?? fallbackCurrency).toUpperCase()) {
+  static String symbolFor(String currency) => switch (currency.toUpperCase()) {
         'EUR' => '€',
         'GBP' => '£',
         'USD' => r'$',
         final code => code,
       };
 
-  /// [amount] in [currency] (EUR when the response sent none).
-  /// "-462.00" reads "-€462.00".
-  String format(String amount, {String? currency}) {
+  /// [amount] in [currency]. "-462.00" in EUR reads "-€462.00".
+  String format(String amount, {required String currency}) {
     final symbol = symbolFor(currency);
     final parsed = Decimal.tryParse(amount.trim());
     if (parsed == null) return _place(symbol, amount.trim());
@@ -64,7 +59,7 @@ class RMoney {
 
   /// The same amount, taken off: a fee, a credit given away.
   /// (Nothing taken off stays "€0.00": minus zero is not below zero.)
-  String minus(String amount, {String? currency}) {
+  String minus(String amount, {required String currency}) {
     final trimmed = amount.trim();
     return format(trimmed.startsWith('-') ? trimmed : '-$trimmed', currency: currency);
   }

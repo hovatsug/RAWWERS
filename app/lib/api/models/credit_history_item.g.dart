@@ -11,7 +11,8 @@ _CreditHistoryItem _$CreditHistoryItemFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       kind: json['kind'] as String,
-      amountEur: json['amount_eur'] as String,
+      amount: json['amount'] as String,
+      currency: json['currency'] as String,
       photographerFirstName: json['photographer_first_name'] as String?,
     );
 
@@ -20,6 +21,7 @@ Map<String, dynamic> _$CreditHistoryItemToJson(_CreditHistoryItem instance) =>
       'id': instance.id,
       'created_at': instance.createdAt.toIso8601String(),
       'kind': instance.kind,
-      'amount_eur': instance.amountEur,
+      'amount': instance.amount,
+      'currency': instance.currency,
       'photographer_first_name': instance.photographerFirstName,
     };

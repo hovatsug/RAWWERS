@@ -30,7 +30,7 @@ class _MarketingConsentClient implements MarketingConsentClient {
       'tags': ['marketing_consent'],
       'summary': 'Get Marketing Consent Offer',
       'description':
-          'Whether to show "Let RAWWERS feature your photos? Earn RAW credit." for\nthis booking, and with what: the wording, the terms and their credit,\nand the photos the client may choose from.',
+          'Whether to show "Let RAWWERS feature your photos? Earn credit." for\nthis booking, and with what: the wording, the terms and their credit,\nand the photos the client may choose from.',
       'operationId':
           'get_marketing_consent_offer_v1_gigs__gig_id__marketing_consent_offer_get',
       'parameters': [

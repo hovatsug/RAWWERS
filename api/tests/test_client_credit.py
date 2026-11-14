@@ -56,13 +56,13 @@ def _h(user):
 
 def test_the_balance_and_history_are_in_euros_with_their_kinds(client, db_session, fake_stripe):
     client_id, gig, assets = _consent_booking(client, db_session, name="Ana Lopes")
-    assert _grant(client, gig, client_id, assets[:1]).json()["credit_eur"] == "1.00"
+    assert _grant(client, gig, client_id, assets[:1]).json()["credit_amount"] == "1.00"
 
     body = client.get("/v1/me/credit", headers=_h(client_id)).json()
 
-    assert body["balance_eur"] == "1.00" and body["max_discount_percent"] == 10
+    assert body["balance"] == "1.00" and body["max_discount_percent"] == 10
     [item] = body["items"]
-    assert (item["kind"], item["amount_eur"], item["photographer_first_name"]) == ("marketing_permission", "1.00", "Ana")
+    assert (item["kind"], item["amount"], item["photographer_first_name"]) == ("marketing_permission", "1.00", "Ana")
 
 
 def test_used_and_returned_credit_show_in_the_history(client, db_session, fake_stripe):
@@ -74,7 +74,7 @@ def test_used_and_returned_credit_show_in_the_history(client, db_session, fake_s
     client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id))
     client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": False}, headers=_h(user_id))
 
-    kinds = [(i["kind"], i["amount_eur"]) for i in client.get("/v1/me/credit", headers=_h(user_id)).json()["items"]]
+    kinds = [(i["kind"], i["amount"]) for i in client.get("/v1/me/credit", headers=_h(user_id)).json()["items"]]
     assert kinds[:2] == [("returned", "5.00"), ("used_on_booking", "-5.00")]
 
 
@@ -90,8 +90,8 @@ def test_credit_takes_at_most_10_percent_off_and_the_charge_follows(client, db_s
     preview = client.get(f"/v1/client/bookings/{booking.id}/credit", headers=_h(user_id)).json()
     resp = client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id)).json()
 
-    assert (preview["discount_eur"], preview["total_eur"]) == ("10.00", "90.00")
-    assert (resp["credit_eur"], resp["amount_eur"]) == ("10.00", "90.00")
+    assert (preview["discount"], preview["total"]) == ("10.00", "90.00")
+    assert (resp["credit"], resp["amount"]) == ("10.00", "90.00")
     assert fake_stripe.creates[-1]["amount"] == 9000
     payment = db_session.execute(select(StripePayment).where(StripePayment.gig_id == gig.id)).scalar_one()
     assert payment.amount == Decimal("90.00")
@@ -106,9 +106,9 @@ def test_switching_credit_off_gives_it_back_and_restores_the_charge(client, db_s
     client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id))
     off = client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": False}, headers=_h(user_id)).json()
 
-    assert (off["credit_eur"], off["amount_eur"]) == ("0.00", "100.00")
+    assert (off["credit"], off["amount"]) == ("0.00", "100.00")
     assert fake_stripe.modifies[-1][1] == 10000
-    assert client.get("/v1/me/credit", headers=_h(user_id)).json()["balance_eur"] == "5.00"
+    assert client.get("/v1/me/credit", headers=_h(user_id)).json()["balance"] == "5.00"
 
 
 def test_the_cap_is_an_admin_setting(client, db_session, fake_stripe):
@@ -120,7 +120,7 @@ def test_the_cap_is_an_admin_setting(client, db_session, fake_stripe):
 
     preview = client.get(f"/v1/client/bookings/{booking.id}/credit", headers=_h(user_id)).json()
 
-    assert preview["discount_eur"] == "25.00"
+    assert preview["discount"] == "25.00"
     assert client.put("/v1/admin/client-credit/settings", json={"max_discount_percent": 10}, headers=_h(user_id)).status_code in (401, 403)
 
 
@@ -138,7 +138,7 @@ def test_the_photographer_is_paid_on_the_price_before_credit(client, db_session,
     db_session.commit()
     _give(db_session, uuid.UUID(user_id), 500)
     resp = client.post(f"/v1/client/bookings/{booking.id}/pay", json={"payment_mode": "full", "use_credit": True}, headers=_h(user_id)).json()
-    assert resp["amount_eur"] == "145.00"
+    assert resp["amount"] == "145.00"
 
     _apply_stripe_event(db_session, "payment_intent.succeeded", {"id": resp["payment_intent_id"], "amount_received": 14500})
     db_session.commit()
@@ -168,7 +168,7 @@ def test_credit_set_aside_comes_back_when_the_booking_lapses_unpaid(client, db_s
     expire_unpaid_gigs(db_session, now=datetime.now(timezone.utc) + timedelta(days=30))
     db_session.commit()
 
-    assert client.get("/v1/me/credit", headers=_h(user_id)).json()["balance_eur"] == "5.00"
+    assert client.get("/v1/me/credit", headers=_h(user_id)).json()["balance"] == "5.00"
 
 
 # --- the marketing budget ------------------------------------------------------------------
@@ -184,7 +184,7 @@ def test_an_award_exactly_at_the_budget_is_given_and_the_next_is_not(client, db_
     first_client, first_gig, first_assets = _consent_booking(client, db_session)
     second_client, second_gig, second_assets = _consent_booking(client, db_session)
 
-    assert _grant(client, first_gig, first_client, first_assets[:1]).json()["credit_eur"] == "1.00"
+    assert _grant(client, first_gig, first_client, first_assets[:1]).json()["credit_amount"] == "1.00"
     offer = _offer(client, second_gig, second_client).json()
     granted = _grant(client, second_gig, second_client, second_assets[:1])
 
@@ -264,7 +264,7 @@ def test_last_months_awards_do_not_count(client, db_session, fake_stripe):
     db_session.commit()
 
     second_client, second_gig, second_assets = _consent_booking(client, db_session)
-    assert _grant(client, second_gig, second_client, second_assets[:1]).json()["credit_eur"] == "1.00"
+    assert _grant(client, second_gig, second_client, second_assets[:1]).json()["credit_amount"] == "1.00"
 
 
 def test_admins_are_told_at_80_and_100_percent_once_each(client, db_session, fake_stripe):
@@ -309,7 +309,7 @@ def test_the_admin_month(client, db_session, fake_stripe):
 
     body = client.get("/v1/admin/client-credit/budget", headers=ADMIN).json()
 
-    assert (body["budget_eur"], body["awarded_eur"], body["remaining_eur"], body["outstanding_eur"]) == ("300.00", "1.00", "299.00", "1.00")
+    assert (body["budget"], body["awarded"], body["remaining"], body["outstanding"]) == ("300.00", "1.00", "299.00", "1.00")
     assert client.get("/v1/admin/client-credit/budget", headers=_h(client_id)).status_code in (401, 403)
 
 

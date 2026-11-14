@@ -1,21 +1,25 @@
 /// BookingCreditPreview
 /// {
 ///     "properties": {
-///         "balance_eur": {
+///         "balance": {
 ///             "type": "string",
-///             "title": "Balance Eur"
+///             "title": "Balance"
 ///         },
-///         "discount_eur": {
+///         "credit_currency": {
 ///             "type": "string",
-///             "title": "Discount Eur"
+///             "title": "Credit Currency"
 ///         },
-///         "price_eur": {
+///         "discount": {
 ///             "type": "string",
-///             "title": "Price Eur"
+///             "title": "Discount"
 ///         },
-///         "total_eur": {
+///         "price": {
 ///             "type": "string",
-///             "title": "Total Eur"
+///             "title": "Price"
+///         },
+///         "total": {
+///             "type": "string",
+///             "title": "Total"
 ///         },
 ///         "max_discount_percent": {
 ///             "type": "integer",
@@ -32,10 +36,11 @@
 ///     },
 ///     "type": "object",
 ///     "required": [
-///         "balance_eur",
-///         "discount_eur",
-///         "price_eur",
-///         "total_eur",
+///         "balance",
+///         "credit_currency",
+///         "discount",
+///         "price",
+///         "total",
 ///         "max_discount_percent",
 ///         "applied",
 ///         "currency"
@@ -54,19 +59,21 @@ abstract class BookingCreditPreview with _$BookingCreditPreview {
 
   @jsonSerializable
   const factory BookingCreditPreview({
-    /// balanceEur
-    @JsonKey(name: BookingCreditPreview.balanceEurKey_)
-    required String balanceEur,
+    /// balance
+    @JsonKey(name: BookingCreditPreview.balanceKey_) required String balance,
 
-    /// discountEur
-    @JsonKey(name: BookingCreditPreview.discountEurKey_)
-    required String discountEur,
+    /// creditCurrency
+    @JsonKey(name: BookingCreditPreview.creditCurrencyKey_)
+    required String creditCurrency,
 
-    /// priceEur
-    @JsonKey(name: BookingCreditPreview.priceEurKey_) required String priceEur,
+    /// discount
+    @JsonKey(name: BookingCreditPreview.discountKey_) required String discount,
 
-    /// totalEur
-    @JsonKey(name: BookingCreditPreview.totalEurKey_) required String totalEur,
+    /// price
+    @JsonKey(name: BookingCreditPreview.priceKey_) required String price,
+
+    /// total
+    @JsonKey(name: BookingCreditPreview.totalKey_) required String total,
 
     /// maxDiscountPercent
     @JsonKey(name: BookingCreditPreview.maxDiscountPercentKey_)
@@ -82,13 +89,15 @@ abstract class BookingCreditPreview with _$BookingCreditPreview {
   factory BookingCreditPreview.fromJson(Map<String, dynamic> json) =>
       _$BookingCreditPreviewFromJson(json);
 
-  static const String balanceEurKey_ = r'balance_eur';
+  static const String balanceKey_ = r'balance';
 
-  static const String discountEurKey_ = r'discount_eur';
+  static const String creditCurrencyKey_ = r'credit_currency';
 
-  static const String priceEurKey_ = r'price_eur';
+  static const String discountKey_ = r'discount';
 
-  static const String totalEurKey_ = r'total_eur';
+  static const String priceKey_ = r'price';
+
+  static const String totalKey_ = r'total';
 
   static const String maxDiscountPercentKey_ = r'max_discount_percent';
 

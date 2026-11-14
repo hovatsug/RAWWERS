@@ -9,10 +9,11 @@ part of 'booking_credit_preview.dart';
 _BookingCreditPreview _$BookingCreditPreviewFromJson(
   Map<String, dynamic> json,
 ) => _BookingCreditPreview(
-  balanceEur: json['balance_eur'] as String,
-  discountEur: json['discount_eur'] as String,
-  priceEur: json['price_eur'] as String,
-  totalEur: json['total_eur'] as String,
+  balance: json['balance'] as String,
+  creditCurrency: json['credit_currency'] as String,
+  discount: json['discount'] as String,
+  price: json['price'] as String,
+  total: json['total'] as String,
   maxDiscountPercent: (json['max_discount_percent'] as num).toInt(),
   applied: json['applied'] as bool,
   currency: json['currency'] as String,
@@ -21,10 +22,11 @@ _BookingCreditPreview _$BookingCreditPreviewFromJson(
 Map<String, dynamic> _$BookingCreditPreviewToJson(
   _BookingCreditPreview instance,
 ) => <String, dynamic>{
-  'balance_eur': instance.balanceEur,
-  'discount_eur': instance.discountEur,
-  'price_eur': instance.priceEur,
-  'total_eur': instance.totalEur,
+  'balance': instance.balance,
+  'credit_currency': instance.creditCurrency,
+  'discount': instance.discount,
+  'price': instance.price,
+  'total': instance.total,
   'max_discount_percent': instance.maxDiscountPercent,
   'applied': instance.applied,
   'currency': instance.currency,

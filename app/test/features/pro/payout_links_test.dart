@@ -90,12 +90,12 @@ class _CountingWallet extends WalletController {
 
 class _FakeBalance extends EarningsBalanceController {
   @override
-  Future<EarningsBalanceView> build() async => const EarningsBalanceView(
-        pendingEur: '0.00',
-        availableEur: '0.00',
-        heldEur: '0.00',
-        reservedEur: '0.00',
-        withdrawableEur: '0.00',
+  Future<EarningsBalanceView> build() async => const EarningsBalanceView(currency: 'EUR', payoutMinimum: '50.00', 
+        pending: '0.00',
+        available: '0.00',
+        held: '0.00',
+        reserved: '0.00',
+        withdrawable: '0.00',
       );
 }
 

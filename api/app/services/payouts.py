@@ -68,6 +68,7 @@ def create_earnings_entry(
     currency: str,
     metadata: dict | None = None,
     split=None,
+    stripe_payment_id: uuid.UUID | None = None,
 ) -> EarningsLedgerEntry | None:
     """`split` (a commission.BookingSplit) for a booking's own earnings,
     computed by photographer_money from the booking's stamped rates. Other
@@ -78,7 +79,10 @@ def create_earnings_entry(
     extras fee divides as a booking's does, the booking's stamped
     `pro_raww_percent` of it credited to the photographer (15% kept and 5%
     credited of a 20% fee) and stamped on the entry. Their cash is the same
-    as before; the credit comes out of the platform's share."""
+    as before; the credit comes out of the platform's share.
+
+    `stripe_payment_id`: the client payment the earning came from, whose
+    charge funds its transfer (MULTI_CURRENCY.md 10.4)."""
     from app.services.commission import split_with_rates
     from app.services.currencies import normalise, pro_currency
 
@@ -131,6 +135,7 @@ def create_earnings_entry(
             source_type=source_type,
             source_id=source_id,
             currency=currency,
+            stripe_payment_id=stripe_payment_id,
             gross=gross,
             platform_fee=fee,
             net=net,
@@ -539,38 +544,88 @@ def execute_payout_request(db: Session, *, payout_request_id: uuid.UUID) -> Payo
         _add_payout_event(db, payout_request_id=row.id, event_type="failed", payload={"reason": row.failure_reason})
         logger.error("payout_currency_mismatch", extra={"payout_request_id": str(row.id)})
         return row
+    _send_payout_transfers(db, row, account)
+    return row
+
+
+def _send_payout_transfers(db: Session, row: PayoutRequest, account: PayoutAccount) -> None:
+    """One transfer per client payment behind the payout, each from that
+    payment's charge (services/payout_transfers.py, MULTI_CURRENCY.md 10.4)."""
+    from app.core.sentry import capture_message
+    from app.services import payout_transfers
+
+    now = datetime.now(timezone.utc)
     try:
-        transfer = stripe.Transfer.create(
-            amount=int((row.amount * Decimal("100")).quantize(Decimal("1"))),
-            currency=row.currency.lower(),
-            destination=account.stripe_connect_account_id,
-            metadata={"payout_request_id": str(row.id), "pro_user_id": str(row.pro_user_id)},
-            idempotency_key=f"payout-transfer:{row.id}",
-        )
+        payout_transfers.plan_transfers(db, row)
+        payout_transfers.send_transfers(db, row, destination=account.stripe_connect_account_id)
+    except payout_transfers.TransferInvariantBreach as exc:
+        # A bug: nothing more is sent. Nothing of this payout went if it is
+        # caught at planning; at sending, what already went stays recorded.
+        sent = [t for t in payout_transfers.transfers_of(db, row.id) if t.status == payout_transfers.PayoutTransferStatus.paid]
+        row.status = PayoutRequestStatus.processing if sent else PayoutRequestStatus.failed
+        row.failure_reason = f"transfer_invariant_breach: {exc}"[:500]
+        row.updated_at = now
+        _add_payout_event(db, payout_request_id=row.id, event_type="failed" if not sent else "transfers_incomplete", payload={"reason": row.failure_reason})
+        logger.error("payout_transfer_invariant_breach", extra={"payout_request_id": str(row.id)})
+        capture_message("Payout transfer invariant breach", tags={"payout_request_id": str(row.id)}, extra={"reason": str(exc)})
+        return
+
+    rows = payout_transfers.transfers_of(db, row.id)
+    result = payout_transfers.outcome(rows)
+    transfer_ids = [t.stripe_transfer_id for t in rows if t.status == payout_transfers.PayoutTransferStatus.paid]
+    if result == "paid":
         row.status = PayoutRequestStatus.paid
-        row.paid_at = datetime.now(timezone.utc)
-        row.reference = {**(row.reference or {}), "stripe_transfer_id": getattr(transfer, "id", None)}
-        row.updated_at = datetime.now(timezone.utc)
+        row.paid_at = now
+        row.failure_reason = None
+        row.reference = {**(row.reference or {}), "stripe_transfer_id": transfer_ids[0], "stripe_transfer_ids": transfer_ids}
+        row.updated_at = now
         _add_payout_event(db, payout_request_id=row.id, event_type="paid", payload={"mode": "stripe_connect", "reference": row.reference})
         _notify_payout_paid(db, row)
         log_event(
             db,
             event_name="payout.paid",
             user_id=row.pro_user_id,
-            properties={"payout_request_id": str(row.id), "amount": str(row.amount), "currency": row.currency},
+            properties={"payout_request_id": str(row.id), "amount": str(row.amount), "currency": row.currency, "transfers": len(rows)},
         )
         observe_payout_volume(float(row.amount))
-    except Exception as exc:
+        return
+
+    reasons = "; ".join(f"{t.amount} {t.currency}: {t.failure_reason}" for t in rows if t.failure_reason)[:500]
+    row.failure_reason = reasons or "transfer failed"
+    row.updated_at = now
+    if result == "processing":
+        # Part went, or waits for funds: the money stays reserved; the admin
+        # retries the rest (retry_payout_transfers).
+        row.status = PayoutRequestStatus.processing
+        if transfer_ids:
+            row.reference = {**(row.reference or {}), "stripe_transfer_ids": transfer_ids}
+        _add_payout_event(db, payout_request_id=row.id, event_type="transfers_incomplete", payload={"reason": row.failure_reason})
+        capture_message("Payout not fully sent", tags={"payout_request_id": str(row.id)}, extra={"reason": row.failure_reason})
+    else:
         row.status = PayoutRequestStatus.failed
-        row.failure_reason = str(exc)[:500]
-        row.updated_at = datetime.now(timezone.utc)
         _add_payout_event(db, payout_request_id=row.id, event_type="failed", payload={"reason": row.failure_reason})
-        log_event(
-            db,
-            event_name="payout.failed",
-            user_id=row.pro_user_id,
-            properties={"payout_request_id": str(row.id), "reason": row.failure_reason},
-        )
+    log_event(
+        db,
+        event_name="payout.failed" if result == "failed" else "payout.transfers_incomplete",
+        user_id=row.pro_user_id,
+        properties={"payout_request_id": str(row.id), "reason": row.failure_reason},
+    )
+
+
+def retry_payout_transfers(db: Session, *, payout_request_id: uuid.UUID) -> PayoutRequest:
+    """Send again the transfers of a payout that failed or wait for funds;
+    those already paid are not touched (MULTI_CURRENCY.md 10.4)."""
+    from app.services import payout_transfers
+
+    row = db.get(PayoutRequest, payout_request_id)
+    if not row:
+        raise APIError(code="not_found", message="Payout request not found", status_code=404)
+    payout_transfers.require_retryable(db, row)
+    account = get_or_create_payout_account(db, pro_user_id=row.pro_user_id)
+    if account.payout_method != PayoutMethod.stripe_connect or account.status != PayoutAccountStatus.active:
+        raise APIError(code="invalid_state", message="The photographer's Stripe account is not active", status_code=409)
+    _add_payout_event(db, payout_request_id=row.id, event_type="transfers_retried", payload={})
+    _send_payout_transfers(db, row, account)
     return row
 
 

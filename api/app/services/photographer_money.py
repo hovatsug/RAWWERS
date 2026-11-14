@@ -204,7 +204,10 @@ def _record_gig_earnings(db: Session, gig: Gig, *, lower_only: bool = False) -> 
             currency=gig.currency,
             split=split,
             metadata={"gig_id": str(gig.id)},
+            stripe_payment_id=booking_payment_id(db, gig),
         )
+    if entry.stripe_payment_id is None:
+        entry.stripe_payment_id = booking_payment_id(db, gig)
     fee = _q2(split.gross - split.pro_cash)
     if (entry.gross, entry.platform_fee, entry.net) != (split.gross, fee, split.pro_cash):
         entry.gross, entry.platform_fee, entry.net = split.gross, fee, split.pro_cash
@@ -212,6 +215,21 @@ def _record_gig_earnings(db: Session, gig: Gig, *, lower_only: bool = False) -> 
         db.flush()
         refresh_earnings_balance_snapshot(db, pro_user_id=gig.pro_user_id)
     return entry
+
+
+def booking_payment_id(db: Session, gig: Gig):
+    """The booking's own payment, the first base payment that went through:
+    the one its earning is tied to (MULTI_CURRENCY.md 10.4)."""
+    return db.execute(
+        select(StripePayment.id)
+        .where(
+            StripePayment.gig_id == gig.id,
+            StripePayment.kind == StripePaymentKind.base,
+            StripePayment.status.in_([PaymentStatus.succeeded, PaymentStatus.refunded, PaymentStatus.disputed]),
+        )
+        .order_by(StripePayment.created_at.asc())
+        .limit(1)
+    ).scalar_one_or_none()
 
 
 # --- one photographer -----------------------------------------------------------------------

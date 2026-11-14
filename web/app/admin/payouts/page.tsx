@@ -24,7 +24,7 @@ import {
  */
 export default function AdminPayoutsPage() {
   const queryClient = useQueryClient();
-  const [dialog, setDialog] = useState<{ row: PayoutQueueRow; action: "approve" | "paid" } | null>(null);
+  const [dialog, setDialog] = useState<{ row: PayoutQueueRow; action: "approve" | "paid" | "retry" } | null>(null);
 
   const query = useQuery({ queryKey: ["admin", "payout-queue"], queryFn: () => admin.payoutQueue() });
   const items = query.data?.ok ? query.data.data.items : undefined;
@@ -44,7 +44,19 @@ export default function AdminPayoutsPage() {
       )
     },
     { header: "Amount", className: "tabular-nums", cell: (row) => <span className="font-semibold">{money(row.amount, row.currency)}</span> },
-    { header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
+    {
+      header: "Status",
+      cell: (row) => (
+        <div className="text-xs">
+          <StatusBadge status={row.status} />
+          {row.transfers_to_retry ? (
+            <p className="mt-1 text-amber-200">
+              {row.transfers_to_retry} transfer{row.transfers_to_retry === 1 ? "" : "s"} not sent: {row.failure_reason}
+            </p>
+          ) : null}
+        </div>
+      )
+    },
     {
       // Manual bank transfer is a real route and currently the only one that
       // works end to end, so it is not presented as a problem.
@@ -83,6 +95,11 @@ export default function AdminPayoutsPage() {
           >
             Mark paid…
           </AdminButton>
+          {row.transfers_to_retry ? (
+            <AdminButton tone="secondary" onClick={() => setDialog({ row, action: "retry" })}>
+              Retry transfers…
+            </AdminButton>
+          ) : null}
         </div>
       )
     }
@@ -138,6 +155,22 @@ export default function AdminPayoutsPage() {
         }}
       >
         <p>Only once the money has actually left the account. The photographer sees this payout as paid.</p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={dialog?.action === "retry"}
+        title={`Send the rest of ${who}'s payout again?`}
+        confirmLabel="Retry transfers"
+        onClose={() => setDialog(null)}
+        onConfirm={async () => {
+          if (!row) return null;
+          const res = await admin.retryPayoutTransfers(row.payout_request_id);
+          if (!res.ok) return res.error.message;
+          queryClient.invalidateQueries({ queryKey: ["admin", "payout-queue"] });
+          return null;
+        }}
+      >
+        <p>Only the transfers that failed or waited for funds are sent; those already sent are not sent again.</p>
       </ConfirmDialog>
     </>
   );

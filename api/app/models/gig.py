@@ -162,6 +162,11 @@ class StripePayment(Base):
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status", native_enum=False, length=64), index=True, nullable=False)
     stripe_payment_intent_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The charge behind the payment (the PaymentIntent's `latest_charge`),
+    #: written when it succeeds: the `source_transaction` of the transfers it
+    #: funds (MULTI_CURRENCY.md 10.4). Null on payments from before it was
+    #: recorded; the payout looks it up from Stripe then.
+    stripe_charge_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     # How much of it has come back to the client, as Stripe reports it
     # (charge.refunded's running total). The status stays `succeeded` until

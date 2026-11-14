@@ -147,6 +147,8 @@ def test_a_gbp_photographers_earnings_balance_and_payout_are_in_gbp(db_session, 
 
     sent = []
     monkeypatch.setattr(payouts_service.stripe.Transfer, "create", lambda **kw: sent.append(kw) or type("T", (), {"id": "tr_1"})())
+    # No payment behind this earning: sent from the platform's pound balance (M7).
+    monkeypatch.setattr(payouts_service.stripe.Balance, "retrieve", lambda **kw: {"available": [{"currency": "gbp", "amount": 10_000}]})
     payouts_service.get_or_create_payout_account(db_session, pro_user_id=pro)
     account = payouts_service.get_or_create_payout_account(db_session, pro_user_id=pro)
     account.payout_method = payouts_service.PayoutMethod.stripe_connect

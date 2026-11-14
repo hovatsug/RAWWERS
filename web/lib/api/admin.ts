@@ -152,6 +152,10 @@ export type PayoutQueueRow = {
   withdrawable: string;
   exceeds_withdrawable: boolean;
   lifetime_payouts: number;
+  /** Why the last attempt did not finish, if it did not. */
+  failure_reason?: string | null;
+  /** Transfers (one per client payment) that failed or wait for funds. */
+  transfers_to_retry?: number;
 };
 
 export type DisputeRow = {
@@ -530,6 +534,7 @@ export const admin = {
       method: "POST",
       body: JSON.stringify({ reference })
     }),
+  retryPayoutTransfers: (id: string) => adminFetch<unknown>(`payouts/${id}/retry-transfers`, { method: "POST" }),
   rejectPayout: (id: string, reason: string) =>
     adminFetch<unknown>(`payouts/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 

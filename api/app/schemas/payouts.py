@@ -236,6 +236,11 @@ class AdminPayoutQueueRow(BaseModel):
     # something moved between requesting and reviewing.
     exceeds_withdrawable: bool
     lifetime_payouts: int
+    #: Why the last attempt did not finish, if it did not.
+    failure_reason: str | None = None
+    #: Transfers of this payout that failed or wait for funds (one per
+    #: client payment, MULTI_CURRENCY.md 10.4): the admin can send them again.
+    transfers_to_retry: int = 0
 
 
 class AdminPayoutQueueResponse(BaseModel):

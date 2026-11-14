@@ -210,7 +210,7 @@ def start(db: Session, *, gallery: ProofGallery, user_id: uuid.UUID, asset_ids: 
     return purchase, pi.client_secret
 
 
-def apply_paid(db: Session, purchase: ExtraImagePurchase, amount: Decimal) -> None:
+def apply_paid(db: Session, purchase: ExtraImagePurchase, amount: Decimal, *, stripe_payment_id=None) -> None:
     """The add-on is paid: its photos are the client's, and it is the
     photographer's own extras earning. Once, however often it is told."""
     from app.services.payouts import create_earnings_entry
@@ -231,6 +231,7 @@ def apply_paid(db: Session, purchase: ExtraImagePurchase, amount: Decimal) -> No
             gross=amount,
             currency=db.get(Gig, purchase.gig_id).currency,
             metadata={"gig_id": str(purchase.gig_id), "selection_addon": True},
+            stripe_payment_id=stripe_payment_id,
         )
 
 
@@ -241,7 +242,7 @@ def apply_payment(db: Session, payment) -> bool:
     ).scalar_one_or_none()
     if purchase is None or (purchase.meta or {}).get("kind") != ADDON_KIND:
         return False
-    apply_paid(db, purchase, Decimal(payment.amount))
+    apply_paid(db, purchase, Decimal(payment.amount), stripe_payment_id=payment.id)
     return True
 
 

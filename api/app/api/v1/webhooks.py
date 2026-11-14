@@ -352,6 +352,54 @@ def _bring_open_difference_to_owed(db: Session, gig: Gig, gallery: ProofGallery,
     db.flush()
 
 
+def _confirm_payout_transfer(db: Session, payout: PayoutRequest, transfer_row_id: str, stripe_transfer_id: str | None) -> None:
+    from app.models.payouts import PayoutTransfer, PayoutTransferStatus
+
+    try:
+        transfer = db.get(PayoutTransfer, uuid.UUID(str(transfer_row_id)))
+    except ValueError:
+        return
+    if transfer is None or transfer.payout_request_id != payout.id:
+        return
+    if transfer.status not in (PayoutTransferStatus.paid, PayoutTransferStatus.reversed):
+        transfer.status = PayoutTransferStatus.paid
+        transfer.stripe_transfer_id = stripe_transfer_id
+        transfer.failure_reason = None
+        transfer.updated_at = datetime.now(timezone.utc)
+        db.flush()
+    rows = db.execute(select(PayoutTransfer).where(PayoutTransfer.payout_request_id == payout.id)).scalars().all()
+    if payout.status != PayoutRequestStatus.paid and rows and all(r.status == PayoutTransferStatus.paid for r in rows):
+        ids = [r.stripe_transfer_id for r in rows]
+        payout.status = PayoutRequestStatus.paid
+        payout.paid_at = datetime.now(timezone.utc)
+        payout.failure_reason = None
+        payout.reference = {**(payout.reference or {}), "stripe_transfer_id": ids[0], "stripe_transfer_ids": ids}
+        payout.updated_at = datetime.now(timezone.utc)
+        observe_payout_volume(float(payout.amount))
+
+
+def _reverse_payout_transfer(db: Session, payout: PayoutRequest, transfer_row_id: str | None) -> bool:
+    """Mark the payout's transfer reversed; True if another of its transfers
+    is still sent."""
+    from app.models.payouts import PayoutTransfer, PayoutTransferStatus
+
+    if not transfer_row_id:
+        return False
+    try:
+        transfer = db.get(PayoutTransfer, uuid.UUID(str(transfer_row_id)))
+    except ValueError:
+        return False
+    if transfer is None or transfer.payout_request_id != payout.id:
+        return False
+    transfer.status = PayoutTransferStatus.reversed
+    transfer.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return any(
+        r.status == PayoutTransferStatus.paid
+        for r in db.execute(select(PayoutTransfer).where(PayoutTransfer.payout_request_id == payout.id)).scalars().all()
+    )
+
+
 def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
     if event_type == "payment_intent.succeeded":
         payment_intent_id = obj.get("id")
@@ -529,6 +577,13 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         newly_paid = payment.status != PaymentStatus.succeeded
         payment.status = PaymentStatus.succeeded
         payment.last_error = None
+        # The charge behind it: the source_transaction of the transfers it
+        # funds (services/payout_transfers.py).
+        latest_charge = obj.get("latest_charge")
+        if isinstance(latest_charge, dict):
+            latest_charge = latest_charge.get("id")
+        if latest_charge and not payment.stripe_charge_id:
+            payment.stripe_charge_id = str(latest_charge)
         payment.meta = {**payment.meta, "paid_at": datetime.now(timezone.utc).isoformat()}
         if newly_paid:
             # The client's receipt (an approved email). Once per payment,
@@ -914,14 +969,19 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
         if not row:
             return
 
-        if row.status != PayoutRequestStatus.paid:
+        transfer_row_id = (obj.get("metadata") or {}).get("payout_transfer_id")
+        if transfer_row_id:
+            # One of the payout's per-payment transfers: that one is sent;
+            # the payout is paid when all of them are.
+            _confirm_payout_transfer(db, row, transfer_row_id, obj.get("id"))
+        elif row.status != PayoutRequestStatus.paid:
             row.status = PayoutRequestStatus.paid
             row.paid_at = datetime.now(timezone.utc)
             row.reference = {**(row.reference or {}), "stripe_transfer_id": obj.get("id")}
             row.updated_at = datetime.now(timezone.utc)
             observe_payout_volume(float(row.amount))
 
-        if not _payout_event_recorded(db, row.id, "transfer_created"):
+        if not _payout_event_recorded(db, row.id, "transfer_created", obj.get("id")):
             db.add(PayoutEvent(payout_request_id=row.id, type="transfer_created", payload={"stripe_transfer_id": obj.get("id")}))
             log_event(
                 db,
@@ -948,10 +1008,15 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             return
         if not row:
             return
-        if _payout_event_recorded(db, row.id, "transfer_reversed"):
+        if _payout_event_recorded(db, row.id, "transfer_reversed", obj.get("id")):
             return
 
-        row.status = PayoutRequestStatus.failed
+        # A per-payment transfer taken back: that one is marked reversed. The
+        # payout fails (its money back to available) only if nothing of it
+        # remains sent; otherwise it stays processing, its money reserved,
+        # for the admin.
+        still_sent = _reverse_payout_transfer(db, row, (obj.get("metadata") or {}).get("payout_transfer_id"))
+        row.status = PayoutRequestStatus.processing if still_sent else PayoutRequestStatus.failed
         row.failure_reason = (obj.get("failure_message") or "Stripe transfer reversed")[:500]
         row.updated_at = datetime.now(timezone.utc)
         db.add(PayoutEvent(payout_request_id=row.id, type="transfer_reversed", payload={"stripe_transfer_id": obj.get("id"), "reason": row.failure_reason}))
@@ -1023,10 +1088,13 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             observe_business_event("payout_account_updated")
 
 
-def _payout_event_recorded(db: Session, payout_request_id, event_type: str) -> bool:
-    return db.execute(
-        select(PayoutEvent.id).where(PayoutEvent.payout_request_id == payout_request_id, PayoutEvent.type == event_type)
-    ).first() is not None
+def _payout_event_recorded(db: Session, payout_request_id, event_type: str, stripe_transfer_id: str | None = None) -> bool:
+    """Whether the event was recorded; per Stripe transfer when one is
+    named (a payout has one transfer per payment)."""
+    stmt = select(PayoutEvent.id).where(PayoutEvent.payout_request_id == payout_request_id, PayoutEvent.type == event_type)
+    if stripe_transfer_id:
+        stmt = stmt.where(PayoutEvent.payload["stripe_transfer_id"].astext == stripe_transfer_id)
+    return db.execute(stmt).first() is not None
 
 
 def _ledger_reference_exists(db: Session, gig_id, entry_type: LedgerEntryType, reference_id: str) -> bool:

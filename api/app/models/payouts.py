@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CHAR, DateTime, Enum, Index, Integer, Numeric, SmallInteger, Text, UniqueConstraint
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Index, Integer, Numeric, SmallInteger, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -95,6 +95,13 @@ class EarningsLedgerEntry(Base):
     #: Null on entries from before extras earned it (no backfill).
     pro_raww: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     pro_raww_percent: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    #: The client payment this earning came from (MULTI_CURRENCY.md 10.4): a
+    #: booking's base payment, an add-on's own payment. Its charge funds the
+    #: transfer (`source_transaction`). Null when no payment of ours is behind
+    #: it (a legacy upsell, Studioverse, an adjustment).
+    stripe_payment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stripe_payment.id"), nullable=True, index=True
+    )
     status: Mapped[EarningsEntryStatus] = mapped_column(
         Enum(EarningsEntryStatus, name="earnings_entry_status", native_enum=False, length=64),
         nullable=False,
@@ -222,6 +229,63 @@ class PayoutAllocation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (UniqueConstraint("payout_request_id", "earnings_ledger_entry_id", name="uq_payout_allocation_unique"),)
+
+
+class PayoutTransferStatus(str, enum.Enum):
+    pending = "pending"
+    paid = "paid"
+    failed = "failed"
+    #: No payment of ours funds it and the platform's balance in its
+    #: currency is short: it waits, and the admin is told.
+    waiting_funds = "waiting_funds"
+    #: Sent, then taken back by Stripe (transfer.reversed).
+    reversed = "reversed"
+
+
+class PayoutTransfer(Base):
+    """One Stripe transfer of a payout: the part of it funded by one client
+    payment, sent with that payment's charge as `source_transaction`
+    (MULTI_CURRENCY.md 10.4). `stripe_payment_id` null: the part no payment
+    of ours funds, sent from the platform's balance only when it covers it."""
+
+    __tablename__ = "payout_transfer"
+    __table_args__ = (
+        UniqueConstraint("payout_request_id", "stripe_payment_id", name="uq_payout_transfer_payment"),
+        Index(
+            "uq_payout_transfer_unfunded",
+            "payout_request_id",
+            unique=True,
+            postgresql_where="stripe_payment_id IS NULL",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payout_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("payout_request.id"), nullable=False, index=True
+    )
+    stripe_payment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stripe_payment.id"), nullable=True, index=True
+    )
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    #: The charge it was sent from, as sent.
+    stripe_charge_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stripe_transfer_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    status: Mapped[PayoutTransferStatus] = mapped_column(
+        Enum(PayoutTransferStatus, name="payout_transfer_status", native_enum=False, length=32),
+        nullable=False,
+        default=PayoutTransferStatus.pending,
+        index=True,
+    )
+    attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class PlatformFeePolicy(Base):

@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.models.gig import Gig, GigStatus
 from app.models.admin import Dispute, ProProfile, UserAccount
 from app.models.payouts import (
+    PayoutTransferStatus,
     EarningsHold,
     EarningsSourceType,
     PayoutAccountStatus,
@@ -24,6 +25,7 @@ from app.models.payouts import (
     PayoutSetupState,
     PlatformFeePolicy,
 )
+from app.services.payout_transfers import transfers_of
 from app.schemas.media import CurrentUser
 from app.schemas.payouts import (
     TaxProfileUpdateRequest,
@@ -76,6 +78,7 @@ from app.services.payouts import (
     create_payout_request,
     ensure_default_platform_fee_policy,
     execute_payout_request,
+    retry_payout_transfers,
     get_or_create_payout_account,
     list_finance_pros,
     list_payout_requests_admin,
@@ -552,6 +555,11 @@ def admin_payout_queue(
                 exceeds_withdrawable=row.amount > balance["withdrawable"]
                 and row.status == PayoutRequestStatus.requested,
                 lifetime_payouts=int(lifetime),
+                failure_reason=row.failure_reason,
+                transfers_to_retry=sum(
+                    1 for t in transfers_of(db, row.id)
+                    if t.status in (PayoutTransferStatus.failed, PayoutTransferStatus.waiting_funds)
+                ),
             )
         )
     db.commit()
@@ -631,6 +639,28 @@ def mark_paid_payout_admin(
         target_id=str(row.id),
         action="payout_mark_paid",
         metadata={"reference": body.reference},
+    )
+    db.commit()
+    db.refresh(row)
+    return PayoutRequestView.model_validate(row, from_attributes=True)
+
+
+@router.post("/admin/payouts/{payout_request_id}/retry-transfers", response_model=PayoutRequestView)
+def retry_payout_transfers_admin(
+    payout_request_id: uuid.UUID,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> PayoutRequestView:
+    """Send again a payout's transfers that failed or wait for funds; those
+    already sent are never sent again (MULTI_CURRENCY.md 10.4)."""
+    row = retry_payout_transfers(db, payout_request_id=payout_request_id)
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="payout_request",
+        target_id=str(row.id),
+        action="payout_transfers_retried",
+        metadata={"status": row.status.value},
     )
     db.commit()
     db.refresh(row)

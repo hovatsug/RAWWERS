@@ -236,6 +236,7 @@ from app.models.payouts import (
     PayoutAllocation,
     PayoutEvent,
     PayoutRequest,
+    PayoutTransfer,
     PlatformFeePolicy,
     TaxProfile,
 )

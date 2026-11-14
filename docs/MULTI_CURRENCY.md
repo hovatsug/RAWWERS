@@ -586,5 +586,5 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 **Not as the design said, and why:**
 - The regenerated API client also picked up routes the committed client was missing (the email unsubscribe client and models, reordered gallery, review and notification clients): the client had not been regenerated since those routes were added. Nothing in the app uses them yet.
 - **Left as named per currency** (the suffix names the currency a setting is for; a `_gbp` twin comes with M4): `monthly_marketing_credit_budget_eur`, `min_conversion_value_eur`, `raww_eur_value`, `gbp_eur_rate`. The Shelf's amounts (off) and BI's cents (EUR by design) are M4 and M5.
-- **Client credit earned on a booking in pounds** is still counted in euro points: per-currency credit is M4, which comes before any app is distributed.
+- **Known gap until M4: client credit earned on a booking in pounds** is still counted in euro points. Per-currency credit is M4, which comes before any app is distributed. It is a gate item in `BETA_SCOPE.md` (#60): it must be fixed before the beta (owner, 2026-11-14).
 - **The client's budget filter** (`ClientPreferenceView.budget_min/max`) has no currency yet: it is the display currency, batch M3.

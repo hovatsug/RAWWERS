@@ -53,3 +53,10 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 9d3194f | 2026-11-13 | Docs: the owner's multi-currency decisions M1-M10 (M11 open); Shelf stays off | no |
 | 44c9b21 | 2026-11-14 | Multi-currency M1: currency on the photographer's money; currency_settings (GBP only); `_eur` columns renamed; migration 20261113_0095 | **yes** (money, migration) |
 | ad49746 | 2026-11-14 | Multi-currency M2: every money value carries its currency; client credit euros-only; apps regenerated, RMoney without fallback; web money() requires a currency | **yes** (money display, contract) |
+| 807bc23 | 2026-11-14 | Docs: credit earned in pounds is a beta gate item (#60) and a known gap until M4 | no |
+| 1486e3e | 2026-11-14 | Client credit: the pay route's own currency check removed; the central one in rewards refuses and the route pays in full | **yes** (money) |
+| bd8d409 | 2026-11-14 | Multi-currency M7: one transfer per client payment, from its charge; migration 20261114_0096 | **yes** (money, migration) |
+| c291946 | 2026-11-14 | Multi-currency M4: caps, credit and RAWW per currency; migration 20261114_0097 | **yes** (money, migration) |
+| 170207d | 2026-11-14 | Tests: four tests M4 left behind (credit wording, index currency, own preview) | no (tests only) |
+| 2b7c983 | 2026-11-14 | Multi-currency M3: display rates and the display currency; default time zone Europe/London; migration 20261114_0098 | **yes** (migration) |
+| 8b2e88e | 2026-11-14 | Lightroom plug-in 1.1.0: publish to the portfolio (BETA_SCOPE #61) | **yes** (token scope, uploads, user content) |

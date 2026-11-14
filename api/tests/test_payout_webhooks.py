@@ -24,7 +24,7 @@ def _ensure_account(db_session, user_id: uuid.UUID):
 
 
 def _create_payout_request(db_session, pro_id: uuid.UUID, *, status: PayoutRequestStatus) -> PayoutRequest:
-    row = PayoutRequest(pro_user_id=pro_id, amount_eur=Decimal("100.00"), status=status, reference={})
+    row = PayoutRequest(pro_user_id=pro_id, amount=Decimal("100.00"), status=status, reference={}, currency="EUR")
     db_session.add(row)
     db_session.commit()
     db_session.refresh(row)

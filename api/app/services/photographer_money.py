@@ -187,7 +187,7 @@ def _record_gig_earnings(db: Session, gig: Gig, *, lower_only: bool = False) -> 
         return None
     split = booking_split(db, gig, earned_gross(db, gig))
 
-    if lower_only and entry is not None and split.pro_cash >= entry.net_eur:
+    if lower_only and entry is not None and split.pro_cash >= entry.net:
         return entry
     stamp_final_split(db, gig)
     if split.pro_cash <= ZERO:
@@ -200,13 +200,14 @@ def _record_gig_earnings(db: Session, gig: Gig, *, lower_only: bool = False) -> 
             pro_user_id=gig.pro_user_id,
             source_type=EarningsSourceType.gig_base,
             source_id=gig.id,
-            gross_eur=split.gross,
+            gross=split.gross,
+            currency=gig.currency,
             split=split,
             metadata={"gig_id": str(gig.id)},
         )
     fee = _q2(split.gross - split.pro_cash)
-    if (entry.gross_eur, entry.platform_fee_eur, entry.net_eur) != (split.gross, fee, split.pro_cash):
-        entry.gross_eur, entry.platform_fee_eur, entry.net_eur = split.gross, fee, split.pro_cash
+    if (entry.gross, entry.platform_fee, entry.net) != (split.gross, fee, split.pro_cash):
+        entry.gross, entry.platform_fee, entry.net = split.gross, fee, split.pro_cash
         entry.updated_at = datetime.now(timezone.utc)
         db.flush()
         refresh_earnings_balance_snapshot(db, pro_user_id=gig.pro_user_id)
@@ -218,6 +219,8 @@ def _record_gig_earnings(db: Session, gig: Gig, *, lower_only: bool = False) -> 
 
 @dataclass(frozen=True)
 class PhotographerMoney:
+    #: The photographer's one currency; every figure below is in it.
+    currency: str
     lifetime: Decimal
     pending: Decimal
     on_hold: Decimal
@@ -236,26 +239,51 @@ class PhotographerMoney:
         return max(ZERO, -self.available)
 
 
+def money_currency(db: Session, pro_user_id: uuid.UUID) -> str:
+    """The currency a photographer's money is in: their profile's; with no
+    profile (an account that never became a photographer), the currency of
+    their earnings, else the platform default."""
+    from app.services.currencies import default_currency, pro_currency
+
+    code = pro_currency(db, pro_user_id)
+    if code:
+        return code
+    found = db.execute(
+        select(EarningsLedgerEntry.currency).where(EarningsLedgerEntry.pro_user_id == pro_user_id).limit(1)
+    ).scalar_one_or_none()
+    return found or default_currency()
+
+
 def photographer_money(db: Session, pro_user_id: uuid.UUID) -> PhotographerMoney:
+    """One photographer's money, in their one currency. Rows in any other
+    currency cannot exist (packages, earnings and payouts refuse them); they
+    would be left out here rather than added to the wrong total."""
+    currency = money_currency(db, pro_user_id)
     by_status = dict(
         db.execute(
-            select(EarningsLedgerEntry.status, func.coalesce(func.sum(EarningsLedgerEntry.net_eur), 0))
-            .where(EarningsLedgerEntry.pro_user_id == pro_user_id, EarningsLedgerEntry.status != EarningsEntryStatus.reversed)
+            select(EarningsLedgerEntry.status, func.coalesce(func.sum(EarningsLedgerEntry.net), 0))
+            .where(
+                EarningsLedgerEntry.pro_user_id == pro_user_id,
+                EarningsLedgerEntry.currency == currency,
+                EarningsLedgerEntry.status != EarningsEntryStatus.reversed,
+            )
             .group_by(EarningsLedgerEntry.status)
         ).all()
     )
     by_payout = dict(
         db.execute(
-            select(PayoutRequest.status, func.coalesce(func.sum(PayoutAllocation.amount_eur), 0))
+            select(PayoutRequest.status, func.coalesce(func.sum(PayoutAllocation.amount), 0))
             .join(PayoutRequest, PayoutRequest.id == PayoutAllocation.payout_request_id)
-            .where(PayoutRequest.pro_user_id == pro_user_id)
+            .where(PayoutRequest.pro_user_id == pro_user_id, PayoutRequest.currency == currency)
             .group_by(PayoutRequest.status)
         ).all()
     )
     requested = _q2(
         db.execute(
-            select(func.coalesce(func.sum(PayoutRequest.amount_eur), 0)).where(
-                PayoutRequest.pro_user_id == pro_user_id, PayoutRequest.status == PayoutRequestStatus.requested
+            select(func.coalesce(func.sum(PayoutRequest.amount), 0)).where(
+                PayoutRequest.pro_user_id == pro_user_id,
+                PayoutRequest.currency == currency,
+                PayoutRequest.status == PayoutRequestStatus.requested,
             )
         ).scalar_one()
     )
@@ -265,6 +293,7 @@ def photographer_money(db: Session, pro_user_id: uuid.UUID) -> PhotographerMoney
     reserved = _q2(by_payout.get(PayoutRequestStatus.approved, 0)) + _q2(by_payout.get(PayoutRequestStatus.processing, 0))
     paid_out = _q2(by_payout.get(PayoutRequestStatus.paid, 0))
     return PhotographerMoney(
+        currency=currency,
         lifetime=lifetime,
         pending=pending,
         on_hold=on_hold,

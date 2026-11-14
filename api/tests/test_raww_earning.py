@@ -69,7 +69,7 @@ def test_they_become_spendable_when_the_earning_settles(db_session):
 def test_a_held_earning_keeps_them_pending_until_the_hold_is_released(db_session):
     pro = _pro(db_session)
     gig, _ = _booking(db_session, pro)
-    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.client_reported_problem, amount_eur=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
+    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.client_reported_problem, amount=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
     db_session.commit()
 
     _settle(db_session, pro)
@@ -85,7 +85,7 @@ def test_a_hold_after_settling_takes_them_back_to_pending(db_session):
     gig, _ = _booking(db_session, pro)
     _settle(db_session, pro)
 
-    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount_eur=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
+    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
     db_session.commit()
 
     assert _raww(db_session, pro) == (0, 75)
@@ -96,7 +96,7 @@ def test_a_hold_on_all_their_earnings_counts_too(db_session):
     _booking(db_session, pro)
     _settle(db_session, pro)
 
-    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.compliance, amount_eur=None, source_type=None, source_id=None, created_by_admin_id=None)
+    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.compliance, amount=None, source_type=None, source_id=None, created_by_admin_id=None)
     db_session.commit()
 
     assert _raww(db_session, pro) == (0, 75)
@@ -178,7 +178,7 @@ def _available_with_a_bare_hold(db, pro, gig, **hold):
     from app.models.payouts import EarningsHold
     from app.services.raww_earning import sync_pro_raww_status
 
-    db.add(EarningsHold(pro_user_id=pro, reason=EarningsHoldReason.manual, **hold))
+    db.add(EarningsHold(pro_user_id=pro, reason=EarningsHoldReason.manual, **hold, currency="EUR"))
     db.flush()
     sync_pro_raww_status(db, pro)
     db.commit()

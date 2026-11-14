@@ -50,7 +50,7 @@ def test_seeded_earnings_use_the_booking_split(db_session):
     script.seed_earnings(db_session, gigs=[gig], settlement_days=7)
     db_session.commit()
 
-    assert (_entry(db_session, gig).net_eur, _entry(db_session, gig).platform_fee_eur) == (D("41.95"), D("10.48"))
+    assert (_entry(db_session, gig).net, _entry(db_session, gig).platform_fee) == (D("41.95"), D("10.48"))
     assert script.check_reconciliation(db_session, gigs=[gig]) == []
 
 
@@ -58,22 +58,22 @@ def test_reseed_brings_an_old_single_20_percent_entry_to_the_split(db_session):
     script = _script()
     gig = _gig(db_session)
     # The old way: one rounded 20%, net 41.94.
-    create_earnings_entry(db_session, pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross_eur=D("52.43"))
+    create_earnings_entry(db_session, pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross=D("52.43"), currency="EUR")
     db_session.commit()
-    assert _entry(db_session, gig).net_eur == D("41.94")
+    assert _entry(db_session, gig).net == D("41.94")
 
     changed = script.reseed_earnings(db_session, gigs=[gig])
     db_session.commit()
 
     assert [(old, new) for _, old, new in changed] == [(D("41.94"), D("41.95"))]
-    assert _entry(db_session, gig).net_eur == D("41.95")
+    assert _entry(db_session, gig).net == D("41.95")
     assert script.reseed_earnings(db_session, gigs=[gig]) == []
 
 
 def test_reconciliation_refuses_an_entry_off_the_split(db_session):
     script = _script()
     gig = _gig(db_session)
-    create_earnings_entry(db_session, pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross_eur=D("52.43"))
+    create_earnings_entry(db_session, pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross=D("52.43"), currency="EUR")
     db_session.commit()
 
     problems = script.check_reconciliation(db_session, gigs=[gig])

@@ -216,8 +216,8 @@ def test_a_held_earning_waits_for_an_admin_not_for_a_date(client, db_session, fa
     if entry is None:
         entry = EarningsLedgerEntry(
             pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id,
-            gross_eur=Decimal("40.00"), platform_fee_eur=Decimal("8.00"), net_eur=Decimal("32.00"),
-            status=EarningsEntryStatus.pending, available_at=datetime.now(timezone.utc) + timedelta(days=7), meta={},
+            gross=Decimal("40.00"), platform_fee=Decimal("8.00"), net=Decimal("32.00"),
+            status=EarningsEntryStatus.pending, available_at=datetime.now(timezone.utc) + timedelta(days=7), meta={}, currency="EUR",
         )
         db_session.add(entry)
         db_session.commit()

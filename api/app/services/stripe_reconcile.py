@@ -40,6 +40,7 @@ from typing import Iterable, Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.services.currencies import normalise
 from app.core.config import get_settings
 from app.models.admin import MoneyAttentionItem, StripeReconcileRun
 from app.models.gig import PaymentStatus, StripePayment
@@ -147,7 +148,7 @@ def _flag(db: Session, *, kind: str, payment_intent_id: str, amount: Decimal, cu
     db.add(
         MoneyAttentionItem(
             kind=kind, status="open", gig_id=gig_id, stripe_payment_intent_id=payment_intent_id,
-            amount=amount, currency=(currency or "EUR").upper(), note=note,
+            amount=amount, currency=normalise(currency), note=note,
         )
     )
     db.flush()

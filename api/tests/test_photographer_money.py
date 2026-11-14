@@ -124,7 +124,7 @@ def test_the_invoice_method_is_the_split_for_this_booking(db_session):
 
     entry = _complete(db_session, gig)
 
-    assert (entry.gross_eur, entry.platform_fee_eur, entry.net_eur) == (D("52.43"), D("10.48"), D("41.95"))
+    assert (entry.gross, entry.platform_fee, entry.net) == (D("52.43"), D("10.48"), D("41.95"))
     db_session.refresh(gig)
     assert (gig.final_gross, gig.final_platform_retained, gig.final_pro_raww, gig.final_client_raww, gig.final_pro_cash) == (
         D("52.43"), D("7.86"), D("2.62"), D("0.00"), D("41.95"),
@@ -148,7 +148,7 @@ def test_client_credit_comes_out_of_the_photographers_cash(db_session):
 
     entry = _complete(db_session, gig)
 
-    assert entry.net_eur == D("70.00")
+    assert entry.net == D("70.00")
     assert gig.final_client_raww == D("10.00")
 
 
@@ -303,7 +303,7 @@ def test_a_disputed_booking_is_on_hold(db_session):
 
     pro = _pro(db_session)
     gig = _earned(db_session, pro)
-    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount_eur=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
+    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
     db_session.commit()
 
     m = _money(db_session, pro)
@@ -311,7 +311,7 @@ def test_a_disputed_booking_is_on_hold(db_session):
 
 
 def _payout(db, pro, amount: str, *, older: bool = False) -> PayoutRequest:
-    row = create_payout_request(db, pro_user_id=pro, amount_eur=D(amount))
+    row = create_payout_request(db, pro_user_id=pro, amount=D(amount))
     if older:  # out of the weekly request limit's window, so another can follow
         row.created_at = datetime.now(timezone.utc) - timedelta(days=8)
     db.commit()
@@ -388,10 +388,10 @@ def test_the_balance_route_shows_the_photographer_zero_and_the_adjustment(client
 
     body = client.get("/v1/pro/earnings/balance", headers={"X-User-Id": str(pro)}).json()
 
-    assert body["withdrawable_eur"] == "0.00"
-    assert body["requested_eur"] == "0.00"
-    assert body["adjustment_owed_eur"] == "80.00"
-    assert body["paid_out_eur"] == "80.00"
+    assert body["withdrawable"] == "0.00"
+    assert body["requested"] == "0.00"
+    assert body["adjustment_owed"] == "80.00"
+    assert body["paid_out"] == "80.00"
 
 
 # --- payouts ask the same function -----------------------------------------------------------
@@ -403,7 +403,7 @@ def test_a_payout_request_cannot_exceed_withdrawable(db_session):
     _settle(db_session, pro)
 
     with pytest.raises(APIError):
-        create_payout_request(db_session, pro_user_id=pro, amount_eur=D("80.01"))
+        create_payout_request(db_session, pro_user_id=pro, amount=D("80.01"))
 
 
 def test_the_request_limit_is_what_can_be_withdrawn_not_what_was_earned(db_session):
@@ -416,7 +416,7 @@ def test_the_request_limit_is_what_can_be_withdrawn_not_what_was_earned(db_sessi
     assert (_money(db_session, pro).lifetime, _money(db_session, pro).withdrawable) == (D("80.00"), D("20.00"))
 
     with pytest.raises(APIError):
-        create_payout_request(db_session, pro_user_id=pro, amount_eur=D("50.00"))
+        create_payout_request(db_session, pro_user_id=pro, amount=D("50.00"))
 
 
 def test_the_invariant_holds_through_request_approve_process_pay_and_reject(db_session):
@@ -574,7 +574,7 @@ def test_the_invariant_holds_through_a_photographers_whole_history(db_session):
     full = _earned(db_session, pro)                                    # refunded
     reverse_earnings_entries_for_source(db_session, source_type=EarningsSourceType.gig_base, source_id=full.id, reason="full_refund")
     disputed = _earned(db_session, pro)                                # disputed
-    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount_eur=None, source_type="gig_base", source_id=disputed.id, created_by_admin_id=None)
+    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount=None, source_type="gig_base", source_id=disputed.id, created_by_admin_id=None)
     db_session.commit()
     _money(db_session, pro)
     _settle(db_session, pro)
@@ -611,7 +611,7 @@ def test_the_recompute_script_finds_and_fixes_an_old_style_entry(db_session):
     _pay(db_session, gig, "79.74")
     gig.status = GigStatus.completed
     # The old way: 20% of the sum of the payments.
-    create_earnings_entry(db_session, pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross_eur=D("79.74"))
+    create_earnings_entry(db_session, pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross=D("79.74"), currency="EUR")
     db_session.commit()
     assert _money(db_session, pro).lifetime == D("63.79")
 
@@ -654,7 +654,7 @@ def test_the_recompute_script_never_wipes_earnings_with_no_payment_on_record(db_
     pro = _pro(db_session)
     gig = _gig(db_session, pro, minimum="100.00")  # no payment rows at all, like the seed fixtures
     gig.status = GigStatus.completed
-    create_earnings_entry(db_session, pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross_eur=D("100.00"))
+    create_earnings_entry(db_session, pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=gig.id, gross=D("100.00"), currency="EUR")
     db_session.commit()
 
     unpaid: list = []
@@ -674,4 +674,4 @@ def test_the_balance_route_shows_what_is_requested(client, db_session):
 
     body = client.get("/v1/pro/earnings/balance", headers={"X-User-Id": str(pro)}).json()
 
-    assert (body["requested_eur"], body["withdrawable_eur"]) == ("60.00", "20.00")
+    assert (body["requested"], body["withdrawable"]) == ("60.00", "20.00")

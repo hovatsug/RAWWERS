@@ -138,7 +138,7 @@ def quote(db: Session, *, gallery: ProofGallery, user_id: uuid.UUID, adding: int
         "already_chosen": already,
         "adding": adding,
         "amount": addon_price(db, gig=gig, gallery=gallery, already=already, adding=adding),
-        "currency": gallery.currency or gig.currency or "EUR",
+        "currency": gallery.currency,
         "window_ends_at": gig.addon_window_ends_at,
     }
 
@@ -228,7 +228,8 @@ def apply_paid(db: Session, purchase: ExtraImagePurchase, amount: Decimal) -> No
             pro_user_id=purchase.pro_user_id,
             source_type=EarningsSourceType.extra_images,
             source_id=purchase.id,
-            gross_eur=amount,
+            gross=amount,
+            currency=db.get(Gig, purchase.gig_id).currency,
             metadata={"gig_id": str(purchase.gig_id), "selection_addon": True},
         )
 

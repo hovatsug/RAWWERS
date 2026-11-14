@@ -149,6 +149,14 @@ class UserRole(Base):
     __table_args__ = (UniqueConstraint("user_id", "role", name="uq_user_role_user_role"),)
 
 
+def _new_profile_currency(context) -> str:
+    """A new photographer's currency: their country's (GB → GBP, eurozone →
+    EUR), else the platform default (GBP). docs/MULTI_CURRENCY.md 2.1."""
+    from app.services.currencies import currency_for_new_profile
+
+    return currency_for_new_profile(context.get_current_parameters().get("country"))
+
+
 class ProProfile(Base):
     __tablename__ = "pro_profile"
 
@@ -159,6 +167,9 @@ class ProProfile(Base):
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(Text, nullable=True)
     country: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The one currency of this photographer's packages, earnings and
+    #: payouts: their Stripe account's country's (services/currencies.py).
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default=_new_profile_currency)
     languages: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     styles: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     gear: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
@@ -219,7 +230,7 @@ class Dispute(Base):
     status: Mapped[DisputeStatus] = mapped_column(Enum(DisputeStatus, name="dispute_status", native_enum=False, length=64), nullable=False)
     category: Mapped[DisputeCategory] = mapped_column(Enum(DisputeCategory, name="dispute_category", native_enum=False, length=64), nullable=False)
     requested_refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     due_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

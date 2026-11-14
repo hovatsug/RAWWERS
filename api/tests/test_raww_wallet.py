@@ -48,7 +48,7 @@ def test_the_card_shows_pending_rawws_with_the_date_they_settle(client, db_sessi
 def test_a_held_booking_has_no_date(client, db_session):
     pro = _pro_user(db_session)
     gig = _booking(db_session, pro)
-    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount_eur=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
+    create_earnings_hold(db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount=None, source_type="gig_base", source_id=gig.id, created_by_admin_id=None)
     db_session.commit()
 
     [item] = _get(client, pro)["pending_bookings"]

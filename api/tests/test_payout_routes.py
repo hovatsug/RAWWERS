@@ -39,8 +39,8 @@ def _earned(db_session, pro: str, gross: str) -> None:
         pro_user_id=uuid.UUID(pro),
         source_type=EarningsSourceType.gig_base,
         source_id=uuid.uuid4(),
-        gross_eur=Decimal(gross),
-        metadata={},
+        gross=Decimal(gross),
+        metadata={}, currency="EUR",
     )
     row.available_at = datetime.now(timezone.utc) - timedelta(days=1)
     db_session.flush()  # the session does not autoflush; settling must see the date
@@ -50,11 +50,11 @@ def _earned(db_session, pro: str, gross: str) -> None:
 
 def _withdrawable(db_session, pro: str) -> Decimal:
     db_session.expire_all()
-    return payout_balance_view(db_session, pro_user_id=uuid.UUID(pro))["withdrawable_eur"]
+    return payout_balance_view(db_session, pro_user_id=uuid.UUID(pro))["withdrawable"]
 
 
 def _request(client, pro: str, amount: str):
-    return client.post("/v1/pro/payouts/request", headers={"X-User-Id": pro}, json={"amount_eur": amount})
+    return client.post("/v1/pro/payouts/request", headers={"X-User-Id": pro}, json={"amount": amount})
 
 
 def _admin(client, path: str, body=None, actor=ADMIN):
@@ -68,7 +68,7 @@ def _payout(db_session, payout_id) -> PayoutRequest:
 
 def _allocated(db_session, payout_id) -> Decimal:
     return db_session.execute(
-        select(func.coalesce(func.sum(PayoutAllocation.amount_eur), 0)).where(PayoutAllocation.payout_request_id == uuid.UUID(payout_id))
+        select(func.coalesce(func.sum(PayoutAllocation.amount), 0)).where(PayoutAllocation.payout_request_id == uuid.UUID(payout_id))
     ).scalar_one()
 
 
@@ -112,7 +112,7 @@ def test_a_photographer_can_ask_for_what_they_can_withdraw(client, db_session, p
 
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "requested"
-    assert Decimal(resp.json()["amount_eur"]) == available
+    assert Decimal(resp.json()["amount"]) == available
 
 
 def test_more_than_can_be_withdrawn_is_refused_and_nothing_is_recorded(client, db_session, pro):
@@ -132,7 +132,7 @@ def test_amounts_are_kept_to_the_cent(client, db_session, pro):
     resp = _request(client, pro, "60.005")
 
     assert resp.status_code == 200, resp.text
-    assert _payout(db_session, resp.json()["id"]).amount_eur == Decimal("60.01")
+    assert _payout(db_session, resp.json()["id"]).amount == Decimal("60.01")
 
 
 def test_a_third_request_in_a_week_is_refused(client, db_session, pro):
@@ -153,7 +153,7 @@ def test_only_a_photographer_can_ask(client, db_session):
     someone = _user(db_session, [UserRoleType.client])
 
     assert _request(client, someone, "60.00").status_code == 403
-    assert client.post("/v1/pro/payouts/request", json={"amount_eur": "60.00"}).status_code == 401
+    assert client.post("/v1/pro/payouts/request", json={"amount": "60.00"}).status_code == 401
 
 
 # --- approving --------------------------------------------------------------------------

@@ -96,8 +96,8 @@ def _booking(db_session, scenario, *, status=GigStatus.paid, earnings=True):
         db_session.add(
             EarningsLedgerEntry(
                 pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id,
-                gross_eur=amount, platform_fee_eur=Decimal("0.00"), net_eur=amount, status=EarningsEntryStatus.pending,
-                available_at=datetime.now(timezone.utc) + timedelta(days=7), meta={"fee_percent": "0"},
+                gross=amount, platform_fee=Decimal("0.00"), net=amount, status=EarningsEntryStatus.pending,
+                available_at=datetime.now(timezone.utc) + timedelta(days=7), meta={"fee_percent": "0"}, currency="EUR",
             )
         )
     db_session.commit()
@@ -150,7 +150,7 @@ def _state(db_session, gig):
         "gig": db_session.get(Gig, gig.id).status.value,
         "ledger": ledger,
         "cases": cases,
-        "earnings": (earnings.status.value, str(earnings.gross_eur)) if earnings else None,
+        "earnings": (earnings.status.value, str(earnings.gross)) if earnings else None,
         "attention": items,
     }
 

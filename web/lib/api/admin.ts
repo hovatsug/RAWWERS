@@ -138,16 +138,18 @@ export type PayoutQueueRow = {
   pro_user_id: string;
   display_name: string | null;
   email: string | null;
-  amount_eur: string;
+  /** The photographer's one currency; every amount on the row is in it. */
+  currency: string;
+  amount: string;
   status: string;
   requested_at: string;
   payout_method: string;
   payout_account_status: string;
   approval_blocked: boolean;
   blocked_reason: string | null;
-  available_eur: string;
-  pending_eur: string;
-  withdrawable_eur: string;
+  available: string;
+  pending: string;
+  withdrawable: string;
   exceeds_withdrawable: boolean;
   lifetime_payouts: number;
 };

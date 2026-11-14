@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     # Express accounts take a country at creation that cannot be changed
     # later; used only when a photographer's own country is unknown.
     default_connect_country: str = Field(default="PT", alias="DEFAULT_CONNECT_COUNTRY")
+    # The currency of a new user or photographer whose country gives none
+    # (UK first, 2026-11-13: GBP). Which currencies may be used at all is the
+    # admin setting in `currency_settings` (app/services/currencies.py).
+    default_currency: str = Field(default="GBP", alias="DEFAULT_CURRENCY")
     # Where Stripe returns the photographer after hosted onboarding: the API's
     # own static pages (app/services/connect_return.py), which hand over to
     # the pro app. Stripe refuses a custom scheme, so these are http(s) -

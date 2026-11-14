@@ -6,7 +6,7 @@ Where the request's definition did not fit the code, the reading used is marked 
 
 ## Ground rules
 
-- **Currency.** Every booking, payment and ledger line today is in **EUR**: `gig.currency`, `stripe_payment.currency`, `ledger_entry.currency` and `discount_redemption.currency` exist, and the dev database holds EUR only. The dashboard computes EUR only. A line in any other currency is left out and counted as "excluded, other currency" on the overview. It is never converted silently.
+- **Currency.** Every booking, payment and ledger line today is in **EUR**: `gig.currency`, `stripe_payment.currency`, `ledger_entry.currency` and `discount_redemption.currency` exist, and the dev database holds EUR only. The dashboard computes EUR only. A line in any other currency is left out and counted as "excluded, other currency" on the overview. It is never converted silently. *(2026-11-13, multi-currency M1: photographers' earnings and payouts carry a currency too; `bi_earnings` and `bi_payouts` have a `currency` column, and photographer cash and paid payouts count EUR rows only, until batch M5 stamps every line in the base currency.)*
 - **Amounts.** Stored amounts are `Numeric(12,2)` euros. The views turn each into **integer cents** once (`round(amount * 100)::bigint`), and everything after that is integer arithmetic. No floats anywhere.
 - **Days.** A day is a calendar day in **Europe/London**, the same as the client-credit month: `(timestamp AT TIME ZONE 'Europe/London')::date`.
 - **Split rounding.** A money line is split as the code splits a booking (`commission.split_with_rates`): each percentage share is rounded half away from zero to the cent, and the photographer's cash is the remainder. So the shares always add back to the line exactly. The split is per line, so a booking's total can differ by a cent from the split stamped on the booking (`gig.final_*`), which is computed once on the total.
@@ -98,7 +98,7 @@ The number of bookings whose first card or credit payment fell on that day (base
 
 ## Where it lives
 
-- **Views:** `api/app/models/bi_views.py` (the latest BI migration, `20261110_0094`, carries a frozen copy; `test_bi_schema.py` fails when they differ).
+- **Views:** `api/app/models/bi_views.py` (the latest BI migration, `20261113_0095`, carries a frozen copy; `test_bi_schema.py` fails when they differ).
 - **Numbers:** `api/app/services/bi.py`. **Stripe:** `api/app/services/bi_stripe.py`.
 - **API:** `/v1/admin/bi/*` (`api/app/api/v1/bi_admin.py`), admin only. It has its own rate limit, 240 requests a minute per admin and address (`RATE_LIMIT_ADMIN_BI_PER_MIN`), apart from the 60 of every other admin route (`RATE_LIMIT_ADMIN_PER_MIN`): one dashboard load is about 13 requests. Who the caller is is settled first, so a non-admin gets 401/403, never 429.
 - **Screens:** `/admin/bi`, `/admin/bi/bookings`, `/admin/bi/costs`.

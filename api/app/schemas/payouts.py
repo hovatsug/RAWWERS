@@ -20,30 +20,34 @@ from app.models.payouts import (
 class EarningsBalanceView(BaseModel):
     """available + requested + reserved + paid_out + pending + held == lifetime, always.
 
-    `available_eur` is the real figure and may be negative - money paid out
+    `available` is the real figure and may be negative - money paid out
     that a later refund took back. A photographer's screen shows
-    `withdrawable_eur` (never below 0) and `adjustment_owed_eur` instead."""
+    `withdrawable` (never below 0) and `adjustment_owed` instead.
 
-    pending_eur: Decimal
-    available_eur: Decimal
-    held_eur: Decimal
+    Every amount is in `currency`, the photographer's one currency."""
+
+    currency: str
+    pending: Decimal
+    available: Decimal
+    held: Decimal
     #: Asked for in a payout request not yet decided.
-    requested_eur: Decimal = Decimal("0.00")
+    requested: Decimal = Decimal("0.00")
     #: Allocated to a payout approved or processing - not yet paid.
-    reserved_eur: Decimal
-    paid_out_eur: Decimal = Decimal("0.00")
-    lifetime_eur: Decimal = Decimal("0.00")
-    withdrawable_eur: Decimal
-    adjustment_owed_eur: Decimal = Decimal("0.00")
+    reserved: Decimal
+    paid_out: Decimal = Decimal("0.00")
+    lifetime: Decimal = Decimal("0.00")
+    withdrawable: Decimal
+    adjustment_owed: Decimal = Decimal("0.00")
 
 
 class EarningsLedgerItemView(BaseModel):
     id: uuid.UUID
     source_type: EarningsSourceType
     source_id: uuid.UUID
-    gross_eur: Decimal
-    platform_fee_eur: Decimal
-    net_eur: Decimal
+    currency: str
+    gross: Decimal
+    platform_fee: Decimal
+    net: Decimal
     status: EarningsEntryStatus
     available_at: datetime
     reversed_at: datetime | None = None
@@ -72,13 +76,15 @@ class PayoutAccountView(BaseModel):
 
 
 class PayoutRequestCreateRequest(BaseModel):
-    amount_eur: Decimal
+    #: In the photographer's currency (the balance's `currency`).
+    amount: Decimal
 
 
 class PayoutRequestView(BaseModel):
     id: uuid.UUID
     pro_user_id: uuid.UUID
-    amount_eur: Decimal
+    currency: str
+    amount: Decimal
     status: PayoutRequestStatus
     requested_at: datetime
     approved_by_admin_id: uuid.UUID | None = None
@@ -99,11 +105,12 @@ class AdminFinanceProItem(BaseModel):
     display_name: str | None = None
     city: str | None = None
     country: str | None = None
-    pending_eur: Decimal
-    available_eur: Decimal
-    held_eur: Decimal
-    reserved_eur: Decimal
-    withdrawable_eur: Decimal
+    currency: str
+    pending: Decimal
+    available: Decimal
+    held: Decimal
+    reserved: Decimal
+    withdrawable: Decimal
 
 
 class AdminFinanceProsResponse(BaseModel):
@@ -113,7 +120,7 @@ class AdminFinanceProsResponse(BaseModel):
 class EarningsHoldCreateRequest(BaseModel):
     pro_user_id: uuid.UUID
     reason: EarningsHoldReason
-    amount_eur: Decimal | None = None
+    amount: Decimal | None = None
     source_type: str | None = None
     source_id: uuid.UUID | None = None
 
@@ -122,7 +129,8 @@ class EarningsHoldView(BaseModel):
     id: uuid.UUID
     pro_user_id: uuid.UUID
     reason: EarningsHoldReason
-    amount_eur: Decimal | None = None
+    currency: str
+    amount: Decimal | None = None
     source_type: str | None = None
     source_id: uuid.UUID | None = None
     created_by_admin_id: uuid.UUID | None = None
@@ -206,7 +214,8 @@ class AdminPayoutQueueRow(BaseModel):
     pro_user_id: uuid.UUID
     display_name: str | None = None
     email: str | None = None
-    amount_eur: Decimal
+    currency: str
+    amount: Decimal
     status: PayoutRequestStatus
     requested_at: datetime
 
@@ -218,9 +227,9 @@ class AdminPayoutQueueRow(BaseModel):
     approval_blocked: bool
     blocked_reason: str | None = None
 
-    available_eur: Decimal
-    pending_eur: Decimal
-    withdrawable_eur: Decimal
+    available: Decimal
+    pending: Decimal
+    withdrawable: Decimal
     # A request for more than the photographer can currently withdraw means
     # something moved between requesting and reviewing.
     exceeds_withdrawable: bool
@@ -298,8 +307,10 @@ class GigInvoiceListResponse(BaseModel):
 
 
 class InvoiceSummaryView(BaseModel):
-    """Totals across every completed, invoiced gig."""
+    """Totals across every completed, invoiced gig, in the photographer's
+    one currency."""
 
+    currency: str
     bookings: int
     gross: Decimal
     #: The platform's whole take, which is what a photographer means by fees
@@ -345,3 +356,19 @@ class TaxProfileUpdateRequest(BaseModel):
     vat_status: str
     vat_number: str | None = None
     country: str | None = None
+
+
+class CurrencySettingsView(BaseModel):
+    """Which currencies may be used, and each one's withdrawal minimum
+    (docs/MULTI_CURRENCY.md 10.1). `from_defaults`: nothing saved yet, so the
+    code's defaults (GBP only) apply."""
+
+    enabled_currencies: list[str]
+    payout_minimums: dict[str, Decimal]
+    default_currency: str
+    from_defaults: bool
+
+
+class CurrencySettingsUpdateRequest(BaseModel):
+    enabled_currencies: list[str] = Field(min_length=1)
+    payout_minimums: dict[str, Decimal]

@@ -43,7 +43,7 @@ export default function AdminPayoutsPage() {
         </div>
       )
     },
-    { header: "Amount", className: "tabular-nums", cell: (row) => <span className="font-semibold">{money(row.amount_eur)}</span> },
+    { header: "Amount", className: "tabular-nums", cell: (row) => <span className="font-semibold">{money(row.amount, row.currency)}</span> },
     { header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
     {
       // Manual bank transfer is a real route and currently the only one that
@@ -60,7 +60,7 @@ export default function AdminPayoutsPage() {
       header: "Ledger",
       cell: (row) => (
         <p className="text-xs tabular-nums text-slate-400">
-          Withdrawable {money(row.withdrawable_eur)} · available {money(row.available_eur)} · settling {money(row.pending_eur)}
+          Withdrawable {money(row.withdrawable, row.currency)} · available {money(row.available, row.currency)} · settling {money(row.pending, row.currency)}
         </p>
       )
     },
@@ -109,8 +109,8 @@ export default function AdminPayoutsPage() {
 
       <ConfirmDialog
         open={dialog?.action === "approve"}
-        title={`Approve ${money(row?.amount_eur)} to ${who}?`}
-        confirmLabel={`Approve ${money(row?.amount_eur)}`}
+        title={`Approve ${money(row?.amount, row?.currency)} to ${who}?`}
+        confirmLabel={`Approve ${money(row?.amount, row?.currency)}`}
         onClose={() => setDialog(null)}
         onConfirm={async () => {
           if (!row) return null;
@@ -121,12 +121,12 @@ export default function AdminPayoutsPage() {
         }}
       >
         <p>{row ? destination(row) : ""}.</p>
-        <p>This commits {money(row?.amount_eur)} of their earnings to this payout.</p>
+        <p>This commits {money(row?.amount, row?.currency)} of their earnings to this payout.</p>
       </ConfirmDialog>
 
       <ConfirmDialog
         open={dialog?.action === "paid"}
-        title={`Record ${money(row?.amount_eur)} as sent to ${who}?`}
+        title={`Record ${money(row?.amount, row?.currency)} as sent to ${who}?`}
         confirmLabel="Mark paid"
         onClose={() => setDialog(null)}
         onConfirm={async () => {

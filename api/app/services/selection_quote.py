@@ -204,7 +204,7 @@ def quote_selection(
         selected_count=selected_count,
         included_photos=gallery.included_photos,
         minimum_photos=minimum,
-        currency=gallery.currency or gig.currency or "EUR",
+        currency=gallery.currency,
         amount_total=total,
         amount_paid=(gig.amount_minimum + already_paid).quantize(_CENTS, rounding=ROUND_HALF_UP),
         amount_due=due,

@@ -159,8 +159,8 @@ def test_each_add_on_is_one_extras_earning_even_if_the_webhook_comes_twice(clien
     [entry] = db_session.execute(
         select(EarningsLedgerEntry).where(EarningsLedgerEntry.source_type == EarningsSourceType.extra_images)
     ).scalars().all()
-    assert (entry.source_id, entry.gross_eur, entry.pro_user_id) == (uuid.UUID(started["addon_id"]), Decimal(started["amount"]), gig.pro_user_id)
-    assert entry.pro_raww_eur is not None, "with its RAWW credit, as extras earn"
+    assert (entry.source_id, entry.gross, entry.pro_user_id) == (uuid.UUID(started["addon_id"]), Decimal(started["amount"]), gig.pro_user_id)
+    assert entry.pro_raww is not None, "with its RAWW credit, as extras earn"
 
 
 def test_the_photographer_is_not_told(client, db_session, fake_stripe):

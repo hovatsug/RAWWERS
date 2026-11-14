@@ -37,7 +37,8 @@ from app.services.outbox import enqueue_outbox_event
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
-MIN_PAYOUT_EUR = Decimal("50.00")
+# The withdrawal minimum is per currency: currencies.payout_minimum (GBP 45.00,
+# EUR 50.00 by default; an admin setting).
 PAYOUT_REQUEST_LIMIT_7D = 2
 
 
@@ -63,7 +64,8 @@ def create_earnings_entry(
     pro_user_id: uuid.UUID,
     source_type: EarningsSourceType,
     source_id: uuid.UUID,
-    gross_eur: Decimal,
+    gross: Decimal,
+    currency: str,
     metadata: dict | None = None,
     split=None,
 ) -> EarningsLedgerEntry | None:
@@ -78,10 +80,22 @@ def create_earnings_entry(
     credited of a 20% fee) and stamped on the entry. Their cash is the same
     as before; the credit comes out of the platform's share."""
     from app.services.commission import split_with_rates
+    from app.services.currencies import normalise, pro_currency
 
-    gross = _q2(gross_eur)
+    gross = _q2(gross)
     if gross <= Decimal("0.00"):
         return None
+    currency = normalise(currency)
+    # One photographer, one currency (MULTI_CURRENCY.md 2.1): an earning in
+    # another currency is a bug upstream (packages refuse it), never mixed in.
+    own = pro_currency(db, pro_user_id)
+    if own is not None and own != currency:
+        raise APIError(
+            code="currency_mismatch",
+            message=f"An earning in {currency} for a photographer paid in {own}",
+            status_code=409,
+            details={"currency": currency, "photographer_currency": own},
+        )
 
     policy = ensure_default_platform_fee_policy(db)
     credit_percent: int | None = None
@@ -116,12 +130,13 @@ def create_earnings_entry(
             pro_user_id=pro_user_id,
             source_type=source_type,
             source_id=source_id,
-            gross_eur=gross,
-            platform_fee_eur=fee,
-            net_eur=net,
+            currency=currency,
+            gross=gross,
+            platform_fee=fee,
+            net=net,
             status=status,
             available_at=available_at,
-            pro_raww_eur=_q2(split.pro_raww) if credit_percent is not None else None,
+            pro_raww=_q2(split.pro_raww) if credit_percent is not None else None,
             pro_raww_percent=credit_percent,
             meta={
                 "fee_percent": fee_percent,
@@ -152,9 +167,10 @@ def create_earnings_entry(
         properties={
             "source_type": source_type.value,
             "source_id": str(source_id),
-            "gross_eur": str(gross),
-            "fee_eur": str(fee),
-            "net_eur": str(net),
+            "currency": currency,
+            "gross": str(gross),
+            "fee": str(fee),
+            "net": str(net),
         },
     )
     return row
@@ -215,15 +231,18 @@ def create_earnings_hold(
     *,
     pro_user_id: uuid.UUID,
     reason: EarningsHoldReason,
-    amount_eur: Decimal | None,
+    amount: Decimal | None,
     source_type: str | None,
     source_id: uuid.UUID | None,
     created_by_admin_id: uuid.UUID | None,
 ) -> EarningsHold:
+    from app.services.photographer_money import money_currency
+
     row = EarningsHold(
         pro_user_id=pro_user_id,
         reason=reason,
-        amount_eur=_q2(amount_eur) if amount_eur is not None else None,
+        currency=money_currency(db, pro_user_id),
+        amount=_q2(amount) if amount is not None else None,
         source_type=source_type,
         source_id=source_id,
         created_by_admin_id=created_by_admin_id,
@@ -302,11 +321,12 @@ def refresh_earnings_balance_snapshot(db: Session, *, pro_user_id: uuid.UUID) ->
     money = photographer_money(db, pro_user_id)
     row = db.get(EarningsBalanceSnapshot, pro_user_id)
     if not row:
-        row = EarningsBalanceSnapshot(pro_user_id=pro_user_id)
+        row = EarningsBalanceSnapshot(pro_user_id=pro_user_id, currency=money.currency)
         db.add(row)
-    row.pending_eur = money.pending
-    row.available_eur = money.available
-    row.held_eur = money.on_hold
+    row.currency = money.currency
+    row.pending = money.pending
+    row.available = money.available
+    row.held = money.on_hold
     row.updated_at = datetime.now(timezone.utc)
     db.flush()
     # Every change to an earning's state comes through here, so its RAWW
@@ -350,24 +370,25 @@ def upsert_payout_account(
 
 
 def payout_balance_view(db: Session, *, pro_user_id: uuid.UUID) -> dict:
-    """photographer_money, as the routes return it. `available_eur` is the
+    """photographer_money, as the routes return it. `available` is the
     real figure and may be negative (admins see it); the photographer's
-    screen uses `withdrawable_eur` and `adjustment_owed_eur`."""
+    screen uses `withdrawable` and `adjustment_owed`."""
     money = photographer_money(db, pro_user_id)
     return {
-        "pending_eur": money.pending,
-        "available_eur": money.available,
-        "held_eur": money.on_hold,
-        "requested_eur": money.requested,
-        "reserved_eur": money.reserved,
-        "paid_out_eur": money.paid_out,
-        "lifetime_eur": money.lifetime,
-        "withdrawable_eur": money.withdrawable,
-        "adjustment_owed_eur": money.adjustment_owed,
+        "currency": money.currency,
+        "pending": money.pending,
+        "available": money.available,
+        "held": money.on_hold,
+        "requested": money.requested,
+        "reserved": money.reserved,
+        "paid_out": money.paid_out,
+        "lifetime": money.lifetime,
+        "withdrawable": money.withdrawable,
+        "adjustment_owed": money.adjustment_owed,
     }
 
 
-def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount_eur: Decimal) -> PayoutRequest:
+def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount: Decimal) -> PayoutRequest:
     from app.models.risk import RiskActionType
     from app.services.trust_safety import enforce_risk_action_not_active, evaluate_payout_anomaly_rule
 
@@ -379,9 +400,19 @@ def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount_eur: De
         message="Payouts are temporarily frozen for this account",
     )
 
-    amount = _q2(amount_eur)
-    if amount < MIN_PAYOUT_EUR:
-        raise APIError(code="validation_error", message=f"Minimum payout is {MIN_PAYOUT_EUR}", status_code=422)
+    from app.services.currencies import format_money, payout_minimum
+
+    money = photographer_money(db, pro_user_id)
+    currency = money.currency
+    amount = _q2(amount)
+    minimum = payout_minimum(db, currency)
+    if amount < minimum:
+        raise APIError(
+            code="validation_error",
+            message=f"Minimum payout is {format_money(minimum, currency)}",
+            status_code=422,
+            details={"minimum": str(minimum), "currency": currency},
+        )
 
     since = datetime.now(timezone.utc) - timedelta(days=7)
     recent_count = db.execute(
@@ -393,18 +424,19 @@ def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount_eur: De
     if int(recent_count) >= PAYOUT_REQUEST_LIMIT_7D:
         raise APIError(code="rate_limited", message="Payout request limit reached for this week", status_code=429)
 
-    if amount > photographer_money(db, pro_user_id).withdrawable:
+    if amount > money.withdrawable:
         raise APIError(code="validation_error", message="Requested amount exceeds withdrawable balance", status_code=422)
 
     row = PayoutRequest(
         pro_user_id=pro_user_id,
-        amount_eur=amount,
+        currency=currency,
+        amount=amount,
         status=PayoutRequestStatus.requested,
         reference={},
     )
     db.add(row)
     db.flush()
-    _add_payout_event(db, payout_request_id=row.id, event_type="requested", payload={"amount_eur": str(amount)})
+    _add_payout_event(db, payout_request_id=row.id, event_type="requested", payload={"amount": str(amount), "currency": currency})
 
     for admin_user_id in settings.admin_user_id_set():
         enqueue_notification(
@@ -421,7 +453,7 @@ def create_payout_request(db: Session, *, pro_user_id: uuid.UUID, amount_eur: De
         db,
         event_name="payout.requested",
         user_id=pro_user_id,
-        properties={"payout_request_id": str(row.id), "amount_eur": str(amount)},
+        properties={"payout_request_id": str(row.id), "amount": str(amount), "currency": currency},
     )
     return row
 
@@ -491,11 +523,23 @@ def execute_payout_request(db: Session, *, payout_request_id: uuid.UUID) -> Payo
             _add_payout_event(db, payout_request_id=row.id, event_type="processing", payload={"mode": "manual"})
         return row
 
-    # Stripe Connect path.
+    # Stripe Connect path. The transfer is in the payout's currency, which is
+    # the photographer's; a payout in any other currency is refused, never
+    # sent (MULTI_CURRENCY.md 3.2).
+    from app.services.photographer_money import money_currency
+
+    own = money_currency(db, row.pro_user_id)
+    if row.currency != own:
+        row.status = PayoutRequestStatus.failed
+        row.failure_reason = f"currency_mismatch: payout in {row.currency}, photographer paid in {own}"
+        row.updated_at = datetime.now(timezone.utc)
+        _add_payout_event(db, payout_request_id=row.id, event_type="failed", payload={"reason": row.failure_reason})
+        logger.error("payout_currency_mismatch", extra={"payout_request_id": str(row.id)})
+        return row
     try:
         transfer = stripe.Transfer.create(
-            amount=int((row.amount_eur * Decimal("100")).quantize(Decimal("1"))),
-            currency="eur",
+            amount=int((row.amount * Decimal("100")).quantize(Decimal("1"))),
+            currency=row.currency.lower(),
             destination=account.stripe_connect_account_id,
             metadata={"payout_request_id": str(row.id), "pro_user_id": str(row.pro_user_id)},
             idempotency_key=f"payout-transfer:{row.id}",
@@ -510,9 +554,9 @@ def execute_payout_request(db: Session, *, payout_request_id: uuid.UUID) -> Payo
             db,
             event_name="payout.paid",
             user_id=row.pro_user_id,
-            properties={"payout_request_id": str(row.id), "amount_eur": str(row.amount_eur)},
+            properties={"payout_request_id": str(row.id), "amount": str(row.amount), "currency": row.currency},
         )
-        observe_payout_volume(float(row.amount_eur))
+        observe_payout_volume(float(row.amount))
     except Exception as exc:
         row.status = PayoutRequestStatus.failed
         row.failure_reason = str(exc)[:500]
@@ -529,6 +573,7 @@ def execute_payout_request(db: Session, *, payout_request_id: uuid.UUID) -> Payo
 
 def _notify_payout_paid(db: Session, row: PayoutRequest) -> None:
     """The photographer's "payout on its way" (an approved email), once."""
+    from app.services.currencies import format_money
     from app.services.notifications import enqueue_notification
 
     enqueue_notification(
@@ -537,9 +582,9 @@ def _notify_payout_paid(db: Session, row: PayoutRequest) -> None:
         notification_type="payout.paid",
         payload={
             "title": "Payout on its way",
-            "body": f"€{row.amount_eur} is on its way to your bank account.",
-            "amount": str(row.amount_eur),
-            "currency": "EUR",
+            "body": f"{format_money(row.amount, row.currency)} is on its way to your bank account.",
+            "amount": str(row.amount),
+            "currency": row.currency,
         },
         reference_type="payout_request",
         reference_id=str(row.id),
@@ -570,9 +615,9 @@ def mark_payout_paid_manual(
         db,
         event_name="payout.paid",
         user_id=row.pro_user_id,
-        properties={"payout_request_id": str(row.id), "amount_eur": str(row.amount_eur)},
+        properties={"payout_request_id": str(row.id), "amount": str(row.amount)},
     )
-    observe_payout_volume(float(row.amount_eur))
+    observe_payout_volume(float(row.amount))
     return row
 
 
@@ -619,7 +664,7 @@ def list_finance_pros(db: Session, *, city: str | None, min_available: Decimal |
     rows: list[dict] = []
     for profile in profiles:
         bal = payout_balance_view(db, pro_user_id=profile.user_id)
-        if min_available is not None and bal["withdrawable_eur"] < _q2(min_available):
+        if min_available is not None and bal["withdrawable"] < _q2(min_available):
             continue
         rows.append(
             {
@@ -634,18 +679,22 @@ def list_finance_pros(db: Session, *, city: str | None, min_available: Decimal |
 
 
 def _allocate_payout_amount(db: Session, *, payout: PayoutRequest) -> None:
-    target = _q2(payout.amount_eur)
+    target = _q2(payout.amount)
     remaining = target
 
     entries = db.execute(
         select(EarningsLedgerEntry)
-        .where(EarningsLedgerEntry.pro_user_id == payout.pro_user_id, EarningsLedgerEntry.status == EarningsEntryStatus.available)
+        .where(
+            EarningsLedgerEntry.pro_user_id == payout.pro_user_id,
+            EarningsLedgerEntry.currency == payout.currency,
+            EarningsLedgerEntry.status == EarningsEntryStatus.available,
+        )
         .order_by(EarningsLedgerEntry.created_at.asc())
     ).scalars().all()
 
     for entry in entries:
         used = db.execute(
-            select(func.coalesce(func.sum(PayoutAllocation.amount_eur), 0))
+            select(func.coalesce(func.sum(PayoutAllocation.amount), 0))
             .select_from(PayoutAllocation)
             .join(PayoutRequest, PayoutRequest.id == PayoutAllocation.payout_request_id)
             .where(
@@ -653,11 +702,15 @@ def _allocate_payout_amount(db: Session, *, payout: PayoutRequest) -> None:
                 PayoutRequest.status.in_([PayoutRequestStatus.approved, PayoutRequestStatus.processing, PayoutRequestStatus.paid]),
             )
         ).scalar_one()
-        free_amount = _q2(entry.net_eur - Decimal(str(used or 0)))
+        free_amount = _q2(entry.net - Decimal(str(used or 0)))
         if free_amount <= Decimal("0.00"):
             continue
         alloc = min(free_amount, remaining)
-        db.add(PayoutAllocation(payout_request_id=payout.id, earnings_ledger_entry_id=entry.id, amount_eur=_q2(alloc)))
+        db.add(
+            PayoutAllocation(
+                payout_request_id=payout.id, earnings_ledger_entry_id=entry.id, currency=payout.currency, amount=_q2(alloc)
+            )
+        )
         remaining = _q2(remaining - alloc)
         if remaining <= Decimal("0.00"):
             break
@@ -733,13 +786,17 @@ def _q2(value: Decimal | None) -> Decimal:
 
 def _refresh_finance_metrics(db: Session) -> None:
     total_available = db.execute(
-        select(func.coalesce(func.sum(EarningsBalanceSnapshot.available_eur), 0)).select_from(EarningsBalanceSnapshot)
+        # The metric is in euros: other currencies are left out of it.
+        select(func.coalesce(func.sum(EarningsBalanceSnapshot.available), 0))
+        .select_from(EarningsBalanceSnapshot)
+        .where(EarningsBalanceSnapshot.currency == "EUR")
     ).scalar_one()
     dispute_hold_total = db.execute(
-        select(func.coalesce(func.sum(EarningsHold.amount_eur), 0)).where(
+        select(func.coalesce(func.sum(EarningsHold.amount), 0)).where(
             EarningsHold.reason == EarningsHoldReason.dispute_open,
             EarningsHold.released_at.is_(None),
-            EarningsHold.amount_eur.is_not(None),
+            EarningsHold.amount.is_not(None),
+            EarningsHold.currency == "EUR",
         )
     ).scalar_one()
     set_total_available_eur(float(total_available or 0))

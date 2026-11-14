@@ -72,7 +72,7 @@ class Gig(Base):
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     niche_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("niche.id"), index=True, nullable=True)
     status: Mapped[GigStatus] = mapped_column(Enum(GigStatus, name="gig_status", native_enum=False, length=64), index=True, nullable=False)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     amount_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_final: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     #: Until when the client may add photos to what they chose (selection

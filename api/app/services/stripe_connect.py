@@ -46,15 +46,18 @@ def ensure_connect_account(db: Session, *, pro_user_id: uuid.UUID, email: str | 
     if account.stripe_connect_account_id:
         return account
 
+    # Stripe requires a country at creation and it cannot be changed
+    # afterwards. The pro's own country is the best available answer;
+    # falling back to the platform's would quietly make a Portuguese
+    # photographer a US account holder.
+    account_country = (country or settings.default_connect_country or "PT").upper()
+    currency = _currency_for_new_account(db, pro_user_id=pro_user_id, country=account_country)
+
     try:
         created = _stripe().Account.create(
             type="express",
             email=email,
-            # Stripe requires a country at creation and it cannot be changed
-            # afterwards. The pro's own country is the best available answer;
-            # falling back to the platform's would quietly make a Portuguese
-            # photographer a US account holder.
-            country=(country or settings.default_connect_country or "PT").upper(),
+            country=account_country,
             capabilities={"transfers": {"requested": True}},
             business_type="individual",
             metadata={"pro_user_id": str(pro_user_id)},
@@ -68,6 +71,7 @@ def ensure_connect_account(db: Session, *, pro_user_id: uuid.UUID, email: str | 
 
     account.stripe_connect_account_id = created["id"]
     account.payout_method = PayoutMethod.stripe_connect
+    _set_pro_currency(db, pro_user_id=pro_user_id, currency=currency)
     # Not active until Stripe says so through account.updated. Claiming
     # otherwise would show a photographer a working payout method that
     # cannot pay them.
@@ -202,3 +206,38 @@ def _readable(exc: Exception) -> str:
     failure would."""
     message = getattr(exc, "user_message", None) or str(exc)
     return message.split("\n")[0][:300] or "Stripe request failed"
+
+
+def _currency_for_new_account(db: Session, *, pro_user_id: uuid.UUID, country: str) -> str:
+    """The photographer's currency is their Stripe account country's (GB →
+    GBP, eurozone → EUR; MULTI_CURRENCY.md 10.3), and must be enabled. When
+    packages, earnings or payouts already exist in another currency, the
+    account is refused: changing a photographer's currency is admin-only."""
+    from app.services.currencies import currency_for_country, pro_currency, pro_has_money_or_packages, require_enabled
+
+    currency = currency_for_country(country)
+    if currency is None:
+        raise APIError(
+            code="country_not_supported",
+            message="Payouts are not available in your country yet",
+            status_code=422,
+            details={"country": country},
+        )
+    require_enabled(db, currency)
+    own = pro_currency(db, pro_user_id)
+    if own is not None and own != currency and pro_has_money_or_packages(db, pro_user_id):
+        raise APIError(
+            code="currency_mismatch",
+            message=f"Your packages and earnings are in {own}; a {country} payout account would pay in {currency}",
+            status_code=409,
+            details={"currency": currency, "photographer_currency": own},
+        )
+    return currency
+
+
+def _set_pro_currency(db: Session, *, pro_user_id: uuid.UUID, currency: str) -> None:
+    from app.models.admin import ProProfile
+
+    profile = db.get(ProProfile, pro_user_id)
+    if profile is not None and profile.currency != currency:
+        profile.currency = currency

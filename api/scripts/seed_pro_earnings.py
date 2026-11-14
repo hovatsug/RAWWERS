@@ -59,8 +59,8 @@ from app.models.payouts import (  # noqa: E402
     PayoutRequestStatus,
 )
 from app.services.photographer_money import booking_split  # noqa: E402
+from app.services.currencies import payout_minimum
 from app.services.payouts import (  # noqa: E402
-    MIN_PAYOUT_EUR,
     PAYOUT_REQUEST_LIMIT_7D,
     approve_payout_request,
     create_earnings_entry,
@@ -123,7 +123,8 @@ def seed_earnings(db, *, gigs: list[Gig], settlement_days: int) -> tuple[int, in
             # rounded, the photographer's cash the remainder) - the same
             # split a real booking's earnings use. Without it this took a
             # single rounded 20%, a few cents off the invoice on some gigs.
-            gross_eur=gig.amount_minimum,
+            gross=gig.amount_minimum,
+            currency=gig.currency,
             split=seed_split(db, gig),
             metadata={"gig_id": str(gig.id), "seeded": True},
         )
@@ -155,10 +156,10 @@ def reseed_earnings(db, *, gigs: list[Gig]) -> list[tuple[Gig, Decimal, Decimal]
         if entry is None:
             continue
         split = seed_split(db, gig)
-        if entry.net_eur == split.pro_cash and entry.gross_eur == split.gross:
+        if entry.net == split.pro_cash and entry.gross == split.gross:
             continue
-        changed.append((gig, entry.net_eur, split.pro_cash))
-        entry.gross_eur, entry.platform_fee_eur, entry.net_eur = split.gross, split.gross - split.pro_cash, split.pro_cash
+        changed.append((gig, entry.net, split.pro_cash))
+        entry.gross, entry.platform_fee, entry.net = split.gross, split.gross - split.pro_cash, split.pro_cash
     db.flush()
     return changed
 
@@ -178,8 +179,8 @@ def check_reconciliation(db, *, gigs: list[Gig]) -> list[str]:
         if gig is None:
             continue
         expected = seed_split(db, gig).pro_cash
-        if entry.net_eur != expected:
-            problems.append(f"gig {gig.id}: ledger net {entry.net_eur} != the booking's split {expected}")
+        if entry.net != expected:
+            problems.append(f"gig {gig.id}: ledger net {entry.net} != the booking's split {expected}")
     return problems
 
 
@@ -187,7 +188,7 @@ def seed_payouts(db, *, pro_ids: set[uuid.UUID]) -> dict[str, int]:
     """A shallow but real payout history.
 
     Deliberately not dense. The real system allows PAYOUT_REQUEST_LIMIT_7D
-    requests per seven days and refuses anything under MIN_PAYOUT_EUR, and
+    requests per seven days and refuses anything under the currency's payout minimum, and
     seeding past either would be fabricating history the running system would
     never have produced. Statuses are spread so the screen has a paid one, an
     approved one and a pending one to render rather than three of a kind.
@@ -195,8 +196,9 @@ def seed_payouts(db, *, pro_ids: set[uuid.UUID]) -> dict[str, int]:
     counts = {"requested": 0, "approved": 0, "paid": 0, "skipped_low_balance": 0}
     for index, pro_user_id in enumerate(sorted(pro_ids)):
         balance = payout_balance_view(db, pro_user_id=pro_user_id)
-        withdrawable = Decimal(str(balance["withdrawable_eur"]))
-        if withdrawable < MIN_PAYOUT_EUR:
+        withdrawable = Decimal(str(balance["withdrawable"]))
+        minimum = payout_minimum(db, balance["currency"])
+        if withdrawable < minimum:
             counts["skipped_low_balance"] += 1
             continue
 
@@ -205,10 +207,10 @@ def seed_payouts(db, *, pro_ids: set[uuid.UUID]) -> dict[str, int]:
         wanted = min(PAYOUT_REQUEST_LIMIT_7D, 1 + (index % PAYOUT_REQUEST_LIMIT_7D))
         for n in range(wanted):
             amount = (withdrawable / Decimal(4)).quantize(Decimal("0.01"))
-            if amount < MIN_PAYOUT_EUR:
+            if amount < minimum:
                 break
             try:
-                request = create_payout_request(db, pro_user_id=pro_user_id, amount_eur=amount)
+                request = create_payout_request(db, pro_user_id=pro_user_id, amount=amount)
             except Exception as exc:  # noqa: BLE001
                 print(f"  ! payout request refused for {pro_user_id}: {exc}")
                 break
@@ -231,7 +233,7 @@ def seed_payouts(db, *, pro_ids: set[uuid.UUID]) -> dict[str, int]:
                 counts["paid"] += 1
             db.flush()
             balance = payout_balance_view(db, pro_user_id=pro_user_id)
-            withdrawable = Decimal(str(balance["withdrawable_eur"]))
+            withdrawable = Decimal(str(balance["withdrawable"]))
     return counts
 
 
@@ -312,7 +314,7 @@ def main() -> int:
         funded = 0
         for pro_user_id in sorted(pro_ids):
             balance = payout_balance_view(db, pro_user_id=pro_user_id)
-            if Decimal(str(balance["available_eur"])) > 0 or Decimal(str(balance["pending_eur"])) > 0:
+            if Decimal(str(balance["available"])) > 0 or Decimal(str(balance["pending"])) > 0:
                 funded += 1
         paid_total = db.execute(
             select(EarningsLedgerEntry).where(EarningsLedgerEntry.source_type == EarningsSourceType.gig_base)

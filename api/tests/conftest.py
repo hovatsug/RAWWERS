@@ -226,6 +226,10 @@ def pytest_configure(config) -> None:
         "markers",
         "real_clock: read call quiet hours against the real time of day instead of midday Lisbon",
     )
+    config.addinivalue_line(
+        "markers",
+        "uk_defaults: the production currency defaults (GBP only, GBP for new users) instead of the suite's EUR world",
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -260,6 +264,32 @@ def _quiet_hours_at_midday(request) -> Generator[None, None, None]:
         yield
     finally:
         call_compliance.is_quiet_hours_now = real
+
+
+@pytest.fixture(autouse=True)
+def _currencies_of_the_suite(request) -> Generator[None, None, None]:
+    """The suite was written in euros: EUR is enabled beside GBP and is the
+    default for a photographer whose country gives none. Production starts
+    with GBP only and GBP as the default (docs/MULTI_CURRENCY.md 10.1); a
+    test about those defaults marks itself `uk_defaults`.
+
+    Patched and restored by hand, not through `monkeypatch` (see
+    _quiet_hours_at_midday)."""
+    if request.node.get_closest_marker("uk_defaults"):
+        yield
+        return
+    from app.core.config import get_settings
+    from app.services import currencies
+
+    settings = get_settings()
+    real_enabled, real_default = currencies.CODE_DEFAULTS["enabled_currencies"], settings.default_currency
+    currencies.CODE_DEFAULTS["enabled_currencies"] = ("GBP", "EUR")
+    settings.default_currency = "EUR"
+    try:
+        yield
+    finally:
+        currencies.CODE_DEFAULTS["enabled_currencies"] = real_enabled
+        settings.default_currency = real_default
 
 
 @pytest.fixture

@@ -177,7 +177,7 @@ def build_world(db) -> World:
     # Money owed now: earnings, a paid payout, clients owed, company cash.
     def earning(pro, net, status):
         e = EarningsLedgerEntry(pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=uuid.uuid4(),
-                                gross_eur=net, platform_fee_eur=Decimal("0"), net_eur=net, status=status, available_at=at(D2))
+                                gross=net, platform_fee=Decimal("0"), net=net, status=status, available_at=at(D2), currency="EUR")
         db.add(e)
         db.flush()
         return e
@@ -185,10 +185,10 @@ def build_world(db) -> World:
     earning(w.p1, Decimal("80.00"), EarningsEntryStatus.pending)
     earning(w.p2, Decimal("36.71"), EarningsEntryStatus.held)
     paid_entry = earning(w.p1, Decimal("50.00"), EarningsEntryStatus.available)
-    payout = PayoutRequest(pro_user_id=w.p1, amount_eur=Decimal("30.00"), status=PayoutRequestStatus.paid, paid_at=at(D2))
+    payout = PayoutRequest(pro_user_id=w.p1, amount=Decimal("30.00"), status=PayoutRequestStatus.paid, paid_at=at(D2), currency="EUR")
     db.add(payout)
     db.flush()
-    db.add(PayoutAllocation(payout_request_id=payout.id, earnings_ledger_entry_id=paid_entry.id, amount_eur=Decimal("30.00")))
+    db.add(PayoutAllocation(payout_request_id=payout.id, earnings_ledger_entry_id=paid_entry.id, amount=Decimal("30.00"), currency="EUR"))
     db.add(MoneyAttentionItem(kind="client_owed", status="open", gig_id=w.g1.id, amount=Decimal("5.00"), currency="EUR"))
     db.add(RefundCase(gig_id=w.g2.id, requested_by_user_id=w.client, status=RefundCaseStatus.approved, amount=Decimal("10.00"),
                       amount_refunded=Decimal("4.00"), currency="EUR"))

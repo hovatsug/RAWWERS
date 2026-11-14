@@ -99,7 +99,7 @@ WITH days AS (
     SELECT day FROM bi_stripe_sync_day WHERE day BETWEEN :a AND :b
 ), po AS (
     SELECT paid_day AS day, sum(amount_cents) AS paid FROM bi_payouts
-    WHERE status = 'paid' AND paid_day BETWEEN :a AND :b GROUP BY paid_day
+    WHERE status = 'paid' AND currency = 'EUR' AND paid_day BETWEEN :a AND :b GROUP BY paid_day
 ), rw AS (
     SELECT day,
         sum(value_cents) FILTER (WHERE kind IN ('earn_booking', 'earn_extras')) AS issued,
@@ -641,13 +641,13 @@ def owed(db: Session, stripe_balance: dict | None) -> dict:
                 sum(net_cents) FILTER (WHERE status <> 'reversed') AS lifetime,
                 sum(net_cents) FILTER (WHERE status = 'pending') AS pending,
                 sum(net_cents) FILTER (WHERE status = 'held') AS held
-            FROM bi_earnings GROUP BY pro_user_id
+            FROM bi_earnings WHERE currency = 'EUR' GROUP BY pro_user_id
         ), p AS (
             SELECT pro_user_id,
                 sum(amount_cents) FILTER (WHERE status = 'requested') AS requested,
                 sum(allocated_cents) FILTER (WHERE status IN ('approved', 'processing')) AS reserved,
                 sum(allocated_cents) FILTER (WHERE status = 'paid') AS paid
-            FROM bi_payouts GROUP BY pro_user_id
+            FROM bi_payouts WHERE currency = 'EUR' GROUP BY pro_user_id
         ), each AS (
             SELECT coalesce(e.pending, 0) AS pending, coalesce(e.held, 0) AS held,
                    coalesce(e.lifetime, 0) - coalesce(e.pending, 0) - coalesce(e.held, 0) - coalesce(p.paid, 0) AS due,

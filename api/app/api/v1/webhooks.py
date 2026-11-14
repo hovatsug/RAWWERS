@@ -401,7 +401,8 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
                     pro_user_id=snapshot.pro_user_id,
                     source_type=EarningsSourceType.extra_images,
                     source_id=snapshot.id,
-                    gross_eur=Decimal(str(snapshot.total or 0)),
+                    gross=Decimal(str(snapshot.total or 0)),
+                    currency=db.get(Gig, snapshot.gig_id).currency,
                     metadata={"gig_id": str(snapshot.gig_id)},
                 )
                 enqueue_raww_mint(
@@ -918,7 +919,7 @@ def _apply_stripe_event(db: Session, event_type: str, obj: dict) -> None:
             row.paid_at = datetime.now(timezone.utc)
             row.reference = {**(row.reference or {}), "stripe_transfer_id": obj.get("id")}
             row.updated_at = datetime.now(timezone.utc)
-            observe_payout_volume(float(row.amount_eur))
+            observe_payout_volume(float(row.amount))
 
         if not _payout_event_recorded(db, row.id, "transfer_created"):
             db.add(PayoutEvent(payout_request_id=row.id, type="transfer_created", payload={"stripe_transfer_id": obj.get("id")}))

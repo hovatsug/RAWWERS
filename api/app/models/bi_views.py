@@ -4,7 +4,7 @@ Each view is defined once here; docs/BI.md says what each number means.
 Amounts become integer cents here, once. Days are Europe/London.
 
 Created after the tables (`after_create` on the metadata, for the test
-suite's create_all) and by the latest BI migration (20261110_0093), which
+suite's create_all) and by the latest BI migration (20261113_0095), which
 carries a frozen copy of this SQL; tests/test_bi_schema.py fails when the
 two differ, so a change here needs a migration that recreates the views.
 Dropped before the tables.
@@ -226,13 +226,13 @@ FROM o WHERE status IN ('cancelled', 'refunded') AND reversed_at IS NOT NULL
 """),
     ("bi_earnings", """
 SELECT e.id AS entry_id, e.pro_user_id, e.source_type::text AS source_type, e.source_id, e.status::text AS status,
-       round(e.gross_eur * 100)::bigint AS gross_cents, round(e.net_eur * 100)::bigint AS net_cents,
+       e.currency, round(e.gross * 100)::bigint AS gross_cents, round(e.net * 100)::bigint AS net_cents,
        e.available_at, e.created_at
 FROM earnings_ledger_entry e
 """),
     ("bi_payouts", f"""
-SELECT r.id AS payout_id, r.pro_user_id, r.status::text AS status, round(r.amount_eur * 100)::bigint AS amount_cents,
-       coalesce((SELECT round(sum(a.amount_eur) * 100)::bigint FROM payout_allocation a WHERE a.payout_request_id = r.id), 0)
+SELECT r.id AS payout_id, r.pro_user_id, r.status::text AS status, r.currency, round(r.amount * 100)::bigint AS amount_cents,
+       coalesce((SELECT round(sum(a.amount) * 100)::bigint FROM payout_allocation a WHERE a.payout_request_id = r.id), 0)
            AS allocated_cents,
        r.requested_at, r.paid_at, (r.paid_at AT TIME ZONE {LONDON})::date AS paid_day
 FROM payout_request r

@@ -141,7 +141,7 @@ def test_transfer_created_in_clover_confirms_the_payout(db_session):
     from app.models.payouts import PayoutRequest, PayoutRequestStatus
 
     pro = uuid.UUID(_account(db_session))
-    request = PayoutRequest(pro_user_id=pro, amount_eur=Decimal("10.00"), status=PayoutRequestStatus.processing, reference={})
+    request = PayoutRequest(pro_user_id=pro, amount=Decimal("10.00"), status=PayoutRequestStatus.processing, reference={}, currency="EUR")
     db_session.add(request)
     db_session.commit()
     transfer = _intent("transfer.created")

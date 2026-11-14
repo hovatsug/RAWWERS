@@ -94,8 +94,8 @@ def _booking(db_session, scenario, *, status=GigStatus.paid):
     db_session.add(
         EarningsLedgerEntry(
             pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id,
-            gross_eur=amount, platform_fee_eur=Decimal("0.00"), net_eur=amount, status=EarningsEntryStatus.pending,
-            available_at=datetime.now(timezone.utc) + timedelta(days=7), meta={"fee_percent": "0"},
+            gross=amount, platform_fee=Decimal("0.00"), net=amount, status=EarningsEntryStatus.pending,
+            available_at=datetime.now(timezone.utc) + timedelta(days=7), meta={"fee_percent": "0"}, currency="EUR",
         )
     )
     for kind in (GigEntitlementType.download_finals, GigEntitlementType.download_extras):

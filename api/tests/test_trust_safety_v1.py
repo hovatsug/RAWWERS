@@ -82,7 +82,7 @@ def test_freeze_payouts_blocks_payout_requests(db_session):
 
     apply_risk_action(db_session, user_id=pro_user_id, action_type=RiskActionType.freeze_payouts, reason="test")
     with pytest.raises(APIError) as exc:
-        create_payout_request(db_session, pro_user_id=pro_user_id, amount_eur=Decimal("60.00"))
+        create_payout_request(db_session, pro_user_id=pro_user_id, amount=Decimal("60.00"))
     assert "frozen" in str(exc.value).lower()
 
 

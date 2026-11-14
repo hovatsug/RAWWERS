@@ -19,6 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.services.currencies import normalise
 from app.models.gallery import ClientSelection, ClientSelectionItem, ProofGallery, SelectionStatus
 from app.models.gig import Gig
 from app.models.payouts import VatStatus
@@ -139,7 +140,7 @@ def extras_credits(db: Session, pro_user_id: uuid.UUID, gig_ids: list[uuid.UUID]
         .where(
             EarningsLedgerEntry.pro_user_id == pro_user_id,
             EarningsLedgerEntry.source_type == EarningsSourceType.extra_images,
-            EarningsLedgerEntry.pro_raww_eur.is_not(None),
+            EarningsLedgerEntry.pro_raww.is_not(None),
         )
     )
     if gig_ids is not None:
@@ -207,7 +208,7 @@ def build_invoice(db: Session, gig: Gig) -> Invoice:
         # The shoot's own date where it has one. `created_at` is when the
         # booking was accepted, which is not when the work happened.
         issued_at=gig.scheduled_end or gig.scheduled_start or gig.created_at,
-        currency=gig.currency or "EUR",
+        currency=normalise(gig.currency),
         client_total=amounts.gross,
         platform_retained=amounts.platform_retained,
         pro_raww=amounts.pro_raww,

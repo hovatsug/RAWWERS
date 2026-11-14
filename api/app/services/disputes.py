@@ -9,6 +9,7 @@ import stripe
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.services.currencies import normalise
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.models.admin import (
@@ -274,7 +275,7 @@ def create_dispute(
             db,
             pro_user_id=gig.pro_user_id,
             reason=EarningsHoldReason.dispute_open,
-            amount_eur=None,
+            amount=None,
             source_type=EarningsSourceType.gig_base.value,
             source_id=gig.id,
             created_by_admin_id=None,
@@ -284,7 +285,7 @@ def create_dispute(
             db,
             pro_user_id=extra_purchase.pro_user_id,
             reason=EarningsHoldReason.dispute_open,
-            amount_eur=None,
+            amount=None,
             source_type=EarningsSourceType.extra_images.value,
             source_id=extra_purchase.id,
             created_by_admin_id=None,
@@ -431,7 +432,7 @@ def create_or_get_refund_case_for_dispute(
     if existing:
         return list(existing)
 
-    currency = dispute.currency or "EUR"
+    currency = normalise(dispute.currency)
 
     if dispute.extra_purchase_id:
         purchase = db.get(ExtraImagePurchase, dispute.extra_purchase_id)

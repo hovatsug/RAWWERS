@@ -427,7 +427,7 @@ def start_addon(
     )
     db.commit()
     return StartAddonResponse(
-        addon_id=purchase.id, amount=purchase.total, currency=gallery.currency or "EUR",
+        addon_id=purchase.id, amount=purchase.total, currency=gallery.currency,
         payment_intent_client_secret=secret, status=purchase.status.value,
     )
 

@@ -260,7 +260,7 @@ def test_release_payout_holds_settles_past_available_at(db_session):
     pro_id = _seed_user(db_session, str(uuid.uuid4()), [UserRoleType.pro])
     entry = create_earnings_entry(
         db_session, pro_user_id=pro_id, source_type=EarningsSourceType.gig_base,
-        source_id=uuid.uuid4(), gross_eur=Decimal("100.00"), metadata={},
+        source_id=uuid.uuid4(), gross=Decimal("100.00"), metadata={}, currency="EUR",
     )
     entry.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     db_session.commit()
@@ -277,7 +277,7 @@ def test_release_payout_holds_leaves_not_yet_due_untouched(db_session):
     pro_id = _seed_user(db_session, str(uuid.uuid4()), [UserRoleType.pro])
     entry = create_earnings_entry(
         db_session, pro_user_id=pro_id, source_type=EarningsSourceType.gig_base,
-        source_id=uuid.uuid4(), gross_eur=Decimal("100.00"), metadata={},
+        source_id=uuid.uuid4(), gross=Decimal("100.00"), metadata={}, currency="EUR",
     )
     db_session.commit()
     assert entry.available_at > datetime.now(timezone.utc)
@@ -294,7 +294,7 @@ def test_release_payout_holds_idempotent_on_rerun(db_session):
     pro_id = _seed_user(db_session, str(uuid.uuid4()), [UserRoleType.pro])
     entry = create_earnings_entry(
         db_session, pro_user_id=pro_id, source_type=EarningsSourceType.gig_base,
-        source_id=uuid.uuid4(), gross_eur=Decimal("100.00"), metadata={},
+        source_id=uuid.uuid4(), gross=Decimal("100.00"), metadata={}, currency="EUR",
     )
     entry.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     db_session.commit()
@@ -312,7 +312,7 @@ def test_release_payout_holds_ignores_reversed_entries(db_session):
     pro_id = _seed_user(db_session, str(uuid.uuid4()), [UserRoleType.pro])
     entry = create_earnings_entry(
         db_session, pro_user_id=pro_id, source_type=EarningsSourceType.gig_base,
-        source_id=uuid.uuid4(), gross_eur=Decimal("100.00"), metadata={},
+        source_id=uuid.uuid4(), gross=Decimal("100.00"), metadata={}, currency="EUR",
     )
     entry.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     entry.reversed_at = datetime.now(timezone.utc)
@@ -331,11 +331,11 @@ def test_release_payout_holds_error_isolation(db_session, monkeypatch):
     pro_b = _seed_user(db_session, str(uuid.uuid4()), [UserRoleType.pro])
     good = create_earnings_entry(
         db_session, pro_user_id=pro_a, source_type=EarningsSourceType.gig_base,
-        source_id=uuid.uuid4(), gross_eur=Decimal("50.00"), metadata={},
+        source_id=uuid.uuid4(), gross=Decimal("50.00"), metadata={}, currency="EUR",
     )
     bad = create_earnings_entry(
         db_session, pro_user_id=pro_b, source_type=EarningsSourceType.gig_base,
-        source_id=uuid.uuid4(), gross_eur=Decimal("75.00"), metadata={},
+        source_id=uuid.uuid4(), gross=Decimal("75.00"), metadata={}, currency="EUR",
     )
     good.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     bad.available_at = datetime.now(timezone.utc) - timedelta(seconds=1)

@@ -56,7 +56,7 @@ def plan(db, gig_ids: list[uuid.UUID] | None = None, unpaid: list | None = None)
         ).scalar_one_or_none()
         if entry is not None and entry.status == EarningsEntryStatus.reversed:
             continue
-        current = entry.net_eur if entry is not None else ZERO
+        current = entry.net if entry is not None else ZERO
         if net_paid(db, gig) <= ZERO and current > ZERO:
             # No payment on record at all (seed fixtures; anything else is a
             # finding): never wipe earnings for lack of data - listed instead.

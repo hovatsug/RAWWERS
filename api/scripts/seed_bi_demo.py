@@ -153,7 +153,7 @@ class Seeder:
         self.db.flush()
         self.db.add(UserRole(user_id=uid, role=role))
         if role == UserRoleType.pro:
-            self.db.add(ProProfile(user_id=uid, display_name=name, country=country))
+            self.db.add(ProProfile(user_id=uid, display_name=name, country=country, currency="EUR"))  # the demo business is in euros
         return uid
 
     def card(self, gig, cents, when, kind=StripePaymentKind.base):
@@ -241,9 +241,9 @@ class Seeder:
                 if status == GigStatus.completed and gig.status != GigStatus.refunded:
                     split = split_with_rates(_eur(total - refunded), retained_percent=15, pro_raww_percent=5, client_credit_percent=cc)
                     settled = age > 17
-                    entry = EarningsLedgerEntry(pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=gig.id,
-                                                gross_eur=split.gross, platform_fee_eur=_q(split.gross - split.pro_cash),
-                                                net_eur=split.pro_cash, status=EarningsEntryStatus.available if settled else EarningsEntryStatus.pending,
+                    entry = EarningsLedgerEntry(pro_user_id=pro, source_type=EarningsSourceType.gig_base, source_id=gig.id, currency="EUR",
+                                                gross=split.gross, platform_fee=_q(split.gross - split.pro_cash),
+                                                net=split.pro_cash, status=EarningsEntryStatus.available if settled else EarningsEntryStatus.pending,
                                                 available_at=paid_at + timedelta(days=17), meta=dict(TAG), created_at=paid_at + timedelta(days=10))
                     db.add(entry)
                     earnings_by_pro.setdefault(pro, []).append((entry, split.pro_cash))
@@ -302,12 +302,12 @@ class Seeder:
                     continue
                 when = self.at(pay_day, 15)
                 amount = sum((cash for _, cash in due), Decimal("0.00"))
-                request = PayoutRequest(pro_user_id=pro, amount_eur=amount, status=PayoutRequestStatus.paid, requested_at=when - timedelta(days=1),
+                request = PayoutRequest(pro_user_id=pro, currency="EUR", amount=amount, status=PayoutRequestStatus.paid, requested_at=when - timedelta(days=1),
                                         approved_at=when, paid_at=when, reference=dict(TAG))
                 db.add(request)
                 db.flush()
                 for e, cash in due:
-                    db.add(PayoutAllocation(payout_request_id=request.id, earnings_ledger_entry_id=e.id, amount_eur=cash))
+                    db.add(PayoutAllocation(payout_request_id=request.id, earnings_ledger_entry_id=e.id, currency="EUR", amount=cash))
                     e.meta = {**e.meta, "paid": True}
                 self.txn("transfer", -int(amount * 100), when)
                 payouts += 1

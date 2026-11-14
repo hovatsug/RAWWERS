@@ -68,6 +68,7 @@ from app.schemas.launch_ops import (
     ProOnboardingStartRequest,
     ProOnboardingStatusResponse,
 )
+from app.services.currencies import follow_profile_country, package_currency
 from app.services.notifications import enqueue_notification
 from app.services.audit import add_admin_audit_log
 from app.services.bookable_time import RequestTerms, apply_request_terms, check_bookable, check_requestable, request_preset, shape_for_package
@@ -322,6 +323,8 @@ def update_my_pro_profile(
         value = getattr(body, field)
         if value is not None:
             setattr(profile, field, value)
+    if body.country is not None:
+        follow_profile_country(db, profile)
 
     profile.completeness_score = _compute_completeness(profile)
     recompute_pro_public_index(db, user.user_id)
@@ -381,6 +384,7 @@ def create_package(
     db: Session = Depends(get_db_session),
 ) -> ProPackageView:
     _require_role(db, user.user_id, UserRoleType.pro)
+    currency = package_currency(db, _ensure_pro_profile(db, user.user_id), body.currency)
     niche = _resolve_package_niche(db, body.niche_id, body.niche_slug)
     entry_price = body.price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     tier = resolve_pro_tier_for_niche(db, user.user_id, niche.id)
@@ -392,7 +396,7 @@ def create_package(
         description=body.description,
         duration_minutes=body.duration_minutes,
         price=entry_price,
-        currency=body.currency.upper(),
+        currency=currency,
         included_photos=body.included_photos,
         extra_photo_price=body.extra_photo_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
         proofs_sla_days=body.proofs_sla_days,
@@ -436,6 +440,8 @@ def update_package(
     package = db.get(ProPackage, package_id)
     if not package or package.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Package not found", status_code=404)
+    if body.currency is not None:
+        body.currency = package_currency(db, _ensure_pro_profile(db, user.user_id), body.currency)
 
     if body.niche_id is None and body.niche_slug is None:
         raise APIError(code="validation_error", message="niche_id or niche_slug is required", status_code=400)

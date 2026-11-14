@@ -34,6 +34,7 @@ def _seed_package(db_session, pro_id: uuid.UUID) -> ProPackage:
         db_session.flush()
     package = ProPackage(
         pro_user_id=pro_id,
+        currency="EUR",
         niche_id=niche.id,
         title="Session",
         duration_minutes=60,

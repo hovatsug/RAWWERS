@@ -37,6 +37,8 @@ from app.schemas.payouts import (
     ConnectStatusResponse,
     AdminFinanceProDetailResponse,
     AdminFinanceProItem,
+    CurrencySettingsUpdateRequest,
+    CurrencySettingsView,
     AdminFinanceProsResponse,
     AdminPayoutMarkPaidRequest,
     AdminPayoutRejectRequest,
@@ -196,7 +198,10 @@ def get_my_earnings_summary(
     shows rather than a separate aggregate that could disagree with them."""
     _ensure_pro_user(db, user.user_id)
     summary = summarise_invoices(db, user.user_id)
+    from app.services.photographer_money import money_currency
+
     return InvoiceSummaryView(
+        currency=money_currency(db, user.user_id),
         bookings=summary.bookings,
         gross=summary.gross,
         platform_fees=summary.platform_fees,
@@ -284,7 +289,7 @@ def request_my_payout(
     db: Session = Depends(get_db_session),
 ) -> PayoutRequestView:
     _ensure_pro_user(db, user.user_id)
-    row = create_payout_request(db, pro_user_id=user.user_id, amount_eur=body.amount_eur)
+    row = create_payout_request(db, pro_user_id=user.user_id, amount=body.amount)
     db.commit()
     db.refresh(row)
     return PayoutRequestView.model_validate(row, from_attributes=True)
@@ -533,17 +538,18 @@ def admin_payout_queue(
                 pro_user_id=row.pro_user_id,
                 display_name=profile.display_name if profile else None,
                 email=user.email if user else None,
-                amount_eur=row.amount_eur,
+                currency=row.currency,
+                amount=row.amount,
                 status=row.status,
                 requested_at=row.created_at,
                 payout_method=account.payout_method.value,
                 payout_account_status=account.status.value,
                 approval_blocked=blocked,
                 blocked_reason=reason,
-                available_eur=balance["available_eur"],
-                pending_eur=balance["pending_eur"],
-                withdrawable_eur=balance["withdrawable_eur"],
-                exceeds_withdrawable=row.amount_eur > balance["withdrawable_eur"]
+                available=balance["available"],
+                pending=balance["pending"],
+                withdrawable=balance["withdrawable"],
+                exceeds_withdrawable=row.amount > balance["withdrawable"]
                 and row.status == PayoutRequestStatus.requested,
                 lifetime_payouts=int(lifetime),
             )
@@ -576,7 +582,7 @@ def approve_payout_admin(
         target_type="payout_request",
         target_id=str(row.id),
         action="payout_approved",
-        metadata={"pro_user_id": str(row.pro_user_id), "amount_eur": str(row.amount_eur)},
+        metadata={"pro_user_id": str(row.pro_user_id), "amount": str(row.amount)},
     )
     db.commit()
     db.refresh(row)
@@ -641,7 +647,7 @@ def create_hold_admin(
         db,
         pro_user_id=body.pro_user_id,
         reason=body.reason,
-        amount_eur=body.amount_eur,
+        amount=body.amount,
         source_type=body.source_type,
         source_id=body.source_id,
         created_by_admin_id=actor.user_id,
@@ -714,6 +720,52 @@ def put_fee_policy_admin(
     db.commit()
     db.refresh(row)
     return PlatformFeePolicyView.model_validate(row, from_attributes=True)
+
+
+def _currency_settings_view(db: Session) -> CurrencySettingsView:
+    from app.services.currencies import default_currency, get_currency_settings
+
+    current = get_currency_settings(db)
+    return CurrencySettingsView(
+        enabled_currencies=list(current.enabled_currencies),
+        payout_minimums=current.payout_minimums,
+        default_currency=default_currency(),
+        from_defaults=current.from_defaults,
+    )
+
+
+@router.get("/admin/finance/currency-settings", response_model=CurrencySettingsView)
+def get_currency_settings_admin(
+    _: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> CurrencySettingsView:
+    return _currency_settings_view(db)
+
+
+@router.put("/admin/finance/currency-settings", response_model=CurrencySettingsView)
+def put_currency_settings_admin(
+    body: CurrencySettingsUpdateRequest,
+    actor: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db_session),
+) -> CurrencySettingsView:
+    """Switch a currency on or off (no deploy), and set the minimums. Turning
+    one off stops new packages and payout accounts in it; what exists keeps
+    working."""
+    from app.services.currencies import update_currency_settings
+
+    update_currency_settings(
+        db, enabled_currencies=body.enabled_currencies, payout_minimums=body.payout_minimums, admin_user_id=actor.user_id
+    )
+    add_admin_audit_log(
+        db,
+        actor_user_id=actor.user_id,
+        target_type="currency_settings",
+        target_id="1",
+        action="currency_settings_updated",
+        metadata=body.model_dump(mode="json"),
+    )
+    db.commit()
+    return _currency_settings_view(db)
 
 
 def _ensure_pro_user(db: Session, user_id: uuid.UUID) -> None:

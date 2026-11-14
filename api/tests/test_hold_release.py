@@ -36,8 +36,8 @@ def _reported(client, db_session, *, due_in_days=7):
     if entry is None:
         entry = EarningsLedgerEntry(
             pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.gig_base, source_id=gig.id,
-            gross_eur=Decimal("40.00"), platform_fee_eur=Decimal("8.00"), net_eur=Decimal("32.00"),
-            status=EarningsEntryStatus.pending, available_at=datetime.now(timezone.utc), meta={},
+            gross=Decimal("40.00"), platform_fee=Decimal("8.00"), net=Decimal("32.00"),
+            status=EarningsEntryStatus.pending, available_at=datetime.now(timezone.utc), meta={}, currency="EUR",
         )
         db_session.add(entry)
     entry.available_at = datetime.now(timezone.utc) + timedelta(days=due_in_days)
@@ -114,7 +114,7 @@ def test_after_release_an_earning_already_due_is_available(client, db_session, f
 def test_another_open_hold_on_the_booking_still_holds_it(client, db_session, fake_stripe):
     gig, item, _hold, entry_id = _reported(client, db_session)
     create_earnings_hold(
-        db_session, pro_user_id=gig.pro_user_id, reason=EarningsHoldReason.dispute_open, amount_eur=None,
+        db_session, pro_user_id=gig.pro_user_id, reason=EarningsHoldReason.dispute_open, amount=None,
         source_type=EarningsSourceType.gig_base.value, source_id=gig.id, created_by_admin_id=None,
     )
     db_session.commit()

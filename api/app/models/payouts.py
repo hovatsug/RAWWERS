@@ -84,13 +84,16 @@ class EarningsLedgerEntry(Base):
         nullable=False,
     )
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    gross_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    platform_fee_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    net_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    #: The photographer's currency (services/currencies.py); every amount on
+    #: the entry is in it.
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    gross: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    platform_fee: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    net: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     #: Extras only: the photographer's RAWW credit, part of the platform fee
-    #: (`platform_fee_eur` holds it), at the booking's stamped percentage.
+    #: (`platform_fee` holds it), at the booking's stamped percentage.
     #: Null on entries from before extras earned it (no backfill).
-    pro_raww_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    pro_raww: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     pro_raww_percent: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     status: Mapped[EarningsEntryStatus] = mapped_column(
         Enum(EarningsEntryStatus, name="earnings_entry_status", native_enum=False, length=64),
@@ -116,9 +119,10 @@ class EarningsBalanceSnapshot(Base):
     __tablename__ = "earnings_balance_snapshot"
 
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
-    pending_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-    available_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-    held_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    pending: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    available: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    held: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -136,7 +140,8 @@ class EarningsHold(Base):
         Enum(EarningsHoldReason, name="earnings_hold_reason", native_enum=False, length=64),
         nullable=False,
     )
-    amount_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     source_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_by_admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -173,7 +178,8 @@ class PayoutRequest(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pro_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    amount_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[PayoutRequestStatus] = mapped_column(
         Enum(PayoutRequestStatus, name="payout_request_status", native_enum=False, length=64),
         nullable=False,
@@ -211,7 +217,8 @@ class PayoutAllocation(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     payout_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     earnings_ledger_entry_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    amount_eur: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (UniqueConstraint("payout_request_id", "earnings_ledger_entry_id", name="uq_payout_allocation_unique"),)

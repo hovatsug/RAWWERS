@@ -40,12 +40,12 @@ def _shoot(db_session, gig):
             pro_user_id=gig.pro_user_id,
             source_type=EarningsSourceType.gig_base,
             source_id=gig.id,
-            gross_eur=Decimal("80.00"),
-            platform_fee_eur=Decimal("0.00"),
-            net_eur=Decimal("80.00"),
+            gross=Decimal("80.00"),
+            platform_fee=Decimal("0.00"),
+            net=Decimal("80.00"),
             status=EarningsEntryStatus.pending,
             available_at=datetime.now(timezone.utc) + timedelta(days=7),
-            meta={},
+            meta={}, currency="EUR",
         )
     )
     db_session.commit()
@@ -154,7 +154,7 @@ def test_every_payment_must_be_refunded_first(db_session, stripe_truth):
     # paid beyond the price, so the photographer's 80 is untouched. Earnings
     # follow the final price net of refunds (photographer_money), no longer
     # every refund's share of whatever was paid.
-    assert earnings.net_eur == Decimal("80.00"), "an overpayment refunded takes nothing from the photographer"
+    assert earnings.net == Decimal("80.00"), "an overpayment refunded takes nothing from the photographer"
 
     _refunded(db_session, stripe_truth, gig, n=0)
     assert db_session.get(Gig, gig.id).status == GigStatus.refunded

@@ -124,9 +124,9 @@ def extras_credit(entry: EarningsLedgerEntry) -> Decimal:
     earning, none once that earning is reversed (a refund takes the
     purchase's whole earning back today, so its whole credit with it), and
     none for extras from before they earned it."""
-    if entry.pro_raww_eur is None or entry.status == EarningsEntryStatus.reversed or entry.reversed_at is not None:
+    if entry.pro_raww is None or entry.status == EarningsEntryStatus.reversed or entry.reversed_at is not None:
         return Decimal("0.00")
-    return Decimal(entry.pro_raww_eur)
+    return Decimal(entry.pro_raww)
 
 
 def sync_extras_raww(db: Session, pro_user_id: uuid.UUID) -> int:
@@ -140,7 +140,7 @@ def sync_extras_raww(db: Session, pro_user_id: uuid.UUID) -> int:
         select(EarningsLedgerEntry).where(
             EarningsLedgerEntry.pro_user_id == pro_user_id,
             EarningsLedgerEntry.source_type == EarningsSourceType.extra_images,
-            EarningsLedgerEntry.pro_raww_eur.is_not(None),
+            EarningsLedgerEntry.pro_raww.is_not(None),
         )
     ).scalars().all()
     if not entries:

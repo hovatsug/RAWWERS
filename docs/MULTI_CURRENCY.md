@@ -552,3 +552,24 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 **Total: about 11.5 agent-days** (8 before, plus M7, M8 and M9). Batches 1 to 8 can start once the owner approves the design; M6 waits.
 
 **Decisions M9 to M11:** decided 2026-11-13 except M11, which is open; see section 8.
+
+---
+
+## 13. Build log
+
+### M1: currency on the photographer's money (built 2026-11-13, high-risk: money, migration)
+
+- **Settings:** `currency_settings` (one row; with none, the code's defaults: **GBP only**, withdrawal minimums GBP 45.00 and EUR 50.00), read and changed by `GET/PUT /v1/admin/finance/currency-settings` (audited). `DEFAULT_CURRENCY` (env, default `GBP`) is the currency of a photographer whose country gives none. `app/services/currencies.py` holds the rules.
+- **The photographer's currency:** `pro_profile.currency`, set at creation from the country (GB → GBP, eurozone → EUR, else the default); follows a change of country only while no package, earning or payout exists; set from the country of the Stripe account when the Connect account is created. A Connect account in a currency that is not enabled (`currency_not_enabled`), in a country with no supported currency (`country_not_supported`), or in a currency other than the one their money is already in (`currency_mismatch`, 409) is refused before Stripe is called.
+- **Packages** are always in the photographer's currency (a different one in the request: 422 `currency_mismatch`), and only while it is enabled (422 `currency_not_enabled`). Existing packages, bookings and payouts in a disabled currency keep working.
+- **Earnings, balance, holds, payout requests and allocations** carry `currency`; the `_eur` columns and fields are renamed (`gross`, `platform_fee`, `net`, `pro_raww`, `pending`, `available`, `held`, `amount`, `withdrawable`, ...). An earning in a currency other than the photographer's is refused (409); the balance counts the photographer's currency only; allocation takes earnings of the payout's currency only; the transfer is `Transfer.create(currency=<payout currency>)`, and a payout whose currency is not the photographer's is failed, never sent. The minimum is per currency. "Payout on its way" says £ or €.
+- **EUR defaults removed** from `pro_package`, `gig` and `dispute` (model and database), and the `or "EUR"` fallbacks on the live money path (invoices, disputes, reviews, galleries, selection quote and add-ons, refund reconciliation). A missing currency raises.
+- **BI:** `bi_earnings` and `bi_payouts` carry the currency; photographer cash and paid payouts count EUR only (as every other BI line does until M5).
+- **Migration** `20261113_0095`; downgrade refuses while any of those rows is not EUR.
+- **Tests:** `tests/test_currency_money.py` (30). The suite was written in euros, so `tests/conftest.py` runs it with EUR enabled and EUR as the default (`_currencies_of_the_suite`); a test about the production defaults marks itself `uk_defaults`.
+
+**Not as the design said, and why:**
+- The **API's payout field names** changed in M1, not M2: the model attributes are the response fields. The web admin's payout queue follows in the same commit; the apps' generated client follows in M2 (no app is distributed).
+- **EUR defaults left for their batches:** price caps, the extra-image price policy and per-photographer extra prices, and `pro_public_index` (M4); BI tables (M5); dormant tables (store, prints, learning, Studioverse, repairs) stay EUR-only, as section 1.1 says.
+- **Left for M6** (Stripe-dependent): `DEFAULT_CONNECT_COUNTRY` still falls back to `PT` (a PT account is refused while EUR is off), the full service agreement and its column.
+- **Not yet done from 10.1:** the default time zone `Europe/London` (no behaviour changes; with M3).

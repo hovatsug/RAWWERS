@@ -261,7 +261,7 @@ def test_submit_selection_at_exact_curve_minimum_completes_immediately(client, d
             EarningsLedgerEntry.source_id == gig.id,
         )
     ).scalar_one()
-    assert earnings.gross_eur == Decimal("20.00")
+    assert earnings.gross == Decimal("20.00")
 
 
 def test_declined_difference_charge_leaves_gig_open(client, db_session, monkeypatch):
@@ -338,7 +338,7 @@ def test_difference_charge_succeeding_via_webhook_completes_the_booking(client, 
             EarningsLedgerEntry.source_id == gig.id,
         )
     ).scalar_one()
-    assert earnings.gross_eur == expected_final  # base (20.00) + difference, summed
+    assert earnings.gross == expected_final  # base (20.00) + difference, summed
 
 
 # ---------------------------------------------------------------------------
@@ -439,4 +439,4 @@ def test_admin_complete_from_paid_uses_kind_aware_earnings(client, db_session):
             EarningsLedgerEntry.source_id == gig.id,
         )
     ).scalar_one()
-    assert earnings.gross_eur == Decimal("20.00")  # base only, extras excluded
+    assert earnings.gross == Decimal("20.00")  # base only, extras excluded

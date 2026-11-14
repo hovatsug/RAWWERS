@@ -39,7 +39,7 @@ def _extras(db, gig, total="10.00") -> tuple[ExtraImagePurchase, EarningsLedgerE
     db.flush()
     entry = create_earnings_entry(
         db, pro_user_id=gig.pro_user_id, source_type=EarningsSourceType.extra_images, source_id=purchase.id,
-        gross_eur=D(total), metadata={"gig_id": str(gig.id)},
+        gross=D(total), metadata={"gig_id": str(gig.id)}, currency="EUR",
     )
     db.commit()
     return purchase, entry
@@ -67,8 +67,8 @@ def test_ten_euros_of_extras_keep_15_percent_and_credit_5(db_session):
 
     _, entry = _extras(db_session, gig)
 
-    assert (entry.gross_eur, entry.platform_fee_eur, entry.net_eur) == (D("10.00"), D("2.00"), D("8.00"))
-    assert (entry.pro_raww_eur, entry.pro_raww_percent) == (D("0.50"), 5)
+    assert (entry.gross, entry.platform_fee, entry.net) == (D("10.00"), D("2.00"), D("8.00"))
+    assert (entry.pro_raww, entry.pro_raww_percent) == (D("0.50"), 5)
     assert _extras_raww(db_session, pro) == [(RawwEntryKind.earn_extras, 5, RawwEntryStatus.pending)]
     [row] = db_session.execute(select(ProRawwLedgerEntry).where(ProRawwLedgerEntry.kind == RawwEntryKind.earn_extras)).scalars()
     assert row.gig_id == gig.id and row.eur_basis == D("0.50") and row.raww_eur_value == D("0.1000")
@@ -82,7 +82,7 @@ def test_the_share_is_the_bookings_own_stamped_rate(db_session):
 
     _, entry = _extras(db_session, gig)
 
-    assert (entry.platform_fee_eur, entry.net_eur, entry.pro_raww_eur) == (D("2.00"), D("8.00"), D("0.40"))
+    assert (entry.platform_fee, entry.net, entry.pro_raww) == (D("2.00"), D("8.00"), D("0.40"))
     assert _extras_raww(db_session, pro) == [(RawwEntryKind.earn_extras, 4, RawwEntryStatus.pending)]
 
 
@@ -95,7 +95,7 @@ def test_they_become_spendable_when_the_extras_settle_and_go_back_under_a_hold(d
     assert _balance(db_session, pro) == (80, 0)
 
     hold = create_earnings_hold(
-        db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount_eur=None,
+        db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount=None,
         source_type=EarningsSourceType.extra_images.value, source_id=purchase.id, created_by_admin_id=None,
     )
     db_session.commit()
@@ -114,7 +114,7 @@ def test_a_hold_on_the_booking_alone_leaves_the_extras_spendable(db_session):
     _settle(db_session, pro)
 
     create_earnings_hold(
-        db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount_eur=None,
+        db_session, pro_user_id=pro, reason=EarningsHoldReason.dispute_open, amount=None,
         source_type=EarningsSourceType.gig_base.value, source_id=gig.id, created_by_admin_id=None,
     )
     db_session.commit()
@@ -146,7 +146,7 @@ def test_recording_it_again_changes_nothing(db_session):
 
     again = create_earnings_entry(
         db_session, pro_user_id=pro, source_type=EarningsSourceType.extra_images, source_id=purchase.id,
-        gross_eur=D("10.00"), metadata={"gig_id": str(gig.id)},
+        gross=D("10.00"), metadata={"gig_id": str(gig.id)}, currency="EUR",
     )
     db_session.commit()
 
@@ -160,7 +160,7 @@ def test_extras_from_before_this_release_earn_nothing(db_session):
     gig = _booking(db_session, pro)
     _, entry = _extras(db_session, gig)
     db_session.execute(ProRawwLedgerEntry.__table__.delete().where(ProRawwLedgerEntry.source_type == "extra_images"))
-    entry.pro_raww_eur, entry.pro_raww_percent = None, None
+    entry.pro_raww, entry.pro_raww_percent = None, None
     db_session.get(ProRawwBalance, pro).pending = 75
     db_session.commit()
 

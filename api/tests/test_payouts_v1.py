@@ -40,8 +40,8 @@ def _make_available_entry(db_session, *, pro_user_id: uuid.UUID, source_id: uuid
         pro_user_id=pro_user_id,
         source_type=EarningsSourceType.gig_base,
         source_id=source_id,
-        gross_eur=gross,
-        metadata={},
+        gross=gross,
+        metadata={}, currency="EUR",
     )
     assert row is not None
     row.available_at = datetime.now(timezone.utc) - timedelta(days=1)
@@ -61,16 +61,16 @@ def test_earnings_entry_idempotent(db_session):
         pro_user_id=pro_id,
         source_type=EarningsSourceType.gig_base,
         source_id=source_id,
-        gross_eur=Decimal("120.00"),
-        metadata={},
+        gross=Decimal("120.00"),
+        metadata={}, currency="EUR",
     )
     b = create_earnings_entry(
         db_session,
         pro_user_id=pro_id,
         source_type=EarningsSourceType.gig_base,
         source_id=source_id,
-        gross_eur=Decimal("120.00"),
-        metadata={},
+        gross=Decimal("120.00"),
+        metadata={}, currency="EUR",
     )
     db_session.commit()
 
@@ -91,8 +91,8 @@ def test_settlement_delay_moves_pending_to_available(db_session):
         pro_user_id=pro_id,
         source_type=EarningsSourceType.gig_base,
         source_id=source_id,
-        gross_eur=Decimal("100.00"),
-        metadata={},
+        gross=Decimal("100.00"),
+        metadata={}, currency="EUR",
     )
     assert row is not None
     assert row.status == EarningsEntryStatus.pending
@@ -114,15 +114,15 @@ def test_dispute_hold_blocks_availability(db_session):
         pro_user_id=pro_id,
         source_type=EarningsSourceType.gig_base,
         source_id=source_id,
-        gross_eur=Decimal("140.00"),
-        metadata={},
+        gross=Decimal("140.00"),
+        metadata={}, currency="EUR",
     )
     assert row is not None
     create_earnings_hold(
         db_session,
         pro_user_id=pro_id,
         reason=EarningsHoldReason.dispute_open,
-        amount_eur=None,
+        amount=None,
         source_type=EarningsSourceType.gig_base.value,
         source_id=source_id,
         created_by_admin_id=None,
@@ -146,9 +146,9 @@ def test_payout_request_cannot_exceed_available(db_session):
     )
     db_session.commit()
 
-    assert payout_balance_view(db_session, pro_user_id=pro_id)["withdrawable_eur"] == Decimal("80.00"), "refused for exceeding a real balance"
+    assert payout_balance_view(db_session, pro_user_id=pro_id)["withdrawable"] == Decimal("80.00"), "refused for exceeding a real balance"
     with pytest.raises(APIError):
-        create_payout_request(db_session, pro_user_id=pro_id, amount_eur=Decimal("90.00"))
+        create_payout_request(db_session, pro_user_id=pro_id, amount=Decimal("90.00"))
 
 
 def test_approval_allocates_and_prevents_double_spending(db_session):
@@ -162,14 +162,14 @@ def test_approval_allocates_and_prevents_double_spending(db_session):
         gross=Decimal("200.00"),
     )
 
-    req = create_payout_request(db_session, pro_user_id=pro_id, amount_eur=Decimal("100.00"))
+    req = create_payout_request(db_session, pro_user_id=pro_id, amount=Decimal("100.00"))
     approve_payout_request(db_session, payout_request_id=req.id, admin_user_id=admin_id)
     db_session.commit()
 
     assert req.status == PayoutRequestStatus.approved
 
     with pytest.raises(APIError):
-        create_payout_request(db_session, pro_user_id=pro_id, amount_eur=Decimal("100.00"))
+        create_payout_request(db_session, pro_user_id=pro_id, amount=Decimal("100.00"))
 
 
 def test_refund_reverses_earnings_and_updates_balance(db_session):
@@ -193,7 +193,7 @@ def test_refund_reverses_earnings_and_updates_balance(db_session):
 
     balance = payout_balance_view(db_session, pro_user_id=pro_id)
     assert reversed_count == 1
-    assert balance["available_eur"] == Decimal("0.00")
+    assert balance["available"] == Decimal("0.00")
 
 
 def test_manual_mark_paid_flow(db_session):
@@ -207,7 +207,7 @@ def test_manual_mark_paid_flow(db_session):
         gross=Decimal("100.00"),
     )
 
-    req = create_payout_request(db_session, pro_user_id=pro_id, amount_eur=Decimal("80.00"))
+    req = create_payout_request(db_session, pro_user_id=pro_id, amount=Decimal("80.00"))
     approve_payout_request(db_session, payout_request_id=req.id, admin_user_id=admin_id)
 
     row = mark_payout_paid_manual(

@@ -72,7 +72,9 @@ class ProPackageCreateRequest(BaseModel):
     description: str | None = None
     duration_minutes: int
     price: Decimal
-    currency: str = "EUR"
+    #: Optional: a package is always in the photographer's currency; a
+    #: different one is refused.
+    currency: str | None = None
     included_photos: int
     extra_photo_price: Decimal
     proofs_sla_days: int = 3

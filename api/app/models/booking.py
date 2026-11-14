@@ -65,7 +65,7 @@ class ProPackage(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="EUR")
+    currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
     included_photos: Mapped[int] = mapped_column(Integer, nullable=False)
     extra_photo_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     proofs_sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=3)

@@ -332,7 +332,7 @@ def test_a_reduction_after_payout_owes_back_and_tells_an_admin(db_session, refun
     db_session.commit()
     settle_due_earnings_entries(db_session)
     cash = photographer_money(db_session, gig.pro_user_id).available
-    payout = create_payout_request(db_session, pro_user_id=gig.pro_user_id, amount_eur=cash)
+    payout = create_payout_request(db_session, pro_user_id=gig.pro_user_id, amount=cash)
     approve_payout_request(db_session, payout_request_id=payout.id, admin_user_id=uuid.UUID(ADMIN))
     mark_payout_paid_manual(db_session, payout_request_id=payout.id, admin_user_id=uuid.UUID(ADMIN), reference={})
     db_session.commit()

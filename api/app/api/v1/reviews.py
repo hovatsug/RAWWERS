@@ -151,7 +151,7 @@ def report_a_problem(
         db,
         pro_user_id=gig.pro_user_id,
         reason=EarningsHoldReason.client_reported_problem,
-        amount_eur=None,
+        amount=None,
         source_type=EarningsSourceType.gig_base.value,
         source_id=gig.id,
         created_by_admin_id=None,
@@ -171,7 +171,7 @@ def report_a_problem(
             gig_id=gig.id,
             client_user_id=gig.client_user_id,
             amount=gig.amount_pro_gross or Decimal("0.00"),
-            currency=gig.currency or "EUR",
+            currency=gig.currency,
             note=f"{body.reason.value}: {note}" if note else body.reason.value,
         )
     )

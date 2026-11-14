@@ -337,7 +337,8 @@ def checkout_content_pack(
             pro_user_id=pack.creator_user_id,
             source_type=EarningsSourceType.studioverse_sale,
             source_id=order.id,
-            gross_eur=order.price_eur_paid,
+            gross=order.price_eur_paid,
+            currency="EUR",  # Studioverse is dormant and EUR-only (MULTI_CURRENCY.md 1.1)
             metadata={"content_pack_id": str(pack.id), "payment_method": body.payment_method.value},
         )
         enqueue_raww_mint(

@@ -150,6 +150,21 @@ end
 
 function Api:status( galleryId ) return self:request( 'GET', '/v1/delivery/galleries/' .. galleryId .. '/status' ) end
 
+-- The portfolio routes (plug-in 1.1.0) -----------------------------------------
+
+--- The photographer's niches, where portfolio photos can go.
+function Api:portfolio() return self:request( 'GET', '/v1/delivery/portfolio' ) end
+
+function Api:startPortfolioUpload( nicheSlug, file )
+	return self:request( 'POST', '/v1/delivery/portfolio/uploads', {
+		file_name = file.name, content_type = 'image/jpeg', byte_size = file.size, sha256 = file.sha256,
+		niche_slug = nicheSlug,
+	} )
+end
+
+--- Takes a photo published from Lightroom out of the portfolio.
+function Api:removePortfolioPhoto( assetId ) return self:request( 'DELETE', '/v1/delivery/portfolio/' .. assetId ) end
+
 -- Storage ---------------------------------------------------------------------
 
 --- PUT bytes to a presigned storage URL. No token: the URL carries its own

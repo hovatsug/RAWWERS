@@ -1,4 +1,6 @@
-"""The routes a delivery token can call - the Lightroom plugin's whole API.
+"""The routes a delivery token can call - the Lightroom plugin's whole API:
+delivering a gig's photos, and (plug-in 1.1.0) publishing to the
+photographer's own portfolio (docs/LIGHTROOM_PORTFOLIO.md).
 
 Pairing (`POST /delivery/pair`) is the one call without a token. Everything
 else here takes `Authorization: Bearer rwd_...` and acts for that token's
@@ -36,8 +38,15 @@ from app.schemas.delivery import (
     DeliveryUploadResponse,
     PairRequest,
     PairResponse,
+    DeliveryPortfolioResponse,
+    PortfolioNicheView,
+    PortfolioRemoveResponse,
+    PortfolioUploadRequest,
+    PortfolioUploadResponse,
 )
+from app.api.v1 import pro_onboarding as pro_onboarding_routes
 from app.schemas.gallery import CreateProofGalleryRequest
+from app.schemas.niche import PortfolioNicheTagsRequest
 from app.schemas.media import (
     CompletePhotoUploadRequest,
     CompletePhotoUploadResponse,
@@ -54,9 +63,11 @@ from app.services.delivery_access import (
     authenticate,
     exchange_pairing_code,
     photographer_name,
+    require_plugin_at_least,
     require_supported_plugin,
     update_available,
 )
+from app.services import lightroom_portfolio
 from app.services.delivery_gigs import deliverable_gigs, own_gig
 from app.services.gallery_items import (
     DELIVERY_EXPORT_KEY,
@@ -251,10 +262,11 @@ def start_upload(
 
 
 def _own_delivery(db: Session, device: DeliveryDevice, media_asset_id: uuid.UUID) -> MediaAsset:
-    """A photo this photographer started as a delivery; anything else is the
-    same 404."""
+    """A photo this photographer started from the plug-in - a delivery, or a
+    portfolio photo published from Lightroom; anything else is the same 404."""
     asset = db.get(MediaAsset, media_asset_id)
-    if asset is None or asset.owner_user_id != device.pro_user_id or asset.delivery_gallery_id is None:
+    from_plugin = asset is not None and (asset.delivery_gallery_id is not None or lightroom_portfolio.is_from_lightroom(asset))
+    if asset is None or asset.owner_user_id != device.pro_user_id or not from_plugin:
         raise APIError(code="not_found", message="Upload not found", status_code=404)
     return asset
 
@@ -324,12 +336,23 @@ def finish_upload(
             message="This file is not the one that was started. Export it again.",
             status_code=409,
         )
-    return media_routes.complete_photo_upload(
+    done = media_routes.complete_photo_upload(
         media_asset_id=media_asset_id,
         body=CompletePhotoUploadRequest(byte_size=body.byte_size),
         user=_as_photographer(device),
         db=db,
     )
+    slug = (asset.meta or {}).get(lightroom_portfolio.LIGHTROOM_NICHE_KEY)
+    if slug:
+        # Tagged as the app tags a portfolio photo once uploaded: the
+        # niche's skills and the Discover index are recomputed.
+        pro_onboarding_routes.tag_portfolio_media_niches(
+            media_asset_id=media_asset_id,
+            body=PortfolioNicheTagsRequest(niche_slugs=[slug]),
+            user=_as_photographer(device),
+            db=db,
+        )
+    return done
 
 
 @router.get("/galleries/{gallery_id}/status", response_model=DeliveryStatusResponse)
@@ -360,3 +383,99 @@ def delivery_status(
         processing=sum(1 for a in assets if a.status == MediaStatus.processing),
         failed=failed[:200],
     )
+
+
+# --- The portfolio (plug-in 1.1.0, docs/LIGHTROOM_PORTFOLIO.md) ---------------------------------
+#
+# The same upload as the pro app's portfolio (media.create_photo_upload: the
+# content types, the 25 MB, the 30 an hour and 30 a minute), plus this
+# device's daily bucket. The token reaches the photographer's own portfolio
+# only, and removes only what the plug-in published.
+
+
+def _require_portfolio_plugin(device: DeliveryDevice) -> None:
+    require_plugin_at_least(device.plugin_version, lightroom_portfolio.PORTFOLIO_MIN_PLUGIN, feature="Publishing to the portfolio")
+
+
+@router.get("/portfolio", response_model=DeliveryPortfolioResponse)
+def portfolio(device: DeliveryDevice = Depends(require_delivery_device), db: Session = Depends(get_db_session)) -> DeliveryPortfolioResponse:
+    """Where the plug-in can publish: the photographer's niches."""
+    _require_portfolio_plugin(device)
+    ready = db.execute(
+        select(MediaAsset.id).where(
+            MediaAsset.owner_user_id == device.pro_user_id,
+            MediaAsset.purpose == MediaPurpose.portfolio_reel,
+            MediaAsset.status == MediaStatus.ready,
+        )
+    ).all()
+    return DeliveryPortfolioResponse(
+        niches=[PortfolioNicheView(slug=n.slug, name=n.name, primary=p) for n, p in lightroom_portfolio.niches(db, device.pro_user_id)],
+        photo_count=len(ready),
+        photo_minimum=pro_onboarding_routes.PORTFOLIO_MIN_PHOTOS,
+    )
+
+
+@router.post("/portfolio/uploads", response_model=PortfolioUploadResponse)
+def start_portfolio_upload(
+    body: PortfolioUploadRequest,
+    device: DeliveryDevice = Depends(require_delivery_device),
+    db: Session = Depends(get_db_session),
+) -> PortfolioUploadResponse:
+    """Start one portfolio photo in a niche, or learn it is there already."""
+    _require_portfolio_plugin(device)
+    limit = max_photo_bytes(MediaPurpose.portfolio_reel)
+    if body.byte_size > limit:
+        raise APIError(
+            code="validation_error",
+            message=f"{body.file_name} is larger than {limit // 1_000_000} MB. Export it smaller.",
+            status_code=422,
+        )
+    lightroom_portfolio.require_own_niche(db, device.pro_user_id, body.niche_slug)
+    checksum = body.sha256.lower()
+    user = _as_photographer(device)
+    existing = lightroom_portfolio.published_copy(db, device.pro_user_id, body.niche_slug, checksum)
+    if existing is not None:
+        # Resumed: done already, or a fresh address for the bytes still missing.
+        again = media_routes._answer_with_existing(db, existing, user)
+        large = body.byte_size > MULTIPART_THRESHOLD_BYTES
+        return PortfolioUploadResponse(
+            media_asset_id=existing.id,
+            duplicate=again.duplicate,
+            upload=None if (again.duplicate or large) else again.upload,
+            use_multipart=large and not again.duplicate,
+        )
+    enforce_named_rate_limit("delivery_token_daily", principal=str(device.device_id))
+    started = media_routes.create_photo_upload(
+        body=PhotoUploadCreateRequest(
+            purpose=MediaPurpose.portfolio_reel,
+            content_type=body.content_type,
+            file_name=body.file_name,
+            visibility=MediaVisibility.public,
+        ),
+        user=user,
+        db=db,
+    )
+    asset = db.get(MediaAsset, started.media_asset_id)
+    lightroom_portfolio.mark_published(asset, slug=body.niche_slug, checksum=checksum)
+    db.commit()
+    large = body.byte_size > MULTIPART_THRESHOLD_BYTES
+    return PortfolioUploadResponse(
+        media_asset_id=started.media_asset_id,
+        upload=None if large else started.upload,
+        use_multipart=large,
+    )
+
+
+@router.delete("/portfolio/{media_asset_id}", response_model=PortfolioRemoveResponse)
+def remove_portfolio_photo(
+    media_asset_id: uuid.UUID, device: DeliveryDevice = Depends(require_delivery_device), db: Session = Depends(get_db_session)
+) -> PortfolioRemoveResponse:
+    """Take a photo published from Lightroom out of the portfolio. A photo
+    added in the app, or another photographer's, is a 404."""
+    _require_portfolio_plugin(device)
+    enforce_named_rate_limit("auth_mutation", principal=str(device.pro_user_id))
+    asset = lightroom_portfolio.own_published(db, device.pro_user_id, media_asset_id)
+    lightroom_portfolio.remove(db, asset)
+    db.commit()
+    return PortfolioRemoveResponse(media_asset_id=asset.id)
+

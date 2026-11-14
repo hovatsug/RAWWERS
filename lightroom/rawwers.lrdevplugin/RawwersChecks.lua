@@ -14,6 +14,8 @@ local Checks = {}
 
 Checks.MIN_LONG_EDGE = 2048
 Checks.MAX_BYTES = 50 * 1000 * 1000
+--- The portfolio's own limit, the pro app's (MAX_UPLOAD_BYTES on the server).
+Checks.MAX_PORTFOLIO_BYTES = 25 * 1000 * 1000
 
 local function u16( s, i )
 	local a, b = s:byte( i, i + 1 )
@@ -50,8 +52,8 @@ function Checks.jpegSize( bytes )
 end
 
 --- 'too_large', 'small' or nil for a rendered file.
-function Checks.problem( size, width, height )
-	if size and size > Checks.MAX_BYTES then return 'too_large' end
+function Checks.problem( size, width, height, maxBytes )
+	if size and size > ( maxBytes or Checks.MAX_BYTES ) then return 'too_large' end
 	if width and height and math.max( width, height ) < Checks.MIN_LONG_EDGE then return 'small' end
 	return nil
 end

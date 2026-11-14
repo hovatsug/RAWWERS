@@ -150,3 +150,43 @@ class DeliveryStatusResponse(BaseModel):
     uploading: int
     processing: int
     failed: list[DeliveryFailedPhoto]
+
+
+# --- The portfolio (plug-in 1.1.0, docs/LIGHTROOM_PORTFOLIO.md) --------------------------------
+
+
+class PortfolioNicheView(BaseModel):
+    slug: str
+    name: str
+    #: The photographer's main niche: where the default collection publishes.
+    primary: bool = False
+
+
+class DeliveryPortfolioResponse(BaseModel):
+    #: Where photos can go: the photographer's niches, the main one first.
+    niches: list[PortfolioNicheView]
+    #: Ready portfolio photos, and the minimum onboarding asks for.
+    photo_count: int
+    photo_minimum: int
+
+
+class PortfolioUploadRequest(BaseModel):
+    file_name: str = Field(min_length=1, max_length=255)
+    #: JPEG only, as the plug-in exports.
+    content_type: str = Field(pattern=r"^image/jpeg$")
+    byte_size: int = Field(gt=0)
+    sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+    niche_slug: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9-]+$")
+
+
+class PortfolioUploadResponse(BaseModel):
+    media_asset_id: uuid.UUID
+    #: This file is in that niche of the portfolio already: nothing to send.
+    duplicate: bool = False
+    upload: UploadPayload | None = None
+    use_multipart: bool = False
+
+
+class PortfolioRemoveResponse(BaseModel):
+    ok: bool = True
+    media_asset_id: uuid.UUID

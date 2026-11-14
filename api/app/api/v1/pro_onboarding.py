@@ -780,6 +780,8 @@ def get_my_portfolio(
             MediaAsset.owner_user_id == user.user_id,
             MediaAsset.purpose == MediaPurpose.portfolio_reel,
             MediaAsset.kind.in_((MediaKind.photo, MediaKind.video)),
+            # A photo removed (from Lightroom, docs/LIGHTROOM_PORTFOLIO.md) is gone.
+            MediaAsset.status != MediaStatus.deleted,
         )
         .order_by(MediaAsset.created_at.desc())
     ).scalars().all()

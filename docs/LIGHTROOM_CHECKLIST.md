@@ -102,6 +102,60 @@ Write down anything that differs from **Expect**, with a screenshot.
 
 **Expect:** still "Connected as ..." without typing a code: the token is in the macOS keychain, not in a preset.
 
+## P. The portfolio (plug-in 1.1.0)
+
+Against dev, with pro1 signed in in the pro app. Build 1.1.0 first: `lightroom/build.sh --version 1.1.0 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. pro1 needs at least two niches (pro app: **Profile > Niches**). Have 6 JPEG-able photos ready, one of them very large (a pano or a 100 MP file exported at full size, over 25 MB).
+
+P.1 Plug-in Manager.
+
+**Expect:** RAWWERS **1.1.0**, Installed and running.
+
+P.2 Library > **Publish Services** panel (left) > **Set Up...** next to **RAWWERS Portfolio**.
+
+**Expect:** the publish service dialog with a **RAWWERS Portfolio** section. If this Mac was paired in part 2: "Connected. Your niches: ..." listing pro1's niches. If not: a **Pairing code** field (pair as in 2.1-2.3; the same connection serves Export and Publish). Only JPEG and sRGB offered. Click **Save**.
+
+P.3 In the panel, the service shows **Portfolio (main niche)**. Right-click the service > **Create Published Collection...**, name it "Second niche".
+
+**Expect:** a **RAWWERS** box with a **Niche** menu listing pro1's niches, the main one marked "(main)". **Create** stays disabled until a niche is chosen. Choose the niche that is **not** the main one, **Create**.
+
+P.4 Drag 3 photos onto **Portfolio (main niche)** and 2 onto **Second niche**. Select the service, click **Publish**.
+
+**Expect:** Lightroom's progress "Publishing N photos to RAWWERS", then for each collection a message "Published to RAWWERS - 3 photos sent to your RAWWERS portfolio (<main niche>)..." (and 2 for the other). The photos move to **Published Photos**.
+
+P.5 Pro app: **You > Portfolio**, pull to refresh after a minute.
+
+**Expect:** the 5 new photos, newest first; the 3 tagged with the main niche, the 2 with the second. Open one full screen: it looks as a photo uploaded from the phone does.
+
+P.6 On the client simulator: open pro1's profile.
+
+**Expect:** the new photos in the portfolio, under their niches.
+
+P.7 In Lightroom, click **Publish** again on the service with nothing changed.
+
+**Expect:** nothing to publish (Lightroom shows no new or modified photos); nothing changes in the app.
+
+P.8 Edit one published photo in Develop (e.g. exposure +1). It moves to **Modified Photos to Re-Publish**. Click **Publish**.
+
+**Expect:** "1 photo sent..."; in the app, after a minute, the edited version is there and the old one is gone (still 5 photos, not 6).
+
+P.9 Remove one photo from **Second niche** (select it > Delete key > **Remove**), then **Publish**.
+
+**Expect:** the photo goes to **Deleted Photos to Remove**, then disappears from the collection after Publish; in the app the portfolio shows 4 photos. A photo uploaded from the phone is never removed by this (check one is still there if pro1 has any).
+
+P.10 Drag the photo over 25 MB onto a collection (export settings: no resize, quality 100), **Publish**.
+
+**Expect:** "Some photos were not published", naming it: "Larger than 25 MB. Export it smaller." Nothing new in the app.
+
+P.11 (Optional) Publish more than 30 photos in one hour.
+
+**Expect:** after 30, the rest fail with the server's "too many uploads" message; publishing again an hour later sends them. (The app has the same 30-an-hour limit; the owner decides whether to raise it.)
+
+P.12 Revoke this Mac in the pro app (part 7), then **Publish** a modified photo.
+
+**Expect:** a message saying this Mac is no longer connected and to type a new pairing code in the publish service settings; nothing is sent. Re-pair via **Edit Settings...** on the service.
+
+P.13 Plug-in 1.0.0 against this server (optional, needs the 1.0.0 build): Export To: RAWWERS still delivers to a gig, and the dialog says a newer plug-in is available.
+
 ## What to send back
 
-The time for 40 photos (4.1), any row where something differed, and the screenshots.
+The time for 40 photos (4.1), the time for P.4, any row where something differed, and the screenshots.

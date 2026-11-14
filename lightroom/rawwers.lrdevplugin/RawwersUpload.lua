@@ -92,7 +92,17 @@ end
 --- with state 'uploaded', 'skipped' (already in the gallery), 'failed',
 --- 'reauth' (connect again), 'outdated' (update the plug-in) or 'cancelled'.
 function Upload.deliver( api, gigId, file )
-	local started = api:startUpload( gigId, file )
+	return Upload.send( api, api:startUpload( gigId, file ), file )
+end
+
+--- Puts one photo in the portfolio, in the niche `nicheSlug`. The same
+--- answers as `deliver`; 'skipped' means this file is in that niche already.
+function Upload.toPortfolio( api, nicheSlug, file )
+	return Upload.send( api, api:startPortfolioUpload( nicheSlug, file ), file )
+end
+
+--- The rest of an upload, once the server answered its start.
+function Upload.send( api, started, file )
 	if not started.ok then return failure( file.name, started ) end
 	local data = started.data
 	local result = { name = file.name, gallery_id = data.gallery_id, media_asset_id = data.media_asset_id }

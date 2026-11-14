@@ -231,7 +231,7 @@ local function fakeApi( script )
 		if type( handler ) == 'table' and handler[ 1 ] then return table.remove( handler, 1 ) end
 		return handler or { ok = true, data = {} }
 	end
-	for _, name in ipairs { 'startUpload', 'freshUploadUrl', 'startParts', 'partsReceived', 'partUrls', 'assembleParts', 'finish', 'putToStorage' } do
+	for _, name in ipairs { 'startUpload', 'startPortfolioUpload', 'removePortfolioPhoto', 'freshUploadUrl', 'startParts', 'partsReceived', 'partUrls', 'assembleParts', 'finish', 'putToStorage' } do
 		self[ name ] = function( _, ... ) return step( name, ... ) end
 	end
 	return self
@@ -583,6 +583,100 @@ test( 'a picker row: name, date, package, included and state', function()
 		'Ana S. · D7 · Portraits Starter · 20 included · Waiting for photos' )
 	eq( Summary.gigLabel( { client_name = 'Ana S.', niche_name = 'Weddings', included_photos = 300, delivery_state = 'in_progress', photos_in_gallery = 30 }, date ),
 		'Ana S. · Weddings · 300 included · In progress, 30 uploaded' )
+end )
+
+-- The portfolio ------------------------------------------------------------------------------
+
+local Portfolio = require 'RawwersPortfolio'
+local NICHES = { { slug = 'portraits', name = 'Portraits', primary = false }, { slug = 'weddings', name = 'Weddings', primary = true } }
+
+test( 'a collection publishes to its own niche, the default one to the main niche, and an unknown one to none', function()
+	eq( Portfolio.nicheFor( NICHES, 'portraits', false ).slug, 'portraits' )
+	eq( Portfolio.nicheFor( NICHES, nil, true ).slug, 'weddings' )
+	eq( Portfolio.nicheFor( NICHES, '', true ).slug, 'weddings' )
+	eq( Portfolio.nicheFor( NICHES, 'cars', false ), nil )
+	eq( Portfolio.nicheFor( {}, nil, true ), nil )
+	eq( Portfolio.nicheItems( NICHES ), { { title = 'Portraits', value = 'portraits' }, { title = 'Weddings (main)', value = 'weddings' } } )
+end )
+
+test( 'a portfolio upload names its niche, and goes the way a delivery does', function()
+	local a = fakeApi { startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-1', upload = { url = 'u', headers = {} } } } }
+	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), nil )
+	eq( r.state, 'uploaded' )
+	eq( names( a.log ), { 'startPortfolioUpload', 'putToStorage', 'finish' } )
+	eq( a.log[ 1 ][ 2 ], 'weddings' )
+end )
+
+test( 'an edited photo is uploaded before its old version is removed', function()
+	local a = fakeApi { startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-2', upload = { url = 'u', headers = {} } } } }
+	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
+	eq( names( a.log ), { 'startPortfolioUpload', 'putToStorage', 'finish', 'removePortfolioPhoto' } )
+	eq( a.log[ 4 ][ 2 ], 'pf-1' )
+	eq( r.replaced, 'pf-1' )
+	eq( r.old_left, nil )
+end )
+
+test( 'a failed upload keeps the old version', function()
+	local a = fakeApi { startPortfolioUpload = { ok = false, outcome = 'refused', message = 'Rate limit exceeded' } }
+	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
+	eq( r.state, 'failed' )
+	eq( names( a.log ), { 'startPortfolioUpload' } )
+end )
+
+test( 'an old version that could not be removed is said in the summary', function()
+	local a = fakeApi {
+		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-2', upload = { url = 'u', headers = {} } } },
+		removePortfolioPhoto = { ok = false, outcome = 'retry', status = 503, message = 'down' },
+	}
+	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
+	eq( r.old_left, true )
+	local _, body = Portfolio.summary( { r }, 'Weddings' )
+	has( body, 'could not be removed' )
+end )
+
+test( 'removing stops at a refusal that would repeat, and counts a photo already gone as removed', function()
+	local answers = { { ok = false, status = 404 }, { ok = true }, { ok = false, outcome = 'reauth', status = 401, message = 'connect again' }, { ok = true } }
+	local a = fakeApi { removePortfolioPhoto = answers }
+	local gone = {}
+	local failed, stop = Portfolio.removeAll( a, { 'a', 'b', 'c', 'd' }, function( id ) gone[ #gone + 1 ] = id end )
+	eq( gone, { 'a', 'b' } )
+	eq( stop, 'reauth' )
+	eq( failed, { { id = 'c', message = 'connect again' } } )
+end )
+
+test( 'the publish summary says where the photos went and names each failure', function()
+	local title, body = Portfolio.summary( {
+		{ state = 'uploaded', name = 'a.jpg' }, { state = 'uploaded', name = 'b.jpg' }, { state = 'skipped', name = 'c.jpg' },
+		{ state = 'failed', name = 'd.jpg', message = 'Larger than 25 MB. Export it smaller.' },
+	}, 'Weddings' )
+	eq( title, 'Some photos were not published' )
+	has( body, '2 photos sent to your RAWWERS portfolio (Weddings)' )
+	has( body, '1 photo was already there.' )
+	has( body, 'd.jpg: Larger than 25 MB. Export it smaller.' )
+	local okTitle = Portfolio.summary( { { state = 'uploaded', name = 'a.jpg' } }, 'Weddings' )
+	eq( okTitle, 'Published to RAWWERS' )
+	local _, outdated = Portfolio.summary( {}, 'Weddings', 'outdated' )
+	has( outdated, 'too old for the portfolio' )
+end )
+
+test( 'the portfolio size limit is the app\'s 25 MB, apart from delivery\'s 50 MB', function()
+	local Checks = require 'RawwersChecks'
+	eq( Checks.MAX_PORTFOLIO_BYTES, 25000000 )
+	eq( Checks.problem( 25000001, nil, nil, Checks.MAX_PORTFOLIO_BYTES ), 'too_large' )
+	eq( Checks.problem( 25000001, nil, nil ), nil )
+end )
+
+test( 'the portfolio calls carry the niche, the hash and the version', function()
+	local calls = {}
+	local http = function( method, url, headers, body ) calls[ #calls + 1 ] = { method = method, url = url, body = body } return '{}', { status = 200 } end
+	local client = Api.new { base_url = 'https://api.rawwers.test', plugin_version = '1.1.0', http = http, sleep = function() end, token = 'rwd_x' }
+	client:portfolio()
+	client:startPortfolioUpload( 'weddings', { name = 'P.jpg', size = 10, sha256 = string.rep( 'a', 64 ) } )
+	client:removePortfolioPhoto( 'pf-1' )
+	eq( { calls[ 1 ].method, calls[ 1 ].url }, { 'GET', 'https://api.rawwers.test/v1/delivery/portfolio' } )
+	eq( calls[ 2 ].url, 'https://api.rawwers.test/v1/delivery/portfolio/uploads' )
+	eq( Json.decode( calls[ 2 ].body ), { file_name = 'P.jpg', content_type = 'image/jpeg', byte_size = 10, sha256 = string.rep( 'a', 64 ), niche_slug = 'weddings' } )
+	eq( { calls[ 3 ].method, calls[ 3 ].url }, { 'DELETE', 'https://api.rawwers.test/v1/delivery/portfolio/pf-1' } )
 end )
 
 os.exit( H.run() and 0 or 1 )

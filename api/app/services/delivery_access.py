@@ -257,3 +257,22 @@ def require_supported_plugin(plugin_version: str | None) -> None:
         status_code=426,
         details={"minimum_version": minimum, "latest_version": settings.lightroom_plugin_latest_version},
     )
+
+
+def require_plugin_at_least(plugin_version: str | None, minimum: str, *, feature: str) -> None:
+    """A 426 for a feature newer than the plug-in calling it. Unlike the
+    global minimum, a plug-in that does not say its version is refused here:
+    only a plug-in that has the feature calls it."""
+    current, wanted = _version(plugin_version), _version(minimum)
+    if current is not None and wanted is not None and not _older(current, wanted):
+        return
+    settings = get_settings()
+    raise APIError(
+        code="plugin_outdated",
+        message=(
+            f"{feature} needs RAWWERS plug-in {minimum} or newer. "
+            f"Get version {settings.lightroom_plugin_latest_version} from Settings > Connect Lightroom in the RAWWERS Pro app."
+        ),
+        status_code=426,
+        details={"minimum_version": minimum, "latest_version": settings.lightroom_plugin_latest_version},
+    )

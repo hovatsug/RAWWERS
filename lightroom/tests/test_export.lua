@@ -46,6 +46,8 @@ local function newServer()
 	server = {
 		token = 'rwd_good', revoked = false, assets = {}, bySha = {}, nextId = 0, stored = {},
 		calls = {}, storageHeaders = {}, failStorageFor = {},
+		niches = { { slug = 'weddings', name = 'Weddings', primary = true }, { slug = 'portraits', name = 'Portraits', primary = false } },
+		portfolioStarts = {}, removed = {},
 	}
 end
 
@@ -91,6 +93,31 @@ local function handle( method, url, headers, body )
 		server.bySha[ data.sha256 ] = id
 		return respond( 200, { media_asset_id = id, gallery_id = 'gal-1', duplicate = false, use_multipart = false,
 			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
+	end
+	if path == '/v1/delivery/portfolio' and method == 'GET' then
+		return respond( 200, { niches = server.niches, photo_count = 0, photo_minimum = 12 } )
+	end
+	if path == '/v1/delivery/portfolio/uploads' and method == 'POST' then
+		server.portfolioStarts[ #server.portfolioStarts + 1 ] = data
+		local key = data.niche_slug .. ':' .. data.sha256
+		local existing = server.bySha[ key ]
+		if existing and server.assets[ existing ].done and not server.assets[ existing ].removed then
+			return respond( 200, { media_asset_id = existing, duplicate = true } )
+		end
+		server.nextId = server.nextId + 1
+		local id = 'pf-' .. server.nextId
+		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, niche = data.niche_slug }
+		server.bySha[ key ] = id
+		return respond( 200, { media_asset_id = id, duplicate = false, use_multipart = false,
+			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
+	end
+	local removedId = path:match( '^/v1/delivery/portfolio/([^/]+)$' )
+	if removedId and method == 'DELETE' then
+		server.removed[ #server.removed + 1 ] = removedId
+		local asset = server.assets[ removedId ]
+		if not asset then return respond( 404, { error = { code = 'not_found', message = 'Photo not found' } } ) end
+		asset.removed = true
+		return respond( 200, { ok = true, media_asset_id = removedId } )
 	end
 	local finished = path:match( '^/v1/delivery/uploads/([^/]+)/complete$' )
 	if finished then
@@ -212,7 +239,10 @@ test( 'the plug-in declares the last three Lightroom Classic versions', function
 	local info = dofile( './rawwers.lrdevplugin/Info.lua' )
 	eq( info.LrSdkMinimumVersion, 13.0 )
 	eq( info.LrSdkVersion, 15.3 )
-	eq( info.LrExportServiceProvider.title, 'RAWWERS' )
+	eq( info.LrExportServiceProvider[ 1 ], { title = 'RAWWERS', file = 'RawwersServiceProvider.lua' } )
+	eq( info.LrExportServiceProvider[ 2 ], { title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' } )
+	eq( info.VERSION, { major = 1, minor = 1, revision = 0, build = 0 } )
+	eq( require( 'RawwersConfig' ).version, '1.1.0' )
 end )
 
 -- Exports ---------------------------------------------------------------------------------
@@ -356,6 +386,133 @@ test( 'a client chosen long ago is confirmed first, and a "no" sends nothing', f
 	runAll( function() provider.processRenderedPhotos( {}, context ) end )
 	ok( dialogs[ 1 ] and dialogs[ 1 ].confirm, 'no confirmation asked' )
 	eq( #server.calls, 0 )
+end )
+
+-- The RAWWERS Portfolio publish service ------------------------------------------------------
+
+local publisher = require 'RawwersPublishProvider'
+
+local function publish( names, collection, previousIds )
+	local renditions = renderedFiles( names )
+	for i, r in ipairs( renditions ) do
+		r.publishedPhotoId = previousIds and previousIds[ i ] or nil
+		r.recordPublishedPhotoId = function( self, id ) self.recorded = id end
+	end
+	local context = {
+		propertyTable = { rawwersServer = 'https://api.test' },
+		exportSession = { countRenditions = function() return #renditions end },
+		configureProgress = function() return { isCanceled = function() return false end, setCaption = function() end } end,
+		renditions = function()
+			local i = 0
+			return function() i = i + 1 if renditions[ i ] then return i, renditions[ i ] end end
+		end,
+		publishedCollection = { getCollectionInfoSummary = function()
+			return { collectionSettings = { rawwersNicheSlug = collection and collection.slug }, isDefaultCollection = collection and collection.default or false }
+		end },
+	}
+	dialogs = {}
+	local err = runAll( function() publisher.processRenderedPhotos( {}, context ) end )
+	return renditions, err
+end
+
+test( 'the portfolio service is publish-only, JPEG and sRGB, and keeps no token in presets', function()
+	eq( publisher.supportsIncrementalPublish, 'only' )
+	eq( publisher.allowFileFormats, { 'JPEG' } )
+	eq( publisher.allowColorSpaces, { 'sRGB' } )
+	eq( publisher.canExportVideo, false )
+	for _, field in ipairs( publisher.exportPresetFields ) do
+		ok( not field.key:lower():find( 'token' ), 'a preset field holds the token: ' .. field.key )
+	end
+	local behaviour = publisher.getCollectionBehaviorInfo( {} )
+	eq( behaviour.maxCollectionSetDepth, 0 )
+	eq( behaviour.defaultCollectionCanBeDeleted, false )
+end )
+
+test( 'publishing sends each photo to the collection\'s niche and records its portfolio id', function()
+	newServer()
+	freshKeychain()
+	local renditions, err = publish( { 'P_1.jpg', 'P_2.jpg' }, { slug = 'portraits' } )
+	eq( err, nil )
+	eq( #server.portfolioStarts, 2 )
+	for _, start in ipairs( server.portfolioStarts ) do eq( start.niche_slug, 'portraits' ) end
+	for _, r in ipairs( renditions ) do ok( r.recorded and r.recorded:match( '^pf%-' ), 'no portfolio id recorded' ) end
+	eq( dialogs[ #dialogs ].title, 'Published to RAWWERS' )
+	has( dialogs[ #dialogs ].body, '2 photos sent to your RAWWERS portfolio (Portraits)' )
+	eq( #deleted, 2 )
+end )
+
+test( 'the default collection publishes to the main niche', function()
+	newServer()
+	freshKeychain()
+	publish( { 'P_1.jpg' }, { default = true } )
+	eq( server.portfolioStarts[ 1 ].niche_slug, 'weddings' )
+end )
+
+test( 'a collection without a niche of the photographer\'s sends nothing', function()
+	newServer()
+	freshKeychain()
+	local _, err = publish( { 'P_1.jpg' }, { slug = 'cars' } )
+	has( err, 'Choose this collection' )
+	eq( #server.portfolioStarts, 0 )
+end )
+
+test( 'publishing again sends nothing new; an edited photo replaces the old one', function()
+	newServer()
+	freshKeychain()
+	local first = publish( { 'P_1.jpg' }, { slug = 'weddings' } )
+	local oldId = first[ 1 ].recorded
+	local again = publish( { 'P_1.jpg' }, { slug = 'weddings' }, { oldId } )
+	eq( again[ 1 ].recorded, oldId, 'the same file became a new photo' )
+	eq( server.removed, {}, 'the photo was removed while it is still the one published' )
+	has( dialogs[ #dialogs ].body, '1 photo was already there' )
+
+	-- Edited in Lightroom: other bytes. New first, then the old one goes.
+	local edited = renderedFiles { 'P_1b.jpg' }
+	local renditions = publish( { 'P_1b.jpg' }, { slug = 'weddings' }, { oldId } )
+	ok( renditions[ 1 ].recorded ~= oldId )
+	eq( server.removed, { oldId } )
+	ok( server.assets[ renditions[ 1 ].recorded ].done, 'the new version was not finished before the old one went' )
+	os.remove( edited[ 1 ].path )
+end )
+
+test( 'a photo over 25 MB is refused before anything is sent', function()
+	newServer()
+	freshKeychain()
+	local Checks = require 'RawwersChecks'
+	local saved = Checks.MAX_PORTFOLIO_BYTES
+	Checks.MAX_PORTFOLIO_BYTES = 10
+	local renditions = publish( { 'P_big.jpg' }, { slug = 'weddings' } )
+	Checks.MAX_PORTFOLIO_BYTES = saved
+	eq( #server.portfolioStarts, 0 )
+	has( renditions[ 1 ].failures[ 1 ], 'Larger than 25 MB' )
+	eq( dialogs[ #dialogs ].title, 'Some photos were not published' )
+end )
+
+test( 'removing photos from a collection removes them from the portfolio; one gone already counts as removed', function()
+	newServer()
+	freshKeychain()
+	local renditions = publish( { 'P_1.jpg', 'P_2.jpg' }, { slug = 'weddings' } )
+	local gone = {}
+	local err = runAll( function()
+		publisher.deletePhotosFromPublishedCollection( { rawwersServer = 'https://api.test' },
+			{ renditions[ 1 ].recorded, 'pf-unknown' }, function( id ) gone[ #gone + 1 ] = id end )
+	end )
+	eq( err, nil )
+	eq( gone, { renditions[ 1 ].recorded, 'pf-unknown' } )
+	ok( server.assets[ renditions[ 1 ].recorded ].removed )
+	ok( not server.assets[ renditions[ 2 ].recorded ].removed )
+end )
+
+test( 'a revoked device stops the publish and forgets the token', function()
+	newServer()
+	freshKeychain()
+	local renditions = publish( { 'P_1.jpg' }, { slug = 'weddings' } )
+	server.revoked = true
+	local err = runAll( function()
+		publisher.deletePhotosFromPublishedCollection( { rawwersServer = 'https://api.test' }, { renditions[ 1 ].recorded }, function() end )
+	end )
+	has( err, 'could not remove' )
+	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], '' )
 end )
 
 os.exit( H.run() and 0 or 1 )

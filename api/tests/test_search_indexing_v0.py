@@ -48,6 +48,7 @@ def test_indexing_pipeline_idempotent_for_pro_upsert(db_session, monkeypatch):
         ProPublicIndex(
             pro_user_id=pro_id,
             city="Lisbon",
+            currency="EUR",
             country="PT",
             is_accepting_bookings=True,
             kyc_status=KYCStatus.approved,

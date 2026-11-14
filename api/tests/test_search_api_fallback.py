@@ -52,6 +52,7 @@ def test_search_fallback_when_provider_fails(client, db_session, monkeypatch):
         ProPublicIndex(
             pro_user_id=pro_id,
             city="Porto",
+            currency="EUR",
             country="PT",
             is_accepting_bookings=True,
             kyc_status=KYCStatus.approved,

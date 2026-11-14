@@ -331,9 +331,11 @@ def test_the_pros_own_preview_decays_after_the_size_they_type(client, db_session
     pro_id = str(uuid.uuid4())
     _ensure_account(db_session, pro_id)
     package = _package(db_session, pro_id)
-    from app.models.admin import UserRole, UserRoleType
+    from app.models.admin import ProProfile, UserRole, UserRoleType
 
     db_session.add(UserRole(user_id=uuid.UUID(pro_id), role=UserRoleType.pro))
+    # the preview is in the photographer's currency, read from the profile
+    db_session.add(ProProfile(user_id=uuid.UUID(pro_id), display_name="Ana", country="PT", currency="EUR"))
     db_session.commit()
     url = f"/v1/pro/me/pricing/niches/{package.niche_id}?entry_price=4.80"
 

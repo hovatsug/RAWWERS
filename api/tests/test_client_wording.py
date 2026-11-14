@@ -53,7 +53,8 @@ def test_the_guard_catches_the_words_and_spares_rawwers():
     assert [t for t in found if FORBIDDEN.search(t)] == ["Not enough points", "Earn RAW credit", "100 RAWW"]
 
 
-def test_a_credit_taken_back_is_told_in_euros(db_session):
-    from app.services.client_rewards_pricing import _credit_eur
+def test_a_credit_taken_back_is_told_as_money_in_its_currency(db_session):
+    from app.services.client_rewards_pricing import _credit_text
 
-    assert str(_credit_eur(db_session, 150)) == "1.50"
+    assert _credit_text(db_session, 150, "EUR") == "€1.50"
+    assert _credit_text(db_session, 150, "GBP") == "£1.50"

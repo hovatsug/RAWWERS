@@ -275,13 +275,14 @@ def set_for_payment(db: Session, *, client_user_id: uuid.UUID, gig, use_credit: 
     from app.models.reward import RedemptionContextType
     from app.services.rewards import release_redemption_for_context, reserve_points_for_discount
 
-    from app.services.rewards import CREDIT_CURRENCY
-
     price = Decimal(gig.amount_minimum)
     existing = open_redemption(db, client_user_id=client_user_id, gig_id=gig.id)
-    if use_credit is True and existing is None and str(gig.currency).upper() == CREDIT_CURRENCY:
+    if use_credit is True and existing is None:
         points = balance_points(db, client_user_id)
         if points > 0:
+            # Credit in another currency is refused by reserve_points_for_discount
+            # (credit_currency_mismatch) before it writes anything, and caught
+            # here like too little credit: the booking is paid in full.
             try:
                 existing = reserve_points_for_discount(
                     db, user_id=client_user_id, context_type=RedemptionContextType.gig_payment, context_id=gig.id,

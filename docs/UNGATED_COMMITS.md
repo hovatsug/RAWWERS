@@ -49,3 +49,7 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 3c9c6f4 | 2026-11-13 | Errors: unhandled errors answered inside the request middleware; 500s carry X-Request-Id and the id in the body; the Sentry event carries the request_id tag; KNOWN_FAILURES 16 -> 15 | **yes** (error handling) |
 | 83d369e | 2026-11-13 | Docs: BETA_SCOPE records UK first; UK items #54-#59 | no |
 | 18eac9d | 2026-11-13 | Docs: MULTI_CURRENCY Stripe answers, design changes, company scenarios, build order; DEPLOY_CHECKLIST GBP settlement account | no |
+| 733b7d7 | 2026-11-13 | Docs: UNGATED_COMMITS rows for 3c9c6f4, 83d369e, 18eac9d | no |
+| 9d3194f | 2026-11-13 | Docs: the owner's multi-currency decisions M1-M10 (M11 open); Shelf stays off | no |
+| 44c9b21 | 2026-11-14 | Multi-currency M1: currency on the photographer's money; currency_settings (GBP only); `_eur` columns renamed; migration 20261113_0095 | **yes** (money, migration) |
+| ad49746 | 2026-11-14 | Multi-currency M2: every money value carries its currency; client credit euros-only; apps regenerated, RMoney without fallback; web money() requires a currency | **yes** (money display, contract) |

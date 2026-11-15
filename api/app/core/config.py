@@ -189,6 +189,10 @@ class Settings(BaseSettings):
     rate_limit_referral_claims_per_day: int = Field(default=3, alias="RATE_LIMIT_REFERRAL_CLAIMS_PER_DAY")
     rate_limit_payments_per_hour: int = Field(default=10, alias="RATE_LIMIT_PAYMENTS_PER_HOUR")
     rate_limit_uploads_per_hour: int = Field(default=30, alias="RATE_LIMIT_UPLOADS_PER_HOUR")
+    # The Lightroom plug-in's portfolio publish only, per photographer, apart
+    # from the app's 30 (owner, 2026-11-15); the device's daily bucket still
+    # applies on top.
+    rate_limit_plugin_portfolio_uploads_per_hour: int = Field(default=100, alias="RATE_LIMIT_PLUGIN_PORTFOLIO_UPLOADS_PER_HOUR")
     # Proofs only: a wedding is 400-1000 photos, so a delivery cannot share
     # the 30 an hour every other upload counts against.
     rate_limit_delivery_uploads_per_hour: int = Field(default=2000, alias="RATE_LIMIT_DELIVERY_UPLOADS_PER_HOUR")

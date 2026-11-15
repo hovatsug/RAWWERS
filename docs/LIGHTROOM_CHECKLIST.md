@@ -146,9 +146,9 @@ P.10 Drag the photo over 25 MB onto a collection (export settings: no resize, qu
 
 **Expect:** "Some photos were not published", naming it: "Larger than 25 MB. Export it smaller." Nothing new in the app.
 
-P.11 (Optional) Publish more than 30 photos in one hour.
+P.11 (Optional) Publish more than 100 photos in one hour.
 
-**Expect:** after 30, the rest fail with the server's "too many uploads" message; publishing again an hour later sends them. (The app has the same 30-an-hour limit; the owner decides whether to raise it.)
+**Expect:** the first 100 go; after that the rest are listed as not published with the server's message "Too many requests", and publishing again an hour later sends them. Uploading from the pro app in the same hour still works (the app keeps its own 30 an hour).
 
 P.12 Revoke this Mac in the pro app (part 7), then **Publish** a modified photo.
 

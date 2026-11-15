@@ -159,16 +159,71 @@ def test_a_niche_that_is_not_the_photographers_is_refused(client, db_session, tw
     assert db_session.execute(select(MediaAsset)).scalars().all() == []
 
 
-def test_the_apps_30_an_hour_upload_limit_applies(client, db_session, two_niches, monkeypatch):
+def test_the_plugin_publishes_100_an_hour_the_app_keeps_its_30(monkeypatch):
+    """The owner's decision of 2026-11-15: the plug-in's portfolio publish
+    has its own 100 an hour; the app's 30 and the device's daily bucket stay."""
+    from app.core.config import Settings
+
+    defaults = {name: field.default for name, field in Settings.model_fields.items()}
+    assert defaults["rate_limit_plugin_portfolio_uploads_per_hour"] == 100
+    assert defaults["rate_limit_uploads_per_hour"] == 30
+    assert defaults["rate_limit_delivery_token_uploads_per_day"] == 5000
+    # each bucket reads its own setting, by the hour or the day: the rules as
+    # built, without this file's generous_limits (and the settings they were
+    # built from: other tests clear get_settings' cache)
+    monkeypatch.undo()
+    settings = rate_limit.settings
+    assert rate_limit.RATE_LIMIT_RULES["plugin_portfolio_uploads"] == (settings.rate_limit_plugin_portfolio_uploads_per_hour, 3600)
+    assert rate_limit.RATE_LIMIT_RULES["uploads"] == (settings.rate_limit_uploads_per_hour, 3600)
+    assert rate_limit.RATE_LIMIT_RULES["delivery_token_daily"] == (settings.rate_limit_delivery_token_uploads_per_day, 86400)
+
+
+def test_the_plugins_hourly_limit_applies_and_not_the_apps(client, db_session, two_niches, monkeypatch):
     _pro_id, token = _setup(client, db_session, two_niches)
+    monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "uploads", (1, 3600))
+    monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "plugin_portfolio_uploads", (3, 3600))
+    for sha in ("a", "b", "c"):  # past the app's 1
+        assert _start(client, token, two_niches[0], sha=sha * 64).status_code == 200
+    fourth = _start(client, token, two_niches[0], sha="d" * 64)
+    assert fourth.status_code == 429
+    assert fourth.json()["error"]["details"]["bucket"].startswith("plugin_portfolio_uploads:")
+
+
+def _app_upload(client, pro_id):
+    return client.post(
+        "/v1/media/photos/uploads",
+        headers={"X-User-Id": str(pro_id)},
+        json={"purpose": "portfolio_reel", "content_type": "image/jpeg", "file_name": "phone.jpg"},
+    )
+
+
+def test_the_apps_limit_is_unchanged_by_a_plugin_publish(client, db_session, two_niches, monkeypatch):
+    pro_id, token = _setup(client, db_session, two_niches)
     monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "uploads", (2, 3600))
-    assert _start(client, token, two_niches[0], sha="a" * 64).status_code == 200
-    assert _start(client, token, two_niches[0], sha="b" * 64).status_code == 200
-    third = _start(client, token, two_niches[0], sha="c" * 64)
+    for sha in ("a", "b", "c"):  # the plug-in uses none of the app's 2
+        assert _start(client, token, two_niches[0], sha=sha * 64).status_code == 200
+    assert _app_upload(client, pro_id).status_code == 200
+    assert _app_upload(client, pro_id).status_code == 200
+    third = _app_upload(client, pro_id)
     assert third.status_code == 429
+    assert third.json()["error"]["details"]["bucket"].startswith("uploads:")
+
+
+def test_the_plugins_retries_and_parts_use_its_bucket_not_the_apps(client, db_session, two_niches, monkeypatch):
+    _pro_id, token = _setup(client, db_session, two_niches)
+    monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "uploads", (0, 3600))
+    small = _start(client, token, two_niches[0], sha="a" * 64).json()
+    assert client.post(f"/v1/delivery/uploads/{small['media_asset_id']}/url", headers=_h(token)).status_code == 200
+    large = _start(client, token, two_niches[0], sha="b" * 64, size=20_000_000).json()
+    parts = client.post(f"/v1/delivery/uploads/{large['media_asset_id']}/multipart", headers=_h(token), json={"byte_size": 20_000_000})
+    assert parts.status_code == 200
+
+    monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "plugin_portfolio_uploads", (0, 3600))
+    assert client.post(f"/v1/delivery/uploads/{small['media_asset_id']}/url", headers=_h(token)).status_code == 429
 
 
 def test_the_devices_daily_bucket_applies_too(client, db_session, two_niches, monkeypatch):
+    """It still stops a runaway publish, under the plug-in's hourly 100."""
     _pro_id, token = _setup(client, db_session, two_niches)
     monkeypatch.setitem(rate_limit.RATE_LIMIT_RULES, "delivery_token_daily", (1, 86400))
     assert _start(client, token, two_niches[0], sha="a" * 64).status_code == 200

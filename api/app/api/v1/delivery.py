@@ -271,13 +271,19 @@ def _own_delivery(db: Session, device: DeliveryDevice, media_asset_id: uuid.UUID
     return asset
 
 
+def _upload_bucket(asset: MediaAsset) -> str:
+    """The plug-in's portfolio photos count against its own hourly bucket;
+    a delivery's proofs against theirs (media._enforce_upload_rate)."""
+    return media_routes.PLUGIN_PORTFOLIO_UPLOADS if lightroom_portfolio.is_from_lightroom(asset) else media_routes.APP_UPLOADS
+
+
 @router.post("/uploads/{media_asset_id}/url", response_model=UploadPayload)
 def fresh_upload_url(
     media_asset_id: uuid.UUID, device: DeliveryDevice = Depends(require_delivery_device), db: Session = Depends(get_db_session)
 ) -> UploadPayload:
     """A new presigned PUT for the same photo, to retry a failed one."""
-    _own_delivery(db, device, media_asset_id)
-    return media_routes.refresh_photo_upload_url(media_asset_id=media_asset_id, user=_as_photographer(device), db=db)
+    asset = _own_delivery(db, device, media_asset_id)
+    return media_routes.fresh_photo_upload_url(media_asset_id, _as_photographer(device), db, bucket=_upload_bucket(asset))
 
 
 @router.post("/uploads/{media_asset_id}/multipart", response_model=MultipartStartResponse)
@@ -287,8 +293,8 @@ def start_parts(
     device: DeliveryDevice = Depends(require_delivery_device),
     db: Session = Depends(get_db_session),
 ) -> MultipartStartResponse:
-    _own_delivery(db, device, media_asset_id)
-    return media_routes.start_multipart_upload(media_asset_id=media_asset_id, body=body, user=_as_photographer(device), db=db)
+    asset = _own_delivery(db, device, media_asset_id)
+    return media_routes.begin_multipart_upload(media_asset_id, body, _as_photographer(device), db, bucket=_upload_bucket(asset))
 
 
 @router.get("/uploads/{media_asset_id}/multipart/parts", response_model=MultipartPartsResponse)
@@ -445,15 +451,16 @@ def start_portfolio_upload(
             use_multipart=large and not again.duplicate,
         )
     enforce_named_rate_limit("delivery_token_daily", principal=str(device.device_id))
-    started = media_routes.create_photo_upload(
-        body=PhotoUploadCreateRequest(
+    started = media_routes.start_photo_upload(
+        PhotoUploadCreateRequest(
             purpose=MediaPurpose.portfolio_reel,
             content_type=body.content_type,
             file_name=body.file_name,
             visibility=MediaVisibility.public,
         ),
-        user=user,
-        db=db,
+        user,
+        db,
+        bucket=media_routes.PLUGIN_PORTFOLIO_UPLOADS,
     )
     asset = db.get(MediaAsset, started.media_asset_id)
     lightroom_portfolio.mark_published(asset, slug=body.niche_slug, checksum=checksum)

@@ -130,9 +130,19 @@ def _complete_gear_evidence(db: Session, asset: MediaAsset) -> CompletePhotoUplo
     return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
 
 
-def _enforce_upload_rate(purpose: MediaPurpose, user_id: uuid.UUID, *, creating: bool = False) -> None:
+#: The app's hourly bucket for everything but deliveries.
+APP_UPLOADS = "uploads"
+#: The Lightroom plug-in's portfolio publish only (owner, 2026-11-15): 100 an
+#: hour, apart from the app's 30, which it neither uses nor raises.
+PLUGIN_PORTFOLIO_UPLOADS = "plugin_portfolio_uploads"
+
+
+def _enforce_upload_rate(
+    purpose: MediaPurpose, user_id: uuid.UUID, *, creating: bool = False, bucket: str = APP_UPLOADS
+) -> None:
     """A delivery counts against its own bucket; everything else against the
-    30 an hour, and a new upload also against the per-minute mutation limit.
+    30 an hour (the plug-in's portfolio publish against its own 100), and a
+    new upload also against the per-minute mutation limit.
 
     A delivery is 400-1000 photos, so it cannot share the 30 - and at two
     files at a time the per-minute limit alone would cap it below its own.
@@ -140,7 +150,7 @@ def _enforce_upload_rate(purpose: MediaPurpose, user_id: uuid.UUID, *, creating:
     if purpose == MediaPurpose.proof:
         enforce_named_rate_limit("delivery_uploads", principal=str(user_id))
         return
-    enforce_named_rate_limit("uploads", principal=str(user_id))
+    enforce_named_rate_limit(bucket, principal=str(user_id))
     if creating:
         enforce_named_rate_limit("auth_mutation", principal=str(user_id))
 
@@ -202,7 +212,15 @@ def create_photo_upload(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> PhotoUploadCreateResponse:
-    _enforce_upload_rate(body.purpose, user.user_id, creating=True)
+    return start_photo_upload(body, user, db)
+
+
+def start_photo_upload(
+    body: PhotoUploadCreateRequest, user: CurrentUser, db: Session, *, bucket: str = APP_UPLOADS
+) -> PhotoUploadCreateResponse:
+    """The upload start behind the route; `bucket` is never a request input
+    (the plug-in's portfolio route passes its own)."""
+    _enforce_upload_rate(body.purpose, user.user_id, creating=True, bucket=bucket)
     if body.purpose not in {
         MediaPurpose.proof,
         MediaPurpose.other,
@@ -296,6 +314,12 @@ def refresh_photo_upload_url(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> UploadPayload:
+    return fresh_photo_upload_url(media_asset_id, user, db)
+
+
+def fresh_photo_upload_url(
+    media_asset_id: uuid.UUID, user: CurrentUser, db: Session, *, bucket: str = APP_UPLOADS
+) -> UploadPayload:
     """A fresh presigned PUT for the same asset, for a retry.
 
     A retry used to create a new asset every time, leaving each failed
@@ -304,7 +328,7 @@ def refresh_photo_upload_url(
     same key.
     """
     asset, original = _uploading_original(db, media_asset_id, user)
-    _enforce_upload_rate(asset.purpose, user.user_id)
+    _enforce_upload_rate(asset.purpose, user.user_id, bucket=bucket)
     return UploadPayload(
         method="PUT",
         url=create_presigned_put(storage_key=original.storage_key, content_type=asset.content_type),
@@ -332,6 +356,12 @@ def start_multipart_upload(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> MultipartStartResponse:
+    return begin_multipart_upload(media_asset_id, body, user, db)
+
+
+def begin_multipart_upload(
+    media_asset_id: uuid.UUID, body: MultipartStartRequest, user: CurrentUser, db: Session, *, bucket: str = APP_UPLOADS
+) -> MultipartStartResponse:
     """Start - or, called again, resume - sending a large original in parts.
 
     Calling it again for an upload already in progress returns the same
@@ -339,7 +369,7 @@ def start_multipart_upload(
     up where it stopped.
     """
     asset, original = _uploading_original(db, media_asset_id, user)
-    _enforce_upload_rate(asset.purpose, user.user_id)
+    _enforce_upload_rate(asset.purpose, user.user_id, bucket=bucket)
     if body.byte_size > _max_bytes_for(asset):
         raise APIError(code="validation_error", message="Upload exceeds size limit", status_code=422)
     existing = (asset.meta or {}).get("multipart")

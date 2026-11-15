@@ -21,6 +21,7 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     "referral_claims": (settings.rate_limit_referral_claims_per_day, 86400),
     "payments": (settings.rate_limit_payments_per_hour, 3600),
     "uploads": (settings.rate_limit_uploads_per_hour, 3600),
+    "plugin_portfolio_uploads": (settings.rate_limit_plugin_portfolio_uploads_per_hour, 3600),
     "delivery_uploads": (settings.rate_limit_delivery_uploads_per_hour, 3600),
     "delivery_token_daily": (settings.rate_limit_delivery_token_uploads_per_day, 86400),
     # Pairing: codes issued per photographer, and exchanges per address and

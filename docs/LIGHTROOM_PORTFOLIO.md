@@ -74,17 +74,17 @@ These are new delivery-token routes, so they are inside the token's scope by con
 
 - `GET /v1/delivery/portfolio`: the photographer's niches (slug, name, primary), the number of ready photos and the minimum. The plug-in also uses it as its version check.
 - `POST /v1/delivery/portfolio/uploads` `{file_name, content_type, byte_size, sha256, niche_slug}`:
-  - runs the app's `create_photo_upload` (purpose `portfolio_reel`, visibility public, the same content types and the same **30 an hour and 30 a minute**), plus the device's daily bucket;
+  - runs the app's upload start (purpose `portfolio_reel`, visibility public, the same content types and the same **30 starts a minute**), but against the plug-in's own hourly bucket, **100 an hour** per photographer (`plugin_portfolio_uploads`, owner 2026-11-15), which does not touch the app's 30; plus the device's daily bucket. The URL refresh and multipart start of a Lightroom portfolio photo count against the same 100;
   - marks the photo as published from Lightroom;
   - the same hash already published to this niche is answered as a duplicate (resume).
 - The URL, multipart and complete routes (`/v1/delivery/uploads/{id}/...`) accept the plug-in's own portfolio uploads as well as deliveries.
 - On complete, the niche is tagged through the app's tagging function (niche skills and index recomputed).
-- `DELETE /v1/delivery/portfolio/{id}`: only a photo this photographer published from Lightroom. It marks the photo deleted, clears it as cover, and recomputes skills and the index. The stored files are left for the unfinished-uploads sweep and storage rules. `GET /v1/pro/me/portfolio` no longer lists deleted photos.
+- `DELETE /v1/delivery/portfolio/{id}`: only a photo this photographer published from Lightroom. It marks the photo deleted, clears it as cover, recomputes skills and the index, and deletes its stored files (best effort; a file storage does not delete is left to the unfinished-uploads sweep). `GET /v1/pro/me/portfolio` no longer lists deleted photos.
 - **Minimum version:** the portfolio routes need plug-in **1.1.0** or newer (426 otherwise). Delivery keeps its own minimum (1.0.0). `LIGHTROOM_PLUGIN_LATEST_VERSION` defaults to 1.1.0, so 1.0.0 users are told about the update.
 
 ## 5. Risks
 
-- **Stolen or copyrighted images.** The risk is the same as for the app's upload: no check of who owns a photo, and no moderation. The plug-in makes bulk upload easier; the 30-an-hour limit caps it. Mitigation: BETA_SCOPE #11 (report, admin hides a photo) covers both; until then an admin can ban the photographer.
+- **Stolen or copyrighted images.** The risk is the same as for the app's upload: no check of who owns a photo, and no moderation. The plug-in makes bulk upload easier; its 100-an-hour limit and the device's daily cap bound it. Mitigation: BETA_SCOPE #11 (report, admin hides a photo) covers both; until then an admin can ban the photographer.
 - **EXIF and location.** Served copies carry no EXIF, as in the app. The plug-in also ticks Remove Location Info by default. The private original keeps what Lightroom wrote.
 - **Large files.** 25 MB is refused in the plug-in before sending and again on the server. Multipart is used above 16 MB.
 - **Wrong portfolio.** Each collection names its niche in Lightroom, and the summary says which niche received the photos. A wrong niche is fixed by moving the photo between collections, which removes and re-publishes it.
@@ -93,7 +93,13 @@ These are new delivery-token routes, so they are inside the token's scope by con
   - It can remove only Lightroom-published photos.
   - It has a per-device daily cap.
   - The photographer can revoke it in the app.
-- **Rate limit.** 30 an hour means a 100-photo publish takes over 3 hours. The plug-in stops at the limit with the server's message, and publishing again carries on. **Owner's call:** keep 30, or raise the portfolio limit for the app and the plug-in alike.
+- **Rate limit.** At 100 an hour a 100-photo publish fits in one hour; past it, the plug-in stops with the server's message, and publishing again later carries on.
+
+## The owner's decisions (2026-11-15)
+
+- **Hourly limit:** 100 an hour for the plug-in's portfolio publish only (`RATE_LIMIT_PLUGIN_PORTFOLIO_UPLOADS_PER_HOUR`, default 100). The app's 30 an hour and the device's daily limit stay as they are. Built 2026-11-15.
+- **Captions, photo order and the cover choice: LATER (v2)**, recorded as LATER items in BETA_SCOPE.md.
+- **Deploy order:** host plug-in 1.1.0 before deploying the API, or set `LIGHTROOM_PLUGIN_LATEST_VERSION=1.0.0` until then (DEPLOY_CHECKLIST.md).
 
 ## 6. Effort and what the owner provides
 

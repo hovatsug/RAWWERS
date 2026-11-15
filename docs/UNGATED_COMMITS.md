@@ -63,3 +63,5 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 0e87bfc | 2026-11-15 | Price caps: pound caps proposed (not owner-approved), both currencies loaded from api/data/price_caps; admin grid refuses the other currency's file | **yes** (money) |
 | ada3822 | 2026-11-15 | Lightroom: plug-in portfolio publish has its own 100 an hour; app 30/hour and device 5000/day unchanged | **yes** (upload limits) |
 | 5c6de48 | 2026-11-15 | Admin: sidebar in collapsible categories, menu reachability guard; admin test fixtures for M1/M4 | no (web only) |
+| 976847b | 2026-11-15 | Niches from Lightroom: GET/POST /v1/delivery/portfolio/niches (plug-in 1.2.0), shared niche rule, at most 3 niches (app route too); latest plug-in 1.2.0 | **yes** (token scope, profile writes) |
+| 75c16d5 | 2026-11-15 | Lightroom plug-in 1.2.0: choose and add niches in the publish service and collection settings; checklist part P | no (plug-in only, server enforces) |

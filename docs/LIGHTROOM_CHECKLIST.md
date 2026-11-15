@@ -102,60 +102,93 @@ Write down anything that differs from **Expect**, with a screenshot.
 
 **Expect:** still "Connected as ..." without typing a code: the token is in the macOS keychain, not in a preset.
 
-## P. The portfolio (plug-in 1.1.0)
+## P. The portfolio (plug-in 1.2.0)
 
-Against dev, with pro1 signed in in the pro app. Build 1.1.0 first: `lightroom/build.sh --version 1.1.0 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. pro1 needs at least two niches (pro app: **Profile > Niches**). Have 6 JPEG-able photos ready, one of them very large (a pano or a 100 MP file exported at full size, over 25 MB).
+Against dev, with pro1 signed in in the pro app. Build 1.2.0 first: `lightroom/build.sh --version 1.2.0 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. Start with pro1 having **no niches** (the pro app has no niche screen; the niches are set up from Lightroom here). To start again from none on dev:
+
+    docker exec api-postgres-1 psql -U postgres -d rawwers -c "DELETE FROM pro_niche WHERE pro_user_id = (SELECT user_id FROM user_account WHERE email = 'pro1@rawwers.dev')"
+
+Have 6 JPEG-able photos ready, one of them very large (a pano or a 100 MP file exported at full size, over 25 MB).
 
 P.1 Plug-in Manager.
 
-**Expect:** RAWWERS **1.1.0**, Installed and running.
+**Expect:** RAWWERS **1.2.0**, Installed and running.
 
-P.2 Library > **Publish Services** panel (left) > **Set Up...** next to **RAWWERS Portfolio**.
+P.2 Library > **Publish Services** panel (left) > **Set Up...** next to **RAWWERS Portfolio** (or right-click the service > **Edit Settings...**).
 
-**Expect:** the publish service dialog with a **RAWWERS Portfolio** section. If this Mac was paired in part 2: "Connected. Your niches: ..." listing pro1's niches. If not: a **Pairing code** field (pair as in 2.1-2.3; the same connection serves Export and Publish). Only JPEG and sRGB offered. Click **Save**.
+**Expect:** the publish service dialog with a **RAWWERS Portfolio** section. If this Mac is not paired: a **Pairing code** field (pair as in 2.1-2.3; the same connection serves Export and Publish). Once connected, with no niches: "Connected. You have no niches yet. Choose one to add." and a menu **Add a niche...**. Only JPEG and sRGB offered.
 
-P.3 In the panel, the service shows **Portfolio (main niche)**. Right-click the service > **Create Published Collection...**, name it "Second niche".
+P.3 Open the **Add a niche...** menu.
 
-**Expect:** a **RAWWERS** box with a **Niche** menu listing pro1's niches, the main one marked "(main)". **Create** stays disabled until a niche is chosen. Choose the niche that is **not** the main one, **Create**.
+**Expect:** every niche (12 on dev), by name. Choose **Portraits**.
 
-P.4 Drag 3 photos onto **Portfolio (main niche)** and 2 onto **Second niche**. Select the service, click **Publish**.
+**Expect:** "Adding...", then "Added Portraits, your main niche." The line above becomes "Connected. Your niches: Portraits (main)." and the menu no longer lists Portraits.
 
-**Expect:** Lightroom's progress "Publishing N photos to RAWWERS", then for each collection a message "Published to RAWWERS - 3 photos sent to your RAWWERS portfolio (<main niche>)..." (and 2 for the other). The photos move to **Published Photos**.
+P.4 From the same menu, choose **Weddings**.
 
-P.5 Pro app: **You > Portfolio**, pull to refresh after a minute.
+**Expect:** "Added Weddings." (not main); "Connected. Your niches: Portraits (main), Weddings." Click **Save**.
+
+P.5 In the panel the service shows **Portfolio (main niche)**. Right-click the service > **Create Published Collection...**, name it "Second niche".
+
+**Expect:** a **RAWWERS** box with a **Niche** menu: Portraits (main), Weddings, then **Add a niche...**. **Create** stays disabled until a niche is chosen.
+
+P.6 In that menu choose **Add a niche...**.
+
+**Expect:** a dialog "Add a niche to your RAWWERS profile" with a menu of the niches pro1 does not have (no Portraits, no Weddings). **Cancel** first: nothing is added and the menu shows what it showed before. Choose **Add a niche...** again, pick **Food**, **Add**.
+
+**Expect:** the dialog closes, the collection's niche is now **Food**, the note says "Added Food. The photos of this collection go there.", and the menu no longer ends with **Add a niche...** (3 niches, the most). **Create** is enabled. Click **Create**.
+
+P.7 The maximum. Right-click the service > **Edit Settings...**.
+
+**Expect:** "Connected. Your niches: Portraits (main), Food, Weddings. That is the most you can have (3)." and no **Add a niche...** menu. Create another published collection: its **Niche** menu lists the three niches and no **Add a niche...**. Cancel it.
+
+P.8 (Optional) The server's refusal at the maximum. With the service settings open at 3 niches, nothing can be chosen, so lower the maximum while a menu is showing: first, on dev, remove Food again (`DELETE FROM pro_niche WHERE pro_user_id = (SELECT user_id FROM user_account WHERE email = 'pro1@rawwers.dev') AND niche_id = (SELECT id FROM niche WHERE slug = 'food')`), open **Edit Settings...** (the menu is back, 2 of 3), then set the maximum to 2:
+
+    docker exec api-postgres-1 psql -U postgres -d rawwers -c "INSERT INTO onboarding_requirement (id, key, value) VALUES (gen_random_uuid(), 'niches_max', '{\"count\": 2}') ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value"
+
+and choose any niche from the menu.
+
+**Expect:** "You can have at most 2 niches, and you have 2. To change one, remove a niche in the RAWWERS Pro app first." Nothing added. Put the maximum back to 3 (the same command with 3) and add Food again from the menu.
+
+P.9 Drag 3 photos onto **Portfolio (main niche)** and 2 onto **Second niche**. Select the service, click **Publish**.
+
+**Expect:** Lightroom's progress "Publishing N photos to RAWWERS", then for each collection a message "Published to RAWWERS - 3 photos sent to your RAWWERS portfolio (Portraits)..." (and 2 for Food). The photos move to **Published Photos**.
+
+
+P.10 Pro app: **You > Portfolio**, pull to refresh after a minute.
 
 **Expect:** the 5 new photos, newest first; the 3 tagged with the main niche, the 2 with the second. Open one full screen: it looks as a photo uploaded from the phone does.
 
-P.6 On the client simulator: open pro1's profile.
+P.11 On the client simulator: open pro1's profile.
 
 **Expect:** the new photos in the portfolio, under their niches.
 
-P.7 In Lightroom, click **Publish** again on the service with nothing changed.
+P.12 In Lightroom, click **Publish** again on the service with nothing changed.
 
 **Expect:** nothing to publish (Lightroom shows no new or modified photos); nothing changes in the app.
 
-P.8 Edit one published photo in Develop (e.g. exposure +1). It moves to **Modified Photos to Re-Publish**. Click **Publish**.
+P.13 Edit one published photo in Develop (e.g. exposure +1). It moves to **Modified Photos to Re-Publish**. Click **Publish**.
 
 **Expect:** "1 photo sent..."; in the app, after a minute, the edited version is there and the old one is gone (still 5 photos, not 6).
 
-P.9 Remove one photo from **Second niche** (select it > Delete key > **Remove**), then **Publish**.
+P.14 Remove one photo from **Second niche** (select it > Delete key > **Remove**), then **Publish**.
 
 **Expect:** the photo goes to **Deleted Photos to Remove**, then disappears from the collection after Publish; in the app the portfolio shows 4 photos. A photo uploaded from the phone is never removed by this (check one is still there if pro1 has any).
 
-P.10 Drag the photo over 25 MB onto a collection (export settings: no resize, quality 100), **Publish**.
+P.15 Drag the photo over 25 MB onto a collection (export settings: no resize, quality 100), **Publish**.
 
 **Expect:** "Some photos were not published", naming it: "Larger than 25 MB. Export it smaller." Nothing new in the app.
 
-P.11 (Optional) Publish more than 100 photos in one hour.
+P.16 (Optional) Publish more than 100 photos in one hour.
 
 **Expect:** the first 100 go; after that the rest are listed as not published with the server's message "Too many requests", and publishing again an hour later sends them. Uploading from the pro app in the same hour still works (the app keeps its own 30 an hour).
 
-P.12 Revoke this Mac in the pro app (part 7), then **Publish** a modified photo.
+P.17 Revoke this Mac in the pro app (part 7), then **Publish** a modified photo.
 
 **Expect:** a message saying this Mac is no longer connected and to type a new pairing code in the publish service settings; nothing is sent. Re-pair via **Edit Settings...** on the service.
 
-P.13 Plug-in 1.0.0 against this server (optional, needs the 1.0.0 build): Export To: RAWWERS still delivers to a gig, and the dialog says a newer plug-in is available.
+P.18 Plug-in 1.0.0 against this server (optional, needs the 1.0.0 build): Export To: RAWWERS still delivers to a gig, and the dialog says a newer plug-in is available.
 
 ## What to send back
 
-The time for 40 photos (4.1), the time for P.4, any row where something differed, and the screenshots.
+The time for 40 photos (4.1), the time for P.9, any row where something differed, and the screenshots.

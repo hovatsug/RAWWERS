@@ -8,6 +8,12 @@ the collection's settings; the default collection is the main niche. Publish
 sends new and edited photos; photos taken out of a collection are removed
 from the portfolio when publishing.
 
+Niches (1.2.0): the service's settings list the photographer's niches with
+an "Add a niche..." menu, and a collection's niche menu ends with "Add a
+niche...", so a photographer with none can set up without leaving
+Lightroom. Adding only: niches are removed, and the main one changed, in the
+RAWWERS Pro app.
+
 SDK hooks used (SDK 15.3 reference, "SDK - Publish service provider"; all
 present since SDK 3.0): supportsIncrementalPublish, getCollectionBehaviorInfo,
 viewForCollectionSettings (info.collectionSettings, LR_canSaveCollection),
@@ -22,6 +28,7 @@ local LrBinding = import 'LrBinding'
 local LrDialogs = import 'LrDialogs'
 local LrErrors = import 'LrErrors'
 local LrFileUtils = import 'LrFileUtils'
+local LrFunctionContext = import 'LrFunctionContext'
 local LrPathUtils = import 'LrPathUtils'
 local LrTasks = import 'LrTasks'
 local LrView = import 'LrView'
@@ -56,25 +63,55 @@ provider.exportPresetFields = {
 
 -- The connection (the publish service's settings) -------------------------------------
 
+local function disconnected( p, message )
+	p.rawwersConnected, p.rawwersCanAddNiche, p.rawwersConnection = false, false, message
+end
+
+local function showListing( p, listing )
+	p.rawwersConnected = true
+	p.rawwersConnection = Portfolio.nichesText( listing )
+	p.rawwersAddItems = Portfolio.addMenuItems( listing.niches )
+	p.rawwersCanAddNiche = Portfolio.canAdd( listing )
+end
+
 local function check( p )
 	local base = Lightroom.baseUrl( p )
 	local token = Lightroom.storedToken( base )
 	if not token then
-		p.rawwersConnected, p.rawwersConnection = false, 'Not connected.'
+		disconnected( p, 'Not connected.' )
 		return
 	end
-	local answer = Lightroom.api( base, { token = token } ):portfolio()
+	local answer = Lightroom.api( base, { token = token } ):availableNiches()
 	if answer.ok then
-		local names = {}
-		for _, n in ipairs( answer.data.niches or {} ) do names[ #names + 1 ] = n.name end
-		p.rawwersConnected = true
-		p.rawwersConnection = 'Connected. Your niches: ' .. ( #names > 0 and table.concat( names, ', ' ) or 'none yet' )
-	elseif answer.outcome == 'reauth' then
-		Lightroom.storeToken( base, '' )
-		p.rawwersConnected, p.rawwersConnection = false, answer.message
+		showListing( p, answer.data )
 	else
-		p.rawwersConnected, p.rawwersConnection = false, answer.message
+		if answer.outcome == 'reauth' then Lightroom.storeToken( base, '' ) end
+		disconnected( p, answer.message )
 	end
+end
+
+--- The service settings' "Add a niche..." menu: choosing a niche adds it.
+local function addFromMenu( p )
+	local slug = p.rawwersAddSlug
+	if not slug or slug == '' or p.rawwersAdding then return end
+	p.rawwersAdding = true
+	p.rawwersNicheMessage = 'Adding...'
+	local base = Lightroom.baseUrl( p )
+	local token = Lightroom.storedToken( base )
+	local result = token and Portfolio.addNiche( Lightroom.api( base, { token = token } ), slug ) or { ok = false, outcome = 'reauth', message = 'Not connected.' }
+	if result.ok then
+		showListing( p, result.listing )
+		local added = result.added or {}
+		p.rawwersNicheMessage = 'Added ' .. tostring( added.name ) .. ( added.primary and ', your main niche.' or '.' )
+	else
+		if result.outcome == 'reauth' then
+			Lightroom.storeToken( base, '' )
+			disconnected( p, result.message )
+		end
+		p.rawwersNicheMessage = result.message
+	end
+	p.rawwersAddSlug = ''
+	p.rawwersAdding = false
 end
 
 local function connect( p )
@@ -97,6 +134,12 @@ function provider.startDialog( p )
 		p.rawwersDefaultsApplied = true
 	end
 	p.rawwersConnected, p.rawwersConnection = false, 'Checking...'
+	p.rawwersCanAddNiche, p.rawwersAddItems, p.rawwersAddSlug, p.rawwersNicheMessage = false, {}, '', ''
+	p:addObserver( 'rawwersAddSlug', function()
+		if ( p.rawwersAddSlug or '' ) ~= '' then
+			LrTasks.startAsyncTask( function() addFromMenu( p ) end, 'RAWWERS add a niche' )
+		end
+	end )
 	p:addObserver( 'rawwersConnected', function()
 		p.LR_cantExportBecause = p.rawwersConnected and nil or 'Connect to RAWWERS first: type the pairing code from the RAWWERS Pro app.'
 	end )
@@ -110,6 +153,12 @@ function provider.sectionsForTopOfDialog( f, p )
 			title = 'RAWWERS Portfolio',
 			synopsis = bind 'rawwersConnection',
 			f:row { f:static_text { title = bind 'rawwersConnection', fill_horizontal = 1, height_in_lines = 2, width_in_chars = 60 } },
+			f:row {
+				visible = bind 'rawwersCanAddNiche',
+				f:popup_menu { items = bind 'rawwersAddItems', value = bind 'rawwersAddSlug', width_in_chars = 30 },
+				f:static_text { title = 'Adds it to your RAWWERS profile. Remove niches in the RAWWERS Pro app.', fill_horizontal = 1 },
+			},
+			f:row { f:static_text { title = bind 'rawwersNicheMessage', fill_horizontal = 1, width_in_chars = 60 } },
 			f:row {
 				visible = LrBinding.negativeOfKey( 'rawwersConnected' ),
 				f:static_text { title = 'Pairing code:' },
@@ -153,15 +202,76 @@ function provider.getCollectionBehaviorInfo( publishSettings )
 	}
 end
 
+--- Asks which niche to add (only those the photographer does not have),
+--- adds it, and returns the server's result; nil when cancelled.
+local function chooseNicheToAdd( api, listing )
+	return LrFunctionContext.callWithContext( 'RAWWERS add a niche', function( context )
+		local f = LrView.osFactory()
+		local props = LrBinding.makePropertyTable( context )
+		props.slug = ''
+		local answer = LrDialogs.presentModalDialog {
+			title = 'Add a niche to your RAWWERS profile',
+			actionVerb = 'Add',
+			contents = f:column {
+				bind_to_object = props,
+				spacing = f:control_spacing(),
+				f:static_text {
+					title = 'The niche is added to your profile, as in the RAWWERS Pro app. You can remove it there, not here.',
+					width_in_chars = 50, height_in_lines = 2,
+				},
+				f:popup_menu { items = Portfolio.addMenuItems( listing and listing.niches ), value = bind 'slug', width_in_chars = 40 },
+			},
+		}
+		if answer ~= 'ok' then return nil end
+		return Portfolio.addNiche( api, props.slug )
+	end )
+end
+
 function provider.viewForCollectionSettings( f, publishSettings, info )
 	local settings = info.collectionSettings
 	settings.rawwersNicheItems = settings.rawwersNicheItems or {}
 	settings.rawwersNicheNote = 'Loading your niches...'
-	if not settings.rawwersNicheSlug or settings.rawwersNicheSlug == '' then
-		settings.LR_canSaveCollection = info.isDefaultCollection == true
+	local listing, api
+	local lastSlug = settings.rawwersNicheSlug
+	local function canSave()
+		local slug = settings.rawwersNicheSlug or ''
+		return ( slug ~= '' and slug ~= Portfolio.ADD_NICHE ) or info.isDefaultCollection == true
+	end
+	settings.LR_canSaveCollection = canSave()
+	local function show( newListing )
+		listing = newListing
+		settings.rawwersNicheItems = Portfolio.collectionMenuItems( listing )
+		local own = Portfolio.ownNiches( listing.niches )
+		if #own == 0 then
+			settings.rawwersNicheNote = 'You have no niches yet. Choose "Add a niche..." to add one.'
+		elseif Portfolio.canAdd( listing ) then
+			settings.rawwersNicheNote = 'The photos of this collection go to this niche of your portfolio. "Add a niche..." adds one to your profile.'
+		else
+			settings.rawwersNicheNote = 'The photos of this collection go to this niche of your portfolio. You have the most niches you can (' .. tostring( listing.maximum ) .. ').'
+		end
 	end
 	settings:addObserver( 'rawwersNicheSlug', function()
-		settings.LR_canSaveCollection = ( settings.rawwersNicheSlug or '' ) ~= '' or info.isDefaultCollection == true
+		if settings.rawwersNicheSlug ~= Portfolio.ADD_NICHE then
+			lastSlug = settings.rawwersNicheSlug
+			settings.LR_canSaveCollection = canSave()
+			return
+		end
+		-- "Add a niche...": back to the previous choice while the dialog is open.
+		settings.rawwersNicheSlug = lastSlug
+		settings.LR_canSaveCollection = canSave()
+		if not api or not listing then return end
+		LrTasks.startAsyncTask( function()
+			local result = chooseNicheToAdd( api, listing )
+			if not result then return end
+			if not result.ok then
+				settings.rawwersNicheNote = result.message
+				return
+			end
+			show( result.listing )
+			local added = result.added or {}
+			settings.rawwersNicheSlug = added.slug
+			settings.rawwersNicheNote = 'Added ' .. tostring( added.name ) .. ( added.primary and ', your main niche.' or '.' ) .. ' The photos of this collection go there.'
+		end, 'RAWWERS add a niche' )
 	end )
 	LrTasks.startAsyncTask( function()
 		local base = Lightroom.baseUrl( publishSettings )
@@ -170,15 +280,13 @@ function provider.viewForCollectionSettings( f, publishSettings, info )
 			settings.rawwersNicheNote = 'Connect to RAWWERS first: edit the publish service settings.'
 			return
 		end
-		local answer = Lightroom.api( base, { token = token } ):portfolio()
+		api = Lightroom.api( base, { token = token } )
+		local answer = api:availableNiches()
 		if not answer.ok then
 			settings.rawwersNicheNote = answer.message
 			return
 		end
-		settings.rawwersNicheItems = Portfolio.nicheItems( answer.data.niches )
-		settings.rawwersNicheNote = #settings.rawwersNicheItems == 0
-			and 'You have no niches yet. Choose them in the RAWWERS Pro app: Profile > Niches.'
-			or 'The photos of this collection go to this niche of your portfolio.'
+		show( answer.data )
 	end, 'RAWWERS niches' )
 	return f:group_box {
 		title = 'RAWWERS',
@@ -187,7 +295,7 @@ function provider.viewForCollectionSettings( f, publishSettings, info )
 			f:static_text { title = 'Niche:' },
 			f:popup_menu { items = bind 'rawwersNicheItems', value = bind 'rawwersNicheSlug', width_in_chars = 40 },
 		},
-		f:row { f:static_text { title = bind 'rawwersNicheNote', fill_horizontal = 1, width_in_chars = 50 } },
+		f:row { f:static_text { title = bind 'rawwersNicheNote', fill_horizontal = 1, width_in_chars = 50, height_in_lines = 2 } },
 	}
 end
 
@@ -224,7 +332,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	local chosen, isDefault = collectionInfo( exportContext )
 	local niche = Portfolio.nicheFor( answer.data.niches, chosen, isDefault )
 	if not niche then
-		LrErrors.throwUserError( 'Choose this collection\'s niche: right-click the collection > Edit Collection.' )
+		LrErrors.throwUserError( 'Choose this collection\'s niche, or add one: right-click the collection > Edit Collection.' )
 	end
 
 	local results, done = {}, 0

@@ -45,6 +45,76 @@ function Portfolio.nicheItems( niches )
 	return items
 end
 
+-- Niches: listing and adding (plug-in 1.2.0) ------------------------------------
+
+--- The value of the "Add a niche..." entry in a collection's niche menu.
+Portfolio.ADD_NICHE = '__rawwers_add_niche__'
+
+--- The photographer's own niches from the full list, the main one first,
+--- then by name: the shape GET /v1/delivery/portfolio gives.
+function Portfolio.ownNiches( all )
+	local own = {}
+	for _, niche in ipairs( all or {} ) do
+		if niche.mine then own[ #own + 1 ] = { slug = niche.slug, name = niche.name, primary = niche.primary == true } end
+	end
+	table.sort( own, function( a, b )
+		if a.primary ~= b.primary then return a.primary end
+		return string.lower( a.name ) < string.lower( b.name )
+	end )
+	return own
+end
+
+--- Whether another niche can be added: the server's count and maximum.
+function Portfolio.canAdd( listing )
+	if type( listing ) ~= 'table' then return false end
+	local count, maximum = tonumber( listing.count ), tonumber( listing.maximum )
+	if not count or not maximum then return false end
+	return count < maximum
+end
+
+--- The "Add a niche..." menu: a first entry that chooses nothing, then the
+--- niches the photographer does not have yet, by name.
+function Portfolio.addMenuItems( all )
+	local items = { { title = 'Add a niche...', value = '' } }
+	local others = {}
+	for _, niche in ipairs( all or {} ) do
+		if not niche.mine then others[ #others + 1 ] = { title = niche.name, value = niche.slug } end
+	end
+	table.sort( others, function( a, b ) return string.lower( a.title ) < string.lower( b.title ) end )
+	for _, item in ipairs( others ) do items[ #items + 1 ] = item end
+	return items
+end
+
+--- The publish service's line about the photographer's niches.
+function Portfolio.nichesText( listing )
+	local own = Portfolio.ownNiches( listing and listing.niches )
+	if #own == 0 then return 'Connected. You have no niches yet. Choose one to add.' end
+	local names = {}
+	for _, niche in ipairs( own ) do names[ #names + 1 ] = niche.name .. ( niche.primary and ' (main)' or '' ) end
+	local text = 'Connected. Your niches: ' .. table.concat( names, ', ' ) .. '.'
+	if not Portfolio.canAdd( listing ) and listing and listing.maximum then
+		text = text .. ' That is the most you can have (' .. tostring( listing.maximum ) .. ').'
+	end
+	return text
+end
+
+--- A collection's niche menu: the photographer's niches, and "Add a
+--- niche..." when another can be added.
+function Portfolio.collectionMenuItems( listing )
+	local items = Portfolio.nicheItems( Portfolio.ownNiches( listing and listing.niches ) )
+	if Portfolio.canAdd( listing ) then items[ #items + 1 ] = { title = 'Add a niche...', value = Portfolio.ADD_NICHE } end
+	return items
+end
+
+--- Adds a niche through the server. Returns { ok = true, listing, added }
+--- with the new list, or { ok = false, message } in the server's words.
+function Portfolio.addNiche( api, slug )
+	if not slug or slug == '' or slug == Portfolio.ADD_NICHE then return { ok = false, message = 'Choose a niche to add.' } end
+	local answer = api:addNiche( slug )
+	if not answer.ok then return { ok = false, message = answer.message, outcome = answer.outcome } end
+	return { ok = true, listing = answer.data, added = answer.data and answer.data.added }
+end
+
 --- Publishes one rendered photo. `previousId` is the portfolio photo this
 --- one replaces (Lightroom's published photo id), or nil. Returns the
 --- upload's result with, when the old version was replaced, `replaced` = its

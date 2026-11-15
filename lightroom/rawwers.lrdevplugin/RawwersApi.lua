@@ -165,6 +165,16 @@ end
 --- Takes a photo published from Lightroom out of the portfolio.
 function Api:removePortfolioPhoto( assetId ) return self:request( 'DELETE', '/v1/delivery/portfolio/' .. assetId ) end
 
+-- The niche routes (plug-in 1.2.0) ---------------------------------------------
+
+--- Every niche, the photographer's own marked (mine, primary), with
+--- how many they have and the most they can have.
+function Api:availableNiches() return self:request( 'GET', '/v1/delivery/portfolio/niches' ) end
+
+--- Adds one niche to the photographer's own profile. The server applies the
+--- app's rules and says why when it refuses (the maximum, already theirs).
+function Api:addNiche( slug ) return self:request( 'POST', '/v1/delivery/portfolio/niches', { slug = slug } ) end
+
 -- Storage ---------------------------------------------------------------------
 
 --- PUT bytes to a presigned storage URL. No token: the URL carries its own

@@ -6,7 +6,7 @@ copy points at a development server on this Mac, which is what loading the
 ]]
 
 return {
-	version = '1.1.0',
+	version = '1.2.0',
 	--- Used when the Export dialog's Server field is left empty.
 	baseUrl = 'http://localhost:8000',
 }

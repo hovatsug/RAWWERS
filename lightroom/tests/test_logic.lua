@@ -231,7 +231,7 @@ local function fakeApi( script )
 		if type( handler ) == 'table' and handler[ 1 ] then return table.remove( handler, 1 ) end
 		return handler or { ok = true, data = {} }
 	end
-	for _, name in ipairs { 'startUpload', 'startPortfolioUpload', 'removePortfolioPhoto', 'freshUploadUrl', 'startParts', 'partsReceived', 'partUrls', 'assembleParts', 'finish', 'putToStorage' } do
+	for _, name in ipairs { 'startUpload', 'startPortfolioUpload', 'removePortfolioPhoto', 'freshUploadUrl', 'startParts', 'partsReceived', 'partUrls', 'assembleParts', 'finish', 'putToStorage', 'addNiche' } do
 		self[ name ] = function( _, ... ) return step( name, ... ) end
 	end
 	return self
@@ -677,6 +677,79 @@ test( 'the portfolio calls carry the niche, the hash and the version', function(
 	eq( calls[ 2 ].url, 'https://api.rawwers.test/v1/delivery/portfolio/uploads' )
 	eq( Json.decode( calls[ 2 ].body ), { file_name = 'P.jpg', content_type = 'image/jpeg', byte_size = 10, sha256 = string.rep( 'a', 64 ), niche_slug = 'weddings' } )
 	eq( { calls[ 3 ].method, calls[ 3 ].url }, { 'DELETE', 'https://api.rawwers.test/v1/delivery/portfolio/pf-1' } )
+end )
+
+-- Niches from the plug-in (1.2.0) ------------------------------------------------------------------
+
+local ALL = {
+	{ slug = 'weddings', name = 'Weddings', mine = true, primary = false },
+	{ slug = 'cars', name = 'Automotive', mine = false, primary = false },
+	{ slug = 'portraits', name = 'Portraits', mine = true, primary = true },
+	{ slug = 'food', name = 'Food', mine = false, primary = false },
+}
+
+test( 'the own niches come out of the full list, the main one first', function()
+	eq( Portfolio.ownNiches( ALL ), { { slug = 'portraits', name = 'Portraits', primary = true }, { slug = 'weddings', name = 'Weddings', primary = false } } )
+	eq( Portfolio.ownNiches( {} ), {} )
+	eq( Portfolio.ownNiches( nil ), {} )
+end )
+
+test( 'the add menu lists only niches not yet theirs, by name, after an entry that chooses nothing', function()
+	eq( Portfolio.addMenuItems( ALL ), { { title = 'Add a niche...', value = '' }, { title = 'Automotive', value = 'cars' }, { title = 'Food', value = 'food' } } )
+end )
+
+test( 'another niche can be added only below the server\'s maximum', function()
+	eq( Portfolio.canAdd( { count = 2, maximum = 3 } ), true )
+	eq( Portfolio.canAdd( { count = 3, maximum = 3 } ), false )
+	eq( Portfolio.canAdd( { count = 4, maximum = 3 } ), false )
+	eq( Portfolio.canAdd( {} ), false )
+	eq( Portfolio.canAdd( nil ), false )
+end )
+
+test( 'the service says when there are no niches, which ones there are, and when that is the most', function()
+	eq( Portfolio.nichesText( { niches = { ALL[ 2 ] }, count = 0, maximum = 3 } ), 'Connected. You have no niches yet. Choose one to add.' )
+	eq( Portfolio.nichesText( { niches = ALL, count = 2, maximum = 3 } ), 'Connected. Your niches: Portraits (main), Weddings.' )
+	eq( Portfolio.nichesText( { niches = ALL, count = 2, maximum = 2 } ), 'Connected. Your niches: Portraits (main), Weddings. That is the most you can have (2).' )
+end )
+
+test( 'a collection\'s menu is their niches, then "Add a niche..." while one can be added', function()
+	eq( Portfolio.collectionMenuItems( { niches = ALL, count = 2, maximum = 3 } ), {
+		{ title = 'Portraits (main)', value = 'portraits' }, { title = 'Weddings', value = 'weddings' },
+		{ title = 'Add a niche...', value = Portfolio.ADD_NICHE },
+	} )
+	eq( Portfolio.collectionMenuItems( { niches = ALL, count = 2, maximum = 2 } ), { { title = 'Portraits (main)', value = 'portraits' }, { title = 'Weddings', value = 'weddings' } } )
+	eq( Portfolio.collectionMenuItems( { niches = { ALL[ 2 ] }, count = 0, maximum = 3 } ), { { title = 'Add a niche...', value = Portfolio.ADD_NICHE } } )
+end )
+
+test( 'adding a niche returns the new list, or the server\'s reason in its own words', function()
+	local listing = { niches = ALL, count = 3, maximum = 3, added = { slug = 'food', name = 'Food', mine = true, primary = false } }
+	local a = fakeApi { addNiche = { ok = true, data = listing } }
+	local r = Portfolio.addNiche( a, 'food' )
+	eq( { r.ok, r.added.slug, r.listing.count }, { true, 'food', 3 } )
+	eq( a.log[ 1 ], { 'addNiche', 'food' } )
+
+	local refused = fakeApi { addNiche = { ok = false, outcome = 'refused', status = 422, message = 'You can have at most 3 niches, and you have 3.' } }
+	eq( Portfolio.addNiche( refused, 'food' ), { ok = false, outcome = 'refused', message = 'You can have at most 3 niches, and you have 3.' } )
+end )
+
+test( 'choosing nothing, or the menu entry itself, sends nothing', function()
+	local a = fakeApi {}
+	for _, slug in ipairs { '', nil, Portfolio.ADD_NICHE } do
+		eq( Portfolio.addNiche( a, slug ).ok, false )
+	end
+	eq( #a.log, 0 )
+end )
+
+test( 'the niche calls go to the delivery routes with the version, and adding sends only the slug', function()
+	local calls = {}
+	local http = function( method, url, headers, body ) calls[ #calls + 1 ] = { method = method, url = url, body = body, headers = headers } return '{}', { status = 200 } end
+	local client = Api.new { base_url = 'https://api.rawwers.test', plugin_version = '1.2.0', http = http, sleep = function() end, token = 'rwd_x' }
+	client:availableNiches()
+	client:addNiche( 'food' )
+	eq( { calls[ 1 ].method, calls[ 1 ].url }, { 'GET', 'https://api.rawwers.test/v1/delivery/portfolio/niches' } )
+	eq( { calls[ 2 ].method, calls[ 2 ].url }, { 'POST', 'https://api.rawwers.test/v1/delivery/portfolio/niches' } )
+	eq( Json.decode( calls[ 2 ].body ), { slug = 'food' } )
+	eq( Api.header( calls[ 2 ].headers, 'X-Rawwers-Plugin-Version' ), '1.2.0' )
 end )
 
 os.exit( H.run() and 0 or 1 )

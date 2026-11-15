@@ -1,5 +1,6 @@
 --[[ RAWWERS for Lightroom Classic: deliver a gig's photos with "Export To: RAWWERS",
-and put photos in the portfolio with the "RAWWERS Portfolio" publish service (1.1.0).
+and put photos in the portfolio with the "RAWWERS Portfolio" publish service (1.1.0),
+adding niches to the profile from Lightroom (1.2.0).
 
 Built against the Lightroom Classic SDK 15.3. LrSdkMinimumVersion 13.0:
 the last three major versions (13, 14, 15), owner's decision 8. Every SDK
@@ -16,5 +17,5 @@ return {
 		{ title = 'RAWWERS', file = 'RawwersServiceProvider.lua' },
 		{ title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' },
 	},
-	VERSION = { major = 1, minor = 1, revision = 0, build = 0 },
+	VERSION = { major = 1, minor = 2, revision = 0, build = 0 },
 }

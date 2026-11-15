@@ -48,6 +48,8 @@ local function newServer()
 		calls = {}, storageHeaders = {}, failStorageFor = {},
 		niches = { { slug = 'weddings', name = 'Weddings', primary = true }, { slug = 'portraits', name = 'Portraits', primary = false } },
 		portfolioStarts = {}, removed = {},
+		catalog = { { slug = 'weddings', name = 'Weddings' }, { slug = 'portraits', name = 'Portraits' }, { slug = 'food', name = 'Food' }, { slug = 'cars', name = 'Automotive' } },
+		maximum = 3,
 	}
 end
 
@@ -93,6 +95,32 @@ local function handle( method, url, headers, body )
 		server.bySha[ data.sha256 ] = id
 		return respond( 200, { media_asset_id = id, gallery_id = 'gal-1', duplicate = false, use_multipart = false,
 			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
+	end
+	if path == '/v1/delivery/portfolio/niches' then
+		local function listing()
+			local mine = {}
+			for _, n in ipairs( server.niches ) do mine[ n.slug ] = n end
+			local all = {}
+			for _, n in ipairs( server.catalog ) do
+				all[ #all + 1 ] = { slug = n.slug, name = n.name, mine = mine[ n.slug ] ~= nil, primary = mine[ n.slug ] and mine[ n.slug ].primary or false }
+			end
+			return { niches = all, count = #server.niches, maximum = server.maximum }
+		end
+		if method == 'GET' then return respond( 200, listing() ) end
+		if method == 'POST' then
+			server.added = server.added or {}
+			server.added[ #server.added + 1 ] = data
+			if #server.niches >= server.maximum then
+				return respond( 422, { error = { code = 'niche_limit_reached', message = 'You can have at most ' .. server.maximum .. ' niches, and you have ' .. #server.niches .. '.' } } )
+			end
+			local found
+			for _, n in ipairs( server.catalog ) do if n.slug == data.slug then found = n end end
+			local niche = { slug = found.slug, name = found.name, primary = #server.niches == 0 }
+			server.niches[ #server.niches + 1 ] = niche
+			local body = listing()
+			body.added = { slug = niche.slug, name = niche.name, mine = true, primary = niche.primary }
+			return respond( 200, body )
+		end
 	end
 	if path == '/v1/delivery/portfolio' and method == 'GET' then
 		return respond( 200, { niches = server.niches, photo_count = 0, photo_minimum = 12 } )
@@ -165,6 +193,12 @@ local stubs = {
 	LrDialogs = {
 		message = function( title, body, style ) dialogs[ #dialogs + 1 ] = { title = title, body = body, style = style } end,
 		confirm = function() dialogs[ #dialogs + 1 ] = { confirm = true } return dialogs.answer or 'ok' end,
+		-- The person picks `dialogs.choose` in the dialog's popup, then `dialogs.modal` (default Add).
+		presentModalDialog = function( args )
+			dialogs[ #dialogs + 1 ] = { modal = args.title }
+			if dialogs.choose then args.contents.bind_to_object.slug = dialogs.choose end
+			return dialogs.modal or 'ok'
+		end,
 	},
 	LrErrors = { throwUserError = function( text ) error( 'USER: ' .. text, 0 ) end },
 	LrDate = {
@@ -172,8 +206,13 @@ local stubs = {
 		formatShortDate = function( t ) return 'date' .. t end,
 		timeFromPosixDate = function( t ) return t end,
 	},
-	LrView = { bind = function( key ) return { bound = key } end },
-	LrBinding = { negativeOfKey = function( key ) return { notKey = key } end },
+	LrView = {
+		bind = function( key ) return { bound = key } end,
+		-- Every view call returns its own arguments, so a test can read them.
+		osFactory = function() return setmetatable( {}, { __index = function() return function( _, t ) return t end end } ) end,
+	},
+	LrBinding = { negativeOfKey = function( key ) return { notKey = key } end, makePropertyTable = function() return {} end },
+	LrFunctionContext = { callWithContext = function( _name, fn, ... ) return fn( {}, ... ) end },
 }
 function import( name ) return assert( stubs[ name ], 'no stub for ' .. name ) end
 
@@ -241,8 +280,8 @@ test( 'the plug-in declares the last three Lightroom Classic versions', function
 	eq( info.LrSdkVersion, 15.3 )
 	eq( info.LrExportServiceProvider[ 1 ], { title = 'RAWWERS', file = 'RawwersServiceProvider.lua' } )
 	eq( info.LrExportServiceProvider[ 2 ], { title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' } )
-	eq( info.VERSION, { major = 1, minor = 1, revision = 0, build = 0 } )
-	eq( require( 'RawwersConfig' ).version, '1.1.0' )
+	eq( info.VERSION, { major = 1, minor = 2, revision = 0, build = 0 } )
+	eq( require( 'RawwersConfig' ).version, '1.2.0' )
 end )
 
 -- Exports ---------------------------------------------------------------------------------
@@ -513,6 +552,109 @@ test( 'a revoked device stops the publish and forgets the token', function()
 	end )
 	has( err, 'could not remove' )
 	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], '' )
+end )
+
+-- Niches from Lightroom (1.2.0) --------------------------------------------------------------------
+
+--- A property table: observers fire on every assignment, as Lightroom's do.
+local function properties( initial )
+	local values, observers = initial or {}, {}
+	local p = {}
+	function p:addObserver( key, fn )
+		observers[ key ] = observers[ key ] or {}
+		observers[ key ][ #observers[ key ] + 1 ] = fn
+	end
+	return setmetatable( p, {
+		__index = values,
+		__newindex = function( _, key, value )
+			values[ key ] = value
+			for _, fn in ipairs( observers[ key ] or {} ) do fn( p, key, value ) end
+		end,
+	} )
+end
+
+local function connected()
+	newServer()
+	dialogs = {}
+	keychain[ 'rawwers.delivery-token:https://api.test' ] = 'rwd_good'
+end
+
+test( 'with no niches the service says so and offers them; choosing one adds it as the main niche', function()
+	connected()
+	server.niches = {}
+	local p = properties { rawwersServer = 'https://api.test', rawwersDefaultsApplied = true }
+	runAll( function() publisher.startDialog( p ) end )
+	eq( p.rawwersConnection, 'Connected. You have no niches yet. Choose one to add.' )
+	eq( p.rawwersCanAddNiche, true )
+	eq( p.rawwersAddItems[ 1 ], { title = 'Add a niche...', value = '' } )
+	eq( #p.rawwersAddItems, 5 )
+
+	runAll( function() p.rawwersAddSlug = 'food' end )
+	eq( server.added, { { slug = 'food' } } )
+	eq( server.niches, { { slug = 'food', name = 'Food', primary = true } } )
+	eq( p.rawwersNicheMessage, 'Added Food, your main niche.' )
+	eq( p.rawwersConnection, 'Connected. Your niches: Food (main).' )
+	eq( p.rawwersAddSlug, '' )
+	eq( #p.rawwersAddItems, 4 )
+end )
+
+test( 'at the maximum the menu goes, and a refusal is shown in the server\'s words', function()
+	connected()
+	server.maximum = 2
+	local p = properties { rawwersServer = 'https://api.test', rawwersDefaultsApplied = true }
+	runAll( function() publisher.startDialog( p ) end )
+	eq( p.rawwersCanAddNiche, false )
+	eq( p.rawwersConnection, 'Connected. Your niches: Weddings (main), Portraits. That is the most you can have (2).' )
+	-- (the server's answer when the limit is reached between two looks)
+	runAll( function() p.rawwersAddSlug = 'food' end )
+	eq( p.rawwersNicheMessage, 'You can have at most 2 niches, and you have 2.' )
+	eq( #server.niches, 2 )
+end )
+
+local function collectionView( isDefault, slug )
+	local settings = properties { rawwersNicheSlug = slug }
+	local f = setmetatable( {}, { __index = function() return function( _, t ) return t end end } )
+	local view
+	runAll( function()
+		view = publisher.viewForCollectionSettings( f, { rawwersServer = 'https://api.test' }, { collectionSettings = settings, isDefaultCollection = isDefault } )
+	end )
+	return settings, view
+end
+
+test( 'a collection\'s niche menu ends with "Add a niche...", which adds the chosen niche and selects it', function()
+	connected()
+	local settings = collectionView( false, nil )
+	local add = require( 'RawwersPortfolio' ).ADD_NICHE
+	eq( settings.rawwersNicheItems, { { title = 'Weddings (main)', value = 'weddings' }, { title = 'Portraits', value = 'portraits' }, { title = 'Add a niche...', value = add } } )
+	eq( settings.LR_canSaveCollection, false )
+
+	dialogs.choose = 'cars'
+	runAll( function() settings.rawwersNicheSlug = add end )
+	eq( dialogs[ 1 ].modal, 'Add a niche to your RAWWERS profile' )
+	eq( server.added, { { slug = 'cars' } } )
+	eq( settings.rawwersNicheSlug, 'cars' )
+	eq( settings.LR_canSaveCollection, true )
+	eq( settings.rawwersNicheNote, 'Added Automotive. The photos of this collection go there.' )
+	-- three niches now: the menu has no "Add a niche..." any more
+	eq( settings.rawwersNicheItems[ #settings.rawwersNicheItems ].value, 'portraits' )
+end )
+
+test( 'cancelling "Add a niche..." adds nothing and keeps the earlier choice', function()
+	connected()
+	local settings = collectionView( false, 'portraits' )
+	dialogs.modal = 'cancel'
+	runAll( function() settings.rawwersNicheSlug = require( 'RawwersPortfolio' ).ADD_NICHE end )
+	eq( server.added, nil )
+	eq( settings.rawwersNicheSlug, 'portraits' )
+	eq( settings.LR_canSaveCollection, true )
+end )
+
+test( 'with no niches the default collection says how to add one', function()
+	connected()
+	server.niches = {}
+	local settings = collectionView( true, nil )
+	eq( settings.rawwersNicheItems, { { title = 'Add a niche...', value = require( 'RawwersPortfolio' ).ADD_NICHE } } )
+	eq( settings.rawwersNicheNote, 'You have no niches yet. Choose "Add a niche..." to add one.' )
 end )
 
 os.exit( H.run() and 0 or 1 )

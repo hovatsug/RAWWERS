@@ -60,3 +60,6 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 170207d | 2026-11-14 | Tests: four tests M4 left behind (credit wording, index currency, own preview) | no (tests only) |
 | 2b7c983 | 2026-11-14 | Multi-currency M3: display rates and the display currency; default time zone Europe/London; migration 20261114_0098 | **yes** (migration) |
 | 8b2e88e | 2026-11-14 | Lightroom plug-in 1.1.0: publish to the portfolio (BETA_SCOPE #61) | **yes** (token scope, uploads, user content) |
+| 0e87bfc | 2026-11-15 | Price caps: pound caps proposed (not owner-approved), both currencies loaded from api/data/price_caps; admin grid refuses the other currency's file | **yes** (money) |
+| ada3822 | 2026-11-15 | Lightroom: plug-in portfolio publish has its own 100 an hour; app 30/hour and device 5000/day unchanged | **yes** (upload limits) |
+| 5c6de48 | 2026-11-15 | Admin: sidebar in collapsible categories, menu reachability guard; admin test fixtures for M1/M4 | no (web only) |

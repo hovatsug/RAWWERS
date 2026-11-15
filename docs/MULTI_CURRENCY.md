@@ -589,6 +589,12 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 - **Known gap until M4: client credit earned on a booking in pounds** is still counted in euro points. Per-currency credit is M4, which comes before any app is distributed. It is a gate item in `BETA_SCOPE.md` (#60): it must be fixed before the beta (owner, 2026-11-14). *Fixed in M4 (2026-11-14).*
 - **The client's budget filter** (`ClientPreferenceView.budget_min/max`) has no currency yet: it is the display currency, batch M3.
 
+### The owner's decisions of 2026-11-15 (answers to the M7, M4 and M3 report)
+
+- **The monthly marketing budget in pounds stays at £300.00** (`monthly_marketing_credit_budget_gbp`, the default M4 set; an admin setting, adjustable).
+- **`raww_gbp_value` stays unset until the Shelf opens.** Pound bookings keep valuing RAWW at the day's euro value converted at the ECB rate (decision M5's fallback, built in M3).
+- **The pound price caps** are proposed in [PRICE_CAPS.md](PRICE_CAPS.md) (the euro caps at the ECB rate of 2026-11-13, rounded) for the owner to correct. They are on dev only. Production is loaded from the same files through the admin, once they are confirmed.
+
 ### M7: one transfer per client payment, from its charge (built 2026-11-14, high-risk: money, migration)
 
 - **The charge is stored:** `stripe_payment.stripe_charge_id`, written by the payment webhook from the PaymentIntent's `latest_charge`. Payments from before have none; the first payout that needs one reads it from Stripe once and keeps it (no backfill job to run).
@@ -624,7 +630,7 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 - **Referral minimums:** `min_conversion_value_eur` has no pound twin; it is compared in the booking's own currency's units (a £20.00 booking against the 20.00 minimum).
 - **Dormant points** (the legacy proof-of-gigs RAWW mints, off by `raww_minting_enabled`; Studioverse; the store) stay in euros (`LEGACY_POINTS_CURRENCY`).
 - **BI** reads the euro credit budget only (`budget_view(db, "EUR")`), as it counts euros only until M5; a RAWW entry valued in pounds has no euro value, so BI values it at the current euro setting until M5.
-- **GBP price caps do not exist yet:** on dev, the euro caps exist, so **a photographer in pounds cannot create a package in a capped niche and tier until the admin sets the pound caps** (the designed refusal). The figures are the owner's.
+- **GBP price caps do not exist yet:** on dev, the euro caps exist, so **a photographer in pounds cannot create a package in a capped niche and tier until the admin sets the pound caps** (the designed refusal). The figures are the owner's. *Proposed 2026-11-15 in [PRICE_CAPS.md](PRICE_CAPS.md) and loaded on dev; production waits for the owner's figures.*
 
 ### M3: rates and display (built 2026-11-14, high-risk: migration; display only, nothing on the money path)
 

@@ -29,6 +29,7 @@ landing two untested mechanisms at once is how neither gets understood.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -44,7 +45,10 @@ from app.models.niche import Niche, SkillTier  # noqa: E402
 from app.models.package_pricing import NichePackagePriceCap  # noqa: E402
 from app.services.niche_catalog import ensure_initial_niches  # noqa: E402
 
-# Maximum entry price per photo, in EUR. None means uncapped.
+# Maximum entry price per photo, one file per currency, in the format the
+# web admin's caps grid imports and downloads (docs/PRICE_CAPS.md). The same
+# files are what production is loaded from, through the admin, since this
+# script refuses production. An empty entry_price_max means uncapped.
 #
 # Ordered cheapest to dearest per photo, which is roughly the inverse of how
 # these jobs are priced per day:
@@ -56,69 +60,67 @@ from app.services.niche_catalog import ensure_initial_niches  # noqa: E402
 #
 # Tiers scale about 1.7x per step, ~5x from rookie to elite: wide enough that
 # promotion is worth something, not so wide that a rookie cannot trade.
-CAPS: dict[str, dict[SkillTier, Decimal | None]] = {
-    "weddings": {
-        SkillTier.rookie: Decimal("4.00"),
-        SkillTier.skilled: Decimal("7.00"),
-        SkillTier.pro: Decimal("12.00"),
-        SkillTier.elite: Decimal("20.00"),
-        SkillTier.master: None,
-    },
-    "family": {
-        SkillTier.rookie: Decimal("5.00"),
-        SkillTier.skilled: Decimal("8.00"),
-        SkillTier.pro: Decimal("13.00"),
-        SkillTier.elite: Decimal("23.00"),
-        SkillTier.master: None,
-    },
-    "portraits": {
-        SkillTier.rookie: Decimal("6.00"),
-        SkillTier.skilled: Decimal("10.00"),
-        SkillTier.pro: Decimal("17.00"),
-        SkillTier.elite: Decimal("28.00"),
-        SkillTier.master: None,
-    },
-    "events_nightlife": {
-        SkillTier.rookie: Decimal("5.00"),
-        SkillTier.skilled: Decimal("8.00"),
-        SkillTier.pro: Decimal("14.00"),
-        SkillTier.elite: Decimal("24.00"),
-        SkillTier.master: None,
-    },
-    "real_estate": {
-        SkillTier.rookie: Decimal("8.00"),
-        SkillTier.skilled: Decimal("13.00"),
-        SkillTier.pro: Decimal("22.00"),
-        SkillTier.elite: Decimal("37.00"),
-        SkillTier.master: None,
-    },
-    "food": {
-        SkillTier.rookie: Decimal("12.00"),
-        SkillTier.skilled: Decimal("18.00"),
-        SkillTier.pro: Decimal("30.00"),
-        SkillTier.elite: Decimal("50.00"),
-        SkillTier.master: None,
-    },
-    "corporate": {
-        SkillTier.rookie: Decimal("13.00"),
-        SkillTier.skilled: Decimal("22.00"),
-        SkillTier.pro: Decimal("35.00"),
-        SkillTier.elite: Decimal("58.00"),
-        SkillTier.master: None,
-    },
-    "product": {
-        SkillTier.rookie: Decimal("15.00"),
-        SkillTier.skilled: Decimal("25.00"),
-        SkillTier.pro: Decimal("40.00"),
-        SkillTier.elite: Decimal("67.00"),
-        SkillTier.master: None,
-    },
-}
+# The pound caps are a PROPOSAL (the euro caps at the ECB rate of 2026-11-13,
+# rounded); the owner reviews them in docs/PRICE_CAPS.md.
+CAPS_DIR = Path(__file__).resolve().parents[1] / "data" / "price_caps"
+CURRENCIES = ("EUR", "GBP")
+_HEADER = ("niche_slug", "tier", "entry_price_max", "currency")
+_PRICE = re.compile(r"^\d{1,6}(\.\d{1,2})?$")
+
+Caps = dict[str, dict[SkillTier, Decimal | None]]
+
+
+def read_caps_csv(text: str) -> tuple[str, Caps]:
+    """One currency's caps from a CSV. Strict, all or nothing: a bad line, a
+    duplicate cell, a second currency or a niche missing a tier is an error,
+    never a smaller table (a missing cell is no cap at all)."""
+    lines = [line.strip() for line in text.lstrip("\ufeff").splitlines()]
+    if not lines or tuple(h.strip().lower() for h in lines[0].split(",")) != _HEADER:
+        raise ValueError(f"the first line must be {','.join(_HEADER)}")
+    currencies: set[str] = set()
+    caps: Caps = {}
+    for number, line in enumerate(lines[1:], start=2):
+        if not line:
+            continue
+        cells = [c.strip() for c in line.split(",")]
+        if len(cells) != len(_HEADER):
+            raise ValueError(f"line {number}: expected {len(_HEADER)} columns")
+        slug, tier_name, price, currency = cells
+        try:
+            tier = SkillTier(tier_name.lower())
+        except ValueError:
+            raise ValueError(f"line {number}: {tier_name!r} is not a tier") from None
+        if price and not _PRICE.match(price):
+            raise ValueError(f"line {number}: {price!r} is not a price")
+        if tier in caps.get(slug, {}):
+            raise ValueError(f"line {number}: {slug} {tier.value} is listed twice")
+        currencies.add(currency.upper())
+        caps.setdefault(slug, {})[tier] = Decimal(price) if price else None
+    if len(currencies) != 1:
+        raise ValueError(f"a file holds one currency, found {sorted(currencies) or 'none'}")
+    for slug, by_tier in caps.items():
+        missing = [t.value for t in SkillTier if t not in by_tier]
+        if missing:
+            raise ValueError(f"{slug} has no row for {', '.join(missing)}")
+    return currencies.pop(), caps
+
+
+def read_caps_file(currency: str) -> Caps:
+    found, caps = read_caps_csv((CAPS_DIR / f"price-caps-{currency}.csv").read_text())
+    if found != currency:
+        raise ValueError(f"price-caps-{currency}.csv holds {found} caps")
+    return caps
+
+
+CAPS: Caps = read_caps_file("EUR")
+CAPS_BY_CURRENCY: dict[str, Caps] = {currency: read_caps_file(currency) for currency in CURRENCIES}
 
 ENTRY_PRICE_MIN = Decimal("0.00")
 
 
-def apply_caps(db, *, dry_run: bool = False, verbose: bool = False) -> tuple[int, int, int]:
+def apply_caps(
+    db, *, dry_run: bool = False, verbose: bool = False, currencies: tuple[str, ...] = CURRENCIES
+) -> tuple[int, int, int]:
     """Write the cap table. Returns (created, updated, unchanged).
 
     Separate from `main` so the base environment seed can call it. A dev
@@ -131,20 +133,20 @@ def apply_caps(db, *, dry_run: bool = False, verbose: bool = False) -> tuple[int
     ensure_initial_niches(db)
     niches = {n.slug: n for n in db.execute(select(Niche)).scalars().all()}
 
-    missing = [slug for slug in CAPS if slug not in niches]
+    missing = sorted({slug for c in currencies for slug in CAPS_BY_CURRENCY[c] if slug not in niches})
     if missing:
         raise RuntimeError(f"unknown niche slugs {missing}")
 
     created = updated = unchanged = 0
     if verbose:
-        print(f"{'niche':<18} {'tier':<9} {'max EUR/photo':>14}")
-    for slug, by_tier in CAPS.items():
+        print(f"{'niche':<18} {'tier':<9} {'max/photo':>14}")
+    for currency, slug, by_tier in ((c, slug, t) for c in currencies for slug, t in CAPS_BY_CURRENCY[c].items()):
         for tier, maximum in by_tier.items():
             existing = db.execute(
                 select(NichePackagePriceCap).where(
                     NichePackagePriceCap.niche_id == niches[slug].id,
                     NichePackagePriceCap.tier == tier,
-                    NichePackagePriceCap.currency == "EUR",
+                    NichePackagePriceCap.currency == currency,
                 )
             ).scalar_one_or_none()
 
@@ -157,7 +159,7 @@ def apply_caps(db, *, dry_run: bool = False, verbose: bool = False) -> tuple[int
                             tier=tier,
                             entry_price_min=ENTRY_PRICE_MIN,
                             entry_price_max=maximum,
-                            currency="EUR",
+                            currency=currency,
                         )
                     )
             elif existing.entry_price_max != maximum or existing.entry_price_min != ENTRY_PRICE_MIN:
@@ -168,7 +170,7 @@ def apply_caps(db, *, dry_run: bool = False, verbose: bool = False) -> tuple[int
             else:
                 unchanged += 1
             if verbose:
-                shown = "uncapped" if maximum is None else f"{maximum}"
+                shown = "uncapped" if maximum is None else f"{maximum} {currency}"
                 print(f"{slug:<18} {tier.value:<9} {shown:>14}")
 
     if not dry_run:
@@ -179,6 +181,7 @@ def apply_caps(db, *, dry_run: bool = False, verbose: bool = False) -> tuple[int
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Report what would change, write nothing")
+    parser.add_argument("--currency", choices=CURRENCIES, action="append", help="Only this currency (repeatable); default all")
     args = parser.parse_args()
 
     assert_environment_is_seedable()
@@ -186,7 +189,7 @@ def main() -> int:
     db = SessionLocal()
     try:
         try:
-            created, updated, unchanged = apply_caps(db, dry_run=args.dry_run, verbose=True)
+            created, updated, unchanged = apply_caps(db, dry_run=args.dry_run, verbose=True, currencies=tuple(args.currency or CURRENCIES))
         except RuntimeError as exc:
             print(f"Refusing to seed: {exc}")
             return 1

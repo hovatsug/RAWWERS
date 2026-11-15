@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect, devices, type Page } from "@playwright/test";
+import { parseCaps } from "@/lib/admin/price-caps-csv";
 
 /**
  * Price caps from an empty table - the state a new database starts in.
@@ -78,7 +81,7 @@ test("a cap typed on an empty table is reviewed, then sent alone", async ({ page
     {
       method: "PUT",
       path: "pricing/niche-package-price-caps",
-      body: { items: [{ niche_slug: "food", tier: "rookie", entry_price_min: "0.00", entry_price_max: "3", currency: "EUR" }] }
+      body: { items: [{ niche_slug: "food", tier: "rookie", entry_price_min: "0.00", entry_price_max: "3", currency: "GBP" }] }
     }
   ]);
 });
@@ -139,22 +142,61 @@ test("a file with a bad line loads none of it and names the lines", async ({ pag
 });
 
 test("the downloaded caps import back as no change", async ({ page }) => {
+  // The grid opens on pounds (GBP first, MULTI_CURRENCY.md 2.4).
   const caps = [
-    { niche_slug: "weddings", tier: "rookie", entry_price_min: "0.00", entry_price_max: "3.00", currency: "EUR", updated_at: "x" },
-    { niche_slug: "weddings", tier: "master", entry_price_min: "0.00", entry_price_max: null, currency: "EUR", updated_at: "x" },
-    { niche_slug: "food", tier: "pro", entry_price_min: "0.00", entry_price_max: "5.50", currency: "EUR", updated_at: "x" }
+    { niche_slug: "weddings", tier: "rookie", entry_price_min: "0.00", entry_price_max: "3.00", currency: "GBP", updated_at: "x" },
+    { niche_slug: "weddings", tier: "master", entry_price_min: "0.00", entry_price_max: null, currency: "GBP", updated_at: "x" },
+    { niche_slug: "food", tier: "pro", entry_price_min: "0.00", entry_price_max: "5.50", currency: "GBP", updated_at: "x" },
+    { niche_slug: "food", tier: "pro", entry_price_min: "0.00", entry_price_max: "6.50", currency: "EUR", updated_at: "x" }
   ];
   await fakeAdmin(page, caps);
   await page.goto("/admin/pricing");
 
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV" }).click()]);
+  expect(download.suggestedFilename()).toBe("price-caps-GBP.csv");
   const chunks: Buffer[] = [];
   for await (const chunk of await download.createReadStream()) chunks.push(chunk as Buffer);
   const text = Buffer.concat(chunks).toString();
-  expect(text).toBe("niche_slug,tier,entry_price_max\nfood,pro,5.50\nweddings,rookie,3.00\nweddings,master,\n");
+  expect(text).toBe("niche_slug,tier,entry_price_max,currency\nfood,pro,5.50,GBP\nweddings,rookie,3.00,GBP\nweddings,master,,GBP\n");
 
   await page.getByRole("button", { name: "Import CSV…" }).click();
   await page.getByLabel("Or paste it").fill(text);
   await page.getByRole("button", { name: "Load into the grid" }).click();
   await expect(page.getByRole("button", { name: "No changes" })).toBeDisabled();
 });
+
+test("a pound file is not loaded into the euro grid", async ({ page }) => {
+  const api = await fakeAdmin(page);
+  await page.goto("/admin/pricing");
+  await page.getByRole("button", { name: "EUR", exact: true }).click();
+
+  await page.getByRole("button", { name: "Import CSV…" }).click();
+  await page.getByLabel("Or paste it").fill("niche_slug,tier,entry_price_max,currency\nweddings,rookie,3.50,GBP\n");
+  await page.getByRole("button", { name: "Load into the grid" }).click();
+
+  await expect(page.getByText("Nothing was loaded")).toBeVisible();
+  await expect(page.getByText("Line 2: a GBP currency cap; this grid is EUR. Switch to GBP first.")).toBeVisible();
+  await expect(page.getByLabel("weddings rookie cap")).toHaveValue("");
+  expect(api.writes).toEqual([]);
+});
+
+// The files production's caps are imported from (docs/PRICE_CAPS.md): each
+// loads whole into its own grid and is refused by the other.
+const CATALOG = new Set([
+  "architecture", "automotive", "corporate", "events_nightlife", "family", "food",
+  "maternity", "portraits", "product", "real_estate", "sports", "weddings"
+]);
+const capsFile = (currency: string) =>
+  readFileSync(join(__dirname, "..", "..", "..", "api", "data", "price_caps", `price-caps-${currency}.csv`), "utf8");
+
+for (const currency of ["EUR", "GBP"]) {
+  test(`the production ${currency} caps file loads whole into the ${currency} grid only`, () => {
+    const loaded = parseCaps(capsFile(currency), CATALOG, currency);
+    expect(loaded.errors).toEqual([]);
+    expect(Object.keys(loaded.values)).toHaveLength(40);
+    expect(loaded.values["weddings:master"]).toBe("");
+
+    const other = currency === "EUR" ? "GBP" : "EUR";
+    expect(parseCaps(capsFile(currency), CATALOG, other).errors).toHaveLength(40);
+  });
+}

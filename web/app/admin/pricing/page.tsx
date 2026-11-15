@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { admin, type PriceCapRow } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 import { AdminButton, ConfirmDialog, Notice, PageHeader, Panel } from "@/app/admin/_components/ui";
+import { capsCsv, cellKey, CSV_HEADER, parseCaps, PRICE, TIERS, type Draft, type Tier } from "@/lib/admin/price-caps-csv";
 
 /**
  * The ceiling on what a photographer may charge per photo, by tier and niche.
@@ -31,13 +32,7 @@ import { AdminButton, ConfirmDialog, Notice, PageHeader, Panel } from "@/app/adm
  * them refuses packages in that niche and tier until its caps are set.
  */
 
-const TIERS = ["rookie", "skilled", "pro", "elite", "master"] as const;
-type Tier = (typeof TIERS)[number];
-type Draft = Record<string, string>;
-
-const cellKey = (niche: string, tier: Tier) => `${niche}:${tier}`;
 const shown = (value: string | null | undefined) => (value === null || value === undefined || value === "" ? "uncapped" : value);
-const PRICE = /^\d+(\.\d{1,2})?$/;
 const CURRENCIES = ["GBP", "EUR"] as const;
 
 export default function AdminPricingCapsPage() {
@@ -132,7 +127,7 @@ export default function AdminPricingCapsPage() {
               {code}
             </AdminButton>
           ))}
-          <AdminButton tone="secondary" disabled={rows.length === 0} onClick={() => downloadCsv(rows)}>
+          <AdminButton tone="secondary" disabled={rows.length === 0} onClick={() => downloadCsv(rows, currency)}>
             Download CSV
           </AdminButton>
           <AdminButton tone="secondary" onClick={() => setImporting((open) => !open)}>
@@ -201,6 +196,7 @@ export default function AdminPricingCapsPage() {
       {importing ? (
         <ImportPanel
           niches={niches.map((n) => n.slug)}
+          currency={currency}
           onClose={() => setImporting(false)}
           onLoad={(values) => {
             setDraft((current) => ({ ...current, ...values }));
@@ -332,10 +328,12 @@ export default function AdminPricingCapsPage() {
  */
 function ImportPanel({
   niches,
+  currency,
   onClose,
   onLoad
 }: {
   niches: string[];
+  currency: string;
   onClose: () => void;
   onLoad: (values: Draft) => void;
 }) {
@@ -343,7 +341,7 @@ function ImportPanel({
   const [errors, setErrors] = useState<string[]>([]);
 
   const load = () => {
-    const result = parseCaps(text, new Set(niches));
+    const result = parseCaps(text, new Set(niches), currency);
     setErrors(result.errors);
     if (result.errors.length === 0) onLoad(result.values);
   };
@@ -352,9 +350,10 @@ function ImportPanel({
     <Panel className="mb-4 space-y-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-100">Import a CSV</p>
+          <p className="text-sm font-medium text-slate-100">Import a CSV into the {currency} grid</p>
           <p className="text-xs text-slate-500">
-            Columns: <code>niche_slug</code>, <code>tier</code>, <code>entry_price_max</code> (empty for uncapped). The same columns
+            Columns: <code>niche_slug</code>, <code>tier</code>, <code>entry_price_max</code> (empty for uncapped) and{" "}
+            <code>currency</code>, which must be {currency} on every line (a file without it loads into this grid). The same columns
             &ldquo;Download CSV&rdquo; writes. Caps not in the file are left as they are.
           </p>
         </div>
@@ -377,7 +376,7 @@ function ImportPanel({
         aria-label="Or paste it"
         rows={4}
         value={text}
-        placeholder={"niche_slug,tier,entry_price_max\nweddings,rookie,3.00"}
+        placeholder={`${CSV_HEADER}\nweddings,rookie,3.00,${currency}`}
         onChange={(event) => {
           setText(event.target.value);
           setErrors([]);
@@ -401,45 +400,12 @@ function ImportPanel({
   );
 }
 
-function parseCaps(text: string, niches: Set<string>): { values: Draft; errors: string[] } {
-  const lines = text.replace(/^﻿/, "").split(/\r?\n/);
-  const header = (lines[0] ?? "").split(",").map((h) => h.trim().toLowerCase());
-  const col = (name: string) => header.indexOf(name);
-  if (col("niche_slug") < 0 || col("tier") < 0 || col("entry_price_max") < 0) {
-    return { values: {}, errors: ["The first line must be the header: niche_slug,tier,entry_price_max"] };
-  }
-  const values: Draft = {};
-  const errors: string[] = [];
-  const seen = new Map<string, number>();
-  lines.slice(1).forEach((line, index) => {
-    const number = index + 2;
-    if (line.trim() === "") return;
-    const cells = line.split(",").map((c) => c.trim());
-    const slug = cells[col("niche_slug")] ?? "";
-    const tier = (cells[col("tier")] ?? "").toLowerCase();
-    const price = cells[col("entry_price_max")] ?? "";
-    if (!niches.has(slug)) return errors.push(`Line ${number}: no active niche "${slug}"`);
-    if (!(TIERS as readonly string[]).includes(tier)) return errors.push(`Line ${number}: "${tier}" is not a tier`);
-    if (price !== "" && !PRICE.test(price)) return errors.push(`Line ${number}: "${price}" is not a price`);
-    const key = cellKey(slug, tier as Tier);
-    if (seen.has(key)) return errors.push(`Line ${number}: ${slug} · ${tier} is already on line ${seen.get(key)}`);
-    seen.set(key, number);
-    values[key] = price;
-  });
-  if (errors.length === 0 && Object.keys(values).length === 0) errors.push("The file has no caps in it");
-  return { values, errors };
-}
-
-function downloadCsv(rows: PriceCapRow[]) {
-  const sorted = [...rows].sort(
-    (a, b) => a.niche_slug.localeCompare(b.niche_slug) || TIERS.indexOf(a.tier as Tier) - TIERS.indexOf(b.tier as Tier)
-  );
-  const lines = ["niche_slug,tier,entry_price_max", ...sorted.map((row) => `${row.niche_slug},${row.tier},${row.entry_price_max ?? ""}`)];
-  const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv" });
+function downloadCsv(rows: PriceCapRow[], currency: string) {
+  const blob = new Blob([capsCsv(rows, currency)], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "price-caps.csv";
+  link.download = `price-caps-${currency}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }

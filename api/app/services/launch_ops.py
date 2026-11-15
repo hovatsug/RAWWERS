@@ -53,6 +53,8 @@ def ensure_default_onboarding_requirements(db: Session) -> None:
         "portfolio_min_items": {"count": 12},
         "packages_required": {"enabled": True},
         "niches_min": {"count": 1},
+        # The most niches a photographer can have (app/services/pro_niches.py).
+        "niches_max": {"count": 3},
         "require_extra_image_price_config": {"enabled": True},
         "require_identity_verified": {"enabled": True},
     }

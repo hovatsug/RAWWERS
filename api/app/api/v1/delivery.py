@@ -1,6 +1,7 @@
 """The routes a delivery token can call - the Lightroom plugin's whole API:
-delivering a gig's photos, and (plug-in 1.1.0) publishing to the
-photographer's own portfolio (docs/LIGHTROOM_PORTFOLIO.md).
+delivering a gig's photos, (plug-in 1.1.0) publishing to the
+photographer's own portfolio, and (1.2.0) adding a niche to their own
+profile (docs/LIGHTROOM_PORTFOLIO.md).
 
 Pairing (`POST /delivery/pair`) is the one call without a token. Everything
 else here takes `Authorization: Bearer rwd_...` and acts for that token's
@@ -28,6 +29,7 @@ from app.core.client_ip import client_ip
 from app.models.admin import UserRoleType
 from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatus
 from app.models.media import MediaAsset, MediaPurpose, MediaStatus, MediaVisibility
+from app.models.niche import Niche
 from app.schemas.delivery import (
     DeliveryCompleteRequest,
     DeliveryFailedPhoto,
@@ -39,6 +41,10 @@ from app.schemas.delivery import (
     PairRequest,
     PairResponse,
     DeliveryPortfolioResponse,
+    AddNicheRequest,
+    AddNicheResponse,
+    AvailableNicheView,
+    DeliveryNichesResponse,
     PortfolioNicheView,
     PortfolioRemoveResponse,
     PortfolioUploadRequest,
@@ -67,7 +73,7 @@ from app.services.delivery_access import (
     require_supported_plugin,
     update_available,
 )
-from app.services import lightroom_portfolio
+from app.services import lightroom_portfolio, pro_niches
 from app.services.delivery_gigs import deliverable_gigs, own_gig
 from app.services.gallery_items import (
     DELIVERY_EXPORT_KEY,
@@ -77,6 +83,7 @@ from app.services.gallery_items import (
     lock_gallery,
 )
 from app.services.gig_state import require_gig_deliverable
+from app.services.niche_catalog import ensure_initial_niches
 from app.services.photo_uploads import max_photo_bytes
 from app.services.rate_limit import enforce_named_rate_limit
 
@@ -418,6 +425,48 @@ def portfolio(device: DeliveryDevice = Depends(require_delivery_device), db: Ses
         niches=[PortfolioNicheView(slug=n.slug, name=n.name, primary=p) for n, p in lightroom_portfolio.niches(db, device.pro_user_id)],
         photo_count=len(ready),
         photo_minimum=pro_onboarding_routes.PORTFOLIO_MIN_PHOTOS,
+    )
+
+
+def _niches_view(db: Session, pro_user_id: uuid.UUID) -> DeliveryNichesResponse:
+    mine = {n.id: p for n, p in lightroom_portfolio.niches(db, pro_user_id)}
+    every = db.execute(select(Niche).where(Niche.is_active.is_(True)).order_by(Niche.name.asc())).scalars().all()
+    return DeliveryNichesResponse(
+        niches=[AvailableNicheView(slug=n.slug, name=n.name, mine=n.id in mine, primary=mine.get(n.id, False)) for n in every],
+        count=len(pro_niches.own_niches(db, pro_user_id)),
+        maximum=pro_niches.niches_max(db),
+    )
+
+
+@router.get("/portfolio/niches", response_model=DeliveryNichesResponse)
+def available_niches(device: DeliveryDevice = Depends(require_delivery_device), db: Session = Depends(get_db_session)) -> DeliveryNichesResponse:
+    """Every niche, with the photographer's own marked: what the plug-in's
+    "Add a niche..." menu offers."""
+    lightroom_portfolio.require_niches_plugin(device.plugin_version)
+    ensure_initial_niches(db)
+    view = _niches_view(db, device.pro_user_id)
+    db.commit()
+    return view
+
+
+@router.post("/portfolio/niches", response_model=AddNicheResponse)
+def add_niche(
+    body: AddNicheRequest,
+    device: DeliveryDevice = Depends(require_delivery_device),
+    db: Session = Depends(get_db_session),
+) -> AddNicheResponse:
+    """Adds one niche to the photographer's own profile, by the app's rules
+    (app/services/pro_niches.py). Adding only: the plug-in cannot remove a
+    niche or change the main one."""
+    lightroom_portfolio.require_niches_plugin(device.plugin_version)
+    enforce_named_rate_limit("delivery_niche_add", principal=str(device.device_id))
+    niche, primary = pro_niches.add_niche(db, device.pro_user_id, body.slug.strip(), source="lightroom", device_id=device.device_id)
+    db.commit()
+    view = _niches_view(db, device.pro_user_id)
+    db.commit()
+    return AddNicheResponse(
+        **view.model_dump(),
+        added=AvailableNicheView(slug=niche.slug, name=niche.name, mine=True, primary=primary),
     )
 
 

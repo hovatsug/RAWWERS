@@ -240,7 +240,7 @@ def test_the_plugin_learns_who_it_is_connected_as(client, db_session):
     assert me.json()["photographer_name"] == "Ana Lens"
 
 
-@pytest.mark.parametrize(("version", "flag"), [("0.9.0", "true"), ("1.0.0", "true"), ("1.1.0", "false"), ("1.1", "false")])
+@pytest.mark.parametrize(("version", "flag"), [("0.9.0", "true"), ("1.0.0", "true"), ("1.1.0", "true"), ("1.2.0", "false"), ("1.2", "false")])
 def test_an_older_plugin_is_told_an_update_is_available(client, db_session, monkeypatch, version, flag):
     # Only the newest version is under test here; 0.9.0 is below the minimum
     # supported (1.0.0), which test_plugin_versions.py covers.
@@ -249,12 +249,13 @@ def test_an_older_plugin_is_told_an_update_is_available(client, db_session, monk
     me = client.get("/v1/delivery/me", headers=_bearer(token, version=version))
     assert me.headers["X-Rawwers-Update-Available"] == flag
     assert me.json()["update_available"] is (flag == "true")
-    assert me.json()["latest_version"] == "1.1.0"  # the portfolio plug-in
+    assert me.json()["latest_version"] == "1.2.0"  # niches from Lightroom
 
 
 def test_versions_compare_as_numbers():
     assert update_available("0.10.0") is True
-    assert update_available("1.1.1") is False
+    assert update_available("1.1.1") is True
+    assert update_available("1.2.1") is False
     assert update_available("2.0") is False
     assert update_available("1.0.0-beta") is None
     assert update_available(None) is None

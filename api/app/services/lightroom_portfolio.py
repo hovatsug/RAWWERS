@@ -30,6 +30,14 @@ logger = logging.getLogger(__name__)
 LIGHTROOM_NICHE_KEY = "lightroom_niche"
 #: The oldest plug-in with the portfolio routes.
 PORTFOLIO_MIN_PLUGIN = "1.1.0"
+#: The oldest plug-in that can list and add niches.
+NICHES_MIN_PLUGIN = "1.2.0"
+
+
+def require_niches_plugin(plugin_version: str | None) -> None:
+    from app.services.delivery_access import require_plugin_at_least
+
+    require_plugin_at_least(plugin_version, NICHES_MIN_PLUGIN, feature="Adding a niche from Lightroom")
 
 
 def niches(db: Session, pro_user_id: uuid.UUID) -> list[tuple[Niche, bool]]:
@@ -49,7 +57,7 @@ def require_own_niche(db: Session, pro_user_id: uuid.UUID, slug: str) -> Niche:
             return niche
     raise APIError(
         code="validation_error",
-        message="That niche is not one of yours. Choose the collection's niche again, or add the niche in the RAWWERS Pro app.",
+        message="That niche is not one of yours. Edit the collection and choose its niche again, or add it there with Add a niche.",
         status_code=422,
     )
 

@@ -83,6 +83,7 @@ from app.services.gig_builder import build_gig_for_request, find_gig_for_request
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
+from app.services import pro_niches
 from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
 from app.models.media_rights import MediaDerivativeKind
 from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
@@ -656,6 +657,9 @@ def update_my_niches(
     incoming_by_niche_id = {niche_map[item.slug].id: item for item in body.niches}
     existing = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
     existing_by_niche_id = {row.niche_id: row for row in existing}
+    # The same maximum as the plug-in's add (app/services/pro_niches.py).
+    final_niche_ids = set(incoming_by_niche_id) | ({niche_map[body.primary_niche_slug].id} if body.primary_niche_slug else set())
+    pro_niches.require_within_max(db, current=len(existing), new=len(final_niche_ids))
 
     for niche_id, payload in incoming_by_niche_id.items():
         row = existing_by_niche_id.get(niche_id)

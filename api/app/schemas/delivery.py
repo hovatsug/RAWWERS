@@ -170,6 +170,32 @@ class DeliveryPortfolioResponse(BaseModel):
     photo_minimum: int
 
 
+class AvailableNicheView(BaseModel):
+    slug: str
+    name: str
+    #: Already one of the photographer's niches.
+    mine: bool = False
+    primary: bool = False
+
+
+class DeliveryNichesResponse(BaseModel):
+    """Every active niche, marked with the photographer's own (plug-in 1.2.0)."""
+
+    niches: list[AvailableNicheView]
+    #: How many the photographer has, and the most they can have.
+    count: int
+    maximum: int
+
+
+class AddNicheRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=64)
+
+
+class AddNicheResponse(DeliveryNichesResponse):
+    #: The niche just added, and whether it became the main one.
+    added: AvailableNicheView
+
+
 class PortfolioUploadRequest(BaseModel):
     file_name: str = Field(min_length=1, max_length=255)
     #: JPEG only, as the plug-in exports.

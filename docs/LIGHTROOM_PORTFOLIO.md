@@ -80,7 +80,7 @@ These are new delivery-token routes, so they are inside the token's scope by con
 - The URL, multipart and complete routes (`/v1/delivery/uploads/{id}/...`) accept the plug-in's own portfolio uploads as well as deliveries.
 - On complete, the niche is tagged through the app's tagging function (niche skills and index recomputed).
 - `DELETE /v1/delivery/portfolio/{id}`: only a photo this photographer published from Lightroom. It marks the photo deleted, clears it as cover, recomputes skills and the index, and deletes its stored files (best effort; a file storage does not delete is left to the unfinished-uploads sweep). `GET /v1/pro/me/portfolio` no longer lists deleted photos.
-- **Minimum version:** the portfolio routes need plug-in **1.1.0** or newer (426 otherwise). Delivery keeps its own minimum (1.0.0). `LIGHTROOM_PLUGIN_LATEST_VERSION` defaults to 1.1.0, so 1.0.0 users are told about the update.
+- **Minimum version:** the portfolio routes need plug-in **1.1.0** or newer (426 otherwise). Delivery keeps its own minimum (1.0.0). `LIGHTROOM_PLUGIN_LATEST_VERSION` defaults to **1.2.0** (section 7), so 1.0.0 and 1.1.0 users are told about the update.
 
 ## 5. Risks
 
@@ -99,7 +99,39 @@ These are new delivery-token routes, so they are inside the token's scope by con
 
 - **Hourly limit:** 100 an hour for the plug-in's portfolio publish only (`RATE_LIMIT_PLUGIN_PORTFOLIO_UPLOADS_PER_HOUR`, default 100). The app's 30 an hour and the device's daily limit stay as they are. Built 2026-11-15.
 - **Captions, photo order and the cover choice: LATER (v2)**, recorded as LATER items in BETA_SCOPE.md.
-- **Deploy order:** host plug-in 1.1.0 before deploying the API, or set `LIGHTROOM_PLUGIN_LATEST_VERSION=1.0.0` until then (DEPLOY_CHECKLIST.md).
+- **Deploy order:** host plug-in 1.1.0 before deploying the API, or set `LIGHTROOM_PLUGIN_LATEST_VERSION=1.0.0` until then (DEPLOY_CHECKLIST.md). With 1.2.0 the same holds for 1.2.0.
+- **Niches from the plug-in** (section 7): the photographer chooses and adds niches in Lightroom; adding only; at most 3 niches (asked and answered 2026-11-15).
+
+## 7. Niches from the plug-in (1.2.0)
+
+Owner's decision, 2026-11-15, found while testing 1.1.0: a photographer must be able to choose their niche, and set niches up if they have none, without leaving Lightroom. The publish service said "Your niches: none yet" and sent them to the pro app.
+
+### The niche rules (what exists, 2026-11-15)
+
+- **Where niches are written.** Only `PUT /v1/pro/me/niches` (alias `PUT /v1/pro/niches/mine`) writes a photographer's niches, as a whole list. **The pro app has no screen that calls it**: its onboarding step "niches" only checks the count (`POST /v1/pro/onboarding/select-niches`). Until 1.2.0, the seed and the API were the only ways to get a niche.
+- **Allowed niches:** active niches only (`niche.is_active`); an unknown or inactive slug is refused (422).
+- **Minimum:** `niches_min` (onboarding requirement, default 1) gates the onboarding step, not the write.
+- **Maximum:** none existed. Owner's decision 2026-11-15: **at most 3**, an onboarding requirement `niches_max` (default 3) next to `niches_min`. There is no admin screen for either; change it in the `onboarding_requirement` table. A photographer already above it keeps their niches and can shrink the list, but not grow it.
+- **Main niche:** one `is_primary` row. The app's list write sets it only when asked; nothing set it by itself. The default Lightroom collection publishes to it.
+- **No approval or prerequisite** to add a niche. Tiers come afterwards: adding a niche writes its skill row (`recompute_pro_niche_skills`, starting at rookie) and recomputes the public index (Discover, search). Price caps apply per niche and tier when packages are made, not when a niche is added. The gear floor reads the photographer's niches (the lighting rule), so a niche added can change what gear they need.
+- **Declared level** (beginner/intermediate/...) is optional and left empty from the plug-in.
+
+### What 1.2.0 adds
+
+- **One rule for both callers:** `app/services/pro_niches.py`. The app's list write now applies the maximum through it; the plug-in's add goes through it entirely.
+- `GET /v1/delivery/portfolio/niches`: every active niche with `mine` and `primary`, the photographer's `count` and the `maximum`.
+- `POST /v1/delivery/portfolio/niches` `{slug}`: adds one niche to the token's own photographer.
+  - The first niche (any niche when none is main) becomes the **main niche**.
+  - Refusals, in the server's words: unknown or inactive niche (422 `unknown_niche`), already theirs (409 `niche_already_yours`), the maximum (422 `niche_limit_reached`: "You can have at most 3 niches, and you have 3. To change one, remove a niche in the RAWWERS Pro app first.").
+  - The app's side effects: skill row and public index recomputed.
+  - An audit row (`admin_audit_log`, target `pro_niche`, action `niche_added`, source `lightroom`, the device id).
+  - Rate limit `delivery_niche_add`: 20 an hour per device.
+- **Refused to the plug-in, on purpose:** removing a niche, changing the main niche, setting a declared level or a niche description, and anything for another photographer. There are no such routes; the body names only a slug.
+- **Version:** both routes need plug-in **1.2.0** (426 for 1.1.0 and older, which keep publishing).
+- **In Lightroom:**
+  - The publish service's settings list the niches ("Connected. Your niches: Portraits (main), Weddings.") with an **Add a niche...** menu of the niches not yet theirs; with none: "Connected. You have no niches yet. Choose one to add." Choosing one adds it and says "Added Food, your main niche." At the maximum the menu goes and the line says so.
+  - A collection's **Niche** menu lists their niches and ends with **Add a niche...**, which opens a small dialog with the niches not yet theirs; the one added is chosen for the collection.
+- **Gap left:** the pro app still cannot add or remove niches, or change the main one (no screen). A photographer at 3 who wants a different niche has no way to swap until it has one.
 
 ## 6. Effort and what the owner provides
 

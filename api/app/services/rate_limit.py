@@ -29,6 +29,8 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     # (core/client_ip.py); the overall limit backs it up, and against 31^8 possible codes it leaves a
     # guesser no real chance inside a code's ten minutes.
     "delivery_pairing_issue": (10, 3600),
+    # Niches added from the plug-in, per paired device (a person adds a few, ever).
+    "delivery_niche_add": (20, 3600),
     "delivery_pair_ip": (10, 600),
     "delivery_pair_all": (300, 600),
     "admin": (settings.rate_limit_admin_per_min, 60),

@@ -82,7 +82,9 @@ test("an empty list says that nothing verifies automatically", async ({ page }) 
 test("the page is in the sidebar and search finds a body however the camera spells it", async ({ page }) => {
   await fakeAdmin(page);
   await page.goto("/admin");
-  await page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Camera reference" }).click();
+  const nav = page.getByRole("navigation", { name: "Admin" });
+  await nav.getByRole("button", { name: /^Settings/ }).click();
+  await nav.getByRole("link", { name: "Camera reference" }).click();
   await expect(page.getByRole("heading", { name: "Camera reference" })).toBeVisible();
   await expect(page.getByText("2 models, 1 full-frame")).toBeVisible();
 

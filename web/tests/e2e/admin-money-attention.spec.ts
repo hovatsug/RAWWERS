@@ -64,11 +64,13 @@ async function fakeAdmin(page: Page, opts: { refuseResolve?: string } = {}) {
   return { writes };
 }
 
-test("the sidebar counts open money items, under Money", async ({ page }) => {
+test("the sidebar counts open money items, under Bookings and Money", async ({ page }) => {
   await fakeAdmin(page);
   await page.goto("/admin");
 
-  const link = page.getByRole("link", { name: /Money to act on/ });
+  const nav = page.getByRole("navigation", { name: "Admin" });
+  await nav.getByRole("button", { name: /^Bookings and Money/ }).click();
+  const link = nav.getByRole("link", { name: /Money to act on/ });
   await expect(link).toBeVisible();
   await expect(link.getByLabel("3 waiting")).toBeVisible();
 });

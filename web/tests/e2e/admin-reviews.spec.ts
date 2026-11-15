@@ -77,7 +77,9 @@ const row = (page: Page, text: string) => page.getByRole("row", { name: new RegE
 test("the list says who wrote each review about whom, and the last decision on it", async ({ page }) => {
   await fakeAdmin(page);
   await page.goto("/admin");
-  await page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Reviews" }).click();
+  const nav = page.getByRole("navigation", { name: "Admin" });
+  await nav.getByRole("button", { name: /^Trust and Content/ }).click();
+  await nav.getByRole("link", { name: "Reviews" }).click();
 
   await expect(page.getByText("1 published · 1 hidden · 0 removed")).toBeVisible();
   await expect(row(page, "Never turned up")).toContainText("by ana@example.test");

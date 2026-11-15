@@ -54,15 +54,16 @@ const PAYOUT = {
   payout_request_id: "payout-1",
   display_name: "Ana Lens",
   email: "ana@example.test",
-  amount_eur: "120.00",
+  currency: "EUR",
+  amount: "120.00",
   status: "requested",
   lifetime_payouts: 0,
   exceeds_withdrawable: false,
   payout_method: "bank_manual",
   payout_account_status: "pending_verification",
-  withdrawable_eur: "150.00",
-  available_eur: "150.00",
-  pending_eur: "0.00",
+  withdrawable: "150.00",
+  available: "150.00",
+  pending: "0.00",
   approval_blocked: false,
   blocked_reason: null
 };
@@ -77,11 +78,11 @@ const DISPUTE = {
 };
 
 const CAPS = [
-  { niche_slug: "weddings", tier: "rookie", entry_price_min: "0.00", entry_price_max: "3.00", currency: "EUR" },
-  { niche_slug: "weddings", tier: "skilled", entry_price_min: "0.00", entry_price_max: "4.00", currency: "EUR" },
-  { niche_slug: "weddings", tier: "pro", entry_price_min: "0.00", entry_price_max: "6.00", currency: "EUR" },
-  { niche_slug: "weddings", tier: "elite", entry_price_min: "0.00", entry_price_max: "9.00", currency: "EUR" },
-  { niche_slug: "weddings", tier: "master", entry_price_min: "0.00", entry_price_max: null, currency: "EUR" }
+  { niche_slug: "weddings", tier: "rookie", entry_price_min: "0.00", entry_price_max: "3.00", currency: "GBP" },
+  { niche_slug: "weddings", tier: "skilled", entry_price_min: "0.00", entry_price_max: "4.00", currency: "GBP" },
+  { niche_slug: "weddings", tier: "pro", entry_price_min: "0.00", entry_price_max: "6.00", currency: "GBP" },
+  { niche_slug: "weddings", tier: "elite", entry_price_min: "0.00", entry_price_max: "9.00", currency: "GBP" },
+  { niche_slug: "weddings", tier: "master", entry_price_min: "0.00", entry_price_max: null, currency: "GBP" }
 ];
 
 /** A fake admin API. `refuse` makes one write fail the way the server would. */
@@ -149,11 +150,13 @@ test("every admin page sits in one sidebar, grouped by the work, with live count
   await page.goto("/admin");
   const nav = page.getByRole("navigation", { name: "Admin" });
 
-  for (const group of ["Approvals", "Money", "Catalog & pricing"]) await expect(nav.getByText(group, { exact: true })).toBeVisible();
+  for (const group of ["People", "Bookings and Money", "Settings"]) await expect(nav.getByRole("button", { name: new RegExp(group) })).toBeVisible();
   // The price caps page used to be reachable only by typing its URL.
+  await nav.getByRole("button", { name: /^Settings/ }).click();
   await nav.getByRole("link", { name: "Price caps" }).click();
   await expect(page.getByRole("heading", { name: "Entry price caps" })).toBeVisible();
   // One waiting in each queue the fake serves.
+  await nav.getByRole("button", { name: "Expand all" }).click();
   for (const queue of ["Photographers", "Gear", "Payouts", "Disputes"]) {
     await expect(nav.getByRole("link", { name: new RegExp(`${queue}.*1`) })).toBeVisible();
   }
@@ -337,7 +340,7 @@ test("saving caps lists each change, old to new, and flags one that breaks tier 
     {
       method: "PUT",
       path: "pricing/niche-package-price-caps",
-      body: { items: [{ niche_slug: "weddings", tier: "pro", entry_price_min: "0.00", entry_price_max: "2.50", currency: "EUR" }] }
+      body: { items: [{ niche_slug: "weddings", tier: "pro", entry_price_min: "0.00", entry_price_max: "2.50", currency: "GBP" }] }
     }
   ]);
 });

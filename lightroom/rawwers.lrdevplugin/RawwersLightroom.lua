@@ -25,6 +25,7 @@ local LrTasks = import 'LrTasks'
 
 local Api = require 'RawwersApi'
 local Config = require 'RawwersConfig'
+local Upload = require 'RawwersUpload'
 
 local Lightroom = {}
 
@@ -94,19 +95,38 @@ function Lightroom.renderedFile( path )
 	local handle = io.open( path, 'rb' )
 	if not handle or not size then return nil end
 	local digester = LrDigest.SHA256.init()
-	local head
+	local head, first
 	while true do
 		local chunk = handle:read( CHUNK )
 		if not chunk then break end
+		first = first or chunk
 		head = head or chunk:sub( 1, 65536 )
 		digester:update( chunk )
 	end
 	handle:close()
+	-- The picture without its metadata (1.2.3): the same for every render
+	-- of the same photo, unlike the file's own hash.
+	local imageSha256
+	local picture = Upload.jpegPicture( first )
+	local again = picture and io.open( path, 'rb' )
+	if again then
+		local pictureDigest = LrDigest.SHA256.init()
+		for _, range in ipairs( picture.ranges ) do pictureDigest:update( first:sub( range[ 1 ] + 1, range[ 1 ] + range[ 2 ] ) ) end
+		again:seek( 'set', picture.scanStart )
+		while true do
+			local chunk = again:read( CHUNK )
+			if not chunk then break end
+			pictureDigest:update( chunk )
+		end
+		again:close()
+		imageSha256 = ( pictureDigest:digest() )
+	end
 	return {
 		path = path,
 		name = LrPathUtils.leafName( path ),
 		size = size,
 		sha256 = ( digester:digest() ),
+		imageSha256 = imageSha256,
 		head = head or '',
 		readAll = function()
 			local f = io.open( path, 'rb' )

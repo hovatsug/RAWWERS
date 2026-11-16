@@ -650,8 +650,8 @@ test( 'the publish summary says where the photos went and names each failure', f
 		{ state = 'failed', name = 'd.jpg', message = 'Larger than 25 MB. Export it smaller.' },
 	}, 'Weddings' )
 	eq( title, 'Some photos were not published' )
-	has( body, '2 photos sent to your RAWWERS portfolio (Weddings)' )
-	has( body, '1 photo was already there.' )
+	has( body, '3 photos are in your RAWWERS portfolio (Weddings): 2 new, 1 already there.' )
+	has( body, '1 photo not published:' )
 	has( body, 'd.jpg: Larger than 25 MB. Export it smaller.' )
 	local okTitle = Portfolio.summary( { { state = 'uploaded', name = 'a.jpg' } }, 'Weddings' )
 	eq( okTitle, 'Published to RAWWERS' )
@@ -752,6 +752,83 @@ test( 'the niche calls go to the delivery routes with the version, and adding se
 	eq( Api.header( calls[ 2 ].headers, 'X-Rawwers-Plugin-Version' ), '1.2.0' )
 end )
 
+
+-- Publishing again is safe (1.2.3) ---------------------------------------------------------------
+
+local function segment( kind, body )
+	local n = #body + 2
+	return '\255' .. kind .. string.char( math.floor( n / 256 ), n % 256 ) .. body
+end
+local function jpeg( exif, pixels )
+	return '\255\216' .. segment( '\225', 'Exif\0\0' .. exif ) .. segment( '\254', 'a comment' ) .. segment( '\219', 'quant' )
+		.. segment( '\192', 'frame' ) .. '\255\218\0\8scan' .. pixels .. '\255\217'
+end
+--- The bytes the picture hash covers.
+local function pictureBytes( bytes )
+	local layout = Upload.jpegPicture( bytes )
+	if not layout then return nil end
+	local out = {}
+	for _, r in ipairs( layout.ranges ) do out[ #out + 1 ] = bytes:sub( r[ 1 ] + 1, r[ 1 ] + r[ 2 ] ) end
+	return table.concat( out ) .. bytes:sub( layout.scanStart + 1 )
+end
+
+test( 'the picture hash leaves out the metadata Lightroom changes on every render', function()
+	local a = jpeg( 'DateTime 2026:11:16 03:36:22', 'PIXELS' )
+	local b = jpeg( 'DateTime 2026:11:16 03:40:23 and a longer XMP', 'PIXELS' )
+	ok( a ~= b )
+	eq( pictureBytes( a ), pictureBytes( b ) )
+	ok( pictureBytes( a ) ~= pictureBytes( jpeg( 'DateTime 2026:11:16 03:36:22', 'PIXELS, exposure +1' ) ) )
+	has( pictureBytes( a ), 'quant' )
+	has( pictureBytes( a ), 'frame' )
+	ok( not pictureBytes( a ):find( 'DateTime' ) and not pictureBytes( a ):find( 'comment' ) )
+end )
+
+test( 'the picture hash is skipped, not wrong, for a file that is not a JPEG or a header that does not fit', function()
+	eq( Upload.jpegPicture( 'JPEG:not really' ), nil )
+	eq( Upload.jpegPicture( nil ), nil )
+	local whole = jpeg( 'x', 'PIXELS' )
+	eq( Upload.jpegPicture( whole:sub( 1, 30 ) ), nil )
+end )
+
+test( 'a finish that failed after the file was sent is said plainly, and the photo is not marked done', function()
+	local a = fakeApi {
+		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-2', upload = { url = 'u', headers = {} } } },
+		finish = { ok = false, outcome = 'retry', status = 500, message = 'RAWWERS had a problem on its side (HTTP 500). Try again in a minute.' },
+	}
+	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), nil )
+	eq( r.state, 'failed' )
+	has( r.message, 'it reached RAWWERS but could not be finished' )
+	has( r.message, 'not sent twice' )
+end )
+
+test( 'the old version named by the server is removed once the new one is in, and only once', function()
+	local a = fakeApi {
+		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-3', replaces = 'pf-1', upload = { url = 'u', headers = {} } } },
+		removePortfolioPhoto = { ok = true },
+	}
+	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
+	eq( r.replaced, 'pf-1' )
+	local removes = 0
+	for _, n in ipairs( names( a.log ) ) do if n == 'removePortfolioPhoto' then removes = removes + 1 end end
+	eq( removes, 1 )
+end )
+
+test( 'the summary gives the server\'s numbers: on RAWWERS, new, already there, and the niche\'s total', function()
+	local _, body = Portfolio.summary( { { state = 'uploaded', name = 'a.jpg' }, { state = 'skipped', name = 'b.jpg' } }, 'Family', nil, 6 )
+	has( body, '2 photos are in your RAWWERS portfolio (Family): 1 new, 1 already there.' )
+	has( body, 'Family now has 6 photos on RAWWERS.' )
+	local _, one = Portfolio.summary( { { state = 'skipped', name = 'b.jpg' } }, 'Family', nil, 1 )
+	has( one, '1 photo is in your RAWWERS portfolio (Family): 0 new, 1 already there.' )
+	has( one, 'Family now has 1 photo on RAWWERS.' )
+end )
+
+test( 'a server error is said in plain words, not the server\'s internal text', function()
+	local body = Json.encode { error = { code = 'internal_error', message = 'Internal server error' } }
+	local client = api( { { status = 500, body = body }, { status = 500, body = body }, { status = 500, body = body } }, 'rwd_x' )
+	local answer = client:finish( 'pf-1', 10, 'aa' )
+	eq( answer.ok, false )
+	eq( answer.message, 'RAWWERS had a problem on its side (HTTP 500). Try again in a minute.' )
+end )
 
 -- The publish service's connection state (1.2.1) ----------------------------------------------------
 

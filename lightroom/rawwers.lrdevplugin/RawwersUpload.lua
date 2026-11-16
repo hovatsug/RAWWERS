@@ -88,6 +88,38 @@ local function sendParts( api, assetId, file )
 	return true
 end
 
+--- Where the picture is in a JPEG, leaving out its metadata: the APPn
+--- segments (EXIF, XMP, ICC...) and comments. Lightroom writes the export
+--- time into every render, so the file's hash differs each time the same
+--- photo is published; the picture's does not (1.2.3). `head` is the start
+--- of the file. Returns { ranges = { { offset, length }, ... } inside head,
+--- scanStart = offset of the picture data } (offsets from 0), or nil when
+--- it is not a JPEG or its header does not fit in head.
+function Upload.jpegPicture( head )
+	if type( head ) ~= 'string' or head:sub( 1, 2 ) ~= '\255\216' then return nil end
+	local ranges = { { 0, 2 } }
+	local pos = 3 -- 1-based: the next marker
+	while pos + 1 <= #head do
+		local mark, kind = head:byte( pos, pos + 1 )
+		if mark ~= 0xFF then return nil end
+		if kind == 0xFF then
+			pos = pos + 1 -- fill byte
+		elseif kind == 0xDA then
+			return { ranges = ranges, scanStart = pos - 1 }
+		else
+			if pos + 3 > #head then return nil end
+			local length = head:byte( pos + 2 ) * 256 + head:byte( pos + 3 )
+			local metadata = ( kind >= 0xE0 and kind <= 0xEF ) or kind == 0xFE
+			if not metadata then
+				if pos + 1 + length > #head then return nil end
+				ranges[ #ranges + 1 ] = { pos - 1, length + 2 }
+			end
+			pos = pos + 2 + length
+		end
+	end
+	return nil
+end
+
 --- Delivers one photo. Returns { state, name, message, gallery_id, media_asset_id }
 --- with state 'uploaded', 'skipped' (already in the gallery), 'failed',
 --- 'reauth' (connect again), 'outdated' (update the plug-in) or 'cancelled'.
@@ -105,7 +137,7 @@ end
 function Upload.send( api, started, file )
 	if not started.ok then return failure( file.name, started ) end
 	local data = started.data
-	local result = { name = file.name, gallery_id = data.gallery_id, media_asset_id = data.media_asset_id }
+	local result = { name = file.name, gallery_id = data.gallery_id, media_asset_id = data.media_asset_id, replaces = data.replaces }
 	if data.duplicate then
 		result.state = 'skipped'
 		return result
@@ -129,6 +161,7 @@ function Upload.send( api, started, file )
 	if not finished.ok then
 		local failed = failure( file.name, finished )
 		failed.gallery_id, failed.media_asset_id = result.gallery_id, result.media_asset_id
+		failed.stage = 'finish' -- the file is in storage; only the last step failed
 		return failed
 	end
 	result.state = 'uploaded'

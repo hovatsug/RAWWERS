@@ -116,15 +116,30 @@ function Portfolio.addNiche( api, slug )
 end
 
 --- Publishes one rendered photo. `previousId` is the portfolio photo this
---- one replaces (Lightroom's published photo id), or nil. Returns the
---- upload's result with, when the old version was replaced, `replaced` = its
---- id and `old_left` = true if removing it failed (shown in the summary).
+--- one replaces (Lightroom's published photo id), or nil. The server may
+--- name another older version of the same Lightroom photo (`replaces`, an
+--- edit Lightroom lost track of). Returns the upload's result with, when an
+--- old version was replaced, `replaced` = its id and `old_left` = true if
+--- removing it failed (shown in the summary).
+---
+--- Publishing again is safe (1.2.3): the server answers a photo it has with
+--- that photo ('skipped'), however Lightroom rendered it this time, and a
+--- photo whose last step failed is finished, not sent twice.
 function Portfolio.publishOne( api, nicheSlug, file, previousId )
 	local result = Upload.toPortfolio( api, nicheSlug, file )
-	if ( result.state == 'uploaded' or result.state == 'skipped' ) and previousId and previousId ~= result.media_asset_id then
-		local removed = api:removePortfolioPhoto( previousId )
-		result.replaced = previousId
-		if not removed.ok and removed.status ~= 404 then result.old_left = true end
+	if result.state == 'failed' and result.stage == 'finish' then
+		result.message = 'it reached RAWWERS but could not be finished (' .. tostring( result.message ) .. '). Publish again: it will be finished there, not sent twice.'
+	end
+	if result.state == 'uploaded' or result.state == 'skipped' then
+		local seen = {}
+		for _, oldId in ipairs { previousId or false, result.replaces or false } do
+			if oldId and oldId ~= result.media_asset_id and not seen[ oldId ] then
+				seen[ oldId ] = true
+				local removed = api:removePortfolioPhoto( oldId )
+				result.replaced = result.replaced or oldId
+				if not removed.ok and removed.status ~= 404 then result.old_left = true end
+			end
+		end
 	end
 	return result
 end
@@ -150,8 +165,13 @@ function Portfolio.removeAll( api, ids, onRemoved )
 	return failed, nil
 end
 
---- The closing message of a publish: where the photos went and what failed.
-function Portfolio.summary( results, nicheName, stopReason )
+--- The closing message of a publish, in the server's numbers (1.2.3):
+--- how many of these photos are on RAWWERS now, how many were new and how
+--- many were there already, the niche's total on the server when known
+--- (`nicheTotal`), and what failed.
+local function photos( n ) return n == 1 and '1 photo' or ( n .. ' photos' ) end
+
+function Portfolio.summary( results, nicheName, stopReason, nicheTotal )
 	local uploaded, skipped, failed, oldLeft = 0, 0, {}, 0
 	for _, r in ipairs( results ) do
 		if r.state == 'uploaded' then uploaded = uploaded + 1
@@ -159,16 +179,23 @@ function Portfolio.summary( results, nicheName, stopReason )
 		else failed[ #failed + 1 ] = r end
 		if r.old_left then oldLeft = oldLeft + 1 end
 	end
-	local where = 'your RAWWERS portfolio (' .. tostring( nicheName ) .. ')'
 	local lines = {}
-	if uploaded > 0 then
-		lines[ #lines + 1 ] = ( uploaded == 1 and '1 photo' or ( uploaded .. ' photos' ) ) .. ' sent to ' .. where .. '. They appear once processed, in a minute or two.'
+	local there = uploaded + skipped
+	if there > 0 then
+		lines[ #lines + 1 ] = photos( there ) .. ( there == 1 and ' is' or ' are' ) .. ' in your RAWWERS portfolio (' .. tostring( nicheName ) .. '): '
+			.. uploaded .. ' new, ' .. skipped .. ' already there.'
 	end
-	if skipped > 0 then
-		lines[ #lines + 1 ] = ( skipped == 1 and '1 photo was' or ( skipped .. ' photos were' ) ) .. ' already there.'
+	if uploaded > 0 then
+		lines[ #lines + 1 ] = 'New photos appear once processed, in a minute or two.'
+	end
+	if type( nicheTotal ) == 'number' then
+		lines[ #lines + 1 ] = tostring( nicheName ) .. ' now has ' .. photos( nicheTotal ) .. ' on RAWWERS.'
 	end
 	if oldLeft > 0 then
 		lines[ #lines + 1 ] = ( oldLeft == 1 and 'The old version of 1 edited photo' or ( 'The old versions of ' .. oldLeft .. ' edited photos' ) ) .. ' could not be removed; publish again to retry.'
+	end
+	if #failed > 0 then
+		lines[ #lines + 1 ] = photos( #failed ) .. ' not published:'
 	end
 	for _, r in ipairs( failed ) do
 		lines[ #lines + 1 ] = tostring( r.name ) .. ': ' .. tostring( r.message or 'not sent' )

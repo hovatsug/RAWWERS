@@ -349,6 +349,19 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 		LrErrors.throwUserError( 'Choose this collection\'s niche, or add one: right-click the collection > Edit Collection.' )
 	end
 
+	-- The same Lightroom photo in the same collection has the same key on
+	-- every publish (1.2.3): the server answers it with the photo it has.
+	local okCollection, collectionId = LrTasks.pcall( function() return exportContext.publishedCollection.localIdentifier end )
+	local function publishKey( rendition )
+		local okPhoto, photoId = LrTasks.pcall( function() return rendition.photo:getRawMetadata( 'uuid' ) end )
+		if not okPhoto or not photoId then
+			okPhoto, photoId = LrTasks.pcall( function() return rendition.photo.localIdentifier end )
+		end
+		if not okCollection or not collectionId or not okPhoto or not photoId then return nil end
+		local key = ( 'lr:' .. tostring( photoId ) .. ':' .. tostring( collectionId ) ):gsub( '[^%w:._-]', '' )
+		return key:sub( 1, 200 )
+	end
+
 	local results, done = {}, 0
 	local pipeline = Pipeline.new {
 		workers = Pipeline.DEFAULT_WORKERS,
@@ -363,6 +376,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 			elseif Checks.problem( file.size, nil, nil, Checks.MAX_PORTFOLIO_BYTES ) == 'too_large' then
 				result = { state = 'failed', name = file.name, message = 'Larger than 25 MB. Export it smaller.' }
 			else
+				file.publishKey = job.publishKey
 				result = Portfolio.publishOne( api, niche.slug, file, job.previousId )
 			end
 			LrFileUtils.delete( job.path )
@@ -386,7 +400,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 		if rendered then
 			local queued = pipeline:add {
 				rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ),
-				previousId = rendition.publishedPhotoId,
+				previousId = rendition.publishedPhotoId, publishKey = publishKey( rendition ),
 			}
 			if not queued then
 				LrFileUtils.delete( pathOrMessage )
@@ -402,7 +416,14 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	for _, job in ipairs( pipeline:notStarted() ) do LrFileUtils.delete( job.path ) end
 	if stopReason == 'reauth' then Lightroom.storeToken( base, '' ) end
 
-	local title, body = Portfolio.summary( results, niche.name, stopReason )
+	-- The niche's total, as the server counts it now.
+	local nicheTotal
+	if stopReason ~= 'reauth' and stopReason ~= 'outdated' then
+		local after = api:portfolio()
+		local counts = after.ok and type( after.data ) == 'table' and after.data.niche_photo_counts
+		if type( counts ) == 'table' then nicheTotal = tonumber( counts[ niche.slug ] ) or 0 end
+	end
+	local title, body = Portfolio.summary( results, niche.name, stopReason, nicheTotal )
 	LrDialogs.message( title, body, stopReason and 'warning' or 'info' )
 end
 

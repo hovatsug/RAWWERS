@@ -61,6 +61,9 @@ Api.header = header
 
 --- What the server said when it refused, in its own words.
 local function serverMessage( data, status )
+	if type( status ) == 'number' and status >= 500 then
+		return 'RAWWERS had a problem on its side (HTTP ' .. status .. '). Try again in a minute.', type( data ) == 'table' and type( data.error ) == 'table' and data.error.code or nil
+	end
 	if type( data ) == 'table' and type( data.error ) == 'table' then
 		local detail = data.error.message
 		if type( detail ) == 'string' and detail ~= '' then return detail, data.error.code end
@@ -159,6 +162,9 @@ function Api:startPortfolioUpload( nicheSlug, file )
 	return self:request( 'POST', '/v1/delivery/portfolio/uploads', {
 		file_name = file.name, content_type = 'image/jpeg', byte_size = file.size, sha256 = file.sha256,
 		niche_slug = nicheSlug,
+		-- 1.2.3: the same Lightroom photo in the same collection, and its
+		-- picture without metadata: publishing again never makes a second photo.
+		publish_key = file.publishKey, image_sha256 = file.imageSha256,
 	} )
 end
 

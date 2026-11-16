@@ -523,8 +523,7 @@ test( 'the summary counts uploaded, skipped and failed, and names each failure',
 	}, { small = { 'e.jpg' } } )
 	eq( counts.uploaded, 2 )
 	has( title, '1 photo did not upload' )
-	has( body, '2 photos uploaded' )
-	has( body, '1 skipped, already in the gallery' )
+	has( body, '3 photos are in the client\'s gallery: 2 new, 1 already there.' )
 	has( body, '1 failed' )
 	has( body, 'd.jpg: Larger than 50 MB.' )
 	has( body, 'Export the same photos again' )
@@ -535,7 +534,9 @@ end )
 test( 'all uploaded reads as done', function()
 	local title, body = Summary.build( { { state = 'uploaded', name = 'a.jpg' } } )
 	eq( title, 'RAWWERS: delivery uploaded' )
-	has( body, '1 photo uploaded' )
+	has( body, '1 photo is in the client\'s gallery: 1 new, 0 already there.' )
+	local _, withTotal = Summary.build( { { state = 'skipped', name = 'a.jpg' } }, nil, nil, { in_gallery = 4, processing = 2 } )
+	has( withTotal, 'The gallery now has 6 photos (2 still processing).' )
 end )
 
 test( 'a plug-in too old stops the rest too', function()
@@ -607,13 +608,16 @@ test( 'a portfolio upload names its niche, and goes the way a delivery does', fu
 	eq( a.log[ 1 ][ 2 ], 'weddings' )
 end )
 
-test( 'an edited photo is uploaded before its old version is removed', function()
-	local a = fakeApi { startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-2', upload = { url = 'u', headers = {} } } } }
-	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
-	eq( names( a.log ), { 'startPortfolioUpload', 'putToStorage', 'finish', 'removePortfolioPhoto' } )
-	eq( a.log[ 4 ][ 2 ], 'pf-1' )
+test( 'an edited photo names its old version at the start; the server removes it at the finish (1.2.4)', function()
+	local a = fakeApi {
+		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-2', upload = { url = 'u', headers = {} } } },
+		finish = { ok = true, data = { ok = true, current_status = 'processing', replaced = 'pf-1' } },
+	}
+	local f = file( 10, 'P.jpg' )
+	local r = Portfolio.publishOne( a, 'weddings', f, 'pf-1' )
+	eq( names( a.log ), { 'startPortfolioUpload', 'putToStorage', 'finish' } )
+	eq( a.log[ 1 ][ 3 ].previousId, 'pf-1' )
 	eq( r.replaced, 'pf-1' )
-	eq( r.old_left, nil )
 end )
 
 test( 'a failed upload keeps the old version', function()
@@ -623,15 +627,14 @@ test( 'a failed upload keeps the old version', function()
 	eq( names( a.log ), { 'startPortfolioUpload' } )
 end )
 
-test( 'an old version that could not be removed is said in the summary', function()
+test( 'an old version the server kept is said in the summary, in its words', function()
 	local a = fakeApi {
 		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-2', upload = { url = 'u', headers = {} } } },
-		removePortfolioPhoto = { ok = false, outcome = 'retry', status = 503, message = 'down' },
+		finish = { ok = true, data = { ok = true, current_status = 'processing', old_kept = 'The old version was kept in your portfolio: it is your profile cover.' } },
 	}
 	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
-	eq( r.old_left, true )
 	local _, body = Portfolio.summary( { r }, 'Weddings' )
-	has( body, 'could not be removed' )
+	has( body, 'P.jpg: The old version was kept in your portfolio: it is your profile cover.' )
 end )
 
 test( 'removing stops at a refusal that would repeat, and counts a photo already gone as removed', function()
@@ -801,16 +804,19 @@ test( 'a finish that failed after the file was sent is said plainly, and the pho
 	has( r.message, 'not sent twice' )
 end )
 
-test( 'the old version named by the server is removed once the new one is in, and only once', function()
+test( 'the plug-in never removes an old version itself (1.2.4: only the server may)', function()
 	local a = fakeApi {
-		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-3', replaces = 'pf-1', upload = { url = 'u', headers = {} } } },
+		startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-3', replaces = 'pf-9', upload = { url = 'u', headers = {} } } },
 		removePortfolioPhoto = { ok = true },
 	}
+	Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
+	for _, n in ipairs( names( a.log ) ) do ok( n ~= 'removePortfolioPhoto', 'the plug-in removed a photo itself' ) end
+end )
+
+test( 'an old version removed when the photo was already there is reported too', function()
+	local a = fakeApi { startPortfolioUpload = { ok = true, data = { media_asset_id = 'pf-3', duplicate = true, replaced = 'pf-1' } } }
 	local r = Portfolio.publishOne( a, 'weddings', file( 10, 'P.jpg' ), 'pf-1' )
-	eq( r.replaced, 'pf-1' )
-	local removes = 0
-	for _, n in ipairs( names( a.log ) ) do if n == 'removePortfolioPhoto' then removes = removes + 1 end end
-	eq( removes, 1 )
+	eq( ( { r.state, r.replaced } ), { 'skipped', 'pf-1' } )
 end )
 
 test( 'the summary gives the server\'s numbers: on RAWWERS, new, already there, and the niche\'s total', function()

@@ -116,30 +116,20 @@ function Portfolio.addNiche( api, slug )
 end
 
 --- Publishes one rendered photo. `previousId` is the portfolio photo this
---- one replaces (Lightroom's published photo id), or nil. The server may
---- name another older version of the same Lightroom photo (`replaces`, an
---- edit Lightroom lost track of). Returns the upload's result with, when an
---- old version was replaced, `replaced` = its id and `old_left` = true if
---- removing it failed (shown in the summary).
+--- one replaces (Lightroom's published photo id), or nil: it is sent with
+--- the start, and the server removes it when the new one is finished, if it
+--- may (the same Lightroom photo, the same photographer and niche, and
+--- nothing else uses it). Returns the upload's result with `replaced` = the
+--- old version's id when it went, or `old_kept` = why it was kept.
 ---
 --- Publishing again is safe (1.2.3): the server answers a photo it has with
 --- that photo ('skipped'), however Lightroom rendered it this time, and a
 --- photo whose last step failed is finished, not sent twice.
 function Portfolio.publishOne( api, nicheSlug, file, previousId )
+	file.previousId = previousId
 	local result = Upload.toPortfolio( api, nicheSlug, file )
 	if result.state == 'failed' and result.stage == 'finish' then
 		result.message = 'it reached RAWWERS but could not be finished (' .. tostring( result.message ) .. '). Publish again: it will be finished there, not sent twice.'
-	end
-	if result.state == 'uploaded' or result.state == 'skipped' then
-		local seen = {}
-		for _, oldId in ipairs { previousId or false, result.replaces or false } do
-			if oldId and oldId ~= result.media_asset_id and not seen[ oldId ] then
-				seen[ oldId ] = true
-				local removed = api:removePortfolioPhoto( oldId )
-				result.replaced = result.replaced or oldId
-				if not removed.ok and removed.status ~= 404 then result.old_left = true end
-			end
-		end
 	end
 	return result
 end
@@ -172,12 +162,12 @@ end
 local function photos( n ) return n == 1 and '1 photo' or ( n .. ' photos' ) end
 
 function Portfolio.summary( results, nicheName, stopReason, nicheTotal )
-	local uploaded, skipped, failed, oldLeft = 0, 0, {}, 0
+	local uploaded, skipped, failed, kept = 0, 0, {}, {}
 	for _, r in ipairs( results ) do
 		if r.state == 'uploaded' then uploaded = uploaded + 1
 		elseif r.state == 'skipped' then skipped = skipped + 1
 		else failed[ #failed + 1 ] = r end
-		if r.old_left then oldLeft = oldLeft + 1 end
+		if r.old_kept then kept[ #kept + 1 ] = r end
 	end
 	local lines = {}
 	local there = uploaded + skipped
@@ -191,8 +181,8 @@ function Portfolio.summary( results, nicheName, stopReason, nicheTotal )
 	if type( nicheTotal ) == 'number' then
 		lines[ #lines + 1 ] = tostring( nicheName ) .. ' now has ' .. photos( nicheTotal ) .. ' on RAWWERS.'
 	end
-	if oldLeft > 0 then
-		lines[ #lines + 1 ] = ( oldLeft == 1 and 'The old version of 1 edited photo' or ( 'The old versions of ' .. oldLeft .. ' edited photos' ) ) .. ' could not be removed; publish again to retry.'
+	for _, r in ipairs( kept ) do
+		lines[ #lines + 1 ] = tostring( r.name ) .. ': ' .. tostring( r.old_kept )
 	end
 	if #failed > 0 then
 		lines[ #lines + 1 ] = photos( #failed ) .. ' not published:'

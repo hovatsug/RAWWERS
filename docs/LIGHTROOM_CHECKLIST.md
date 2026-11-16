@@ -60,17 +60,17 @@ Write down anything that differs from **Expect**, with a screenshot.
 
 4.2 When it ends.
 
-**Expect:** a summary: "40 photos uploaded, 0 skipped, already in the gallery, 0 failed", and "Nothing is shown to the client until you send the gallery from the RAWWERS Pro app."
+**Expect:** a summary: "40 photos are in the client's gallery: 40 new, 0 already there.", "0 failed", "The gallery now has 40 photos (N still processing).", and "Nothing is shown to the client until you send the gallery from the RAWWERS Pro app."
 
 4.3 In the app: **Gigs** > that gig > **Deliver photos**, pull down.
 
 **Expect:** the 40 photos arriving as they are processed (about a minute). Nothing sent to the client: the app still offers **Send to client**.
 
-## 5. Export again: all skipped
+## 5. Export again: all already there (plug-in 1.2.4)
 
-5.1 Export the same 40 to the same client.
+5.1 The delivery export run twice. Export the same 40 to the same client again (Lightroom renders them again, with a new export time in each file).
 
-**Expect:** quickly done; "0 photos uploaded, 40 skipped, already in the gallery". Still 40 in the app, not 80.
+**Expect:** quickly done; "40 photos are in the client's gallery: 0 new, 40 already there." and "The gallery now has 40 photos." Still 40 in the app (**Gigs** > that gig > **Deliver photos**, pull down), not 80. Before 1.2.4 this put the 40 in a second time.
 
 ## 6. Wi-Fi off mid-export, then re-run
 
@@ -78,9 +78,15 @@ Write down anything that differs from **Expect**, with a screenshot.
 
 **Expect:** the export keeps trying for about a minute, then the summary names the photos that failed ("Could not reach RAWWERS ..."). It does not hang, and it does not loop forever.
 
-6.2 Turn Wi-Fi on. Export the same selection again.
+6.2 The interrupted delivery export. Turn Wi-Fi on. Export the same selection again.
 
-**Expect:** the ones that went before are skipped; only the missing ones upload. The app shows each photo once.
+**Expect:** "40 photos are in the client's gallery: N new, M already there." with N + M = 40 (the ones sent before are not sent twice, a photo that was half-sent is finished), and "The gallery now has 80 photos" (40 from part 4, 40 from this selection). In the app each photo once; none stuck on "Uploading" after a few minutes.
+
+## 6b. The same photo in two gigs (plug-in 1.2.4)
+
+6b.1 Pick 3 photos already exported in part 4. Export them to a **different** client (another paid gig of pro1; pick it in the Client menu).
+
+**Expect:** "3 photos are in the client's gallery: 3 new, 0 already there." In the app the 3 photos are in the second gig's **Deliver photos**, and still once each in the first gig's. The same photo in two gigs is allowed.
 
 ## 7. Revoke the device
 

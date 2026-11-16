@@ -94,16 +94,39 @@ local function handle( method, url, headers, body )
 	local data = body and body ~= '' and Json.decode( body ) or {}
 	local gig = path:match( '^/v1/delivery/gigs/([^/]+)/uploads$' )
 	if gig and method == 'POST' then
-		local existing = server.bySha[ data.sha256 ]
-		if existing and server.assets[ existing ].done then
-			return respond( 200, { media_asset_id = existing, gallery_id = 'gal-1', duplicate = true } )
+		server.deliveryStarts = server.deliveryStarts or {}
+		server.deliveryStarts[ #server.deliveryStarts + 1 ] = data
+		local gallery = 'gal-' .. gig
+		-- As the API (1.2.4): in this gig's gallery, the same Lightroom photo
+		-- still waiting, or the same picture or file, is the same photo.
+		local live = {}
+		for id, asset in pairs( server.assets ) do if asset.gallery == gallery then live[ #live + 1 ] = id end end
+		table.sort( live )
+		local found
+		for _, id in ipairs( live ) do
+			local asset = server.assets[ id ]
+			local keyed = data.delivery_key and asset.key == data.delivery_key
+			if not found and ( ( keyed and not asset.done ) or asset.sha == data.sha256 or ( data.image_sha256 and asset.image == data.image_sha256 ) ) then found = id end
+		end
+		if found then
+			local asset = server.assets[ found ]
+			if asset.done then return respond( 200, { media_asset_id = found, gallery_id = gallery, duplicate = true } ) end
+			asset.sha, asset.image = data.sha256, data.image_sha256 or asset.image
+			return respond( 200, { media_asset_id = found, gallery_id = gallery, duplicate = false, use_multipart = false,
+				upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
 		end
 		server.nextId = server.nextId + 1
 		local id = 'asset-' .. server.nextId
-		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, position = data.position, exportId = data.export_id }
-		server.bySha[ data.sha256 ] = id
-		return respond( 200, { media_asset_id = id, gallery_id = 'gal-1', duplicate = false, use_multipart = false,
+		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, position = data.position, exportId = data.export_id,
+			gallery = gallery, key = data.delivery_key, image = data.image_sha256 }
+		return respond( 200, { media_asset_id = id, gallery_id = gallery, duplicate = false, use_multipart = false,
 			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
+	end
+	local statusOf = path:match( '^/v1/delivery/galleries/([^/]+)/status$' )
+	if statusOf and method == 'GET' then
+		local processing = 0
+		for _, asset in pairs( server.assets ) do if asset.gallery == statusOf and asset.done then processing = processing + 1 end end
+		return respond( 200, { gallery_id = statusOf, photos_in_gallery = 0, processing = processing, uploading = 0, failed = {} } )
 	end
 	if path == '/v1/delivery/portfolio/niches' then
 		local function listing()
@@ -165,6 +188,13 @@ local function handle( method, url, headers, body )
 		if not found then
 			for _, id in ipairs( keyed ) do if server.assets[ id ].done then replaces = id end end
 		end
+		-- 1.2.4: the server removes the old version when the new one is
+		-- finished, only the same Lightroom photo in this niche (or the one
+		-- Lightroom names, from before keys), and keeps it if it is the cover.
+		local old = data.previous_id and server.assets[ data.previous_id ]
+		if old and not old.removed and old.niche == data.niche_slug and ( old.key == nil or old.key == data.publish_key ) then
+			replaces = data.previous_id
+		end
 		if found then
 			local asset = server.assets[ found ]
 			if asset.done then return respond( 200, { media_asset_id = found, duplicate = true } ) end
@@ -174,7 +204,7 @@ local function handle( method, url, headers, body )
 		end
 		server.nextId = server.nextId + 1
 		local id = 'pf-' .. server.nextId
-		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, niche = data.niche_slug, key = data.publish_key, image = data.image_sha256 }
+		server.assets[ id ] = { name = data.file_name, sha = data.sha256, size = data.byte_size, niche = data.niche_slug, key = data.publish_key, image = data.image_sha256, replaces = replaces }
 		return respond( 200, { media_asset_id = id, duplicate = false, use_multipart = false, replaces = replaces,
 			upload = { method = 'PUT', url = 'https://r2.test/' .. data.file_name, headers = { [ 'Content-Type' ] = 'image/jpeg' } } } )
 	end
@@ -196,6 +226,15 @@ local function handle( method, url, headers, body )
 			return respond( 500, { error = { code = 'internal_error', message = 'Internal server error' } } )
 		end
 		if asset.done and data.sha256 == asset.sha then return respond( 200, { ok = true, current_status = 'processing' } ) end
+		if asset.replaces and data.sha256 == asset.sha then
+			local old = server.assets[ asset.replaces ]
+			asset.done = true
+			if server.cover == asset.replaces then
+				return respond( 200, { ok = true, current_status = 'processing', old_kept = 'The old version was kept in your portfolio: it is your profile cover.' } )
+			end
+			old.removed = true
+			return respond( 200, { ok = true, current_status = 'processing', replaced = asset.replaces } )
+		end
 		if data.sha256 ~= asset.sha then return respond( 409, { error = { code = 'checksum_mismatch', message = 'Not the same file.' } } ) end
 		asset.done = true
 		return respond( 200, { ok = true, current_status = 'processing' } )
@@ -320,8 +359,9 @@ local function renderedFiles( names, opts )
 	return renditions
 end
 
-local function export( names, props )
-	local renditions = renderedFiles( names )
+local function export( names, props, opts )
+	opts = opts or {}
+	local renditions = renderedFiles( names, { lightroom = true, pictures = opts.pictures, photoIds = opts.photoIds } )
 	local canceled = false
 	local context = {
 		propertyTable = props or { rawwersServer = 'https://api.test', rawwersGigId = 'gig-1', rawwersGigLabel = 'Ana S.', rawwersGigChosenAt = 1000000 - 60 },
@@ -363,8 +403,8 @@ test( 'the plug-in declares the last three Lightroom Classic versions', function
 	eq( info.LrSdkVersion, 15.3 )
 	eq( info.LrExportServiceProvider[ 1 ], { title = 'RAWWERS', file = 'RawwersServiceProvider.lua' } )
 	eq( info.LrExportServiceProvider[ 2 ], { title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' } )
-	eq( info.VERSION, { major = 1, minor = 2, revision = 3, build = 0 } )
-	eq( require( 'RawwersConfig' ).version, '1.2.3' )
+	eq( info.VERSION, { major = 1, minor = 2, revision = 4, build = 0 } )
+	eq( require( 'RawwersConfig' ).version, '1.2.4' )
 end )
 
 -- Exports ---------------------------------------------------------------------------------
@@ -379,8 +419,8 @@ test( 'an export uploads every photo, says so, and cleans up the rendered files'
 	eq( #deleted, 3 )
 	local summary = dialogs[ #dialogs ]
 	eq( summary.title, 'RAWWERS: delivery uploaded' )
-	has( summary.body, '3 photos uploaded' )
-	has( summary.body, '0 skipped' )
+	has( summary.body, '3 photos are in the client\'s gallery: 3 new, 0 already there.' )
+	has( summary.body, 'The gallery now has 3 photos (3 still processing).' )
 	for _, r in ipairs( renditions ) do eq( r.failures, {} ) end
 end )
 
@@ -433,8 +473,8 @@ test( 'exporting the same photos again skips them all', function()
 	local before = server.nextId
 	export { 'IMG_1.jpg', 'IMG_2.jpg' }
 	eq( server.nextId, before, 'a second copy was started' )
-	has( dialogs[ #dialogs ].body, '2 skipped, already in the gallery' )
-	has( dialogs[ #dialogs ].body, '0 photos uploaded' )
+	has( dialogs[ #dialogs ].body, '2 photos are in the client\'s gallery: 0 new, 2 already there.' )
+	has( dialogs[ #dialogs ].body, 'The gallery now has 2 photos' )
 end )
 
 test( 'a photo that keeps failing is named, and the others still go', function()
@@ -444,7 +484,7 @@ test( 'a photo that keeps failing is named, and the others still go', function()
 	local renditions = export { 'IMG_1.jpg', 'IMG_2.jpg', 'IMG_3.jpg' }
 	local summary = dialogs[ #dialogs ]
 	has( summary.title, '1 photo did not upload' )
-	has( summary.body, '2 photos uploaded' )
+	has( summary.body, '2 photos are in the client\'s gallery: 2 new, 0 already there.' )
 	has( summary.body, 'IMG_2.jpg' )
 	eq( #renditions[ 2 ].failures, 1, 'Lightroom was not told the photo failed' )
 	eq( renditions[ 1 ].failures, {} )
@@ -594,7 +634,9 @@ test( 'publishing again sends nothing new; an edited photo replaces the old one'
 	-- Edited in Lightroom: another picture. New first, then the old one goes.
 	local renditions = publish( { 'P_1.jpg' }, { slug = 'weddings' }, { oldId }, { pictures = { 'P_1 edited' } } )
 	ok( renditions[ 1 ].recorded ~= oldId )
-	eq( server.removed, { oldId } )
+	ok( server.assets[ oldId ].removed, 'the old version is still there' )
+	eq( server.removed, {}, 'the plug-in removed it itself (1.2.4: the server does)' )
+	eq( server.portfolioStarts[ #server.portfolioStarts ].previous_id, oldId )
 	ok( server.assets[ renditions[ 1 ].recorded ].done, 'the new version was not finished before the old one went' )
 end )
 
@@ -824,8 +866,67 @@ test( 'an edit Lightroom lost track of: the server names the old version and it 
 	local first = publish( { 'InaFoto-21.jpg' }, { slug = 'weddings' } )
 	local edited = publish( { 'InaFoto-21.jpg' }, { slug = 'weddings' }, nil, { pictures = { 'InaFoto-21 edited' } } )
 	ok( edited[ 1 ].recorded ~= first[ 1 ].recorded )
-	eq( server.removed, { first[ 1 ].recorded } )
+	ok( server.assets[ first[ 1 ].recorded ].removed )
+	eq( server.removed, {} )
 	eq( onServer(), 1 )
+end )
+
+-- Exporting again is safe (1.2.4) ------------------------------------------------------------------
+-- Before 1.2.4 the stand-in renders were the same bytes each time, so
+-- "exporting the same photos again skips them all" passed although a real
+-- second export (a new export time in each file) doubled the gallery.
+
+local function inGallery( gig )
+	local n = 0
+	for _, asset in pairs( server.assets ) do if asset.gallery == 'gal-' .. gig then n = n + 1 end end
+	return n
+end
+
+test( 'an interrupted export run again sends only what is missing: each photo once in the gallery', function()
+	newServer()
+	freshKeychain()
+	server.failStorageFor[ 'IMG_3.jpg' ] = true
+	export { 'IMG_1.jpg', 'IMG_2.jpg', 'IMG_3.jpg' }
+	eq( inGallery( 'gig-1' ), 3 ) -- IMG_3 started, never finished
+	server.failStorageFor = {}
+	local again = export { 'IMG_1.jpg', 'IMG_2.jpg', 'IMG_3.jpg' }
+	eq( inGallery( 'gig-1' ), 3, 'the gallery got a second copy' )
+	for _, r in ipairs( again ) do eq( r.failures, {}, 'a photo the gallery has was reported as failed' ) end
+	for _, asset in pairs( server.assets ) do ok( asset.done, asset.name .. ' was left unfinished' ) end
+	has( dialogs[ #dialogs ].body, '3 photos are in the client\'s gallery: 1 new, 2 already there.' )
+	has( dialogs[ #dialogs ].body, 'The gallery now has 3 photos' )
+end )
+
+test( 'each export sends the photo\'s key with its gig, and the picture hash, the same on every render', function()
+	newServer()
+	freshKeychain()
+	export { 'IMG_1.jpg' }
+	export { 'IMG_1.jpg' }
+	local a, b = server.deliveryStarts[ 1 ], server.deliveryStarts[ 2 ]
+	eq( a.delivery_key, 'lr:UUID-IMG_1.jpg:gig:gig-1' )
+	eq( a.delivery_key, b.delivery_key )
+	ok( a.sha256 ~= b.sha256 )
+	ok( a.image_sha256 and a.image_sha256 == b.image_sha256 )
+end )
+
+test( 'the same photo delivered to two gigs is in both galleries', function()
+	newServer()
+	freshKeychain()
+	export { 'IMG_1.jpg' }
+	export( { 'IMG_1.jpg' }, { rawwersServer = 'https://api.test', rawwersGigId = 'gig-2', rawwersGigLabel = 'Bea', rawwersGigChosenAt = 1000000 - 60 } )
+	eq( inGallery( 'gig-1' ), 1 )
+	eq( inGallery( 'gig-2' ), 1 )
+	eq( server.deliveryStarts[ 2 ].delivery_key, 'lr:UUID-IMG_1.jpg:gig:gig-2' )
+end )
+
+test( 'a cover kept as the old version is said in plain words', function()
+	newServer()
+	freshKeychain()
+	local first = publish( { 'P_1.jpg' }, { slug = 'weddings' } )
+	server.cover = first[ 1 ].recorded
+	publish( { 'P_1.jpg' }, { slug = 'weddings' }, { first[ 1 ].recorded }, { pictures = { 'P_1 edited' } } )
+	ok( not server.assets[ first[ 1 ].recorded ].removed )
+	has( dialogs[ #dialogs ].body, 'P_1.jpg: The old version was kept in your portfolio: it is your profile cover.' )
 end )
 
 -- The connection and Save (1.2.1) ------------------------------------------------------------------

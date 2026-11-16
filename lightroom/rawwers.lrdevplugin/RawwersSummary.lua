@@ -8,8 +8,9 @@ local Summary = {}
 local function plural( n, one, many ) return n == 1 and ( '1 ' .. one ) or ( n .. ' ' .. many ) end
 
 --- results: list of { state, name, message }; warnings: { small = {names},
---- notSent = n }. Returns title, body.
-function Summary.build( results, warnings, stopReason )
+--- notSent = n }; gallery (1.2.4): the server's count after the export,
+--- { in_gallery = n, processing = n }, or nil. Returns title, body.
+function Summary.build( results, warnings, stopReason, gallery )
 	local counts = { uploaded = 0, skipped = 0, failed = 0, reauth = 0, outdated = 0, cancelled = 0 }
 	local failed, outdatedMessage = {}, nil
 	for _, r in ipairs( results ) do
@@ -19,18 +20,23 @@ function Summary.build( results, warnings, stopReason )
 	end
 	warnings = warnings or {}
 
+	local there = counts.uploaded + counts.skipped
 	local lines = {
-		plural( counts.uploaded, 'photo uploaded', 'photos uploaded' ),
-		plural( counts.skipped, 'skipped, already in the gallery', 'skipped, already in the gallery' ),
+		plural( there, 'photo is', 'photos are' ) .. ' in the client\'s gallery: ' .. counts.uploaded .. ' new, ' .. counts.skipped .. ' already there.',
 		plural( #failed, 'failed', 'failed' ),
 	}
+	if type( gallery ) == 'table' and tonumber( gallery.in_gallery ) then
+		local total = tonumber( gallery.in_gallery ) + ( tonumber( gallery.processing ) or 0 )
+		lines[ #lines + 1 ] = 'The gallery now has ' .. plural( total, 'photo', 'photos' )
+			.. ( ( tonumber( gallery.processing ) or 0 ) > 0 and ( ' (' .. gallery.processing .. ' still processing)' ) or '' ) .. '.'
+	end
 	if #failed > 0 then
 		lines[ #lines + 1 ] = ''
 		lines[ #lines + 1 ] = 'Failed:'
 		for _, r in ipairs( failed ) do
 			lines[ #lines + 1 ] = '  ' .. tostring( r.name ) .. ( r.message and ( ': ' .. r.message ) or '' )
 		end
-		lines[ #lines + 1 ] = 'Export the same photos again to retry: the ones already uploaded are skipped.'
+		lines[ #lines + 1 ] = 'Export the same photos again to retry: the ones already in the gallery are not sent twice.'
 	end
 	if warnings.small and #warnings.small > 0 then
 		lines[ #lines + 1 ] = ''

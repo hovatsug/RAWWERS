@@ -287,6 +287,19 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	local isCanceled = function() return progress:isCanceled() end
 	local api = Lightroom.api( base, { token = token, isCanceled = isCanceled } )
 	local results, small, done = {}, {}, 0
+
+	-- The same Lightroom photo in the same gig has the same key on every
+	-- export (1.2.4): an export run again never doubles the gallery; the
+	-- same photo in another gig is another photo.
+	local function deliveryKey( rendition )
+		local okPhoto, photoId = LrTasks.pcall( function() return rendition.photo:getRawMetadata( 'uuid' ) end )
+		if not okPhoto or not photoId then
+			okPhoto, photoId = LrTasks.pcall( function() return rendition.photo.localIdentifier end )
+		end
+		if not okPhoto or not photoId then return nil end
+		local key = ( 'lr:' .. tostring( photoId ) .. ':gig:' .. tostring( gigId ) ):gsub( '[^%w:._-]', '' )
+		return key:sub( 1, 200 )
+	end
 	local exportId = Lightroom.newExportId()
 
 	local pipeline = Pipeline.new {
@@ -299,6 +312,7 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 			if not file then return { state = 'failed', name = job.name, message = 'The exported file could not be read.' } end
 			file.position = job.position
 			file.exportId = exportId
+			file.deliveryKey = job.deliveryKey
 			local width, height = Checks.jpegSize( file.head )
 			local problem = Checks.problem( file.size, width, height )
 			local result
@@ -324,7 +338,10 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 		local rendered, pathOrMessage = rendition:waitForRender()
 		if progress:isCanceled() then break end
 		if rendered then
-			local queued = pipeline:add { rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ), position = position }
+			local queued = pipeline:add {
+				rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ), position = position,
+				deliveryKey = deliveryKey( rendition ),
+			}
 			if not queued then
 				LrFileUtils.delete( pathOrMessage )
 				break
@@ -340,7 +357,17 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	for _, job in ipairs( pipeline:notStarted() ) do LrFileUtils.delete( job.path ) end
 	if stopReason == 'reauth' then Lightroom.storeToken( base, '' ) end
 
-	local title, body = Summary.build( results, { small = small, notSent = count - #results }, stopReason )
+	-- The gallery's count, as the server has it now.
+	local gallery
+	local galleryId
+	for _, r in ipairs( results ) do galleryId = galleryId or r.gallery_id end
+	if galleryId and stopReason ~= 'reauth' and stopReason ~= 'outdated' then
+		local status = api:status( galleryId )
+		if status.ok and type( status.data ) == 'table' then
+			gallery = { in_gallery = status.data.photos_in_gallery, processing = status.data.processing }
+		end
+	end
+	local title, body = Summary.build( results, { small = small, notSent = count - #results }, stopReason, gallery )
 	if api.update_available then
 		body = body .. '\n\nA newer RAWWERS plug-in is available. Download it from the link RAWWERS sent you.'
 	end

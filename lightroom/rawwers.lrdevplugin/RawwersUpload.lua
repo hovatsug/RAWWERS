@@ -137,7 +137,10 @@ end
 function Upload.send( api, started, file )
 	if not started.ok then return failure( file.name, started ) end
 	local data = started.data
-	local result = { name = file.name, gallery_id = data.gallery_id, media_asset_id = data.media_asset_id, replaces = data.replaces }
+	local result = {
+		name = file.name, gallery_id = data.gallery_id, media_asset_id = data.media_asset_id,
+		replaced = data.replaced, old_kept = data.old_kept,
+	}
 	if data.duplicate then
 		result.state = 'skipped'
 		return result
@@ -165,6 +168,10 @@ function Upload.send( api, started, file )
 		return failed
 	end
 	result.state = 'uploaded'
+	if type( finished.data ) == 'table' then
+		result.replaced = finished.data.replaced or result.replaced
+		result.old_kept = finished.data.old_kept or result.old_kept
+	end
 	return result
 end
 

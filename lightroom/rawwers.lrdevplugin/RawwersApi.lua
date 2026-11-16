@@ -130,6 +130,9 @@ function Api:startUpload( gigId, file )
 		-- before it.
 		position = file.position,
 		export_id = file.exportId,
+		-- 1.2.4: the same Lightroom photo in the same gig, and its picture
+		-- without metadata: an export run again never doubles the gallery.
+		delivery_key = file.deliveryKey, image_sha256 = file.imageSha256,
 	} )
 end
 
@@ -165,6 +168,9 @@ function Api:startPortfolioUpload( nicheSlug, file )
 		-- 1.2.3: the same Lightroom photo in the same collection, and its
 		-- picture without metadata: publishing again never makes a second photo.
 		publish_key = file.publishKey, image_sha256 = file.imageSha256,
+		-- 1.2.4: the photo this re-publish replaces; the server removes it
+		-- when the new one is finished, if it may.
+		previous_id = file.previousId,
 	} )
 end
 

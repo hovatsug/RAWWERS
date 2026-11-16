@@ -72,3 +72,5 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 511248f | 2026-11-16 | Tests: two portfolio finishes at once on real Postgres (25 rounds; old code deadlocked every round), lock-first and fixed-order checks | no (tests only) |
 | f095c06 | 2026-11-16 | Deliveries: key and picture guard, stuck uploads resumed, repeat-safe part joining; old portfolio versions removed by the server only, with dependency checks; DELETE refuses photos in use | **yes** (uploads, deliveries, portfolio state, deletes content) |
 | 6be2ed6 | 2026-11-16 | Lightroom plug-in 1.2.4: delivery key and picture hash, true gallery counts, previous_id sent, no client-side removal; checklist 5.1, 6.2, 6b.1 | no (plug-in only, server enforces) |
+| ae8bf75 | 2026-11-16 | Docs: company decided (Portuguese company, entity to be confirmed), Scenario X archived, M6's remaining dependencies, BETA_SCOPE #55/#56/#58 and new #67, COMPANY_DETAILS_NEEDED.md | no (docs only) |
+| 11a18ba | 2026-11-16 | Docs: Stripe Support answers of 2026-11-16 (Connect fees, Wise/Revolut payout failures), cost model per booking, M8 never uses account debits, deploy lines | no (docs only) |

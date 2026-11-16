@@ -67,3 +67,5 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 75c16d5 | 2026-11-15 | Lightroom plug-in 1.2.0: choose and add niches in the publish service and collection settings; checklist part P | no (plug-in only, server enforces) |
 | 9c32d3e | 2026-11-16 | Lightroom plug-in 1.2.1: publish service Save allowed once connected (one connection state for line and Save); checklist P.2/P.4/P.5/P.6 | no (plug-in only, no API change) |
 | 8d29427 | 2026-11-16 | Lightroom plug-in 1.2.2: 1.2.1's fix moved into RawwersPortfolio.lua (an open Lightroom could not load the new file); file-list test | no (plug-in only, no API change) |
+| 7d2dd14 | 2026-11-16 | Portfolio publish: one photo per Lightroom photo and niche (publish key, picture hash), finish in one transaction and repeatable, deadlock lock, plain messages, niche counts; latest plug-in 1.2.3 | **yes** (uploads, portfolio state) |
+| 1283ca3 | 2026-11-16 | Lightroom plug-in 1.2.3: key and picture hash, removes the version the server names, plain failure words, dialog counts from the server; checklist P.15-P.17 | no (plug-in only, server enforces) |

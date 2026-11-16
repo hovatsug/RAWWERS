@@ -66,3 +66,4 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 976847b | 2026-11-15 | Niches from Lightroom: GET/POST /v1/delivery/portfolio/niches (plug-in 1.2.0), shared niche rule, at most 3 niches (app route too); latest plug-in 1.2.0 | **yes** (token scope, profile writes) |
 | 75c16d5 | 2026-11-15 | Lightroom plug-in 1.2.0: choose and add niches in the publish service and collection settings; checklist part P | no (plug-in only, server enforces) |
 | 9c32d3e | 2026-11-16 | Lightroom plug-in 1.2.1: publish service Save allowed once connected (one connection state for line and Save); checklist P.2/P.4/P.5/P.6 | no (plug-in only, no API change) |
+| 8d29427 | 2026-11-16 | Lightroom plug-in 1.2.2: 1.2.1's fix moved into RawwersPortfolio.lua (an open Lightroom could not load the new file); file-list test | no (plug-in only, no API change) |

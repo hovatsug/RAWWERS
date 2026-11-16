@@ -752,4 +752,38 @@ test( 'the niche calls go to the delivery routes with the version, and adding se
 	eq( Api.header( calls[ 2 ].headers, 'X-Rawwers-Plugin-Version' ), '1.2.0' )
 end )
 
+
+-- The publish service's connection state (1.2.1) ----------------------------------------------------
+
+local Connection = require 'RawwersConnection'
+local STATES = { 'connected', 'checking', 'connecting', 'not_paired', 'revoked', 'pair_failed', 'outdated', 'unreachable', 'something else' }
+
+test( 'Save is allowed exactly when the line says "Connected", in every state', function()
+	for _, state in ipairs( STATES ) do
+		local v = Connection.view( state, state == 'connected' and 'Connected. Your niches: Food (main).' or 'The server said no.' )
+		local says = v.text:sub( 1, 10 ) == 'Connected.'
+		eq( v.cantSave == nil, says, state )
+		eq( v.connected, says, state )
+		eq( state == 'connected', says, state )
+		if not says then ok( type( v.cantSave ) == 'string' and #v.cantSave > 0, state ) end
+	end
+end )
+
+test( 'the code row shows when a code is the way forward; Check again when the server could not be asked', function()
+	for _, state in ipairs { 'not_paired', 'revoked', 'pair_failed' } do eq( Connection.view( state ).needsCode, true, state ) end
+	for _, state in ipairs { 'connected', 'checking', 'connecting', 'outdated', 'unreachable' } do eq( Connection.view( state, 'x' ).needsCode, false, state ) end
+	eq( Connection.view( 'unreachable' ).canRetry, true )
+	eq( Connection.view( 'connected', 'Connected.' ).canRetry, false )
+	has( Connection.view( 'revoked' ).text, 'Not connected. Type a new pairing code' )
+end )
+
+test( 'only the server saying yes connects; only a 401 forgets the pairing', function()
+	eq( { Connection.fromCheck( { ok = true, data = {} }, 'Connected. X.' ) }, { 'connected', 'Connected. X.', false } )
+	eq( { Connection.fromCheck( { ok = false, outcome = 'reauth', status = 401, message = 'gone' } ) }, { 'revoked', nil, true } )
+	eq( { Connection.fromCheck( { ok = false, outcome = 'outdated', status = 426, message = 'old' } ) }, { 'outdated', 'old', false } )
+	eq( { Connection.fromCheck( { ok = false, outcome = 'retry', message = 'Could not reach RAWWERS. Check the internet connection and export again.' } ) }, { 'unreachable', nil, false } )
+	eq( { Connection.fromCheck( { ok = false, outcome = 'retry', status = 503, message = 'Down for a minute' } ) }, { 'unreachable', 'Down for a minute', false } )
+	eq( { Connection.fromCheck( { ok = false, outcome = 'refused', status = 403, message = 'No' } ) }, { 'unreachable', 'No', false } )
+end )
+
 os.exit( H.run() and 0 or 1 )

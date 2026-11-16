@@ -133,6 +133,19 @@ Owner's decision, 2026-11-15, found while testing 1.1.0: a photographer must be 
   - A collection's **Niche** menu lists their niches and ends with **Add a niche...**, which opens a small dialog with the niches not yet theirs; the one added is chosen for the collection.
 - **Gap left:** the pro app still cannot add or remove niches, or change the main one (no screen). A photographer at 3 who wants a different niche has no way to swap until it has one.
 
+
+### 1.2.1: the connection and Save
+
+1.2.0 could not save the publish service: the settings said "Connected" but Save stayed blocked ("Can't Save Changes: Connect to RAWWERS first"). The Save check was an observer whose expression, `connected and nil or reason`, always gave the reason (in Lua, `x and nil or y` is always `y`). It was there since 1.1.0. Since 1.2.1 one state (`RawwersConnection.lua`) sets the line, the pairing row, a **Check again** button and Save together, and "Connected" (the only state that allows Save) is reached only after the server answered with this Mac's stored pairing:
+
+- no pairing stored: "Not connected. Type the pairing code...", Save blocked;
+- pairing refused by the server (401: revoked or expired): the token is forgotten, "Not connected. Type a new pairing code...", Save blocked;
+- server unreachable or failing: the pairing is kept, "Could not check the connection..." with **Check again**, Save blocked;
+- plug-in refused as too old (426): Save blocked;
+- after **Connect**, the new pairing is checked the same way before "Connected".
+
+No API change: `LIGHTROOM_PLUGIN_LATEST_VERSION` stays 1.2.0, and the niche routes accept 1.2.1.
+
 ## 6. Effort and what the owner provides
 
 - **Estimate: 1.5 agent-days.**

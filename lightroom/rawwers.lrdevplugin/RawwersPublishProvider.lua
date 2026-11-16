@@ -35,6 +35,7 @@ local LrView = import 'LrView'
 
 local Checks = require 'RawwersChecks'
 local Config = require 'RawwersConfig'
+local Connection = require 'RawwersConnection'
 local Lightroom = require 'RawwersLightroom'
 local Pipeline = require 'RawwersPipeline'
 local Portfolio = require 'RawwersPortfolio'
@@ -63,31 +64,39 @@ provider.exportPresetFields = {
 
 -- The connection (the publish service's settings) -------------------------------------
 
-local function disconnected( p, message )
-	p.rawwersConnected, p.rawwersCanAddNiche, p.rawwersConnection = false, false, message
+--- The one place the connection state is set: the line, the pairing row,
+--- the Check again button and whether Save is allowed all come from
+--- Connection.view, so they cannot disagree (1.2.1).
+local function setState( p, state, detail )
+	local v = Connection.view( state, detail )
+	if not v.connected then p.rawwersCanAddNiche = false end
+	p.rawwersNeedsCode = v.needsCode
+	p.rawwersCanRetry = v.canRetry
+	p.rawwersConnection = v.text
+	p.LR_cantExportBecause = v.cantSave
+	p.rawwersConnected = v.connected
 end
 
 local function showListing( p, listing )
-	p.rawwersConnected = true
-	p.rawwersConnection = Portfolio.nichesText( listing )
 	p.rawwersAddItems = Portfolio.addMenuItems( listing.niches )
 	p.rawwersCanAddNiche = Portfolio.canAdd( listing )
+	setState( p, 'connected', Portfolio.nichesText( listing ) )
 end
 
+--- Asks the server with this Mac's stored pairing. "Connected" (and Save)
+--- only once it answered yes.
 local function check( p )
 	local base = Lightroom.baseUrl( p )
 	local token = Lightroom.storedToken( base )
 	if not token then
-		disconnected( p, 'Not connected.' )
+		setState( p, 'not_paired' )
 		return
 	end
+	setState( p, 'checking' )
 	local answer = Lightroom.api( base, { token = token } ):availableNiches()
-	if answer.ok then
-		showListing( p, answer.data )
-	else
-		if answer.outcome == 'reauth' then Lightroom.storeToken( base, '' ) end
-		disconnected( p, answer.message )
-	end
+	local state, detail, forget = Connection.fromCheck( answer, answer.ok and Portfolio.nichesText( answer.data ) or nil )
+	if forget then Lightroom.storeToken( base, '' ) end
+	if state == 'connected' then showListing( p, answer.data ) else setState( p, state, detail ) end
 end
 
 --- The service settings' "Add a niche..." menu: choosing a niche adds it.
@@ -106,7 +115,7 @@ local function addFromMenu( p )
 	else
 		if result.outcome == 'reauth' then
 			Lightroom.storeToken( base, '' )
-			disconnected( p, result.message )
+			setState( p, 'revoked' )
 		end
 		p.rawwersNicheMessage = result.message
 	end
@@ -116,14 +125,15 @@ end
 
 local function connect( p )
 	local base = Lightroom.baseUrl( p )
-	p.rawwersConnection = 'Connecting...'
+	setState( p, 'connecting' )
 	local answer = Lightroom.api( base ):pair( p.rawwersPairingCode or '', p.rawwersDeviceName or 'Lightroom Classic' )
 	if not answer.ok then
-		p.rawwersConnected, p.rawwersConnection = false, answer.message
+		setState( p, 'pair_failed', answer.message )
 		return
 	end
 	Lightroom.storeToken( base, answer.data.token )
 	p.rawwersPairingCode = ''
+	-- Connected only once the new pairing has been used for real.
 	check( p )
 end
 
@@ -133,17 +143,13 @@ function provider.startDialog( p )
 		pcall( function() p.LR_removeLocationMetadata = true end )
 		p.rawwersDefaultsApplied = true
 	end
-	p.rawwersConnected, p.rawwersConnection = false, 'Checking...'
 	p.rawwersCanAddNiche, p.rawwersAddItems, p.rawwersAddSlug, p.rawwersNicheMessage = false, {}, '', ''
+	setState( p, 'checking' )
 	p:addObserver( 'rawwersAddSlug', function()
 		if ( p.rawwersAddSlug or '' ) ~= '' then
 			LrTasks.startAsyncTask( function() addFromMenu( p ) end, 'RAWWERS add a niche' )
 		end
 	end )
-	p:addObserver( 'rawwersConnected', function()
-		p.LR_cantExportBecause = p.rawwersConnected and nil or 'Connect to RAWWERS first: type the pairing code from the RAWWERS Pro app.'
-	end )
-	p.LR_cantExportBecause = 'Connect to RAWWERS first: type the pairing code from the RAWWERS Pro app.'
 	LrTasks.startAsyncTask( function() check( p ) end, 'RAWWERS portfolio connection' )
 end
 
@@ -160,7 +166,14 @@ function provider.sectionsForTopOfDialog( f, p )
 			},
 			f:row { f:static_text { title = bind 'rawwersNicheMessage', fill_horizontal = 1, width_in_chars = 60 } },
 			f:row {
-				visible = LrBinding.negativeOfKey( 'rawwersConnected' ),
+				visible = bind 'rawwersCanRetry',
+				f:push_button {
+					title = 'Check again',
+					action = function() LrTasks.startAsyncTask( function() check( p ) end, 'RAWWERS portfolio connection' ) end,
+				},
+			},
+			f:row {
+				visible = bind 'rawwersNeedsCode',
 				f:static_text { title = 'Pairing code:' },
 				f:edit_field { value = bind 'rawwersPairingCode', width_in_chars = 11, immediate = true },
 				f:push_button {
@@ -169,11 +182,11 @@ function provider.sectionsForTopOfDialog( f, p )
 				},
 			},
 			f:row {
-				visible = LrBinding.negativeOfKey( 'rawwersConnected' ),
+				visible = bind 'rawwersNeedsCode',
 				f:static_text { title = 'Get the code in the RAWWERS Pro app: Settings > Connect Lightroom. It works once, for 10 minutes.', fill_horizontal = 1 },
 			},
 			f:row {
-				visible = LrBinding.negativeOfKey( 'rawwersConnected' ),
+				visible = bind 'rawwersNeedsCode',
 				f:static_text { title = 'This Mac is called:' },
 				f:edit_field { value = bind 'rawwersDeviceName', width_in_chars = 30 },
 			},

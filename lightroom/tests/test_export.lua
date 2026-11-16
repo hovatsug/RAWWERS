@@ -76,6 +76,15 @@ local function handle( method, url, headers, body )
 		server.stored[ key ] = body
 		return respond( 200, nil, { ETag = '"etag"' } )
 	end
+	if server.down then return nil, { error = { errorCode = 'networkConnectionLost', name = 'The network connection was lost.' } } end
+	if path == '/v1/delivery/pair' and method == 'POST' then
+		local data = Json.decode( body ) or {}
+		if data.code ~= 'GOOD-CODE' then
+			return respond( 422, { error = { code = 'pairing_code_invalid', message = 'That code is wrong or has expired. Get a new one in the RAWWERS Pro app.' } } )
+		end
+		server.revoked = false
+		return respond( 200, { token = server.token, device_id = 'dev-1', photographer_name = 'Pro One' } )
+	end
 	if headerValue( headers, 'Authorization' ) ~= 'Bearer ' .. server.token or server.revoked then
 		return respond( 401, { error = { code = 'delivery_token_revoked', message = 'This device was disconnected. Connect Lightroom again with a new pairing code.' } } )
 	end
@@ -280,8 +289,8 @@ test( 'the plug-in declares the last three Lightroom Classic versions', function
 	eq( info.LrSdkVersion, 15.3 )
 	eq( info.LrExportServiceProvider[ 1 ], { title = 'RAWWERS', file = 'RawwersServiceProvider.lua' } )
 	eq( info.LrExportServiceProvider[ 2 ], { title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' } )
-	eq( info.VERSION, { major = 1, minor = 2, revision = 0, build = 0 } )
-	eq( require( 'RawwersConfig' ).version, '1.2.0' )
+	eq( info.VERSION, { major = 1, minor = 2, revision = 1, build = 0 } )
+	eq( require( 'RawwersConfig' ).version, '1.2.1' )
 end )
 
 -- Exports ---------------------------------------------------------------------------------
@@ -585,6 +594,7 @@ test( 'with no niches the service says so and offers them; choosing one adds it 
 	local p = properties { rawwersServer = 'https://api.test', rawwersDefaultsApplied = true }
 	runAll( function() publisher.startDialog( p ) end )
 	eq( p.rawwersConnection, 'Connected. You have no niches yet. Choose one to add.' )
+	eq( p.LR_cantExportBecause, nil )
 	eq( p.rawwersCanAddNiche, true )
 	eq( p.rawwersAddItems[ 1 ], { title = 'Add a niche...', value = '' } )
 	eq( #p.rawwersAddItems, 5 )
@@ -655,6 +665,189 @@ test( 'with no niches the default collection says how to add one', function()
 	local settings = collectionView( true, nil )
 	eq( settings.rawwersNicheItems, { { title = 'Add a niche...', value = require( 'RawwersPortfolio' ).ADD_NICHE } } )
 	eq( settings.rawwersNicheNote, 'You have no niches yet. Choose "Add a niche..." to add one.' )
+end )
+
+
+-- The connection and Save (1.2.1) ------------------------------------------------------------------
+-- 1.2.0 showed "Connected" while Save stayed blocked: the line and the Save
+-- check came from two places. Every state below is checked against one rule:
+-- Save is allowed exactly when the line says "Connected", and only then.
+
+local function saveAllowed( p ) return p.LR_cantExportBecause == nil end
+
+local function agrees( p )
+	local says = type( p.rawwersConnection ) == 'string' and p.rawwersConnection:sub( 1, 10 ) == 'Connected.'
+	eq( saveAllowed( p ), says )
+	eq( p.rawwersConnected == true, says )
+	if says then eq( p.rawwersNeedsCode, false ) end
+end
+
+--- The service dialog's sections, as the stub factory returns them.
+local function sections( p )
+	local f = setmetatable( {}, { __index = function() return function( _, t ) return t end end } )
+	return publisher.sectionsForTopOfDialog( f, p )
+end
+
+local function find( tree, pred )
+	if type( tree ) ~= 'table' then return nil end
+	if pred( tree ) then return tree end
+	for _, v in pairs( tree ) do
+		if type( v ) == 'table' then
+			local hit = find( v, pred )
+			if hit then return hit end
+		end
+	end
+end
+
+local function button( p, title )
+	return find( sections( p ), function( t ) return t.title == title and type( t.action ) == 'function' end )
+end
+
+local function press( p, title )
+	local b = assert( button( p, title ), 'no button ' .. title )
+	runAll( function() b.action() end )
+end
+
+test( 'the bug of 1.2.0: paired Mac, valid pairing, a new unsaved service, niches added: Save is allowed', function()
+	connected()
+	server.niches = {}
+	-- A service never saved: only what Lightroom fills in.
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	eq( p.rawwersConnection, 'Connected. You have no niches yet. Choose one to add.' )
+	eq( saveAllowed( p ), true )
+	eq( p.rawwersNeedsCode, false )
+	agrees( p )
+	runAll( function() p.rawwersAddSlug = 'food' end )
+	eq( p.rawwersConnection, 'Connected. Your niches: Food (main).' )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'editing a saved service on a paired Mac: Save is allowed with no new code', function()
+	connected()
+	local p = properties { rawwersServer = 'https://api.test', rawwersDefaultsApplied = true, rawwersDeviceName = 'Studio Mac' }
+	runAll( function() publisher.startDialog( p ) end )
+	eq( p.rawwersConnection, 'Connected. Your niches: Weddings (main), Portraits.' )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'while the check is still running: not "Connected", and Save waits', function()
+	connected()
+	local p = properties { rawwersServer = 'https://api.test' }
+	publisher.startDialog( p ) -- the check is queued, not run yet
+	eq( p.rawwersConnection, 'Checking the connection to RAWWERS...' )
+	eq( saveAllowed( p ), false )
+	agrees( p )
+	runAll( function() end )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'first install, no pairing: the code row, Save blocked; a wrong code keeps it blocked; a good code allows Save', function()
+	newServer()
+	dialogs = {}
+	keychain = {}
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	has( p.rawwersConnection, 'Not connected. Type the pairing code' )
+	eq( p.rawwersNeedsCode, true )
+	eq( saveAllowed( p ), false )
+	agrees( p )
+
+	p.rawwersPairingCode = 'WRONG'
+	press( p, 'Connect' )
+	has( p.rawwersConnection, 'That code is wrong or has expired' )
+	eq( p.rawwersNeedsCode, true )
+	eq( saveAllowed( p ), false )
+	agrees( p )
+
+	p.rawwersPairingCode = 'GOOD-CODE'
+	press( p, 'Connect' )
+	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], 'rwd_good' )
+	eq( p.rawwersPairingCode, '' )
+	eq( p.rawwersConnection, 'Connected. Your niches: Weddings (main), Portraits.' )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'a pairing revoked on the server: "Not connected. Type a new pairing code", Save blocked, the dead token forgotten', function()
+	connected()
+	server.revoked = true
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	has( p.rawwersConnection, 'Not connected. Type a new pairing code' )
+	eq( p.rawwersNeedsCode, true )
+	eq( saveAllowed( p ), false )
+	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], '' )
+	agrees( p )
+	-- after Connect with a fresh code, Save works
+	p.rawwersPairingCode = 'GOOD-CODE'
+	press( p, 'Connect' )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'server unreachable: a clear message, Save blocked, never "Connected", the pairing kept; Check again connects', function()
+	connected()
+	server.down = true
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	has( p.rawwersConnection, 'Could not check the connection to RAWWERS' )
+	eq( p.rawwersCanRetry, true )
+	eq( p.rawwersNeedsCode, false )
+	eq( saveAllowed( p ), false )
+	eq( keychain[ 'rawwers.delivery-token:https://api.test' ], 'rwd_good' )
+	agrees( p )
+	server.down = false
+	press( p, 'Check again' )
+	eq( p.rawwersCanRetry, false )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'a plug-in the server calls too old: not "Connected", Save blocked', function()
+	connected()
+	server.minimum = '1.3.0'
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	has( p.rawwersConnection, 'too old' )
+	eq( saveAllowed( p ), false )
+	agrees( p )
+end )
+
+test( 'revoked while adding a niche: the line and Save both go to not connected', function()
+	connected()
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	eq( saveAllowed( p ), true )
+	server.revoked = true
+	runAll( function() p.rawwersAddSlug = 'food' end )
+	has( p.rawwersConnection, 'Not connected. Type a new pairing code' )
+	eq( saveAllowed( p ), false )
+	eq( p.rawwersCanAddNiche, false )
+	agrees( p )
+end )
+
+test( 'a refused add (the maximum) changes neither the line nor Save', function()
+	connected()
+	server.maximum = 2
+	local p = properties { rawwersServer = 'https://api.test' }
+	runAll( function() publisher.startDialog( p ) end )
+	runAll( function() p.rawwersAddSlug = 'food' end )
+	eq( saveAllowed( p ), true )
+	agrees( p )
+end )
+
+test( 'the code row and Check again follow the same state as Save', function()
+	connected()
+	local p = properties { rawwersServer = 'https://api.test' }
+	local tree = sections( p )
+	local codeRow = find( tree, function( t ) return t.visible and find( t, function( u ) return u.title == 'Pairing code:' end ) end )
+	eq( codeRow.visible, { bound = 'rawwersNeedsCode' } )
+	local retryRow = find( tree, function( t ) return t.visible and find( t, function( u ) return u.title == 'Check again' end ) end )
+	eq( retryRow.visible, { bound = 'rawwersCanRetry' } )
 end )
 
 os.exit( H.run() and 0 or 1 )

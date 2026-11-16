@@ -84,12 +84,24 @@ def get_or_create_niche_tier_policy(db: Session, niche_id: uuid.UUID) -> NicheTi
     return row
 
 
+def lock_pro_for_recompute(db: Session, pro_user_id: uuid.UUID) -> None:
+    """One recompute of a photographer's skills at a time. Two photos
+    finished at once each recomputed every niche row and deadlocked
+    (dev, 2026-11-16). Taken by every request that tags portfolio photos;
+    held until the request commits."""
+    from app.models.admin import ProProfile
+
+    db.execute(select(ProProfile.user_id).where(ProProfile.user_id == pro_user_id).with_for_update()).first()
+
+
 def recompute_pro_niche_skills(db: Session, pro_user_id: uuid.UUID, niche_id: uuid.UUID | None = None) -> int:
     niche_ids: list[uuid.UUID]
     if niche_id:
         niche_ids = [niche_id]
     else:
-        niche_ids = [item.id for item in db.execute(select(Niche).where(Niche.is_active.is_(True))).scalars().all()]
+        # Always in the same order, so two recomputes for one photographer
+        # update the same rows in the same order.
+        niche_ids = [item.id for item in db.execute(select(Niche).where(Niche.is_active.is_(True)).order_by(Niche.id)).scalars().all()]
 
     for current_niche_id in niche_ids:
         recompute_pro_niche_skill(db, pro_user_id, current_niche_id)

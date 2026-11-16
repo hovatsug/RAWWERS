@@ -168,6 +168,8 @@ class DeliveryPortfolioResponse(BaseModel):
     #: Ready portfolio photos, and the minimum onboarding asks for.
     photo_count: int
     photo_minimum: int
+    #: (1.2.3) Photos on the server per niche: processing or ready.
+    niche_photo_counts: dict[str, int] = {}
 
 
 class AvailableNicheView(BaseModel):
@@ -203,14 +205,24 @@ class PortfolioUploadRequest(BaseModel):
     byte_size: int = Field(gt=0)
     sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
     niche_slug: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9-]+$")
+    #: (1.2.3) The plug-in's key for this Lightroom photo in this collection:
+    #: the same on every publish of it, whatever the render.
+    publish_key: str | None = Field(default=None, min_length=1, max_length=200, pattern=r"^[A-Za-z0-9:._-]+$")
+    #: (1.2.3) SHA-256 of the picture without its metadata (the JPEG's APPn
+    #: and comment segments left out): Lightroom writes the export time into
+    #: every render, so the file's own hash differs each time.
+    image_sha256: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
 
 
 class PortfolioUploadResponse(BaseModel):
     media_asset_id: uuid.UUID
-    #: This file is in that niche of the portfolio already: nothing to send.
+    #: This photo is in that niche of the portfolio already: nothing to send.
     duplicate: bool = False
     upload: UploadPayload | None = None
     use_multipart: bool = False
+    #: (1.2.3) An older version of the same Lightroom photo in this niche
+    #: (it was edited): the plug-in removes it once this one is finished.
+    replaces: uuid.UUID | None = None
 
 
 class PortfolioRemoveResponse(BaseModel):

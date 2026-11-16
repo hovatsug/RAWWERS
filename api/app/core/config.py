@@ -202,7 +202,7 @@ class Settings(BaseSettings):
     rate_limit_delivery_token_uploads_per_day: int = Field(default=5000, alias="RATE_LIMIT_DELIVERY_TOKEN_UPLOADS_PER_DAY")
     # The newest Lightroom plugin, raised on every released build; an older
     # one is told an update is available (owner's decision 7).
-    lightroom_plugin_latest_version: str = Field(default="1.2.0", alias="LIGHTROOM_PLUGIN_LATEST_VERSION")
+    lightroom_plugin_latest_version: str = Field(default="1.2.3", alias="LIGHTROOM_PLUGIN_LATEST_VERSION")
     # The oldest plugin still supported, raised only for a breaking change; an
     # older one is refused (426) until it is updated. Never above the newest.
     lightroom_plugin_min_version: str = Field(default="1.0.0", alias="LIGHTROOM_PLUGIN_MIN_VERSION")

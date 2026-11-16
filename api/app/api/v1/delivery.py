@@ -52,7 +52,6 @@ from app.schemas.delivery import (
 )
 from app.api.v1 import pro_onboarding as pro_onboarding_routes
 from app.schemas.gallery import CreateProofGalleryRequest
-from app.schemas.niche import PortfolioNicheTagsRequest
 from app.schemas.media import (
     CompletePhotoUploadRequest,
     CompletePhotoUploadResponse,
@@ -349,23 +348,20 @@ def finish_upload(
             message="This file is not the one that was started. Export it again.",
             status_code=409,
         )
-    done = media_routes.complete_photo_upload(
+    if lightroom_portfolio.is_from_lightroom(asset):
+        # Processing and the niche's tag in one transaction; finishing again
+        # answers the same success (1.2.3, the owner's case of 2026-11-16).
+        status = lightroom_portfolio.finish(db, asset, byte_size=body.byte_size)
+        return CompletePhotoUploadResponse(ok=True, current_status=status.value)
+    if asset.status in {MediaStatus.processing, MediaStatus.ready}:
+        # A delivery photo finished already (the answer was lost): the same success.
+        return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
+    return media_routes.complete_photo_upload(
         media_asset_id=media_asset_id,
         body=CompletePhotoUploadRequest(byte_size=body.byte_size),
         user=_as_photographer(device),
         db=db,
     )
-    slug = (asset.meta or {}).get(lightroom_portfolio.LIGHTROOM_NICHE_KEY)
-    if slug:
-        # Tagged as the app tags a portfolio photo once uploaded: the
-        # niche's skills and the Discover index are recomputed.
-        pro_onboarding_routes.tag_portfolio_media_niches(
-            media_asset_id=media_asset_id,
-            body=PortfolioNicheTagsRequest(niche_slugs=[slug]),
-            user=_as_photographer(device),
-            db=db,
-        )
-    return done
 
 
 @router.get("/galleries/{gallery_id}/status", response_model=DeliveryStatusResponse)
@@ -425,6 +421,7 @@ def portfolio(device: DeliveryDevice = Depends(require_delivery_device), db: Ses
         niches=[PortfolioNicheView(slug=n.slug, name=n.name, primary=p) for n, p in lightroom_portfolio.niches(db, device.pro_user_id)],
         photo_count=len(ready),
         photo_minimum=pro_onboarding_routes.PORTFOLIO_MIN_PHOTOS,
+        niche_photo_counts=lightroom_portfolio.niche_counts(db, device.pro_user_id),
     )
 
 
@@ -487,10 +484,16 @@ def start_portfolio_upload(
         )
     lightroom_portfolio.require_own_niche(db, device.pro_user_id, body.niche_slug)
     checksum = body.sha256.lower()
+    picture = body.image_sha256.lower() if body.image_sha256 else None
     user = _as_photographer(device)
-    existing = lightroom_portfolio.published_copy(db, device.pro_user_id, body.niche_slug, checksum)
+    existing, replaced = lightroom_portfolio.existing_copy(
+        db, device.pro_user_id, body.niche_slug, checksum=checksum, publish_key=body.publish_key, image_sha256=picture
+    )
     if existing is not None:
         # Resumed: done already, or a fresh address for the bytes still missing.
+        lightroom_portfolio.resume_with(existing, checksum=checksum, image_sha256=picture)
+        if lightroom_portfolio.ensure_tagged(db, existing) or db.dirty:
+            db.commit()
         again = media_routes._answer_with_existing(db, existing, user)
         large = body.byte_size > MULTIPART_THRESHOLD_BYTES
         return PortfolioUploadResponse(
@@ -512,13 +515,16 @@ def start_portfolio_upload(
         bucket=media_routes.PLUGIN_PORTFOLIO_UPLOADS,
     )
     asset = db.get(MediaAsset, started.media_asset_id)
-    lightroom_portfolio.mark_published(asset, slug=body.niche_slug, checksum=checksum)
+    lightroom_portfolio.mark_published(
+        asset, slug=body.niche_slug, checksum=checksum, publish_key=body.publish_key, image_sha256=picture
+    )
     db.commit()
     large = body.byte_size > MULTIPART_THRESHOLD_BYTES
     return PortfolioUploadResponse(
         media_asset_id=started.media_asset_id,
         upload=None if large else started.upload,
         use_multipart=large,
+        replaces=replaced.id if replaced is not None else None,
     )
 
 

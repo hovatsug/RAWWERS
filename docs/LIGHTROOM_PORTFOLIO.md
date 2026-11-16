@@ -148,6 +148,19 @@ Owner's decision, 2026-11-15, found while testing 1.1.0: a photographer must be 
 
 No API change: `LIGHTROOM_PLUGIN_LATEST_VERSION` stays 1.2.0, and the niche routes accept 1.2.2.
 
+## 8. Publishing again is safe (1.2.3)
+
+**What happened (dev, 2026-11-16).** Four photos published at once. Finishing two of them (`POST /v1/delivery/uploads/{id}/complete`) committed the photo as `processing`, then recomputed the niche skills and **deadlocked** with the other finish running at the same time (two requests updating the same `pro_niche_skill` rows in different orders): HTTP 500. The photo was already on the server and was processed to `ready`, but without its niche tag ("Untagged" in the pro app). The plug-in retried the finish and got 409 "Photo upload cannot be completed from current state", so Lightroom left the photo as new. Publishing again rendered the photo again; Lightroom writes the export time into every render (EXIF and XMP dates), so the file's SHA-256 differed, the server's only guard (same file hash in the same niche) did not match, and a second photo was made.
+
+**Since 1.2.3:**
+
+- **One photo per Lightroom photo and niche.** The plug-in sends a key per Lightroom photo and collection (`publish_key`, `lr:<photo uuid>:<collection id>`) and the hash of the picture without its metadata (`image_sha256`: the JPEG without its APPn and comment segments). The server answers the same Lightroom photo whose upload never finished with that upload (a crash or a timeout between steps: resumed and finished, with the new render's hash), and the same picture or the same file in that niche with the photo it has ("already there"; the plug-in marks it published). The same Lightroom photo with another picture is an edit: a new photo, and the server names the old one (`replaces`) so the plug-in removes it once the new one is finished. The same photo in **another niche** is another photo, as before.
+- **Finishing is one step and can be repeated.** Processing and the niche tag (with the skills and Discover recompute) are one transaction, behind a per-photographer lock, and the niche recompute goes in a fixed order: no deadlock, and never a photo processing without its niche. Finishing a photo that is already processing or ready answers the same success (deliveries too). A photo left processing without its niche (the old bug) is tagged when it is started or finished again.
+- **Plain words.** A removed or failed photo: "This photo was removed from your portfolio. Publish it again to send it anew." / "RAWWERS could not process this photo. Publish it again to send it anew." A server error: "RAWWERS had a problem on its side (HTTP 500). Try again in a minute." A photo whose last step failed: "it reached RAWWERS but could not be finished (...). Publish again: it will be finished there, not sent twice." The app's message for the same refusal no longer says "current state".
+- **The dialog's numbers are the server's:** "N photos are in your RAWWERS portfolio (Family): X new, Y already there." and "Family now has T photos on RAWWERS." (`GET /v1/delivery/portfolio` now gives `niche_photo_counts`: processing or ready, per niche).
+- **Plug-ins before 1.2.3** still get the file-hash guard only (a re-render is a second photo), but the finish no longer fails: `LIGHTROOM_PLUGIN_LATEST_VERSION` is 1.2.3, so they are told to update.
+- **Not covered:** "Export To: RAWWERS" (deliveries) keeps the file-hash guard: exporting the same photos again after an interruption renders them again and may put them twice in the client's gallery. The owner's decision (LATER or now).
+
 ## 6. Effort and what the owner provides
 
 - **Estimate: 1.5 agent-days.**

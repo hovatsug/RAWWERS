@@ -278,7 +278,11 @@ def complete_photo_upload(
     _ensure_owner(user.user_id, asset.owner_user_id)
 
     if asset.status not in {MediaStatus.uploading, MediaStatus.created}:
-        raise APIError(code="invalid_state", message="Photo upload cannot be completed from current state", status_code=409)
+        raise APIError(
+            code="invalid_state",
+            message="This photo was already sent, or it was removed or could not be processed. Refresh to see it, or upload it again.",
+            status_code=409,
+        )
     if asset.purpose == MediaPurpose.gear_evidence:
         return _complete_gear_evidence(db, asset)
     if body.byte_size and body.byte_size > _max_bytes_for(asset):

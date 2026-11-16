@@ -84,7 +84,7 @@ from app.services.discovery_index import recompute_pro_public_index
 from app.services.followups import schedule_followups
 from app.services.niche_catalog import ensure_initial_niches, get_niche_map_by_ids, get_niche_map_by_slugs
 from app.services import pro_niches
-from app.services.niche_skills import list_user_badge_codes, recompute_pro_niche_skills
+from app.services.niche_skills import list_user_badge_codes, lock_pro_for_recompute, recompute_pro_niche_skills
 from app.models.media_rights import MediaDerivativeKind
 from app.services.media_urls import resolve_derivative_urls, resolve_image_urls
 from app.services.payouts import ensure_default_platform_fee_policy
@@ -751,6 +751,7 @@ def tag_portfolio_media_niches(
     if missing:
         raise APIError(code="validation_error", message=f"Unknown niche slug(s): {', '.join(missing)}", status_code=422)
 
+    lock_pro_for_recompute(db, user.user_id)
     previous_tags = set(asset.niche_tags or [])
     normalized = sorted(set(body.niche_slugs))
     asset.niche_tags = normalized

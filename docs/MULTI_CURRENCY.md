@@ -405,6 +405,30 @@ Given by Stripe support's chat to the owner on **2026-11-13**, for the platform 
 | 6 | One currency per connected account | No explicit rule. Each connected account settles in its country's default currency. Extra currencies through platform configuration need the account in the **same region** as the platform; a UK account under an EEA platform does not qualify. Cross-border payouts are described as local-currency payments, with no confirmation of payouts in another currency. | Indicative; the design rule is 10.3 |
 | 7 | Platform agreement and profile | Nothing mandatory. To verify: Stripe decides cross-border eligibility; check the Connect settings and the platform profile; tax and reporting obligations in another country are ours. | Indicative |
 
+### 9.1 Stripe Support, 2026-11-16
+
+A written reply from **Stripe Support** on **2026-11-16**, on the same case as the earlier answers. Recorded as stated. Where it adds to or conflicts with section 9, the last column says so.
+
+| # | Topic | Stripe Support's answer, as stated | Against section 9 |
+|---|---|---|---|
+| 1 | A GBP settlement account at **Wise or Revolut Business** (UK sort code and account number) | **Supported**, but such accounts **can see a higher rate of payout failures**. Stripe gave no specific technical cause and no recommended setup. A failed payout shows a **specific failure reason in the Dashboard** (from Stripe or from the bank). | **Adds** to #1 (which bank account may be linked). Risk carried into `DEPLOY_CHECKLIST.md` |
+| 2 | **Connect fees** for our model (Express accounts, separate charges and transfers, "You handle pricing for your users"), **on top of** card processing and the cross-border payout fee | **EUR 2 per monthly active account**, charged only in months when a payout is sent to the account's bank account or debit card; **0.25% + EUR 0.10 per payout sent**, charged on total payouts at the end of the month; **0.25% of payout volume** for "funds routing and platform management". | **Adds** the figures #5 lacked; answers 10.4 point 7 in part (fees are per payout to the bank, not per transfer; whether transfers carry any fee: not stated) |
+
+**Stripe's public Portugal Connect pricing page** (`https://stripe.com/en-pt/connect/pricing`, as read by the owner on 2026-11-16; prices on a public page can change) also lists: cross-border payouts **starting at 0.25%** of payout volume; instant payouts **1%**; account debits **1.4%**; ongoing risk monitoring **"varies"**, with no number; and, under payments, **UK cards at 2.5% + EUR 0.25**.
+
+**Open discrepancy: the UK card fee.** An earlier Stripe Support answer (as the owner relayed it; not recorded in this doc until now) gave **UK standard cards 1.5% + 20p** and **premium cards 2.8% + 20p**. The Portugal page shows **UK cards 2.5% + EUR 0.25**. The chat of 2026-11-13 (#5) said an international card fee is added to the standard fee. These do not agree. **Open** until Stripe answers question (d) below.
+
+**Open questions, sent back to Stripe Support by the owner (2026-11-16). All OPEN:**
+
+| | Question | Status |
+|---|---|---|
+| (a) | Do the three payout percentages all apply together: up to **0.75% of payout volume** (cross-border 0.25% + per payout 0.25% + funds routing 0.25%) plus EUR 0.10 per payout plus EUR 2 per active account? | **Open** |
+| (b) | In which currency, and at which exchange rate, are the EUR 2 and EUR 0.10 fees charged for **GBP** accounts? Does the 1% Multi-Currency Settlement fee apply to them? | **Open** |
+| (c) | The **risk monitoring** amount ("varies") | **Open** |
+| (d) | **Which UK card fee applies** (1.5% + 20p and 2.8% + 20p, or 2.5% + EUR 0.25), and what decides standard versus premium | **Open** |
+| (e) | UK platform Connect pricing, had the company been in the UK (for the record only; Scenario X is archived) | **Open** |
+| | **Volume discounts** | **Open** |
+
 ---
 
 ## 10. What changes in the design
@@ -456,6 +480,7 @@ Given by Stripe support's chat to the owner on **2026-11-13**, for the platform 
     3. **A transfer reversal**, only if the admin chooses it and their Stripe balance covers it (Stripe: it fails otherwise). `source_transaction` makes it exact: the transfer funded by that charge.
     4. **Nothing recovered after 90 days:** written off as absorbed.
   - Which of these the beta uses is decision M9.
+- **Design constraint for M8 (2026-11-16): never rely on Stripe account debits** (debiting a connected account; 1.4% of the debit volume on the Portugal pricing page, 9.1). Dispute and refund recovery uses **transfer reversals and our own ledger and holds** only. The plan above already keeps to this: steps 1, 2 and 4 are our ledger and holds, step 3 is a transfer reversal; no step debits a photographer's account, and nothing in the code calls an account debit. Note for M8: a reversal works only while the photographer's Stripe balance covers it (9, #4), and an Express account pays its balance out to the bank, so after their bank payout a reversal will usually fail; the ledger steps are the real recovery. (Stripe debiting **the platform's own** bank account for a negative platform balance, 9 #4, is a different thing and not an account debit.)
 
 ### 10.6 Card and settlement fees are real costs: BI
 
@@ -470,7 +495,7 @@ Given by Stripe support's chat to the owner on **2026-11-13**, for the platform 
 | UK card, PT company, GBP settled (Scenario Y) | 1.5% + £0.25, + 2.0% international, + 1.0% settlement | £9.25 | **£20.75** | 31% |
 | UK card, PT company, converted to EUR | 1.5% + £0.25, + 2.0% international, + 2.0% conversion | £11.25 | **£18.75** | 38% |
 
-  The real figures replace these in BI.md when Stripe confirms them. Recovering fees "by adjusting the transferred amount" (Stripe, #5) would charge the photographer; the design does not do it, and it is decision M10.
+  *Superseded 2026-11-16 by the cost model in 10.9* (Stripe Support's Connect fees, 9.1). The real figures replace these in BI.md when Stripe confirms them. Recovering fees "by adjusting the transferred amount" (Stripe, #5) would charge the photographer; the design does not do it, and it is decision M10.
 
 ### 10.7 BI: the liquid view and money owed per currency
 
@@ -481,6 +506,66 @@ Given by Stripe support's chat to the owner on **2026-11-13**, for the platform 
 ### 10.8 The GBP settlement account in the plans
 
 Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Stripe, accountant and lawyer lists): enable GBP settlement and link a GBP bank account before the first GBP booking; written confirmation of cross-border eligibility and fees; the full agreement for UK photographers.
+
+### 10.9 Cost model for one booking (2026-11-16)
+
+**What it answers:** what the platform keeps from a **£200 booking** after Stripe's fees, in Scenario Y (the plan) and Scenario X (archived, a comparison only), for a photographer with 1, 2, 4 or 8 bookings a month. Computed in code with exact decimals (`Decimal`, rounded half up to the penny only at the end), not by hand; the script lives outside the repo, in the owner's scratch folder.
+
+**The booking:** the client pays **£200 (B)**. The fee is 20% (£40); the photographer's RAWW credit is 5% (£10), so the platform **keeps £30 (R)** before Stripe, and the photographer is **paid £160 in cash (P)**. The £10 RAWW are a liability, not cash out today, and are left out.
+
+**The formula** (all in pounds; *n* = bookings per photographer per month, each paid out on its own):
+
+    Stripe cost per booking = card + s × B + c × P + (q × P + f × r) + g × P + (a × r) / n
+    platform keeps         = R − Stripe cost per booking
+
+| Symbol | Meaning | Value used | Label |
+|---|---|---|---|
+| card | UK card processing on B | 1.5% × B + £0.20 = **£3.20** (standard). Premium: 2.8% × B + £0.20 = £5.80, **£2.60 more** | **Assumed** (earlier Stripe Support answer); **open** discrepancy with 2.5% + EUR 0.25 (9.1, d) |
+| s | Multi-Currency Settlement fee, on the booking | **1%** of B = £2.00 (Y); 0 (X) | **Assumed** |
+| c | Cross-border payout fee, on the payout | **0.25%** of P = £0.40 (Y); 0 (X) | "Starting at 0.25%" on the PT page; the rate for UK: **assumed** |
+| q, f | Connect: per payout sent | **0.25%** of P = £0.40, plus **EUR 0.10** = £0.087 | **Stated by Stripe Support** (9.1); the currency and rate of the EUR part: **open** (b) |
+| g | Connect: funds routing and platform management | **0.25%** of P = £0.40 | **Stated by Stripe Support** (9.1); that it applies with q and c: **assumed**, **open** (a) |
+| a | Connect: monthly active account | **EUR 2** = £1.74, once a month per photographer paid that month, spread over *n* bookings | **Stated by Stripe Support** (9.1); currency: **open** (b) |
+| r | Exchange rate | **EUR 1 = GBP 0.87** | **Assumed** |
+| — | Risk monitoring | **not included** ("varies") | **Open** (c) |
+
+So, per booking, Y costs **£6.487 + £1.74 / n** and X **£4.087 + £1.74 / n**. Scenario X assumes UK Connect fees of the same structure and no settlement or cross-border fee: an **assumption only** (e).
+
+**Result** (what the platform keeps of its £30, standard UK card):
+
+| Bookings a month (*n*) | Y: Stripe cost | **Y: keeps** | X (archived): Stripe cost | X: keeps |
+|---|---|---|---|---|
+| 1 | £8.2270 | **£21.77** | £5.8270 | £24.17 |
+| 2 | £7.3570 | **£22.64** | £4.9570 | £25.04 |
+| 4 | £6.9220 | **£23.08** | £4.5220 | £25.48 |
+| 8 | £6.7045 | **£23.30** | £4.3045 | £25.70 |
+
+The owner's own figures (2026-11-16: Y 21.76, 22.64, 23.07, 23.29; X 24.16, 25.04, 25.47, 25.69) agree to within a penny; the exact values are above, and the differences are rounding only.
+
+**How much the open questions move it** (Y, what the platform keeps):
+
+| *n* | Standard card (as above) | Premium card (2.8% + 20p) | The PT page's UK card rate (2.5% + EUR 0.25) | Only one payout percentage applies (no routing, no separate cross-border) |
+|---|---|---|---|---|
+| 1 | £21.77 | £19.17 | £19.76 | £22.57 |
+| 2 | £22.64 | £20.04 | £20.63 | £23.44 |
+| 4 | £23.08 | £20.48 | £21.06 | £23.88 |
+| 8 | £23.30 | £20.70 | £21.28 | £24.10 |
+
+**Not included:** VAT on Stripe's fees (the accountant), dispute fees and lost chargebacks, refunds, Radar, instant payouts, client credit (a marketing cost in BI), and the risk-monitoring fee. Fewer bank payouts per photographer (a weekly payout schedule) would lower the per-payout parts; the monthly EUR 2 is the largest part at low *n*.
+
+**To redo it when Stripe answers:** change the values in the table of symbols and recompute the two lines of the formula.
+
+**Where Stripe or Connect fee assumptions live** (to update once the real figures are confirmed; nothing in the code or settings holds a Stripe fee figure, since BI reads Stripe's real fees from its balance transactions):
+
+1. This file: the illustrative table in 10.6 (superseded by this section); 10.4 point 7 (fee per transfer or per payout: per payout to the bank, 9.1; whether transfers carry any fee: open); the "UK card fee" and "Settlement fee on GBP" rows of 11.3 (names, no figures).
+2. `BI.md`, "Stripe fees": counts Stripe's own fees billed as separate transactions (Connect among them). The monthly Connect fees are charged at month end, not per charge, so they cannot be tied to one booking: M9's per-booking contribution must spread them or show them apart.
+3. `api/app/services/bi.py` (line 97): the mirror stores Stripe's balance transactions in every currency (`bi_stripe.py:77`), but BI sums only the EUR ones (and `bi_stripe.py:103-107` reads only the EUR balance). Connect fees charged in EUR are counted; any charged in GBP are not, until M5.
+4. `api/app/services/bi.py` (line 623): the line text "We store no fees of our own: Stripe is the only source." Still true; no figure.
+5. `api/scripts/seed_bi_demo.py` (dev demo only): fees of 1.5% + 0.25 per charge (lines 11, 168) and a 15.00 dispute fee (line 289). Not real; update only if the demo should look like the UK figures.
+6. `DEPLOY_CHECKLIST.md`: "Chargebacks" (Stripe's dispute fee, EUR 20 seen in test mode, not a live figure) and "GBP at Stripe" (the written fee confirmations).
+7. `BETA_SCOPE.md` 4.5: the Stripe and accountant bullets (fee figures, costs).
+8. The web admin's BI screens (`web/app/admin/bi/`): the label "Stripe fees" only, no figures. The Costs page's categories (`api/app/models/bi.py:32`: ad spend, marketing, salaries, software, legal, office, other) have no Stripe category, which is right while Stripe's fees come from the mirror.
+9. Not Stripe fees, but the £30 above depends on them: the platform fee policy (`fee_percent_gigs` 20, retained 15, RAWW 5: `api/app/models/payouts.py:295-303`, `api/app/models/bi_views.py:24`).
 
 ---
 
@@ -512,7 +597,7 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 ### 11.2 Stripe questions that still matter
 
 - **X (archived 2026-11-16):** most answers in section 9 become moot for GBP. To ask again **only when EUR is switched on**: EUR settlement on a UK account; cross-border payouts from a UK platform to EEA photographers (agreement type, eligibility); EU cards' fees on a UK account; the same refund and dispute rules for the EUR balance.
-- **Y (the plan):** all of section 9 stands; the written confirmations still owed are cross-border eligibility (#2) and the fee figures (#5). *2026-11-16:* also whether the existing Stripe platform account moves to the company or a new one is opened (the owner asks Stripe), and the open fee questions (sent back to Stripe Support, 2026-11-16).
+- **Y (the plan):** all of section 9 stands; the written confirmations still owed are cross-border eligibility (#2) and the fee figures (#5). *2026-11-16:* also whether the existing Stripe platform account moves to the company or a new one is opened (the owner asks Stripe), and the open fee questions of 9.1.
 
 ### 11.3 Fees, currencies and settings
 
@@ -567,14 +652,14 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 4. **M4** caps, discovery, credit, RAWW (1.5)
 5. **M3** rates and display (1.5)
 6. **M5** BI stamps, base currency a setting (1)
-7. **M8** balances per currency, alerts, the low-balance and dispute rules (1)
+7. **M8** balances per currency, alerts, the low-balance and dispute rules (1); recovery never uses Stripe account debits (10.5, 2026-11-16); low-balance and failed-payout alerts must exist before real money (`DEPLOY_CHECKLIST.md`)
 8. **M9** BI fees per booking, liquid and owed per currency (1)
 9. **M6** Stripe end to end, **after** the company decision and Stripe's written answers (1). *2026-11-16:* the company decision is made (Portuguese, 11.0). M6 still waits for **all** of:
    1. **the company entity confirmed** (which Portuguese company; the owner, after a Portuguese accountant);
    2. **the Stripe platform account under that company** (the owner asks Stripe whether the existing account moves or a new one is opened; a new account means new keys, webhook secrets and Connect settings, see [COMPANY_DETAILS_NEEDED.md](COMPANY_DETAILS_NEEDED.md));
    3. **the full service agreement for UK connected accounts** (9, #2; 10.2), with Stripe's written confirmation of cross-border eligibility;
-   4. **a GBP settlement account in the company's name** (Wise or Revolut Business; UK sort code and account number), linked for Multi-Currency Settlement (9, #1);
-   5. **Stripe's answers to the open fee questions** (sent back to Stripe Support, 2026-11-16).
+   4. **a GBP settlement account in the company's name** (Wise or Revolut Business; UK sort code and account number), linked for Multi-Currency Settlement (9, #1; such accounts can see more payout failures, 9.1);
+   5. **Stripe's answers to the open fee questions** (9.1).
 
 **Total: about 11.5 agent-days** (8 before, plus M7, M8 and M9). Batches 1 to 8 can start once the owner approves the design; M6 waits.
 

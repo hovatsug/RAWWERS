@@ -4,6 +4,8 @@ Written 2026-11-11 on `the-shelf-wip`, read-only: nothing here is built. It is f
 
 **Updated 2026-11-13** for the owner's UK-first decision (GBP main and the default for new users, EUR second) and Stripe's answers. Sections 9 to 12 are new: Stripe's answers (9), what they change in the design (10), the two company scenarios (11) and the build order (12). Where an earlier section said otherwise, it is marked *superseded* and points to the new text.
 
+**Updated 2026-11-16:** decision M11 is made: the platform is run by a **Portuguese company, entity to be confirmed** (section 11.0). Scenario X (a UK company) is **archived**, kept for comparison only. What batch M6 still waits for is in section 12.
+
 **The requirement (decided, option A).**
 - Each photographer prices and is paid in one currency, EUR or GBP.
 - Each user picks a display currency and sees an approximate conversion, labelled with the currency actually charged.
@@ -105,7 +107,7 @@ Key: **✓** currency known · **≈** a currency column exists but is defaulted
 
 ### 2.3 The platform's base currency
 
-**EUR**, for reporting only (BI, the owner's totals). It is not a money-path currency. *Superseded 2026-11-13:* the base currency is the currency of the company's books, a setting: EUR for a Portuguese company, GBP for a UK one (section 11).
+**EUR**, for reporting only (BI, the owner's totals). It is not a money-path currency. *Superseded 2026-11-13:* the base currency is the currency of the company's books, a setting: EUR for a Portuguese company, GBP for a UK one (section 11). *Decided 2026-11-16:* **EUR**, the books of a Portuguese company (11.0, 11.5).
 
 ### 2.4 When the display currency differs from the charged currency
 
@@ -376,13 +378,14 @@ Hand-computed fixtures, written out in the tests, never computed by the code und
 | M8 | The display rate source? | **Approved:** the ECB daily reference rates, shown as "about". |
 | M9 | A lost dispute that is the photographer's fault? | **Approved:** recovered in this order: the held earning, then their future earnings, then a transfer reversal only if the admin chooses, then written off after 90 days. Not their fault: the platform absorbs it. The photographer agreement must say this (lawyer, `BETA_SCOPE.md` 4.5). |
 | M10 | Pass Stripe fees on to photographers? | **Never.** |
-| M11 | The company: UK (X) or Portuguese (Y)? | **OPEN.** The owner is taking advice. Neither is assumed: both scenarios stay open, and only the batches that are the same in both are built (section 12). |
+| M11 | The company: UK (X) or Portuguese (Y)? | ~~OPEN~~ **Decided 2026-11-16: a Portuguese company (Scenario Y), entity to be confirmed** (section 11.0). Scenario X is archived. |
 
 **The Shelf stays OFF** (2026-11-13): it needs the terms and the RAWW expiry review first.
 
 **Updates to section 8, 2026-11-13** (the text above is kept as the owner read it):
 - Risk 1's fallback, "destination charges with `on_behalf_of`", is withdrawn: Stripe says `on_behalf_of` is not part of the compatible flow, and the design never uses it (10.2). If multi-currency settlement were refused, the fallback is a UK company (section 11, Scenario X), not a different charge type.
 - Risk 2 (cross-border limits) and risk 3 (refunds and disputes above the GBP balance) now have Stripe's answers (section 9) and a rule (10.5).
+- *2026-11-16:* with Scenario X archived (11.0), the fallback above is gone. If Stripe refused GBP settlement for the company's account, the design has **no fallback** today; that would be a new decision for the owner.
 - M2's GBP table comes first and is the default (UK first). M4's minimum is still the owner's. M5: the RAWW value is set in GBP first (11.3). M7 is done (questions sent; answers in section 9). New decisions M9 to M11 are in section 12.
 
 ---
@@ -483,12 +486,21 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 
 ## 11. Company scenarios
 
-**Scenario X:** the platform is a **UK company** with a **UK Stripe account**. GBP is native; UK photographers are domestic connected accounts; UK cards are domestic; EUR is the foreign currency.
-**Scenario Y:** the platform is a **Portuguese company** with a **Portuguese Stripe account**: the design above.
+### 11.0 The decision (2026-11-16)
+
+**Decision M11 (the owner's, 2026-11-16): the company behind RAWWERS is a Portuguese company. Scenario Y is the plan; Scenario X is archived.**
+
+- **Why:** the company's tax is paid in Portugal, and photographers pay their own tax wherever they live. A UK company would have needed a UK-resident director or a UK majority partner, for tax-residence and banking reasons. (The reason as the owner gave it after professional advice; this doc draws no legal conclusion from it.)
+- **Which Portuguese company is not decided:** **"Portuguese company, entity to be confirmed."** The owner decides the entity after talking to a Portuguese accountant. No doc, setting or text may name an entity until then; placeholders are listed in [COMPANY_DETAILS_NEEDED.md](COMPANY_DETAILS_NEEDED.md).
+- **What follows at once:** the books and the BI base currency are EUR (2.3, 11.5); UK photographers are cross-border connected accounts on the full service agreement (9, #2; 10.2); GBP needs Multi-Currency Settlement and a GBP settlement account in the company's name (9, #1).
+- **What does not change:** UK first, GBP the default (10.1); batches M1, M2, M3, M4 and M7 as built; M5, M8 and M9 as designed (11.4).
+
+**Scenario X (ARCHIVED 2026-11-16, not chosen):** the platform is a **UK company** with a **UK Stripe account**. GBP is native; UK photographers are domestic connected accounts; UK cards are domestic; EUR is the foreign currency. Kept below as a comparison only.
+**Scenario Y (the plan):** the platform is a **Portuguese company** with a **Portuguese Stripe account**: the design above.
 
 ### 11.1 Charges and payouts
 
-| | X: UK company | Y: Portuguese company |
+| | X: UK company (archived) | Y: Portuguese company (the plan) |
 |---|---|---|
 | Charge model | Separate charges and transfers, as today | The same |
 | GBP | Native: GBP charges settle in GBP with no extra setup or fee | Needs Multi-Currency Settlement and a GBP bank account (9, #1) |
@@ -499,12 +511,12 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 
 ### 11.2 Stripe questions that still matter
 
-- **X:** most answers in section 9 become moot for GBP. To ask again **only when EUR is switched on**: EUR settlement on a UK account; cross-border payouts from a UK platform to EEA photographers (agreement type, eligibility); EU cards' fees on a UK account; the same refund and dispute rules for the EUR balance.
-- **Y:** all of section 9 stands; the written confirmations still owed are cross-border eligibility (#2) and the fee figures (#5).
+- **X (archived 2026-11-16):** most answers in section 9 become moot for GBP. To ask again **only when EUR is switched on**: EUR settlement on a UK account; cross-border payouts from a UK platform to EEA photographers (agreement type, eligibility); EU cards' fees on a UK account; the same refund and dispute rules for the EUR balance.
+- **Y (the plan):** all of section 9 stands; the written confirmations still owed are cross-border eligibility (#2) and the fee figures (#5). *2026-11-16:* also whether the existing Stripe platform account moves to the company or a new one is opened (the owner asks Stripe), and the open fee questions (sent back to Stripe Support, 2026-11-16).
 
 ### 11.3 Fees, currencies and settings
 
-| | X: UK company | Y: Portuguese company |
+| | X: UK company (archived) | Y: Portuguese company (the plan) |
 |---|---|---|
 | UK card fee | Domestic rate | International rate (standard + international fee) |
 | Settlement fee on GBP | None | Multi-Currency Settlement fee |
@@ -531,7 +543,17 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 | **M5** BI stamps | **Same** if the base currency is a setting (`bi_base_currency`) | Only the setting's value depends on the company |
 | **M8** balance monitoring per currency, low-balance rule, dispute recovery | **Same** monitoring; the recovery rule waits for M9 | Stripe's per-currency balance rules are the same in both (to confirm for X) |
 | **M9** BI fees per booking, liquid and owed per currency | **Same** mechanism | The fee figures differ, but they come from Stripe's data |
-| **M6** Stripe end to end: the service agreement, eligibility, the live switch | **Depends** on the company and on Stripe's written answers | X: domestic UK accounts, no settlement setup. Y: cross-border, full agreement, GBP settlement account |
+| **M6** Stripe end to end: the service agreement, eligibility, the live switch | **Depends** on the company and on Stripe's written answers | X: domestic UK accounts, no settlement setup. Y: cross-border, full agreement, GBP settlement account. *2026-11-16: Y is the plan; what M6 waits for is in section 12.* |
+
+### 11.5 Books and BI (2026-11-16)
+
+- **The company's books are in euros.** Pounds held (the GBP balance at Stripe and the GBP settlement account) are revalued in the books; how and when (which rate, at which dates) is **the accountant's to say, to be confirmed**. Nothing in the code does this revaluation, and BI is not the books.
+- **What the BI design already does** (section 5, BI row; 10.6; 10.7; batches M5 and M9, not built):
+  - every money line is stamped with its euro value **when the money moves** (`base_minor`, `base_rate`); BI totals are sums of those stamps, so they never move with today's rate;
+  - the liquid view and money owed are **per currency**, never netted across currencies, with one euro total below, **labelled "approximate, at today's rate", for display only** (10.7);
+  - fees are split per currency (10.6).
+- **What it does not say yet:** the profit-and-loss lines (GMV, retained fee, Stripe fees, contribution) are designed as **stamped euros**, and the per-currency split there is optional ("the screen can split by currency", section 5). To match the books note above, M5 should show those lines **per currency (GBP, EUR)** with the stamped-euro total beside them, not instead of them. Recorded here for M5; not built.
+- **Today (built):** BI counts euros only and leaves other lines out (`other_currency_lines`); that stays until M5.
 
 ---
 
@@ -547,11 +569,16 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 6. **M5** BI stamps, base currency a setting (1)
 7. **M8** balances per currency, alerts, the low-balance and dispute rules (1)
 8. **M9** BI fees per booking, liquid and owed per currency (1)
-9. **M6** Stripe end to end, **after** the company decision and Stripe's written answers (1)
+9. **M6** Stripe end to end, **after** the company decision and Stripe's written answers (1). *2026-11-16:* the company decision is made (Portuguese, 11.0). M6 still waits for **all** of:
+   1. **the company entity confirmed** (which Portuguese company; the owner, after a Portuguese accountant);
+   2. **the Stripe platform account under that company** (the owner asks Stripe whether the existing account moves or a new one is opened; a new account means new keys, webhook secrets and Connect settings, see [COMPANY_DETAILS_NEEDED.md](COMPANY_DETAILS_NEEDED.md));
+   3. **the full service agreement for UK connected accounts** (9, #2; 10.2), with Stripe's written confirmation of cross-border eligibility;
+   4. **a GBP settlement account in the company's name** (Wise or Revolut Business; UK sort code and account number), linked for Multi-Currency Settlement (9, #1);
+   5. **Stripe's answers to the open fee questions** (sent back to Stripe Support, 2026-11-16).
 
 **Total: about 11.5 agent-days** (8 before, plus M7, M8 and M9). Batches 1 to 8 can start once the owner approves the design; M6 waits.
 
-**Decisions M9 to M11:** decided 2026-11-13 except M11, which is open; see section 8.
+**Decisions M9 to M11:** decided 2026-11-13; M11 decided 2026-11-16 (Portuguese company, entity to be confirmed); see section 8.
 
 ---
 

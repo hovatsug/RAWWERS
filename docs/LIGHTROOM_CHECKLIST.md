@@ -102,9 +102,9 @@ Write down anything that differs from **Expect**, with a screenshot.
 
 **Expect:** still "Connected as ..." without typing a code: the token is in the macOS keychain, not in a preset.
 
-## P. The portfolio (plug-in 1.2.1)
+## P. The portfolio (plug-in 1.2.2)
 
-Against dev, with pro1 signed in in the pro app. Build 1.2.1 first: `lightroom/build.sh --version 1.2.1 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. Start with pro1 having **no niches** (the pro app has no niche screen; the niches are set up from Lightroom here). To start again from none on dev:
+Against dev, with pro1 signed in in the pro app. Build 1.2.2 first: `lightroom/build.sh --version 1.2.2 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. Start with pro1 having **no niches** (the pro app has no niche screen; the niches are set up from Lightroom here). To start again from none on dev:
 
     docker exec api-postgres-1 psql -U postgres -d rawwers -c "DELETE FROM pro_niche WHERE pro_user_id = (SELECT user_id FROM user_account WHERE email = 'pro1@rawwers.dev')"
 
@@ -112,7 +112,7 @@ Have 6 JPEG-able photos ready, one of them very large (a pano or a 100 MP file e
 
 P.1 Plug-in Manager.
 
-**Expect:** RAWWERS **1.2.1**, Installed and running. (1.2.0 could not save the publish service: Save stayed blocked even when connected. 1.2.1 fixes it; P.2, P.4 and P.5 check it.)
+**Expect:** RAWWERS **1.2.2**, Installed and running, no diagnostic messages. (1.2.0 could not save the publish service: Save stayed blocked even when connected. 1.2.2 fixes it; P.2, P.4 and P.5 check it.)
 
 P.2 Save works on an already paired Mac, with no new code. On a Mac paired before (Export or an earlier plug-in; the pairing is kept in the keychain), after reloading the plug-in in P.1: Library > **Publish Services** panel (left) > **Set Up...** next to **RAWWERS Portfolio** (or, for a service that exists, right-click it > **Edit Settings...**).
 

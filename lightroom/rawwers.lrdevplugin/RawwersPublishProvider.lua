@@ -35,10 +35,11 @@ local LrView = import 'LrView'
 
 local Checks = require 'RawwersChecks'
 local Config = require 'RawwersConfig'
-local Connection = require 'RawwersConnection'
 local Lightroom = require 'RawwersLightroom'
 local Pipeline = require 'RawwersPipeline'
 local Portfolio = require 'RawwersPortfolio'
+
+local Connection = Portfolio.Connection
 
 local bind = LrView.bind
 

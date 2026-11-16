@@ -755,7 +755,7 @@ end )
 
 -- The publish service's connection state (1.2.1) ----------------------------------------------------
 
-local Connection = require 'RawwersConnection'
+local Connection = require( 'RawwersPortfolio' ).Connection
 local STATES = { 'connected', 'checking', 'connecting', 'not_paired', 'revoked', 'pair_failed', 'outdated', 'unreachable', 'something else' }
 
 test( 'Save is allowed exactly when the line says "Connected", in every state', function()

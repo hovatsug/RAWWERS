@@ -289,8 +289,8 @@ test( 'the plug-in declares the last three Lightroom Classic versions', function
 	eq( info.LrSdkVersion, 15.3 )
 	eq( info.LrExportServiceProvider[ 1 ], { title = 'RAWWERS', file = 'RawwersServiceProvider.lua' } )
 	eq( info.LrExportServiceProvider[ 2 ], { title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' } )
-	eq( info.VERSION, { major = 1, minor = 2, revision = 1, build = 0 } )
-	eq( require( 'RawwersConfig' ).version, '1.2.1' )
+	eq( info.VERSION, { major = 1, minor = 2, revision = 2, build = 0 } )
+	eq( require( 'RawwersConfig' ).version, '1.2.2' )
 end )
 
 -- Exports ---------------------------------------------------------------------------------
@@ -848,6 +848,17 @@ test( 'the code row and Check again follow the same state as Save', function()
 	eq( codeRow.visible, { bound = 'rawwersNeedsCode' } )
 	local retryRow = find( tree, function( t ) return t.visible and find( t, function( u ) return u.title == 'Check again' end ) end )
 	eq( retryRow.visible, { bound = 'rawwersCanRetry' } )
+end )
+
+test( 'the plug-in has the same files as 1.2.0: Lightroom does not see a new file until restarted', function()
+	-- 1.2.1 added RawwersConnection.lua; a Lightroom that was open could not
+	-- load it ("Could not load toolkit script"). A new file needs a release
+	-- note telling photographers to restart Lightroom; then add it here.
+	local names = {}
+	for name in io.popen( 'ls rawwers.lrdevplugin' ):lines() do names[ #names + 1 ] = name end
+	eq( names, { 'Info.lua', 'RawwersApi.lua', 'RawwersChecks.lua', 'RawwersConfig.lua', 'RawwersJson.lua', 'RawwersLightroom.lua',
+		'RawwersPipeline.lua', 'RawwersPortfolio.lua', 'RawwersPublishProvider.lua', 'RawwersRetry.lua', 'RawwersServiceProvider.lua',
+		'RawwersSummary.lua', 'RawwersUpload.lua' } )
 end )
 
 os.exit( H.run() and 0 or 1 )

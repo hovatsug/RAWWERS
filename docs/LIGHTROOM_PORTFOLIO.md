@@ -136,7 +136,7 @@ Owner's decision, 2026-11-15, found while testing 1.1.0: a photographer must be 
 
 ### 1.2.1: the connection and Save
 
-1.2.0 could not save the publish service: the settings said "Connected" but Save stayed blocked ("Can't Save Changes: Connect to RAWWERS first"). The Save check was an observer whose expression, `connected and nil or reason`, always gave the reason (in Lua, `x and nil or y` is always `y`). It was there since 1.1.0. Since 1.2.1 one state (`RawwersConnection.lua`) sets the line, the pairing row, a **Check again** button and Save together, and "Connected" (the only state that allows Save) is reached only after the server answered with this Mac's stored pairing:
+1.2.0 could not save the publish service: the settings said "Connected" but Save stayed blocked ("Can't Save Changes: Connect to RAWWERS first"). The Save check was an observer whose expression, `connected and nil or reason`, always gave the reason (in Lua, `x and nil or y` is always `y`). It was there since 1.1.0. Since 1.2.1 one state (`Portfolio.Connection` in `RawwersPortfolio.lua`) sets the line, the pairing row, a **Check again** button and Save together, and "Connected" (the only state that allows Save) is reached only after the server answered with this Mac's stored pairing:
 
 - no pairing stored: "Not connected. Type the pairing code...", Save blocked;
 - pairing refused by the server (401: revoked or expired): the token is forgotten, "Not connected. Type a new pairing code...", Save blocked;
@@ -144,7 +144,9 @@ Owner's decision, 2026-11-15, found while testing 1.1.0: a photographer must be 
 - plug-in refused as too old (426): Save blocked;
 - after **Connect**, the new pairing is checked the same way before "Connected".
 
-No API change: `LIGHTROOM_PLUGIN_LATEST_VERSION` stays 1.2.0, and the niche routes accept 1.2.1.
+1.2.2 is the same fix with no new file: 1.2.1 put it in a new `RawwersConnection.lua`, and a Lightroom that was already open could not load it ("Could not load toolkit script: RawwersConnection") until restarted. A test now fails when a file is added to the plug-in, so a new file comes with a note to restart Lightroom.
+
+No API change: `LIGHTROOM_PLUGIN_LATEST_VERSION` stays 1.2.0, and the niche routes accept 1.2.2.
 
 ## 6. Effort and what the owner provides
 

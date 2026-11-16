@@ -140,11 +140,12 @@ def test_finishing_again_after_success_is_the_same_success(client, db_session, t
     first = _finish(client, token, asset_id)
     second = _finish(client, token, asset_id)
     assert first.status_code == second.status_code == 200, second.text
-    assert first.json() == second.json() == {"ok": True, "current_status": "processing"}
+    assert first.json() == second.json()
+    assert (first.json()["ok"], first.json()["current_status"]) == (True, "processing")
     asset = _photos(db_session, pro)[0]
     asset.status = MediaStatus.ready
     db_session.commit()
-    assert _finish(client, token, asset_id).json() == {"ok": True, "current_status": "ready"}
+    assert _finish(client, token, asset_id).json()["current_status"] == "ready"
 
 
 def test_finishing_a_photo_that_was_already_processing_but_untagged_tags_it(client, db_session, two_niches):

@@ -28,11 +28,12 @@ from app.core.errors import APIError
 from app.core.client_ip import client_ip
 from app.models.admin import UserRoleType
 from app.models.gallery import ProofGallery, ProofGalleryItem, ProofGalleryStatus
-from app.models.media import MediaAsset, MediaPurpose, MediaStatus, MediaVisibility
+from app.models.media import MediaAsset, MediaObject, MediaPurpose, MediaStatus, MediaVariant, MediaVisibility
 from app.models.niche import Niche
 from app.schemas.delivery import (
     DeliveryCompleteRequest,
     DeliveryFailedPhoto,
+    DeliveryFinishResponse,
     DeliveryGigsResponse,
     DeliveryMeResponse,
     DeliveryStatusResponse,
@@ -85,6 +86,7 @@ from app.services.gig_state import require_gig_deliverable
 from app.services.niche_catalog import ensure_initial_niches
 from app.services.photo_uploads import max_photo_bytes
 from app.services.rate_limit import enforce_named_rate_limit
+from app.services.storage import object_size
 
 router = APIRouter(prefix="/delivery", tags=["delivery"])
 
@@ -230,6 +232,27 @@ def start_upload(
             status_code=422,
         )
     gallery = _open_gallery(db, device, gig_id)
+    checksum = body.sha256.lower()
+    picture = body.image_sha256.lower() if body.image_sha256 else None
+    # 1.2.4: the same Lightroom photo in this gig, or the same picture, is the
+    # photo the gallery has, however Lightroom rendered it this time; an
+    # interrupted export run again resumes it. An edited photo is added
+    # (a delivery is never replaced automatically).
+    existing, _edited = lightroom_portfolio.match_existing(
+        lightroom_portfolio.live_in_gallery(db, gallery.id), checksum=checksum, publish_key=body.delivery_key, image_sha256=picture
+    )
+    if existing is not None:
+        lightroom_portfolio.resume_with(db, existing, checksum=checksum, image_sha256=picture)
+        db.commit()
+        again = media_routes._answer_with_existing(db, existing, _as_photographer(device))
+        large = body.byte_size > MULTIPART_THRESHOLD_BYTES
+        return DeliveryUploadResponse(
+            media_asset_id=existing.id,
+            gallery_id=gallery.id,
+            duplicate=again.duplicate,
+            upload=None if (again.duplicate or large) else again.upload,
+            use_multipart=large and not again.duplicate,
+        )
     # Per device, on top of the photographer's hourly bucket: what a leaked
     # token can add in a day before it is revoked.
     enforce_named_rate_limit("delivery_token_daily", principal=str(device.device_id))
@@ -245,6 +268,16 @@ def start_upload(
         user=_as_photographer(device),
         db=db,
     )
+    if not started.duplicate and (body.delivery_key or picture):
+        asset = db.get(MediaAsset, started.media_asset_id)
+        if asset is not None:
+            keys = {}
+            if body.delivery_key:
+                keys[lightroom_portfolio.PUBLISH_KEY] = body.delivery_key
+            if picture:
+                keys[lightroom_portfolio.IMAGE_SHA_KEY] = picture
+            asset.meta = {**(asset.meta or {}), **keys}
+            db.commit()
     if body.position is not None and not started.duplicate:
         # The first place stays: a file sent again, or resumed - even from a
         # later export - is the photo it was the first time.
@@ -327,18 +360,27 @@ def part_urls(
 def assemble_parts(
     media_asset_id: uuid.UUID, device: DeliveryDevice = Depends(require_delivery_device), db: Session = Depends(get_db_session)
 ) -> CompletePhotoUploadResponse:
-    """Join the parts into the original. Then finish it like any other."""
-    _own_delivery(db, device, media_asset_id)
+    """Join the parts into the original. Then finish it like any other.
+    Joining again, once joined (the answer was lost), is the same success."""
+    asset = _own_delivery(db, device, media_asset_id)
+    if asset.status in {MediaStatus.processing, MediaStatus.ready}:
+        return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
+    if not (asset.meta or {}).get("multipart"):
+        original = db.execute(
+            select(MediaObject).where(MediaObject.media_asset_id == asset.id, MediaObject.variant == MediaVariant.original)
+        ).scalar_one_or_none()
+        if original is not None and object_size(original.storage_key) is not None:
+            return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
     return media_routes.complete_multipart(media_asset_id=media_asset_id, user=_as_photographer(device), db=db)
 
 
-@router.post("/uploads/{media_asset_id}/complete", response_model=CompletePhotoUploadResponse)
+@router.post("/uploads/{media_asset_id}/complete", response_model=DeliveryFinishResponse)
 def finish_upload(
     media_asset_id: uuid.UUID,
     body: DeliveryCompleteRequest,
     device: DeliveryDevice = Depends(require_delivery_device),
     db: Session = Depends(get_db_session),
-) -> CompletePhotoUploadResponse:
+) -> DeliveryFinishResponse:
     """The file is in storage: process it. The hash must be the one declared
     at the start; the worker then checks it against the bytes themselves."""
     asset = _own_delivery(db, device, media_asset_id)
@@ -351,17 +393,18 @@ def finish_upload(
     if lightroom_portfolio.is_from_lightroom(asset):
         # Processing and the niche's tag in one transaction; finishing again
         # answers the same success (1.2.3, the owner's case of 2026-11-16).
-        status = lightroom_portfolio.finish(db, asset, byte_size=body.byte_size)
-        return CompletePhotoUploadResponse(ok=True, current_status=status.value)
+        done = lightroom_portfolio.finish(db, asset, byte_size=body.byte_size)
+        return DeliveryFinishResponse(ok=True, current_status=done.status.value, replaced=done.replaced, old_kept=done.old_kept)
     if asset.status in {MediaStatus.processing, MediaStatus.ready}:
         # A delivery photo finished already (the answer was lost): the same success.
-        return CompletePhotoUploadResponse(ok=True, current_status=asset.status.value)
-    return media_routes.complete_photo_upload(
+        return DeliveryFinishResponse(ok=True, current_status=asset.status.value)
+    done = media_routes.complete_photo_upload(
         media_asset_id=media_asset_id,
         body=CompletePhotoUploadRequest(byte_size=body.byte_size),
         user=_as_photographer(device),
         db=db,
     )
+    return DeliveryFinishResponse(ok=done.ok, current_status=done.current_status)
 
 
 @router.get("/galleries/{gallery_id}/status", response_model=DeliveryStatusResponse)
@@ -486,14 +529,34 @@ def start_portfolio_upload(
     checksum = body.sha256.lower()
     picture = body.image_sha256.lower() if body.image_sha256 else None
     user = _as_photographer(device)
-    existing, replaced = lightroom_portfolio.existing_copy(
+    existing, keyed_old = lightroom_portfolio.existing_copy(
         db, device.pro_user_id, body.niche_slug, checksum=checksum, publish_key=body.publish_key, image_sha256=picture
     )
     if existing is not None:
         # Resumed: done already, or a fresh address for the bytes still missing.
-        lightroom_portfolio.resume_with(existing, checksum=checksum, image_sha256=picture)
-        if lightroom_portfolio.ensure_tagged(db, existing) or db.dirty:
-            db.commit()
+        lightroom_portfolio.resume_with(db, existing, checksum=checksum, image_sha256=picture)
+        lightroom_portfolio.ensure_tagged(db, existing)
+        replaced, kept = None, None
+        if existing.status in {MediaStatus.processing, MediaStatus.ready} and body.previous_id and body.previous_id != existing.id:
+            # Lightroom re-publishes an edit the server already has: the old version goes now.
+            from app.services.niche_skills import lock_pro_for_recompute
+
+            lock_pro_for_recompute(db, device.pro_user_id)
+            old, kept = lightroom_portfolio.old_version(
+                db, pro_user_id=device.pro_user_id, slug=body.niche_slug, publish_key=body.publish_key,
+                previous_id=body.previous_id, keyed=None, new_id=existing.id,
+            )
+            if old is not None:
+                lightroom_portfolio.remove(db, old)
+                replaced = old.id
+        elif existing.status in {MediaStatus.uploading, MediaStatus.created} and body.previous_id:
+            old, kept = lightroom_portfolio.old_version(
+                db, pro_user_id=device.pro_user_id, slug=body.niche_slug, publish_key=body.publish_key,
+                previous_id=body.previous_id, keyed=None, new_id=existing.id,
+            )
+            if old is not None:
+                existing.meta = {**(existing.meta or {}), lightroom_portfolio.REPLACES_KEY: str(old.id)}
+        db.commit()
         again = media_routes._answer_with_existing(db, existing, user)
         large = body.byte_size > MULTIPART_THRESHOLD_BYTES
         return PortfolioUploadResponse(
@@ -501,6 +564,8 @@ def start_portfolio_upload(
             duplicate=again.duplicate,
             upload=None if (again.duplicate or large) else again.upload,
             use_multipart=large and not again.duplicate,
+            replaced=replaced,
+            old_kept=kept,
         )
     enforce_named_rate_limit("delivery_token_daily", principal=str(device.device_id))
     started = media_routes.start_photo_upload(
@@ -515,8 +580,13 @@ def start_portfolio_upload(
         bucket=media_routes.PLUGIN_PORTFOLIO_UPLOADS,
     )
     asset = db.get(MediaAsset, started.media_asset_id)
+    old, kept = lightroom_portfolio.old_version(
+        db, pro_user_id=device.pro_user_id, slug=body.niche_slug, publish_key=body.publish_key,
+        previous_id=body.previous_id, keyed=keyed_old, new_id=asset.id,
+    )
     lightroom_portfolio.mark_published(
-        asset, slug=body.niche_slug, checksum=checksum, publish_key=body.publish_key, image_sha256=picture
+        asset, slug=body.niche_slug, checksum=checksum, publish_key=body.publish_key, image_sha256=picture,
+        replaces=old.id if old is not None else None,
     )
     db.commit()
     large = body.byte_size > MULTIPART_THRESHOLD_BYTES
@@ -524,7 +594,8 @@ def start_portfolio_upload(
         media_asset_id=started.media_asset_id,
         upload=None if large else started.upload,
         use_multipart=large,
-        replaces=replaced.id if replaced is not None else None,
+        replaces=old.id if old is not None else None,
+        old_kept=kept,
     )
 
 

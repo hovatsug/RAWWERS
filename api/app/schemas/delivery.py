@@ -114,6 +114,11 @@ class DeliveryUploadRequest(BaseModel):
     #: The export this photo is part of, named by the plug-in: a later export
     #: goes after the earlier ones in the gallery, each in its own order.
     export_id: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    #: (1.2.4) The plug-in's key for this Lightroom photo in this gig: the
+    #: same on every export of it, whatever the render.
+    delivery_key: str | None = Field(default=None, min_length=1, max_length=200, pattern=r"^[A-Za-z0-9:._-]+$")
+    #: (1.2.4) SHA-256 of the picture without its metadata (see PortfolioUploadRequest).
+    image_sha256: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
 
 
 class DeliveryUploadResponse(BaseModel):
@@ -212,6 +217,10 @@ class PortfolioUploadRequest(BaseModel):
     #: and comment segments left out): Lightroom writes the export time into
     #: every render, so the file's own hash differs each time.
     image_sha256: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
+    #: (1.2.4) The portfolio photo this re-publish replaces, as Lightroom
+    #: recorded it. The server removes it once the new one is finished, if
+    #: it may (lightroom_portfolio.replaceable).
+    previous_id: uuid.UUID | None = None
 
 
 class PortfolioUploadResponse(BaseModel):
@@ -220,11 +229,26 @@ class PortfolioUploadResponse(BaseModel):
     duplicate: bool = False
     upload: UploadPayload | None = None
     use_multipart: bool = False
-    #: (1.2.3) An older version of the same Lightroom photo in this niche
-    #: (it was edited): the plug-in removes it once this one is finished.
+    #: An older version of the same Lightroom photo in this niche (it was
+    #: edited). 1.2.3 removed it itself; since 1.2.4 the server removes it
+    #: when this one is finished, and says so in the finish's answer.
     replaces: uuid.UUID | None = None
+    #: (1.2.4) The old version removed now (this photo was there already).
+    replaced: uuid.UUID | None = None
+    #: (1.2.4) Why the old version was kept, in plain words.
+    old_kept: str | None = None
 
 
 class PortfolioRemoveResponse(BaseModel):
     ok: bool = True
     media_asset_id: uuid.UUID
+
+
+class DeliveryFinishResponse(BaseModel):
+    """The finish's answer: the app's fields, and (1.2.4) the old version
+    of an edited portfolio photo removed with it, or why it was kept."""
+
+    ok: bool
+    current_status: str
+    replaced: uuid.UUID | None = None
+    old_kept: str | None = None

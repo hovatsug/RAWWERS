@@ -65,6 +65,9 @@ jobs:
         working-directory: web
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
+          # The admin seed_dev.py creates (dev-only, public seed password).
+          E2E_ADMIN_EMAIL: admin@rawwers.dev
+          E2E_PASSWORD: "Passw0rd!"
         run: pnpm test:e2e
 
       - name: Upload Playwright report

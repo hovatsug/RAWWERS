@@ -10,7 +10,8 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
  * nobody notices until a photographer asks why no requests arrive.
  */
 const API_BASE = process.env.E2E_API_BASE_URL || "http://localhost:8000";
-const PASSWORD = "correct-horse-8";
+// The seeded accounts' password (api/scripts/_seed_common.py) when set.
+const PASSWORD = process.env.E2E_PASSWORD || "correct-horse-8";
 
 async function json(res: { json(): Promise<unknown> }) {
   return (await res.json()) as Record<string, any>;

@@ -42,7 +42,9 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # The version is web/package.json's packageManager (one pin for CI,
+          # the Docker image and local installs).
+          package_json_file: web/package.json
 
       - name: Set up Node
         uses: actions/setup-node@v4

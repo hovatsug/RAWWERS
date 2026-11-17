@@ -1,21 +1,25 @@
 import "@/styles/globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { AppProviders } from "./providers";
 import { AppShell } from "@/components/app-shell";
 import { Guard } from "@/components/guard";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
+// Self-hosted (OFL, web/fonts/, from @fontsource-variable 5.2.x latin
+// files), so a build needs no network beyond the package registry; it used
+// to download them from Google Fonts at build time.
+const fraunces = localFont({
+  src: [
+    { path: "../fonts/fraunces-latin-wght-normal.woff2", weight: "100 900", style: "normal" },
+    { path: "../fonts/fraunces-latin-wght-italic.woff2", weight: "100 900", style: "italic" }
+  ],
   variable: "--font-fraunces",
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
   display: "swap"
 });
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [{ path: "../fonts/inter-latin-wght-normal.woff2", weight: "100 900", style: "normal" }],
   variable: "--font-inter",
   display: "swap"
 });

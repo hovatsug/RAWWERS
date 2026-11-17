@@ -12,15 +12,23 @@ Niches (1.2.0): the service's settings list the photographer's niches with
 an "Add a niche..." menu, and a collection's niche menu ends with "Add a
 niche...", so a photographer with none can set up without leaving
 Lightroom. Adding only: niches are removed, and the main one changed, in the
-RAWWERS Pro app.
+RAWWERS Pro app (Settings > Your niches). A collection whose niche was
+removed there publishes nothing and says so (1.2.5).
+
+Photos removed in the RAWWERS Pro app (1.2.5): the server lists them; a
+re-publish never sends one again (it fails with the reason, and the
+server refuses it too), the publish dialog counts the collection's others,
+and Lightroom's Comments panel shows the reason on each.
 
 SDK hooks used (SDK 15.3 reference, "SDK - Publish service provider"; all
 present since SDK 3.0): supportsIncrementalPublish, getCollectionBehaviorInfo,
 viewForCollectionSettings (info.collectionSettings, LR_canSaveCollection),
 processRenderedPhotos with exportContext.publishedCollection
 (:getCollectionInfoSummary), rendition.publishedPhotoId,
-rendition:recordPublishedPhotoId, deletePhotosFromPublishedCollection,
-deletePublishedCollection; and the export hooks of RawwersServiceProvider.lua.
+rendition:recordPublishedPhotoId, rendition:skipRender, rendition:uploadFailed,
+deletePhotosFromPublishedCollection, deletePublishedCollection,
+getCommentsFromPublishedCollection (publishedCollection:getPublishedPhotos,
+publishedPhoto:getRemoteId); and the export hooks of RawwersServiceProvider.lua.
 The logic is in RawwersPortfolio.lua, tested without Lightroom.
 ]]
 
@@ -163,7 +171,7 @@ function provider.sectionsForTopOfDialog( f, p )
 			f:row {
 				visible = bind 'rawwersCanAddNiche',
 				f:popup_menu { items = bind 'rawwersAddItems', value = bind 'rawwersAddSlug', width_in_chars = 30 },
-				f:static_text { title = 'Adds it to your RAWWERS profile. Remove niches in the RAWWERS Pro app.', fill_horizontal = 1 },
+				f:static_text { title = 'Adds it to your RAWWERS profile. Remove niches in the RAWWERS Pro app: Settings > Your niches.', fill_horizontal = 1 },
 			},
 			f:row { f:static_text { title = bind 'rawwersNicheMessage', fill_horizontal = 1, width_in_chars = 60 } },
 			f:row {
@@ -230,7 +238,7 @@ local function chooseNicheToAdd( api, listing )
 				bind_to_object = props,
 				spacing = f:control_spacing(),
 				f:static_text {
-					title = 'The niche is added to your profile, as in the RAWWERS Pro app. You can remove it there, not here.',
+					title = 'The niche is added to your profile, as in the RAWWERS Pro app. You can remove it there (Settings > Your niches), not here.',
 					width_in_chars = 50, height_in_lines = 2,
 				},
 				f:popup_menu { items = Portfolio.addMenuItems( listing and listing.niches ), value = bind 'slug', width_in_chars = 40 },
@@ -346,8 +354,11 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	local chosen, isDefault = collectionInfo( exportContext )
 	local niche = Portfolio.nicheFor( answer.data.niches, chosen, isDefault )
 	if not niche then
-		LrErrors.throwUserError( 'Choose this collection\'s niche, or add one: right-click the collection > Edit Collection.' )
+		LrErrors.throwUserError( Portfolio.nicheProblem( answer.data.niches, chosen, isDefault ) )
 	end
+	-- Photos removed in the RAWWERS Pro app: never sent again unasked (1.2.5).
+	local removedInApp = Portfolio.removedSet( answer.data )
+	local batch = {}
 
 	-- The same Lightroom photo in the same collection has the same key on
 	-- every publish (1.2.3): the server answers it with the photo it has.
@@ -395,19 +406,28 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 	pipeline:start()
 
 	for _, rendition in exportContext:renditions { stopIfCanceled = true } do
-		local rendered, pathOrMessage = rendition:waitForRender()
-		if progress:isCanceled() then break end
-		if rendered then
-			local queued = pipeline:add {
-				rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ),
-				previousId = rendition.publishedPhotoId, publishKey = publishKey( rendition ),
-			}
-			if not queued then
-				LrFileUtils.delete( pathOrMessage )
-				break
-			end
+		batch[ tostring( rendition.publishedPhotoId ) ] = true
+		if Portfolio.wasRemovedInApp( removedInApp, rendition.publishedPhotoId ) then
+			-- Not rendered, not sent: Lightroom keeps it to re-publish, with the reason.
+			pcall( function() rendition:skipRender() end )
+			local okName, name = LrTasks.pcall( function() return rendition.photo:getFormattedMetadata( 'fileName' ) end )
+			rendition:uploadFailed( Portfolio.REMOVED_IN_APP )
+			results[ #results + 1 ] = { state = 'removed_in_app', name = okName and name or 'a photo' }
 		else
-			results[ #results + 1 ] = { state = 'failed', name = 'a photo', message = pathOrMessage }
+			local rendered, pathOrMessage = rendition:waitForRender()
+			if progress:isCanceled() then break end
+			if rendered then
+				local queued = pipeline:add {
+					rendition = rendition, path = pathOrMessage, name = LrPathUtils.leafName( pathOrMessage ),
+					previousId = rendition.publishedPhotoId, publishKey = publishKey( rendition ),
+				}
+				if not queued then
+					LrFileUtils.delete( pathOrMessage )
+					break
+				end
+			else
+				results[ #results + 1 ] = { state = 'failed', name = 'a photo', message = pathOrMessage }
+			end
 		end
 	end
 
@@ -423,8 +443,35 @@ function provider.processRenderedPhotos( functionContext, exportContext )
 		local counts = after.ok and type( after.data ) == 'table' and after.data.niche_photo_counts
 		if type( counts ) == 'table' then nicheTotal = tonumber( counts[ niche.slug ] ) or 0 end
 	end
-	local title, body = Portfolio.summary( results, niche.name, stopReason, nicheTotal )
+	-- The collection's other photos removed in the app: shown as published
+	-- in Lightroom, so the dialog says they are not on RAWWERS (1.2.5).
+	local otherRemoved = 0
+	local okPhotos, published = LrTasks.pcall( function() return exportContext.publishedCollection:getPublishedPhotos() end )
+	if okPhotos and type( published ) == 'table' then
+		for _, photo in ipairs( published ) do
+			local okId, id = LrTasks.pcall( function() return photo:getRemoteId() end )
+			if okId and id and not batch[ tostring( id ) ] and Portfolio.wasRemovedInApp( removedInApp, id ) then otherRemoved = otherRemoved + 1 end
+		end
+	end
+	local title, body = Portfolio.summary( results, niche.name, stopReason, nicheTotal, otherRemoved )
 	LrDialogs.message( title, body, stopReason and 'warning' or 'info' )
+end
+
+-- Comments: why a photo is not on RAWWERS (1.2.5) ------------------------------------------
+
+--- Lightroom asks for each published collection's comments (after a
+--- publish, and from the Comments panel). A photo removed in the RAWWERS Pro
+--- app gets one comment saying so; the others get none. Quiet on any
+--- failure: comments are information, never a reason to stop.
+function provider.getCommentsFromPublishedCollection( publishSettings, arrayOfPhotoInfo, commentCallback )
+	local base = Lightroom.baseUrl( publishSettings )
+	local token = Lightroom.storedToken( base )
+	if not token then return end
+	local answer = Lightroom.api( base, { token = token } ):portfolio()
+	if not answer.ok then return end
+	for _, entry in ipairs( Portfolio.commentsFor( Portfolio.removedSet( answer.data ), arrayOfPhotoInfo ) ) do
+		pcall( function() commentCallback { publishedPhoto = entry.info, comments = entry.comments } end )
+	end
 end
 
 -- Removing ----------------------------------------------------------------------------------

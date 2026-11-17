@@ -159,10 +159,18 @@ local function handle( method, url, headers, body )
 		for _, asset in pairs( server.assets ) do
 			if asset.niche and asset.done and not asset.removed then counts[ asset.niche ] = ( counts[ asset.niche ] or 0 ) + 1 end
 		end
-		return respond( 200, { niches = server.niches, photo_count = 0, photo_minimum = 12, niche_photo_counts = counts } )
+		local removedInApp = {}
+		for id, asset in pairs( server.assets ) do if asset.removedInApp then removedInApp[ #removedInApp + 1 ] = id end end
+		table.sort( removedInApp )
+		return respond( 200, { niches = server.niches, photo_count = 0, photo_minimum = 12, niche_photo_counts = counts, removed_in_app = removedInApp } )
 	end
 	if path == '/v1/delivery/portfolio/uploads' and method == 'POST' then
 		server.portfolioStarts[ #server.portfolioStarts + 1 ] = data
+		-- 1.2.5, as the API (refuse_resending_removed): a re-publish naming a
+		-- photo removed in the RAWWERS Pro app is refused.
+		if data.previous_id and server.assets[ data.previous_id ] and server.assets[ data.previous_id ].removedInApp then
+			return respond( 409, { error = { code = 'photo_removed_in_app', message = 'This photo was removed from your portfolio in the RAWWERS Pro app, so it was not sent again.' } } )
+		end
 		-- As the API (lightroom_portfolio.existing_copy): the same Lightroom
 		-- photo still waiting, or the same picture or file in this niche, is
 		-- the same photo; the same Lightroom photo with another picture is
@@ -403,8 +411,8 @@ test( 'the plug-in declares the last three Lightroom Classic versions', function
 	eq( info.LrSdkVersion, 15.3 )
 	eq( info.LrExportServiceProvider[ 1 ], { title = 'RAWWERS', file = 'RawwersServiceProvider.lua' } )
 	eq( info.LrExportServiceProvider[ 2 ], { title = 'RAWWERS Portfolio', file = 'RawwersPublishProvider.lua' } )
-	eq( info.VERSION, { major = 1, minor = 2, revision = 4, build = 0 } )
-	eq( require( 'RawwersConfig' ).version, '1.2.4' )
+	eq( info.VERSION, { major = 1, minor = 2, revision = 5, build = 0 } )
+	eq( require( 'RawwersConfig' ).version, '1.2.5' )
 end )
 
 -- Exports ---------------------------------------------------------------------------------
@@ -571,7 +579,11 @@ local function publish( names, collection, previousIds, opts )
 		end,
 		publishedCollection = { localIdentifier = collection and collection.id or 77, getCollectionInfoSummary = function()
 			return { collectionSettings = { rawwersNicheSlug = collection and collection.slug }, isDefaultCollection = collection and collection.default or false }
-		end },
+		end, getPublishedPhotos = opts.published and function()
+			local photos = {}
+			for _, id in ipairs( opts.published ) do photos[ #photos + 1 ] = { getRemoteId = function() return id end } end
+			return photos
+		end or nil },
 	}
 	dialogs = {}
 	local err = runAll( function() publisher.processRenderedPhotos( {}, context ) end )
@@ -616,7 +628,7 @@ test( 'a collection without a niche of the photographer\'s sends nothing', funct
 	newServer()
 	freshKeychain()
 	local _, err = publish( { 'P_1.jpg' }, { slug = 'cars' } )
-	has( err, 'Choose this collection' )
+	has( err, 'no longer one of yours ("cars")' )
 	eq( #server.portfolioStarts, 0 )
 end )
 
@@ -666,6 +678,77 @@ test( 'removing photos from a collection removes them from the portfolio; one go
 	eq( gone, { renditions[ 1 ].recorded, 'pf-unknown' } )
 	ok( server.assets[ renditions[ 1 ].recorded ].removed )
 	ok( not server.assets[ renditions[ 2 ].recorded ].removed )
+end )
+
+-- Removed in the RAWWERS Pro app (1.2.5) ------------------------------------------------------
+
+test( 'a collection whose niche was removed in the app sends nothing and says why', function()
+	newServer()
+	freshKeychain()
+	server.niches = { { slug = 'weddings', name = 'Weddings', primary = true } }
+	local _, err = publish( { 'P_1.jpg' }, { slug = 'portraits' } )
+	has( err, 'no longer one of yours ("portraits")' )
+	has( err, 'Niches are removed in the RAWWERS Pro app' )
+	eq( #server.portfolioStarts, 0 )
+	-- The default collection too: never quietly sent to the main niche instead.
+	local _, errDefault = publish( { 'P_1.jpg' }, { slug = 'portraits', default = true } )
+	has( errDefault, 'no longer one of yours' )
+	eq( #server.portfolioStarts, 0 )
+end )
+
+test( 'a photo removed in the app is not sent again by a re-publish, and Lightroom is told why', function()
+	newServer()
+	freshKeychain()
+	local first = publish( { 'P_1.jpg', 'P_2.jpg' }, { slug = 'weddings' } )
+	local gone, kept = first[ 1 ].recorded, first[ 2 ].recorded
+	server.assets[ gone ].removed, server.assets[ gone ].removedInApp = true, true
+	local starts = #server.portfolioStarts
+	-- Both edited in Lightroom and re-published.
+	local again = publish( { 'P_1.jpg', 'P_2.jpg' }, { slug = 'weddings' }, { gone, kept }, { pictures = { 'P_1 edited', 'P_2 edited' } } )
+	eq( #server.portfolioStarts, starts + 1, 'the removed photo was sent again' )
+	eq( server.portfolioStarts[ #server.portfolioStarts ].previous_id, kept )
+	has( again[ 1 ].failures[ 1 ], 'Removed from your RAWWERS portfolio in the RAWWERS Pro app' )
+	eq( again[ 1 ].recorded, nil )
+	eq( again[ 2 ].failures, {} )
+	eq( dialogs[ #dialogs ].title, 'Some photos were not published' )
+	has( dialogs[ #dialogs ].body, '1 photo not sent again: removed from your portfolio in the RAWWERS Pro app (P_1.jpg)' )
+end )
+
+test( 'the collection\'s other photos removed in the app are named in the dialog', function()
+	newServer()
+	freshKeychain()
+	local first = publish( { 'P_1.jpg', 'P_2.jpg' }, { slug = 'weddings' } )
+	server.assets[ first[ 1 ].recorded ].removed, server.assets[ first[ 1 ].recorded ].removedInApp = true, true
+	publish( { 'P_3.jpg' }, { slug = 'weddings' }, nil, { published = { first[ 1 ].recorded, first[ 2 ].recorded } } )
+	has( dialogs[ #dialogs ].body, '1 photo of this collection was removed in the RAWWERS Pro app: shown as published here, but not on RAWWERS.' )
+end )
+
+test( 'added to the collection again, a photo removed in the app is published anew', function()
+	newServer()
+	freshKeychain()
+	local first = publish( { 'P_1.jpg' }, { slug = 'weddings' } )
+	server.assets[ first[ 1 ].recorded ].removed, server.assets[ first[ 1 ].recorded ].removedInApp = true, true
+	local anew = publish( { 'P_1.jpg' }, { slug = 'weddings' } )
+	ok( anew[ 1 ].recorded and anew[ 1 ].recorded ~= first[ 1 ].recorded, 'not published anew' )
+	eq( anew[ 1 ].failures, {} )
+end )
+
+test( 'Lightroom\'s comments say which published photos were removed in the app', function()
+	newServer()
+	freshKeychain()
+	local first = publish( { 'P_1.jpg', 'P_2.jpg' }, { slug = 'weddings' } )
+	server.assets[ first[ 1 ].recorded ].removed, server.assets[ first[ 1 ].recorded ].removedInApp = true, true
+	local got = {}
+	local err = runAll( function()
+		publisher.getCommentsFromPublishedCollection( { rawwersServer = 'https://api.test' },
+			{ { remoteId = first[ 1 ].recorded }, { remoteId = first[ 2 ].recorded } },
+			function( entry ) got[ #got + 1 ] = entry end )
+	end )
+	eq( err, nil )
+	eq( #got, 2 )
+	eq( #got[ 1 ].comments, 1 )
+	has( got[ 1 ].comments[ 1 ].commentText, 'Removed from your RAWWERS portfolio in the RAWWERS Pro app' )
+	eq( got[ 2 ].comments, {} )
 end )
 
 test( 'a revoked device stops the publish and forgets the token', function()

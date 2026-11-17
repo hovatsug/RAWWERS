@@ -597,6 +597,11 @@ test( 'a collection publishes to its own niche, the default one to the main nich
 	eq( Portfolio.nicheFor( NICHES, '', true ).slug, 'weddings' )
 	eq( Portfolio.nicheFor( NICHES, 'cars', false ), nil )
 	eq( Portfolio.nicheFor( {}, nil, true ), nil )
+	-- 1.2.5: a chosen niche no longer theirs is nil, even for the default collection.
+	eq( Portfolio.nicheFor( NICHES, 'cars', true ), nil )
+	has( Portfolio.nicheProblem( NICHES, 'cars', true ), 'no longer one of yours ("cars")' )
+	has( Portfolio.nicheProblem( {}, nil, false ), 'Choose this collection' )
+	eq( Portfolio.nicheProblem( NICHES, 'portraits', false ), nil )
 	eq( Portfolio.nicheItems( NICHES ), { { title = 'Portraits', value = 'portraits' }, { title = 'Weddings (main)', value = 'weddings' } } )
 end )
 
@@ -867,6 +872,21 @@ test( 'only the server saying yes connects; only a 401 forgets the pairing', fun
 	eq( { Connection.fromCheck( { ok = false, outcome = 'retry', message = 'Could not reach RAWWERS. Check the internet connection and export again.' } ) }, { 'unreachable', nil, false } )
 	eq( { Connection.fromCheck( { ok = false, outcome = 'retry', status = 503, message = 'Down for a minute' } ) }, { 'unreachable', 'Down for a minute', false } )
 	eq( { Connection.fromCheck( { ok = false, outcome = 'refused', status = 403, message = 'No' } ) }, { 'unreachable', 'No', false } )
+end )
+
+test( 'photos removed in the app: the server\'s list, and the comment on each (1.2.5)', function()
+	local set = Portfolio.removedSet( { removed_in_app = { 'a', 'b' } } )
+	ok( Portfolio.wasRemovedInApp( set, 'a' ) )
+	ok( not Portfolio.wasRemovedInApp( set, 'c' ) )
+	ok( not Portfolio.wasRemovedInApp( set, nil ) )
+	eq( Portfolio.removedSet( { niches = {} } ), {}, 'an older server without the list' )
+	local out = Portfolio.commentsFor( set, { { remoteId = 'a' }, { remoteId = 'c' } } )
+	eq( #out[ 1 ].comments, 1 )
+	eq( out[ 2 ].comments, {} )
+	local title, body = Portfolio.summary( { { state = 'uploaded', name = 'x.jpg' }, { state = 'removed_in_app', name = 'y.jpg' } }, 'Weddings', nil, 1, 2 )
+	eq( title, 'Some photos were not published' )
+	has( body, '1 photo not sent again: removed from your portfolio in the RAWWERS Pro app (y.jpg)' )
+	has( body, '2 photos of this collection were removed in the RAWWERS Pro app' )
 end )
 
 os.exit( H.run() and 0 or 1 )

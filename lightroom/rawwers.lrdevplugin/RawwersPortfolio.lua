@@ -20,20 +20,65 @@ local Upload = require 'RawwersUpload'
 
 local Portfolio = {}
 
---- The niche a collection publishes to: its own choice, else the primary
---- niche for the default collection. nil when neither names one the
---- photographer has.
+--- The niche a collection publishes to: its own choice, else (no choice)
+--- the primary niche for the default collection. nil when neither names one
+--- the photographer has. A choice that is no longer theirs (removed in the
+--- RAWWERS Pro app, 1.2.5) is nil even for the default collection: its
+--- photos never go to another niche without being asked.
 function Portfolio.nicheFor( niches, chosenSlug, isDefaultCollection )
 	for _, niche in ipairs( niches or {} ) do
 		if niche.slug == chosenSlug then return niche end
 	end
-	if isDefaultCollection or not chosenSlug or chosenSlug == '' then
+	if not chosenSlug or chosenSlug == '' then
 		for _, niche in ipairs( niches or {} ) do
 			if niche.primary then return niche end
 		end
 		if isDefaultCollection then return ( niches or {} )[ 1 ] end
 	end
 	return nil
+end
+
+--- Why a collection cannot publish (nicheFor is nil), in words.
+function Portfolio.nicheProblem( niches, chosenSlug, isDefaultCollection )
+	if Portfolio.nicheFor( niches, chosenSlug, isDefaultCollection ) then return nil end
+	if chosenSlug and chosenSlug ~= '' and chosenSlug ~= Portfolio.ADD_NICHE then
+		return 'This collection publishes to a niche that is no longer one of yours ("' .. tostring( chosenSlug )
+			.. '"). Niches are removed in the RAWWERS Pro app. Nothing was sent. Edit the collection (right-click > Edit Collection) and choose another niche.'
+	end
+	return 'Choose this collection\'s niche, or add one: right-click the collection > Edit Collection.'
+end
+
+-- Photos removed in the RAWWERS Pro app (1.2.5) ---------------------------------------------
+
+--- What Lightroom shows for a photo removed in the app: it is never sent
+--- again unasked; publishing it again is the photographer's choice.
+Portfolio.REMOVED_IN_APP = 'Removed from your RAWWERS portfolio in the RAWWERS Pro app, so it was not sent again. '
+	.. 'To publish it again, take it out of this collection, publish, then add it back.'
+
+--- The ids the server lists as removed in the app (GET /v1/delivery/portfolio).
+function Portfolio.removedSet( listing )
+	local set = {}
+	local ids = type( listing ) == 'table' and listing.removed_in_app or nil
+	for _, id in ipairs( type( ids ) == 'table' and ids or {} ) do set[ tostring( id ) ] = true end
+	return set
+end
+
+function Portfolio.wasRemovedInApp( set, publishedId )
+	return publishedId ~= nil and ( set or {} )[ tostring( publishedId ) ] == true
+end
+
+--- Lightroom's comments for published photos: one for each removed in the
+--- app, none for the others. Returns { { info, comments } }.
+function Portfolio.commentsFor( set, photoInfos )
+	local out = {}
+	for _, info in ipairs( photoInfos or {} ) do
+		local comments = {}
+		if Portfolio.wasRemovedInApp( set, info.remoteId ) then
+			comments[ 1 ] = { commentId = 'rawwers-removed-' .. tostring( info.remoteId ), commentText = Portfolio.REMOVED_IN_APP, username = 'RAWWERS', realname = 'RAWWERS' }
+		end
+		out[ #out + 1 ] = { info = info, comments = comments }
+	end
+	return out
 end
 
 --- Popup items for the collection settings: one per niche, the primary first.
@@ -161,11 +206,12 @@ end
 --- (`nicheTotal`), and what failed.
 local function photos( n ) return n == 1 and '1 photo' or ( n .. ' photos' ) end
 
-function Portfolio.summary( results, nicheName, stopReason, nicheTotal )
-	local uploaded, skipped, failed, kept = 0, 0, {}, {}
+function Portfolio.summary( results, nicheName, stopReason, nicheTotal, otherRemovedInApp )
+	local uploaded, skipped, failed, kept, removedInApp = 0, 0, {}, {}, {}
 	for _, r in ipairs( results ) do
 		if r.state == 'uploaded' then uploaded = uploaded + 1
 		elseif r.state == 'skipped' then skipped = skipped + 1
+		elseif r.state == 'removed_in_app' then removedInApp[ #removedInApp + 1 ] = r
 		else failed[ #failed + 1 ] = r end
 		if r.old_kept then kept[ #kept + 1 ] = r end
 	end
@@ -190,6 +236,16 @@ function Portfolio.summary( results, nicheName, stopReason, nicheTotal )
 	for _, r in ipairs( failed ) do
 		lines[ #lines + 1 ] = tostring( r.name ) .. ': ' .. tostring( r.message or 'not sent' )
 	end
+	if #removedInApp > 0 then
+		local names = {}
+		for _, r in ipairs( removedInApp ) do names[ #names + 1 ] = tostring( r.name ) end
+		lines[ #lines + 1 ] = photos( #removedInApp ) .. ' not sent again: removed from your portfolio in the RAWWERS Pro app ('
+			.. table.concat( names, ', ' ) .. '). To publish one again, take it out of this collection, publish, then add it back.'
+	end
+	if type( otherRemovedInApp ) == 'number' and otherRemovedInApp > 0 then
+		lines[ #lines + 1 ] = photos( otherRemovedInApp ) .. ' of this collection ' .. ( otherRemovedInApp == 1 and 'was' or 'were' )
+			.. ' removed in the RAWWERS Pro app: shown as published here, but not on RAWWERS. To publish one again, take it out of this collection, publish, then add it back.'
+	end
 	if stopReason == 'reauth' then
 		lines[ #lines + 1 ] = 'This Mac is no longer connected to RAWWERS. Edit the publish service and type a new pairing code.'
 	elseif stopReason == 'outdated' then
@@ -198,7 +254,7 @@ function Portfolio.summary( results, nicheName, stopReason, nicheTotal )
 		lines[ #lines + 1 ] = 'Stopped. Publish again to send the rest.'
 	end
 	local title
-	if #failed == 0 and not stopReason then
+	if #failed == 0 and #removedInApp == 0 and not stopReason then
 		title = 'Published to RAWWERS'
 	else
 		title = 'Some photos were not published'

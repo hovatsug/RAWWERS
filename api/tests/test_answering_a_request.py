@@ -189,6 +189,17 @@ def test_accept_and_confirm_slot_make_the_same_booking(client, db_session):
     split, VAT, schedule, and the pricing snapshot every later step reads.
     Confirm-slot used to write none of the snapshot."""
     pro = _weekly_pro(db_session)
+    # Each gig records the photographer's tier at booking (pro_tier, since
+    # 11e30c5), and accepting recomputes the tiers from evidence. The helper
+    # sets "pro" by hand, which evidence (none here) does not support, so the
+    # first answer would demote it before the second. A tier set by hand
+    # holds only as an admin override.
+    from app.models.niche import ProNicheSkill
+
+    for skill in db_session.query(ProNicheSkill).filter_by(pro_user_id=pro.uuid):
+        skill.override_tier = skill.tier
+        skill.override_reason = "test"
+    db_session.commit()
     accepted, start, end = _request(db_session, pro)
     confirmed = BookingRequest(
         pro_user_id=accepted.pro_user_id,

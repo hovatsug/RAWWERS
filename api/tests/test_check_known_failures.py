@@ -44,8 +44,10 @@ def test_a_new_failure_or_a_fixed_one_is_not_clean():
 
 
 def test_the_real_known_failures_file_parses():
+    # Empty since 2026-11-17 (no known failures); every line it does hold
+    # must be a test id, or a run could never be compared with it.
     known = ckf.read_known(Path(__file__).resolve().parents[2] / "docs" / "KNOWN_FAILURES.txt")
-    assert known and all(name.startswith("tests/") and "::" in name for name in known)
+    assert all(name.startswith("tests/") and "::" in name for name in known)
 
 
 def test_errors_the_run_did_not_list_still_make_it_not_clean():

@@ -2,6 +2,24 @@
 
 The last full pass of both suites was on **13148e8** (2026-11-08: API exactly the 26 known failures, Flutter 0 failed). Every commit after it is listed here until the next gate (GATE 1: feature freeze; GATE 2: after the security audit fixes; GATE 3: before deploy). At a gate, run both full suites once and use this list to know what to watch. Then start a new list from the gate's commit.
 
+## GATE 1 — run on 41fd970 (2026-11-17)
+
+From the pinned worktree `~/Developer/RAWWERS-work/wt-gate1`; the progress log is in the owner's scratch folder (`gate1-progress.txt`).
+
+| Stage | Result | Time |
+|---|---|---|
+| API lane 1 (66 files) | 956 passed, 2 xfailed, 0 failed, 0 errors | 2 h 47 min |
+| API lane 2 (66 files) | 810 passed, 0 failed, 0 errors | 1 h 56 min |
+| API lane 3 (66 files) | 873 passed, **2 failed**, 0 errors: two outdated tests (`test_check_known_failures`: the list may now be empty; `test_answering_a_request`: a hand-set tier, demoted by the recompute since 11e30c5). Fixed in 34f1b68; both whole files pass | 2 h 39 min |
+| API total | 2,639 passed, 2 xfailed, 2 failed (fixed), 0 errors; KNOWN_FAILURES: 0 | |
+| Flutter (`flutter test`) | 1,128 passed, 39 skipped, 0 failed | 3 min 41 s |
+| Web (`pnpm verify`: lint, build, typecheck, isolation and user-page checks) | passed | 2 min |
+| E2E (Playwright, 83 tests) | **The web Docker image does not build** (Corepack fetches the newest pnpm, 12.x, which refuses to install; with pnpm pinned, `Module not found: @sentry/core` because there is no `web/.dockerignore` and `COPY . .` brings the host's node_modules; Google Fonts unreachable in the build). Run instead with the e2e API stack in Docker (18000) and the web app started from the pinned worktree (13000): 78 passed, 3 failed, 2 skipped. Two outdated checks fixed in 7481ae2 (rerun: pass); **the funnel fails because `seed_dev.py --deterministic` crashes on a fresh database** ("Photographer profile not found", since c291946) | 4 min |
+
+Not clean: two real bugs reported to the owner (the web image build, the seed on a fresh database), not fixed in the gate.
+
+## Commits
+
 | Commit | Date | What | High-risk |
 |---|---|---|---|
 | 35e3e66 | 2026-11-08 | Web: every old client and pro page redirects to "get the app" (web only) | no |
@@ -80,3 +98,5 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 9487101 | 2026-11-17 | Chat assistant off outside development (AI flags' defaults), no canned reply on the older chat route, AI draft and call summary refused when off; DEPLOY_CHECKLIST setting names and gitleaks line; BETA_SCOPE #69 proposed | **yes** (feature switches, chat) |
 | 7c55125 | 2026-11-17 | .gitignore: keys, signing stores, dumps, Firebase configs; .vscode/settings.json no longer tracked | no (repository housekeeping) |
 | d30ebdc | 2026-11-17 | Lint: ruff findings added by this job and the triage fixed (UTC alias, imports, usefixtures) | no (lint; the consent file's whole tests run) |
+| 34f1b68 | 2026-11-17 | Tests: two outdated tests found by Gate 1 (an empty known-failures list; a hand-set tier pinned as an override) | no (tests only) |
+| 7481ae2 | 2026-11-17 | E2E: the login heading locator; the admin key the web proxy needs in compose.e2e | no (e2e tests and e2e compose only) |

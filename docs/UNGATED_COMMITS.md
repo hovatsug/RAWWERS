@@ -76,3 +76,7 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 11a18ba | 2026-11-16 | Docs: Stripe Support answers of 2026-11-16 (Connect fees, Wise/Revolut payout failures), cost model per booking, M8 never uses account debits, deploy lines | no (docs only) |
 | 6e04739 | 2026-11-17 | Docs: options if Stripe refused GBP settlement, issuer block (#68, MUST, batch 3), Stripe answer dated 2026-11-15, account id and local paths replaced | no (docs only) |
 | 1100b0b | 2026-11-17 | Tests: fourteen outdated known-failure tests fixed (no product code); KNOWN_FAILURES 15 -> 1; BACKEND_GAPS: consent lookup bug, mock chat draft, assistant on by default | no (tests and docs only) |
+| 71de7a8 | 2026-11-17 | Consent: at most one active phone-call consent (a grant supersedes, a revoke revokes all), lookups tolerate old duplicates; KNOWN_FAILURES 1 -> 0 | **yes** (consent, privacy) |
+| 9487101 | 2026-11-17 | Chat assistant off outside development (AI flags' defaults), no canned reply on the older chat route, AI draft and call summary refused when off; DEPLOY_CHECKLIST setting names and gitleaks line; BETA_SCOPE #69 proposed | **yes** (feature switches, chat) |
+| 7c55125 | 2026-11-17 | .gitignore: keys, signing stores, dumps, Firebase configs; .vscode/settings.json no longer tracked | no (repository housekeeping) |
+| d30ebdc | 2026-11-17 | Lint: ruff findings added by this job and the triage fixed (UTC alias, imports, usefixtures) | no (lint; the consent file's whole tests run) |

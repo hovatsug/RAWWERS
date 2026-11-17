@@ -81,6 +81,11 @@ def _dispatch_event(db, topic: str, payload: dict) -> None:
         data = payload.get("data", {})
         _apply_mux_event(db, event_type, data)
         return
+    if topic == "chat.message_email":
+        from app.services.chat_emails import process_chat_email
+
+        process_chat_email(db, payload)
+        return
     if topic == "reindex.pro":
         from app.services.discovery_index import recompute_pro_public_index
         import uuid

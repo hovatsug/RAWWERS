@@ -38,6 +38,7 @@ from app.services.ai_concierge import generate_ai_reply_for_thread, get_or_creat
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
 from app.services.chat_assistant import assistant_enabled, platform_assistant_on, queue_assistant_reply
+from app.services.chat_emails import queue_chat_email
 from app.services.chat_concierge import snapshot_pro_context
 from app.services.chat_inbox import Side, inbox_lines, last_activity, mark_read, photographer_unread, side_of
 from app.services.feature_flags import upsert_feature_flag
@@ -250,6 +251,7 @@ def post_chat_message_v1(
     log_event(db, event_name="chat.message_sent", user_id=user.user_id, properties={"thread_id": str(thread.id), "sender_type": sender_type.value})
     if sender_type == ChatSenderType.client:
         queue_assistant_reply(db, thread, after_message=message, idempotency_key=f"ai-reply:{thread.id}:{message.id}")
+    queue_chat_email(db, thread, message)
     db.commit()
     return ChatMessageV1View(
         id=message.id,
@@ -388,6 +390,8 @@ def post_pro_message(
         meta={},
     )
     db.add(msg)
+    db.flush()
+    queue_chat_email(db, thread, msg)
     db.commit()
     return ChatMessageV1View(
         id=msg.id,

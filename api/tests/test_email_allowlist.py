@@ -1,4 +1,5 @@
-"""Only approved emails send (owner's decision, 2026-11-03): nine types,
+"""Only approved emails send (owner's decision, 2026-11-03): nine types, eleven
+since the two chat-message emails (2026-11-17, BETA_SCOPE #69),
 each with real text. Everything else stays in-app. No provider is wired:
 these assert what would be handed to it."""
 import uuid
@@ -18,6 +19,7 @@ NINE = {
     "email.verify", "email.reset", "auth.new_login", "booking.request_received", "booking.request_accepted",
     "payment.succeeded", "proofs.gallery_published", "payout.paid", "shelf.order_shipped",
 }
+APPROVED = NINE | {"chat.message_received", "chat.reply_received"}
 
 
 class _Provider:
@@ -68,7 +70,7 @@ def _deliver(db):
 
 
 def test_the_nine_are_the_approved_list_and_each_has_real_text():
-    assert email_texts.APPROVED == NINE
+    assert email_texts.APPROVED == APPROVED
     samples = {
         "email.verify": {"code": "482913", "minutes": 30},
         "email.reset": {"code": "771204", "minutes": 30},
@@ -79,8 +81,10 @@ def test_the_nine_are_the_approved_list_and_each_has_real_text():
         "proofs.gallery_published": {"starts_at": "2026-11-20T10:00:00+00:00"},
         "payout.paid": {"amount": "240.00", "currency": "EUR"},
         "shelf.order_shipped": {"item": "Card", "tracking_code": "RM123456GB", "tracking_url": "https://track.example/RM123456GB"},
+        "chat.message_received": {"sender_first_name": "Sam", "recipient_first_name": "Ana"},
+        "chat.reply_received": {"sender_first_name": "Ana", "recipient_first_name": "Sam"},
     }
-    for kind in NINE:
+    for kind in APPROVED:
         subject, body = email_texts.render(kind, samples[kind], tz="Europe/London")
         assert subject and body and "{" not in subject + body and "None" not in subject + body, kind
     assert "482913" in email_texts.render("email.verify", samples["email.verify"])[0]

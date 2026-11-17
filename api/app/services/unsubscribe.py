@@ -55,6 +55,7 @@ TOPIC_LABELS = {
     "store": "the store",
     "repairs": "repairs",
     "gamification": "badges and quests",
+    "messages": "new messages",
     "general": "other updates",
     ALL: "everything except account security",
 }

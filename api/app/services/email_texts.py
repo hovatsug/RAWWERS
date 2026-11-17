@@ -1,13 +1,13 @@
 """The emails RAWWERS sends, and their text (owner's decision, 2026-11-03).
 
-Only these nine go out by email; every other notification stays in-app
+Only these eleven go out by email; every other notification stays in-app
 (notifications._send_email_from_payload checks APPROVED). English first;
 Portuguese to follow. Each text reads well without its optional facts
 (a date, a tracking link), so a payload missing one still sends a clear
 email. Dates are written in the recipient's time zone (their notification
 preference), money with its currency's symbol.
 
-Two of the nine are not notifications: the verification and reset codes,
+Two of the eleven are not notifications: the verification and reset codes,
 sent straight from the outbox (`email.verify.send`, `email.reset.send`).
 """
 from __future__ import annotations
@@ -27,6 +27,10 @@ APPROVED = frozenset(
         "proofs.gallery_published",
         "payout.paid",
         "shelf.order_shipped",
+        # Owner, 2026-11-17 (BETA_SCOPE #69): a new chat message, with no
+        # message text and no link (services/chat_emails.py decides when).
+        "chat.message_received",
+        "chat.reply_received",
     }
 )
 
@@ -120,6 +124,24 @@ def render(kind: str, payload: dict | None, *, tz: str = "Europe/London") -> tup
             "Your photos are ready to choose",
             (f"Your photographer has sent your gallery from {shoot}." if shoot else "Your photographer has sent your gallery.")
             + "\n\nOpen RAWWERS to choose your favourites.",
+        )
+    if kind == "chat.message_received":
+        # To the photographer. Never the message itself, never a link.
+        client, pro = p.get("sender_first_name"), p.get("recipient_first_name")
+        return (
+            f"New message from {client} on RAWWERS" if client else "New message from a client on RAWWERS",
+            (f"Hi {pro}, " if pro else "Hi, ")
+            + (f"{client} has sent you a message on RAWWERS." if client else "a client has sent you a message on RAWWERS.")
+            + " Open the app to read it and reply. Quick replies help you win bookings.",
+        )
+    if kind == "chat.reply_received":
+        # To the client. Never the message itself, never a link.
+        pro, client = p.get("sender_first_name"), p.get("recipient_first_name")
+        return (
+            f"{pro} replied to you on RAWWERS" if pro else "Your photographer replied to you on RAWWERS",
+            (f"Hi {client}, " if client else "Hi, ")
+            + (f"{pro} has replied to your message on RAWWERS." if pro else "your photographer has replied to your message on RAWWERS.")
+            + " Open the app to read it and answer.",
         )
     if kind == "payout.paid":
         amount = _money(p.get("amount"), p.get("currency"))

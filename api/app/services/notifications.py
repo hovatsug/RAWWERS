@@ -50,6 +50,7 @@ TOPICS = {
     "quest": "gamification",
     "auth": "security",
     "password": "security",
+    "chat": "messages",
 }
 
 

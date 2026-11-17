@@ -51,3 +51,18 @@ __pycache__/
 # The Lightroom plug-in built by lightroom/build.sh (published by hand, never committed).
 /lightroom/build/
 /lightroom/build.env
+
+# Keys, certificates, signing stores and database dumps: never committed (2026-11-17; the repository is public).
+*.pem
+*.key
+*.p12
+*.p8
+*.keystore
+*.sql
+*.dump
+*.sqlite3
+google-services.json
+GoogleService-Info.plist
+
+# Each person's editor settings (they held a machine-specific path).
+/.vscode/settings.json

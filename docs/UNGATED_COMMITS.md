@@ -18,6 +18,8 @@ From the pinned worktree `~/Developer/RAWWERS-work/wt-gate1`; the progress log i
 
 Not clean: two real bugs reported to the owner (the web image build, the seed on a fresh database), not fixed in the gate.
 
+**GATE 1 CLOSED on 81a4c5e (2026-11-17):** the two bugs fixed (7ee2f09, ae0945b), then the end-to-end suite rerun against the e2e stack with the web **image** built with no cache from the repo's Dockerfile (pinned 9331183; ports 18000 and 13000): 79 passed, 3 failed, 1 skipped. The funnel test was outdated (New York and a made-up time; fixed in 81a4c5e: Lisbon and an offered start time). The two admin-menu failures were flaky: they passed on a rerun of that file and in the full suite after. Full suite at 81a4c5e on the same images: **82 passed, 0 failed, 1 skipped** (the approval test needs a pending photographer fixture). The review-queue test now runs (the seeded admin).
+
 ## Commits since 41fd970
 
 | Commit | Date | What | High-risk |
@@ -29,3 +31,5 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | ae0945b | 2026-11-17 | Seed on a fresh database (profile flushed before its currency is read); DEPLOY_CHECKLIST section 0, the empty-database sequence | no (dev seed script and docs) |
 | c9557a9 | 2026-11-17 | Chat message emails (#69): photographer on a client's message, client on a reply; hold, unread, 15-minute window | **yes** (email, chat) |
 | aea9f6e | 2026-11-17 | ruff.toml (E9, F63, F7, F82), ruff pinned in CI; repair partner index document returned again; CertificateView imported | no (lint config; two small fixes, failing tests first) |
+| 9331183 | 2026-11-17 | Docs and e2e: JWT length, web image checks, deprecations LATER; the list restarted; the admin review-queue e2e test runs with the seeded admin | no (docs and e2e only) |
+| 81a4c5e | 2026-11-17 | E2E: the funnel books in Lisbon at a time the calendar offers; **Gate 1 closes here** | no (e2e test only) |

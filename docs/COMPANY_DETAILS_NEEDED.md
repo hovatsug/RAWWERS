@@ -17,6 +17,8 @@ Written 2026-11-16 on `the-shelf-wip`, docs only. Found by searching the API, th
 
 **What blocks filling any of them in:** the entity is not confirmed (all rows). Rows with more blockers name them.
 
+**The issuer block** (`BETA_SCOPE.md` #68, MUST, batch 3, the owner's addition of 2026-11-16; not built): one configurable setting group holding these six details, shown on invoices and receipts and in the email footers (Brevo), with the placeholders above until the entity is confirmed. Once built, the invoice, receipt and email-footer rows below are filled from it, not one by one.
+
 ## The checklist
 
 Key: **not built** = the place does not exist yet; **placeholder** = exists with placeholder text; **hard-coded** = a fixed value in the code; **setting** = an env value or a dashboard field, outside the repo.

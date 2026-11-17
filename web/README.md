@@ -188,11 +188,11 @@ To mirror in Flutter with minimal redesign:
 ## Before committing
 
 
-> rawwers-web@0.1.0 verify /Users/gustavobarbosa/Documents/RAWWERS/web
+> rawwers-web@0.1.0 verify ~/RAWWERS/web
 > pnpm lint && pnpm typecheck && pnpm build
 
 
-> rawwers-web@0.1.0 lint /Users/gustavobarbosa/Documents/RAWWERS/web
+> rawwers-web@0.1.0 lint ~/RAWWERS/web
 > next lint
 
 ? How would you like to configure ESLint? https://nextjs.org/docs/basic-features/eslint

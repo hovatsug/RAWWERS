@@ -385,14 +385,14 @@ Hand-computed fixtures, written out in the tests, never computed by the code und
 **Updates to section 8, 2026-11-13** (the text above is kept as the owner read it):
 - Risk 1's fallback, "destination charges with `on_behalf_of`", is withdrawn: Stripe says `on_behalf_of` is not part of the compatible flow, and the design never uses it (10.2). If multi-currency settlement were refused, the fallback is a UK company (section 11, Scenario X), not a different charge type.
 - Risk 2 (cross-border limits) and risk 3 (refunds and disputes above the GBP balance) now have Stripe's answers (section 9) and a rule (10.5).
-- *2026-11-16:* with Scenario X archived (11.0), the fallback above is gone. If Stripe refused GBP settlement for the company's account, the design has **no fallback** today; that would be a new decision for the owner.
+- *2026-11-16:* with Scenario X archived (11.0), the fallback above is gone. If Stripe refused GBP settlement for the company's account, the options are in 11.6 (the owner's answer of 2026-11-17; a low risk).
 - M2's GBP table comes first and is the default (UK first). M4's minimum is still the owner's. M5: the RAWW value is set in GBP first (11.3). M7 is done (questions sent; answers in section 9). New decisions M9 to M11 are in section 12.
 
 ---
 
 ## 9. Stripe answers (2026-11-13)
 
-Given by Stripe support's chat to the owner on **2026-11-13**, for the platform account `acct_1Sn1uOBYq7Jg3KEu` (Portugal). The chat reads as AI-generated: **every answer is indicative until a Stripe human confirms it in writing.** Where the owner asked for written confirmation, it says so. Recorded as stated.
+Given by Stripe support's chat to the owner on **2026-11-13**, for the platform account `[STRIPE PLATFORM ACCOUNT ID]` (Portugal). The chat reads as AI-generated: **every answer is indicative until a Stripe human confirms it in writing.** Where the owner asked for written confirmation, it says so. Recorded as stated.
 
 | # | Question (3.3) | Stripe's answer, as stated | Status |
 |---|---|---|---|
@@ -416,7 +416,7 @@ A written reply from **Stripe Support** on **2026-11-16**, on the same case as t
 
 **Stripe's public Portugal Connect pricing page** (`https://stripe.com/en-pt/connect/pricing`, as read by the owner on 2026-11-16; prices on a public page can change) also lists: cross-border payouts **starting at 0.25%** of payout volume; instant payouts **1%**; account debits **1.4%**; ongoing risk monitoring **"varies"**, with no number; and, under payments, **UK cards at 2.5% + EUR 0.25**.
 
-**Open discrepancy: the UK card fee.** An earlier Stripe Support answer (as the owner relayed it; not recorded in this doc until now) gave **UK standard cards 1.5% + 20p** and **premium cards 2.8% + 20p**. The Portugal page shows **UK cards 2.5% + EUR 0.25**. The chat of 2026-11-13 (#5) said an international card fee is added to the standard fee. These do not agree. **Open** until Stripe answers question (d) below.
+**Open discrepancy: the UK card fee.** An earlier Stripe Support answer (**2026-11-15**, as the owner relayed it; not recorded in this doc until 2026-11-16) gave **UK standard cards 1.5% + 20p** and **premium cards 2.8% + 20p**. The Portugal page shows **UK cards 2.5% + EUR 0.25**. The chat of 2026-11-13 (#5) said an international card fee is added to the standard fee. These do not agree. **Open** until Stripe answers question (d) below.
 
 **Open questions, sent back to Stripe Support by the owner (2026-11-16). All OPEN:**
 
@@ -520,7 +520,7 @@ Added to `DEPLOY_CHECKLIST.md` (GBP at Stripe) and to `BETA_SCOPE.md` 4.5 (Strip
 
 | Symbol | Meaning | Value used | Label |
 |---|---|---|---|
-| card | UK card processing on B | 1.5% × B + £0.20 = **£3.20** (standard). Premium: 2.8% × B + £0.20 = £5.80, **£2.60 more** | **Assumed** (earlier Stripe Support answer); **open** discrepancy with 2.5% + EUR 0.25 (9.1, d) |
+| card | UK card processing on B | 1.5% × B + £0.20 = **£3.20** (standard). Premium: 2.8% × B + £0.20 = £5.80, **£2.60 more** | **Assumed** (Stripe Support, 2026-11-15); **open** discrepancy with 2.5% + EUR 0.25 (9.1, d) |
 | s | Multi-Currency Settlement fee, on the booking | **1%** of B = £2.00 (Y); 0 (X) | **Assumed** |
 | c | Cross-border payout fee, on the payout | **0.25%** of P = £0.40 (Y); 0 (X) | "Starting at 0.25%" on the PT page; the rate for UK: **assumed** |
 | q, f | Connect: per payout sent | **0.25%** of P = £0.40, plus **EUR 0.10** = £0.087 | **Stated by Stripe Support** (9.1); the currency and rate of the EUR part: **open** (b) |
@@ -551,6 +551,8 @@ The owner's own figures (2026-11-16: Y 21.76, 22.64, 23.07, 23.29; X 24.16, 25.0
 | 4 | £23.08 | £20.48 | £21.06 | £23.88 |
 | 8 | £23.30 | £20.70 | £21.28 | £24.10 |
 
+**If the Portugal pricing page's UK card rate applies** (2.5% + EUR 0.25 = £5.2175 instead of £3.20): the Portuguese-company figures fall by about **£2.02 per booking** (£2.0175), to **£19.76, £20.63, £21.06 and £21.28** for 1, 2, 4 and 8 bookings a month (the fourth column above).
+
 **Not included:** VAT on Stripe's fees (the accountant), dispute fees and lost chargebacks, refunds, Radar, instant payouts, client credit (a marketing cost in BI), and the risk-monitoring fee. Fewer bank payouts per photographer (a weekly payout schedule) would lower the per-payout parts; the monthly EUR 2 is the largest part at low *n*.
 
 **To redo it when Stripe answers:** change the values in the table of symbols and recompute the two lines of the formula.
@@ -575,7 +577,7 @@ The owner's own figures (2026-11-16: Y 21.76, 22.64, 23.07, 23.29; X 24.16, 25.0
 
 **Decision M11 (the owner's, 2026-11-16): the company behind RAWWERS is a Portuguese company. Scenario Y is the plan; Scenario X is archived.**
 
-- **Why:** the company's tax is paid in Portugal, and photographers pay their own tax wherever they live. A UK company would have needed a UK-resident director or a UK majority partner, for tax-residence and banking reasons. (The reason as the owner gave it after professional advice; this doc draws no legal conclusion from it.)
+- **Why:** the company's tax is paid in Portugal, and photographers pay their own tax wherever they live. A UK company was ruled out for tax-residence and banking reasons, on the UK accountants' advice. (This doc draws no legal conclusion from it.)
 - **Which Portuguese company is not decided:** **"Portuguese company, entity to be confirmed."** The owner decides the entity after talking to a Portuguese accountant. No doc, setting or text may name an entity until then; placeholders are listed in [COMPANY_DETAILS_NEEDED.md](COMPANY_DETAILS_NEEDED.md).
 - **What follows at once:** the books and the BI base currency are EUR (2.3, 11.5); UK photographers are cross-border connected accounts on the full service agreement (9, #2; 10.2); GBP needs Multi-Currency Settlement and a GBP settlement account in the company's name (9, #1).
 - **What does not change:** UK first, GBP the default (10.1); batches M1, M2, M3, M4 and M7 as built; M5, M8 and M9 as designed (11.4).
@@ -639,6 +641,16 @@ The owner's own figures (2026-11-16: Y 21.76, 22.64, 23.07, 23.29; X 24.16, 25.0
   - fees are split per currency (10.6).
 - **What it does not say yet:** the profit-and-loss lines (GMV, retained fee, Stripe fees, contribution) are designed as **stamped euros**, and the per-currency split there is optional ("the screen can split by currency", section 5). To match the books note above, M5 should show those lines **per currency (GBP, EUR)** with the stamped-euro total beside them, not instead of them. Recorded here for M5; not built.
 - **Today (built):** BI counts euros only and leaves other lines out (`other_currency_lines`); that stays until M5.
+
+### 11.6 Risk: Stripe refuses GBP settlement for the company's account (2026-11-17)
+
+**A low risk, recorded as one.** Stripe has already said a Portuguese platform account can settle in GBP with Multi-Currency Settlement and a linked GBP account (9, #1); the open point is the specific account and bank, not eligibility. Nothing below is built; the options are the owner's (2026-11-17):
+
+- **(a) Another UK sort-code account provider,** if Wise or Revolut Business fails (refused by Stripe, or too many failed payouts, 9.1). Which providers open a GBP account for a non-UK company: to be confirmed. Nothing in the design changes.
+- **(b) Settle in euros and accept a conversion cost.** Stripe then converts every GBP charge to EUR at settlement, with its conversion fee (9, #1 and #5; the figure is not confirmed). What changes:
+  - **GBP transfers to UK photographers:** the platform holds EUR but owes pounds. A GBP transfer from a EUR balance is converted again when it is sent (9, #3: conversion happens when the sender's balance currency differs), with a second conversion fee, and the rate can move between the charge and the payout. That is the exchange-rate risk the requirement forbids (option A: "the platform takes no exchange-rate risk"), so this option breaks the requirement and would need the owner's decision. Whether `source_transaction` (M7) still works with a charge settled in EUR and a GBP transfer: to be checked with Stripe. Refunds and disputes in GBP would also be paid from the EUR balance with a conversion.
+  - **The model in 10.9:** *s* (1% settlement on B) is replaced by the conversion fee on B, plus a conversion fee on P for each transfer, plus a rate risk the model does not price. The cross-border and Connect parts stay. With conversion fees at or above 1%, the platform keeps less than the 10.9 figures.
+- **(c) Revisit a UK entity with the accountants.** Scenario X (archived) is the comparison; it reopens decision M11.
 
 ---
 

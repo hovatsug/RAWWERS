@@ -345,11 +345,11 @@ All three claims check out exactly as described, at the same line numbers cited 
 
 ## Files referenced
 
-- `/Users/gustavobarbosa/Documents/RAWWERS/web/lib/api/endpoints.ts`
-- `/Users/gustavobarbosa/Documents/RAWWERS/web/lib/api/clientApi.ts`
-- `/Users/gustavobarbosa/Documents/RAWWERS/web/lib/api/proApi.ts`
-- `/Users/gustavobarbosa/Documents/RAWWERS/web/lib/api/client.ts`
-- `/Users/gustavobarbosa/Documents/RAWWERS/docs/api_endpoints.md`
-- `/Users/gustavobarbosa/Documents/RAWWERS/api/app/schemas/onboarding.py`
-- `/Users/gustavobarbosa/Documents/RAWWERS/api/app/schemas/payouts.py`
-- `/Users/gustavobarbosa/Documents/RAWWERS/rawwers-endpoint-coverage-audit.md` (prior audit, cross-checked against)
+- `~/RAWWERS/web/lib/api/endpoints.ts`
+- `~/RAWWERS/web/lib/api/clientApi.ts`
+- `~/RAWWERS/web/lib/api/proApi.ts`
+- `~/RAWWERS/web/lib/api/client.ts`
+- `~/RAWWERS/docs/api_endpoints.md`
+- `~/RAWWERS/api/app/schemas/onboarding.py`
+- `~/RAWWERS/api/app/schemas/payouts.py`
+- `~/RAWWERS/rawwers-endpoint-coverage-audit.md` (prior audit, cross-checked against)

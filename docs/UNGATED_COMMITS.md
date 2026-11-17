@@ -74,3 +74,5 @@ The last full pass of both suites was on **13148e8** (2026-11-08: API exactly th
 | 6be2ed6 | 2026-11-16 | Lightroom plug-in 1.2.4: delivery key and picture hash, true gallery counts, previous_id sent, no client-side removal; checklist 5.1, 6.2, 6b.1 | no (plug-in only, server enforces) |
 | ae8bf75 | 2026-11-16 | Docs: company decided (Portuguese company, entity to be confirmed), Scenario X archived, M6's remaining dependencies, BETA_SCOPE #55/#56/#58 and new #67, COMPANY_DETAILS_NEEDED.md | no (docs only) |
 | 11a18ba | 2026-11-16 | Docs: Stripe Support answers of 2026-11-16 (Connect fees, Wise/Revolut payout failures), cost model per booking, M8 never uses account debits, deploy lines | no (docs only) |
+| 6e04739 | 2026-11-17 | Docs: options if Stripe refused GBP settlement, issuer block (#68, MUST, batch 3), Stripe answer dated 2026-11-15, account id and local paths replaced | no (docs only) |
+| 1100b0b | 2026-11-17 | Tests: fourteen outdated known-failure tests fixed (no product code); KNOWN_FAILURES 15 -> 1; BACKEND_GAPS: consent lookup bug, mock chat draft, assistant on by default | no (tests and docs only) |

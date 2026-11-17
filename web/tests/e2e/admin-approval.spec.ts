@@ -62,6 +62,21 @@ test("approving once makes a photographer discoverable", async ({ request }) => 
   const clientEmail = process.env.E2E_CLIENT_EMAIL;
   test.skip(!adminEmail || !proId || !clientEmail, "E2E approval fixtures not set");
 
+  // The seeded photographer waiting for approval is in the seeded city
+  // (api/scripts/_seed_common.py, PENDING_PRO).
+  const params = { country: process.env.E2E_COUNTRY || "PT", city: process.env.E2E_CITY || "Lisbon" };
+  const clientToken = await login(request, clientEmail!);
+  const listed = async () => {
+    const discover = await request.get(`${API_BASE}/v1/client/discover`, {
+      headers: { Authorization: `Bearer ${clientToken}` },
+      params
+    });
+    expect(discover.ok()).toBeTruthy();
+    const feed = await json(discover);
+    return (feed.items || []).some((c: any) => c.pro_user_id === proId);
+  };
+  expect(await listed(), "a photographer waiting for approval must not be findable yet").toBeFalsy();
+
   const adminToken = await login(request, adminEmail!);
   const approve = await request.post(`/api/admin/pros/${proId}/approve`, {
     headers: { Authorization: `Bearer ${adminToken}` },
@@ -74,15 +89,7 @@ test("approving once makes a photographer discoverable", async ({ request }) => 
   expect(result.kyc_status).toBe("approved");
   expect(result.onboarding_status).toBe("approved_public");
 
-  const clientToken = await login(request, clientEmail!);
-  const discover = await request.get(`${API_BASE}/v1/client/discover`, {
-    headers: { Authorization: `Bearer ${clientToken}` },
-    params: { country: "US", city: "New York" }
-  });
-  expect(discover.ok()).toBeTruthy();
-  const feed = await json(discover);
-  const found = (feed.items || []).some((c: any) => c.pro_user_id === proId);
-  expect(found, "an approved photographer must be findable by a client").toBeTruthy();
+  expect(await listed(), "an approved photographer must be findable by a client").toBeTruthy();
 });
 
 test("the admin page renders the queue", async ({ page }) => {

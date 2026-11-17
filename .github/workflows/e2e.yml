@@ -68,6 +68,11 @@ jobs:
           # The admin seed_dev.py creates (dev-only, public seed password).
           E2E_ADMIN_EMAIL: admin@rawwers.dev
           E2E_PASSWORD: "Passw0rd!"
+          # The seeded client, and the seeded photographer waiting for
+          # approval (PENDING_PRO), for "approving once makes a photographer
+          # discoverable".
+          E2E_CLIENT_EMAIL: client@rawwers.dev
+          E2E_PRO_ID: 00000000-0000-0000-0000-000000000113
         run: pnpm test:e2e
 
       - name: Upload Playwright report

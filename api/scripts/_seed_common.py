@@ -29,7 +29,10 @@ from app.models.media import (
     MediaVisibility,
     ObjectStatus,
 )
-from app.models.niche import Niche
+from app.models.client_rewards_pricing import ProExtraImagePrice
+from app.models.gear_verification import ApertureType, GearVerification, SensorSize, VerificationStatus
+from app.models.niche import Niche, ProNiche
+from app.models.repair import GearCategory
 from app.models.ops import FeatureFlag, FeatureFlagScope
 from app.services.auth_service import hash_password
 from app.services.discovery_index import recompute_pro_public_index
@@ -78,6 +81,19 @@ PRO_USERS = [
         roles=(UserRoleType.pro, UserRoleType.client),
     ),
 ]
+
+
+#: A photographer waiting for approval with everything else in place: the
+#: fixture of the e2e test "approving once makes a photographer
+#: discoverable" (web/tests/e2e/admin-approval.spec.ts), and a row for the
+#: admin review queue in dev.
+PENDING_PRO = SeedUser(
+    user_id=uuid.UUID("00000000-0000-0000-0000-000000000113"),
+    email="pending@rawwers.dev",
+    password="Passw0rd!",
+    display_name="Robin Waiting",
+    roles=(UserRoleType.pro, UserRoleType.client),
+)
 
 
 # Which environments may be seeded at all.
@@ -368,6 +384,139 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
     _ensure_portfolio_media(db, user, profile, niche_slug=niche.slug, refresh_media=refresh_media)
 
     return package
+
+
+def _ensure_pending_pro(db: Session, niche: Niche, *, city: str, country: str, price: Decimal) -> None:
+    """PENDING_PRO: ready to approve and not approved. Every check the
+    approval makes passes (profile, 12 ready portfolio photos, a priced
+    package with its extra-photo price, a main niche, verified gear: a
+    full-frame body and a prime); the identity check is pending and the
+    onboarding is ready for review, so clients cannot see them until an admin
+    approves. Re-running the seed leaves an approval made since in place.
+
+    The portfolio rows have no files: nothing reads them before approval but
+    the counts, and the seed does not upload for a photographer nobody sees."""
+    user = PENDING_PRO
+    profile = db.get(ProProfile, user.user_id)
+    if profile is None:
+        profile = ProProfile(
+            user_id=user.user_id,
+            display_name=user.display_name,
+            headline=f"{niche.name} photographer",
+            bio=f"Seeded photographer waiting for approval ({niche.name.lower()})",
+            city=city,
+            country=country,
+            languages=["en"],
+            styles=["natural-light"],
+            gear={"camera": "Sony A7IV", "lenses": ["50mm"]},
+            is_accepting_bookings=True,
+            completeness_score=90,
+            kyc_status=KYCStatus.pending,
+            kyc_updated_at=_now(),
+        )
+        db.add(profile)
+        db.flush()  # its currency is read below
+
+    if db.get(ProOnboarding, user.user_id) is None:
+        db.add(
+            ProOnboarding(
+                pro_user_id=user.user_id,
+                status=ProOnboardingStatus.ready_for_review,
+                current_city={"country": country, "city": city},
+                notes="Seeded: waiting for approval",
+                started_at=_now() - timedelta(days=3),
+                updated_at=_now(),
+            )
+        )
+
+    if db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).first() is None:
+        db.add(ProNiche(pro_user_id=user.user_id, niche_id=niche.id, is_primary=True, created_at=_now()))
+
+    if db.execute(select(ProAvailabilityRule).where(ProAvailabilityRule.pro_user_id == user.user_id)).first() is None:
+        db.add(
+            ProAvailabilityRule(
+                pro_user_id=user.user_id,
+                day_of_week=2,
+                start_time=time(9, 0),
+                end_time=time(18, 0),
+                timezone=_timezone_for(city),
+                location_mode=AvailabilityLocationMode.both,
+            )
+        )
+
+    rate = _capped_entry_rate(db, niche=niche, pro_user_id=user.user_id, fallback=price)
+    package_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-package:{user.user_id}")
+    if db.get(ProPackage, package_id) is None:
+        db.add(
+            ProPackage(
+                id=package_id,
+                pro_user_id=user.user_id,
+                niche_id=niche.id,
+                title=f"{niche.name} Starter",
+                description="Seed package of the photographer waiting for approval",
+                duration_minutes=60,
+                price=rate,
+                currency=profile.currency,
+                included_photos=10,
+                extra_photo_price=Decimal("7.00"),
+                proofs_sla_days=3,
+                finals_sla_days=7,
+                addons=[],
+                is_active=True,
+            )
+        )
+    extra = db.execute(
+        select(ProExtraImagePrice).where(ProExtraImagePrice.pro_user_id == user.user_id, ProExtraImagePrice.niche_id == niche.id)
+    ).scalar_one_or_none()
+    if extra is None:
+        db.add(ProExtraImagePrice(pro_user_id=user.user_id, niche_id=niche.id, configured_unit_price=Decimal("7.00"), currency=profile.currency))
+
+    for idx in range(12):
+        asset_id = uuid.uuid5(uuid.NAMESPACE_URL, f"rawwers-seed-portfolio:{user.user_id}:{idx}")
+        if db.get(MediaAsset, asset_id) is None:
+            db.add(
+                MediaAsset(
+                    id=asset_id,
+                    owner_user_id=user.user_id,
+                    kind=MediaKind.photo,
+                    purpose=MediaPurpose.portfolio_reel,
+                    provider=MediaProvider.r2,
+                    status=MediaStatus.ready,
+                    visibility=MediaVisibility.public,
+                    content_type="image/jpeg",
+                    byte_size=1250000,
+                    checksum=f"seed-pending-{idx}",
+                    niche_tags=[niche.slug],
+                    meta={"seeded": True},
+                )
+            )
+
+    if db.execute(select(GearVerification).where(GearVerification.pro_user_id == user.user_id)).first() is None:
+        db.add(
+            GearVerification(
+                pro_user_id=user.user_id,
+                category=GearCategory.camera_body,
+                status=VerificationStatus.verified,
+                make="Sony",
+                model="ILCE-7M4",
+                sensor_size=SensorSize.full_frame,
+            )
+        )
+        db.add(
+            GearVerification(
+                pro_user_id=user.user_id,
+                category=GearCategory.lens,
+                status=VerificationStatus.verified,
+                make="Sony",
+                model="FE 50mm F1.8",
+                aperture_type=ApertureType.prime,
+                min_focal_mm=Decimal("50"),
+                max_focal_mm=Decimal("50"),
+                max_aperture=Decimal("1.8"),
+            )
+        )
+    db.flush()
+    recompute_pro_public_index(db, user.user_id)
 
 
 def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile, *, niche_slug: str, refresh_media: bool = False) -> None:
@@ -684,6 +833,7 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
     _upsert_user(db, CLIENT_USER)
     for pro in PRO_USERS:
         _upsert_user(db, pro)
+    _upsert_user(db, PENDING_PRO)
     db.flush()
 
     portraits = _ensure_niche(db, "portraits")
@@ -701,6 +851,7 @@ def seed_environment(db: Session, *, city: str, country: str, include_sample_boo
     # from the cap table above. Per-photo, not per-shoot.
     package_main = _ensure_pro_profile(db, PRO_USERS[0], portraits, city=city, country=country, price=Decimal("5.00"), refresh_media=refresh_media)
     _ensure_pro_profile(db, PRO_USERS[1], events, city=city, country=country, price=Decimal("4.00"), refresh_media=refresh_media)
+    _ensure_pending_pro(db, portraits, city=city, country=country, price=Decimal("5.00"))
     db.flush()
 
     _ensure_client_preference(db, CLIENT_USER.user_id, city=city, country=country)

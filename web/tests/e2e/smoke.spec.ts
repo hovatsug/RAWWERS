@@ -5,7 +5,8 @@ const SEEDED_PRO_ID = "00000000-0000-0000-0000-000000000111";
 
 test("login page renders", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByText("Login")).toBeVisible();
+  // The page has a "Login" heading and a "Login" button; the heading is the check.
+  await expect(page.getByRole("heading", { name: "Login" })).toBeVisible();
 });
 
 test("critical funnel: login -> discover -> profile -> booking request", async ({ request }) => {

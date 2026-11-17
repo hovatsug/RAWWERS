@@ -50,6 +50,8 @@ services:
       STRIPE_SECRET_KEY: sk_test_dummy
       STRIPE_WEBHOOK_SECRET: whsec_dummy
       ALLOW_UNVERIFIED_PRO: true
+      # The web admin's proxy sends this key; e2e-only value.
+      ADMIN_API_KEYS: e2e-admin-key
     command: >-
       sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"
     depends_on:
@@ -97,6 +99,8 @@ services:
       NEXT_PUBLIC_TELEGRAM_BOT_URL: https://t.me/rawwers_bot
       NEXT_PUBLIC_WEBAPP_URL: https://app.rawwers.com/link
       PLAYWRIGHT_BASE_URL: http://localhost:3000
+      # Without it the admin proxy answers 500 admin_key_missing to everyone.
+      ADMIN_API_KEY: e2e-admin-key
     depends_on:
       - api
     ports:

@@ -265,6 +265,23 @@ def build_repair_partner_document(db: Session, partner_id: uuid.UUID) -> dict | 
         "avg_turnaround_days": float(score.avg_turnaround_days) if score and score.avg_turnaround_days is not None else None,
         "loaner_fulfillment_rate": float(score.loaner_fulfillment_rate) if score and score.loaner_fulfillment_rate is not None else None,
     }
+    # This return had ended up, unreachable, at the end of the content pack
+    # builder below, so every repair partner was indexed as deleted.
+    return {
+        "id": str(row.id),
+        "name": row.name,
+        "country": row.country,
+        "city": row.city,
+        "categories_supported": row.categories_supported or [],
+        "brands_supported": row.brands_supported or [],
+        "loaner_supported": bool(row.loaner_supported),
+        "loaner_categories": row.loaner_categories or [],
+        "sla_quote_hours": row.sla_quote_hours,
+        "sla_turnaround_days": row.sla_turnaround_days,
+        "score_summary": score_summary,
+        "is_active": bool(row.is_active),
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
 
 
 def build_content_pack_document(db: Session, content_pack_id: uuid.UUID) -> dict | None:
@@ -284,21 +301,6 @@ def build_content_pack_document(db: Session, content_pack_id: uuid.UUID) -> dict
         "price_raww": int(row.price_raww) if row.price_raww is not None else None,
         "creator_name": creator.display_name if creator else None,
         "rating": None,
-        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-    }
-    return {
-        "id": str(row.id),
-        "name": row.name,
-        "country": row.country,
-        "city": row.city,
-        "categories_supported": row.categories_supported or [],
-        "brands_supported": row.brands_supported or [],
-        "loaner_supported": bool(row.loaner_supported),
-        "loaner_categories": row.loaner_categories or [],
-        "sla_quote_hours": row.sla_quote_hours,
-        "sla_turnaround_days": row.sla_turnaround_days,
-        "score_summary": score_summary,
-        "is_active": bool(row.is_active),
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
 

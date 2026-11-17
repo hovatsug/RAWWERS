@@ -1,0 +1,14 @@
+# The lint CI runs (`ruff check app tests`, .github/workflows/ci.yml): real
+# errors only, pinned so a new ruff release cannot change what fails the
+# build (owner, 2026-11-17). Not style.
+#   E9   syntax errors and files that cannot be read
+#   F63  invalid comparisons (`is` with a literal, ...)
+#   F7   statements in the wrong place (`return` outside a function, ...)
+#   F82  undefined names (F821, F822, F823)
+# Unused imports and redefinitions (F401, F811, F841) are left out on
+# purpose: many are side-effect imports (models, Celery tasks) or pytest
+# fixtures imported by name, and a blind fix would break them.
+target-version = "py312"
+
+[lint]
+select = ["E9", "F63", "F7", "F82"]

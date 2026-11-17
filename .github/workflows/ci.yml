@@ -62,7 +62,8 @@ jobs:
       - name: Lint (ruff)
         working-directory: api
         run: |
-          poetry run python -m pip install ruff
+          # Pinned with api/ruff.toml's rule set (2026-11-17).
+          poetry run python -m pip install ruff==0.17.5
           poetry run ruff check app tests
 
       - name: Type check (mypy, optional)

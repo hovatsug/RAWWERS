@@ -68,6 +68,7 @@ from app.schemas.learning import (
     InstructorCourseCreateRequest,
     InstructorCourseUpdateRequest,
     LessonView,
+    CertificateView,
     MyCertificatesResponse,
     MyEnrollmentsResponse,
     QuizAttemptRequest,

@@ -280,6 +280,11 @@ def _ensure_pro_profile(db: Session, user: SeedUser, niche: Niche, city: str, co
             kyc_updated_at=_now(),
         )
         db.add(profile)
+        # Written now: its currency (the column's insert default) is read
+        # below to price the package. Unflushed, a fresh database had no
+        # profile yet and the seed stopped ("Photographer profile not found",
+        # since c291946).
+        db.flush()
     else:
         profile.display_name = user.display_name
         profile.headline = profile.headline or f"{niche.name} specialist"

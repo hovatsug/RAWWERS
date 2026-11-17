@@ -4,6 +4,18 @@ Every step a deploy needs beyond shipping the image, in the order they happen. E
 
 `[ ]` items are per deploy. Items marked **once** stay until the environment has had them done; tick them off per environment in the table at the end.
 
+## 0. Starting from an empty database (first production deploy)
+
+Checked on 2026-11-17 against a throw-away Postgres and Redis with production-like settings (`APP_ENV=production`, dummy values), the API image and the code of that day. Each step's expected result is what that check showed.
+
+1. **Settings.** Production env file complete (section 2): `https://` for `APP_PUBLIC_URL`, `API_PUBLIC_URL`, `CONNECT_RETURN_URL`, `CONNECT_REFRESH_URL`; `AUTH_JWT_SECRET` of at least 32 bytes; `ADMIN_API_KEYS`; `UNSUBSCRIBE_SIGNING_KEYS`. **Expected:** a wrong or missing one stops the API at start with the setting named (seen: "CONNECT_RETURN_URL must use https:// when APP_ENV is production").
+2. **`alembic upgrade head`** on the empty database. **Expected:** every migration runs, ending at the newest (`20261114_0098` on 2026-11-17); `alembic current` shows `(head)`.
+3. **Start the API.** **Expected:** `GET /healthz` answers 200.
+4. **Public reads.** **Expected:** `GET /v1/niches` lists the 12 niches (created on first use), `GET /v1/discover/pros` 200 with no photographers, `GET /v1/fx/rates` 200 with no rate until `fx-refresh` has run (section 3, M3), `GET /openapi.json` 200.
+5. **The first admin.** Register the owner's account with `POST /v1/auth/register` (201, gives `user_id`), put that id in `ADMIN_USER_IDS`, restart the API, sign in (`POST /v1/auth/login`, 200). The admin role is added on the first signed-in request. **Expected:** with the `X-Admin-Api-Key` header, `GET /v1/admin/finance/currency-settings` 200 (the code's defaults: GBP only), `GET /v1/admin/shelf/settings` 200 (created on first read, the Shelf off), `GET /v1/admin/pros/review-queue`, `GET /v1/admin/bi/overview`, `GET /v1/admin/money-attention`, `GET /v1/admin/notifications/logs` all 200 and empty, `GET /v1/admin/pricing/niche-package-price-caps` 200 and empty.
+6. **Reference data** (none of it is created by the migrations): load the price caps (section 1, GBP and EUR CSVs), the camera reference (section 1), and check the `GB` row of `country_tax_rule` (created on the first VAT settings read, `ensure_uk_tax_rule`). **Expected:** the count query of section 1 shows rows in each.
+7. **No feature flag rows are needed:** the defaults outside development keep the chat assistant off (section 2). **Expected:** `SELECT key, is_enabled FROM feature_flag` returns nothing on a fresh database.
+
 ## 1. Before deploying - checks against the target database
 
 - [ ] **Paid gigs without a settled base payment.** Run the query in [DEPLOY CHECK: paid gigs without a settled base payment now release nothing](BACKEND_GAPS.md#deploy-check-paid-gigs-without-a-settled-base-payment-now-release-nothing). Any row is a client who chose photos and would be refused them. Fix the data before deploying; it is not a code change.

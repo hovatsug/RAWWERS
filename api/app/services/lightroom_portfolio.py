@@ -58,7 +58,8 @@ def require_own_niche(db: Session, pro_user_id: uuid.UUID, slug: str) -> Niche:
             return niche
     raise APIError(
         code="validation_error",
-        message="That niche is not one of yours. Edit the collection and choose its niche again, or add it there with Add a niche.",
+        message="That niche is not one of yours (niches are removed in the RAWWERS Pro app). "
+        "Edit the collection and choose its niche again, or add it there with Add a niche.",
         status_code=422,
     )
 
@@ -172,22 +173,57 @@ _OWN_TABLES = {"media_asset", "media_object", "media_derivative", "media_access_
 REPLACES_KEY = "replaces"
 
 
+#: What a table that points at a photo is, in the photographer's words.
+_USE_NAMES = {
+    "proof_gallery_item": "a client's gallery",
+    "client_selection_item": "a client's selection",
+    "review": "a review",
+    "niche_banner": "a niche banner on Discover",
+    "dispute_evidence": "a dispute",
+    "share_link": "a share link",
+    "content_pack": "a content pack",
+}
+COVER_REASON = "it is your profile cover"
+
+
+def _json_uses():
+    """Lists of photo ids kept as JSON, which a foreign key does not show:
+    (column, what it is)."""
+    from app.models.admin import DisputeMessage
+    from app.models.commerce import Product
+    from app.models.repair import RepairTicket
+    from app.models.studioverse import ContentPack
+
+    return [
+        (DisputeMessage.evidence_media_asset_ids, "a dispute"),
+        (ContentPack.preview_media_asset_ids, "a content pack"),
+        (Product.images_media_asset_ids, "a product listing"),
+        (RepairTicket.evidence_media_asset_ids, "a repair ticket"),
+    ]
+
+
 def depended_on(db: Session, asset: MediaAsset) -> str | None:
-    """What uses this photo besides the portfolio, in plain words, or None."""
+    """What uses this photo besides the portfolio, in plain words, or None.
+    Every row of any table that points at it (a client's gallery or
+    selection, a share link's access, a banner, a dispute, a review...), and
+    the JSON lists of photo ids."""
     from app.models.media import Base
 
     if asset.delivery_gallery_id is not None or asset.purpose != MediaPurpose.portfolio_reel:
         return "it is part of a gig delivery"
     profile = db.get(ProProfile, asset.owner_user_id)
     if profile is not None and profile.cover_media_asset_id == asset.id:
-        return "it is your profile cover"
+        return COVER_REASON
     for table in Base.metadata.sorted_tables:
         if table.name in _OWN_TABLES:
             continue
         for fk in table.foreign_keys:
             if fk.column.table.name == "media_asset" and fk.column.name == "id":
                 if db.execute(select(fk.parent).where(fk.parent == asset.id).limit(1)).first():
-                    return "it is used elsewhere on RAWWERS (" + table.name.replace("_", " ") + ")"
+                    return "it is used in " + _USE_NAMES.get(table.name, "another part of RAWWERS (" + table.name.replace("_", " ") + ")")
+    for column, name in _json_uses():
+        if db.execute(select(column).where(column.contains([str(asset.id)])).limit(1)).first():
+            return "it is used in " + name
     return None
 
 
@@ -419,6 +455,145 @@ def niche_counts(db: Session, pro_user_id: uuid.UUID) -> dict[str, int]:
     return counts
 
 
+# --- A photographer removing their own portfolio photo ------------------------------------------
+#
+# One path for the plug-in (DELETE /v1/delivery/portfolio/{id}: only photos it
+# published) and the Pro app (DELETE /v1/pro/me/portfolio/{id}: any of their
+# portfolio photos), owner's request of 2026-11-17 (BETA_SCOPE #11, first
+# half). Checked in this order:
+# - the photographer's own portfolio photo, else 404 (a token or an app
+#   learns nothing about anyone else's photos);
+# - removed already: success, nothing changes, nothing is recorded;
+# - used by anything but the cover (depended_on): kept, 409 photo_in_use;
+# - a live photographer (approved for the public) may not drop below the
+#   portfolio minimum (portfolio_min_items, 12): 409 portfolio_minimum.
+# Then remove() below, and an audit record. The cover may be removed: it is
+# cleared, and the profile shows no cover photo until another is set.
+
+#: In media_asset.meta of a removed photo: who removed it ("app",
+#: "lightroom"). A photo removed in the app is never sent again by an edit
+#: re-published from Lightroom (start_portfolio_upload refuses it).
+REMOVED_KEY = "removed"
+
+
+def is_live(db: Session, pro_user_id: uuid.UUID) -> bool:
+    """Approved for the public: the listing clients can find."""
+    from app.models.launch_ops import ProOnboarding, ProOnboardingStatus
+
+    onboarding = db.get(ProOnboarding, pro_user_id)
+    return onboarding is not None and onboarding.status == ProOnboardingStatus.approved_public
+
+
+def require_minimum_kept(db: Session, asset: MediaAsset) -> None:
+    """A live photographer keeps at least the portfolio minimum, counted as
+    onboarding counts it (ready portfolio photos and videos). A photo not
+    ready yet counts for nothing, so removing it is always allowed."""
+    from sqlalchemy import func
+
+    from app.services.launch_ops import requirement_value
+
+    if asset.status != MediaStatus.ready or not is_live(db, asset.owner_user_id):
+        return
+    minimum = int(requirement_value(db, "portfolio_min_items", {"count": 12}).get("count", 12))
+    ready = db.execute(
+        select(func.count()).select_from(MediaAsset).where(
+            MediaAsset.owner_user_id == asset.owner_user_id,
+            MediaAsset.purpose == MediaPurpose.portfolio_reel,
+            MediaAsset.status == MediaStatus.ready,
+        )
+    ).scalar_one()
+    if ready - 1 < minimum:
+        raise APIError(
+            code="portfolio_minimum",
+            message=f"Add another photo first, then remove this one. A live listing needs at least {minimum} photos.",
+            status_code=409,
+        )
+
+
+def remove_own_photo(
+    db: Session,
+    pro_user_id: uuid.UUID,
+    media_asset_id: uuid.UUID,
+    *,
+    source: str,
+    lightroom_only: bool,
+) -> tuple[MediaAsset, bool, bool]:
+    """Removes one of this photographer's portfolio photos by the rules
+    above. Returns (the photo, whether it was removed now, whether it was
+    the cover). The caller commits."""
+    from app.services.audit import add_admin_audit_log
+    from app.services.niche_skills import lock_pro_for_recompute
+
+    asset = db.get(MediaAsset, media_asset_id)
+    if (
+        asset is None
+        or asset.owner_user_id != pro_user_id
+        or asset.purpose != MediaPurpose.portfolio_reel
+        or asset.kind not in (MediaKind.photo, MediaKind.video)
+        or (lightroom_only and not is_from_lightroom(asset))
+    ):
+        raise APIError(code="not_found", message="Photo not found", status_code=404)
+    if asset.status == MediaStatus.deleted:
+        return asset, False, False
+    # One removal (or recompute) at a time per photographer: two removals at
+    # once cannot both pass the minimum.
+    lock_pro_for_recompute(db, pro_user_id)
+    db.refresh(asset)
+    if asset.status == MediaStatus.deleted:
+        return asset, False, False
+    reason = depended_on(db, asset)
+    if reason and reason != COVER_REASON:
+        raise APIError(code="photo_in_use", message=f"This photo was kept in your portfolio: {reason}.", status_code=409)
+    require_minimum_kept(db, asset)
+    was_cover = reason == COVER_REASON
+    remove(db, asset, source=source)
+    add_admin_audit_log(
+        db,
+        actor_user_id=pro_user_id,
+        target_type="media_asset",
+        target_id=str(asset.id),
+        action="portfolio_photo_removed",
+        metadata={"source": source, "was_cover": was_cover, "from_lightroom": is_from_lightroom(asset)},
+    )
+    return asset, True, was_cover
+
+
+def removed_in_app(db: Session, pro_user_id: uuid.UUID, *, limit: int = 2000) -> list[uuid.UUID]:
+    """This photographer's Lightroom photos removed in the Pro app, newest
+    first: what the plug-in must not send again unasked (1.2.5)."""
+    rows = db.execute(
+        select(MediaAsset.id, MediaAsset.meta)
+        .where(
+            MediaAsset.owner_user_id == pro_user_id,
+            MediaAsset.purpose == MediaPurpose.portfolio_reel,
+            MediaAsset.status == MediaStatus.deleted,
+        )
+        .order_by(MediaAsset.updated_at.desc())
+    ).all()
+    found = [asset_id for asset_id, meta in rows if (meta or {}).get(REMOVED_KEY) == "app" and (meta or {}).get(LIGHTROOM_NICHE_KEY)]
+    return found[:limit]
+
+
+REMOVED_IN_APP_MESSAGE = (
+    "This photo was removed from your portfolio in the RAWWERS Pro app, so it was not sent again. "
+    "To publish it again, take it out of this collection, publish, then add it back."
+)
+
+
+def refuse_resending_removed(db: Session, pro_user_id: uuid.UUID, previous_id: uuid.UUID | None) -> None:
+    """A re-publish (an edit, or "Mark to Republish") names the photo it
+    replaces. If the photographer removed that photo in the Pro app, it is
+    not sent again on the plug-in's own initiative, whatever the plug-in's
+    version: they put it back by adding the photo to the collection again."""
+    if previous_id is None:
+        return
+    old = db.get(MediaAsset, previous_id)
+    if old is None or old.owner_user_id != pro_user_id or old.status != MediaStatus.deleted:
+        return
+    if (old.meta or {}).get(REMOVED_KEY) == "app":
+        raise APIError(code="photo_removed_in_app", message=REMOVED_IN_APP_MESSAGE, status_code=409)
+
+
 def own_published(db: Session, pro_user_id: uuid.UUID, media_asset_id: uuid.UUID) -> MediaAsset:
     """A photo this photographer published from Lightroom; anything else is
     the same 404, so the token learns nothing about other photos."""
@@ -426,19 +601,21 @@ def own_published(db: Session, pro_user_id: uuid.UUID, media_asset_id: uuid.UUID
     if asset is None or asset.owner_user_id != pro_user_id or not is_from_lightroom(asset):
         raise APIError(code="not_found", message="Photo not found", status_code=404)
     reason = depended_on(db, asset)
-    if reason and reason != "it is your profile cover":
+    if reason and reason != COVER_REASON:
         # The cover is cleared by the removal, as before; anything else that
         # points at the photo keeps it.
         raise APIError(code="photo_in_use", message=f"This photo was kept in your portfolio: {reason}.", status_code=409)
     return asset
 
 
-def remove(db: Session, asset: MediaAsset) -> None:
+def remove(db: Session, asset: MediaAsset, *, source: str = "lightroom") -> None:
     """Takes the photo out of the portfolio: no longer listed or served
     (every list reads `ready` only), no longer the cover, its niches'
     skills and the Discover index recomputed, and its files deleted from
     storage (left for the unfinished-uploads sweep if storage does not
-    answer). Removing it again changes nothing."""
+    answer). Removing it again changes nothing. No rule is checked here:
+    remove_own_photo checks them for a photographer's own removal; the
+    replacement of an edited photo's old version checks its own."""
     from app.services.discovery_index import recompute_pro_public_index
     from app.services.niche_skills import recompute_pro_niche_skills
     from app.services.storage import delete_object
@@ -446,7 +623,7 @@ def remove(db: Session, asset: MediaAsset) -> None:
     if asset.status == MediaStatus.deleted:
         return
     asset.status = MediaStatus.deleted
-    asset.meta = {**(asset.meta or {}), "removed": "lightroom"}
+    asset.meta = {**(asset.meta or {}), REMOVED_KEY: source}
     profile = db.get(ProProfile, asset.owner_user_id)
     if profile is not None and profile.cover_media_asset_id == asset.id:
         profile.cover_media_asset_id = None

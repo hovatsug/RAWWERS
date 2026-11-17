@@ -465,6 +465,7 @@ def portfolio(device: DeliveryDevice = Depends(require_delivery_device), db: Ses
         photo_count=len(ready),
         photo_minimum=pro_onboarding_routes.PORTFOLIO_MIN_PHOTOS,
         niche_photo_counts=lightroom_portfolio.niche_counts(db, device.pro_user_id),
+        removed_in_app=lightroom_portfolio.removed_in_app(db, device.pro_user_id),
     )
 
 
@@ -526,6 +527,7 @@ def start_portfolio_upload(
             status_code=422,
         )
     lightroom_portfolio.require_own_niche(db, device.pro_user_id, body.niche_slug)
+    lightroom_portfolio.refuse_resending_removed(db, device.pro_user_id, body.previous_id)
     checksum = body.sha256.lower()
     picture = body.image_sha256.lower() if body.image_sha256 else None
     user = _as_photographer(device)
@@ -604,11 +606,15 @@ def remove_portfolio_photo(
     media_asset_id: uuid.UUID, device: DeliveryDevice = Depends(require_delivery_device), db: Session = Depends(get_db_session)
 ) -> PortfolioRemoveResponse:
     """Take a photo published from Lightroom out of the portfolio. A photo
-    added in the app, or another photographer's, is a 404."""
+    added in the app, or another photographer's, is a 404. The same rules as
+    the Pro app's removal (lightroom_portfolio.remove_own_photo): kept while
+    something else uses it, and a live photographer keeps the portfolio
+    minimum."""
     _require_portfolio_plugin(device)
     enforce_named_rate_limit("auth_mutation", principal=str(device.pro_user_id))
-    asset = lightroom_portfolio.own_published(db, device.pro_user_id, media_asset_id)
-    lightroom_portfolio.remove(db, asset)
+    asset, _removed, _cover = lightroom_portfolio.remove_own_photo(
+        db, device.pro_user_id, media_asset_id, source="lightroom", lightroom_only=True
+    )
     db.commit()
     return PortfolioRemoveResponse(media_asset_id=asset.id)
 

@@ -249,6 +249,14 @@ class ProPortfolioResponse(BaseModel):
     photo_minimum: int
 
 
+class ProPortfolioRemoveResponse(BaseModel):
+    media_asset_id: uuid.UUID
+    #: False when it had been removed already: nothing changed.
+    removed: bool
+    #: It was the profile cover: the profile now has no cover photo.
+    cover_cleared: bool = False
+
+
 class ProExtraImagePriceItem(BaseModel):
     niche_slug: str
     unit_price: Decimal

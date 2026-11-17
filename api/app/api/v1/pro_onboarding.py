@@ -56,6 +56,7 @@ from app.schemas.onboarding import (
     ProExtraImagePriceUpdateRequest,
     ProNichePricingPreviewResponse,
     ProPortfolioItem,
+    ProPortfolioRemoveResponse,
     ProPortfolioResponse,
     ProPricingCurvePoint,
     ProProfileUpdateRequest,
@@ -830,6 +831,30 @@ def get_my_portfolio(
         video_count=video_count,
         photo_minimum=PORTFOLIO_MIN_PHOTOS,
     )
+
+
+@router.delete("/pro/me/portfolio/{media_asset_id}", response_model=ProPortfolioRemoveResponse)
+def remove_my_portfolio_photo(
+    media_asset_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProPortfolioRemoveResponse:
+    """"Remove from portfolio" in the Pro app (BETA_SCOPE #11, first half).
+    The plug-in's removal path and its checks (lightroom_portfolio.
+    remove_own_photo): only the photographer's own portfolio photo; refused
+    while anything but the cover uses it, and for a live photographer at the
+    portfolio minimum; the files are deleted, skills, tier and Discover
+    recomputed, an audit record kept. Removing it again answers success and
+    changes nothing."""
+    from app.services import lightroom_portfolio
+
+    _require_role(db, user.user_id, UserRoleType.pro)
+    enforce_named_rate_limit("portfolio_removal", principal=str(user.user_id))
+    asset, removed, was_cover = lightroom_portfolio.remove_own_photo(
+        db, user.user_id, media_asset_id, source="app", lightroom_only=False
+    )
+    db.commit()
+    return ProPortfolioRemoveResponse(media_asset_id=asset.id, removed=removed, cover_cleared=was_cover)
 
 
 @router.get("/pro/me/pricing/niches/{niche_id}", response_model=ProNichePricingPreviewResponse)

@@ -32,6 +32,8 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     # Niches added from the plug-in, per paired device (a person adds a few, ever).
     "delivery_niche_add": (20, 3600),
     "delivery_pair_ip": (10, 600),
+    # Portfolio photos a photographer removes in the Pro app, one at a time.
+    "portfolio_removal": (60, 3600),
     "delivery_pair_all": (300, 600),
     "admin": (settings.rate_limit_admin_per_min, 60),
     "admin_bi": (settings.rate_limit_admin_bi_per_min, 60),

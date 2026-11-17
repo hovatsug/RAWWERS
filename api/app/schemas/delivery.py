@@ -175,6 +175,9 @@ class DeliveryPortfolioResponse(BaseModel):
     photo_minimum: int
     #: (1.2.3) Photos on the server per niche: processing or ready.
     niche_photo_counts: dict[str, int] = {}
+    #: (1.2.5) Photos published from Lightroom and removed in the Pro app:
+    #: the plug-in does not send them again, and says so.
+    removed_in_app: list[uuid.UUID] = []
 
 
 class AvailableNicheView(BaseModel):

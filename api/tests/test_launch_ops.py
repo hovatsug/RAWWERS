@@ -1,6 +1,7 @@
 import uuid
 from decimal import Decimal
 
+import pytest
 from sqlalchemy import select
 
 from app.models.admin import AdminAuditLog, KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
@@ -108,7 +109,8 @@ def test_invite_code_redemption_rules(client, db_session):
     assert any(item["status"] == InviteCodeStatus.redeemed.value for item in listing.json()["items"])
 
 
-def test_onboarding_transitions_requirements_and_approve_triggers_events(client, db_session, reference):
+@pytest.mark.usefixtures("reference")
+def test_onboarding_transitions_requirements_and_approve_triggers_events(client, db_session):
     _seed_admin(db_session)
     pro_id = str(uuid.uuid4())
     pro_uuid = _seed_pro(db_session, pro_id)

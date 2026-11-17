@@ -8,13 +8,22 @@ one, the lookups take the newest of any duplicates written before, and no
 transcript is stored without an active consent with transcription allowed.
 """
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
 from app.models.admin import UserRoleType
-from app.models.communication import CallSession, CallSessionStatus, ConsentChannel, ConsentScope, ContactConsent
-from app.services.call_compliance import has_transactional_phone_consent, transcription_allowed
+from app.models.communication import (
+    CallSession,
+    CallSessionStatus,
+    ConsentChannel,
+    ConsentScope,
+    ContactConsent,
+)
+from app.services.call_compliance import (
+    has_transactional_phone_consent,
+    transcription_allowed,
+)
 from tests.test_followups_calls import _ensure_role, _grant_phone_consent, _set_contact
 
 
@@ -51,7 +60,7 @@ def _person(db_session):
 
 def _plant_duplicates(db_session, user_id, *, newest_transcription_ok):
     """Two active rows, as a double grant left them before the fix."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for age, ok in ((timedelta(minutes=5), not newest_transcription_ok), (timedelta(0), newest_transcription_ok)):
         db_session.add(ContactConsent(user_id=uuid.UUID(user_id), channel=ConsentChannel.phone_call, scope=ConsentScope.transactional,
                                       granted=True, granted_at=now - age, revoked_at=None, source="in_app_toggle",

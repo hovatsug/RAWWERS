@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from zoneinfo import ZoneInfo
 
 from app.models.admin import UserAccount, UserRole, UserRoleType
@@ -197,7 +197,7 @@ def test_outbox_notification_retry_is_durable(db_session, monkeypatch):
 
     # The failed attempt is retried after a backoff (2 s after the first);
     # let that time pass rather than sleep.
-    outbox_rows[0].next_attempt_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    outbox_rows[0].next_attempt_at = datetime.now(UTC) - timedelta(seconds=1)
     db_session.commit()
     dispatch_outbox_events_task(limit=50)
     db_session.expire_all()

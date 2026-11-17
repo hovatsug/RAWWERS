@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -84,7 +84,7 @@ def record_consent(
     choice takes effect. A revoke revokes every active row. Both hold a
     transaction lock per person, channel and scope, so two requests at once
     cannot both add an active row."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     db.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"contact_consent:{user_id}:{channel.value}:{scope.value}"))))
     new_id = uuid.uuid4()
     for row in active_consents(db, user_id, channel, scope):
@@ -124,7 +124,7 @@ def transcription_allowed(db: Session, user_id: uuid.UUID) -> bool:
 
 
 def is_quiet_hours_now(contact: UserContact, now_utc: datetime | None = None) -> bool:
-    now_utc = now_utc or datetime.now(timezone.utc)
+    now_utc = now_utc or datetime.now(UTC)
     try:
         tz = ZoneInfo(contact.timezone_name)
     except Exception:
@@ -140,7 +140,7 @@ def is_quiet_hours_now(contact: UserContact, now_utc: datetime | None = None) ->
 
 
 def enforce_call_rate_limits(db: Session, recipient_user_id: uuid.UUID, pro_user_id: uuid.UUID | None, now_utc: datetime | None = None) -> None:
-    now_utc = now_utc or datetime.now(timezone.utc)
+    now_utc = now_utc or datetime.now(UTC)
     start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
 

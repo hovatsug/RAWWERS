@@ -36,18 +36,79 @@ def get_or_create_user_contact(db: Session, user_id: uuid.UUID) -> UserContact:
     return row
 
 
+def active_consents(
+    db: Session, user_id: uuid.UUID, channel: ConsentChannel, scope: ConsentScope
+) -> list[ContactConsent]:
+    """Every granted, unrevoked consent for this person, channel and scope,
+    newest first. Since 2026-11-17 there is at most one (`record_consent`),
+    but rows written before may hold several: callers use the newest."""
+    return list(
+        db.execute(
+            select(ContactConsent)
+            .where(
+                ContactConsent.user_id == user_id,
+                ContactConsent.channel == channel,
+                ContactConsent.scope == scope,
+                ContactConsent.granted.is_(True),
+                ContactConsent.revoked_at.is_(None),
+            )
+            .order_by(ContactConsent.granted_at.desc(), ContactConsent.created_at.desc())
+        ).scalars().all()
+    )
+
+
+def _newest_phone_consent(db: Session, user_id: uuid.UUID) -> ContactConsent | None:
+    # Was scalar_one_or_none(): a person who had granted twice made it raise,
+    # and the call request and the telephony webhook answered 500.
+    rows = active_consents(db, user_id, ConsentChannel.phone_call, ConsentScope.transactional)
+    return rows[0] if rows else None
+
+
+def record_consent(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    channel: ConsentChannel,
+    scope: ConsentScope,
+    granted: bool,
+    source: str,
+    meta: dict | None,
+    now: datetime | None = None,
+) -> ContactConsent:
+    """Grant or revoke, leaving at most one active consent.
+
+    A grant **supersedes** any active one: the earlier rows are revoked at
+    this moment and the new row (with what the person agreed to now, such
+    as `transcription_ok`) is the only active one. Superseding rather than
+    returning the existing row keeps a record of each choice, and a changed
+    choice takes effect. A revoke revokes every active row. Both hold a
+    transaction lock per person, channel and scope, so two requests at once
+    cannot both add an active row."""
+    now = now or datetime.now(timezone.utc)
+    db.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"contact_consent:{user_id}:{channel.value}:{scope.value}"))))
+    new_id = uuid.uuid4()
+    for row in active_consents(db, user_id, channel, scope):
+        row.revoked_at = now
+        if granted:
+            row.meta = {**(row.meta or {}), "superseded_by": str(new_id)}
+    consent = ContactConsent(
+        id=new_id,
+        user_id=user_id,
+        channel=channel,
+        scope=scope,
+        granted=granted,
+        granted_at=now,
+        revoked_at=None if granted else now,
+        source=source,
+        meta=meta or {},
+    )
+    db.add(consent)
+    db.flush()
+    return consent
+
+
 def has_transactional_phone_consent(db: Session, user_id: uuid.UUID) -> bool:
-    row = db.execute(
-        select(ContactConsent)
-        .where(
-            ContactConsent.user_id == user_id,
-            ContactConsent.channel == ConsentChannel.phone_call,
-            ContactConsent.scope == ConsentScope.transactional,
-            ContactConsent.granted.is_(True),
-            ContactConsent.revoked_at.is_(None),
-        )
-        .order_by(ContactConsent.granted_at.desc())
-    ).scalar_one_or_none()
+    row = _newest_phone_consent(db, user_id)
     if not row:
         return False
     if (row.meta or {}).get("one_time") is True:
@@ -56,17 +117,7 @@ def has_transactional_phone_consent(db: Session, user_id: uuid.UUID) -> bool:
 
 
 def transcription_allowed(db: Session, user_id: uuid.UUID) -> bool:
-    row = db.execute(
-        select(ContactConsent)
-        .where(
-            ContactConsent.user_id == user_id,
-            ContactConsent.channel == ConsentChannel.phone_call,
-            ContactConsent.scope == ConsentScope.transactional,
-            ContactConsent.granted.is_(True),
-            ContactConsent.revoked_at.is_(None),
-        )
-        .order_by(ContactConsent.granted_at.desc())
-    ).scalar_one_or_none()
+    row = _newest_phone_consent(db, user_id)
     if not row:
         return False
     return bool((row.meta or {}).get("transcription_ok"))

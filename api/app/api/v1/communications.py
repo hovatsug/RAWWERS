@@ -45,6 +45,7 @@ from app.services.authz import get_user_roles
 from app.services.call_compliance import (
     enforce_call_allowed,
     get_or_create_user_contact,
+    record_consent,
     transcription_allowed,
 )
 from app.services.followups import schedule_followups, seed_followup_rules
@@ -89,44 +90,23 @@ def set_my_consent(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> ConsentView:
-    now = datetime.now(timezone.utc)
-    if not body.granted:
-        active = db.execute(
-            select(ContactConsent).where(
-                ContactConsent.user_id == user.user_id,
-                ContactConsent.channel == body.channel,
-                ContactConsent.scope == body.scope,
-                ContactConsent.granted.is_(True),
-                ContactConsent.revoked_at.is_(None),
-            )
-        ).scalars().all()
-        for row in active:
-            row.revoked_at = now
-        consent = ContactConsent(
-            user_id=user.user_id,
-            channel=body.channel,
-            scope=body.scope,
-            granted=False,
-            granted_at=now,
-            revoked_at=now,
-            source=body.source,
-            meta=body.metadata,
-        )
-        db.add(consent)
-        log_event(db, event_name="consent.revoked", user_id=user.user_id, properties={"channel": body.channel.value, "scope": body.scope.value})
-    else:
-        consent = ContactConsent(
-            user_id=user.user_id,
-            channel=body.channel,
-            scope=body.scope,
-            granted=True,
-            granted_at=now,
-            revoked_at=None,
-            source=body.source,
-            meta=body.metadata,
-        )
-        db.add(consent)
-        log_event(db, event_name="consent.granted", user_id=user.user_id, properties={"channel": body.channel.value, "scope": body.scope.value})
+    # One active consent at most: a grant supersedes the active one, a
+    # revoke revokes every active one (call_compliance.record_consent).
+    consent = record_consent(
+        db,
+        user_id=user.user_id,
+        channel=body.channel,
+        scope=body.scope,
+        granted=body.granted,
+        source=body.source,
+        meta=body.metadata,
+    )
+    log_event(
+        db,
+        event_name="consent.granted" if body.granted else "consent.revoked",
+        user_id=user.user_id,
+        properties={"channel": body.channel.value, "scope": body.scope.value},
+    )
 
     add_admin_audit_log(
         db,

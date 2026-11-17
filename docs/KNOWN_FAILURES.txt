@@ -1,4 +1,5 @@
-# Backend tests known to fail - 1 (15 until 2026-11-17: the triage of that day
+# Backend tests known to fail - 0 (1 until 2026-11-17: the consent lookup was fixed;
+# 15 until earlier that day: the triage
 # fixed fourteen tests that were wrong or outdated - see the commit; the header
 # said 16 while the list held 15. 25 until 2026-11-11: nine fixed in BATCH 1 -
 # seven tests still posted unsigned webhooks, used X-User-Id where production
@@ -27,9 +28,3 @@
 #
 # When a change fixes one, remove its line in the same commit; when a change
 # makes one fail, fix it - never add a line here to make a run look clean.
-# A real bug, not fixed yet (BACKEND_GAPS "Two active phone-call consents make
-# the consent lookup fail"): granting phone-call consent twice leaves two
-# active rows and the lookup expects one. Off in production: the telephony
-# webhook is not mounted unless a real provider is configured
-# (telephony_webhook_mounted, TELEPHONY_PROVIDER=mock; tests/test_telephony_mount.py).
-tests/test_followups_calls.py::test_transcript_not_stored_without_explicit_consent

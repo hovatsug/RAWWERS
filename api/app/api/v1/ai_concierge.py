@@ -37,7 +37,7 @@ from app.schemas.onboarding import BookingRequestCreateRequest
 from app.services.ai_concierge import generate_ai_reply_for_thread, get_or_create_lead_profile, get_or_create_pro_ai_profile, redact_text
 from app.services.analytics import log_event
 from app.services.authz import get_user_roles
-from app.services.chat_assistant import assistant_enabled, queue_assistant_reply
+from app.services.chat_assistant import assistant_enabled, platform_assistant_on, queue_assistant_reply
 from app.services.chat_concierge import snapshot_pro_context
 from app.services.chat_inbox import Side, inbox_lines, last_activity, mark_read, photographer_unread, side_of
 from app.services.feature_flags import upsert_feature_flag
@@ -411,6 +411,8 @@ def ai_draft_for_pro(
     thread = db.get(ChatThread, thread_id)
     if not thread or thread.pro_user_id != user.user_id:
         raise APIError(code="not_found", message="Chat thread not found", status_code=404)
+    if not platform_assistant_on(db, thread.client_user_id):
+        raise APIError(code="feature_disabled", message="The assistant is switched off.", status_code=409)
     _, log_row = generate_ai_reply_for_thread(db, thread=thread, draft_only=True)
     content = ((log_row.output_summary or {}).get("actions") or [{}])[0].get("payload", {}).get("notes")
     if not content:

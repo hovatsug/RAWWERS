@@ -272,8 +272,11 @@ def create_booking_request_from_chat(
 
 
 def _maybe_generate_ai_reply(db: Session, thread: ChatThread) -> ChatMessage | None:
+    # Off (the default outside development): the client's message goes to the
+    # photographer with nothing said in the assistant's name. It used to add
+    # "I reached my assistant limit..." to every first message.
     if not is_feature_enabled(db, "ai_calls_enabled", user_id=thread.client_user_id):
-        return _handoff_due_to_limit(db, thread, reason="ai_calls_disabled")
+        return None
 
     total_messages = db.execute(
         select(func.count()).select_from(ChatMessage).where(ChatMessage.thread_id == thread.id)

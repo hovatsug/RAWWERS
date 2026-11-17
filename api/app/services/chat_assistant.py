@@ -28,12 +28,18 @@ from app.services.outbox import enqueue_outbox_event
 from app.services import presence
 
 
+def platform_assistant_on(db: Session, user_id: uuid.UUID | None) -> bool:
+    """The platform's switches alone: on, and not killed. Off by default
+    outside development (feature_flags.AI_DEFAULTS_OUTSIDE_DEVELOPMENT)."""
+    if is_feature_enabled(db, "ai_chat_kill_switch", user_id=user_id):
+        return False
+    return is_feature_enabled(db, "ai_chat_enabled_global", user_id=user_id)
+
+
 def assistant_enabled(db: Session, thread: ChatThread) -> bool:
     """Switched on for this conversation at all: the platform's flags and the
     photographer's own assistant setting."""
-    if is_feature_enabled(db, "ai_chat_kill_switch", user_id=thread.client_user_id):
-        return False
-    if not is_feature_enabled(db, "ai_chat_enabled_global", user_id=thread.client_user_id):
+    if not platform_assistant_on(db, thread.client_user_id):
         return False
     return get_or_create_pro_ai_profile(db, pro_user_id=thread.pro_user_id).is_enabled
 

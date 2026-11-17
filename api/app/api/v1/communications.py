@@ -48,6 +48,7 @@ from app.services.call_compliance import (
     record_consent,
     transcription_allowed,
 )
+from app.services.feature_flags import is_feature_enabled
 from app.services.followups import schedule_followups, seed_followup_rules
 from app.services.llm import get_llm_provider
 from app.services.telephony import get_telephony_provider
@@ -353,6 +354,9 @@ def summarize_call(
             raise APIError(code="forbidden", message="Not allowed", status_code=403)
     if call.status not in {CallSessionStatus.completed, CallSessionStatus.failed, CallSessionStatus.cancelled}:
         raise APIError(code="invalid_state", message="Call has not ended", status_code=409)
+    # Off by default outside development (feature_flags.AI_DEFAULTS_OUTSIDE_DEVELOPMENT).
+    if not is_feature_enabled(db, "ai_calls_enabled", user_id=user.user_id):
+        raise APIError(code="feature_disabled", message="AI call summaries are switched off.", status_code=409)
 
     provider = get_llm_provider()
     prompt = (

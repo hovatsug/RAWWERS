@@ -6,6 +6,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.ops import FeatureFlag, FeatureFlagScope
 
 DEFAULT_FLAG_KEYS = {
@@ -45,11 +46,34 @@ DEFAULT_FLAG_STATE: dict[str, bool] = {
     "ecom_enabled": False,
 }
 
+#: The chat assistant and the other LLM features (owner, 2026-11-17: OFF
+#: for the beta). Outside development these are their defaults when no
+#: flag row exists: no assistant reply in the apps' chat
+#: (`ai_chat_enabled_global`, `ai_chat_kill_switch`), none on the older chat
+#: routes and no AI call summary (`ai_calls_enabled`). Development and the
+#: test suite keep the assistant on, as before. A flag row set by an admin
+#: (`PUT /v1/admin/ai/feature-flags`) overrides either way.
+AI_DEFAULTS_OUTSIDE_DEVELOPMENT: dict[str, bool] = {
+    "ai_chat_enabled_global": False,
+    "ai_chat_kill_switch": True,
+    "ai_calls_enabled": False,
+}
+DEVELOPMENT_ENVS = frozenset({"development", "dev", "local", "test"})
+
+
+def default_flag_state(key: str) -> bool:
+    """A flag's value when no row exists."""
+    if key in AI_DEFAULTS_OUTSIDE_DEVELOPMENT:
+        env = (get_settings().app_env or "").strip().lower()
+        if env not in DEVELOPMENT_ENVS:
+            return AI_DEFAULTS_OUTSIDE_DEVELOPMENT[key]
+    return DEFAULT_FLAG_STATE.get(key, True)
+
 
 def is_feature_enabled(db: Session, key: str, user_id: uuid.UUID | None = None) -> bool:
     row = db.execute(select(FeatureFlag).where(FeatureFlag.key == key)).scalar_one_or_none()
     if not row:
-        return DEFAULT_FLAG_STATE.get(key, True)
+        return default_flag_state(key)
 
     if not row.is_enabled:
         allowlist = set((row.rules or {}).get("allowlist_user_ids", []))

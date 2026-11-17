@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app.models.admin import UserAccount, UserRole, UserRoleType
 from app.models.communication import EmailMessage, Notification, NotificationPreference, ScheduledNotification
 from app.models.outbox import OutboxEvent, OutboxEventStatus
+from app.services.mail import MailRetryable
 from app.services.notifications import enqueue_notification
 from app.tasks.outbox_tasks import dispatch_outbox_events_task
 
@@ -159,7 +160,9 @@ def test_outbox_notification_retry_is_durable(db_session, monkeypatch):
         def send_template_email(self, **_kwargs):
             self.calls += 1
             if self.calls == 1:
-                raise RuntimeError("transient")
+                # Only "busy or down" is retried (ead0fa2); any other error
+                # fails the email and is reported, not retried.
+                raise MailRetryable("transient")
             return "msg-2"
 
         def send_verification_email(self, **_kwargs):
@@ -192,7 +195,12 @@ def test_outbox_notification_retry_is_durable(db_session, monkeypatch):
     assert outbox_rows
     assert outbox_rows[0].status in {OutboxEventStatus.pending, OutboxEventStatus.processing}
 
+    # The failed attempt is retried after a backoff (2 s after the first);
+    # let that time pass rather than sleep.
+    outbox_rows[0].next_attempt_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db_session.commit()
     dispatch_outbox_events_task(limit=50)
+    db_session.expire_all()
     outbox_rows = db_session.query(OutboxEvent).filter_by(topic="notify.send_email").all()
     assert outbox_rows[0].status == OutboxEventStatus.delivered
     sent = db_session.query(EmailMessage).filter_by(user_id=user_id).all()

@@ -304,12 +304,20 @@ def test_discovery_niche_filter_orders_by_tier_before_rank(client, db_session):
             )
         )
     db_session.commit()
+    # Discover lists only photographers approved for the public.
+    make_live(db_session, pro_master)
+    make_live(db_session, pro_skilled)
 
     db_session.add(
         ProNicheSkill(
             pro_user_id=pro_master,
             niche_id=niche.id,
             tier=SkillTier.elite,
+            # The index refresh below recomputes every skill from evidence
+            # (none here); a tier set by hand survives it only as an admin
+            # override, which is how a tier is ever set by hand.
+            override_tier=SkillTier.elite,
+            override_reason="test",
             capability_score=88,
             certification_score=88,
             confidence=Decimal("0.80"),
@@ -325,6 +333,8 @@ def test_discovery_niche_filter_orders_by_tier_before_rank(client, db_session):
             pro_user_id=pro_skilled,
             niche_id=niche.id,
             tier=SkillTier.skilled,
+            override_tier=SkillTier.skilled,
+            override_reason="test",
             capability_score=70,
             certification_score=45,
             confidence=Decimal("0.95"),

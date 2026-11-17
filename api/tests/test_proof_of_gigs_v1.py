@@ -29,6 +29,7 @@ from app.models.studioverse import (
 )
 from app.services.proof_of_gigs import (
     enqueue_milestone_events,
+    ensure_default_raww_config,
     process_raww_mint_event,
     reverse_raww_mints_for_refund,
 )
@@ -124,6 +125,9 @@ def test_raww_caps_clamp_then_block(db_session):
     db_session.add_all([gig_a, gig_b])
     db_session.flush()
 
+    # The default caps are created on the first mint (ensure_default_raww_config);
+    # this test sets one before any mint, so it creates them first.
+    ensure_default_raww_config(db_session)
     cap = db_session.query(RawwIssuanceCap).filter_by(scope=RawwIssuanceCapScope.pro_daily).one()
     cap.cap_raww = 100
     db_session.flush()

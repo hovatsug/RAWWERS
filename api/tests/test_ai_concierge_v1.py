@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
@@ -64,16 +64,19 @@ def _seed_pro(db_session, pro_id: str):
         is_active=True,
     )
     db_session.add(pkg)
-    db_session.add(
-        ProAvailabilityRule(
-            pro_user_id=pro_uuid,
-            day_of_week=datetime.now(timezone.utc).weekday(),
-            start_time=datetime.now(timezone.utc).time().replace(hour=8, minute=0, second=0, microsecond=0),
-            end_time=datetime.now(timezone.utc).time().replace(hour=21, minute=0, second=0, microsecond=0),
-            timezone="UTC",
-            location_mode="both",
+    # Working hours every day, 08:00-21:00 UTC: a request is refused outside
+    # them, so a test that books must ask for a time inside.
+    for day in range(7):
+        db_session.add(
+            ProAvailabilityRule(
+                pro_user_id=pro_uuid,
+                day_of_week=day,
+                start_time=time(8, 0),
+                end_time=time(21, 0),
+                timezone="UTC",
+                location_mode="both",
+            )
         )
-    )
     db_session.commit()
     return str(pkg.id)
 
@@ -163,7 +166,9 @@ def test_booking_created_from_chat(client, db_session):
     package_id = _seed_pro(db_session, pro_id)
     thread_id = client.post("/v1/chat/threads", headers={"X-User-Id": client_id}, json={"pro_user_id": pro_id}).json()["id"]
 
-    start = datetime.now(timezone.utc) + timedelta(days=3)
+    # Three days ahead (past the notice period), at 10:00 UTC (inside the
+    # working hours). It was "now + 3 days" at whatever time the suite ran.
+    start = (datetime.now(timezone.utc) + timedelta(days=3)).replace(hour=10, minute=0, second=0, microsecond=0)
     create = client.post(
         f"/v1/chat/threads/{thread_id}/create-booking",
         headers={"X-User-Id": client_id},

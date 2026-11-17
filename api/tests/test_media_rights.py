@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from PIL import Image
 
-from app.models.admin import UserRole, UserRoleType
+from app.models.admin import UserAccount, UserRole, UserRoleType
 from app.models.gallery import ProofGallery, ProofGalleryItem
 from app.models.gig import Gig, GigStatus
 from app.models.media import (
@@ -143,6 +143,11 @@ def test_share_link_expiry_max_views_and_revoke(client, db_session, monkeypatch)
     client_id = str(uuid.uuid4())
     admin_id = "00000000-0000-0000-0000-0000000000aa"
 
+    # The role points at the account (a foreign key since the role table
+    # was tied to user_account), so the account comes first.
+    if db_session.get(UserAccount, uuid.UUID(admin_id)) is None:
+        db_session.add(UserAccount(user_id=uuid.UUID(admin_id)))
+        db_session.flush()
     db_session.add(UserRole(user_id=uuid.UUID(admin_id), role=UserRoleType.admin))
     db_session.commit()
 

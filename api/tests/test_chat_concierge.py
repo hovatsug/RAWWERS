@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.core.config import get_settings
 from app.models.admin import KYCStatus, ProProfile, UserAccount, UserRole, UserRoleType
 from app.models.booking import ProPackage
+from app.models.chat import ChatThread
 from app.models.niche import Niche
 
 
@@ -142,11 +143,10 @@ def test_create_booking_request_requires_draft_and_client_owner(client, db_sessi
     _seed_pro(db_session, pro_id)
     package_id = _seed_package(db_session, pro_id)
 
-    current_weekday = datetime.now(timezone.utc).weekday()
     rule_resp = client.post(
         "/v1/pro/me/availability/rules",
         headers={"X-User-Id": pro_id},
-        json={"rules": [{"day_of_week": current_weekday, "start_time": "00:00:00", "end_time": "23:59:00"}]},
+        json={"rules": [{"day_of_week": day, "start_time": "00:00:00", "end_time": "23:59:00"} for day in range(7)]},
     )
     assert rule_resp.status_code == 200
 
@@ -172,6 +172,19 @@ def test_create_booking_request_requires_draft_and_client_owner(client, db_sessi
         json={"content": f"Let's book package {package_id} now"},
     )
     assert draft_resp.status_code == 200
+    # The mock assistant drafts the shoot for "now", which the notice period
+    # (at least 24 hours) always refuses. This test is about who may turn a
+    # draft into a request, so the draft is moved three days ahead.
+    thread = db_session.get(ChatThread, uuid.UUID(thread_id))
+    db_session.refresh(thread)
+    snapshot = dict(thread.context_snapshot or {})
+    draft = dict(snapshot["booking_request_draft"])
+    start = (datetime.now(timezone.utc) + timedelta(days=3)).replace(hour=10, minute=0, second=0, microsecond=0)
+    draft["requested_start"] = start.isoformat()
+    draft["requested_end"] = (start + timedelta(hours=1)).isoformat()
+    snapshot["booking_request_draft"] = draft
+    thread.context_snapshot = snapshot
+    db_session.commit()
 
     outsider = client.post(
         f"/v1/chats/{thread_id}/create-booking-request",

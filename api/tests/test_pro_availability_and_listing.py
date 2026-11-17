@@ -499,8 +499,11 @@ def test_listing_preview_reflects_a_pricing_edit(client, db_session):
     _seed_pro(db_session, pro_id)
     _create_package(client, pro_id)
 
+    # The card's "from" price is what a booking charges up front
+    # (compute_minimum_amount): for a package of 10 or more, every included
+    # photo at the entry rate, so 10 x 120.00, not the rate itself.
     before = client.get("/v1/pro/me/listing-preview", headers={"X-User-Id": pro_id}).json()
-    assert Decimal(before["card"]["min_price"]) == Decimal("120.00")
+    assert Decimal(before["card"]["min_price"]) == Decimal("1200.00")
 
     package_id = _create_package(client, pro_id)
     client.put(
@@ -510,7 +513,7 @@ def test_listing_preview_reflects_a_pricing_edit(client, db_session):
     )
 
     after = client.get("/v1/pro/me/listing-preview", headers={"X-User-Id": pro_id}).json()
-    assert Decimal(after["card"]["min_price"]) == Decimal("60.00")
+    assert Decimal(after["card"]["min_price"]) == Decimal("600.00")  # 10 x 60.00
 
 
 def test_listing_preview_counts_blocked_days(client, db_session):

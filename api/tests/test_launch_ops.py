@@ -9,6 +9,7 @@ from app.models.launch_ops import InviteCodeStatus, ProOnboardingStatus
 from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose, MediaStatus, MediaVisibility
 from app.models.niche import Niche, ProNiche
 from app.models.outbox import OutboxEvent
+from tests.test_gear_verification import _body, _lens, reference  # noqa: F401  (fixture: camera and lens reference rows)
 
 ADMIN_USER_ID = "00000000-0000-0000-0000-0000000000aa"
 
@@ -107,11 +108,12 @@ def test_invite_code_redemption_rules(client, db_session):
     assert any(item["status"] == InviteCodeStatus.redeemed.value for item in listing.json()["items"])
 
 
-def test_onboarding_transitions_requirements_and_approve_triggers_events(client, db_session):
+def test_onboarding_transitions_requirements_and_approve_triggers_events(client, db_session, reference):
     _seed_admin(db_session)
     pro_id = str(uuid.uuid4())
     pro_uuid = _seed_pro(db_session, pro_id)
-    niche_id = db_session.execute(select(Niche.id)).scalar_one()
+    # The catalogue holds many niches now; any one will do.
+    niche_id = db_session.execute(select(Niche.id).order_by(Niche.slug).limit(1)).scalar_one()
 
     # allow city onboarding + browsing
     rollout = client.put(
@@ -198,6 +200,13 @@ def test_onboarding_transitions_requirements_and_approve_triggers_events(client,
     assert submit_kyc.status_code == 200
     assert submit_kyc.json()["status"] == ProOnboardingStatus.kyc_submitted.value
 
+    # Ready for review, and approval, check the gear floor (a full-frame
+    # body and a qualifying lens), added after this test was written. With
+    # it in place, KYC approval moves the photographer to ready_for_review.
+    _body(db_session, pro_uuid)
+    _lens(db_session, pro_uuid, lens="FE 85mm F1.4 GM", lens_spec=(85, 85, 1.4, 1.4))
+    db_session.commit()
+
     kyc = client.post(
         f"/v1/admin/pros/{pro_id}/kyc",
         headers={"X-User-Id": ADMIN_USER_ID, "X-Admin-Api-Key": ""},
@@ -209,7 +218,7 @@ def test_onboarding_transitions_requirements_and_approve_triggers_events(client,
         f"/v1/admin/onboarding/pros/{pro_id}/approve",
         headers={"X-User-Id": ADMIN_USER_ID, "X-Admin-Api-Key": ""},
     )
-    assert approve.status_code == 200
+    assert approve.status_code == 200, approve.text
     assert approve.json()["status"] == ProOnboardingStatus.approved_public.value
 
     outbox = db_session.query(OutboxEvent).all()

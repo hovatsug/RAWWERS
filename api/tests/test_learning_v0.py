@@ -1,6 +1,8 @@
 import uuid
 from decimal import Decimal
 
+import pytest
+
 from app.models.admin import UserAccount, UserRole, UserRoleType
 from app.models.learning import (
     Certificate,
@@ -17,6 +19,27 @@ from app.models.learning import (
 from app.models.niche import CertificationRecord, Niche, ProNicheSkill
 
 ADMIN_ID = "00000000-0000-0000-0000-0000000000aa"
+
+
+@pytest.fixture
+def certificate_worker(monkeypatch):
+    """The certificate is issued by a background task (`issue_certificate`,
+    queue `media`), not in the request. Tests keep what the request queued
+    and run it afterwards, as the worker would once the request committed;
+    without this the task went to the test run's Redis and never ran."""
+    from app.tasks import learning_tasks
+
+    queued: list[str] = []
+    monkeypatch.setattr(learning_tasks.issue_certificate_task, "delay", lambda enrollment_id: queued.append(enrollment_id))
+
+    def run(db_session) -> int:
+        ran = len(queued)
+        while queued:
+            learning_tasks.issue_certificate_task.run(queued.pop(0))
+        db_session.expire_all()
+        return ran
+
+    return run
 
 
 def _ensure_user_role(db_session, user_id: str, role: UserRoleType):
@@ -105,7 +128,7 @@ def test_only_course_owner_instructor_can_edit(client, db_session):
     assert resp.status_code == 404
 
 
-def test_completion_issues_certificate_and_certification_record(client, db_session):
+def test_completion_issues_certificate_and_certification_record(client, db_session, certificate_worker):
     instructor_id = str(uuid.uuid4())
     learner_id = str(uuid.uuid4())
     _ensure_user_role(db_session, instructor_id, UserRoleType.pro)
@@ -125,6 +148,7 @@ def test_completion_issues_certificate_and_certification_record(client, db_sessi
         json={"status": "completed", "progress_percent": 100},
     )
     assert progress_resp.status_code == 200
+    assert certificate_worker(db_session) == 1
 
     certificate = db_session.query(Certificate).filter_by(user_id=uuid.UUID(learner_id), course_id=course.id).first()
     assert certificate is not None
@@ -136,7 +160,7 @@ def test_completion_issues_certificate_and_certification_record(client, db_sessi
     assert cert_record.score >= 60
 
 
-def test_certification_completion_triggers_niche_skill_recompute(client, db_session):
+def test_certification_completion_triggers_niche_skill_recompute(client, db_session, certificate_worker):
     instructor_id = str(uuid.uuid4())
     learner_id = str(uuid.uuid4())
     _ensure_user_role(db_session, instructor_id, UserRoleType.pro)
@@ -152,6 +176,7 @@ def test_certification_completion_triggers_niche_skill_recompute(client, db_sess
         headers={"X-User-Id": learner_id},
         json={"status": "completed", "progress_percent": 100},
     )
+    assert certificate_worker(db_session) == 1
 
     skill = db_session.query(ProNicheSkill).filter_by(pro_user_id=uuid.UUID(learner_id), niche_id=course.niche_id).first()
     assert skill is not None

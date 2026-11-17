@@ -1,4 +1,6 @@
-# Backend tests known to fail - 16 (25 until 2026-11-11: nine fixed in BATCH 1 -
+# Backend tests known to fail - 1 (15 until 2026-11-17: the triage of that day
+# fixed fourteen tests that were wrong or outdated - see the commit; the header
+# said 16 while the list held 15. 25 until 2026-11-11: nine fixed in BATCH 1 -
 # seven tests still posted unsigned webhooks, used X-User-Id where production
 # refuses it, or read the result before the outbox applied the event; the
 # chat AI reply was viewed before it was flushed, a product 500.
@@ -25,18 +27,9 @@
 #
 # When a change fixes one, remove its line in the same commit; when a change
 # makes one fail, fix it - never add a line here to make a run look clean.
-tests/test_ai_concierge_v1.py::test_booking_created_from_chat
-tests/test_chat_concierge.py::test_create_booking_request_requires_draft_and_client_owner
-tests/test_client_rewards_pricing.py::test_tier_based_price_clamp_and_master_no_cap
+# A real bug, not fixed yet (BACKEND_GAPS "Two active phone-call consents make
+# the consent lookup fail"): granting phone-call consent twice leaves two
+# active rows and the lookup expects one. Off in production: the telephony
+# webhook is not mounted unless a real provider is configured
+# (telephony_webhook_mounted, TELEPHONY_PROVIDER=mock; tests/test_telephony_mount.py).
 tests/test_followups_calls.py::test_transcript_not_stored_without_explicit_consent
-tests/test_launch_ops.py::test_onboarding_transitions_requirements_and_approve_triggers_events
-tests/test_learning_v0.py::test_certification_completion_triggers_niche_skill_recompute
-tests/test_learning_v0.py::test_completion_issues_certificate_and_certification_record
-tests/test_media_rights.py::test_share_link_expiry_max_views_and_revoke
-tests/test_niche_skill_matrix_v2.py::test_badge_award_and_revoke_current_only
-tests/test_niche_skill_matrix_v2.py::test_extra_image_price_cap_uses_niche_tier
-tests/test_niche_skill_matrix_v2.py::test_tier_assignment_respects_verified_requirement
-tests/test_niches_skills.py::test_discovery_niche_filter_orders_by_tier_before_rank
-tests/test_notifications_v1.py::test_outbox_notification_retry_is_durable
-tests/test_pro_availability_and_listing.py::test_listing_preview_reflects_a_pricing_edit
-tests/test_proof_of_gigs_v1.py::test_raww_caps_clamp_then_block

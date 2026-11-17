@@ -267,7 +267,8 @@ def test_share_view_dedup_and_threshold_grant_once(client, db_session, monkeypat
 def test_tier_based_price_clamp_and_master_no_cap(client, db_session, monkeypatch):
     pro_id = str(uuid.uuid4())
     client_id = str(uuid.uuid4())
-    niche_id = db_session.execute(select(Niche.id)).scalar_one()
+    # The catalogue holds many niches now; any one will do.
+    niche_id = db_session.execute(select(Niche.id).order_by(Niche.slug).limit(1)).scalar_one()
 
     db_session.add(
         ProNicheSkill(
@@ -325,9 +326,13 @@ def test_tier_based_price_clamp_and_master_no_cap(client, db_session, monkeypatc
         )
     db_session.commit()
 
+    # The same selection reuses its open intent (it is keyed per selection)
+    # and records the new price on our snapshot. Our row's amount changes and
+    # the Stripe intent is not modified: BACKEND_GAPS "The legacy upsell intent
+    # has the same shape" (logged; only non-curve gigs reach it).
     monkeypatch.setattr(
-        "app.api.v1.proof_galleries.stripe.PaymentIntent.create",
-        lambda **kwargs: DummyStripePI("pi_price_master", "sec_price_master"),
+        "app.api.v1.proof_galleries.stripe.PaymentIntent.retrieve",
+        lambda pi_id, **kwargs: DummyStripePI(pi_id, "sec_price_rookie"),
     )
     resp2 = client.post(
         f"/v1/proof-galleries/{gallery.id}/upsell/create-intent",
@@ -335,7 +340,8 @@ def test_tier_based_price_clamp_and_master_no_cap(client, db_session, monkeypatc
         json={},
     )
     assert resp2.status_code == 200
-    snap2 = db_session.query(ExtraImagePurchase).filter_by(stripe_payment_intent_id="pi_price_master").one()
+    db_session.expire_all()
+    snap2 = db_session.query(ExtraImagePurchase).filter_by(stripe_payment_intent_id="pi_price_rookie").one()
     assert snap2.unit_price_applied >= Decimal("4.00")
 
 

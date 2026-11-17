@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.models.admin import UserAccount, UserRole, UserRoleType
@@ -91,7 +91,10 @@ def test_tier_assignment_respects_verified_requirement(db_session):
     }
     db_session.commit()
 
-    for _ in range(8):
+    # Ten completed gigs, ten 5-star reviews: 5 + 25 = 30 points, enough for
+    # "pro" (30) but for the verified requirement. Eight of each scored 29
+    # with the bonus, one short of "pro" even once verified.
+    for _ in range(10):
         db_session.add(
             Gig(
                 client_user_id=client_id,
@@ -106,7 +109,7 @@ def test_tier_assignment_respects_verified_requirement(db_session):
             )
         )
     db_session.flush()
-    for gig in db_session.query(Gig).filter_by(pro_user_id=pro_id, niche_id=niche.id).all()[:8]:
+    for gig in db_session.query(Gig).filter_by(pro_user_id=pro_id, niche_id=niche.id).all()[:10]:
         db_session.add(
             Review(
                 gig_id=gig.id,
@@ -142,7 +145,9 @@ def test_tier_assignment_respects_verified_requirement(db_session):
     )
     db_session.commit()
 
-    skill2 = recompute_pro_niche_skill(db_session, pro_id, niche.id)
+    # The promotion to "skilled" just happened, and hysteresis holds any
+    # change within the cooldown; the test is about the requirement, not it.
+    skill2 = recompute_pro_niche_skill(db_session, pro_id, niche.id, bypass_hysteresis=True)
     assert skill2.verified is True
     assert skill2.tier in {SkillTier.pro, SkillTier.elite, SkillTier.master}
 
@@ -217,13 +222,9 @@ def test_extra_image_price_cap_uses_niche_tier(db_session):
         gig_id=gig.id,
         client_user_id=client_id,
         pro_user_id=pro_id,
-        title="Gallery",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=10),
         included_photos=10,
         extra_photo_price=Decimal("30.00"),
-        watermark_enabled=True,
-        allow_favorites=True,
-        allow_hidden=True,
+        currency="EUR",
     )
     db_session.add(gallery)
     db_session.commit()
@@ -254,9 +255,25 @@ def test_badge_award_and_revoke_current_only(db_session):
                 meta={},
             )
         )
+    db_session.flush()
+    # A tier above rookie needs a rating (skilled: 4.2 or more), so the gigs
+    # get five-star reviews: 15 + 25 = 40 points.
+    for gig in db_session.query(Gig).filter_by(pro_user_id=pro_id, niche_id=niche.id).all():
+        db_session.add(
+            Review(
+                gig_id=gig.id,
+                pro_user_id=pro_id,
+                client_user_id=client_id,
+                niche_id=niche.id,
+                rating=5,
+                tags=[],
+                would_book_again=True,
+                status=ReviewStatus.published,
+            )
+        )
     db_session.commit()
 
-    skill = recompute_pro_niche_skill(db_session, pro_id, niche.id)
+    skill = recompute_pro_niche_skill(db_session, pro_id, niche.id, bypass_hysteresis=True)
     assert skill.tier in {SkillTier.skilled, SkillTier.pro, SkillTier.elite, SkillTier.master}
 
     badge_codes = [
@@ -269,7 +286,7 @@ def test_badge_award_and_revoke_current_only(db_session):
     db_session.query(Review).filter(Review.pro_user_id == pro_id, Review.niche_id == niche.id).delete()
     db_session.query(Gig).filter(Gig.pro_user_id == pro_id, Gig.niche_id == niche.id).delete()
     db_session.commit()
-    skill2 = recompute_pro_niche_skill(db_session, pro_id, niche.id)
+    skill2 = recompute_pro_niche_skill(db_session, pro_id, niche.id, bypass_hysteresis=True)
     assert skill2.tier == SkillTier.rookie
 
     badge_codes_after = [

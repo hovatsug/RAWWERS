@@ -32,6 +32,8 @@ const _proId = 'pro-1';
 
 ClientProProfileResponse _profile({
   String? coverUrl = 'https://media.example/cover.jpg',
+  int? coverWidth,
+  int? coverHeight,
   List<ClientPortfolioItem>? portfolio,
   List<ClientProfilePackage>? packages,
   List<ClientProfileNiche>? niches,
@@ -44,6 +46,8 @@ ClientProProfileResponse _profile({
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
       coverUrl: coverUrl,
+      coverWidth: coverWidth,
+      coverHeight: coverHeight,
       bio: 'Twelve years shooting people who hate being photographed.',
       city: 'New York',
       country: 'US',
@@ -511,5 +515,26 @@ void _multiNicheTests() {
       lessThan(tester.getTopLeft(find.text('Packages')).dy),
       reason: 'the section sits above the packages',
     );
+  });
+
+  double headerY(WidgetTester tester) => tester
+      .widgetList<RNetworkPhoto>(find.byType(RNetworkPhoto))
+      .firstWhere((photo) => photo.url == 'https://media.example/cover.jpg')
+      .alignment
+      .y;
+
+  testWidgets('a portrait cover leans up in the header', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile(coverWidth: 1702, coverHeight: 2550))));
+    await tester.pump();
+    expect(headerY(tester), lessThan(-0.5));
+  });
+
+  testWidgets('a header without the photo size (an older server) is centred', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_data(_profile())));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(headerY(tester), 0);
   });
 }

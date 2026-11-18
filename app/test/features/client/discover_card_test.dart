@@ -15,11 +15,13 @@ import 'package:rawwers/design/components/r_online_dot.dart';
 /// the widget tree rather than pixels: that the server's `cover_url` becomes
 /// the image's URL, and that its absence degrades to a placeholder instead of
 /// a broken frame.
-ClientDiscoverCard _card({String? coverUrl, String? responseLabel, bool online = false, int? readyInMinutes, int? answerWithinMinutes, String currency = 'EUR'}) => ClientDiscoverCard(
+ClientDiscoverCard _card({String? coverUrl, int? coverWidth, int? coverHeight, String? responseLabel, bool online = false, int? readyInMinutes, int? answerWithinMinutes, String currency = 'EUR'}) => ClientDiscoverCard(
       proUserId: 'pro-1',
       displayName: 'Alex Lens',
       headline: 'Portraits specialist',
       coverUrl: coverUrl,
+      coverWidth: coverWidth,
+      coverHeight: coverHeight,
       city: 'New York',
       country: 'US',
       minPrice: '120.00',
@@ -153,6 +155,30 @@ void main() {
   testWidgets('without being available now there is no answer line', (tester) async {
     await tester.pumpWidget(_wrap(_card(answerWithinMinutes: 30)));
     expect(find.textContaining('to answer'), findsNothing);
+  });
+
+  group('a portrait cover is cut around its upper third', () {
+    double coverY(WidgetTester tester) => tester.widget<RNetworkPhoto>(find.byType(RNetworkPhoto)).alignment.y;
+
+    testWidgets('a portrait leans up on the 3:2 card', (tester) async {
+      _usePhoneSurface(tester);
+      await tester.pumpWidget(_wrap(_card(coverUrl: 'https://x.test/p.jpg', coverWidth: 1702, coverHeight: 2550)));
+      expect(coverY(tester), closeTo(-0.6, 0.02));
+    });
+
+    testWidgets('a landscape stays centred', (tester) async {
+      _usePhoneSurface(tester);
+      await tester.pumpWidget(_wrap(_card(coverUrl: 'https://x.test/l.jpg', coverWidth: 2048, coverHeight: 1365)));
+      expect(coverY(tester), 0);
+    });
+
+    testWidgets('a card without the photo size (an older server) shows the cover, centred', (tester) async {
+      _usePhoneSurface(tester);
+      await tester.pumpWidget(_wrap(_card(coverUrl: 'https://x.test/old.jpg')));
+      expect(tester.takeException(), isNull);
+      expect(tester.widget<RNetworkPhoto>(find.byType(RNetworkPhoto)).url, 'https://x.test/old.jpg');
+      expect(coverY(tester), 0);
+    });
   });
 }
 

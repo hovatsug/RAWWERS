@@ -14,6 +14,7 @@ import 'package:rawwers/api/models/client_profile_niche.dart';
 import 'package:rawwers/design/components/r_tier_badge.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
+import 'package:rawwers/design/components/r_cover_photo.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_photo_viewer.dart';
 import 'package:rawwers/design/tokens.dart';
@@ -146,8 +147,10 @@ class _ProfileState extends State<_Profile> {
             expandedHeight: 280,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: RNetworkPhoto(
+              background: RCoverPhoto(
                 url: profile.coverUrl,
+                photoWidth: profile.coverWidth,
+                photoHeight: profile.coverHeight,
                 semanticLabel: '$name cover photo',
               ),
             ),

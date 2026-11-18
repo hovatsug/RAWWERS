@@ -51,6 +51,28 @@
 ///             ],
 ///             "title": "Cover Url"
 ///         },
+///         "cover_width": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Width"
+///         },
+///         "cover_height": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Height"
+///         },
 ///         "bio": {
 ///             "anyOf": [
 ///                 {
@@ -208,6 +230,12 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
     /// coverUrl
     @JsonKey(name: ClientProProfileResponse.coverUrlKey_) String? coverUrl,
 
+    /// coverWidth
+    @JsonKey(name: ClientProProfileResponse.coverWidthKey_) int? coverWidth,
+
+    /// coverHeight
+    @JsonKey(name: ClientProProfileResponse.coverHeightKey_) int? coverHeight,
+
     /// bio
     @JsonKey(name: ClientProProfileResponse.bioKey_) String? bio,
 
@@ -283,6 +311,10 @@ abstract class ClientProProfileResponse with _$ClientProProfileResponse {
   static const String coverMediaAssetIdKey_ = r'cover_media_asset_id';
 
   static const String coverUrlKey_ = r'cover_url';
+
+  static const String coverWidthKey_ = r'cover_width';
+
+  static const String coverHeightKey_ = r'cover_height';
 
   static const String bioKey_ = r'bio';
 

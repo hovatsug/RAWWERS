@@ -5,7 +5,7 @@ import 'package:rawwers/api/models/teaser_kind.dart';
 import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/api/models/client_home_row.dart';
 import 'package:rawwers/design/components/r_card_row.dart';
-import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_cover_photo.dart';
 import 'package:rawwers/design/components/r_niche_banner.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
@@ -133,7 +133,12 @@ class _Card extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  RNetworkPhoto(url: card.coverUrl, semanticLabel: card.displayName),
+                  RCoverPhoto(
+                    url: card.coverUrl,
+                    photoWidth: card.coverWidth,
+                    photoHeight: card.coverHeight,
+                    semanticLabel: card.displayName,
+                  ),
                   // Only where they have a video - never a placeholder.
                   if (teaser?.kind == TeaserKind.video)
                     const Positioned(right: RSpace.s8, bottom: RSpace.s8, child: VideoPlayBadge()),

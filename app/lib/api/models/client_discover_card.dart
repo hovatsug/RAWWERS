@@ -51,6 +51,28 @@
 ///             ],
 ///             "title": "Cover Url"
 ///         },
+///         "cover_width": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Width"
+///         },
+///         "cover_height": {
+///             "anyOf": [
+///                 {
+///                     "type": "integer"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Height"
+///         },
 ///         "city": {
 ///             "anyOf": [
 ///                 {
@@ -232,6 +254,12 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
     /// coverUrl
     @JsonKey(name: ClientDiscoverCard.coverUrlKey_) String? coverUrl,
 
+    /// coverWidth
+    @JsonKey(name: ClientDiscoverCard.coverWidthKey_) int? coverWidth,
+
+    /// coverHeight
+    @JsonKey(name: ClientDiscoverCard.coverHeightKey_) int? coverHeight,
+
     /// city
     @JsonKey(name: ClientDiscoverCard.cityKey_) String? city,
 
@@ -300,6 +328,10 @@ abstract class ClientDiscoverCard with _$ClientDiscoverCard {
   static const String coverMediaAssetIdKey_ = r'cover_media_asset_id';
 
   static const String coverUrlKey_ = r'cover_url';
+
+  static const String coverWidthKey_ = r'cover_width';
+
+  static const String coverHeightKey_ = r'cover_height';
 
   static const String cityKey_ = r'city';
 

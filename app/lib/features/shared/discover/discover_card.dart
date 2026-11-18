@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rawwers/core/fx/approx_widgets.dart';
 import 'package:rawwers/core/format/money.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
-import 'package:rawwers/design/components/r_network_photo.dart';
+import 'package:rawwers/design/components/r_cover_photo.dart';
 import 'package:rawwers/design/components/r_package_price.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/design/components/r_online_dot.dart';
@@ -50,7 +50,12 @@ class DiscoverCard extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 3 / 2,
-                  child: RNetworkPhoto(url: card.coverUrl, semanticLabel: '$name cover photo'),
+                  child: RCoverPhoto(
+                    url: card.coverUrl,
+                    photoWidth: card.coverWidth,
+                    photoHeight: card.coverHeight,
+                    semanticLabel: '$name cover photo',
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(RSpace.s16),

@@ -46,6 +46,8 @@ class _FailingHome extends HomeController {
 ClientDiscoverCard _card(
   String name, {
   String? cover,
+  int? coverWidth,
+  int? coverHeight,
   String price = '150.00',
   String? entryRate,
   int? entryPhotos,
@@ -57,6 +59,8 @@ ClientDiscoverCard _card(
     proUserId: 'pro-$name',
     displayName: name,
     coverUrl: cover ?? 'https://example.test/$name.jpg',
+    coverWidth: coverWidth,
+    coverHeight: coverHeight,
     currency: 'EUR',
     minEntryRate: entryRate,
     minEntryPhotos: entryPhotos,
@@ -471,5 +475,25 @@ void _cardContentTests() {
     expect(find.text('“I\'m Marco, a wedding photographer.”'), findsOneWidget);
     expect(find.byKey(const ValueKey('card-teaser')), findsOneWidget, reason: 'only the card with an interview has a line');
     expect(find.byType(VideoPlayBadge), findsOneWidget, reason: 'only the card with a video has a badge');
+  });
+
+  testWidgets('a portrait tile is cut from its top, a landscape tile from its centre', (tester) async {
+    await _pump(
+      tester,
+      HomeRows([
+        _row('niche:portraits', 'Portraits', [
+          _card('Lead'),
+          _card('Tall', coverWidth: 342, coverHeight: 512),
+          _card('Wide', coverWidth: 512, coverHeight: 342),
+        ]),
+      ]),
+    );
+    Iterable<double> ys(String name) => tester
+        .widgetList<RNetworkPhoto>(find.byType(RNetworkPhoto))
+        .where((photo) => photo.url == 'https://example.test/$name.jpg')
+        .map((photo) => photo.alignment.y);
+    expect(ys('Tall'), isNotEmpty);
+    expect(ys('Tall').any((y) => (y + 1).abs() < 0.01), isTrue, reason: 'the portrait tile was cut from the centre');
+    expect(ys('Wide'), everyElement(0));
   });
 }

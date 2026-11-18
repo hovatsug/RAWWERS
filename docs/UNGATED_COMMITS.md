@@ -33,3 +33,10 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | aea9f6e | 2026-11-17 | ruff.toml (E9, F63, F7, F82), ruff pinned in CI; repair partner index document returned again; CertificateView imported | no (lint config; two small fixes, failing tests first) |
 | 9331183 | 2026-11-17 | Docs and e2e: JWT length, web image checks, deprecations LATER; the list restarted; the admin review-queue e2e test runs with the seeded admin | no (docs and e2e only) |
 | 81a4c5e | 2026-11-17 | E2E: the funnel books in Lisbon at a time the calendar offers; **Gate 1 closes here** | no (e2e test only) |
+| 4105446 | 2026-11-17 | CI: the empty-database job (DEPLOY_CHECKLIST section 0, `scripts/check-empty-database.py`) | no (CI and a check script; checked locally on a throw-away database, and with the API stopped) |
+| ea53a59 | 2026-11-17 | E2E: the seeded photographer waiting for approval (PENDING_PRO); the approval test runs. E2E once with the web image: 82 passed, 1 failed (a 30 s timeout in admin-money-attention, unrelated), 0 skipped | no (dev seed and e2e only) |
+| 2830c88 | 2026-11-17 | Portfolio: a photographer removes their own photo (#70); plug-in-facing `removed_in_app` and the re-publish refusal | **yes** (deletes content) |
+| 64ad6a2 | 2026-11-17 | Lightroom plug-in 1.2.5: niches and photos removed in the Pro app | no (plug-in; 123 plug-in tests, 4 of 4 break checks) |
+| 582a440 | 2026-11-17 | Niches: the shared rules for the Pro app's niches screen (#71) | **yes** (writes to the profile, onboarding) |
+| a0a55d6 | 2026-11-17 | Pro app: Your niches screen, Remove from portfolio, the tagger offers own niches; API client regenerated | **yes** (onboarding, profile writes, deletes content) |
+| fac1460 | 2026-11-17 | Docs: #70, #71, LATER #72-73, plug-in 1.2.5 docs, CI findings, DEPLOY_CHECKLIST step 8 | no (docs only) |

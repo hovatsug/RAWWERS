@@ -330,6 +330,7 @@ Total endpoints: **403**
 | `POST` | `/v1/pro/me/packages/{package_id}/disable` | Disable package. |
 | `POST` | `/v1/pro/me/portfolio/{media_asset_id}/niches` | Tag portfolio media niches. |
 | `DELETE` | `/v1/pro/me/portfolio/{media_asset_id}` | Remove my portfolio photo (BETA_SCOPE #70). |
+| `PUT` | `/v1/pro/me/portfolio/{media_asset_id}/cover` | Set my cover: one of my own ready portfolio photos (BETA_SCOPE #74). |
 | `GET` | `/v1/pro/me/profile` | Get my pro profile. |
 | `PUT` | `/v1/pro/me/profile` | Update my pro profile. |
 | `GET` | `/v1/pro/me/skills` | Get my niche skills. |

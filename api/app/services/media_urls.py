@@ -189,8 +189,11 @@ def resolve_niche_cover_urls(
     *,
     niche_slug: str,
     expires_in: int = 900,
+    preferred: Iterable[uuid.UUID] = (),
 ) -> dict[uuid.UUID, str]:
-    """One photograph per photographer, from a given niche.
+    """One photograph per photographer, from a given niche: their cover
+    (any id in `preferred`) when it is tagged with that niche, otherwise
+    their newest photo tagged with it.
 
     A profile carries a single cover, so a wedding row built from covers shows
     whatever each photographer chose as their overall best - which for a
@@ -205,6 +208,7 @@ def resolve_niche_cover_urls(
     wanted = {pro_id for pro_id in pro_user_ids if pro_id is not None}
     if not wanted:
         return {}
+    lead = {asset_id for asset_id in preferred if asset_id is not None}
 
     rows = db.execute(
         select(MediaAsset.owner_user_id, MediaObject.storage_key, MediaAsset.created_at)
@@ -217,10 +221,14 @@ def resolve_niche_cover_urls(
             MediaObject.variant == MediaVariant.thumbnail,
             MediaObject.status == ObjectStatus.ready,
         )
-        .order_by(MediaAsset.owner_user_id, MediaAsset.created_at.desc())
+        .order_by(
+            MediaAsset.owner_user_id,
+            *([MediaAsset.id.in_(lead).desc()] if lead else []),
+            MediaAsset.created_at.desc(),
+        )
     ).all()
 
-    # First row per owner wins - newest tagged photo in that niche.
+    # First row per owner wins - their cover, else the newest tagged photo.
     best: dict[uuid.UUID, str] = {}
     for owner_id, storage_key, _created in rows:
         best.setdefault(owner_id, storage_key)

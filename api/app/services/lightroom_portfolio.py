@@ -468,7 +468,8 @@ def niche_counts(db: Session, pro_user_id: uuid.UUID) -> dict[str, int]:
 # - a live photographer (approved for the public) may not drop below the
 #   portfolio minimum (portfolio_min_items, 12): 409 portfolio_minimum.
 # Then remove() below, and an audit record. The cover may be removed: it is
-# cleared, and the profile shows no cover photo until another is set.
+# cleared, and another of their ready photos is shown until they choose one
+# (services/profile_cover.py).
 
 #: In media_asset.meta of a removed photo: who removed it ("app",
 #: "lightroom"). A photo removed in the app is never sent again by an edit

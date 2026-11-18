@@ -464,6 +464,9 @@ def _pros_fallback(
 
     total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
     rows = db.execute(stmt.offset(offset).limit(limit)).all()
+    from app.services.profile_cover import effective_cover_ids
+
+    covers = effective_cover_ids(db, [idx.pro_user_id for idx, _profile in rows])
     items = []
     for idx, profile in rows:
         if not is_pro_publicly_discoverable(db, pro_user_id=idx.pro_user_id):
@@ -473,7 +476,7 @@ def _pros_fallback(
                 "id": str(idx.pro_user_id),
                 "display_name": profile.display_name,
                 "headline": profile.headline,
-                "cover_media_asset_id": str(profile.cover_media_asset_id) if profile.cover_media_asset_id else None,
+                "cover_media_asset_id": str(covers[idx.pro_user_id]) if idx.pro_user_id in covers else None,
                 "city": idx.city,
                 "country": idx.country,
                 "niche_slugs": [item.get("slug") for item in (idx.top_niches or []) if item.get("slug")],

@@ -247,13 +247,26 @@ class ProPortfolioResponse(BaseModel):
     # passes, returned here so the gallery can show progress toward it
     # without a second call and without hardcoding the number client-side.
     photo_minimum: int
+    #: The cover a client sees (services/profile_cover.py): the one they
+    #: chose, otherwise one of their ready photos; null with no photo to show.
+    cover_media_asset_id: uuid.UUID | None = None
+    #: True when that cover is the one they chose, false when it was picked
+    #: for them until they choose one.
+    cover_chosen: bool = False
+
+
+class ProCoverResponse(BaseModel):
+    cover_media_asset_id: uuid.UUID
+    #: False when it was their cover already: nothing changed.
+    changed: bool
 
 
 class ProPortfolioRemoveResponse(BaseModel):
     media_asset_id: uuid.UUID
     #: False when it had been removed already: nothing changed.
     removed: bool
-    #: It was the profile cover: the profile now has no cover photo.
+    #: It was the cover they chose: another of their photos is used until
+    #: they choose a new one (services/profile_cover.py).
     cover_cleared: bool = False
 
 

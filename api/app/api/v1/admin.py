@@ -656,9 +656,11 @@ def _review_row(db: Session, onboarding: ProOnboarding) -> AdminProReviewRow:
     index = db.get(ProPublicIndex, pro_user_id)
     account = db.get(PayoutAccount, pro_user_id)
 
-    cover_url = None
-    if profile and profile.cover_media_asset_id:
-        cover_url = resolve_image_urls(db, [profile.cover_media_asset_id]).get(profile.cover_media_asset_id)
+    # The cover a client would see (services/profile_cover.py).
+    from app.services.profile_cover import effective_cover_id
+
+    cover_id = effective_cover_id(db, pro_user_id)
+    cover_url = resolve_image_urls(db, [cover_id]).get(cover_id) if cover_id else None
 
     # The four the reviewer can do nothing about themselves; KYC is what
     # they are here to decide, so it is not listed as "missing".

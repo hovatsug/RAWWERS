@@ -18,6 +18,7 @@ from app.models.repair import RepairPartner, RepairPartnerScore
 from app.models.studioverse import ContentPack, ContentPackStatus
 from app.services.metrics import increment_index_event, increment_index_event_failure
 from app.services.outbox import enqueue_outbox_event
+from app.services.profile_cover import effective_cover_id
 from app.services.search_provider import get_index_name, get_search_provider, search_provider_enabled
 
 logger = logging.getLogger(__name__)
@@ -183,7 +184,7 @@ def build_pro_document(db: Session, pro_user_id: uuid.UUID) -> dict | None:
         "id": str(pro_user_id),
         "display_name": profile.display_name,
         "headline": profile.headline,
-        "cover_media_asset_id": str(profile.cover_media_asset_id) if profile.cover_media_asset_id else None,
+        "cover_media_asset_id": str(cover_id) if (cover_id := effective_cover_id(db, pro_user_id)) else None,
         "city": idx.city,
         "country": idx.country,
         "niche_slugs": niche_slugs,

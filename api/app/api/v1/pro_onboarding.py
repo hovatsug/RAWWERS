@@ -56,6 +56,7 @@ from app.schemas.onboarding import (
     ProExtraImagePriceUpdateRequest,
     ProNichePricingPreviewResponse,
     ProPortfolioItem,
+    ProCoverResponse,
     ProPortfolioRemoveResponse,
     ProPortfolioResponse,
     ProPricingCurvePoint,
@@ -321,7 +322,14 @@ def update_my_pro_profile(
             maximum=max_client_credit_percent(ensure_default_platform_fee_policy(db)),
         )
 
-    for field in ["display_name", "headline", "cover_media_asset_id", "bio", "city", "country", "languages", "styles", "gear", "travel_radius_km"]:
+    # A new cover goes through the same rules as "Set as cover": only the
+    # photographer's own ready portfolio photo. The app sends the current
+    # value back with every save, which changes nothing.
+    if body.cover_media_asset_id is not None and body.cover_media_asset_id != profile.cover_media_asset_id:
+        from app.services.profile_cover import set_cover
+
+        set_cover(db, user.user_id, body.cover_media_asset_id, source="profile")
+    for field in ["display_name", "headline", "bio", "city", "country", "languages", "styles", "gear", "travel_radius_km"]:
         value = getattr(body, field)
         if value is not None:
             setattr(profile, field, value)
@@ -737,6 +745,11 @@ def get_my_portfolio(
     # tile.
     photo_ids = [a.id for a in assets if a.kind == MediaKind.photo]
     urls = resolve_image_urls(db, photo_ids)
+    # The cover a client sees, chosen or automatic (services/profile_cover.py).
+    from app.services.profile_cover import effective_cover_id
+
+    cover_id = effective_cover_id(db, user.user_id)
+    cover_chosen = cover_id is not None and cover_id == profile.cover_media_asset_id
     previews = resolve_derivative_urls(db, photo_ids, kinds=(MediaDerivativeKind.web_res,))
 
     items = [
@@ -747,7 +760,7 @@ def get_my_portfolio(
             thumbnail_url=urls.get(asset.id),
             preview_url=previews.get(asset.id, {}).get(MediaDerivativeKind.web_res),
             niche_slugs=sorted(asset.niche_tags or []),
-            is_cover=profile.cover_media_asset_id == asset.id,
+            is_cover=cover_id == asset.id,
             created_at=asset.created_at,
         )
         for asset in assets
@@ -770,7 +783,31 @@ def get_my_portfolio(
         photo_count=photo_count,
         video_count=video_count,
         photo_minimum=PORTFOLIO_MIN_PHOTOS,
+        cover_media_asset_id=cover_id,
+        cover_chosen=cover_chosen,
     )
+
+
+@router.put("/pro/me/portfolio/{media_asset_id}/cover", response_model=ProCoverResponse)
+def set_my_cover(
+    media_asset_id: uuid.UUID,
+    user: CurrentUser = Depends(require_not_banned),
+    db: Session = Depends(get_db_session),
+) -> ProCoverResponse:
+    """"Set as cover" in the Pro app (BETA_SCOPE #74): one of the
+    photographer's own ready portfolio photos becomes the image clients see
+    first. Another photographer's photo, or anything that is not a portfolio
+    photo, is a 404; a photo still processing is refused with a reason.
+    Choosing the current cover again answers success and changes nothing.
+    The Discover index, cache and search are refreshed at once; an audit
+    record is kept."""
+    from app.services.profile_cover import set_cover
+
+    _require_role(db, user.user_id, UserRoleType.pro)
+    enforce_named_rate_limit("cover_change", principal=str(user.user_id))
+    changed = set_cover(db, user.user_id, media_asset_id, source="app")
+    db.commit()
+    return ProCoverResponse(cover_media_asset_id=media_asset_id, changed=changed)
 
 
 @router.delete("/pro/me/portfolio/{media_asset_id}", response_model=ProPortfolioRemoveResponse)

@@ -447,6 +447,9 @@ class ProListingPreviewResponse(BaseModel):
     # when the pro has set no weekly rules at all, which reads differently
     # from "no free days".
     available_days_next_14: int | None = None
+    # Whether the card's cover is the one the pro chose, or one picked for
+    # them until they choose (services/profile_cover.py).
+    cover_chosen: bool = False
 
 
 class ClientHomeRow(BaseModel):

@@ -14,8 +14,9 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.admin import ProProfile
-from app.models.media import MediaAsset, MediaObject, MediaStatus, MediaVariant, ObjectStatus
+from app.models.media import MediaAsset, MediaObject, MediaPurpose, MediaStatus, MediaVariant, ObjectStatus
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind
+from app.services.cache import bump_public_index_version
 from app.services.gallery_items import attach_delivered_proof
 from app.services.photo_uploads import max_photo_bytes
 from app.services.storage import (
@@ -185,6 +186,11 @@ def process_photo_variants(self, media_asset_id: str) -> None:
         except Exception:
             logger.exception("attach_delivered_proof_failed", extra={"media_asset_id": media_asset_id})
         db.commit()
+        if asset.purpose == MediaPurpose.portfolio_reel:
+            # A new ready photo can be the photographer's cover (their first
+            # photo, or an earlier one finishing late): cached Discover pages
+            # are rebuilt with it rather than a blank card (BETA_SCOPE #74).
+            bump_public_index_version()
     except Exception as exc:
         db.rollback()
         if self.request.retries < self.max_retries:

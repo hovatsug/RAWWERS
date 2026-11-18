@@ -87,6 +87,7 @@ from app.services.media_urls import (
     resolve_niche_cover_urls,
 )
 from app.services.notifications import enqueue_notification
+from app.services.profile_cover import effective_cover_id, effective_cover_ids
 from app.services.outbox import enqueue_outbox_event
 from app.services.payment_intents import apply_missed_success, create_or_get_gig_payment_intent
 from app.services.pagination import DEFAULT_LIMIT, MAX_LIMIT, apply_keyset, build_page
@@ -432,9 +433,10 @@ def client_pro_profile(
         kinds=(MediaDerivativeKind.web_res,),
         expires_in=MEDIA_URL_BASE_TTL_SECONDS,
     )
+    cover_id = effective_cover_id(db, pro_user_id)
     cover_urls = resolve_image_urls(
         db,
-        [profile.cover_media_asset_id],
+        [cover_id],
         prefer=ORIGINAL_FIRST,
         expires_in=MEDIA_URL_BASE_TTL_SECONDS,
     )
@@ -443,8 +445,8 @@ def client_pro_profile(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
-        cover_media_asset_id=profile.cover_media_asset_id,
-        cover_url=cover_urls.get(profile.cover_media_asset_id) if profile.cover_media_asset_id else None,
+        cover_media_asset_id=cover_id,
+        cover_url=cover_urls.get(cover_id) if cover_id else None,
         bio=profile.bio,
         city=profile.city,
         country=profile.country,
@@ -1280,8 +1282,11 @@ def client_home(
     for key, _title, _subtitle, rows in plans:
         if key in row_niche:
             pros_by_niche.setdefault(row_niche[key], set()).update(row.pro_user_id for row in rows)
+    # Their cover leads where it is tagged with the row's niche, so choosing
+    # a cover shows in the niche rows too, not only in the list.
+    card_covers = {card.cover_media_asset_id for card in cards.values() if card.cover_media_asset_id}
     niche_covers: dict[str, dict[uuid.UUID, str]] = {
-        slug: resolve_niche_cover_urls(db, list(pro_ids), niche_slug=slug, expires_in=_media_url_ttl())
+        slug: resolve_niche_cover_urls(db, list(pro_ids), niche_slug=slug, expires_in=_media_url_ttl(), preferred=card_covers)
         for slug, pro_ids in pros_by_niche.items()
         if pro_ids
     }
@@ -1586,6 +1591,7 @@ def pro_listing_preview(
         is_live=not reasons,
         blocking_reasons=reasons,
         available_days_next_14=available_days,
+        cover_chosen=card.cover_media_asset_id is not None and card.cover_media_asset_id == profile.cover_media_asset_id,
     )
 
 
@@ -1636,9 +1642,13 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
             select(ProProfile).where(ProProfile.user_id.in_([idx.pro_user_id for idx in rows]))
         ).scalars().all()
     }
+    # The cover by the one rule (services/profile_cover.py): the one they
+    # chose, otherwise one of their ready photos - never a blank card for a
+    # photographer who has a photo to show.
+    covers = effective_cover_ids(db, [idx.pro_user_id for idx in rows])
     cover_urls = resolve_image_urls(
         db,
-        (profile.cover_media_asset_id for profile in profiles.values()),
+        covers.values(),
         prefer=THUMBNAIL_FIRST,
         expires_in=_media_url_ttl(),
     )
@@ -1649,7 +1659,7 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
     cards: list[ClientDiscoverCard] = []
     for idx in rows:
         profile = profiles.get(idx.pro_user_id)
-        cover_id = profile.cover_media_asset_id if profile else None
+        cover_id = covers.get(idx.pro_user_id)
         cards.append(
             ClientDiscoverCard(
                 pro_user_id=idx.pro_user_id,

@@ -42,6 +42,7 @@ from app.services.rate_limit import enforce_named_rate_limit, enforce_rate_limit
 from app.services.response_time import ResponseBucket, client_label
 from app.services.storage import create_presigned_get
 from app.services.launch_ops import is_pro_publicly_discoverable
+from app.services.profile_cover import effective_cover_id
 from app.services.price_filter import budget_currency, price_conditions, price_order, within_budget
 from app.tasks.discovery_tasks import rebuild_all_pro_indexes, rebuild_pro_index
 
@@ -318,7 +319,7 @@ def get_public_pro_profile(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
-        cover_media_asset_id=profile.cover_media_asset_id,
+        cover_media_asset_id=effective_cover_id(db, pro_user_id),
         bio=profile.bio,
         city=profile.city,
         country=profile.country,

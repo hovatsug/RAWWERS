@@ -74,6 +74,33 @@ class PortfolioController extends _$PortfolioController {
     }
   }
 
+  /// "Set as cover" (PUT /v1/pro/me/portfolio/{id}/cover). The server takes
+  /// only the photographer's own ready photo and refuses one still being
+  /// prepared, in its own words. Null on success.
+  Future<String?> setCover(String mediaAssetId) async {
+    final client = ref.read(proOnboardingClientProvider);
+    final result = await apiCall(
+      () => client.setMyCoverV1ProMePortfolioMediaAssetIdCoverPut(
+        mediaAssetId: mediaAssetId,
+        authorization: null,
+        xMinusUserMinusId: null,
+      ),
+    );
+    switch (result) {
+      case Ok():
+        await refresh();
+        return null;
+      case Err(:final failure):
+        return switch (failure) {
+          NetworkError() || Timeout() => 'Could not reach the server. Check your connection.',
+          BusinessError(:final message) => message,
+          RateLimited() => 'You have changed your cover a lot in a short time. Wait a while, then try again.',
+          NotFound() => 'This photo is no longer in your portfolio.',
+          _ => 'Could not set this photo as your cover.',
+        };
+    }
+  }
+
   /// "Remove from portfolio" (DELETE /v1/pro/me/portfolio/{id}). The server
   /// refuses a photo something else uses, and a live photographer's last
   /// photos above the minimum, in its own words. Null on success.

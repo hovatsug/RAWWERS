@@ -113,23 +113,9 @@ class PortfolioScreen extends ConsumerWidget {
       title: 'Your portfolio',
       initialIndex: index,
       urls: [for (final entry in items) entry.previewUrl ?? entry.thumbnailUrl],
-      actionsBuilder: (viewerContext, current) => Align(
-        alignment: Alignment.centerLeft,
-        child: Wrap(
-          spacing: RSpace.s8,
-          runSpacing: RSpace.s8,
-          children: [
-            RButton(
-              label: (items[current].nicheSlugs?.isNotEmpty ?? false) ? 'Edit tags' : 'Tag niches',
-              onPressed: () => _openTagger(viewerContext, ref, items[current]),
-            ),
-            RButton(
-              label: 'Remove from portfolio',
-              variant: RButtonVariant.secondary,
-              onPressed: () => confirmAndRemovePhoto(viewerContext, ref, items[current]),
-            ),
-          ],
-        ),
+      actionsBuilder: (viewerContext, current) => PhotoActions(
+        item: items[current],
+        onTag: (item) => _openTagger(viewerContext, ref, item),
       ),
     );
   }
@@ -146,20 +132,129 @@ class PortfolioScreen extends ConsumerWidget {
 }
 
 /// What the confirmation says before a photo is removed: in plain words,
-/// what happens, and that it cannot be undone.
-String removePhotoMessage(ProPortfolioItem item) => [
+/// what happens, and that it cannot be undone. For the cover, what clients
+/// see instead: the server shows another of their ready photos until they
+/// choose a new cover (api services/profile_cover.py).
+String removePhotoMessage(ProPortfolioItem item, {required bool otherReadyPhotos}) => [
       'This photo disappears from your profile and from Discover. It cannot be recovered.',
-      if (item.isCover) 'It is your cover photo: your profile will have no cover photo.',
+      if (item.isCover)
+        otherReadyPhotos
+            ? 'This is your cover. Another photo will be used until you choose a new one.'
+            : 'This is your cover and your only ready photo: your listing will show no photo until you add one.',
     ].join(' ');
+
+/// The buttons under a photo in the full-screen viewer: tag, make it the
+/// cover, remove it. One column, each button the full width, so the three
+/// read as a list of things to do with this photo and the long labels never
+/// squeeze. The viewer is dark, so the outlined buttons get light text and
+/// a light border here: the app's outlined style (meter700 on paper) is
+/// 1.9:1 on the viewer's near-black, which is unreadable.
+///
+/// Reads the photo from the portfolio as it is now, not as it was when the
+/// viewer opened, so "Cover" appears as soon as it is set.
+class PhotoActions extends ConsumerStatefulWidget {
+  const PhotoActions({required this.item, required this.onTag, super.key});
+
+  final ProPortfolioItem item;
+  final void Function(ProPortfolioItem item) onTag;
+
+  @override
+  ConsumerState<PhotoActions> createState() => _PhotoActionsState();
+}
+
+class _PhotoActionsState extends ConsumerState<PhotoActions> {
+  bool _settingCover = false;
+
+  Future<void> _setCover(ProPortfolioItem item) async {
+    setState(() => _settingCover = true);
+    final error = await ref.read(portfolioControllerProvider.notifier).setCover(item.mediaAssetId);
+    if (!mounted) return;
+    setState(() => _settingCover = false);
+    if (error != null) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.surface)),
+          title: const Text('Not set as cover'),
+          content: Text(error),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final portfolio = ref.watch(portfolioControllerProvider).valueOrNull;
+    final item = portfolio?.items?.firstWhere(
+          (entry) => entry.mediaAssetId == widget.item.mediaAssetId,
+          orElse: () => widget.item,
+        ) ??
+        widget.item;
+    final chosen = portfolio?.coverChosen ?? false;
+    final isChosenCover = item.isCover && chosen;
+    final onDark = OutlinedButton.styleFrom(
+      foregroundColor: RInk.i050,
+      side: const BorderSide(color: RInk.i200),
+    );
+
+    return Theme(
+      data: theme.copyWith(outlinedButtonTheme: OutlinedButtonThemeData(style: onDark.merge(theme.outlinedButtonTheme.style))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (item.isCover) ...[
+            Row(
+              children: [
+                const ROverlayBadge(label: 'Cover'),
+                const SizedBox(width: RSpace.s8),
+                Expanded(
+                  child: Text(
+                    chosen ? 'Clients see this photo first.' : 'Clients see this photo first until you choose a cover.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: RInk.i200),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: RSpace.s8),
+          ],
+          RButton(
+            label: (item.nicheSlugs?.isNotEmpty ?? false) ? 'Edit tags' : 'Tag niches',
+            onPressed: () => widget.onTag(item),
+          ),
+          if (!isChosenCover) ...[
+            const SizedBox(height: RSpace.s8),
+            RButton(
+              label: 'Set as cover',
+              variant: RButtonVariant.secondary,
+              loading: _settingCover,
+              onPressed: () => _setCover(item),
+            ),
+          ],
+          const SizedBox(height: RSpace.s8),
+          RButton(
+            label: 'Remove from portfolio',
+            variant: RButtonVariant.secondary,
+            onPressed: () => confirmAndRemovePhoto(context, ref, item),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Asks, then removes the photo. On success, closes the screen it was asked
 /// from (the full-screen viewer or the tagger), whose photo is gone; on a
 /// refusal, shows the server's reason and leaves everything as it was.
 Future<void> confirmAndRemovePhoto(BuildContext context, WidgetRef ref, ProPortfolioItem item) async {
+  final items = ref.read(portfolioControllerProvider).valueOrNull?.items ?? const <ProPortfolioItem>[];
+  final otherReady = items.any((other) => other.mediaAssetId != item.mediaAssetId && other.kind == 'photo' && other.status == 'ready');
   final confirmed = await showRConfirmDialog(
     context,
     title: 'Remove from portfolio?',
-    message: removePhotoMessage(item),
+    message: removePhotoMessage(item, otherReadyPhotos: otherReady),
     confirmLabel: 'Remove',
   );
   if (!confirmed || !context.mounted) return;
@@ -211,7 +306,7 @@ class _MinimumProgress extends StatelessWidget {
             const SizedBox(height: RSpace.s8),
             Text(
               met
-                  ? 'Add more whenever you want. The cover is what a client sees first.'
+                  ? 'Add more whenever you want. The cover is what a client sees first: open a photo and tap Set as cover.'
                   : 'Your listing cannot go live until you have $need.',
               style: theme.textTheme.bodySmall,
             ),

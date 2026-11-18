@@ -15,6 +15,7 @@ _ProListingPreviewResponse _$ProListingPreviewResponseFromJson(
       ?.map((e) => e as String)
       .toList(),
   availableDaysNext14: (json['available_days_next_14'] as num?)?.toInt(),
+  coverChosen: json['cover_chosen'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ProListingPreviewResponseToJson(
@@ -24,4 +25,5 @@ Map<String, dynamic> _$ProListingPreviewResponseToJson(
   'is_live': instance.isLive,
   'blocking_reasons': instance.blockingReasons,
   'available_days_next_14': instance.availableDaysNext14,
+  'cover_chosen': instance.coverChosen,
 };

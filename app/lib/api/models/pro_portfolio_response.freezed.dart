@@ -19,7 +19,9 @@ mixin _$ProPortfolioResponse {
 @JsonKey(name: ProPortfolioResponse.itemsKey_) List<ProPortfolioItem>? get items;/// photoCount
 @JsonKey(name: ProPortfolioResponse.photoCountKey_) int get photoCount;/// videoCount
 @JsonKey(name: ProPortfolioResponse.videoCountKey_) int get videoCount;/// photoMinimum
-@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) int get photoMinimum;
+@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) int get photoMinimum;/// coverMediaAssetId
+@JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_) String? get coverMediaAssetId;/// coverChosen
+@JsonKey(name: ProPortfolioResponse.coverChosenKey_) bool get coverChosen;
 /// Create a copy of ProPortfolioResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +34,16 @@ $ProPortfolioResponseCopyWith<ProPortfolioResponse> get copyWith => _$ProPortfol
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProPortfolioResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.photoCount, photoCount) || other.photoCount == photoCount)&&(identical(other.videoCount, videoCount) || other.videoCount == videoCount)&&(identical(other.photoMinimum, photoMinimum) || other.photoMinimum == photoMinimum));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProPortfolioResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.photoCount, photoCount) || other.photoCount == photoCount)&&(identical(other.videoCount, videoCount) || other.videoCount == videoCount)&&(identical(other.photoMinimum, photoMinimum) || other.photoMinimum == photoMinimum)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverChosen, coverChosen) || other.coverChosen == coverChosen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),photoCount,videoCount,photoMinimum);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),photoCount,videoCount,photoMinimum,coverMediaAssetId,coverChosen);
 
 @override
 String toString() {
-  return 'ProPortfolioResponse(items: $items, photoCount: $photoCount, videoCount: $videoCount, photoMinimum: $photoMinimum)';
+  return 'ProPortfolioResponse(items: $items, photoCount: $photoCount, videoCount: $videoCount, photoMinimum: $photoMinimum, coverMediaAssetId: $coverMediaAssetId, coverChosen: $coverChosen)';
 }
 
 
@@ -52,7 +54,7 @@ abstract mixin class $ProPortfolioResponseCopyWith<$Res>  {
   factory $ProPortfolioResponseCopyWith(ProPortfolioResponse value, $Res Function(ProPortfolioResponse) _then) = _$ProPortfolioResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProPortfolioResponse.itemsKey_) List<ProPortfolioItem>? items,@JsonKey(name: ProPortfolioResponse.photoCountKey_) int photoCount,@JsonKey(name: ProPortfolioResponse.videoCountKey_) int videoCount,@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) int photoMinimum
+@JsonKey(name: ProPortfolioResponse.itemsKey_) List<ProPortfolioItem>? items,@JsonKey(name: ProPortfolioResponse.photoCountKey_) int photoCount,@JsonKey(name: ProPortfolioResponse.videoCountKey_) int videoCount,@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) int photoMinimum,@JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProPortfolioResponse.coverChosenKey_) bool coverChosen
 });
 
 
@@ -69,13 +71,15 @@ class _$ProPortfolioResponseCopyWithImpl<$Res>
 
 /// Create a copy of ProPortfolioResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? items = freezed,Object? photoCount = null,Object? videoCount = null,Object? photoMinimum = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? items = freezed,Object? photoCount = null,Object? videoCount = null,Object? photoMinimum = null,Object? coverMediaAssetId = freezed,Object? coverChosen = null,}) {
   return _then(_self.copyWith(
 items: freezed == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<ProPortfolioItem>?,photoCount: null == photoCount ? _self.photoCount : photoCount // ignore: cast_nullable_to_non_nullable
 as int,videoCount: null == videoCount ? _self.videoCount : videoCount // ignore: cast_nullable_to_non_nullable
 as int,photoMinimum: null == photoMinimum ? _self.photoMinimum : photoMinimum // ignore: cast_nullable_to_non_nullable
-as int,
+as int,coverMediaAssetId: freezed == coverMediaAssetId ? _self.coverMediaAssetId : coverMediaAssetId // ignore: cast_nullable_to_non_nullable
+as String?,coverChosen: null == coverChosen ? _self.coverChosen : coverChosen // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -160,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProPortfolioResponse.itemsKey_)  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_)  int photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_)  int videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)  int photoMinimum)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProPortfolioResponse.itemsKey_)  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_)  int photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_)  int videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)  int photoMinimum, @JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProPortfolioResponse.coverChosenKey_)  bool coverChosen)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProPortfolioResponse() when $default != null:
-return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum);case _:
+return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum,_that.coverMediaAssetId,_that.coverChosen);case _:
   return orElse();
 
 }
@@ -181,10 +185,10 @@ return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProPortfolioResponse.itemsKey_)  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_)  int photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_)  int videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)  int photoMinimum)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProPortfolioResponse.itemsKey_)  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_)  int photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_)  int videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)  int photoMinimum, @JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProPortfolioResponse.coverChosenKey_)  bool coverChosen)  $default,) {final _that = this;
 switch (_that) {
 case _ProPortfolioResponse():
-return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum);case _:
+return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum,_that.coverMediaAssetId,_that.coverChosen);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +205,10 @@ return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProPortfolioResponse.itemsKey_)  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_)  int photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_)  int videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)  int photoMinimum)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProPortfolioResponse.itemsKey_)  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_)  int photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_)  int videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)  int photoMinimum, @JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_)  String? coverMediaAssetId, @JsonKey(name: ProPortfolioResponse.coverChosenKey_)  bool coverChosen)?  $default,) {final _that = this;
 switch (_that) {
 case _ProPortfolioResponse() when $default != null:
-return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum);case _:
+return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum,_that.coverMediaAssetId,_that.coverChosen);case _:
   return null;
 
 }
@@ -216,7 +220,7 @@ return $default(_that.items,_that.photoCount,_that.videoCount,_that.photoMinimum
 
 @jsonSerializable
 class _ProPortfolioResponse extends ProPortfolioResponse {
-  const _ProPortfolioResponse({@JsonKey(name: ProPortfolioResponse.itemsKey_) final  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_) required this.photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_) required this.videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_) required this.photoMinimum}): _items = items,super._();
+  const _ProPortfolioResponse({@JsonKey(name: ProPortfolioResponse.itemsKey_) final  List<ProPortfolioItem>? items, @JsonKey(name: ProPortfolioResponse.photoCountKey_) required this.photoCount, @JsonKey(name: ProPortfolioResponse.videoCountKey_) required this.videoCount, @JsonKey(name: ProPortfolioResponse.photoMinimumKey_) required this.photoMinimum, @JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_) this.coverMediaAssetId, @JsonKey(name: ProPortfolioResponse.coverChosenKey_) this.coverChosen = false}): _items = items,super._();
   factory _ProPortfolioResponse.fromJson(Map<String, dynamic> json) => _$ProPortfolioResponseFromJson(json);
 
 /// items
@@ -236,6 +240,10 @@ class _ProPortfolioResponse extends ProPortfolioResponse {
 @override@JsonKey(name: ProPortfolioResponse.videoCountKey_) final  int videoCount;
 /// photoMinimum
 @override@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) final  int photoMinimum;
+/// coverMediaAssetId
+@override@JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_) final  String? coverMediaAssetId;
+/// coverChosen
+@override@JsonKey(name: ProPortfolioResponse.coverChosenKey_) final  bool coverChosen;
 
 /// Create a copy of ProPortfolioResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -250,16 +258,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProPortfolioResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.photoCount, photoCount) || other.photoCount == photoCount)&&(identical(other.videoCount, videoCount) || other.videoCount == videoCount)&&(identical(other.photoMinimum, photoMinimum) || other.photoMinimum == photoMinimum));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProPortfolioResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.photoCount, photoCount) || other.photoCount == photoCount)&&(identical(other.videoCount, videoCount) || other.videoCount == videoCount)&&(identical(other.photoMinimum, photoMinimum) || other.photoMinimum == photoMinimum)&&(identical(other.coverMediaAssetId, coverMediaAssetId) || other.coverMediaAssetId == coverMediaAssetId)&&(identical(other.coverChosen, coverChosen) || other.coverChosen == coverChosen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),photoCount,videoCount,photoMinimum);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),photoCount,videoCount,photoMinimum,coverMediaAssetId,coverChosen);
 
 @override
 String toString() {
-  return 'ProPortfolioResponse(items: $items, photoCount: $photoCount, videoCount: $videoCount, photoMinimum: $photoMinimum)';
+  return 'ProPortfolioResponse(items: $items, photoCount: $photoCount, videoCount: $videoCount, photoMinimum: $photoMinimum, coverMediaAssetId: $coverMediaAssetId, coverChosen: $coverChosen)';
 }
 
 
@@ -270,7 +278,7 @@ abstract mixin class _$ProPortfolioResponseCopyWith<$Res> implements $ProPortfol
   factory _$ProPortfolioResponseCopyWith(_ProPortfolioResponse value, $Res Function(_ProPortfolioResponse) _then) = __$ProPortfolioResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProPortfolioResponse.itemsKey_) List<ProPortfolioItem>? items,@JsonKey(name: ProPortfolioResponse.photoCountKey_) int photoCount,@JsonKey(name: ProPortfolioResponse.videoCountKey_) int videoCount,@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) int photoMinimum
+@JsonKey(name: ProPortfolioResponse.itemsKey_) List<ProPortfolioItem>? items,@JsonKey(name: ProPortfolioResponse.photoCountKey_) int photoCount,@JsonKey(name: ProPortfolioResponse.videoCountKey_) int videoCount,@JsonKey(name: ProPortfolioResponse.photoMinimumKey_) int photoMinimum,@JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_) String? coverMediaAssetId,@JsonKey(name: ProPortfolioResponse.coverChosenKey_) bool coverChosen
 });
 
 
@@ -287,13 +295,15 @@ class __$ProPortfolioResponseCopyWithImpl<$Res>
 
 /// Create a copy of ProPortfolioResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? items = freezed,Object? photoCount = null,Object? videoCount = null,Object? photoMinimum = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? items = freezed,Object? photoCount = null,Object? videoCount = null,Object? photoMinimum = null,Object? coverMediaAssetId = freezed,Object? coverChosen = null,}) {
   return _then(_ProPortfolioResponse(
 items: freezed == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<ProPortfolioItem>?,photoCount: null == photoCount ? _self.photoCount : photoCount // ignore: cast_nullable_to_non_nullable
 as int,videoCount: null == videoCount ? _self.videoCount : videoCount // ignore: cast_nullable_to_non_nullable
 as int,photoMinimum: null == photoMinimum ? _self.photoMinimum : photoMinimum // ignore: cast_nullable_to_non_nullable
-as int,
+as int,coverMediaAssetId: freezed == coverMediaAssetId ? _self.coverMediaAssetId : coverMediaAssetId // ignore: cast_nullable_to_non_nullable
+as String?,coverChosen: null == coverChosen ? _self.coverChosen : coverChosen // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

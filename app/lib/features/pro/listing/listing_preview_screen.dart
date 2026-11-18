@@ -126,6 +126,16 @@ class _LiveBanner extends ConsumerWidget {
   }
 }
 
+/// Where the card's photo comes from, in the words of what to do about it.
+/// The server picks one of their ready photos until they choose a cover
+/// (api services/profile_cover.py).
+String coverDetail(ProListingPreviewResponse preview) {
+  final hasCover = preview.card.coverUrl?.isNotEmpty ?? false;
+  if (!hasCover) return 'Add photos to your portfolio. The first one is shown until you choose a cover.';
+  if (preview.coverChosen) return 'Your chosen cover, from your portfolio';
+  return 'Picked for you until you choose one: open a photo in your portfolio and tap Set as cover';
+}
+
 class _WhatFeedsIt extends StatelessWidget {
   const _WhatFeedsIt({
     required this.preview,
@@ -168,7 +178,7 @@ class _WhatFeedsIt extends StatelessWidget {
         // should be able to see which lever moves which part.
         _FeedsRow(
           label: 'Cover photo and photo count',
-          detail: 'From your portfolio',
+          detail: coverDetail(preview),
           onTap: () => context.push(portfolioPath),
         ),
         _FeedsRow(

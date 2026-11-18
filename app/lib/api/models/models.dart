@@ -254,6 +254,7 @@ export 'presence_visibility.dart';
 export 'presentation_video_view.dart';
 export 'pro_activate_response.dart';
 export 'pro_card.dart';
+export 'pro_cover_response.dart';
 export 'pro_extra_image_price_item.dart';
 export 'pro_extra_image_price_response.dart';
 export 'pro_extra_image_price_row.dart';

@@ -15,6 +15,8 @@ _ProPortfolioResponse _$ProPortfolioResponseFromJson(
   photoCount: (json['photo_count'] as num).toInt(),
   videoCount: (json['video_count'] as num).toInt(),
   photoMinimum: (json['photo_minimum'] as num).toInt(),
+  coverMediaAssetId: json['cover_media_asset_id'] as String?,
+  coverChosen: json['cover_chosen'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ProPortfolioResponseToJson(
@@ -24,4 +26,6 @@ Map<String, dynamic> _$ProPortfolioResponseToJson(
   'photo_count': instance.photoCount,
   'video_count': instance.videoCount,
   'photo_minimum': instance.photoMinimum,
+  'cover_media_asset_id': instance.coverMediaAssetId,
+  'cover_chosen': instance.coverChosen,
 };

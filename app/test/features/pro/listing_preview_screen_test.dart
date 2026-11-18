@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rawwers/api/models/client_discover_card.dart';
 import 'package:rawwers/api/models/pro_listing_preview_response.dart';
 import 'package:rawwers/core/api/api_failure.dart';
+import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_controller.dart';
 import 'package:rawwers/features/pro/listing/listing_preview_screen.dart';
@@ -27,9 +28,10 @@ class _FailingPreview extends ListingPreviewController {
   Future<ProListingPreviewResponse> build() async => throw const NetworkError();
 }
 
-ClientDiscoverCard _card({String? minPrice = '120.00', String? maxPrice = '300.00'}) =>
+ClientDiscoverCard _card({String? minPrice = '120.00', String? maxPrice = '300.00', String? coverUrl}) =>
     ClientDiscoverCard(
       proUserId: 'pro-1',
+      coverUrl: coverUrl,
       displayName: 'Alex Lens',
       headline: 'Portraits in daylight',
       city: 'Lisbon',
@@ -48,12 +50,14 @@ ProListingPreviewResponse _preview({
   List<String> blocking = const [],
   int? availableDays = 9,
   ClientDiscoverCard? card,
+  bool coverChosen = false,
 }) =>
     ProListingPreviewResponse(
       card: card ?? _card(),
       isLive: isLive,
       blockingReasons: blocking,
       availableDaysNext14: availableDays,
+      coverChosen: coverChosen,
     );
 
 Widget _wrap(ProListingPreviewResponse preview) => ProviderScope(
@@ -134,6 +138,19 @@ void main() {
     expect(find.text('Free on 9 of the next 14 days.'), findsOneWidget);
   });
 
+  testWidgets('the card shows the cover the server picked, and the row says how to choose one', (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_wrap(_preview(card: _card(coverUrl: 'https://example.test/cover.jpg'))));
+    await tester.pump();
+
+    final photo = tester.widget<RNetworkPhoto>(find.descendant(of: find.byType(DiscoverCard), matching: find.byType(RNetworkPhoto)));
+    expect(photo.url, 'https://example.test/cover.jpg');
+    await tester.scrollUntilVisible(
+      find.text('Cover photo and photo count'), 200, scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Picked for you until you choose one: open a photo in your portfolio and tap Set as cover'), findsOneWidget);
+  });
+
   testWidgets('the card names which screen shapes each part of it', (tester) async {
     // The brief: editing pricing should visibly change the card, and the
     // connection should be visible rather than something to infer.
@@ -149,6 +166,21 @@ void main() {
     // starting total, not the per-photo rate it used to be.
     expect(find.text('The cheapest and dearest of your packages, at their minimum'), findsOneWidget);
     expect(find.text('Cover photo and photo count'), findsOneWidget);
+  });
+
+  group('the cover row says where the card\'s photo comes from', () {
+    test('chosen', () {
+      expect(coverDetail(_preview(card: _card(coverUrl: 'https://example.test/c.jpg'), coverChosen: true)),
+          'Your chosen cover, from your portfolio');
+    });
+    test('picked for them', () {
+      expect(coverDetail(_preview(card: _card(coverUrl: 'https://example.test/c.jpg'))),
+          'Picked for you until you choose one: open a photo in your portfolio and tap Set as cover');
+    });
+    test('no photo yet', () {
+      expect(coverDetail(_preview(card: _card())),
+          'Add photos to your portfolio. The first one is shown until you choose a cover.');
+    });
   });
 
   testWidgets('an unpriced listing shows no price rather than a zero', (tester) async {

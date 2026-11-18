@@ -25,6 +25,11 @@
 ///                 }
 ///             ],
 ///             "title": "Available Days Next 14"
+///         },
+///         "cover_chosen": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Cover Chosen"
 ///         }
 ///     },
 ///     "type": "object",
@@ -61,6 +66,11 @@ abstract class ProListingPreviewResponse with _$ProListingPreviewResponse {
     /// availableDaysNext14
     @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)
     int? availableDaysNext14,
+
+    /// coverChosen
+    @Default(false)
+    @JsonKey(name: ProListingPreviewResponse.coverChosenKey_)
+    bool coverChosen,
   }) = _ProListingPreviewResponse;
 
   factory ProListingPreviewResponse.fromJson(Map<String, dynamic> json) =>
@@ -73,4 +83,6 @@ abstract class ProListingPreviewResponse with _$ProListingPreviewResponse {
   static const String blockingReasonsKey_ = r'blocking_reasons';
 
   static const String availableDaysNext14Key_ = r'available_days_next_14';
+
+  static const String coverChosenKey_ = r'cover_chosen';
 }

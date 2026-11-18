@@ -19,7 +19,8 @@ mixin _$ProListingPreviewResponse {
 @JsonKey(name: ProListingPreviewResponse.cardKey_) ClientDiscoverCard get card;/// isLive
 @JsonKey(name: ProListingPreviewResponse.isLiveKey_) bool get isLive;/// blockingReasons
 @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) List<String>? get blockingReasons;/// availableDaysNext14
-@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) int? get availableDaysNext14;
+@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) int? get availableDaysNext14;/// coverChosen
+@JsonKey(name: ProListingPreviewResponse.coverChosenKey_) bool get coverChosen;
 /// Create a copy of ProListingPreviewResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +33,16 @@ $ProListingPreviewResponseCopyWith<ProListingPreviewResponse> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProListingPreviewResponse&&(identical(other.card, card) || other.card == card)&&(identical(other.isLive, isLive) || other.isLive == isLive)&&const DeepCollectionEquality().equals(other.blockingReasons, blockingReasons)&&(identical(other.availableDaysNext14, availableDaysNext14) || other.availableDaysNext14 == availableDaysNext14));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProListingPreviewResponse&&(identical(other.card, card) || other.card == card)&&(identical(other.isLive, isLive) || other.isLive == isLive)&&const DeepCollectionEquality().equals(other.blockingReasons, blockingReasons)&&(identical(other.availableDaysNext14, availableDaysNext14) || other.availableDaysNext14 == availableDaysNext14)&&(identical(other.coverChosen, coverChosen) || other.coverChosen == coverChosen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,card,isLive,const DeepCollectionEquality().hash(blockingReasons),availableDaysNext14);
+int get hashCode => Object.hash(runtimeType,card,isLive,const DeepCollectionEquality().hash(blockingReasons),availableDaysNext14,coverChosen);
 
 @override
 String toString() {
-  return 'ProListingPreviewResponse(card: $card, isLive: $isLive, blockingReasons: $blockingReasons, availableDaysNext14: $availableDaysNext14)';
+  return 'ProListingPreviewResponse(card: $card, isLive: $isLive, blockingReasons: $blockingReasons, availableDaysNext14: $availableDaysNext14, coverChosen: $coverChosen)';
 }
 
 
@@ -52,7 +53,7 @@ abstract mixin class $ProListingPreviewResponseCopyWith<$Res>  {
   factory $ProListingPreviewResponseCopyWith(ProListingPreviewResponse value, $Res Function(ProListingPreviewResponse) _then) = _$ProListingPreviewResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: ProListingPreviewResponse.cardKey_) ClientDiscoverCard card,@JsonKey(name: ProListingPreviewResponse.isLiveKey_) bool isLive,@JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) List<String>? blockingReasons,@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) int? availableDaysNext14
+@JsonKey(name: ProListingPreviewResponse.cardKey_) ClientDiscoverCard card,@JsonKey(name: ProListingPreviewResponse.isLiveKey_) bool isLive,@JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) List<String>? blockingReasons,@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) int? availableDaysNext14,@JsonKey(name: ProListingPreviewResponse.coverChosenKey_) bool coverChosen
 });
 
 
@@ -69,13 +70,14 @@ class _$ProListingPreviewResponseCopyWithImpl<$Res>
 
 /// Create a copy of ProListingPreviewResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? card = null,Object? isLive = null,Object? blockingReasons = freezed,Object? availableDaysNext14 = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? card = null,Object? isLive = null,Object? blockingReasons = freezed,Object? availableDaysNext14 = freezed,Object? coverChosen = null,}) {
   return _then(_self.copyWith(
 card: null == card ? _self.card : card // ignore: cast_nullable_to_non_nullable
 as ClientDiscoverCard,isLive: null == isLive ? _self.isLive : isLive // ignore: cast_nullable_to_non_nullable
 as bool,blockingReasons: freezed == blockingReasons ? _self.blockingReasons : blockingReasons // ignore: cast_nullable_to_non_nullable
 as List<String>?,availableDaysNext14: freezed == availableDaysNext14 ? _self.availableDaysNext14 : availableDaysNext14 // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,coverChosen: null == coverChosen ? _self.coverChosen : coverChosen // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of ProListingPreviewResponse
@@ -169,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProListingPreviewResponse.cardKey_)  ClientDiscoverCard card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_)  bool isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_)  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)  int? availableDaysNext14)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: ProListingPreviewResponse.cardKey_)  ClientDiscoverCard card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_)  bool isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_)  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)  int? availableDaysNext14, @JsonKey(name: ProListingPreviewResponse.coverChosenKey_)  bool coverChosen)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProListingPreviewResponse() when $default != null:
-return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDaysNext14);case _:
+return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDaysNext14,_that.coverChosen);case _:
   return orElse();
 
 }
@@ -190,10 +192,10 @@ return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDay
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProListingPreviewResponse.cardKey_)  ClientDiscoverCard card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_)  bool isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_)  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)  int? availableDaysNext14)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: ProListingPreviewResponse.cardKey_)  ClientDiscoverCard card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_)  bool isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_)  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)  int? availableDaysNext14, @JsonKey(name: ProListingPreviewResponse.coverChosenKey_)  bool coverChosen)  $default,) {final _that = this;
 switch (_that) {
 case _ProListingPreviewResponse():
-return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDaysNext14);case _:
+return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDaysNext14,_that.coverChosen);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -210,10 +212,10 @@ return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDay
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProListingPreviewResponse.cardKey_)  ClientDiscoverCard card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_)  bool isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_)  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)  int? availableDaysNext14)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: ProListingPreviewResponse.cardKey_)  ClientDiscoverCard card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_)  bool isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_)  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_)  int? availableDaysNext14, @JsonKey(name: ProListingPreviewResponse.coverChosenKey_)  bool coverChosen)?  $default,) {final _that = this;
 switch (_that) {
 case _ProListingPreviewResponse() when $default != null:
-return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDaysNext14);case _:
+return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDaysNext14,_that.coverChosen);case _:
   return null;
 
 }
@@ -225,7 +227,7 @@ return $default(_that.card,_that.isLive,_that.blockingReasons,_that.availableDay
 
 @jsonSerializable
 class _ProListingPreviewResponse extends ProListingPreviewResponse {
-  const _ProListingPreviewResponse({@JsonKey(name: ProListingPreviewResponse.cardKey_) required this.card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_) required this.isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) final  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) this.availableDaysNext14}): _blockingReasons = blockingReasons,super._();
+  const _ProListingPreviewResponse({@JsonKey(name: ProListingPreviewResponse.cardKey_) required this.card, @JsonKey(name: ProListingPreviewResponse.isLiveKey_) required this.isLive, @JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) final  List<String>? blockingReasons, @JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) this.availableDaysNext14, @JsonKey(name: ProListingPreviewResponse.coverChosenKey_) this.coverChosen = false}): _blockingReasons = blockingReasons,super._();
   factory _ProListingPreviewResponse.fromJson(Map<String, dynamic> json) => _$ProListingPreviewResponseFromJson(json);
 
 /// card
@@ -245,6 +247,8 @@ class _ProListingPreviewResponse extends ProListingPreviewResponse {
 
 /// availableDaysNext14
 @override@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) final  int? availableDaysNext14;
+/// coverChosen
+@override@JsonKey(name: ProListingPreviewResponse.coverChosenKey_) final  bool coverChosen;
 
 /// Create a copy of ProListingPreviewResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -259,16 +263,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProListingPreviewResponse&&(identical(other.card, card) || other.card == card)&&(identical(other.isLive, isLive) || other.isLive == isLive)&&const DeepCollectionEquality().equals(other._blockingReasons, _blockingReasons)&&(identical(other.availableDaysNext14, availableDaysNext14) || other.availableDaysNext14 == availableDaysNext14));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProListingPreviewResponse&&(identical(other.card, card) || other.card == card)&&(identical(other.isLive, isLive) || other.isLive == isLive)&&const DeepCollectionEquality().equals(other._blockingReasons, _blockingReasons)&&(identical(other.availableDaysNext14, availableDaysNext14) || other.availableDaysNext14 == availableDaysNext14)&&(identical(other.coverChosen, coverChosen) || other.coverChosen == coverChosen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,card,isLive,const DeepCollectionEquality().hash(_blockingReasons),availableDaysNext14);
+int get hashCode => Object.hash(runtimeType,card,isLive,const DeepCollectionEquality().hash(_blockingReasons),availableDaysNext14,coverChosen);
 
 @override
 String toString() {
-  return 'ProListingPreviewResponse(card: $card, isLive: $isLive, blockingReasons: $blockingReasons, availableDaysNext14: $availableDaysNext14)';
+  return 'ProListingPreviewResponse(card: $card, isLive: $isLive, blockingReasons: $blockingReasons, availableDaysNext14: $availableDaysNext14, coverChosen: $coverChosen)';
 }
 
 
@@ -279,7 +283,7 @@ abstract mixin class _$ProListingPreviewResponseCopyWith<$Res> implements $ProLi
   factory _$ProListingPreviewResponseCopyWith(_ProListingPreviewResponse value, $Res Function(_ProListingPreviewResponse) _then) = __$ProListingPreviewResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: ProListingPreviewResponse.cardKey_) ClientDiscoverCard card,@JsonKey(name: ProListingPreviewResponse.isLiveKey_) bool isLive,@JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) List<String>? blockingReasons,@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) int? availableDaysNext14
+@JsonKey(name: ProListingPreviewResponse.cardKey_) ClientDiscoverCard card,@JsonKey(name: ProListingPreviewResponse.isLiveKey_) bool isLive,@JsonKey(name: ProListingPreviewResponse.blockingReasonsKey_) List<String>? blockingReasons,@JsonKey(name: ProListingPreviewResponse.availableDaysNext14Key_) int? availableDaysNext14,@JsonKey(name: ProListingPreviewResponse.coverChosenKey_) bool coverChosen
 });
 
 
@@ -296,13 +300,14 @@ class __$ProListingPreviewResponseCopyWithImpl<$Res>
 
 /// Create a copy of ProListingPreviewResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? card = null,Object? isLive = null,Object? blockingReasons = freezed,Object? availableDaysNext14 = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? card = null,Object? isLive = null,Object? blockingReasons = freezed,Object? availableDaysNext14 = freezed,Object? coverChosen = null,}) {
   return _then(_ProListingPreviewResponse(
 card: null == card ? _self.card : card // ignore: cast_nullable_to_non_nullable
 as ClientDiscoverCard,isLive: null == isLive ? _self.isLive : isLive // ignore: cast_nullable_to_non_nullable
 as bool,blockingReasons: freezed == blockingReasons ? _self._blockingReasons : blockingReasons // ignore: cast_nullable_to_non_nullable
 as List<String>?,availableDaysNext14: freezed == availableDaysNext14 ? _self.availableDaysNext14 : availableDaysNext14 // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,coverChosen: null == coverChosen ? _self.coverChosen : coverChosen // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

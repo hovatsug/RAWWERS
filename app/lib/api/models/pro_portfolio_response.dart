@@ -19,6 +19,23 @@
 ///         "photo_minimum": {
 ///             "type": "integer",
 ///             "title": "Photo Minimum"
+///         },
+///         "cover_media_asset_id": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "uuid"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Cover Media Asset Id"
+///         },
+///         "cover_chosen": {
+///             "type": "boolean",
+///             "default": false,
+///             "title": "Cover Chosen"
 ///         }
 ///     },
 ///     "type": "object",
@@ -54,6 +71,15 @@ abstract class ProPortfolioResponse with _$ProPortfolioResponse {
     /// photoMinimum
     @JsonKey(name: ProPortfolioResponse.photoMinimumKey_)
     required int photoMinimum,
+
+    /// coverMediaAssetId
+    @JsonKey(name: ProPortfolioResponse.coverMediaAssetIdKey_)
+    String? coverMediaAssetId,
+
+    /// coverChosen
+    @Default(false)
+    @JsonKey(name: ProPortfolioResponse.coverChosenKey_)
+    bool coverChosen,
   }) = _ProPortfolioResponse;
 
   factory ProPortfolioResponse.fromJson(Map<String, dynamic> json) =>
@@ -66,4 +92,8 @@ abstract class ProPortfolioResponse with _$ProPortfolioResponse {
   static const String videoCountKey_ = r'video_count';
 
   static const String photoMinimumKey_ = r'photo_minimum';
+
+  static const String coverMediaAssetIdKey_ = r'cover_media_asset_id';
+
+  static const String coverChosenKey_ = r'cover_chosen';
 }

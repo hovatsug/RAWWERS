@@ -2275,6 +2275,113 @@ class _ProOnboardingClient implements ProOnboardingClient {
   }
 
   @override
+  Future<HttpResponse<ProCoverResponse>>
+  setMyCoverV1ProMePortfolioMediaAssetIdCoverPut({
+    required String mediaAssetId,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Set My Cover',
+      'description':
+          '"Set as cover" in the Pro app (BETA_SCOPE #74): one of the\nphotographer\'s own ready portfolio photos becomes the image clients see\nfirst. Another photographer\'s photo, or anything that is not a portfolio\nphoto, is a 404; a photo still processing is refused with a reason.\nChoosing the current cover again answers success and changes nothing.\nThe Discover index, cache and search are refreshed at once; an audit\nrecord is kept.',
+      'operationId':
+          'set_my_cover_v1_pro_me_portfolio__media_asset_id__cover_put',
+      'parameters': [
+        {
+          'name': 'media_asset_id',
+          'in': 'path',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'format': 'uuid',
+            'title': 'Media Asset Id',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/ProCoverResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ProCoverResponse>>(
+      Options(method: 'PUT', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/me/portfolio/${mediaAssetId}/cover',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProCoverResponse _value;
+    try {
+      _value = ProCoverResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
   Future<HttpResponse<ProPortfolioRemoveResponse>>
   removeMyPortfolioPhotoV1ProMePortfolioMediaAssetIdDelete({
     required String mediaAssetId,

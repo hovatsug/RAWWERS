@@ -40,3 +40,6 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | 582a440 | 2026-11-17 | Niches: the shared rules for the Pro app's niches screen (#71) | **yes** (writes to the profile, onboarding) |
 | a0a55d6 | 2026-11-17 | Pro app: Your niches screen, Remove from portfolio, the tagger offers own niches; API client regenerated | **yes** (onboarding, profile writes, deletes content) |
 | fac1460 | 2026-11-17 | Docs: #70, #71, LATER #72-73, plug-in 1.2.5 docs, CI findings, DEPLOY_CHECKLIST step 8 | no (docs only) |
+| e5a6e77 | 2026-11-18 | Cover (#74): one server rule (chosen, else earliest main-niche photo, else earliest ready photo) for every place that shows a photographer's image; Set as cover; the profile save takes only the photographer's own ready photo as cover | **yes** (writes to the profile, changes what clients see in Discover; 316 tests in 21 related files, 14 of 14 break checks) |
+| ce6b209 | 2026-11-18 | Pro app: Set as cover, the Cover badge, Remove from portfolio readable on the dark viewer and full width; Your listing says where the photo comes from; API client regenerated | **yes** (profile writes; 115 Flutter tests in 9 related files, 10 of 10 break checks) |
+| 40993c0 | 2026-11-18 | Docs: #74 MUST, #64 updated, crop and photo-count findings, endpoint lists | no (docs only) |

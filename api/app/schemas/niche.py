@@ -38,6 +38,10 @@ class ProNicheView(BaseModel):
 class UpdateMyNichesResponse(BaseModel):
     primary_niche_slug: str | None = None
     niches: list[ProNicheView] = Field(default_factory=list)
+    #: The fewest and most niches a photographer may have (niches_min,
+    #: niches_max), for the Pro app's niches screen.
+    minimum: int | None = None
+    maximum: int | None = None
 
 
 class PortfolioNicheTagsRequest(BaseModel):

@@ -607,26 +607,9 @@ def get_my_selected_niches(
     db: Session = Depends(get_db_session),
 ) -> UpdateMyNichesResponse:
     _require_role(db, user.user_id, UserRoleType.pro)
-    rows = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
-    view_niche_map = get_niche_map_by_ids(db, [row.niche_id for row in rows])
-    primary_slug = None
-    items: list[ProNicheView] = []
-    for row in rows:
-        niche = view_niche_map.get(row.niche_id)
-        if not niche:
-            continue
-        if row.is_primary:
-            primary_slug = niche.slug
-        items.append(
-            ProNicheView(
-                slug=niche.slug,
-                name=niche.name,
-                declared_level=row.declared_level,
-                is_primary=row.is_primary,
-            )
-        )
+    view = _my_niches_view(db, user.user_id)
     db.commit()
-    return UpdateMyNichesResponse(primary_niche_slug=primary_slug, niches=items)
+    return view
 
 
 @router.put("/pro/niches/mine", response_model=UpdateMyNichesResponse)
@@ -644,72 +627,24 @@ def update_my_niches(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_session),
 ) -> UpdateMyNichesResponse:
+    """The whole list at once: the Pro app's niches screen. The rules
+    (app/services/pro_niches.py): active niches, at most niches_max, not
+    below niches_min, exactly one main niche, and no niche removed while a
+    booking in it is not finished or a request in it is waiting."""
     _require_role(db, user.user_id, UserRoleType.pro)
-    ensure_initial_niches(db)
-
-    requested_slugs = [item.slug for item in body.niches]
-    if body.primary_niche_slug:
-        requested_slugs.append(body.primary_niche_slug)
-    niche_map = get_niche_map_by_slugs(db, requested_slugs)
-    missing = sorted(set(requested_slugs) - set(niche_map.keys()))
-    if missing:
-        raise APIError(code="validation_error", message=f"Unknown niche slug(s): {', '.join(missing)}", status_code=422)
-
-    incoming_by_niche_id = {niche_map[item.slug].id: item for item in body.niches}
-    existing = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
-    existing_by_niche_id = {row.niche_id: row for row in existing}
-    # The same maximum as the plug-in's add (app/services/pro_niches.py).
-    final_niche_ids = set(incoming_by_niche_id) | ({niche_map[body.primary_niche_slug].id} if body.primary_niche_slug else set())
-    pro_niches.require_within_max(db, current=len(existing), new=len(final_niche_ids))
-
-    for niche_id, payload in incoming_by_niche_id.items():
-        row = existing_by_niche_id.get(niche_id)
-        if not row:
-            row = ProNiche(pro_user_id=user.user_id, niche_id=niche_id, created_at=datetime.now(timezone.utc))
-            db.add(row)
-        row.declared_level = payload.declared_level
-        row.is_primary = payload.is_primary
-
-    for row in existing:
-        if row.niche_id not in incoming_by_niche_id:
-            db.delete(row)
-
-    # Sessions here are autoflush=False, so rows added above are invisible
-    # to the SELECT below until flushed - and the primary block would then
-    # insert a second ProNiche for a niche already being added, violating
-    # uq_pro_niche_pro_niche. That fires whenever primary_niche_slug names
-    # a niche that is also in the list, which is the ordinary way to call
-    # this endpoint.
-    db.flush()
-
-    explicit_primary_slug = body.primary_niche_slug
-    if explicit_primary_slug:
-        primary_niche_id = niche_map[explicit_primary_slug].id
-        primary_row = db.execute(
-            select(ProNiche).where(ProNiche.pro_user_id == user.user_id, ProNiche.niche_id == primary_niche_id)
-        ).scalar_one_or_none()
-        if not primary_row:
-            primary_row = ProNiche(
-                pro_user_id=user.user_id,
-                niche_id=primary_niche_id,
-                declared_level=None,
-                is_primary=True,
-                created_at=datetime.now(timezone.utc),
-            )
-            db.add(primary_row)
-        current = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
-        for row in current:
-            row.is_primary = row.niche_id == primary_niche_id
-
-    niche_ids_for_compute = list(incoming_by_niche_id.keys())
-    if explicit_primary_slug:
-        niche_ids_for_compute.append(niche_map[explicit_primary_slug].id)
-    for niche_id in set(niche_ids_for_compute):
-        recompute_pro_niche_skills(db, user.user_id, niche_id)
-    recompute_pro_public_index(db, user.user_id)
+    pro_niches.replace_niches(
+        db,
+        user.user_id,
+        items=[(item.slug, item.declared_level, bool(item.is_primary)) for item in body.niches],
+        primary_slug=body.primary_niche_slug,
+        source="app",
+    )
     db.commit()
+    return _my_niches_view(db, user.user_id)
 
-    rows = db.execute(select(ProNiche).where(ProNiche.pro_user_id == user.user_id)).scalars().all()
+
+def _my_niches_view(db: Session, pro_user_id: uuid.UUID) -> UpdateMyNichesResponse:
+    rows = db.execute(select(ProNiche).where(ProNiche.pro_user_id == pro_user_id)).scalars().all()
     view_niche_map = get_niche_map_by_ids(db, [row.niche_id for row in rows])
     primary_slug = None
     items: list[ProNicheView] = []
@@ -727,7 +662,12 @@ def update_my_niches(
                 is_primary=row.is_primary,
             )
         )
-    return UpdateMyNichesResponse(primary_niche_slug=primary_slug, niches=items)
+    return UpdateMyNichesResponse(
+        primary_niche_slug=primary_slug,
+        niches=items,
+        minimum=pro_niches.niches_min(db),
+        maximum=pro_niches.niches_max(db),
+    )
 
 
 @router.post("/pro/me/portfolio/{media_asset_id}/niches", response_model=PortfolioNicheTagsResponse)

@@ -15,6 +15,9 @@ Checked on 2026-11-17 against a throw-away Postgres and Redis with production-li
 5. **The first admin.** Register the owner's account with `POST /v1/auth/register` (201, gives `user_id`), put that id in `ADMIN_USER_IDS`, restart the API, sign in (`POST /v1/auth/login`, 200). The admin role is added on the first signed-in request. **Expected:** with the `X-Admin-Api-Key` header, `GET /v1/admin/finance/currency-settings` 200 (the code's defaults: GBP only), `GET /v1/admin/shelf/settings` 200 (created on first read, the Shelf off), `GET /v1/admin/pros/review-queue`, `GET /v1/admin/bi/overview`, `GET /v1/admin/money-attention`, `GET /v1/admin/notifications/logs` all 200 and empty, `GET /v1/admin/pricing/niche-package-price-caps` 200 and empty.
 6. **Reference data** (none of it is created by the migrations): load the price caps (section 1, GBP and EUR CSVs), the camera reference (section 1), and check the `GB` row of `country_tax_rule` (created on the first VAT settings read, `ensure_uk_tax_rule`). **Expected:** the count query of section 1 shows rows in each.
 7. **No feature flag rows are needed:** the defaults outside development keep the chat assistant off (section 2). **Expected:** `SELECT key, is_enabled FROM feature_flag` returns nothing on a fresh database.
+8. **Run the exchange-rate job once** (`fx-refresh`, section 3, M3) instead of waiting for the beat's hourly run: `celery -A app.tasks.celery_app call app.tasks.scheduled.fx_refresh` (the API and beat need outbound HTTPS to ecb.europa.eu). **Expected:** `GET /v1/fx/rates` then shows a GBP rate, so prices carry their approximations from the start.
+
+Steps 2 to 5 (without the admin part of 5) run in CI on every change: the `empty-database` job of `.github/workflows/ci.yml`, with `scripts/check-empty-database.py`. One script for steps 6 and 8 is a LATER row (BACKEND_GAPS, "One script for the reference data").
 
 ## 1. Before deploying - checks against the target database
 

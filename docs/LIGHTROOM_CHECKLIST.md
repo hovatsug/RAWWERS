@@ -110,7 +110,7 @@ Write down anything that differs from **Expect**, with a screenshot.
 
 ## P. The portfolio (plug-in 1.2.3)
 
-Against dev, with pro1 signed in in the pro app. Build 1.2.3 first: `lightroom/build.sh --version 1.2.3 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. Start with pro1 having **no niches** (the pro app has no niche screen; the niches are set up from Lightroom here). To start again from none on dev:
+Against dev, with pro1 signed in in the pro app. Build 1.2.3 first: `lightroom/build.sh --version 1.2.3 --target dev`, then in **File > Plug-in Manager** select RAWWERS > **Remove**, then **Add** the new `lightroom/build/rawwers.lrplugin`. Start with pro1 having **no niches** (the niches are set up from Lightroom here; since plug-in 1.2.5 the pro app has its own niches screen too, part Q). To start again from none on dev:
 
     docker exec api-postgres-1 psql -U postgres -d rawwers -c "DELETE FROM pro_niche WHERE pro_user_id = (SELECT user_id FROM user_account WHERE email = 'pro1@rawwers.dev')"
 
@@ -219,6 +219,34 @@ P.22 Revoke this Mac in the pro app (part 7), then **Publish** a modified photo.
 
 P.23 Plug-in 1.0.0 against this server (optional, needs the 1.0.0 build): Export To: RAWWERS still delivers to a gig, and the dialog says a newer plug-in is available.
 
+## Q. Niches and photos removed in the Pro app (plug-in 1.2.5)
+
+Against dev at the branch's code (the API and the photo worker rebuilt with `scratch/rebuild_dev.sh`), with the 1.2.5 dev package installed (P.1's steps, with the 1.2.5 folder) and the pro app on the iOS simulator built from the same commit. Start from the end of part P: pro1 has Portraits (main), Weddings and Food; **Portfolio (main niche)** and **Second niche** (Food) have published photos.
+
+Q.1 Plug-in Manager. **Expect:** RAWWERS **1.2.5**, Installed and running, no diagnostic messages.
+
+Q.2 Pro app: **Settings > Your niches**. **Expect:** Portraits with **Main**, Food and Weddings with **Make main**; "You can have up to 3. You need at least 1."; no **Add a niche** button, and "You have the most niches you can (3). Remove one to add another."
+
+Q.3 Remove **Food** (the **X** on its row). **Expect:** "Remove Food?" saying the photos tagged Food stay in the portfolio, the packages stay, and a Lightroom collection publishing to Food stops until another niche is chosen. Tap **Remove**. **Expect:** Food is gone from the list. (If pro1 has a booking in Food that is not finished: "You have a booking in Food that is not finished...", and Food stays.)
+
+Q.4 In Lightroom, edit one photo of **Second niche** (Food) in Develop, then **Publish**. **Expect:** nothing is sent, and the message "This collection publishes to a niche that is no longer one of yours ("food"). Niches are removed in the RAWWERS Pro app. Nothing was sent. Edit the collection (right-click > Edit Collection) and choose another niche." The photo stays in **Modified Photos to Re-Publish**.
+
+Q.5 Right-click **Second niche** > **Edit Collection...**. **Expect:** the Niche menu lists Portraits (main) and Weddings, and **Add a niche...** (2 of 3 now). Choose **Weddings**, **Save**, **Publish**. **Expect:** "1 photo is in your RAWWERS portfolio (Weddings): 1 new, 0 already there."
+
+Q.6 Service settings: right-click the service > **Edit Settings...**. **Expect:** "Connected. Your niches: Portraits (main), Weddings." and the **Add a niche...** menu, with the text "Adds it to your RAWWERS profile. Remove niches in the RAWWERS Pro app: Settings > Your niches."
+
+Q.7 Pro app: **Settings > Portfolio**, open a photo published from **Portfolio (main niche)**, tap **Remove from portfolio**. **Expect:** "Remove from portfolio?" with "This photo disappears from your profile and from Discover. It cannot be recovered." Tap **Remove**. **Expect:** the viewer closes, "Removed from your portfolio.", the photo is gone from the grid.
+
+Q.8 In Lightroom, select **Portfolio (main niche)** and look at that photo (still in **Published Photos**). Open the **Comments** panel (right side of Library) and click its refresh. **Expect:** a comment from RAWWERS: "Removed from your RAWWERS portfolio in the RAWWERS Pro app, so it was not sent again. To publish it again, take it out of this collection, publish, then add it back." (Comments for a published collection may also refresh by themselves after a publish.)
+
+Q.9 Edit that same photo in Develop, then **Publish**. **Expect:** it is **not** sent: the dialog says "1 photo not sent again: removed from your portfolio in the RAWWERS Pro app (<file name>). To publish one again, take it out of this collection, publish, then add it back." Lightroom also lists it as not published, with the same reason, and keeps it in **Modified Photos to Re-Publish**. In the pro app nothing new appears.
+
+Q.10 Edit another photo of the same collection and **Publish**. **Expect:** it is replaced as before (P.18), and the dialog also says "1 photo of this collection was removed in the RAWWERS Pro app: shown as published here, but not on RAWWERS..." if the photo of Q.7 is still in the collection.
+
+Q.11 Publish it again by choice: take the removed photo out of the collection (Delete key > **Remove**), **Publish** (it disappears; RAWWERS answers that it is gone already), then drag it back in and **Publish**. **Expect:** "1 photo is in your RAWWERS portfolio (Portraits): 1 new, 0 already there."; it is back in the app.
+
+Q.12 The minimum (needs pro1 approved for the public, as on dev, and exactly 12 ready portfolio photos; skip otherwise). In the pro app try to remove one more photo. **Expect:** "Add another photo first, then remove this one. A live listing needs at least 12 photos." and the photo stays. Taking one out of a collection in Lightroom and publishing gives the same reason ("RAWWERS could not remove 1 photo(s): ...") and Lightroom keeps it in **Deleted Photos to Remove**.
+
 ## What to send back
 
-The time for 40 photos (4.1), the time for P.11, any row where something differed, and the screenshots.
+The time for 40 photos (4.1), the time for P.11, any row where something differed (parts P and Q), and the screenshots.

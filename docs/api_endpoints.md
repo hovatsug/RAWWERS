@@ -324,11 +324,12 @@ Total endpoints: **403**
 | `GET` | `/v1/pro/me/gear-items` | List my gear items. |
 | `POST` | `/v1/pro/me/gear-items` | Create gear item. |
 | `PUT` | `/v1/pro/me/gear-items/{gear_item_id}` | Update gear item. |
-| `PUT` | `/v1/pro/me/niches` | Update my niches. |
+| `PUT` | `/v1/pro/me/niches` | Update my niches (the whole list; the Pro app's niches screen, BETA_SCOPE #71). |
 | `POST` | `/v1/pro/me/packages` | Create package. |
 | `PUT` | `/v1/pro/me/packages/{package_id}` | Update package. |
 | `POST` | `/v1/pro/me/packages/{package_id}/disable` | Disable package. |
 | `POST` | `/v1/pro/me/portfolio/{media_asset_id}/niches` | Tag portfolio media niches. |
+| `DELETE` | `/v1/pro/me/portfolio/{media_asset_id}` | Remove my portfolio photo (BETA_SCOPE #70). |
 | `GET` | `/v1/pro/me/profile` | Get my pro profile. |
 | `PUT` | `/v1/pro/me/profile` | Update my pro profile. |
 | `GET` | `/v1/pro/me/skills` | Get my niche skills. |

@@ -24,6 +24,8 @@ Used by `web/lib/api/proApi.ts` and `flutter/lib/core/api/pro_api.dart`:
 - `PUT /v1/pro/me/packages/{package_id}`
 - `POST /v1/pro/me/packages/{package_id}/disable`
 - `POST /v1/pro/me/portfolio/{media_asset_id}/niches`
+- `DELETE /v1/pro/me/portfolio/{media_asset_id}` (Remove from portfolio, 2026-11-17)
+- `PUT /v1/pro/me/niches` (Settings > Your niches, 2026-11-17)
 - `GET /v1/search/pros`
 - `GET /v1/pros/{pro_user_id}/public`
 - `GET /v1/pro/scheduling/availability-rules`

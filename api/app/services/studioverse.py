@@ -92,6 +92,33 @@ def ensure_creator_can_submit(db: Session, *, creator_user_id: uuid.UUID) -> Non
         raise APIError(code="forbidden", message="Pro onboarding not approved for public", status_code=403)
 
 
+def own_pack_media(
+    db: Session, *, creator_user_id: uuid.UUID, cover_id: uuid.UUID | None, preview_ids: list[uuid.UUID] | None
+) -> list[str] | None:
+    """A pack's cover and previews are the creator's own uploads, not removed;
+    the cover is a photo. Anything else is the same 404, as the profile cover
+    is (services/profile_cover). Returns the previews as stored (strings, a
+    JSON list), or None when none were sent. Another photographer's photo
+    named here also stopped them removing it from their portfolio."""
+    from app.models.media import MediaAsset, MediaKind, MediaStatus
+
+    wanted = ([cover_id] if cover_id else []) + list(preview_ids or [])
+    if wanted:
+        rows = {
+            a.id: a
+            for a in db.execute(select(MediaAsset).where(MediaAsset.id.in_(set(wanted)))).scalars()
+        }
+        for media_id in wanted:
+            asset = rows.get(media_id)
+            if asset is None or asset.owner_user_id != creator_user_id or asset.status == MediaStatus.deleted:
+                raise APIError(code="not_found", message="Upload not found", status_code=404)
+        if cover_id and rows[cover_id].kind != MediaKind.photo:
+            raise APIError(code="validation_error", message="A pack's cover must be a photo", status_code=422)
+    if preview_ids is None:
+        return None
+    return [str(media_id) for media_id in dict.fromkeys(preview_ids)]
+
+
 def validate_submission_sources(db: Session, *, pack: ContentPack) -> None:
     ensure_default_content_licenses(db)
     license_row = db.get(ContentLicense, pack.license_code)

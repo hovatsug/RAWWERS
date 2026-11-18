@@ -57,6 +57,7 @@ from app.services.studioverse import (
     list_marketplace_packs_db,
     mark_download_or_raise,
     normalize_search_filters,
+    own_pack_media,
     payment_succeeded_from_intent_status,
     process_raww_credit_split,
     query_admin_packs,
@@ -83,6 +84,9 @@ def create_content_pack_draft(
     db: Session = Depends(get_db_write_session),
 ) -> StudioverseCreatorPackView:
     ensure_creator_can_submit(db, creator_user_id=user.user_id)
+    previews = own_pack_media(
+        db, creator_user_id=user.user_id, cover_id=body.cover_media_asset_id, preview_ids=body.preview_media_asset_ids
+    )
 
     row = ContentPack(
         creator_user_id=user.user_id,
@@ -95,7 +99,7 @@ def create_content_pack_draft(
         price_raww=body.price_raww,
         currency=(body.currency or "EUR").upper(),
         cover_media_asset_id=body.cover_media_asset_id,
-        preview_media_asset_ids=body.preview_media_asset_ids,
+        preview_media_asset_ids=previews or [],
         pack_file_storage_key=body.pack_file_storage_key.strip(),
         pack_file_bytes=body.pack_file_bytes,
         license_code=body.license_code.strip(),
@@ -126,6 +130,15 @@ def update_content_pack_draft(
         raise APIError(code="validation_error", message="Only draft/rejected packs can be edited", status_code=422)
 
     updates = body.model_dump(exclude_unset=True)
+    if "cover_media_asset_id" in updates or "preview_media_asset_ids" in updates:
+        previews = own_pack_media(
+            db,
+            creator_user_id=user.user_id,
+            cover_id=updates.get("cover_media_asset_id"),
+            preview_ids=updates.get("preview_media_asset_ids"),
+        )
+        if "preview_media_asset_ids" in updates:
+            updates["preview_media_asset_ids"] = previews or []
     for key in [
         "title",
         "description",

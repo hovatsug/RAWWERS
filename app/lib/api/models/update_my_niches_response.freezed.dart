@@ -17,7 +17,9 @@ mixin _$UpdateMyNichesResponse {
 
 /// primaryNicheSlug
 @JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) String? get primaryNicheSlug;/// niches
-@JsonKey(name: UpdateMyNichesResponse.nichesKey_) List<ProNicheView>? get niches;
+@JsonKey(name: UpdateMyNichesResponse.nichesKey_) List<ProNicheView>? get niches;/// minimum
+@JsonKey(name: UpdateMyNichesResponse.minimumKey_) int? get minimum;/// maximum
+@JsonKey(name: UpdateMyNichesResponse.maximumKey_) int? get maximum;
 /// Create a copy of UpdateMyNichesResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +32,16 @@ $UpdateMyNichesResponseCopyWith<UpdateMyNichesResponse> get copyWith => _$Update
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateMyNichesResponse&&(identical(other.primaryNicheSlug, primaryNicheSlug) || other.primaryNicheSlug == primaryNicheSlug)&&const DeepCollectionEquality().equals(other.niches, niches));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateMyNichesResponse&&(identical(other.primaryNicheSlug, primaryNicheSlug) || other.primaryNicheSlug == primaryNicheSlug)&&const DeepCollectionEquality().equals(other.niches, niches)&&(identical(other.minimum, minimum) || other.minimum == minimum)&&(identical(other.maximum, maximum) || other.maximum == maximum));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,primaryNicheSlug,const DeepCollectionEquality().hash(niches));
+int get hashCode => Object.hash(runtimeType,primaryNicheSlug,const DeepCollectionEquality().hash(niches),minimum,maximum);
 
 @override
 String toString() {
-  return 'UpdateMyNichesResponse(primaryNicheSlug: $primaryNicheSlug, niches: $niches)';
+  return 'UpdateMyNichesResponse(primaryNicheSlug: $primaryNicheSlug, niches: $niches, minimum: $minimum, maximum: $maximum)';
 }
 
 
@@ -50,7 +52,7 @@ abstract mixin class $UpdateMyNichesResponseCopyWith<$Res>  {
   factory $UpdateMyNichesResponseCopyWith(UpdateMyNichesResponse value, $Res Function(UpdateMyNichesResponse) _then) = _$UpdateMyNichesResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) String? primaryNicheSlug,@JsonKey(name: UpdateMyNichesResponse.nichesKey_) List<ProNicheView>? niches
+@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) String? primaryNicheSlug,@JsonKey(name: UpdateMyNichesResponse.nichesKey_) List<ProNicheView>? niches,@JsonKey(name: UpdateMyNichesResponse.minimumKey_) int? minimum,@JsonKey(name: UpdateMyNichesResponse.maximumKey_) int? maximum
 });
 
 
@@ -67,11 +69,13 @@ class _$UpdateMyNichesResponseCopyWithImpl<$Res>
 
 /// Create a copy of UpdateMyNichesResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? primaryNicheSlug = freezed,Object? niches = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? primaryNicheSlug = freezed,Object? niches = freezed,Object? minimum = freezed,Object? maximum = freezed,}) {
   return _then(_self.copyWith(
 primaryNicheSlug: freezed == primaryNicheSlug ? _self.primaryNicheSlug : primaryNicheSlug // ignore: cast_nullable_to_non_nullable
 as String?,niches: freezed == niches ? _self.niches : niches // ignore: cast_nullable_to_non_nullable
-as List<ProNicheView>?,
+as List<ProNicheView>?,minimum: freezed == minimum ? _self.minimum : minimum // ignore: cast_nullable_to_non_nullable
+as int?,maximum: freezed == maximum ? _self.maximum : maximum // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -156,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_)  String? primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_)  List<ProNicheView>? niches)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_)  String? primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_)  List<ProNicheView>? niches, @JsonKey(name: UpdateMyNichesResponse.minimumKey_)  int? minimum, @JsonKey(name: UpdateMyNichesResponse.maximumKey_)  int? maximum)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UpdateMyNichesResponse() when $default != null:
-return $default(_that.primaryNicheSlug,_that.niches);case _:
+return $default(_that.primaryNicheSlug,_that.niches,_that.minimum,_that.maximum);case _:
   return orElse();
 
 }
@@ -177,10 +181,10 @@ return $default(_that.primaryNicheSlug,_that.niches);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_)  String? primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_)  List<ProNicheView>? niches)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_)  String? primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_)  List<ProNicheView>? niches, @JsonKey(name: UpdateMyNichesResponse.minimumKey_)  int? minimum, @JsonKey(name: UpdateMyNichesResponse.maximumKey_)  int? maximum)  $default,) {final _that = this;
 switch (_that) {
 case _UpdateMyNichesResponse():
-return $default(_that.primaryNicheSlug,_that.niches);case _:
+return $default(_that.primaryNicheSlug,_that.niches,_that.minimum,_that.maximum);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +201,10 @@ return $default(_that.primaryNicheSlug,_that.niches);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_)  String? primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_)  List<ProNicheView>? niches)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_)  String? primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_)  List<ProNicheView>? niches, @JsonKey(name: UpdateMyNichesResponse.minimumKey_)  int? minimum, @JsonKey(name: UpdateMyNichesResponse.maximumKey_)  int? maximum)?  $default,) {final _that = this;
 switch (_that) {
 case _UpdateMyNichesResponse() when $default != null:
-return $default(_that.primaryNicheSlug,_that.niches);case _:
+return $default(_that.primaryNicheSlug,_that.niches,_that.minimum,_that.maximum);case _:
   return null;
 
 }
@@ -212,7 +216,7 @@ return $default(_that.primaryNicheSlug,_that.niches);case _:
 
 @jsonSerializable
 class _UpdateMyNichesResponse extends UpdateMyNichesResponse {
-  const _UpdateMyNichesResponse({@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) this.primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_) final  List<ProNicheView>? niches}): _niches = niches,super._();
+  const _UpdateMyNichesResponse({@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) this.primaryNicheSlug, @JsonKey(name: UpdateMyNichesResponse.nichesKey_) final  List<ProNicheView>? niches, @JsonKey(name: UpdateMyNichesResponse.minimumKey_) this.minimum, @JsonKey(name: UpdateMyNichesResponse.maximumKey_) this.maximum}): _niches = niches,super._();
   factory _UpdateMyNichesResponse.fromJson(Map<String, dynamic> json) => _$UpdateMyNichesResponseFromJson(json);
 
 /// primaryNicheSlug
@@ -228,6 +232,10 @@ class _UpdateMyNichesResponse extends UpdateMyNichesResponse {
   return EqualUnmodifiableListView(value);
 }
 
+/// minimum
+@override@JsonKey(name: UpdateMyNichesResponse.minimumKey_) final  int? minimum;
+/// maximum
+@override@JsonKey(name: UpdateMyNichesResponse.maximumKey_) final  int? maximum;
 
 /// Create a copy of UpdateMyNichesResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -242,16 +250,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateMyNichesResponse&&(identical(other.primaryNicheSlug, primaryNicheSlug) || other.primaryNicheSlug == primaryNicheSlug)&&const DeepCollectionEquality().equals(other._niches, _niches));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateMyNichesResponse&&(identical(other.primaryNicheSlug, primaryNicheSlug) || other.primaryNicheSlug == primaryNicheSlug)&&const DeepCollectionEquality().equals(other._niches, _niches)&&(identical(other.minimum, minimum) || other.minimum == minimum)&&(identical(other.maximum, maximum) || other.maximum == maximum));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,primaryNicheSlug,const DeepCollectionEquality().hash(_niches));
+int get hashCode => Object.hash(runtimeType,primaryNicheSlug,const DeepCollectionEquality().hash(_niches),minimum,maximum);
 
 @override
 String toString() {
-  return 'UpdateMyNichesResponse(primaryNicheSlug: $primaryNicheSlug, niches: $niches)';
+  return 'UpdateMyNichesResponse(primaryNicheSlug: $primaryNicheSlug, niches: $niches, minimum: $minimum, maximum: $maximum)';
 }
 
 
@@ -262,7 +270,7 @@ abstract mixin class _$UpdateMyNichesResponseCopyWith<$Res> implements $UpdateMy
   factory _$UpdateMyNichesResponseCopyWith(_UpdateMyNichesResponse value, $Res Function(_UpdateMyNichesResponse) _then) = __$UpdateMyNichesResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) String? primaryNicheSlug,@JsonKey(name: UpdateMyNichesResponse.nichesKey_) List<ProNicheView>? niches
+@JsonKey(name: UpdateMyNichesResponse.primaryNicheSlugKey_) String? primaryNicheSlug,@JsonKey(name: UpdateMyNichesResponse.nichesKey_) List<ProNicheView>? niches,@JsonKey(name: UpdateMyNichesResponse.minimumKey_) int? minimum,@JsonKey(name: UpdateMyNichesResponse.maximumKey_) int? maximum
 });
 
 
@@ -279,11 +287,13 @@ class __$UpdateMyNichesResponseCopyWithImpl<$Res>
 
 /// Create a copy of UpdateMyNichesResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? primaryNicheSlug = freezed,Object? niches = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? primaryNicheSlug = freezed,Object? niches = freezed,Object? minimum = freezed,Object? maximum = freezed,}) {
   return _then(_UpdateMyNichesResponse(
 primaryNicheSlug: freezed == primaryNicheSlug ? _self.primaryNicheSlug : primaryNicheSlug // ignore: cast_nullable_to_non_nullable
 as String?,niches: freezed == niches ? _self._niches : niches // ignore: cast_nullable_to_non_nullable
-as List<ProNicheView>?,
+as List<ProNicheView>?,minimum: freezed == minimum ? _self.minimum : minimum // ignore: cast_nullable_to_non_nullable
+as int?,maximum: freezed == maximum ? _self.maximum : maximum // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

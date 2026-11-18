@@ -255,8 +255,6 @@ class _MediaClient implements MediaClient {
     Map<String, dynamic>? extras = const {
       'tags': ['media'],
       'summary': 'Refresh Photo Upload Url',
-      'description':
-          'A fresh presigned PUT for the same asset, for a retry.\n\nA retry used to create a new asset every time, leaving each failed\nattempt behind as an orphan stuck in `uploading`. A presigned URL still\nmust not be reused after a failed PUT, so this signs a new one - for the\nsame key.',
       'operationId':
           'refresh_photo_upload_url_v1_media_photos__media_asset_id__upload_url_post',
       'parameters': [
@@ -363,8 +361,6 @@ class _MediaClient implements MediaClient {
     Map<String, dynamic>? extras = const {
       'tags': ['media'],
       'summary': 'Start Multipart Upload',
-      'description':
-          'Start - or, called again, resume - sending a large original in parts.\n\nCalling it again for an upload already in progress returns the same\nlayout rather than starting over: that is how an interrupted upload picks\nup where it stopped.',
       'operationId':
           'start_multipart_upload_v1_media_photos__media_asset_id__multipart_post',
       'parameters': [

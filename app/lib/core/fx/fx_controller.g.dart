@@ -6,7 +6,7 @@ part of 'fx_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$fxRatesHash() => r'e255d966c2de68a2451437547b1128ec1f6fb652';
+String _$fxRatesHash() => r'e891383f07aee8db016130afa06b6841b910b51e';
 
 /// The day's display rates (GET /v1/fx/rates). On any failure: none, so
 /// every approximation is dropped and "Charged in EUR" is shown instead.
@@ -47,7 +47,7 @@ final displayCurrencyCodeProvider = AutoDisposeProvider<String>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef DisplayCurrencyCodeRef = AutoDisposeProviderRef<String>;
-String _$displayCurrencyHash() => r'0c2b420f5a9d0a693d5b2d44b3d39dc097560452';
+String _$displayCurrencyHash() => r'b34ac4a51460b4891fdfab99226b6e4fbe7ab770';
 
 /// The signed-in user's display currency and what they may choose from
 /// (Account > Display currency). Null for a guest.

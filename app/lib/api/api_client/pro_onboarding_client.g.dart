@@ -1966,6 +1966,8 @@ class _ProOnboardingClient implements ProOnboardingClient {
     Map<String, dynamic>? extras = const {
       'tags': ['pro_onboarding'],
       'summary': 'Update My Niches',
+      'description':
+          'The whole list at once: the Pro app\'s niches screen. The rules\n(app/services/pro_niches.py): active niches, at most niches_max, not\nbelow niches_min, exactly one main niche, and no niche removed while a\nbooking in it is not finished or a request in it is waiting.',
       'operationId': 'update_my_niches_v1_pro_me_niches_put',
       'parameters': [
         {
@@ -2264,6 +2266,115 @@ class _ProOnboardingClient implements ProOnboardingClient {
     late ProPortfolioResponse _value;
     try {
       _value = ProPortfolioResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<ProPortfolioRemoveResponse>>
+  removeMyPortfolioPhotoV1ProMePortfolioMediaAssetIdDelete({
+    required String mediaAssetId,
+    required String? authorization,
+    required String? xMinusUserMinusId,
+    CancelToken? cancelToken,
+    void Function(int, int)? onSendProgress,
+    void Function(int, int)? onReceiveProgress,
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Remove My Portfolio Photo',
+      'description':
+          '"Remove from portfolio" in the Pro app (BETA_SCOPE #11, first half).\nThe plug-in\'s removal path and its checks (lightroom_portfolio.\nremove_own_photo): only the photographer\'s own portfolio photo; refused\nwhile anything but the cover uses it, and for a live photographer at the\nportfolio minimum; the files are deleted, skills, tier and Discover\nrecomputed, an audit record kept. Removing it again answers success and\nchanges nothing.',
+      'operationId':
+          'remove_my_portfolio_photo_v1_pro_me_portfolio__media_asset_id__delete',
+      'parameters': [
+        {
+          'name': 'media_asset_id',
+          'in': 'path',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'format': 'uuid',
+            'title': 'Media Asset Id',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProPortfolioRemoveResponse',
+              },
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  }) async {
+    final _extra = <String, dynamic>{};
+    _extra.addAll(extras ?? <String, dynamic>{});
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{
+      r'Authorization': authorization,
+      r'X-User-Id': xMinusUserMinusId,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<ProPortfolioRemoveResponse>>(
+      Options(method: 'DELETE', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/v1/pro/me/portfolio/${mediaAssetId}',
+            queryParameters: queryParameters,
+            data: _data,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ProPortfolioRemoveResponse _value;
+    try {
+      _value = ProPortfolioRemoveResponse.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

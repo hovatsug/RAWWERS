@@ -19,6 +19,7 @@ import 'package:rawwers/features/pro/onboarding/onboarding_screen.dart';
 import 'package:rawwers/features/pro/payouts/payouts_screen.dart';
 import 'package:rawwers/features/pro/lightroom/connect_lightroom_screen.dart';
 import 'package:rawwers/features/pro/gigs/gigs_screen.dart';
+import 'package:rawwers/features/pro/niches/niches_screen.dart';
 import 'package:rawwers/features/pro/profile/pro_profile_edit_screen.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
 import 'package:rawwers/features/pro/pricing/pricing_screen.dart';
@@ -97,6 +98,7 @@ abstract final class ProRoute {
   static const gear = '$dashboard/gear';
   static const gearVerification = '$dashboard/gear-verification';
   static const portfolio = '$dashboard/portfolio';
+  static const niches = '$dashboard/niches';
   static const pricing = '$dashboard/pricing';
   static const payouts = '$dashboard/payouts';
   static const connectLightroom = '$dashboard/connect-lightroom';
@@ -202,6 +204,7 @@ GoRouter proRouter(Ref ref) {
                         gearPath: ProRoute.gear,
                         gearVerificationPath: ProRoute.gearVerification,
                         portfolioPath: ProRoute.portfolio,
+                        nichesPath: ProRoute.niches,
                         pricingPath: ProRoute.pricing,
                         onboardingPath: ProRoute.onboarding,
                         listingPath: ProRoute.listing,
@@ -220,6 +223,7 @@ GoRouter proRouter(Ref ref) {
                   _editor('gear', (context, state) => const GearScreen()),
                   _editor('gear-verification', (context, state) => const GearVerificationScreen()),
                   _editor('portfolio', (context, state) => const PortfolioScreen()),
+                  _editor('niches', (context, state) => const NichesScreen()),
                   _editor('pricing', (context, state) => const PricingScreen()),
                   _editor('payouts', (context, state) => const PayoutsScreen()),
                   _editor('connect-lightroom', (context, state) => const ConnectLightroomScreen()),
@@ -236,6 +240,7 @@ GoRouter proRouter(Ref ref) {
                   _editor('getting-set-up', (context, state) => const OnboardingScreen(
                         profilePath: ProRoute.profileEdit,
                         portfolioPath: ProRoute.portfolio,
+                        nichesPath: ProRoute.niches,
                         pricingPath: ProRoute.pricing,
                         gearPath: ProRoute.gearVerification,
                       )),

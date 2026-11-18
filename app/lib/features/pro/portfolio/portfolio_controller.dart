@@ -73,6 +73,32 @@ class PortfolioController extends _$PortfolioController {
         };
     }
   }
+
+  /// "Remove from portfolio" (DELETE /v1/pro/me/portfolio/{id}). The server
+  /// refuses a photo something else uses, and a live photographer's last
+  /// photos above the minimum, in its own words. Null on success.
+  Future<String?> removePhoto(String mediaAssetId) async {
+    final client = ref.read(proOnboardingClientProvider);
+    final result = await apiCall(
+      () => client.removeMyPortfolioPhotoV1ProMePortfolioMediaAssetIdDelete(
+        mediaAssetId: mediaAssetId,
+        authorization: null,
+        xMinusUserMinusId: null,
+      ),
+    );
+    switch (result) {
+      case Ok():
+        await refresh();
+        return null;
+      case Err(:final failure):
+        return switch (failure) {
+          NetworkError() || Timeout() => 'Could not reach the server. Check your connection.',
+          BusinessError(:final message) => message,
+          RateLimited() => 'You have removed a lot of photos in a short time. Wait a while, then try again.',
+          _ => 'Could not remove this photo.',
+        };
+    }
+  }
 }
 
 /// Progress for the batch currently uploading, keyed by a per-file id.

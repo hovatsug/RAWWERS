@@ -13,6 +13,8 @@ _UpdateMyNichesResponse _$UpdateMyNichesResponseFromJson(
   niches: (json['niches'] as List<dynamic>?)
       ?.map((e) => ProNicheView.fromJson(e as Map<String, dynamic>))
       .toList(),
+  minimum: (json['minimum'] as num?)?.toInt(),
+  maximum: (json['maximum'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$UpdateMyNichesResponseToJson(
@@ -20,4 +22,6 @@ Map<String, dynamic> _$UpdateMyNichesResponseToJson(
 ) => <String, dynamic>{
   'primary_niche_slug': instance.primaryNicheSlug,
   'niches': instance.niches,
+  'minimum': instance.minimum,
+  'maximum': instance.maximum,
 };

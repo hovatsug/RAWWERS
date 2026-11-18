@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rawwers/api/models/pro_niche_view.dart';
 import 'package:rawwers/api/models/pro_portfolio_item.dart';
 import 'package:rawwers/api/models/pro_portfolio_response.dart';
+import 'package:rawwers/api/models/update_my_niches_response.dart';
 import 'package:rawwers/core/api/api_failure.dart';
 import 'package:rawwers/design/theme_pro.dart';
+import 'package:rawwers/features/pro/niches/my_niches_controller.dart';
 import 'package:rawwers/features/pro/portfolio/niches_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_screen.dart';
@@ -47,6 +50,18 @@ class _FakeNiches extends NichesController {
       ];
 }
 
+/// The photographer's own niches: since 2026-11-17 the tagger offers only these.
+class _FakeMine extends MyNichesController {
+  @override
+  Future<UpdateMyNichesResponse> build() async => const UpdateMyNichesResponse(
+        primaryNicheSlug: 'portraits',
+        niches: [
+          ProNicheView(slug: 'portraits', name: 'Portraits', isPrimary: true),
+          ProNicheView(slug: 'weddings', name: 'Weddings', isPrimary: false),
+        ],
+      );
+}
+
 ProPortfolioItem _item({
   String id = 'a1',
   bool isCover = false,
@@ -79,6 +94,7 @@ Widget _wrap({
         portfolioControllerProvider.overrideWith(portfolio ?? () => _FakePortfolio(_response())),
         portfolioUploadControllerProvider.overrideWith(() => _FakeUploads(uploads)),
         nichesControllerProvider.overrideWith(_FakeNiches.new),
+        myNichesControllerProvider.overrideWith(_FakeMine.new),
       ],
       child: MaterialApp(theme: buildProTheme(), home: const PortfolioScreen()),
     );

@@ -273,6 +273,7 @@ export 'pro_package_create_request.dart';
 export 'pro_package_update_request.dart';
 export 'pro_package_view.dart';
 export 'pro_portfolio_item.dart';
+export 'pro_portfolio_remove_response.dart';
 export 'pro_portfolio_response.dart';
 export 'pro_pricing_curve_point.dart';
 export 'pro_profile_update_request.dart';

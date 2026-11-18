@@ -107,6 +107,7 @@ Widget _wrap({
         home: const OnboardingScreen(
           profilePath: '/profile',
           portfolioPath: '/portfolio',
+          nichesPath: '/niches',
           pricingPath: '/pricing',
           gearPath: '/gear',
         ),

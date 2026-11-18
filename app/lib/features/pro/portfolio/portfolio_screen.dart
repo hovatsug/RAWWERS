@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rawwers/api/models/pro_niche_view.dart';
 import 'package:rawwers/api/models/pro_portfolio_item.dart';
 import 'package:rawwers/api/models/pro_portfolio_response.dart';
 import 'package:rawwers/design/components/r_button.dart';
 import 'package:rawwers/design/components/r_card.dart';
 import 'package:rawwers/design/components/r_chip.dart';
+import 'package:rawwers/design/components/r_dialog.dart';
 import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/components/r_overlay_badge.dart';
@@ -13,6 +15,7 @@ import 'package:rawwers/design/components/r_progress.dart';
 import 'package:rawwers/design/components/r_sheet.dart';
 import 'package:rawwers/design/components/r_skeleton.dart';
 import 'package:rawwers/design/tokens.dart';
+import 'package:rawwers/features/pro/niches/my_niches_controller.dart';
 import 'package:rawwers/features/pro/portfolio/niches_controller.dart';
 import 'package:rawwers/features/pro/portfolio/portfolio_controller.dart';
 
@@ -112,9 +115,20 @@ class PortfolioScreen extends ConsumerWidget {
       urls: [for (final entry in items) entry.previewUrl ?? entry.thumbnailUrl],
       actionsBuilder: (viewerContext, current) => Align(
         alignment: Alignment.centerLeft,
-        child: RButton(
-          label: (items[current].nicheSlugs?.isNotEmpty ?? false) ? 'Edit tags' : 'Tag niches',
-          onPressed: () => _openTagger(viewerContext, ref, items[current]),
+        child: Wrap(
+          spacing: RSpace.s8,
+          runSpacing: RSpace.s8,
+          children: [
+            RButton(
+              label: (items[current].nicheSlugs?.isNotEmpty ?? false) ? 'Edit tags' : 'Tag niches',
+              onPressed: () => _openTagger(viewerContext, ref, items[current]),
+            ),
+            RButton(
+              label: 'Remove from portfolio',
+              variant: RButtonVariant.secondary,
+              onPressed: () => confirmAndRemovePhoto(viewerContext, ref, items[current]),
+            ),
+          ],
         ),
       ),
     );
@@ -129,6 +143,45 @@ class PortfolioScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// What the confirmation says before a photo is removed: in plain words,
+/// what happens, and that it cannot be undone.
+String removePhotoMessage(ProPortfolioItem item) => [
+      'This photo disappears from your profile and from Discover. It cannot be recovered.',
+      if (item.isCover) 'It is your cover photo: your profile will have no cover photo.',
+    ].join(' ');
+
+/// Asks, then removes the photo. On success, closes the screen it was asked
+/// from (the full-screen viewer or the tagger), whose photo is gone; on a
+/// refusal, shows the server's reason and leaves everything as it was.
+Future<void> confirmAndRemovePhoto(BuildContext context, WidgetRef ref, ProPortfolioItem item) async {
+  final confirmed = await showRConfirmDialog(
+    context,
+    title: 'Remove from portfolio?',
+    message: removePhotoMessage(item),
+    confirmLabel: 'Remove',
+  );
+  if (!confirmed || !context.mounted) return;
+  final error = await ref.read(portfolioControllerProvider.notifier).removePhoto(item.mediaAssetId);
+  if (!context.mounted) return;
+  if (error != null) {
+    // A dialog, not a snackbar: the snackbar would sit under the full-screen
+    // viewer, and this is the reason the photo is still there.
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RRadius.surface)),
+        title: const Text('Not removed'),
+        content: Text(error),
+        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+      ),
+    );
+    return;
+  }
+  final messenger = ScaffoldMessenger.of(context);
+  Navigator.of(context).pop();
+  messenger.showSnackBar(const SnackBar(content: Text('Removed from your portfolio.')));
 }
 
 class _MinimumProgress extends StatelessWidget {
@@ -280,6 +333,12 @@ class _NicheTagger extends ConsumerStatefulWidget {
 
 class _NicheTaggerState extends ConsumerState<_NicheTagger> {
   late final Set<String> _selected = {...?widget.item.nicheSlugs};
+
+  /// Tags this photo already had for niches that are not the
+  /// photographer's (chosen before the tagger offered only their own, or a
+  /// niche removed since). Kept as they are unless untagged here, and shown
+  /// for the whole time the sheet is open so an untag can be undone.
+  late final Set<String> _taggedBefore = {...?widget.item.nicheSlugs};
   bool _saving = false;
   String? _error;
 
@@ -308,7 +367,9 @@ class _NicheTaggerState extends ConsumerState<_NicheTagger> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final niches = ref.watch(nichesControllerProvider);
+    final mine = ref.watch(myNichesControllerProvider);
+    // Names for tags of niches that are not the photographer's.
+    final names = {for (final n in ref.watch(nichesControllerProvider).valueOrNull ?? const <NicheOption>[]) n.slug: n.name};
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -321,22 +382,9 @@ class _NicheTaggerState extends ConsumerState<_NicheTagger> {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: RSpace.s16),
-        switch (niches) {
-          AsyncData(:final value) => Wrap(
-              spacing: RSpace.s8,
-              runSpacing: RSpace.s8,
-              children: [
-                for (final niche in value)
-                  RSelectableChip(
-                    label: niche.name,
-                    selected: _selected.contains(niche.slug),
-                    onPressed: () => setState(() {
-                      _selected.contains(niche.slug) ? _selected.remove(niche.slug) : _selected.add(niche.slug);
-                    }),
-                  ),
-              ],
-            ),
-          AsyncError() => const Text('Could not load the list of niches.'),
+        switch (mine) {
+          AsyncData(:final value) => _chips(theme, value.niches ?? const [], names),
+          AsyncError() => const Text('Could not load your niches.'),
           _ => const RSkeleton(width: RSize.lineLong),
         },
         const SizedBox(height: RSpace.s24),
@@ -345,6 +393,61 @@ class _NicheTaggerState extends ConsumerState<_NicheTagger> {
           const SizedBox(height: RSpace.s12),
         ],
         RButton(label: 'Save tags', onPressed: _saving ? null : _save, loading: _saving),
+        // A photo still processing has no full-screen view, so it is
+        // removed from here.
+        if (widget.item.previewUrl == null) ...[
+          const SizedBox(height: RSpace.s12),
+          RButton(
+            label: 'Remove from portfolio',
+            variant: RButtonVariant.secondary,
+            onPressed: _saving ? null : () => confirmAndRemovePhoto(context, ref, widget.item),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _chips(ThemeData theme, List<ProNicheView> own, Map<String, String> names) {
+    final ownSlugs = {for (final n in own) n.slug};
+    final others = _taggedBefore.where((slug) => !ownSlugs.contains(slug)).toList()..sort();
+    if (own.isEmpty && others.isEmpty) {
+      return Text(
+        'You have no niches yet. Choose them in Settings > Your niches, then tag your photos.',
+        style: theme.textTheme.bodyMedium,
+      );
+    }
+    void toggle(String slug) => setState(() {
+          _selected.contains(slug) ? _selected.remove(slug) : _selected.add(slug);
+        });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: RSpace.s8,
+          runSpacing: RSpace.s8,
+          children: [
+            for (final niche in own)
+              RSelectableChip(
+                label: niche.name,
+                selected: _selected.contains(niche.slug),
+                onPressed: () => toggle(niche.slug),
+              ),
+            for (final slug in others)
+              RSelectableChip(
+                label: '${names[slug] ?? slug} (not your niche)',
+                selected: _selected.contains(slug),
+                onPressed: () => toggle(slug),
+              ),
+          ],
+        ),
+        if (others.isNotEmpty) ...[
+          const SizedBox(height: RSpace.s8),
+          Text(
+            'This photo is also tagged with a niche that is not one of yours. '
+            'The tag stays unless you untag it here; once untagged, it can only be added back while this sheet is open.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
       ],
     );
   }

@@ -23,6 +23,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({
     required this.profilePath,
     required this.portfolioPath,
+    required this.nichesPath,
     required this.pricingPath,
     required this.gearPath,
     super.key,
@@ -30,6 +31,10 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
   final String profilePath;
   final String portfolioPath;
+
+  /// Required: onboarding needs a niche, and for a long time the step sent
+  /// photographers to the profile screen, where no niche can be chosen.
+  final String nichesPath;
   final String pricingPath;
 
   /// Required, not optional: gear was enforced by the server for a long time
@@ -77,6 +82,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 profile: profile,
                 profilePath: widget.profilePath,
                 portfolioPath: widget.portfolioPath,
+                nichesPath: widget.nichesPath,
                 pricingPath: widget.pricingPath,
                 gearPath: widget.gearPath,
               ),
@@ -104,6 +110,7 @@ class _Checklist extends ConsumerWidget {
     required this.profile,
     required this.profilePath,
     required this.portfolioPath,
+    required this.nichesPath,
     required this.pricingPath,
     required this.gearPath,
   });
@@ -112,6 +119,7 @@ class _Checklist extends ConsumerWidget {
   final ProProfileView? profile;
   final String profilePath;
   final String portfolioPath;
+  final String nichesPath;
   final String pricingPath;
   final String gearPath;
 
@@ -146,9 +154,9 @@ class _Checklist extends ConsumerWidget {
       ),
       _Step(
         title: 'What you shoot',
-        detail: 'The niches you want to be found under.',
+        detail: nichesStepDetail(checks),
         done: checkDone(checks, 'niches_selected'),
-        onTap: () => context.push(profilePath),
+        onTap: () => context.push(nichesPath),
       ),
       _Step(
         title: 'Your gear',
@@ -316,6 +324,13 @@ class _IdentityStep extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// What the niches step says: how many are chosen, or what to do.
+String nichesStepDetail(Map<String, dynamic>? checks) {
+  final count = checkCount(checks, 'niches_count');
+  if (count == 0) return 'Choose the niches you want to be found under.';
+  return count == 1 ? '1 niche chosen.' : '$count niches chosen.';
 }
 
 /// What the gear step says, from what the server reports.

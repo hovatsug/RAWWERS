@@ -1280,6 +1280,8 @@ abstract class ProOnboardingClient {
     Map<String, dynamic>? extras = const {
       'tags': ['pro_onboarding'],
       'summary': 'Update My Niches',
+      'description':
+          'The whole list at once: the Pro app\'s niches screen. The rules\n(app/services/pro_niches.py): active niches, at most niches_max, not\nbelow niches_min, exactly one main niche, and no niche removed while a\nbooking in it is not finished or a request in it is waiting.',
       'operationId': 'update_my_niches_v1_pro_me_niches_put',
       'parameters': [
         {
@@ -1467,6 +1469,81 @@ abstract class ProOnboardingClient {
           'content': {
             'application/json': {
               'schema': {'\$ref': '#/components/schemas/ProPortfolioResponse'},
+            },
+          },
+        },
+        '422': {
+          'description': 'Validation Error',
+          'content': {
+            'application/json': {
+              'schema': {'\$ref': '#/components/schemas/HTTPValidationError'},
+            },
+          },
+        },
+      },
+    },
+  });
+  @DELETE("/v1/pro/me/portfolio/{media_asset_id}")
+  Future<HttpResponse<ProPortfolioRemoveResponse>>
+  removeMyPortfolioPhotoV1ProMePortfolioMediaAssetIdDelete({
+    @Path("media_asset_id") required String mediaAssetId,
+    @Header("Authorization") required String? authorization,
+    @Header("X-User-Id") required String? xMinusUserMinusId,
+    @CancelRequest() CancelToken? cancelToken,
+    @SendProgress() ProgressCallback? onSendProgress,
+    @ReceiveProgress() ProgressCallback? onReceiveProgress,
+    @Extras()
+    Map<String, dynamic>? extras = const {
+      'tags': ['pro_onboarding'],
+      'summary': 'Remove My Portfolio Photo',
+      'description':
+          '"Remove from portfolio" in the Pro app (BETA_SCOPE #11, first half).\nThe plug-in\'s removal path and its checks (lightroom_portfolio.\nremove_own_photo): only the photographer\'s own portfolio photo; refused\nwhile anything but the cover uses it, and for a live photographer at the\nportfolio minimum; the files are deleted, skills, tier and Discover\nrecomputed, an audit record kept. Removing it again answers success and\nchanges nothing.',
+      'operationId':
+          'remove_my_portfolio_photo_v1_pro_me_portfolio__media_asset_id__delete',
+      'parameters': [
+        {
+          'name': 'media_asset_id',
+          'in': 'path',
+          'required': true,
+          'schema': {
+            'type': 'string',
+            'format': 'uuid',
+            'title': 'Media Asset Id',
+          },
+        },
+        {
+          'name': 'Authorization',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'Authorization',
+          },
+        },
+        {
+          'name': 'X-User-Id',
+          'in': 'header',
+          'required': false,
+          'schema': {
+            'anyOf': [
+              {'type': 'string'},
+              {'type': 'null'},
+            ],
+            'title': 'X-User-Id',
+          },
+        },
+      ],
+      'responses': {
+        '200': {
+          'description': 'Successful Response',
+          'content': {
+            'application/json': {
+              'schema': {
+                '\$ref': '#/components/schemas/ProPortfolioRemoveResponse',
+              },
             },
           },
         },

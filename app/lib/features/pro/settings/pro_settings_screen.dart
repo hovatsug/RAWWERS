@@ -31,6 +31,7 @@ class ProSettingsScreen extends ConsumerWidget {
     this.gearPath,
     this.gearVerificationPath,
     this.portfolioPath,
+    this.nichesPath,
     this.pricingPath,
     this.onboardingPath,
     this.listingPath,
@@ -46,6 +47,7 @@ class ProSettingsScreen extends ConsumerWidget {
   final String? gearPath;
   final String? gearVerificationPath;
   final String? portfolioPath;
+  final String? nichesPath;
   final String? pricingPath;
   final String? onboardingPath;
   final String? listingPath;
@@ -148,6 +150,14 @@ class ProSettingsScreen extends ConsumerWidget {
                         label: 'Portfolio',
                         detail: 'The photos clients judge you on',
                         onTap: () => context.push(portfolioPath!),
+                      ),
+                    ],
+                    if (nichesPath != null) ...[
+                      const Divider(height: RSpace.s24),
+                      _NavRow(
+                        label: 'Your niches',
+                        detail: 'The kinds of shoot clients find you under, and your main one',
+                        onTap: () => context.push(nichesPath!),
                       ),
                     ],
                     if (pricingPath != null) ...[

@@ -64,6 +64,10 @@ class ClientDiscoverCard(BaseModel):
     # Signed and short-lived. Null when the pro has no cover, or when the
     # cover is still being processed - both are ordinary states to render.
     cover_url: str | None = None
+    # The photo's shape, so an app leans a portrait's crop up (BETA_SCOPE
+    # #74 follow-up). Null when not recorded: crop from the centre, as before.
+    cover_width: int | None = None
+    cover_height: int | None = None
     city: str | None = None
     country: str | None = None
     min_price: Decimal | None = None
@@ -208,6 +212,8 @@ class ClientProProfileResponse(BaseModel):
     headline: str | None = None
     cover_media_asset_id: uuid.UUID | None = None
     cover_url: str | None = None
+    cover_width: int | None = None
+    cover_height: int | None = None
     bio: str | None = None
     city: str | None = None
     country: str | None = None

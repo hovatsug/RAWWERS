@@ -80,11 +80,12 @@ from app.services.meet import meet_views
 from app.services.meet import teasers as meet_teasers
 from app.services.niche_banners import banner_views as niche_banner_views
 from app.services.media_urls import (
-    ORIGINAL_FIRST,
+    SizedImage,
     THUMBNAIL_FIRST,
     resolve_derivative_urls,
     resolve_image_urls,
-    resolve_niche_cover_urls,
+    resolve_niche_cover_images,
+    resolve_sized_image_urls,
 )
 from app.services.notifications import enqueue_notification
 from app.services.profile_cover import effective_cover_id, effective_cover_ids
@@ -232,7 +233,7 @@ def client_discover(
         limit=limit,
         offset=offset,
     )
-    items = _cards_from_index(db, rows)
+    items = _cards_from_index(db, rows, sharp=True)
     response = ClientDiscoverResponse(total=len(items), items=items, guest_limited=user is None)
     cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=max(10, settings.discover_cache_ttl_seconds))
 
@@ -434,19 +435,18 @@ def client_pro_profile(
         expires_in=MEDIA_URL_BASE_TTL_SECONDS,
     )
     cover_id = effective_cover_id(db, pro_user_id)
-    cover_urls = resolve_image_urls(
-        db,
-        [cover_id],
-        prefer=ORIGINAL_FIRST,
-        expires_in=MEDIA_URL_BASE_TTL_SECONDS,
-    )
+    # The header spans the phone's width: the 2048 px web copy is sharp there
+    # and a fraction of the original's size (it used to send the original).
+    cover = resolve_sized_image_urls(db, [cover_id], sharp=True, expires_in=MEDIA_URL_BASE_TTL_SECONDS).get(cover_id)
 
     response = ClientProProfileResponse(
         pro_user_id=pro_user_id,
         display_name=profile.display_name,
         headline=profile.headline,
         cover_media_asset_id=cover_id,
-        cover_url=cover_urls.get(cover_id) if cover_id else None,
+        cover_url=cover.url if cover else None,
+        cover_width=cover.width if cover else None,
+        cover_height=cover.height if cover else None,
         bio=profile.bio,
         city=profile.city,
         country=profile.country,
@@ -1285,8 +1285,8 @@ def client_home(
     # Their cover leads where it is tagged with the row's niche, so choosing
     # a cover shows in the niche rows too, not only in the list.
     card_covers = {card.cover_media_asset_id for card in cards.values() if card.cover_media_asset_id}
-    niche_covers: dict[str, dict[uuid.UUID, str]] = {
-        slug: resolve_niche_cover_urls(db, list(pro_ids), niche_slug=slug, expires_in=_media_url_ttl(), preferred=card_covers)
+    niche_covers: dict[str, dict[uuid.UUID, SizedImage]] = {
+        slug: resolve_niche_cover_images(db, list(pro_ids), niche_slug=slug, expires_in=_media_url_ttl(), preferred=card_covers)
         for slug, pro_ids in pros_by_niche.items()
         if pro_ids
     }
@@ -1391,7 +1391,7 @@ def _with_presence(response):
     return response
 
 
-def _with_niche_cover(card: ClientDiscoverCard, covers: dict[uuid.UUID, str] | None) -> ClientDiscoverCard:
+def _with_niche_cover(card: ClientDiscoverCard, covers: dict[uuid.UUID, SizedImage] | None) -> ClientDiscoverCard:
     """The same card, showing this niche's work where we have it.
 
     Falls back to the profile cover rather than to nothing: a photographer in
@@ -1401,8 +1401,10 @@ def _with_niche_cover(card: ClientDiscoverCard, covers: dict[uuid.UUID, str] | N
     """
     if not covers:
         return card
-    url = covers.get(card.pro_user_id)
-    return card if url is None else card.model_copy(update={"cover_url": url})
+    image = covers.get(card.pro_user_id)
+    if image is None:
+        return card
+    return card.model_copy(update={"cover_url": image.url, "cover_width": image.width, "cover_height": image.height})
 
 
 def _niches_present(db: Session, *, country: str, city: str) -> list[tuple[str, str]]:
@@ -1559,7 +1561,7 @@ def pro_listing_preview(
     # stale row would show the pro yesterday's card and hide the effect of
     # the edit they just made.
     index = recompute_pro_public_index(db, user.user_id)
-    card = _cards_from_index(db, [index])[0]
+    card = _cards_from_index(db, [index], sharp=True)[0]
 
     reasons: list[str] = []
     # Discover joins ProOnboarding and requires approved_public, so a pro who
@@ -1626,8 +1628,13 @@ def _media_url_ttl() -> int:
     return MEDIA_URL_BASE_TTL_SECONDS + max(0, settings.discover_cache_ttl_seconds)
 
 
-def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[ClientDiscoverCard]:
+def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex], *, sharp: bool = False) -> list[ClientDiscoverCard]:
     """Build a whole page of cards with a fixed number of queries.
+
+    `sharp` for a card shown across the phone's width (the Discover list and
+    the listing preview): the cover is the 2048 px web copy, not the 512 px
+    thumbnail a home tile uses. Either way the card carries the photo's width
+    and height, so the app can lean a portrait's crop up.
 
     Batched rather than per-row because both callers render up to twenty cards,
     and the per-row form cost one profile lookup each before it could even
@@ -1646,12 +1653,7 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
     # chose, otherwise one of their ready photos - never a blank card for a
     # photographer who has a photo to show.
     covers = effective_cover_ids(db, [idx.pro_user_id for idx in rows])
-    cover_urls = resolve_image_urls(
-        db,
-        covers.values(),
-        prefer=THUMBNAIL_FIRST,
-        expires_in=_media_url_ttl(),
-    )
+    cover_images = resolve_sized_image_urls(db, covers.values(), sharp=sharp, expires_in=_media_url_ttl())
 
     # Shown, never ranked: the rows were ordered before this was read.
     teasers = meet_teasers(db, [idx.pro_user_id for idx in rows])
@@ -1660,13 +1662,16 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[Clien
     for idx in rows:
         profile = profiles.get(idx.pro_user_id)
         cover_id = covers.get(idx.pro_user_id)
+        cover = cover_images.get(cover_id) if cover_id else None
         cards.append(
             ClientDiscoverCard(
                 pro_user_id=idx.pro_user_id,
                 display_name=profile.display_name if profile else None,
                 headline=profile.headline if profile else None,
                 cover_media_asset_id=cover_id,
-                cover_url=cover_urls.get(cover_id) if cover_id else None,
+                cover_url=cover.url if cover else None,
+                cover_width=cover.width if cover else None,
+                cover_height=cover.height if cover else None,
                 city=idx.city,
                 country=idx.country,
                 min_price=idx.min_package_price,

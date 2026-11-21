@@ -67,3 +67,38 @@ Each forwarded event shows in the `listen` terminal with the API's answer, for e
 ## Production
 
 Production does **not** use the CLI or its secret. In the **production** Mux environment, create a webhook to the deployed https URL, for example `https://api.rawwers.com/v1/webhooks/mux` (dashboard *Settings → Webhooks*, or `mux webhooks create --address <url>` signed in to that environment). Set `MUX_WEBHOOK_SECRET` in production to the signing secret **that** webhook shows. Staging gets its own webhook and secret in the same way. See DEPLOY_CHECKLIST, Mux.
+
+## The fake Mux (development only, 2026-11-21)
+
+There is no Mux account yet. To click through the "Meet the photographer" video in the simulators without one:
+
+1. In `api/.env` set `MUX_FAKE=true` and `PRESENTATION_VIDEO_ENABLED=true`. `APP_ENV` must be `development` (it is on dev): in any other environment `MUX_FAKE` is ignored.
+2. Recreate the API, workers and beat so they read `.env` (`scratch/rebuild_dev.sh <sha>` does it, or `docker compose up -d --force-recreate api worker worker-photos beat` in `api/`).
+3. **How you know it is on:** `curl http://localhost:8000/v1/dev/fake-mux/status` answers `{"fake_mux":"on"}`; with it off, 404. The Pro app's "Your introduction video" screen offers Choose and Record instead of "Video is not available right now".
+
+What the fake does (`api/app/services/mux_fake.py`): a direct upload gets an address on the dev API (`PUT /v1/dev/fake-mux/uploads/{id}`) instead of Mux's; when the file arrives it reads the video's duration from the file, then sends the same events Mux sends (`video.upload.asset_created` at once, `video.asset.ready` about 6 seconds later, or `video.asset.errored` for a file that is not a video) through the same outbox and handler as real webhooks. Playback and the poster are a small bundled sample clip and image (`api/app/dev_assets/`), whatever was uploaded, behind a five-minute token. Deletions are recorded; `fake_fail_next_delete(True)` makes the next one fail, to see the retry.
+
+## What the code assumes about Mux (checked against Mux's documentation on 2026-11-21)
+
+| Assumption | In the code | Mux's documentation | Result |
+|---|---|---|---|
+| Webhook signature header `mux-signature`, `t=<unix time>,v1=<hex>` | `security.verify_mux_webhook_signature` | Same | matches |
+| Signed text is `<t>.<raw body>`, HMAC-SHA256 with the webhook's secret; 5-minute tolerance | same | Same; Mux's SDKs default to 5 minutes | matches |
+| Event envelope `id`, `type`, `data` | `webhooks.mux_webhook` | Also `object`, `created_at`, `environment`, `attempts` | matches (extra fields unused) |
+| Repeats and any order: dedupe by event id; never move a settled video back | outbox key `mux:<event id>`; `_MUX_SETTLED` | Duplicates possible; no order promised; retries for 24 hours | matches |
+| `video.upload.asset_created`: `data.id` the upload id, `data.asset_id` | `_apply_mux_event` | `asset_id` documented; the upload id's place not stated in what could be read | **unconfirmed**: also matched by `passthrough` now, and by `upload_id` on the asset events |
+| `video.asset.ready`: `data.id` asset, `data.playback_ids[].id`/`.policy`, `data.duration` seconds, `data.upload_id`, `data.passthrough` | same | Same | matches |
+| `video.asset.errored`: `data.errors` `{type, messages}` | stored as the error | Same | matches |
+| `video.asset.deleted` exists | handled since 2026-11-21 | Exists | **was missing**, added |
+| A timed-out upload sends no event | `mux_sync` maps upload status `timed_out` | No timeout event found; the upload's status is `timed_out` | matches |
+| Direct upload: `POST /video/v1/uploads`, `new_asset_settings`, `cors_origin`, `timeout` (default 3600); answer `data.id`, `data.url`, `data.timeout`, `data.status` | `MuxClient.create_direct_upload` | Same; `cors_origin` marked required | **was missing `cors_origin`**, now `"*"` |
+| `playback_policies` | was the singular `playback_policy` with `["public", "signed"]`, keeping the **first** id | Singular deprecated; several policies give several ids in no stated order; a public id plays without a token | **mismatch, fixed**: `playback_policies: ["signed"]`, and the signed id is picked by its policy |
+| The file is sent with an HTTP `PUT` of its bytes | the Pro app | Same (whole-file PUT, content type optional) | matches |
+| No size or duration cap on a direct upload | server checks the declared size and duration, then Mux's measured duration on ready | None documented | matches (our own limits) |
+| Signed playback: RS256, `sub` playback id, `aud` `v` (video) / `t` (thumbnail), `exp`, `kid` | `security.create_mux_playback_token` | Same; examples put `kid` in the claims or the header | **`kid` now in both**; thumbnail token (`aud: t`, options in the claims) **was missing**, added |
+| The signing key's private key | used as given | Delivered **base64-encoded** (a PEM inside) | **mismatch, fixed**: decoded when not a PEM |
+| URLs `https://stream.mux.com/{id}.m3u8?token=…`, `https://image.mux.com/{id}/thumbnail.jpg?token=…` | `MuxClient.playback_url`, `poster_url` | Same | matches |
+| Delete: `DELETE /video/v1/assets/{id}`, 204 | `MuxClient.delete_asset` (404 taken as gone) | 204; a deleted asset's answer is not documented | **unconfirmed** (404 assumed) |
+| Cheapest setting: `video_quality: basic`, `max_resolution_tier: 1080p` | `NEW_ASSET_SETTINGS` | Basic: no encoding charge, one-month minimum storage; 1080p is the default cap | matches |
+
+Untested against the real service (only a real round trip can show them): the upload URL accepting the app's PUT, the real webhook delivery and signature with the production secret, playback with the real signing key (HLS on iOS and Android), the thumbnail token, the delete answer for an already-deleted asset, and the upload-id field of `video.upload.asset_created`. All are steps of DEPLOY_CHECKLIST section 4b.

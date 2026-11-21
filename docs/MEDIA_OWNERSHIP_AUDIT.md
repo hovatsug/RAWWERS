@@ -37,7 +37,7 @@ Status values:
 | `POST /v1/proof-galleries/{id}/items` | `media_asset_ids` | checked (the gallery's photographer; their own photos) | `api/v1/proof_galleries.py` `add_gallery_items` |
 | `POST /v1/proof-galleries/{id}/selections` | `media_asset_ids` | checked (the gallery's client; photos in the gallery) | `_validate_selected_items_belong_to_gallery` |
 | `POST /v1/proof-galleries/{id}/addons` | `media_asset_ids` | checked (the client; photos in the gallery) | `services/selection_addons.start` |
-| `GET /v1/gigs/{gig_id}/media/{id}/signed-url`, `/download` | path id | checked (a participant; in the booking's gallery; the client's unlock rules) | `api/v1/media_rights.py` `_signed_url_response` |
+| `GET /v1/gigs/{gig_id}/media/{id}/signed-url`, `/download` | path id, `kind`, `share_token` | checked (a participant; in the booking's gallery; the client's unlock rules). **Two gaps fixed 2026-11-20:** a share token served any copy, and a copy kind not named in the rules was served unchecked | `api/v1/media_rights.py` `_signed_url_response`, `_enforce_client_access` |
 | `POST /v1/gigs/{gig_id}/share-links` | `media_asset_ids` | checked (participant with the share right; photos in the booking's gallery; the link shows watermarked previews only) | `api/v1/media_rights.py` `create_share_link` |
 | `POST /v1/delivery/gigs/{gig_id}/uploads` | `gig_id` | checked (the device's photographer's gig) | `api/v1/delivery.py` `_open_gallery` |
 | `/v1/delivery/uploads/{id}/url`, `/multipart*`, `/complete` | path id | checked (own plug-in upload) | `api/v1/delivery.py` `_own_delivery` |
@@ -52,11 +52,11 @@ Status values:
 | `POST /v1/me/marketing-consents/withdraw`, `/renew` | consent ids | checked (own consents) | `services/marketing_consent.withdraw`, `renew` |
 | `POST /v1/instructor/courses`, `PUT /v1/instructor/courses/{id}`, `POST /v1/instructor/modules/{id}/lessons` | thumbnail, intro and lesson video ids | checked (own) | `services/learning.validate_course_media_ownership` |
 | `POST /v1/studioverse/packs`, `PUT /v1/studioverse/packs/{id}` | `cover_media_asset_id`, `preview_media_asset_ids` | **missing → fixed 2026-11-18** | `services/studioverse.own_pack_media` |
-| `POST /v1/studioverse/packs`, `PUT /v1/studioverse/packs/{id}` | `pack_file_storage_key` (a raw storage key) | **missing, open** (see below) | `api/v1/studioverse.py` |
+| `POST /v1/studioverse/packs`, `PUT /v1/studioverse/packs/{id}` | `pack_file_storage_key` (a raw storage key) | **missing, open; Studioverse off outside development since 2026-11-20** (see below) | `api/v1/studioverse.py` |
 | `POST /v1/studioverse/orders/{id}/download` | order id | checked (buyer, paid, entitlement) | `api/v1/studioverse.py` |
 | `POST /v1/legacy/{id}/vault/{vault_item_id}/download` | vault item id | checked (booking access; the item is the booking's) | `services/legacy_shoot.issue_vault_download` |
 | `POST /v1/pro/legacy/{id}/vault/upload` | none (the server makes the key) | checked (assigned photographer or admin) | `services/legacy_shoot.issue_vault_upload` |
-| `POST /v1/gigs/{gig_id}/prints/orders`, `PUT /v1/prints/orders/{id}` | `selected_media[].media_asset_id` | **partial, open** (see below) | `services/prints_fulfillment._validate_selected_media` |
+| `POST /v1/gigs/{gig_id}/prints/orders`, `PUT /v1/prints/orders/{id}` | `selected_media[].media_asset_id` | **partial, open; print routes off (`ecom_enabled`) since 2026-11-20** (see below) | `services/prints_fulfillment._validate_selected_media` |
 | `/v1/pros/{id}/chats`, `/v1/chats/*` | none (text messages only) | n/a | — |
 | `POST /v1/webhooks/mux` | asset and upload ids from Mux | n/a (the signature is verified) | `api/v1/webhooks.py` |
 
@@ -67,6 +67,12 @@ Status values:
 Both ids must now be the creator's own uploads, not removed, and the cover must be a photo. Anything else is a 404, as with the profile cover.
 
 The fix also found a 500: any pack sent with preview ids failed to save, because the ids were written to JSON as UUID objects. They are now stored as strings. Tests: `api/tests/test_studioverse_pack_media.py`.
+
+**A share token stood in for paying (2026-11-20).** On `GET /v1/gigs/{gig_id}/media/{id}/signed-url` (and `/download`), the booking's client who sent a valid share token got whatever copy they asked for, `full_res` included, for any photo the link covered; a link of a gallery's proofs covers every proof. The token now gives the watermarked preview or the thumbnail only, as `GET /v1/share/{token}` does. No app sends a share token to this route.
+
+**Copies not named in the rules were served unchecked (2026-11-20).** The client rules named the previews and the paid copies; any other kind (a banner's, a Shelf item's, the new card copy) fell through with no check. A photographer may put one of their portfolio photos in a client's gallery, so its card copy, unwatermarked, was reachable that way once it existed. Any other kind is now refused. Tests: `api/tests/test_card_copy.py`.
+
+**The card copy (2026-11-20)** is made for portfolio photos only, never for a client's proof, and is served only through the cover resolvers, which take covers and portfolio photos (`media_urls.resolve_sized_image_urls`).
 
 ## Open, with a recommendation
 
@@ -79,15 +85,13 @@ With those, a buyer gets a signed download of whatever key the creator named. Th
 
 An allowlist of key prefixes would not be enough, and a proper fix needs an upload route for pack files (a new flow). Studioverse is not in the beta (no app uses it).
 
-**Recommendation:** for the beta, put the Studioverse creator and checkout routes behind a feature flag that is off. Before Studioverse opens, add a pack-file upload that records the file as the creator's own media.
+**Done for the beta (owner, 2026-11-18; built 2026-11-20):** `studioverse_enabled` is off outside development; all Studioverse user routes (creator, marketplace, checkout, orders, download) answer as routes that do not exist, before any login check. Its admin routes stay. **Before Studioverse ever opens** (BETA_SCOPE #79): a pack-file upload that records the file as the creator's own media, and downloads only of that.
 
 **Prints `selected_media`.** The client must be the booking's client, the booking must have its finals delivered, and the client must hold the finals-download entitlement. Each photo must be in the booking's gallery with a ready full-resolution copy.
 
 It does **not** check that the photo is one the client unlocked (their selection or paid add-ons, `media_rights.unlocked_final_asset_ids`). A client could order a print of a photo they never chose or paid for, and its full-resolution file would go to the print partner.
 
-The print store is LATER (BETA_SCOPE #39), and dev has no print orders. Its routes are also not behind `ecom_enabled`, although BETA_SCOPE says the store is off by that flag; only the store routes check it.
-
-**Recommendation:** before prints open, limit `selected_media` to `unlocked_final_asset_ids`, and put the print routes behind `ecom_enabled`. The prints test fixture needs a paid selection for that, so I did not change it under the freeze.
+The print store is LATER (BETA_SCOPE #39), and dev has no print orders. **Since 2026-11-20 every user print route answers 404 while `ecom_enabled` is off** (it is off by default everywhere). **Precondition before prints open** (owner, recorded in BETA_SCOPE #39): limit `selected_media` to `unlocked_final_asset_ids`. The prints test fixture needs a paid selection for that.
 
 ## Admin routes (listed, not audited)
 

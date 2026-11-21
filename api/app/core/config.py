@@ -48,8 +48,10 @@ class Settings(BaseSettings):
     r2_bucket: str = Field(alias="R2_BUCKET")
     r2_region: str = Field(alias="R2_REGION")
 
-    mux_token_id: str = Field(alias="MUX_TOKEN_ID")
-    mux_token_secret: str = Field(alias="MUX_TOKEN_SECRET")
+    # Empty is allowed: with no Mux keys the presentation video says "Video is
+    # not available right now" instead of failing (services/presentation_video).
+    mux_token_id: str = Field(default="", alias="MUX_TOKEN_ID")
+    mux_token_secret: str = Field(default="", alias="MUX_TOKEN_SECRET")
     mux_webhook_secret: str = Field(default="", alias="MUX_WEBHOOK_SECRET")
     mux_signing_key_id: str = Field(default="", alias="MUX_SIGNING_KEY_ID")
     mux_signing_key_private: str = Field(default="", alias="MUX_SIGNING_KEY_PRIVATE")
@@ -176,9 +178,15 @@ class Settings(BaseSettings):
     niche_banner_min_contrast: float = Field(default=4.5, alias="NICHE_BANNER_MIN_CONTRAST")
     niche_banner_scrim_floor: float = Field(default=0.25, alias="NICHE_BANNER_SCRIM_FLOOR")
     niche_banner_scrim_ceiling: float = Field(default=0.85, alias="NICHE_BANNER_SCRIM_CEILING")
-    # "Meet the photographer". The presentation video's slot stays empty until
-    # this is on and videos exist; nothing produces one yet.
+    # "Meet the photographer" video (BETA_SCOPE #37, MUST 2026-11-21). Off by
+    # default: switched on in production only after the first real Mux round
+    # trip passes (DEPLOY_CHECKLIST, post-deploy verification). Also needs Mux
+    # configured, or the fake below in development.
     presentation_video_enabled: bool = Field(default=False, alias="PRESENTATION_VIDEO_ENABLED")
+    # A fake Mux for development and tests only (services/mux_fake.py): uploads,
+    # processing and playback of a bundled sample clip, with no Mux account.
+    # Ignored in any other environment, whatever it is set to.
+    mux_fake: bool = Field(default=False, alias="MUX_FAKE")
     # The one line of a photographer's interview a Discover card may show.
     interview_teaser_max_chars: int = Field(default=90, alias="INTERVIEW_TEASER_MAX_CHARS")
     rate_limit_public_read_per_min: int = Field(default=120, alias="RATE_LIMIT_PUBLIC_READ_PER_MIN")

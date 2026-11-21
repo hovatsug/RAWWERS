@@ -29,6 +29,10 @@ class MediaPurpose(str, enum.Enum):
     niche_banner = "niche_banner"
     #: A Shelf item's photo, uploaded by an admin. Public; its own sizes.
     shelf_item = "shelf_item"
+    #: A photographer's "Meet the photographer" video (Mux). One shown at a
+    #: time; private to its owner except through the client playback route,
+    #: which checks the photographer is live (services/presentation_video).
+    presentation_video = "presentation_video"
     other = "other"
 
 

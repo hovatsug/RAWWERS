@@ -8,12 +8,14 @@ from pydantic import BaseModel, Field
 
 
 class PresentationVideoView(BaseModel):
-    """The slot for a photographer's presentation video. Nothing produces one
-    yet: it is sent only once videos exist and PRESENTATION_VIDEO_ENABLED is on."""
+    """A photographer's "Meet the photographer" video, sent only while they
+    are live and it is ready (services/presentation_video). `playback_url` is
+    signed for five minutes; the app asks for a fresh one when tapped."""
 
     playback_url: str
     poster_url: str | None = None
     duration_seconds: int | None = None
+    media_asset_id: uuid.UUID | None = None
 
 
 class MeetInterviewItem(BaseModel):

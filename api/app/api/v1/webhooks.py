@@ -25,7 +25,7 @@ from app.models.gig import (
     StripePaymentKind,
 )
 from app.models.gallery import ClientSelection, ProofGallery, ProofGalleryStatus, SelectionStatus, UpsellPurchase, UpsellPurchaseStatus
-from app.models.media import MediaAsset, MediaProvider, MediaStatus
+from app.models.media import MediaAsset, MediaProvider, MediaPurpose, MediaStatus
 from app.models.media_rights import GigEntitlementType
 from app.models.client_rewards_pricing import ExtraImagePurchase, ExtraImagePurchaseStatus
 from app.models.admin import ProProfile
@@ -238,17 +238,18 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db_session)
 #: function, shaped as these events, so both paths agree.
 HANDLED_MUX_EVENTS = frozenset({
     "video.upload.asset_created", "video.upload.errored", "video.upload.cancelled",
-    "video.asset.ready", "video.asset.errored",
+    "video.asset.ready", "video.asset.errored", "video.asset.deleted",
 })
 #: A video in one of these has its final outcome: a late or repeated event
 #: never moves it back.
 _MUX_SETTLED = frozenset({MediaStatus.ready, MediaStatus.failed, MediaStatus.deleted})
 
 
-def _mux_asset_for(db: Session, *, asset_id: str | None, upload_id: str | None) -> MediaAsset | None:
+def _mux_asset_for(db: Session, *, asset_id: str | None, upload_id: str | None, passthrough: str | None = None) -> MediaAsset | None:
     """Our video for a Mux asset or upload. By asset id first; by the upload
     id when the asset event arrived before `video.upload.asset_created`
-    (Mux does not promise order), and the asset id is linked then."""
+    (Mux does not promise order), then by `passthrough` (our id, which every
+    direct upload since 2026-11-21 sets); the asset id is linked then."""
     asset = None
     if asset_id:
         asset = db.execute(
@@ -258,10 +259,28 @@ def _mux_asset_for(db: Session, *, asset_id: str | None, upload_id: str | None) 
         asset = db.execute(
             select(MediaAsset).where(MediaAsset.provider == MediaProvider.mux, MediaAsset.provider_upload_id == upload_id)
         ).scalar_one_or_none()
-        if asset is not None and asset_id and not asset.provider_asset_id:
-            asset.provider_asset_id = asset_id
-            asset.meta = {**(asset.meta or {}), "mux_asset_id": asset_id}
+    if asset is None and passthrough:
+        try:
+            ours = db.get(MediaAsset, uuid.UUID(str(passthrough)))
+        except ValueError:
+            ours = None
+        if ours is not None and ours.provider == MediaProvider.mux and (not upload_id or ours.provider_upload_id in (None, upload_id)):
+            asset = ours
+    if asset is not None and asset_id and not asset.provider_asset_id:
+        asset.provider_asset_id = asset_id
+        asset.meta = {**(asset.meta or {}), "mux_asset_id": asset_id}
     return asset
+
+
+def _signed_playback_id(data: dict) -> str | None:
+    """The signed playback id; Mux does not promise an order when an asset
+    has several, so it is picked by policy. Older assets made with no policy
+    recorded fall back to the first."""
+    ids = [p for p in (data.get("playback_ids") or []) if isinstance(p, dict) and p.get("id")]
+    for p in ids:
+        if p.get("policy") == "signed":
+            return p["id"]
+    return ids[0]["id"] if ids and not any(p.get("policy") for p in ids) else None
 
 
 def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
@@ -270,11 +289,18 @@ def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
         upload_id, asset_id = data.get("id"), data.get("asset_id")
         if not upload_id or not asset_id:
             return
-        asset = _mux_asset_for(db, asset_id=None, upload_id=upload_id)
+        asset = _mux_asset_for(db, asset_id=None, upload_id=upload_id, passthrough=data.get("passthrough"))
         if asset is None:
             return
         asset.provider_asset_id = asset_id
         asset.meta = {**(asset.meta or {}), "mux_asset_id": asset_id}
+        if asset.status == MediaStatus.deleted:
+            # Deleted before Mux made the asset: delete the asset now.
+            from app.services.presentation_video import MUX_DELETE_PENDING, try_mux_cleanup
+
+            asset.meta = {**asset.meta, MUX_DELETE_PENDING: True}
+            try_mux_cleanup(db, asset)
+            return
         if asset.status not in _MUX_SETTLED:
             # Mux has the file and is encoding it.
             asset.status = MediaStatus.processing
@@ -292,11 +318,17 @@ def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
         mux_asset_id = data.get("id")
         if not mux_asset_id:
             return
-        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=data.get("upload_id"))
-        if asset is None or asset.status == MediaStatus.deleted:
+        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=data.get("upload_id"), passthrough=data.get("passthrough"))
+        if asset is None:
             return
-        playback_ids = data.get("playback_ids") or []
-        playback_id = playback_ids[0].get("id") if playback_ids else None
+        playback_id = _signed_playback_id(data)
+        if asset.purpose == MediaPurpose.presentation_video:
+            from app.services.presentation_video import on_ready
+
+            on_ready(db, asset, data, playback_id)
+            return
+        if asset.status == MediaStatus.deleted:
+            return
         asset.status = MediaStatus.ready
         new_meta = {**(asset.meta or {}), "mux_asset_id": mux_asset_id}
         new_meta.pop("mux_error", None)
@@ -308,12 +340,31 @@ def _apply_mux_event(db: Session, event_type: str, data: dict) -> None:
         mux_asset_id = data.get("id")
         if not mux_asset_id:
             return
-        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=data.get("upload_id"))
+        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=data.get("upload_id"), passthrough=data.get("passthrough"))
         if asset is None or asset.status in _MUX_SETTLED:
             return
         asset.status = MediaStatus.failed
         error_message = data.get("errors") or data.get("error") or "Unknown Mux processing error"
         asset.meta = {**(asset.meta or {}), "mux_error": error_message}
+
+    elif event_type == "video.asset.deleted":
+        # Gone at Mux (deleted here, or in Mux's dashboard): never playable again.
+        mux_asset_id = data.get("id")
+        if not mux_asset_id:
+            return
+        asset = _mux_asset_for(db, asset_id=mux_asset_id, upload_id=None)
+        if asset is None:
+            return
+        from app.services.presentation_video import MUX_DELETE_PENDING
+
+        if asset.status != MediaStatus.deleted:
+            asset.status = MediaStatus.deleted
+            asset.meta = {**(asset.meta or {}), "deleted_reason": "deleted at Mux"}
+            if asset.purpose == MediaPurpose.presentation_video:
+                from app.services.cache import bump_public_index_version
+
+                bump_public_index_version()
+        asset.meta = {**(asset.meta or {}), MUX_DELETE_PENDING: False}
 
 
 def _bring_open_difference_to_owed(db: Session, gig: Gig, gallery: ProofGallery, selection: ClientSelection) -> None:

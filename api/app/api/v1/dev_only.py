@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -87,3 +87,77 @@ def delete_my_test_account(
             db.execute(table.delete().where(column == user.user_id))
     db.commit()
     return Response(status_code=204)
+
+
+# --- The fake Mux (services/mux_fake.py): development and tests only, and only
+# with MUX_FAKE on. Outside development this whole router answers 404 first.
+
+
+def _fake_on() -> None:
+    from app.services.mux_fake import fake_mux_allowed
+
+    if not fake_mux_allowed():
+        raise APIError(code="not_found", message="Not found", status_code=404)
+
+
+@router.put("/dev/fake-mux/uploads/{upload_id}", dependencies=[Depends(_fake_on)])
+async def fake_mux_receive(upload_id: str, request: Request, db: Session = Depends(get_db_session)) -> dict[str, str]:
+    """Where the Pro app sends the file when the fake is on, as it would PUT
+    it to Mux's upload URL."""
+    from app.services.mux_fake import receive_file
+    from app.services.presentation_video import MAX_BYTES
+
+    body = await request.body()
+    if len(body) > MAX_BYTES:
+        raise APIError(code="video_too_large", message="The file is larger than the upload allows.", status_code=413)
+    accepted, message = receive_file(db, upload_id, body)
+    if not accepted:
+        raise APIError(code="not_found", message=message, status_code=404)
+    db.commit()
+    try:
+        from app.tasks.outbox_tasks import dispatch_outbox_events_task
+
+        dispatch_outbox_events_task.delay()
+    except Exception:
+        pass
+    return {"status": message}
+
+
+def _fake_file(name: str, media_type: str, playback_id: str, token: str | None, audience: str, range_header: str | None = None) -> Response:
+    """The file, or the byte range asked for: iOS's player reads a video in
+    ranges and will not play one served whole without them."""
+    import re
+    from pathlib import Path
+
+    from app.services.mux_fake import fake_token_ok
+
+    if not fake_token_ok(token, playback_id, audience):
+        raise APIError(code="forbidden", message="This link has expired. Open the video again.", status_code=403)
+    data = (Path(__file__).resolve().parents[2] / "dev_assets" / name).read_bytes()
+    match = re.fullmatch(r"bytes=(\d*)-(\d*)", (range_header or "").strip())
+    if match and (match.group(1) or match.group(2)):
+        start = int(match.group(1)) if match.group(1) else max(0, len(data) - int(match.group(2)))
+        end = int(match.group(2)) if match.group(1) and match.group(2) else len(data) - 1
+        end = min(end, len(data) - 1)
+        if start > end:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{len(data)}"})
+        return Response(content=data[start:end + 1], status_code=206, media_type=media_type,
+                        headers={"Content-Range": f"bytes {start}-{end}/{len(data)}", "Accept-Ranges": "bytes"})
+    return Response(content=data, media_type=media_type, headers={"Accept-Ranges": "bytes"})
+
+
+@router.get("/dev/fake-mux/play/{playback_id}.mp4", dependencies=[Depends(_fake_on)])
+def fake_mux_play(playback_id: str, request: Request, token: str | None = None) -> Response:
+    """The "playback": the bundled sample clip, whatever was uploaded."""
+    return _fake_file("fake_mux_sample.mp4", "video/mp4", playback_id, token, "v", request.headers.get("range"))
+
+
+@router.get("/dev/fake-mux/poster/{playback_id}.jpg", dependencies=[Depends(_fake_on)])
+def fake_mux_poster(playback_id: str, token: str | None = None) -> Response:
+    return _fake_file("fake_mux_poster.jpg", "image/jpeg", playback_id, token, "t")
+
+
+@router.get("/dev/fake-mux/status", dependencies=[Depends(_fake_on)])
+def fake_mux_status() -> dict[str, str]:
+    """200 means the fake is on (MUX_FAKE=true in a development environment)."""
+    return {"fake_mux": "on"}

@@ -46,17 +46,39 @@ def verify_mux_webhook_signature(raw_body: bytes, signature_header: str | None) 
     return hmac.compare_digest(expected, sig)
 
 
-def create_mux_playback_token(playback_id: str, expires_in_seconds: int = 300) -> str:
+def _mux_signing_key() -> str:
+    """Mux gives the signing key's private key base64-encoded (a PEM inside);
+    a PEM pasted as is works too."""
+    raw = (settings.mux_signing_key_private or "").strip()
+    if raw.startswith("-----BEGIN"):
+        return raw.replace("\\n", "\n")
+    import base64
+
+    try:
+        decoded = base64.b64decode(raw, validate=False).decode("utf-8")
+    except Exception:
+        return raw
+    return decoded if decoded.startswith("-----BEGIN") else raw
+
+
+def create_mux_playback_token(
+    playback_id: str, expires_in_seconds: int = 300, *, audience: str = "v", extra: dict | None = None
+) -> str:
+    """A signed playback token (RS256): `sub` the playback id, `aud` "v" to
+    play, "t" for a thumbnail, `exp`. The key id goes in the header and in the
+    claims, as Mux's examples differ on where."""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": playback_id,
-        "aud": "v",
+        "aud": audience,
         "exp": int((now + timedelta(seconds=expires_in_seconds)).timestamp()),
         "iat": int(now.timestamp()),
+        "kid": settings.mux_signing_key_id,
+        **(extra or {}),
     }
     return jwt.encode(
         payload,
-        settings.mux_signing_key_private,
+        _mux_signing_key(),
         algorithm="RS256",
         headers={"kid": settings.mux_signing_key_id},
     )

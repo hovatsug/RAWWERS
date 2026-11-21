@@ -7,7 +7,7 @@ from collections import Counter
 from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -337,6 +337,7 @@ def client_pro_profile(
     pro_user_id: uuid.UUID,
     country: str,
     city: str,
+    request: Request,
     user: CurrentUser | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db_read_session),
     db_write: Session = Depends(get_db_write_session),
@@ -503,7 +504,7 @@ def client_pro_profile(
         # client's decision.
         niches=profile_niches,
         is_guest_view=False,
-        meet=meet_views(db, [profile.user_id]).get(profile.user_id),
+        meet=_meet_with_video(db, profile.user_id, base_url=str(request.base_url)),
     )
     log_event(
         db_write,
@@ -1622,6 +1623,22 @@ def _free_days_next_fortnight(db: Session, pro_user_id: uuid.UUID) -> int:
 
 
 MEDIA_URL_BASE_TTL_SECONDS = 900
+
+
+def _meet_with_video(db: Session, pro_user_id: uuid.UUID, *, base_url: str):
+    """The profile's "Meet the photographer": their published interview and,
+    while they are live and it is ready, their video (presentation_video)."""
+    from app.schemas.meet import MeetThePhotographerView
+    from app.services.presentation_video import client_video
+
+    meet = meet_views(db, [pro_user_id]).get(pro_user_id)
+    video = client_video(db, pro_user_id, base_url=base_url)
+    if video is None:
+        return meet
+    if meet is None:
+        meet = MeetThePhotographerView(interview=[])
+    meet.video = video
+    return meet
 
 
 def _media_url_ttl() -> int:

@@ -36,6 +36,9 @@ RATE_LIMIT_RULES: dict[str, tuple[int, int]] = {
     "portfolio_removal": (60, 3600),
     # "Set as cover" in the Pro app (BETA_SCOPE #74).
     "cover_change": (60, 3600),
+    # "Meet the photographer" video: starting an upload (each one a Mux
+    # direct upload) and deleting. Generous for retries, tight for abuse.
+    "presentation_video": (20, 3600),
     "delivery_pair_all": (300, 600),
     "admin": (settings.rate_limit_admin_per_min, 60),
     "admin_bi": (settings.rate_limit_admin_bi_per_min, 60),

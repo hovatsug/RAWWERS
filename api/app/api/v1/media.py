@@ -48,7 +48,6 @@ from app.schemas.media import (
 from app.services.discovery_index import recompute_pro_public_index
 from app.services.gig_state import require_gig_deliverable
 from app.services.feature_flags import is_feature_enabled
-from app.services.mux import MuxClient
 from app.services.rate_limit import enforce_named_rate_limit
 from app.services.security import create_mux_playback_token
 from app.services.storage import (
@@ -513,8 +512,11 @@ def create_mux_upload(
     if visibility is None:
         visibility = MediaVisibility.public if body.purpose == MediaPurpose.portfolio_reel else MediaVisibility.owner_only
 
-    mux = MuxClient()
-    upload_data = mux.create_direct_upload()
+    from app.services.mux import get_mux_client, mux_available
+
+    if not mux_available():
+        raise APIError(code="video_unavailable", message="Video is not available right now.", status_code=503)
+    upload_data = get_mux_client().create_direct_upload()
 
     asset = MediaAsset(
         owner_user_id=user.user_id,

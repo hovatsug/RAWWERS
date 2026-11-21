@@ -205,7 +205,13 @@ def mux_sync_task() -> dict:
             return {"skipped": True}
         result = sync_waiting_videos(db)
         db.commit()
-        return {"checked": result.checked, "applied": len(result.applied), "errors": result.errors}
+        # Mux assets of deleted videos that Mux did not delete when asked
+        # (presentation_video.MUX_DELETE_PENDING): asked again every run.
+        from app.services.presentation_video import retry_pending_deletions
+
+        cleared = retry_pending_deletions(db)
+        db.commit()
+        return {"checked": result.checked, "applied": len(result.applied), "errors": result.errors, "deletions_cleared": cleared}
     finally:
         db.close()
 

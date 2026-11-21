@@ -62,9 +62,12 @@ def due_videos(db: Session, *, now: datetime | None = None, limit: int = 50) -> 
 
 def sync_waiting_videos(db: Session, *, client=None, now: datetime | None = None, limit: int = 50) -> SyncResult:
     from app.api.v1.webhooks import _apply_mux_event
-    from app.services.mux import MuxClient
+    from app.services.mux import get_mux_client, mux_available
 
-    client = client or MuxClient()
+    if client is None and not mux_available():
+        # No Mux keys (and no development fake): nothing to ask.
+        return SyncResult()
+    client = client or get_mux_client()
     result = SyncResult()
     for video in due_videos(db, now=now, limit=limit):
         result.checked += 1

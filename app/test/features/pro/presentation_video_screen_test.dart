@@ -22,6 +22,7 @@ import 'package:rawwers/core/api/providers.dart';
 import 'package:rawwers/design/theme_pro.dart';
 import 'package:rawwers/features/pro/presentation_video/presentation_video_controller.dart';
 import 'package:rawwers/features/pro/presentation_video/presentation_video_screen.dart';
+import 'package:rawwers/features/pro/presentation_video/record_video_screen.dart';
 import 'package:rawwers/features/shared/video/video_surface.dart';
 import 'package:retrofit/retrofit.dart';
 
@@ -104,6 +105,7 @@ Future<_FakeClient> _pump(
   WidgetTester tester,
   MyPresentationVideoState state, {
   PickedVideo? pick = _picked,
+  PickedVideo? recorded,
   Future<void> Function(String url, PickedVideo video, void Function(double) onProgress)? upload,
 }) async {
   final client = _FakeClient(state);
@@ -115,6 +117,7 @@ Future<_FakeClient> _pump(
     overrides: [
       presentationVideoClientProvider.overrideWithValue(client),
       videoPickerProvider.overrideWithValue((source, max) async => pick),
+      videoRecorderProvider.overrideWithValue((context, max) async => recorded),
       videoUploaderProvider.overrideWithValue(upload ?? (url, video, onProgress) async => onProgress(1)),
       videoSurfaceProvider.overrideWithValue((url, {onFailed}) => Text('playing $url', key: const ValueKey('surface'))),
     ],
@@ -249,5 +252,26 @@ void main() {
     expect(client.starts[0].requestId, client.starts[1].requestId, reason: 'a retry must not start a second upload');
     expect(find.byKey(const ValueKey('video-processing')), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Record uses the in-app camera, then uploads what it recorded', (tester) async {
+    final client = await _pump(tester, _state(),
+        recorded: const PickedVideo(path: '/videos/rec.mp4', byteSize: 61000000, contentType: 'video/mp4', durationSeconds: 42));
+    await tester.tap(find.text('Record a video'));
+    await tester.pump();
+    await tester.pump();
+    expect(client.starts.single.durationSeconds, 42);
+    expect(client.starts.single.contentType, 'video/mp4');
+    expect(find.byKey(const ValueKey('video-processing')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('closing the camera without recording sends nothing', (tester) async {
+    final client = await _pump(tester, _state());
+    await tester.tap(find.text('Record a video'));
+    await tester.pump();
+    await tester.pump();
+    expect(client.starts, isEmpty);
+    expect(find.byKey(const ValueKey('video-none')), findsOneWidget);
   });
 }

@@ -17,17 +17,16 @@
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
         </activity>
     </application>
+    <!-- The "Meet the photographer" video is recorded with the in-app camera
+         (the camera plugin, record_video_screen.dart): the camera and the
+         microphone, asked for when the photographer first records. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Android 11+: lets url_launcher find a browser for Stripe's https form. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
-        </intent>
-        <!-- Android 11+: lets image_picker find the camera app to record the
-             "Meet the photographer" video. The camera app asks for the camera
-             and microphone itself, so this app declares neither permission. -->
-        <intent>
-            <action android:name="android.media.action.VIDEO_CAPTURE" />
         </intent>
     </queries>
 </manifest>

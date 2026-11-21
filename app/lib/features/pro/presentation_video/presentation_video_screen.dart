@@ -8,6 +8,7 @@ import 'package:rawwers/design/components/r_error_state.dart';
 import 'package:rawwers/design/components/r_network_photo.dart';
 import 'package:rawwers/design/tokens.dart';
 import 'package:rawwers/features/pro/presentation_video/presentation_video_controller.dart';
+import 'package:rawwers/features/pro/presentation_video/record_video_screen.dart';
 import 'package:rawwers/features/shared/meet/meet_section.dart';
 import 'package:rawwers/features/shared/video/video_surface.dart';
 
@@ -58,7 +59,13 @@ class _Body extends ConsumerWidget {
     final controller = ref.read(presentationVideoControllerProvider.notifier);
 
     Future<void> choose(VideoSource source) async {
-      final message = await controller.pickAndUpload(source);
+      final String? message;
+      if (source == VideoSource.camera) {
+        final recorded = await ref.read(videoRecorderProvider)(context, server.maxSeconds);
+        message = await controller.uploadVideo(recorded);
+      } else {
+        message = await controller.pickAndUpload(source);
+      }
       if (message != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }

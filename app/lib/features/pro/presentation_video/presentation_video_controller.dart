@@ -25,14 +25,12 @@ class PickedVideo {
 
 enum VideoSource { library, camera }
 
-/// Choosing or recording: the phone's picker, the camera capped at 60 seconds.
-/// A provider so tests choose without a picker.
+/// Choosing from the library (the phone's picker). Recording uses the
+/// in-app camera instead (record_video_screen.dart), which never records
+/// above 1080p. A provider so tests choose without a picker.
 final videoPickerProvider = Provider<Future<PickedVideo?> Function(VideoSource source, int maxSeconds)>((ref) {
   return (source, maxSeconds) async {
-    final file = await ImagePicker().pickVideo(
-      source: source == VideoSource.camera ? ImageSource.camera : ImageSource.gallery,
-      maxDuration: Duration(seconds: maxSeconds),
-    );
+    final file = await ImagePicker().pickVideo(source: ImageSource.gallery, maxDuration: Duration(seconds: maxSeconds));
     if (file == null) return null;
     final size = await file.length();
     final lower = file.path.toLowerCase();
@@ -139,8 +137,7 @@ class PresentationVideoController extends AutoDisposeAsyncNotifier<PresentationV
     });
   }
 
-  /// Choose from the library or record; checks the limits here first (the
-  /// server checks them again), then uploads. Returns a message to show, or null.
+  /// Choose from the library, then [uploadVideo]. Returns a message to show, or null.
   Future<String?> pickAndUpload(VideoSource source) async {
     final current = state.valueOrNull;
     if (current == null || !current.server.available) return null;
@@ -148,11 +145,16 @@ class PresentationVideoController extends AutoDisposeAsyncNotifier<PresentationV
     try {
       video = await ref.read(videoPickerProvider)(source, current.server.maxSeconds);
     } catch (_) {
-      return source == VideoSource.camera
-          ? 'The camera could not open. Allow RAWWERS to use the camera and microphone in Settings.'
-          : 'Your videos could not open. Allow RAWWERS to see your videos in Settings.';
+      return 'Your videos could not open. Allow RAWWERS to see your videos in Settings.';
     }
-    if (video == null) return null;
+    return uploadVideo(video);
+  }
+
+  /// A chosen or recorded video: checks the limits here first (the server
+  /// checks them again), then uploads. Returns a message to show, or null.
+  Future<String?> uploadVideo(PickedVideo? video) async {
+    final current = state.valueOrNull;
+    if (current == null || !current.server.available || video == null) return null;
     final seconds = video.durationSeconds;
     if (seconds != null && seconds > current.server.maxSeconds + 0.9) {
       return 'Your video is longer than ${current.server.maxSeconds} seconds. Choose or record a shorter one.';

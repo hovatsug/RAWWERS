@@ -1,6 +1,6 @@
 """A fake Mux, for development and tests only (MUX_FAKE=true).
 
-There is no Mux account yet (owner, 2026-11-21). With this on, the whole
+Built before any real Mux round trip had been tried (2026-11-21). With this on, the whole
 "Meet the photographer" video flow runs locally: the Pro app uploads to an
 address on the dev API instead of Mux's, the fake "encodes" it and sends
 the events Mux would send - through the same outbox and the same handler as

@@ -282,6 +282,8 @@ def test_starting_a_new_upload_retires_the_one_in_progress(client, db_session):
 @pytest.mark.parametrize(("kw", "code"), [
     ({"seconds": 75}, "video_too_long"),
     ({"byte_size": pv.MAX_BYTES + 1}, "video_too_large"),
+    # 100 MB, to save mobile data (owner, 2026-11-21): 150 MB is refused.
+    ({"byte_size": 150_000_000}, "video_too_large"),
     ({"content_type": "video/x-msvideo"}, "validation_error"),
 ])
 def test_limits_are_enforced_on_the_server(client, db_session, kw, code):

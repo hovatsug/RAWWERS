@@ -8,7 +8,7 @@ The rules, all here:
   (or the development fake, services/mux_fake.py). Otherwise every route
   answers in plain words - "Video is not available right now" - and clients
   simply see no video.
-- **Limits:** 60 seconds and 200 MB, MP4 or MOV. Checked when the upload
+- **Limits:** 60 seconds and 100 MB, MP4 or MOV. Checked when the upload
   starts (what the app declares) and again when Mux reports the encoded
   duration: a longer video is refused, and its Mux asset deleted.
 - **One shown at a time.** A new upload replaces the shown video only once it
@@ -40,10 +40,12 @@ from app.models.media import MediaAsset, MediaKind, MediaProvider, MediaPurpose,
 logger = logging.getLogger(__name__)
 
 MAX_SECONDS = 60
-#: 200 MB: a minute of 1080p from a phone (about 10-20 Mbit/s, 75-150 MB)
-#: with room to spare; a 4K or high-frame-rate clip (300-700 MB a minute) is
-#: refused with a way out. Mux stores and plays 1080p at most here anyway.
-MAX_BYTES = 200_000_000
+#: 100 MB, to save the photographer's mobile data (owner, 2026-11-21). A
+#: minute of 1080p in the iPhone's default HEVC format (about 45-75 MB) fits;
+#: a minute of H.264 1080p (about 130 MB) fits up to about 45 seconds; 4K or
+#: high frame rate (300-700 MB a minute) is refused with a way out. Mux
+#: stores and plays 1080p at most here anyway.
+MAX_BYTES = 100_000_000
 #: A container's duration can run a fraction over the recording's.
 _DURATION_SLACK = 0.9
 CONTENT_TYPES = {"video/mp4", "video/quicktime"}

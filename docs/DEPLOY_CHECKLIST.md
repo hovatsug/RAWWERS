@@ -275,11 +275,11 @@ Steps 2 to 5 (without the admin part of 5) run in CI on every change: the `empty
 
 ## 4. Mux: the "Meet the photographer" video (BETA_SCOPE #37)
 
-The video was built and tested against a fake Mux (`api/app/services/mux_fake.py`); there was no Mux account. Nothing here reaches Mux until these steps are done. Until "Post-deploy verification" passes, `PRESENTATION_VIDEO_ENABLED` stays off and **the video is not announced to beta testers**.
+The video was built and tested against a fake Mux (`api/app/services/mux_fake.py`); it has never reached the real Mux. The owner has a Mux account (dev's `.env` holds its keys). Nothing here reaches Mux until these steps are done. Until "Post-deploy verification" passes, `PRESENTATION_VIDEO_ENABLED` stays off and **the video is not announced to beta testers**.
 
 ### 4a. Production Mux setup (once)
 
-1. **Create the Mux account** (mux.com), and in it a **Production** environment. Staging, if any, gets its own environment: never share keys between them.
+1. **In the Mux account, a Production environment** separate from the one dev's keys come from. Staging, if any, gets its own environment: never share keys between them, and never put production's keys on dev.
 2. **An access token** in the Production environment (*Settings > Access Tokens*): permissions **Mux Video: Read and Write**, nothing else. Put its id and secret in the production API's environment as `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` (the API, `worker`, `worker-photos` and `beat`). Never in the repository.
 3. **A signing key** for signed playback (*Settings > Signing Keys*, Video). Mux shows the private key base64-encoded: paste it as it is into `MUX_SIGNING_KEY_PRIVATE` (the API decodes it; a PEM also works), and its id into `MUX_SIGNING_KEY_ID`. Mux shows the private key once.
 4. **The webhook** (*Settings > Webhooks*, Production environment): URL `https://<production API host>/v1/webhooks/mux`. Copy its signing secret into `MUX_WEBHOOK_SECRET`. The API refuses every webhook while this is empty.

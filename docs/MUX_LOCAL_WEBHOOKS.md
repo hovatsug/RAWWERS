@@ -70,7 +70,7 @@ Production does **not** use the CLI or its secret. In the **production** Mux env
 
 ## The fake Mux (development only, 2026-11-21)
 
-There is no Mux account yet. To click through the "Meet the photographer" video in the simulators without one:
+To click through the "Meet the photographer" video in the simulators without reaching Mux (dev's `.env` holds real Mux keys; with `MUX_FAKE=true` the fake is used instead of them):
 
 1. In `api/.env` set `MUX_FAKE=true` and `PRESENTATION_VIDEO_ENABLED=true`. `APP_ENV` must be `development` (it is on dev): in any other environment `MUX_FAKE` is ignored.
 2. Recreate the API, workers and beat so they read `.env` (`scratch/rebuild_dev.sh <sha>` does it, or `docker compose up -d --force-recreate api worker worker-photos beat` in `api/`).

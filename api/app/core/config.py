@@ -184,7 +184,7 @@ class Settings(BaseSettings):
     # configured, or the fake below in development.
     presentation_video_enabled: bool = Field(default=False, alias="PRESENTATION_VIDEO_ENABLED")
     # A fake Mux for development and tests only (services/mux_fake.py): uploads,
-    # processing and playback of a bundled sample clip, with no Mux account.
+    # processing and playback of a bundled sample clip, without reaching Mux.
     # Ignored in any other environment, whatever it is set to.
     mux_fake: bool = Field(default=False, alias="MUX_FAKE")
     # The one line of a photographer's interview a Discover card may show.

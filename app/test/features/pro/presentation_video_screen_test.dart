@@ -30,7 +30,7 @@ MyPresentationVideoState _state({bool available = true, MyPresentationVideo? sho
       available: available,
       message: available ? null : 'Video is not available right now.',
       maxSeconds: 60,
-      maxBytes: 200000000,
+      maxBytes: 100000000,
       shown: shown,
       pending: pending,
     );
@@ -212,12 +212,12 @@ void main() {
     expect(client.starts, isEmpty);
   });
 
-  testWidgets('a video over 200 MB is refused before anything is sent', (tester) async {
-    final client = await _pump(tester, _state(), pick: const PickedVideo(path: '/tmp/big.mov', byteSize: 250000000, contentType: 'video/quicktime', durationSeconds: 30));
+  testWidgets('a video over 100 MB is refused before anything is sent', (tester) async {
+    final client = await _pump(tester, _state(), pick: const PickedVideo(path: '/tmp/big.mov', byteSize: 120000000, contentType: 'video/quicktime', durationSeconds: 30));
     await tester.tap(find.text('Choose a video'));
     await tester.pump();
     await tester.pump();
-    expect(find.textContaining('larger than 200 MB'), findsOneWidget);
+    expect(find.textContaining('larger than 100 MB'), findsOneWidget);
     expect(client.starts, isEmpty);
   });
 

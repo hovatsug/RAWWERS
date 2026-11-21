@@ -31,6 +31,7 @@ DEFAULT_FLAG_KEYS = {
     "raww_minting_enabled",
     "raww_minting_event_gig_completed_enabled",
     "raww_minting_event_pack_sold_enabled",
+    "studioverse_enabled",
 }
 
 DEFAULT_FLAG_STATE: dict[str, bool] = {
@@ -58,15 +59,24 @@ AI_DEFAULTS_OUTSIDE_DEVELOPMENT: dict[str, bool] = {
     "ai_chat_kill_switch": True,
     "ai_calls_enabled": False,
 }
+#: Features not in the beta, on in development, off elsewhere unless an
+#: admin writes a flag row (owner, 2026-11-18). Studioverse: its creator,
+#: marketplace and checkout routes answer as unmounted routes do, because a
+#: pack's file is a storage key taken as the creator sends it
+#: (MEDIA_OWNERSHIP_AUDIT.md) - to be fixed before it ever opens.
+OFF_OUTSIDE_DEVELOPMENT: dict[str, bool] = {
+    "studioverse_enabled": False,
+}
 DEVELOPMENT_ENVS = frozenset({"development", "dev", "local", "test"})
 
 
 def default_flag_state(key: str) -> bool:
     """A flag's value when no row exists."""
-    if key in AI_DEFAULTS_OUTSIDE_DEVELOPMENT:
-        env = (get_settings().app_env or "").strip().lower()
-        if env not in DEVELOPMENT_ENVS:
-            return AI_DEFAULTS_OUTSIDE_DEVELOPMENT[key]
+    for outside_development in (AI_DEFAULTS_OUTSIDE_DEVELOPMENT, OFF_OUTSIDE_DEVELOPMENT):
+        if key in outside_development:
+            env = (get_settings().app_env or "").strip().lower()
+            if env not in DEVELOPMENT_ENVS:
+                return outside_development[key]
     return DEFAULT_FLAG_STATE.get(key, True)
 
 

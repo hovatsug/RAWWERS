@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -77,7 +77,18 @@ from app.services.i18n import get_localized_fields
 router = APIRouter(tags=["studioverse"])
 
 
-@router.post("/studioverse/packs", response_model=StudioverseCreatorPackView)
+def studioverse_open(db: Session = Depends(get_db_read_session)) -> None:
+    """Studioverse is not in the beta: outside development its user routes
+    answer exactly as a route that does not exist ({"detail": "Not Found"},
+    404), before any login check (`studioverse_enabled`, feature_flags)."""
+    if not is_feature_enabled(db, "studioverse_enabled"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+_OPEN = [Depends(studioverse_open)]
+
+
+@router.post("/studioverse/packs", response_model=StudioverseCreatorPackView, dependencies=_OPEN)
 def create_content_pack_draft(
     body: StudioversePackCreateRequest,
     user: CurrentUser = Depends(require_not_banned),
@@ -115,7 +126,7 @@ def create_content_pack_draft(
     return _creator_pack_view(db, row, locale="en-GB")
 
 
-@router.put("/studioverse/packs/{pack_id}", response_model=StudioverseCreatorPackView)
+@router.put("/studioverse/packs/{pack_id}", response_model=StudioverseCreatorPackView, dependencies=_OPEN)
 def update_content_pack_draft(
     pack_id: uuid.UUID,
     body: StudioversePackUpdateRequest,
@@ -174,7 +185,7 @@ def update_content_pack_draft(
     return _creator_pack_view(db, pack, locale="en-GB")
 
 
-@router.post("/studioverse/packs/{pack_id}/submit", response_model=StudioversePackSubmitResponse)
+@router.post("/studioverse/packs/{pack_id}/submit", response_model=StudioversePackSubmitResponse, dependencies=_OPEN)
 def submit_content_pack(
     pack_id: uuid.UUID,
     user: CurrentUser = Depends(require_not_banned),
@@ -206,7 +217,7 @@ def submit_content_pack(
     return StudioversePackSubmitResponse(id=pack.id, status=pack.status)
 
 
-@router.get("/studioverse/packs/mine", response_model=StudioversePackListResponse)
+@router.get("/studioverse/packs/mine", response_model=StudioversePackListResponse, dependencies=_OPEN)
 def list_my_content_packs(
     user: CurrentUser = Depends(require_not_banned),
     locale: str = Depends(get_locale),
@@ -217,7 +228,7 @@ def list_my_content_packs(
     return StudioversePackListResponse(total=len(rows), items=[_creator_pack_view(db, row, locale=locale) for row in rows])
 
 
-@router.get("/studioverse/packs", response_model=StudioverseMarketplaceListResponse)
+@router.get("/studioverse/packs", response_model=StudioverseMarketplaceListResponse, dependencies=_OPEN)
 def list_marketplace_packs(
     search: str | None = Query(default=None),
     category: str | None = Query(default=None),
@@ -269,7 +280,7 @@ def list_marketplace_packs(
     return StudioverseMarketplaceListResponse(total=total, items=items)
 
 
-@router.get("/studioverse/packs/{pack_id}", response_model=StudioverseMarketplacePackView)
+@router.get("/studioverse/packs/{pack_id}", response_model=StudioverseMarketplacePackView, dependencies=_OPEN)
 def marketplace_pack_detail(
     pack_id: uuid.UUID,
     user: CurrentUser = Depends(require_not_banned),
@@ -283,7 +294,7 @@ def marketplace_pack_detail(
     return _marketplace_pack_view(db, row, locale=locale)
 
 
-@router.post("/studioverse/packs/{pack_id}/checkout", response_model=StudioverseCheckoutResponse)
+@router.post("/studioverse/packs/{pack_id}/checkout", response_model=StudioverseCheckoutResponse, dependencies=_OPEN)
 def checkout_content_pack(
     pack_id: uuid.UUID,
     body: StudioverseCheckoutRequest,
@@ -374,7 +385,7 @@ def checkout_content_pack(
     return StudioverseCheckoutResponse(order=_order_view(order), payment_intent_client_secret=payment_intent_client_secret)
 
 
-@router.get("/studioverse/orders/mine", response_model=StudioverseOrdersResponse)
+@router.get("/studioverse/orders/mine", response_model=StudioverseOrdersResponse, dependencies=_OPEN)
 def list_my_studioverse_orders(
     user: CurrentUser = Depends(require_not_banned),
     db: Session = Depends(get_db_read_session),
@@ -383,7 +394,7 @@ def list_my_studioverse_orders(
     return StudioverseOrdersResponse(total=len(rows), items=[_order_view(row) for row in rows])
 
 
-@router.post("/studioverse/orders/{order_id}/download", response_model=StudioverseDownloadResponse)
+@router.post("/studioverse/orders/{order_id}/download", response_model=StudioverseDownloadResponse, dependencies=_OPEN)
 def download_content_pack(
     order_id: uuid.UUID,
     request: Request,

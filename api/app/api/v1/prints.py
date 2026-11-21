@@ -26,6 +26,7 @@ from app.schemas.prints import (
     PrintProductView,
 )
 from app.services.analytics import log_event
+from app.services.feature_flags import is_feature_enabled
 from app.services.audit import add_admin_audit_log
 from app.services.prints_fulfillment import (
     admin_set_print_order_status,
@@ -48,9 +49,20 @@ from app.services.prints_fulfillment import (
 router = APIRouter(tags=["prints_fulfillment"])
 
 
+def _prints_open(user: CurrentUser = Depends(require_not_banned), db: Session = Depends(get_db_session)) -> CurrentUser:
+    """The print store is not in the beta (BETA_SCOPE #39): every user route
+    answers as if it were not there unless `ecom_enabled` is switched on,
+    which it is not by default - as the old store's routes (store.py).
+    Before it opens, the photos a client may print must be limited to the
+    ones they chose or paid for (BETA_SCOPE #39, MEDIA_OWNERSHIP_AUDIT.md)."""
+    if not is_feature_enabled(db, "ecom_enabled", user_id=user.user_id):
+        raise APIError(code="not_found", message="Not found", status_code=404)
+    return user
+
+
 @router.get("/prints/catalog", response_model=list[PrintProductView])
 def prints_catalog(
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_prints_open),
     db: Session = Depends(get_db_session),
 ) -> list[PrintProductView]:
     rows = list_print_catalog(db)
@@ -63,7 +75,7 @@ def prints_catalog(
 def create_gig_print_order(
     gig_id: uuid.UUID,
     body: PrintOrderCreateRequest,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_prints_open),
     db: Session = Depends(get_db_session),
 ) -> PrintOrderDetailResponse:
     order = create_print_order(
@@ -86,7 +98,7 @@ def create_gig_print_order(
 def update_order(
     order_id: uuid.UUID,
     body: PrintOrderUpdateRequest,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_prints_open),
     db: Session = Depends(get_db_session),
 ) -> PrintOrderDetailResponse:
     order = update_print_order(
@@ -107,7 +119,7 @@ def update_order(
 @router.post("/prints/orders/{order_id}/pay", response_model=PrintOrderPayResponse)
 def pay_order(
     order_id: uuid.UUID,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_prints_open),
     db: Session = Depends(get_db_session),
 ) -> PrintOrderPayResponse:
     order = get_my_print_order(db, client_user_id=user.user_id, order_id=order_id)
@@ -118,7 +130,7 @@ def pay_order(
 
 @router.get("/prints/orders/mine", response_model=list[PrintOrderView])
 def my_orders(
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_prints_open),
     db: Session = Depends(get_db_session),
 ) -> list[PrintOrderView]:
     rows = list_my_print_orders(db, client_user_id=user.user_id)
@@ -129,7 +141,7 @@ def my_orders(
 @router.get("/prints/orders/{order_id}", response_model=PrintOrderDetailResponse)
 def my_order_detail(
     order_id: uuid.UUID,
-    user: CurrentUser = Depends(require_not_banned),
+    user: CurrentUser = Depends(_prints_open),
     db: Session = Depends(get_db_session),
 ) -> PrintOrderDetailResponse:
     order = get_my_print_order(db, client_user_id=user.user_id, order_id=order_id)

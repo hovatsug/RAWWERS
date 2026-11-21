@@ -14,6 +14,7 @@ const _$MediaDerivativeKindEnumMap = {
   MediaDerivativeKind.bannerTile: 'banner_tile',
   MediaDerivativeKind.bannerHero: 'banner_hero',
   MediaDerivativeKind.bannerPlaceholder: 'banner_placeholder',
+  MediaDerivativeKind.card: 'card',
   MediaDerivativeKind.shelf400: 'shelf_400',
   MediaDerivativeKind.shelf800: 'shelf_800',
   MediaDerivativeKind.shelf1600: 'shelf_1600',

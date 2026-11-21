@@ -9,6 +9,7 @@
 //         "banner_tile",
 //         "banner_hero",
 //         "banner_placeholder",
+//         "card",
 //         "shelf_400",
 //         "shelf_800",
 //         "shelf_1600"
@@ -37,6 +38,8 @@ enum MediaDerivativeKind {
   bannerHero,
   @JsonValue("banner_placeholder")
   bannerPlaceholder,
+  @JsonValue("card")
+  card,
   @JsonValue("shelf_400")
   shelf400,
   @JsonValue("shelf_800")

@@ -130,7 +130,10 @@ class FakeMuxClient:
 
 def fake_token(playback_id: str, audience: str, expires_in: int) -> str:
     exp = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-    return jwt.encode({"sub": playback_id, "aud": audience, "exp": int(exp.timestamp())}, _FAKE_TOKEN_SECRET, algorithm="HS256")
+    claims = {"sub": playback_id, "aud": audience, "exp": int(exp.timestamp())}
+    if audience == "v":  # As the real token: the cap travels inside it.
+        claims["max_resolution"] = get_settings().mux_playback_max_resolution
+    return jwt.encode(claims, _FAKE_TOKEN_SECRET, algorithm="HS256")
 
 
 def fake_token_ok(token: str | None, playback_id: str, audience: str) -> bool:

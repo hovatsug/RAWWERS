@@ -64,8 +64,17 @@ AI_DEFAULTS_OUTSIDE_DEVELOPMENT: dict[str, bool] = {
 #: marketplace and checkout routes answer as unmounted routes do, because a
 #: pack's file is a storage key taken as the creator sends it
 #: (MEDIA_OWNERSHIP_AUDIT.md) - to be fixed before it ever opens.
+#:
+#: Loaners and the older points spending (owner, 2026-11-21): no app asks
+#: for a loaner. `rewards_spend_enabled` gates only `POST /v1/rewards/spend`
+#: and `points_to_spend` on a gig's payment intent, which no app sends.
+#: Client credit at checkout (`use_credit` on the client's booking payment,
+#: services/client_credit.py) never reads it and keeps working
+#: (tests/test_beta_switches.py). `video_uploads_enabled` stays on.
 OFF_OUTSIDE_DEVELOPMENT: dict[str, bool] = {
     "studioverse_enabled": False,
+    "loaners_enabled": False,
+    "rewards_spend_enabled": False,
 }
 DEVELOPMENT_ENVS = frozenset({"development", "dev", "local", "test"})
 

@@ -15,6 +15,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 #: together - tests/test_stripe_api_version.py fails otherwise.
 STRIPE_API_VERSION = "2025-12-15.clover"
 
+#: The values Mux accepts for `max_resolution` (its "Control playback
+#: resolution" guide).
+MUX_PLAYBACK_RESOLUTIONS = ("270p", "360p", "480p", "540p", "720p", "1080p", "1440p", "2160p")
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -187,6 +191,11 @@ class Settings(BaseSettings):
     # processing and playback of a bundled sample clip, without reaching Mux.
     # Ignored in any other environment, whatever it is set to.
     mux_fake: bool = Field(default=False, alias="MUX_FAKE")
+    # The highest resolution a client is sent (owner, 2026-11-21: 720p, to save
+    # mobile data and Mux delivery cost; videos are still stored at 1080p).
+    # Mux wants it inside the signed playback token, never beside it in the
+    # URL. One of MUX_PLAYBACK_RESOLUTIONS.
+    mux_playback_max_resolution: str = Field(default="720p", alias="MUX_PLAYBACK_MAX_RESOLUTION")
     # The one line of a photographer's interview a Discover card may show.
     interview_teaser_max_chars: int = Field(default=90, alias="INTERVIEW_TEASER_MAX_CHARS")
     rate_limit_public_read_per_min: int = Field(default=120, alias="RATE_LIMIT_PUBLIC_READ_PER_MIN")
@@ -355,6 +364,12 @@ class Settings(BaseSettings):
     @property
     def email_dev_allowlist_set(self) -> frozenset[str]:
         return frozenset(a.strip().lower() for a in self.email_dev_allowlist.split(",") if a.strip())
+
+    @model_validator(mode="after")
+    def _mux_playback_resolution_is_known(self) -> "Settings":
+        if self.mux_playback_max_resolution not in MUX_PLAYBACK_RESOLUTIONS:
+            raise ValueError(f"MUX_PLAYBACK_MAX_RESOLUTION must be one of {', '.join(MUX_PLAYBACK_RESOLUTIONS)}")
+        return self
 
     @model_validator(mode="after")
     def _production_email_is_complete(self) -> "Settings":

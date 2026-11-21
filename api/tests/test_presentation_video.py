@@ -448,6 +448,40 @@ def test_playback_tokens_expire(monkeypatch):
     assert mux_fake.fake_token_ok(mux_fake.fake_token("pb_1", "v", 300), "pb_1", "v") is True
 
 
+def test_the_playback_url_caps_resolution_at_720p_inside_its_token(monkeypatch):
+    """Owner, 2026-11-21: clients get 720p at most, a setting. Mux reads the
+    cap from a signed playback id's token only; the URL carries the token
+    and nothing else. Posters carry no playback cap."""
+    from urllib.parse import parse_qs, urlsplit
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    from app.core.config import Settings
+    from app.services import mux, security
+
+    assert Settings.model_fields["mux_playback_max_resolution"].default == "720p"
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+    monkeypatch.setattr(security.settings, "mux_signing_key_private", pem.decode(), raising=False)
+    monkeypatch.setattr(security.settings, "mux_signing_key_id", "kid-1", raising=False)
+    monkeypatch.setattr(security.settings, "mux_playback_max_resolution", "720p", raising=False)
+
+    def claims_of(url, audience):
+        query = parse_qs(urlsplit(url).query)
+        assert set(query) == {"token"}, url
+        return jwt.decode(query["token"][0], key.public_key(), algorithms=["RS256"], audience=audience)
+
+    assert claims_of(mux.MuxClient().playback_url("pb_1", expires_in=300), "v")["max_resolution"] == "720p"
+    assert "max_resolution" not in claims_of(mux.MuxClient().poster_url("pb_1", expires_in=300), "t")
+    # A setting: changed without code.
+    monkeypatch.setattr(security.settings, "mux_playback_max_resolution", "480p", raising=False)
+    assert claims_of(mux.MuxClient().playback_url("pb_1", expires_in=300), "v")["max_resolution"] == "480p"
+    # Only Mux's own values are accepted.
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, MUX_PLAYBACK_MAX_RESOLUTION="900p")
+
+
 def test_the_real_mux_upload_asks_for_signed_basic_1080p(monkeypatch):
     from app.services import mux
 

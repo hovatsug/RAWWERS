@@ -66,7 +66,9 @@ def create_mux_playback_token(
 ) -> str:
     """A signed playback token (RS256): `sub` the playback id, `aud` "v" to
     play, "t" for a thumbnail, `exp`. The key id goes in the header and in the
-    claims, as Mux's examples differ on where."""
+    claims, as Mux's examples differ on where. A video token carries the
+    resolution cap (MUX_PLAYBACK_MAX_RESOLUTION): with a signed playback id,
+    Mux reads playback modifiers from the token only."""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": playback_id,
@@ -74,6 +76,7 @@ def create_mux_playback_token(
         "exp": int((now + timedelta(seconds=expires_in_seconds)).timestamp()),
         "iat": int(now.timestamp()),
         "kid": settings.mux_signing_key_id,
+        **({"max_resolution": settings.mux_playback_max_resolution} if audience == "v" else {}),
         **(extra or {}),
     }
     return jwt.encode(

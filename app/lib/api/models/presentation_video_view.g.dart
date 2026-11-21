@@ -12,6 +12,7 @@ _PresentationVideoView _$PresentationVideoViewFromJson(
   playbackUrl: json['playback_url'] as String,
   posterUrl: json['poster_url'] as String?,
   durationSeconds: (json['duration_seconds'] as num?)?.toInt(),
+  mediaAssetId: json['media_asset_id'] as String?,
 );
 
 Map<String, dynamic> _$PresentationVideoViewToJson(
@@ -20,4 +21,5 @@ Map<String, dynamic> _$PresentationVideoViewToJson(
   'playback_url': instance.playbackUrl,
   'poster_url': instance.posterUrl,
   'duration_seconds': instance.durationSeconds,
+  'media_asset_id': instance.mediaAssetId,
 };

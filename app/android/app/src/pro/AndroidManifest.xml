@@ -23,5 +23,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- Android 11+: lets image_picker find the camera app to record the
+             "Meet the photographer" video. The camera app asks for the camera
+             and microphone itself, so this app declares neither permission. -->
+        <intent>
+            <action android:name="android.media.action.VIDEO_CAPTURE" />
+        </intent>
     </queries>
 </manifest>

@@ -306,7 +306,7 @@ class _ProfileState extends State<_Profile> {
           if (profile.meet != null)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(RSpace.s16, RSpace.s8, RSpace.s16, RSpace.s16),
-              sliver: SliverToBoxAdapter(child: MeetSection(name: name, meet: profile.meet)),
+              sliver: SliverToBoxAdapter(child: MeetSection(name: name, meet: profile.meet, proUserId: profile.proUserId)),
             ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(

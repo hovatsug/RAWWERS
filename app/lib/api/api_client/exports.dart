@@ -23,6 +23,7 @@ export 'pro_onboarding_client.dart';
 export 'proof_galleries_client.dart';
 export 'repairs_client.dart';
 export 'reviews_client.dart';
+export 'presentation_video_client.dart';
 export 'search_client.dart';
 export 'scheduling_client.dart';
 export 'webhooks_client.dart';

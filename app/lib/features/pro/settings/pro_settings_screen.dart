@@ -39,6 +39,7 @@ class ProSettingsScreen extends ConsumerWidget {
     this.availabilityPath,
     this.reviewsPath,
     this.connectLightroomPath,
+    this.presentationVideoPath,
     super.key,
   });
 
@@ -57,6 +58,9 @@ class ProSettingsScreen extends ConsumerWidget {
 
   /// Pairing the Lightroom Classic plug-in.
   final String? connectLightroomPath;
+
+  /// The "Meet the photographer" video clients watch on the profile.
+  final String? presentationVideoPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -127,6 +131,14 @@ class ProSettingsScreen extends ConsumerWidget {
                         label: 'Your listing',
                         detail: 'See your card exactly as a client does',
                         onTap: () => context.push(listingPath!),
+                      ),
+                      const Divider(height: RSpace.s24),
+                    ],
+                    if (presentationVideoPath != null) ...[
+                      _NavRow(
+                        label: 'Your introduction video',
+                        detail: 'A short video clients watch on your profile',
+                        onTap: () => context.push(presentationVideoPath!),
                       ),
                       const Divider(height: RSpace.s24),
                     ],

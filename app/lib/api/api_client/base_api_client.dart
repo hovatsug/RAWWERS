@@ -121,6 +121,14 @@ class BaseApiClient {
     return ReviewsClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }
 
+  PresentationVideoClient get presentationVideoClient {
+    return PresentationVideoClient(
+      dio,
+      baseUrl: baseUrl,
+      errorLogger: errorLogger,
+    );
+  }
+
   SearchClient get searchClient {
     return SearchClient(dio, baseUrl: baseUrl, errorLogger: errorLogger);
   }

@@ -94,6 +94,7 @@ Widget _wrap({
   PayoutAccountView? payout,
   String? gearVerificationPath,
   String? connectLightroomPath,
+  String? presentationVideoPath,
 }) =>
     ProviderScope(
       overrides: [
@@ -109,6 +110,7 @@ Widget _wrap({
           verifyEmailPath: '/verify',
           gearVerificationPath: gearVerificationPath,
           connectLightroomPath: connectLightroomPath,
+          presentationVideoPath: presentationVideoPath,
         ),
       ),
     );
@@ -209,6 +211,14 @@ void main() {
     await _scrollTo(tester, find.text('Verify your gear'));
     expect(find.text('Verify your gear'), findsOneWidget);
     expect(find.text('Prove your camera and lens to go live'), findsOneWidget);
+  });
+
+  testWidgets('offers the introduction video under Your work', (tester) async {
+    await tester.pumpWidget(_wrap(presentationVideoPath: '/introduction-video'));
+    await tester.pump();
+
+    await _scrollTo(tester, find.text('Your introduction video'));
+    expect(find.text('A short video clients watch on your profile'), findsOneWidget);
   });
 
   testWidgets('offers Connect Lightroom when the app wires it', (tester) async {

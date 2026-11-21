@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rawwers/api/api_client/accountability_client.dart';
 import 'package:rawwers/api/api_client/meet_client.dart';
+import 'package:rawwers/api/api_client/presentation_video_client.dart';
 import 'package:rawwers/api/api_client/fx_client.dart';
 import 'package:rawwers/api/api_client/ai_concierge_client.dart';
 import 'package:rawwers/api/api_client/auth_client.dart';
@@ -135,6 +136,9 @@ AccountabilityClient accountabilityClient(Ref ref) => AccountabilityClient(ref.w
 
 @riverpod
 MeetClient meetClient(Ref ref) => MeetClient(ref.watch(dioProvider));
+
+@riverpod
+PresentationVideoClient presentationVideoClient(Ref ref) => PresentationVideoClient(ref.watch(dioProvider));
 
 @riverpod
 FxClient fxClient(Ref ref) => FxClient(ref.watch(dioProvider));

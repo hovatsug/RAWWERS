@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Every network call (the API, photos, the video). Only the debug and
+         profile manifests declared it, so a release build had none. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Saving a bought photo to the gallery. Android 10+ needs nothing for
          that; before it, writing to shared storage needed this. -->
     <uses-permission

@@ -26,6 +26,18 @@
 ///                 }
 ///             ],
 ///             "title": "Duration Seconds"
+///         },
+///         "media_asset_id": {
+///             "anyOf": [
+///                 {
+///                     "type": "string",
+///                     "format": "uuid"
+///                 },
+///                 {
+///                     "type": "null"
+///                 }
+///             ],
+///             "title": "Media Asset Id"
 ///         }
 ///     },
 ///     "type": "object",
@@ -33,7 +45,7 @@
 ///         "playback_url"
 ///     ],
 ///     "title": "PresentationVideoView",
-///     "description": "The slot for a photographer's presentation video. Nothing produces one\nyet: it is sent only once videos exist and PRESENTATION_VIDEO_ENABLED is on."
+///     "description": "A photographer's \"Meet the photographer\" video, sent only while they\nare live and it is ready (services/presentation_video). `playback_url` is\nsigned for five minutes; the app asks for a fresh one when tapped."
 /// }
 library presentation_video_view;
 
@@ -57,6 +69,9 @@ abstract class PresentationVideoView with _$PresentationVideoView {
     /// durationSeconds
     @JsonKey(name: PresentationVideoView.durationSecondsKey_)
     int? durationSeconds,
+
+    /// mediaAssetId
+    @JsonKey(name: PresentationVideoView.mediaAssetIdKey_) String? mediaAssetId,
   }) = _PresentationVideoView;
 
   factory PresentationVideoView.fromJson(Map<String, dynamic> json) =>
@@ -67,4 +82,6 @@ abstract class PresentationVideoView with _$PresentationVideoView {
   static const String posterUrlKey_ = r'poster_url';
 
   static const String durationSecondsKey_ = r'duration_seconds';
+
+  static const String mediaAssetIdKey_ = r'media_asset_id';
 }

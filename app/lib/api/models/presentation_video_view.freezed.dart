@@ -18,7 +18,8 @@ mixin _$PresentationVideoView {
 /// playbackUrl
 @JsonKey(name: PresentationVideoView.playbackUrlKey_) String get playbackUrl;/// posterUrl
 @JsonKey(name: PresentationVideoView.posterUrlKey_) String? get posterUrl;/// durationSeconds
-@JsonKey(name: PresentationVideoView.durationSecondsKey_) int? get durationSeconds;
+@JsonKey(name: PresentationVideoView.durationSecondsKey_) int? get durationSeconds;/// mediaAssetId
+@JsonKey(name: PresentationVideoView.mediaAssetIdKey_) String? get mediaAssetId;
 /// Create a copy of PresentationVideoView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +32,16 @@ $PresentationVideoViewCopyWith<PresentationVideoView> get copyWith => _$Presenta
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresentationVideoView&&(identical(other.playbackUrl, playbackUrl) || other.playbackUrl == playbackUrl)&&(identical(other.posterUrl, posterUrl) || other.posterUrl == posterUrl)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresentationVideoView&&(identical(other.playbackUrl, playbackUrl) || other.playbackUrl == playbackUrl)&&(identical(other.posterUrl, posterUrl) || other.posterUrl == posterUrl)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds)&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,playbackUrl,posterUrl,durationSeconds);
+int get hashCode => Object.hash(runtimeType,playbackUrl,posterUrl,durationSeconds,mediaAssetId);
 
 @override
 String toString() {
-  return 'PresentationVideoView(playbackUrl: $playbackUrl, posterUrl: $posterUrl, durationSeconds: $durationSeconds)';
+  return 'PresentationVideoView(playbackUrl: $playbackUrl, posterUrl: $posterUrl, durationSeconds: $durationSeconds, mediaAssetId: $mediaAssetId)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $PresentationVideoViewCopyWith<$Res>  {
   factory $PresentationVideoViewCopyWith(PresentationVideoView value, $Res Function(PresentationVideoView) _then) = _$PresentationVideoViewCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: PresentationVideoView.playbackUrlKey_) String playbackUrl,@JsonKey(name: PresentationVideoView.posterUrlKey_) String? posterUrl,@JsonKey(name: PresentationVideoView.durationSecondsKey_) int? durationSeconds
+@JsonKey(name: PresentationVideoView.playbackUrlKey_) String playbackUrl,@JsonKey(name: PresentationVideoView.posterUrlKey_) String? posterUrl,@JsonKey(name: PresentationVideoView.durationSecondsKey_) int? durationSeconds,@JsonKey(name: PresentationVideoView.mediaAssetIdKey_) String? mediaAssetId
 });
 
 
@@ -68,12 +69,13 @@ class _$PresentationVideoViewCopyWithImpl<$Res>
 
 /// Create a copy of PresentationVideoView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? playbackUrl = null,Object? posterUrl = freezed,Object? durationSeconds = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? playbackUrl = null,Object? posterUrl = freezed,Object? durationSeconds = freezed,Object? mediaAssetId = freezed,}) {
   return _then(_self.copyWith(
 playbackUrl: null == playbackUrl ? _self.playbackUrl : playbackUrl // ignore: cast_nullable_to_non_nullable
 as String,posterUrl: freezed == posterUrl ? _self.posterUrl : posterUrl // ignore: cast_nullable_to_non_nullable
 as String?,durationSeconds: freezed == durationSeconds ? _self.durationSeconds : durationSeconds // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,mediaAssetId: freezed == mediaAssetId ? _self.mediaAssetId : mediaAssetId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -158,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PresentationVideoView.playbackUrlKey_)  String playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_)  String? posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_)  int? durationSeconds)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: PresentationVideoView.playbackUrlKey_)  String playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_)  String? posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_)  int? durationSeconds, @JsonKey(name: PresentationVideoView.mediaAssetIdKey_)  String? mediaAssetId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PresentationVideoView() when $default != null:
-return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds);case _:
+return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds,_that.mediaAssetId);case _:
   return orElse();
 
 }
@@ -179,10 +181,10 @@ return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PresentationVideoView.playbackUrlKey_)  String playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_)  String? posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_)  int? durationSeconds)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: PresentationVideoView.playbackUrlKey_)  String playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_)  String? posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_)  int? durationSeconds, @JsonKey(name: PresentationVideoView.mediaAssetIdKey_)  String? mediaAssetId)  $default,) {final _that = this;
 switch (_that) {
 case _PresentationVideoView():
-return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds);case _:
+return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds,_that.mediaAssetId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +201,10 @@ return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PresentationVideoView.playbackUrlKey_)  String playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_)  String? posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_)  int? durationSeconds)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: PresentationVideoView.playbackUrlKey_)  String playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_)  String? posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_)  int? durationSeconds, @JsonKey(name: PresentationVideoView.mediaAssetIdKey_)  String? mediaAssetId)?  $default,) {final _that = this;
 switch (_that) {
 case _PresentationVideoView() when $default != null:
-return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds);case _:
+return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds,_that.mediaAssetId);case _:
   return null;
 
 }
@@ -214,7 +216,7 @@ return $default(_that.playbackUrl,_that.posterUrl,_that.durationSeconds);case _:
 
 @jsonSerializable
 class _PresentationVideoView extends PresentationVideoView {
-  const _PresentationVideoView({@JsonKey(name: PresentationVideoView.playbackUrlKey_) required this.playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_) this.posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_) this.durationSeconds}): super._();
+  const _PresentationVideoView({@JsonKey(name: PresentationVideoView.playbackUrlKey_) required this.playbackUrl, @JsonKey(name: PresentationVideoView.posterUrlKey_) this.posterUrl, @JsonKey(name: PresentationVideoView.durationSecondsKey_) this.durationSeconds, @JsonKey(name: PresentationVideoView.mediaAssetIdKey_) this.mediaAssetId}): super._();
   factory _PresentationVideoView.fromJson(Map<String, dynamic> json) => _$PresentationVideoViewFromJson(json);
 
 /// playbackUrl
@@ -223,6 +225,8 @@ class _PresentationVideoView extends PresentationVideoView {
 @override@JsonKey(name: PresentationVideoView.posterUrlKey_) final  String? posterUrl;
 /// durationSeconds
 @override@JsonKey(name: PresentationVideoView.durationSecondsKey_) final  int? durationSeconds;
+/// mediaAssetId
+@override@JsonKey(name: PresentationVideoView.mediaAssetIdKey_) final  String? mediaAssetId;
 
 /// Create a copy of PresentationVideoView
 /// with the given fields replaced by the non-null parameter values.
@@ -237,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PresentationVideoView&&(identical(other.playbackUrl, playbackUrl) || other.playbackUrl == playbackUrl)&&(identical(other.posterUrl, posterUrl) || other.posterUrl == posterUrl)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PresentationVideoView&&(identical(other.playbackUrl, playbackUrl) || other.playbackUrl == playbackUrl)&&(identical(other.posterUrl, posterUrl) || other.posterUrl == posterUrl)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds)&&(identical(other.mediaAssetId, mediaAssetId) || other.mediaAssetId == mediaAssetId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,playbackUrl,posterUrl,durationSeconds);
+int get hashCode => Object.hash(runtimeType,playbackUrl,posterUrl,durationSeconds,mediaAssetId);
 
 @override
 String toString() {
-  return 'PresentationVideoView(playbackUrl: $playbackUrl, posterUrl: $posterUrl, durationSeconds: $durationSeconds)';
+  return 'PresentationVideoView(playbackUrl: $playbackUrl, posterUrl: $posterUrl, durationSeconds: $durationSeconds, mediaAssetId: $mediaAssetId)';
 }
 
 
@@ -257,7 +261,7 @@ abstract mixin class _$PresentationVideoViewCopyWith<$Res> implements $Presentat
   factory _$PresentationVideoViewCopyWith(_PresentationVideoView value, $Res Function(_PresentationVideoView) _then) = __$PresentationVideoViewCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: PresentationVideoView.playbackUrlKey_) String playbackUrl,@JsonKey(name: PresentationVideoView.posterUrlKey_) String? posterUrl,@JsonKey(name: PresentationVideoView.durationSecondsKey_) int? durationSeconds
+@JsonKey(name: PresentationVideoView.playbackUrlKey_) String playbackUrl,@JsonKey(name: PresentationVideoView.posterUrlKey_) String? posterUrl,@JsonKey(name: PresentationVideoView.durationSecondsKey_) int? durationSeconds,@JsonKey(name: PresentationVideoView.mediaAssetIdKey_) String? mediaAssetId
 });
 
 
@@ -274,12 +278,13 @@ class __$PresentationVideoViewCopyWithImpl<$Res>
 
 /// Create a copy of PresentationVideoView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? playbackUrl = null,Object? posterUrl = freezed,Object? durationSeconds = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? playbackUrl = null,Object? posterUrl = freezed,Object? durationSeconds = freezed,Object? mediaAssetId = freezed,}) {
   return _then(_PresentationVideoView(
 playbackUrl: null == playbackUrl ? _self.playbackUrl : playbackUrl // ignore: cast_nullable_to_non_nullable
 as String,posterUrl: freezed == posterUrl ? _self.posterUrl : posterUrl // ignore: cast_nullable_to_non_nullable
 as String?,durationSeconds: freezed == durationSeconds ? _self.durationSeconds : durationSeconds // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,mediaAssetId: freezed == mediaAssetId ? _self.mediaAssetId : mediaAssetId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

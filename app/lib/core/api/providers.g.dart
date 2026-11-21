@@ -492,6 +492,26 @@ final meetClientProvider = AutoDisposeProvider<MeetClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MeetClientRef = AutoDisposeProviderRef<MeetClient>;
+String _$presentationVideoClientHash() =>
+    r'6707d69403bfccde88dc0bff1530e6c8775c75f8';
+
+/// See also [presentationVideoClient].
+@ProviderFor(presentationVideoClient)
+final presentationVideoClientProvider =
+    AutoDisposeProvider<PresentationVideoClient>.internal(
+      presentationVideoClient,
+      name: r'presentationVideoClientProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$presentationVideoClientHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PresentationVideoClientRef =
+    AutoDisposeProviderRef<PresentationVideoClient>;
 String _$fxClientHash() => r'9cd3c2a03e101658aa863304aade73c317f3ef6e';
 
 /// See also [fxClient].

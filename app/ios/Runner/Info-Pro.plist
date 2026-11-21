@@ -73,7 +73,13 @@
 	     rather than the mechanism, since this is what the photographer
 	     reads in the prompt. -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>RAWWERS needs access to your photos so you can add work to your portfolio.</string>
+	<string>RAWWERS needs access to your photos and videos so you can add work to your portfolio and choose your introduction video.</string>
+	<!-- Recording the "Meet the photographer" video with the camera: iOS
+	     terminates the app if either string is missing when the camera opens. -->
+	<key>NSCameraUsageDescription</key>
+	<string>RAWWERS uses the camera to record your introduction video for clients.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>RAWWERS records sound with your introduction video so clients can hear you.</string>
 	<!-- Add-only access, for a client saving photographs they have bought.
 	     Separate from the read access above, and iOS terminates the app if
 	     a save is attempted without this string. -->

@@ -233,7 +233,7 @@ def client_discover(
         limit=limit,
         offset=offset,
     )
-    items = _cards_from_index(db, rows, sharp=True)
+    items = _cards_from_index(db, rows)
     response = ClientDiscoverResponse(total=len(items), items=items, guest_limited=user is None)
     cache_set_json(cache_key, response.model_dump(mode="json"), ttl_seconds=max(10, settings.discover_cache_ttl_seconds))
 
@@ -435,9 +435,9 @@ def client_pro_profile(
         expires_in=MEDIA_URL_BASE_TTL_SECONDS,
     )
     cover_id = effective_cover_id(db, pro_user_id)
-    # The header spans the phone's width: the 2048 px web copy is sharp there
-    # and a fraction of the original's size (it used to send the original).
-    cover = resolve_sized_image_urls(db, [cover_id], sharp=True, expires_in=MEDIA_URL_BASE_TTL_SECONDS).get(cover_id)
+    # The header spans the phone's width: the card copy is sharp there and a
+    # fraction of the original's size (it used to send the original).
+    cover = resolve_sized_image_urls(db, [cover_id], expires_in=MEDIA_URL_BASE_TTL_SECONDS).get(cover_id)
 
     response = ClientProProfileResponse(
         pro_user_id=pro_user_id,
@@ -1561,7 +1561,7 @@ def pro_listing_preview(
     # stale row would show the pro yesterday's card and hide the effect of
     # the edit they just made.
     index = recompute_pro_public_index(db, user.user_id)
-    card = _cards_from_index(db, [index], sharp=True)[0]
+    card = _cards_from_index(db, [index])[0]
 
     reasons: list[str] = []
     # Discover joins ProOnboarding and requires approved_public, so a pro who
@@ -1628,13 +1628,12 @@ def _media_url_ttl() -> int:
     return MEDIA_URL_BASE_TTL_SECONDS + max(0, settings.discover_cache_ttl_seconds)
 
 
-def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex], *, sharp: bool = False) -> list[ClientDiscoverCard]:
+def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex]) -> list[ClientDiscoverCard]:
     """Build a whole page of cards with a fixed number of queries.
 
-    `sharp` for a card shown across the phone's width (the Discover list and
-    the listing preview): the cover is the 2048 px web copy, not the 512 px
-    thumbnail a home tile uses. Either way the card carries the photo's width
-    and height, so the app can lean a portrait's crop up.
+    The cover is the card copy (resolve_sized_image_urls), for the Discover
+    list, the listing preview, the home tiles and carousel alike, with the
+    photo's width and height so the app can lean a portrait's crop up.
 
     Batched rather than per-row because both callers render up to twenty cards,
     and the per-row form cost one profile lookup each before it could even
@@ -1653,7 +1652,7 @@ def _cards_from_index(db: Session, rows: Sequence[ProPublicIndex], *, sharp: boo
     # chose, otherwise one of their ready photos - never a blank card for a
     # photographer who has a photo to show.
     covers = effective_cover_ids(db, [idx.pro_user_id for idx in rows])
-    cover_images = resolve_sized_image_urls(db, covers.values(), sharp=sharp, expires_in=_media_url_ttl())
+    cover_images = resolve_sized_image_urls(db, covers.values(), expires_in=_media_url_ttl())
 
     # Shown, never ranked: the rows were ordered before this was read.
     teasers = meet_teasers(db, [idx.pro_user_id for idx in rows])

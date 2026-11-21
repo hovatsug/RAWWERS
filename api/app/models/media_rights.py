@@ -21,6 +21,10 @@ class MediaDerivativeKind(str, enum.Enum):
     banner_tile = "banner_tile"
     banner_hero = "banner_hero"
     banner_placeholder = "banner_placeholder"
+    # A portfolio photo as a card shows it (Discover card, Your listing, the
+    # profile header, home tiles and carousel): WebP, covering 1200 x 800.
+    # Portfolio photos only - never a client's proof (media_tasks.CARD_BOX).
+    card = "card"
     # A Shelf item's photo at 400, 800 and 1600 px on its long edge.
     shelf_400 = "shelf_400"
     shelf_800 = "shelf_800"

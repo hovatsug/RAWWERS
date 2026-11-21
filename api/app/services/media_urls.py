@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.media import MediaAsset, MediaKind, MediaObject, MediaStatus, MediaVariant, ObjectStatus
+from app.models.media import MediaAsset, MediaKind, MediaObject, MediaPurpose, MediaStatus, MediaVariant, ObjectStatus
 from app.models.media_rights import MediaDerivative, MediaDerivativeKind
 from app.services.storage import create_presigned_get, stable_presigned_gets
 
@@ -219,7 +219,8 @@ def resolve_niche_cover_images(
     preferred: Iterable[uuid.UUID] = (),
 ) -> dict[uuid.UUID, SizedImage]:
     """resolve_niche_cover_urls with each photo's shape (a home tile leans
-    its crop up for a portrait). The 512 px thumbnail: a tile is small."""
+    its crop up for a portrait), as resolve_sized_image_urls sends it: the
+    card copy, else the web copy, else the thumbnail."""
     wanted = {pro_id for pro_id in pro_user_ids if pro_id is not None}
     if not wanted:
         return {}
@@ -231,6 +232,7 @@ def resolve_niche_cover_images(
         .where(
             MediaAsset.owner_user_id.in_(wanted),
             MediaAsset.kind == MediaKind.photo,
+            MediaAsset.purpose == MediaPurpose.portfolio_reel,
             MediaAsset.status == MediaStatus.ready,
             MediaAsset.niche_tags.contains([niche_slug]),
             MediaObject.variant == MediaVariant.thumbnail,
@@ -244,16 +246,16 @@ def resolve_niche_cover_images(
     ).all()
 
     # First row per owner wins - their cover, else the newest tagged photo.
-    best: dict[uuid.UUID, tuple[str, uuid.UUID]] = {}
-    for owner_id, storage_key, asset_id in rows:
-        best.setdefault(owner_id, (storage_key, asset_id))
+    best: dict[uuid.UUID, uuid.UUID] = {}
+    for owner_id, _storage_key, asset_id in rows:
+        best.setdefault(owner_id, asset_id)
 
-    urls = stable_presigned_gets((key for key, _ in best.values()), expires_in)
-    sizes = _photo_sizes(db, {asset_id for _, asset_id in best.values()})
-    return {
-        owner_id: SizedImage(urls[storage_key], *sizes.get(asset_id, (None, None)))
-        for owner_id, (storage_key, asset_id) in best.items()
-    }
+    images = resolve_sized_image_urls(db, best.values(), expires_in=expires_in)
+    return {owner_id: images[asset_id] for owner_id, asset_id in best.items() if asset_id in images}
+
+
+#: What a card shows, best first: the card copy, else the web copy.
+_CARD_FIRST: tuple[MediaDerivativeKind, ...] = (MediaDerivativeKind.card, MediaDerivativeKind.web_res)
 
 
 @dataclass(frozen=True)
@@ -272,7 +274,7 @@ def _photo_sizes(db: Session, asset_ids: set[uuid.UUID]) -> dict[uuid.UUID, tupl
     copy of a photo has the same proportions, so any of them will do."""
     sizes: dict[uuid.UUID, tuple[int, int]] = {}
     for table, extra in (
-        (MediaDerivative, (MediaDerivative.kind == MediaDerivativeKind.web_res,)),
+        (MediaDerivative, (MediaDerivative.kind.in_((MediaDerivativeKind.card, MediaDerivativeKind.web_res)),)),
         (MediaObject, (MediaObject.status == ObjectStatus.ready,)),
     ):
         missing = asset_ids - sizes.keys()
@@ -293,33 +295,41 @@ def resolve_sized_image_urls(
     db: Session,
     asset_ids: Iterable[uuid.UUID | None],
     *,
-    sharp: bool,
     expires_in: int = 900,
 ) -> dict[uuid.UUID, SizedImage]:
-    """Signed URLs with each photo's shape, in a fixed number of queries.
+    """A portfolio photo as a card shows it - the Discover card, Your
+    listing, the profile header, the home tiles and carousel - with its
+    shape, in a fixed number of queries.
 
-    `sharp` is for a photo shown across a phone's width (the Discover card,
-    the listing preview, the profile header): the 2048 px web copy, which is
-    sharp at 3x where the 512 px thumbnail is visibly soft. Without it, or
-    for a photo with no web copy yet, the thumbnail (else the original), as
-    resolve_image_urls. URLs are stable across responses, so the phone's cache
-    keeps recognising the same photo."""
+    The card copy (1200 x 800 covered, WebP, about 90 KB). A photo made
+    before it existed falls back to the 2048 px web copy, then to the
+    thumbnail (else the original), so a card is never empty for a missing
+    copy. Only for photos anyone may see: the callers pass covers and
+    portfolio photos (profile_cover, resolve_niche_cover_images). URLs are
+    stable across responses, so the phone's cache keeps recognising them."""
     wanted = {asset_id for asset_id in asset_ids if asset_id is not None}
     if not wanted:
         return {}
     keys: dict[uuid.UUID, str] = {}
-    if sharp:
-        rows = db.execute(
-            select(MediaDerivative.media_asset_id, MediaDerivative.storage_key)
-            .join(MediaAsset, MediaAsset.id == MediaDerivative.media_asset_id)
-            .where(
-                MediaDerivative.media_asset_id.in_(wanted),
-                MediaDerivative.kind == MediaDerivativeKind.web_res,
-                MediaAsset.kind == MediaKind.photo,
-                MediaAsset.status == MediaStatus.ready,
-            )
-        ).all()
-        keys.update({asset_id: storage_key for asset_id, storage_key in rows})
+    rows = db.execute(
+        select(MediaDerivative.media_asset_id, MediaDerivative.kind, MediaDerivative.storage_key,
+               MediaDerivative.width, MediaDerivative.height)
+        .join(MediaAsset, MediaAsset.id == MediaDerivative.media_asset_id)
+        .where(
+            MediaDerivative.media_asset_id.in_(wanted),
+            MediaDerivative.kind.in_(_CARD_FIRST),
+            MediaAsset.kind == MediaKind.photo,
+            MediaAsset.status == MediaStatus.ready,
+        )
+    ).all()
+    ranked: dict[uuid.UUID, tuple[int, str, int | None, int | None]] = {}
+    for asset_id, kind, storage_key, width, height in rows:
+        position = _CARD_FIRST.index(kind)
+        if asset_id not in ranked or position < ranked[asset_id][0]:
+            ranked[asset_id] = (position, storage_key, width, height)
+    keys.update({asset_id: storage_key for asset_id, (_, storage_key, _w, _h) in ranked.items()})
+    # The shape of the copy sent, where it recorded one.
+    shown = {asset_id: (w, h) for asset_id, (_, _k, w, h) in ranked.items() if w and h}
     rest = wanted - keys.keys()
     if rest:
         rows = db.execute(
@@ -341,7 +351,7 @@ def resolve_sized_image_urls(
         keys.update({asset_id: storage_key for asset_id, (_, storage_key) in best.items()})
     if not keys:
         return {}
-    sizes = _photo_sizes(db, set(keys))
+    sizes = {**_photo_sizes(db, set(keys) - shown.keys()), **shown}
     urls = stable_presigned_gets(keys.values(), expires_in)
     return {
         asset_id: SizedImage(urls[storage_key], *sizes.get(asset_id, (None, None)))

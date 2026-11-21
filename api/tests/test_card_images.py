@@ -1,12 +1,12 @@
-"""Which image a photographer's cover is sent as, and its shape (cover follow-up 2026-11-18).
+"""Which image a photographer's cover is sent as, and its shape (2026-11-18, card copy 2026-11-20).
 
-The Discover card, the listing preview and the client profile header span
-the phone's width: they get the 2048 px web copy (the card had the 512 px
-thumbnail, soft at 3x; the header had the original, many times larger). A
-home tile is small and keeps the thumbnail. Each carries the photo's width
-and height so the app leans a portrait's crop up; both are optional, so an
-app that does not know them keeps working, and a photo whose size was never
-recorded is sent without them.
+Every place that shows a photographer's cover - the Discover card, the
+listing preview, the client profile header, the home tiles and carousel -
+gets the card copy (WebP covering 1200 x 800). A photo made before it
+existed falls back to the 2048 px web copy, then the thumbnail. Each carries
+the photo's width and height so the app leans a portrait's crop up; both are
+optional, so an app that does not know them keeps working, and a photo whose
+size was never recorded is sent without them.
 """
 
 import uuid
@@ -22,14 +22,19 @@ from tests.test_profile_cover import generous_limits, no_storage_deletes  # noqa
 from tests.test_delivery_gigs import fakes  # noqa: F401  (autouse fixture)
 
 
-def _sized(db, asset_id, *, width, height, web=True):
-    """The shapes processing records: the thumbnail's, and the web copy's."""
+def _sized(db, asset_id, *, width, height, web=True, card=True):
+    """The shapes processing records: the thumbnail's, the web copy's and
+    the card copy's (covering 1200 x 800)."""
     thumb = db.query(MediaObject).filter_by(media_asset_id=asset_id, variant=MediaVariant.thumbnail).one()
     scale = 512 / max(width, height)
     thumb.width, thumb.height = round(width * scale), round(height * scale)
     if web:
         db.add(MediaDerivative(media_asset_id=asset_id, kind=MediaDerivativeKind.web_res, storage_key=f"p/{asset_id}/w.jpg",
                                content_type="image/jpeg", bytes=400_000, width=width, height=height))
+    if card:
+        cover = min(1.0, max(1200 / width, 800 / height))
+        db.add(MediaDerivative(media_asset_id=asset_id, kind=MediaDerivativeKind.card, storage_key=f"p/{asset_id}/c.webp",
+                               content_type="image/webp", bytes=90_000, width=round(width * cover), height=round(height * cover)))
     db.commit()
 
 
@@ -46,19 +51,28 @@ def _live(db):
     return pro, city
 
 
-def test_the_discover_card_uses_the_web_copy_with_the_photo_shape(client, db_session):
+def test_the_discover_card_uses_the_card_copy_with_the_photo_shape(client, db_session):
     pro, city = _live(db_session)
     photo = _photo(db_session, pro)
     _sized(db_session, photo, width=1702, height=2550)
     card = _discover_card(client, pro, city)
-    assert f"p/{photo}/w.jpg" in card["cover_url"], "the card still sends the 512 px thumbnail"
+    assert f"p/{photo}/c.webp" in card["cover_url"], "the card sends the web copy or the original, not the card copy"
+    assert (card["cover_width"], card["cover_height"]) == (1200, 1798)
+
+
+def test_an_old_photo_without_a_card_copy_falls_back_to_the_web_copy(client, db_session):
+    pro, city = _live(db_session)
+    photo = _photo(db_session, pro)
+    _sized(db_session, photo, width=1702, height=2550, card=False)
+    card = _discover_card(client, pro, city)
+    assert f"p/{photo}/w.jpg" in card["cover_url"]
     assert (card["cover_width"], card["cover_height"]) == (1702, 2550)
 
 
-def test_without_a_web_copy_the_card_falls_back_to_the_thumbnail(client, db_session):
+def test_without_a_card_or_web_copy_the_card_falls_back_to_the_thumbnail(client, db_session):
     pro, city = _live(db_session)
     photo = _photo(db_session, pro)
-    _sized(db_session, photo, width=3000, height=2000, web=False)
+    _sized(db_session, photo, width=3000, height=2000, web=False, card=False)
     card = _discover_card(client, pro, city)
     assert f"p/{photo}/t.jpg" in card["cover_url"]
     assert (card["cover_width"], card["cover_height"]) == (512, 341)
@@ -77,33 +91,33 @@ def test_the_listing_preview_is_the_discover_card(client, db_session):
     photo = _photo(db_session, pro)
     _sized(db_session, photo, width=1702, height=2550)
     card = _preview(client, pro)["card"]
-    assert f"p/{photo}/w.jpg" in card["cover_url"]
-    assert (card["cover_width"], card["cover_height"]) == (1702, 2550)
+    assert f"p/{photo}/c.webp" in card["cover_url"]
+    assert (card["cover_width"], card["cover_height"]) == (1200, 1798)
 
 
-def test_the_profile_header_uses_the_web_copy_not_the_original(client, db_session):
+def test_the_profile_header_uses_the_card_copy_not_the_original(client, db_session):
     pro, city = _live(db_session)
     photo = _photo(db_session, pro)
-    _sized(db_session, photo, width=2048, height=1365)
+    _sized(db_session, photo, width=3000, height=2000)
     from app.models.admin import UserRoleType
     from tests.test_client_launch import _seed_user
 
     viewer = str(uuid.uuid4())
     _seed_user(db_session, viewer, [UserRoleType.client])
     profile = client.get(f"/v1/client/pros/{pro}", params={"country": "PT", "city": city}, headers={"X-User-Id": viewer}).json()
-    assert f"p/{photo}/w.jpg" in profile["cover_url"], "the header still sends the original"
-    assert (profile["cover_width"], profile["cover_height"]) == (2048, 1365)
+    assert f"p/{photo}/c.webp" in profile["cover_url"], "the header sends another copy"
+    assert (profile["cover_width"], profile["cover_height"]) == (1200, 800)
 
 
-def test_a_home_tile_keeps_the_thumbnail_with_its_own_photo_shape(db_session):
+def test_a_home_tile_uses_the_card_copy_with_its_own_photo_shape(db_session):
     pro = _pro(db_session)
     landscape = _photo(db_session, pro, minutes=0, tags=("portraits",))
     portrait = _photo(db_session, pro, minutes=5, tags=("portraits",))
     _sized(db_session, landscape, width=3000, height=2000)
     _sized(db_session, portrait, width=1702, height=2550)
     image = resolve_niche_cover_images(db_session, [pro], niche_slug="portraits")[pro]
-    assert f"p/{portrait}/t.jpg" in image.url, "a tile is small: the thumbnail"
-    assert (image.width, image.height) == (1702, 2550), "the shape of the photo the tile shows"
+    assert f"p/{portrait}/c.webp" in image.url, "tiles and the carousel were soft on the 512 px thumbnail"
+    assert (image.width, image.height) == (1200, 1798), "the shape of the photo the tile shows"
 
 
 def test_a_tile_showing_a_niche_photo_carries_that_photos_shape():
@@ -121,4 +135,4 @@ def test_a_tile_showing_a_niche_photo_carries_that_photos_shape():
 def test_the_sized_resolver_skips_what_is_not_ready(db_session):
     pro = _pro(db_session)
     processing = _photo(db_session, pro, objects_ready=False)
-    assert resolve_sized_image_urls(db_session, [processing, None], sharp=True) == {}
+    assert resolve_sized_image_urls(db_session, [processing, None]) == {}

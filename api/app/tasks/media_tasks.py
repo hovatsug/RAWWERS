@@ -132,13 +132,19 @@ def process_photo_variants(self, media_asset_id: str) -> None:
         web_bytes = io.BytesIO()
         web.save(web_bytes, format="JPEG", quality=88)
 
-        # The other three go up together rather than one after another: each
-        # is a separate round trip to R2, and none depends on another.
+        # The card copy, for a portfolio photo only (needs_card_copy).
+        card = card_copy(image) if needs_card_copy(asset) else None
+        card_key = generate_variant_key(original_obj.storage_key, "card", ext="webp") if card is not None else None
+        card_bytes = encode_card(card) if card is not None else None
+
+        # The others go up together rather than one after another: each is a
+        # separate round trip to R2, and none depends on another.
         _upload_all(
             [
                 (thumb_key, thumb_bytes.getvalue()),
                 (wm_share_key, wm_share_bytes.getvalue()),
                 (web_key, web_bytes.getvalue()),
+                *([(card_key, card_bytes, CARD_CONTENT_TYPE)] if card is not None else []),
             ],
             cache_control=derivative_cache_control(asset.visibility),
         )
@@ -175,6 +181,24 @@ def process_photo_variants(self, media_asset_id: str) -> None:
             height=web.height,
             bytes_size=len(web_bytes.getvalue()),
         )
+        if card is not None:
+            _upsert_derivative(
+                db,
+                media_asset_id=asset.id,
+                kind=MediaDerivativeKind.card,
+                storage_key=card_key,
+                content_type=CARD_CONTENT_TYPE,
+                width=card.width,
+                height=card.height,
+                bytes_size=len(card_bytes),
+            )
+        db.flush()
+        # Ready only with every copy it needs: a photo marked ready without
+        # one (a card falling back to the 512 px thumbnail, a gallery missing
+        # its web copy) is retried, then failed, never shown half-made.
+        missing = missing_copies(db, asset)
+        if missing:
+            raise RuntimeError("copies missing after processing: " + ", ".join(sorted(missing)))
         original_obj.status = ObjectStatus.ready
         asset.status = MediaStatus.ready
         # A delivery joins its gallery in the same commit that makes it ready,
@@ -244,11 +268,108 @@ def decode_as_srgb(blob: bytes) -> Image.Image:
     return image.convert("RGB")
 
 
-def _upload_all(objects: list[tuple[str, bytes]], cache_control: str) -> None:
-    """Upload several derivatives at once; raises if any upload failed."""
+def _upload_all(objects: list[tuple], cache_control: str) -> None:
+    """Upload several derivatives at once; raises if any upload failed. Each
+    is (key, bytes) for a JPEG, or (key, bytes, content type)."""
     with ThreadPoolExecutor(max_workers=len(objects)) as pool:
-        for future in [pool.submit(upload_object_bytes, key, payload, "image/jpeg", cache_control) for key, payload in objects]:
+        futures = [
+            pool.submit(upload_object_bytes, item[0], item[1], item[2] if len(item) > 2 else "image/jpeg", cache_control)
+            for item in objects
+        ]
+        for future in futures:
             future.result()
+
+
+#: The card copy covers this box (width, height): a 3:2 Discover card on the
+#: widest phone at about 3x (408 pt wide x 3 = 1224), the profile header
+#: (393 x 280 pt) and the home carousel (393 x 320 pt) at about 2.5x, and a
+#: 148 pt home tile at 8x. Covering, not fitting: a portrait keeps the full
+#: 1200 px width the card crops it to (1200 x 1800), a landscape the 800 px
+#: height the header and carousel need. Never enlarged.
+CARD_BOX = (1200, 800)
+#: WebP at 80: about half the bytes of JPEG at 82 on pro1's dev photos
+#: (89 KB against 173 KB). Both Flutter apps decode WebP on iOS and Android,
+#: and every browser the admin web supports does.
+CARD_QUALITY = 80
+CARD_CONTENT_TYPE = "image/webp"
+
+
+def needs_card_copy(asset: MediaAsset) -> bool:
+    """Only a portfolio photo is shown on a card. A client's proof never gets
+    one: it would be an unwatermarked 1200 px copy of a photo not yet paid
+    for, and the gallery routes never serve it."""
+    from app.models.media import MediaKind
+
+    return asset.kind == MediaKind.photo and asset.purpose == MediaPurpose.portfolio_reel
+
+
+def card_copy(image: Image.Image) -> Image.Image:
+    scale = min(1.0, max(CARD_BOX[0] / image.width, CARD_BOX[1] / image.height))
+    if scale >= 1.0:
+        return image.copy()
+    return image.resize((max(1, round(image.width * scale)), max(1, round(image.height * scale))), Image.LANCZOS)
+
+
+def encode_card(card: Image.Image) -> bytes:
+    out = io.BytesIO()
+    card.convert("RGB").save(out, format="WEBP", quality=CARD_QUALITY, method=6)
+    return out.getvalue()
+
+
+#: The derivative rows every processed photo has (full_res points at the original).
+_ALWAYS = frozenset({MediaDerivativeKind.full_res, MediaDerivativeKind.thumbnail,
+                     MediaDerivativeKind.preview_watermarked, MediaDerivativeKind.web_res})
+
+
+def required_copies(asset: MediaAsset) -> set[MediaDerivativeKind]:
+    return set(_ALWAYS) | ({MediaDerivativeKind.card} if needs_card_copy(asset) else set())
+
+
+def missing_copies(db, asset: MediaAsset) -> set[str]:
+    """The derivatives (and the thumbnail and watermark objects) this photo
+    should have and does not."""
+    have = set(db.execute(select(MediaDerivative.kind).where(MediaDerivative.media_asset_id == asset.id)).scalars())
+    missing = {kind.value for kind in required_copies(asset) - have}
+    objects = set(db.execute(select(MediaObject.variant).where(MediaObject.media_asset_id == asset.id)).scalars())
+    missing |= {variant.value for variant in (MediaVariant.thumbnail, MediaVariant.watermark_preview) if variant not in objects}
+    return missing
+
+
+def ensure_display_copies(db, asset: MediaAsset, image: Image.Image | None = None) -> list[str]:
+    """Make the web copy and, for a portfolio photo, the card copy when they
+    are missing - the repair for a photo made ready before they existed (the
+    card copy is new on 2026-11-20; the dev seed wrote photos with neither).
+    Returns what it made. The caller commits."""
+    have = set(db.execute(select(MediaDerivative.kind).where(MediaDerivative.media_asset_id == asset.id)).scalars())
+    wanted = [k for k in (MediaDerivativeKind.web_res, MediaDerivativeKind.card)
+              if k not in have and (k != MediaDerivativeKind.card or needs_card_copy(asset))]
+    if not wanted:
+        return []
+    original_obj = db.execute(
+        select(MediaObject).where(MediaObject.media_asset_id == asset.id, MediaObject.variant == MediaVariant.original)
+    ).scalar_one()
+    if image is None:
+        image = decode_as_srgb(download_object_bytes(original_obj.storage_key, max_bytes=max_photo_bytes(asset.purpose)))
+    cache_control = derivative_cache_control(asset.visibility)
+    made: list[str] = []
+    for kind in wanted:
+        if kind == MediaDerivativeKind.web_res:
+            copy = image.copy()
+            if copy.width > 2048:
+                copy.thumbnail((2048, 2048))
+            buf = io.BytesIO()
+            copy.convert("RGB").save(buf, format="JPEG", quality=88)
+            payload, content_type = buf.getvalue(), "image/jpeg"
+            key = generate_variant_key(original_obj.storage_key, "web_res")
+        else:
+            copy = card_copy(image)
+            payload, content_type = encode_card(copy), CARD_CONTENT_TYPE
+            key = generate_variant_key(original_obj.storage_key, "card", ext="webp")
+        upload_object_bytes(key, payload, content_type=content_type, cache_control=cache_control)
+        _upsert_derivative(db, media_asset_id=asset.id, kind=kind, storage_key=key, content_type=content_type,
+                           width=copy.width, height=copy.height, bytes_size=len(payload))
+        made.append(kind.value)
+    return made
 
 
 @celery_app.task(name="app.tasks.media_tasks.generate_media_derivative")
@@ -269,6 +390,10 @@ def generate_media_derivative_task(media_asset_id: str, kind: str) -> None:
             return
         if kind == MediaDerivativeKind.full_res.value:
             generate_full_res(media_asset_id)
+            return
+        if kind == MediaDerivativeKind.card.value and needs_card_copy(asset):
+            ensure_display_copies(db, asset)
+            db.commit()
             return
     finally:
         db.close()

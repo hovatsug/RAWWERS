@@ -516,6 +516,15 @@ def _build_media(db, *, owner_id: uuid.UUID, photo_id: int, index: int, niche_sl
             )
         )
     _upload(web_key, web)
+    # The card copy, as processing makes it for a real upload (best-effort,
+    # like the uploads above).
+    try:
+        from app.tasks.media_tasks import ensure_display_copies
+
+        db.flush()
+        ensure_display_copies(db, db.get(MediaAsset, asset_id), image=web)
+    except Exception:
+        pass
 
     return asset_id
 

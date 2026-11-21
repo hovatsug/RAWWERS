@@ -646,12 +646,24 @@ def _enforce_client_access(
             raise APIError(code="forbidden", message="Invalid share token", status_code=403)
         if link.gig_id != gig.id or media_asset_id not in set(share_link_asset_ids(db, link=link)):
             raise APIError(code="forbidden", message="Share token not valid for this media", status_code=403)
+        # A share link shows watermarked previews (GET /v1/share/{token});
+        # it never stood in for paying. It used to return here for any kind,
+        # so a token for a gallery's proofs fetched their originals.
+        if kind not in {MediaDerivativeKind.preview_watermarked, MediaDerivativeKind.thumbnail}:
+            raise APIError(code="forbidden", message="A share link gives previews only", status_code=403)
         return
 
     if kind in {MediaDerivativeKind.preview_watermarked, MediaDerivativeKind.thumbnail}:
         if not has_valid_entitlement(db, gig_id=gig.id, user_id=user_id, entitlement_type=GigEntitlementType.view_proofs):
             raise APIError(code="forbidden", message="Proof viewing entitlement required", status_code=403)
         return
+
+    # Any other copy (a portfolio card copy of a photo that is also in this
+    # gallery, a banner's, a Shelf item's) is not the client's to fetch from
+    # a booking: refused rather than served with no entitlement checked, as
+    # it was for every kind not named here.
+    if kind not in {MediaDerivativeKind.full_res, MediaDerivativeKind.web_res}:
+        raise APIError(code="forbidden", message="This copy is not available from a booking", status_code=403)
 
     if kind in {MediaDerivativeKind.full_res, MediaDerivativeKind.web_res}:
         has_finals = has_valid_entitlement(db, gig_id=gig.id, user_id=user_id, entitlement_type=GigEntitlementType.download_finals)

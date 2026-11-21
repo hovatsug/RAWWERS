@@ -570,6 +570,16 @@ def _ensure_portfolio_media(db: Session, user: SeedUser, profile: ProProfile, *,
                     )
                 )
             _upload_seed_image(key, size, label=user.display_name, index=idx, niche_slug=niche_slug, force=refresh_media)
+        # The web and card copies a processed photo has (best-effort, like the
+        # uploads: storage may be down). Without them a seeded photo was the
+        # one ready photo on dev with no web copy (2026-11-20).
+        try:
+            from app.tasks.media_tasks import ensure_display_copies
+
+            db.flush()
+            ensure_display_copies(db, asset)
+        except Exception:
+            pass
 
     # A pro with a portfolio but no cover is the state that made every seeded
     # Discover card image-less.

@@ -1,3 +1,13 @@
+# =====================================================================
+# DO NOT USE FOR DEPLOYS.
+# This workflow builds the WRONG images: the API image is the last
+# Dockerfile stage ("dev": test tools, runs as root), and the web image
+# has http://localhost:8000 baked in as the API address. It also skips
+# deploy/scripts/check-image.sh and uses different image names.
+# The only supported build is deploy/scripts/build-and-push.sh, as
+# docs/DEPLOY_RUNBOOK.md describes. (Notice added 2026-11-22; the fix
+# waits until after the first deploy.)
+# =====================================================================
 name: Build images (manual)
 
 # Deploys are run by hand on the server (docs/DEPLOY_RUNBOOK.md). This

@@ -52,7 +52,7 @@ readiness audit of 2026-11-21: every setting, every service, resource budget).
 5. **Brevo:** an API key for this server, and the sender address verified (Senders, Domains & Dedicated IPs). rawwers.com authenticated there (the brevo1/brevo2 DKIM records exist).
 6. **R2:** a bucket for this deployment (for example `rawwers-media-test`) and an API token for it (step 18).
 7. **Sentry (optional):** the two DSNs (`rawwers-api`, `rawwers-web`).
-8. **On the Mac:** Docker Desktop running, this repository at the agreed tag, `python3`, `dig`.
+8. **On the Mac:** Docker Desktop, for the image build of step 9 only (the Mac no longer runs the dev stack: [MAC_DOCKER_OFF.md](MAC_DOCKER_OFF.md)); this repository at the agreed tag, `python3`, `dig`.
 9. An hour and a half without interruptions for steps 0 to 14; the rest can wait for another day.
 
 ---
@@ -397,6 +397,14 @@ echo '<WRITE_PACKAGES_TOKEN>' | docker login ghcr.io -u <GITHUB_USER> --password
 ```
 (type it in the terminal, not in chat; Docker keeps it in the macOS keychain.)
 
+**Docker Desktop is for this build only.** Start it, and if the old dev containers are still there, stop them first so the build has the Mac to itself (stop, never `down`: [MAC_DOCKER_OFF.md](MAC_DOCKER_OFF.md) explains why):
+```
+cd ~/Developer/RAWWERS/api && docker compose stop && cd -
+```
+After the push below, quit Docker Desktop (Docker menu > Quit Docker Desktop).
+
+**Never use the GitHub workflow `.github/workflows/deploy.yml` for these images.** Its header says DO NOT USE FOR DEPLOYS (since 628a997): it builds the wrong stage, as root, with `http://localhost:8000` inside the web image. It stays unused until it is fixed after the first deploy; `build-and-push.sh` is the only supported build.
+
 **Do (Mac), each deploy: build from a checkout of the tag** (for this deploy `<TAG>` = `deploy-test-1`, commit 9f45c7f), so the images and the scripts that build them match the tag:
 ```
 git status --short                       # must print nothing (a clean worktree)
@@ -405,7 +413,7 @@ git describe --tags --exact-match        # must print <TAG>
 deploy/scripts/build-and-push.sh <TAG> ghcr.io/<GITHUB_USER>
 ```
 **If `git status --short` prints anything:** commit or stash it first (`git stash`), never build over it. **If `git describe` prints an error:** you are not on the tag; run the checkout again.
-**Afterwards:** `git switch -` takes you back to your branch.
+**Afterwards:** `git switch -` takes you back to your branch, and quit Docker Desktop.
 The image tag is the commit's 12 characters: for `deploy-test-1` it must say `9f45c7fa5593`.
 It builds from a clean copy of the commit (never your working folder), for
 the server's processor (linux/amd64, 10-20 minutes on the Mac), checks both

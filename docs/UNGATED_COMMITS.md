@@ -82,5 +82,15 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | f45f1e2 | 2026-11-22 | Docs: MAC_DOCKER_OFF.md | no (docs only) |
 | ce49527 | 2026-11-22 | Docs: LATER #96, the slow backend suite (finding only) | no (docs only) |
 | 6f5b996 | 2026-11-22 | Backend tests without the dev stack: native-db.sh, the manual sharded full-suite workflow, shard and merge tools, BACKEND_TESTS.md | no (tools and a manual workflow; 9 + 8 tests, 6 of 6 break checks) |
+| 6c466b9 | 2026-11-22 | Docs: UNGATED_COMMITS lists 660f235 to 6f5b996 | no (docs only) |
+| 585e108 | 2026-11-22 | Runbook: Full (strict) moves to step 13b, after Caddy serves the origin certificate | no (docs only) |
+| d8489f7 | 2026-11-22 | Runbook step 3: the SSH drop-in is 00-rawwers.conf | no (docs only) |
+| ab043fd | 2026-11-22 | Runbook step 8: the email allowlist in full from the start; LIGHTROOM_PLUGIN_LATEST_VERSION by hand for deploy-test-1 | no (docs only) |
+| cd50797 | 2026-11-22 | Runbook step 9: Docker Desktop for the image build only; never deploy.yml | no (docs only) |
+| 9d44adc | 2026-11-22 | Runbook steps 18 and 22: the R2 lifecycle rule | no (docs only) |
+| 1318ccc | 2026-11-22 | Runbook After the deploy: test world, Lightroom, Mux on RAWWERS_DEV | no (docs only) |
+| 6b1d51c | 2026-11-22 | Runbook Before the first real photographer: banners, uncapped niches, settlement delay, Mux Production | no (docs only) |
+| 9c88aee | 2026-11-22 | DEPLOY_SECRETS: before go-live, replace what was shared or temporary | no (docs only) |
+| f0f896f | 2026-11-22 | DEPLOY_CHECKLIST: Done per environment restored (lost in 0b33bb6) with four new rows | no (docs only) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.

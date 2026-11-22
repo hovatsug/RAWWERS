@@ -1,0 +1,82 @@
+# RAWWERS behind Cloudflare (docs/DEPLOY_RUNBOOK.md).
+#
+#   visitor -> Cloudflare (proxied, SSL "Full (strict)") -> Caddy -> api / web
+#
+# TLS: the Cloudflare origin certificate mounted at /certs (CADDY_TLS holds
+# "<cert> <key>"); "internal" in the local rehearsal. Caddy never asks
+# Let's Encrypt for anything.
+#
+# Caddy does NOT trust any proxy: it writes the address that connected to it
+# (a Cloudflare edge) into X-Forwarded-For, replacing anything the caller
+# sent. The API then believes CF-Connecting-IP only when that address is one
+# of Cloudflare's ranges (api/app/core/client_ip.py, TRUST_CLOUDFLARE).
+#
+# A hostname that is not listed below gets nothing: no certificate on 443
+# (the handshake fails), and the connection is closed on 80.
+
+{
+	admin 127.0.0.1:2019
+	servers {
+		# Slow uploads never go through here (they go to R2 and Mux); a
+		# request that takes longer than this is broken.
+		timeouts {
+			read_body 30s
+			read_header 10s
+			idle 2m
+		}
+	}
+}
+
+(security_headers) {
+	header {
+		# One year, these two hosts only: the old subdomains are not covered.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+		-X-Powered-By
+	}
+}
+
+{$API_HOST} {
+	tls {$CADDY_TLS}
+	import security_headers
+
+	# Not for the public: the admin API is reached only through the web
+	# admin (which calls api:8000 on the private network), the docs and
+	# metrics are off in production anyway, and the dev routes do not exist
+	# there. Answered here so a mistake in the API cannot expose them.
+	@private path /v1/admin /v1/admin/* /v1/dev/* /docs /docs/* /redoc /openapi.json /metrics /health/*
+	respond @private 404
+
+	# JSON bodies only (the API caps them at 1 MB); files go to R2 or Mux.
+	request_body {
+		max_size 5MB
+	}
+
+	reverse_proxy api:8000
+}
+
+{$ADMIN_HOST} {
+	tls {$CADDY_TLS}
+	import security_headers
+	request_body {
+		max_size 5MB
+	}
+	reverse_proxy web:3000
+}
+
+# Plain http for our two names: to https (Cloudflare's "Always Use HTTPS"
+# normally does this before a request gets here). An explicit http site is
+# needed: the catch-all below would otherwise swallow Caddy's own redirects
+# (found in the rehearsal, 2026-11-22).
+http://{$API_HOST}, http://{$ADMIN_HOST} {
+	redir https://{host}{uri} permanent
+}
+
+# Any other hostname on port 80: close the connection.
+http:// {
+	abort
+}

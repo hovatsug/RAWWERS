@@ -1,0 +1,29 @@
+# What never goes into the API image (deploy/scripts/check-image.sh checks the
+# built image too). The repository is public, but a developer's checkout is
+# not: api/.env holds real keys, and `COPY . /app` would copy it.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.crt
+id_rsa*
+secrets*
+# Tests and their fixtures, caches, local output.
+tests
+.pytest_cache
+.ruff_cache
+**/__pycache__
+*.pyc
+*.log
+.coverage
+htmlcov
+.DS_Store
+.git
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
+README.md
+docs
+Makefile

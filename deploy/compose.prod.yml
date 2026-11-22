@@ -1,88 +1,261 @@
-services:
-  postgres:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+# RAWWERS on one server: Caddy in front, the API, its Celery workers and
+# beat, the web admin, Postgres and Redis. docs/DEPLOY_RUNBOOK.md is the
+# step-by-step; this file is what it runs.
+#
+# Run it from the repository checkout on the server, always with the secrets
+# file for both the variables below and the services:
+#
+#   docker compose --env-file /opt/rawwers/.env.production -f deploy/compose.prod.yml <command>
+#
+# Images are never built here: they are built on the Mac for linux/amd64,
+# tagged with the commit, pushed to the registry and pulled (API_IMAGE,
+# WEB_IMAGE, IMAGE_TAG in the secrets file).
+#
+# Rules, held by api/tests/test_compose_prod.py:
+#   - every service has a restart policy, a memory limit, a health check and
+#     log rotation;
+#   - only Caddy publishes ports; everything else is reached on the compose
+#     network, whose subnet is pinned (TRUSTED_PROXY_IPS names it);
+#   - exactly one beat;
+#   - migrations never run at API start: `run --rm migrate` is a one-off job.
+#
+# Memory limits are sized for the 2 GB test server (docs/DEPLOY_RUNBOOK.md,
+# "Resource budget"); raise them with the server.
 
-  redis:
-    image: redis:7
-    restart: unless-stopped
-    volumes:
-      - redis_data_prod:/data
+name: rawwers
 
-  meilisearch:
-    image: getmeili/meilisearch:v1.11
-    restart: unless-stopped
-    environment:
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
-      MEILI_ENV: production
-    volumes:
-      - meili_data_prod:/meili_data
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
-  api:
-    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    env_file:
-      - ./deploy/.env.prod
-    depends_on:
-      - postgres
-      - redis
-      - meilisearch
-    ports:
-      - "8000:8000"
+x-api-env: &api-env
+  env_file:
+    - ${RAWWERS_ENV_FILE:-/opt/rawwers/.env.production}
+  environment:
+    # Built from the parts, so the password is written once (POSTGRES_PASSWORD).
+    DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-rawwers}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the secrets file}@postgres:5432/${POSTGRES_DB:-rawwers}
+    REDIS_URL: redis://redis:6379/0
+    APP_ENV: production
+    # Caddy and the web server, the only callers on this network.
+    TRUSTED_PROXY_IPS: 172.30.0.0/24
+    TRUSTED_PROXY_HOPS: "1"
+    PYTHONUNBUFFERED: "1"
+    # The commit this image was built from: /healthz shows it, Sentry tags
+    # every event with it.
+    SENTRY_RELEASE: ${IMAGE_TAG:?set IMAGE_TAG}
 
-  # Everything except photo processing. Concurrency is set, not left to
-  # Celery's default of one process per CPU on whatever host this lands on.
-  worker:
-    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q media --concurrency ${WORKER_CONCURRENCY:-4}
-    env_file:
-      - ./deploy/.env.prod
-    depends_on:
-      - postgres
-      - redis
-
-  # Photo derivatives on their own processes, so reminders, index rebuilds
-  # and outbound calls never queue in front of a photographer's upload.
-  # Each process holds a decoded original (about 135 MB for a 45 MP frame,
-  # ~300 MB at peak with its derivatives), so this is capped deliberately.
-  worker-photos:
-    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q photos --concurrency ${PHOTO_WORKER_CONCURRENCY:-4} -n photos@%h
-    env_file:
-      - ./deploy/.env.prod
-    depends_on:
-      - postgres
-      - redis
-
-  beat:
-    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/api:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    command: celery -A app.tasks.celery_app.celery_app beat -l info
-    env_file:
-      - ./deploy/.env.prod
-    depends_on:
-      - postgres
-      - redis
-
-  web:
-    image: ghcr.io/${GITHUB_REPOSITORY:-rawwers/rawwers}/web:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    env_file:
-      - ./deploy/.env.prod
-    depends_on:
-      - api
-    ports:
-      - "3000:3000"
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
-  postgres_data_prod:
-  redis_data_prod:
-  meili_data_prod:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  postgres:
+    image: postgres:16.6
+    restart: unless-stopped
+    mem_limit: 384m
+    logging: *logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rawwers}
+      POSTGRES_USER: ${POSTGRES_USER:-rawwers}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the secrets file}
+    # Sized for a 2 GB server (docs/DEPLOY_RUNBOOK.md, "Resource budget").
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=2000
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7.4
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    # Queues have no expiry, so only keys with one (cache, rate limits) may be
+    # evicted when it is full: a queued task is never thrown away.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "96mb", "--maxmemory-policy", "volatile-lru"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # A one-off job, never started by `up`: `run --rm migrate`.
+  migrate:
+    image: ${API_IMAGE:?set API_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}
+    profiles: ["jobs"]
+    restart: "no"
+    mem_limit: 512m
+    logging: *logging
+    <<: *api-env
+    command: ["alembic", "upgrade", "head"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: ${API_IMAGE:?set API_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    mem_limit: 640m
+    logging: *logging
+    <<: *api-env
+    # --no-proxy-headers: the API reads the client address itself
+    # (app/core/client_ip.py). API_WORKERS: 1 on 2 GB, 2 from 4 GB.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers", "--workers", "${API_WORKERS:-1}", "--timeout-keep-alive", "75"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Everything except photo processing.
+  worker:
+    image: ${API_IMAGE:?set API_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *logging
+    <<: *api-env
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q media -n media@%h --concurrency ${WORKER_CONCURRENCY:-2} --max-tasks-per-child 200
+    healthcheck:
+      test: ["CMD", "python", "scripts/celery_ping.py", "media"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Photo derivatives on their own process. One job holds a decoded original
+  # (about 760 MB at peak for 60 MP), so one at a time on a small server.
+  worker-photos:
+    image: ${API_IMAGE:?set API_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    mem_limit: 1024m
+    logging: *logging
+    <<: *api-env
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -Q photos -n photos@%h --concurrency ${PHOTO_WORKER_CONCURRENCY:-1} --max-tasks-per-child 50
+    healthcheck:
+      test: ["CMD", "python", "scripts/celery_ping.py", "photos"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Exactly one: two would send every periodic task twice.
+  beat:
+    image: ${API_IMAGE:?set API_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging
+    <<: *api-env
+    command: celery -A app.tasks.celery_app.celery_app beat -l info -s /tmp/celerybeat-schedule
+    # Beat writes its schedule file at least every few minutes while it runs.
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp -maxdepth 1 -name 'celerybeat-schedule*' -mmin -10 | grep -q ."]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    image: ${WEB_IMAGE:?set WEB_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    mem_limit: 384m
+    logging: *logging
+    # Only what the web needs, not the whole secrets file.
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api:8000
+      ADMIN_API_KEY: ${ADMIN_API_KEYS:?set ADMIN_API_KEYS in the secrets file}
+      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      PORT: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      api:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    environment:
+      API_HOST: ${API_HOST:-api.rawwers.com}
+      ADMIN_HOST: ${ADMIN_HOST:-admin.rawwers.com}
+      # The Cloudflare origin certificate (runbook, "TLS"); the rehearsal
+      # uses "internal", Caddy's own certificate.
+      CADDY_TLS: ${CADDY_TLS:-/certs/origin.pem /certs/origin.key}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDY_CERTS_DIR:-/opt/rawwers/certs}:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started

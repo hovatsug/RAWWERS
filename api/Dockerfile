@@ -22,6 +22,12 @@ RUN poetry config virtualenvs.create false && poetry install --no-interaction --
 
 COPY . /app
 
+# Not root: the app needs to write nothing inside /app. A user that owns
+# nothing here also cannot change the code it runs. Celery beat keeps its
+# schedule in /tmp (the compose files pass -s /tmp/celerybeat-schedule).
+RUN useradd --system --uid 10001 --no-create-home --home-dir /app rawwers
+USER 10001
+
 # --no-proxy-headers: Uvicorn never rewrites the client address from
 # X-Forwarded-For; the API decides that itself (app/core/client_ip.py,
 # TRUSTED_PROXY_IPS).
@@ -37,4 +43,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-pro
 # the lean image, so production cannot acquire test dependencies by accident.
 FROM runtime AS dev
 
+# Development and the test runner keep root, as before: they mount the
+# checkout and write into it. Only the shipped `runtime` stage drops it.
+USER root
 RUN poetry install --no-interaction --no-ansi --with dev --no-root

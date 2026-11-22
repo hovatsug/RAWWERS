@@ -1,10 +1,12 @@
-name: Deploy
+name: Build images (manual)
 
+# Deploys are run by hand on the server (docs/DEPLOY_RUNBOOK.md). This
+# workflow used to deploy by itself on every push to main and every v* tag,
+# and copied the example env file over the server's real one; both jobs are
+# gone (2026-11-21). What is left builds and pushes the two images when
+# started by hand from the Actions tab. CI image builds for the runbook are a
+# LATER row (BETA_SCOPE).
 on:
-  push:
-    branches: [main]
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -60,91 +62,3 @@ jobs:
         with:
           name: release-notes
           path: release_notes.md
-
-  deploy-staging:
-    if: github.ref == 'refs/heads/main'
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Pre-deploy release gate
-        env:
-          GATE_HEALTH_URL: ${{ secrets.STAGING_HEALTH_URL }}
-          GATE_READY_URL: ${{ secrets.STAGING_READY_URL }}
-          GATE_PROMETHEUS_URL: ${{ secrets.STAGING_PROMETHEUS_URL }}
-          GATE_PROMETHEUS_TOKEN: ${{ secrets.STAGING_PROMETHEUS_TOKEN }}
-        run: python3 deploy/release_gate.py --env staging --fail-open-if-no-metrics
-
-      - name: Deploy to staging host
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            mkdir -p /opt/rawwers/deploy
-            cd /opt/rawwers
-            if [ ! -d .git ]; then
-              git clone ${{ secrets.DEPLOY_REPO_URL }} .
-            fi
-            git fetch --all
-            git checkout ${{ github.sha }}
-            cp deploy/.env.staging.example deploy/.env.staging || true
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}|" deploy/.env.staging || echo "IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}" >> deploy/.env.staging
-            docker compose --env-file deploy/.env.staging -f deploy/compose.staging.yml pull
-            docker compose --env-file deploy/.env.staging -f deploy/compose.staging.yml up -d
-
-      - name: Post-deploy release gate
-        env:
-          GATE_HEALTH_URL: ${{ secrets.STAGING_HEALTH_URL }}
-          GATE_READY_URL: ${{ secrets.STAGING_READY_URL }}
-          GATE_PROMETHEUS_URL: ${{ secrets.STAGING_PROMETHEUS_URL }}
-          GATE_PROMETHEUS_TOKEN: ${{ secrets.STAGING_PROMETHEUS_TOKEN }}
-        run: python3 deploy/release_gate.py --env staging
-
-  deploy-production:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Pre-deploy production release gate
-        env:
-          GATE_HEALTH_URL: ${{ secrets.PROD_HEALTH_URL }}
-          GATE_READY_URL: ${{ secrets.PROD_READY_URL }}
-          GATE_PROMETHEUS_URL: ${{ secrets.PROD_PROMETHEUS_URL }}
-          GATE_PROMETHEUS_TOKEN: ${{ secrets.PROD_PROMETHEUS_TOKEN }}
-        run: python3 deploy/release_gate.py --env production
-
-      - name: Deploy to production host
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.PROD_DEPLOY_HOST }}
-          username: ${{ secrets.PROD_DEPLOY_USER }}
-          key: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
-          script: |
-            mkdir -p /opt/rawwers/deploy
-            cd /opt/rawwers
-            if [ ! -d .git ]; then
-              git clone ${{ secrets.PROD_DEPLOY_REPO_URL }} .
-            fi
-            git fetch --all
-            git checkout ${{ github.ref_name }}
-            cp deploy/.env.prod.example deploy/.env.prod || true
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}|" deploy/.env.prod || echo "IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}" >> deploy/.env.prod
-            docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml pull
-            docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml up -d
-
-      - name: Post-deploy production release gate
-        env:
-          GATE_HEALTH_URL: ${{ secrets.PROD_HEALTH_URL }}
-          GATE_READY_URL: ${{ secrets.PROD_READY_URL }}
-          GATE_PROMETHEUS_URL: ${{ secrets.PROD_PROMETHEUS_URL }}
-          GATE_PROMETHEUS_TOKEN: ${{ secrets.PROD_PROMETHEUS_TOKEN }}
-        run: python3 deploy/release_gate.py --env production

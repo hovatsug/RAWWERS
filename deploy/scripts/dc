@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# dc: `docker compose` for the RAWWERS production stack, with the right files.
+#
+#   deploy/scripts/dc ps
+#   deploy/scripts/dc logs --tail 50 api
+#   deploy/scripts/dc run --rm migrate
+#
+# Same as: docker compose --env-file /opt/rawwers/.env.production -f deploy/compose.prod.yml <your words>
+# RAWWERS_ENV_FILE points it at another secrets file (the local rehearsal does).
+set -euo pipefail
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then sed -n '2,9p' "$0"; exit 0; fi
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="${RAWWERS_ENV_FILE:-/opt/rawwers/.env.production}"
+if [[ ! -r "$ENV_FILE" ]]; then
+  echo "dc: cannot read the secrets file $ENV_FILE (run as root, or make it first: runbook step 'The secrets file')." >&2
+  exit 2
+fi
+export RAWWERS_ENV_FILE="$ENV_FILE"
+exec docker compose --env-file "$ENV_FILE" -f "$HERE/../compose.prod.yml" "$@"

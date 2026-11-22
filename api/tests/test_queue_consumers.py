@@ -8,8 +8,8 @@ passed. This reads the real routing table and the real compose files, so a
 new route, or a stack that forgets a worker, fails here instead.
 
 "Actually runs" is read from the workflows (every `-f <compose file>` they
-invoke) plus the local dev stack, rather than listed by hand - a list here
-would be one more thing to forget to update.
+invoke) plus the local dev stack and the two server stacks, which are started
+by hand (docs/DEPLOY_RUNBOOK.md).
 """
 import re
 from pathlib import Path
@@ -27,7 +27,9 @@ def _running_compose_files() -> list[Path]:
         f"{WORKFLOWS} not found: this test reads the repository's workflows and compose files, "
         "so it must run from a full checkout (CI does)"
     )
-    files = {DEV_STACK}
+    # The production and staging stacks are started by hand on the server
+    # (docs/DEPLOY_RUNBOOK.md), not by a workflow, so they are listed here.
+    files = {DEV_STACK, REPO / "deploy" / "compose.prod.yml", REPO / "deploy" / "compose.staging.yml"}
     for workflow in WORKFLOWS.glob("*.y*ml"):
         for match in re.finditer(r"-f\s+(\S*compose[\w.-]*\.ya?ml)", workflow.read_text()):
             files.add(REPO / match.group(1))

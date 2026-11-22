@@ -70,5 +70,17 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | 12249d7 | 2026-11-22 | Docs: names the deploy-test-1 commit (9f45c7f) in the runbook, audit and UNGATED_COMMITS | no (docs only) |
 | 176f729 | 2026-11-22 | Docs: owner's answers (pound caps PROVISIONAL for the test deploy, launch review with UK photographers; Postgres 4 GB settings before the first real photographer); old IP deleted with protection off; images built from a clean checkout of the tag | no (docs only) |
 | d80606f | 2026-11-22 | Docs: LATER #95, the check-image test failure seen once; what to watch at GATE 2 | no (docs only) |
+| 660f235 | 2026-11-22 | Docs: UNGATED_COMMITS lists 12249d7, 176f729, d80606f | no (docs only) |
+| 628a997 | 2026-11-22 | CI: deploy.yml header DO NOT USE FOR DEPLOYS (comment only) | no (a comment) |
+| 6d657d4 | 2026-11-22 | Docs: WORKING_AGAINST_THE_SERVER.md (the server as the one test environment) | no (docs only) |
+| 474e93e | 2026-11-22 | Apps against the server: env/*.server.example.json, tools/app run scripts, app/README | no (app config and scripts; 7 Dart + 12 script tests, 4 of 4 break checks) |
+| d8f0c95 | 2026-11-22 | Lightroom: tools/lightroom/build-for-server.sh (build.sh unchanged); checklist section for the server | no (a wrapper; 8 tests, 3 of 3 break checks, one real build) |
+| e3a0f86 | 2026-11-22 | Deploy template: LIGHTROOM_PLUGIN_LATEST_VERSION=1.2.5 for the next tag | no (template; test_deploy_scripts.py whole file passes) |
+| 7c449ca | 2026-11-22 | Docs: test guides against the server (Stage 1 loop, video, Mux on RAWWERS_DEV, cover, Brevo, integration tests) | no (docs only) |
+| b423e68 | 2026-11-22 | Docs: the server checkout is /opt/rawwers/src | no (docs only) |
+| 7042e3b | 2026-11-22 | Test world: docs/TEST_WORLD.md; tools/server/enable-city.py and set-settlement-delay.py; DEPLOY_CHECKLIST go-live row | **yes** (scripts that write to the server's database, through the audited admin handlers; 18 tests against the tag's API code, 3 of 3 break checks) |
+| f45f1e2 | 2026-11-22 | Docs: MAC_DOCKER_OFF.md | no (docs only) |
+| ce49527 | 2026-11-22 | Docs: LATER #96, the slow backend suite (finding only) | no (docs only) |
+| 6f5b996 | 2026-11-22 | Backend tests without the dev stack: native-db.sh, the manual sharded full-suite workflow, shard and merge tools, BACKEND_TESTS.md | no (tools and a manual workflow; 9 + 8 tests, 6 of 6 break checks) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.

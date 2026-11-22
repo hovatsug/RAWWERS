@@ -486,5 +486,5 @@ firewall, snapshots and backups; the registry push and pull.
 | Server size | Resize to 4 GB before the first start (runbook step 1b); 2 GB the fallback | Section 6: the photo worker peak |
 | New primary IPv4 | Yes, at the rebuild (runbook step 0b); the old one released only after the deploy works | The old address is in the repository's git history (finding 5) |
 | `DEFAULT_CONNECT_COUNTRY` | PT for the test deploy, no code change | Decided again before a UK launch (MULTI_CURRENCY.md, M6 item 6) |
-| Tag | `deploy-test-1`, annotated; its commit is recorded in UNGATED_COMMITS.md right after tagging | The commit every check of this audit was run against |
+| Tag | `deploy-test-1`, annotated, on 9f45c7fa5593 (2026-11-22) | The commit every check of this audit was run against |
 

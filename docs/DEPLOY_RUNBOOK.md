@@ -39,7 +39,7 @@ readiness audit of 2026-11-21: every setting, every service, resource budget).
 | Server size | **Resize to 4 GB before the first start** (step 1b); 2 GB is the fallback | The photo worker alone peaks near 900 MB on a large proof; on 2 GB that is the first thing to run out of memory |
 | New primary IPv4 | **Yes** (step 0b) | The old address is in this public repository's history; a new one is not |
 | `DEFAULT_CONNECT_COUNTRY` | **PT for the test deploy** (unchanged) | Decided again before a UK launch (MULTI_CURRENCY.md, M6) |
-| The tag | **`deploy-test-1`**, an annotated tag; its commit is recorded in [UNGATED_COMMITS.md](UNGATED_COMMITS.md) right after tagging (a commit cannot name itself). Check: `git rev-parse --short=12 deploy-test-1^{commit}` | The commit every step of this runbook was checked against |
+| The tag | **`deploy-test-1`**, an annotated tag on commit **`9f45c7fa5593`** (recorded in [UNGATED_COMMITS.md](UNGATED_COMMITS.md) in the commit after it, since a commit cannot name itself). Check: `git rev-parse --short=12 deploy-test-1^{commit}` prints `9f45c7fa5593` | The commit every step of this runbook was checked against |
 
 ---
 
@@ -259,7 +259,7 @@ chmod 700 /opt/rawwers/certs /var/backups/rawwers
 git clone https://github.com/<GITHUB_USER>/RAWWERS.git /opt/rawwers/src
 cd /opt/rawwers/src && git checkout <TAG> && git log -1 --oneline
 ```
-**You should see:** the commit of `<TAG>`.
+**You should see:** the commit of `<TAG>` (for `deploy-test-1`: `9f45c7f`).
 **If not:** check the tag exists on GitHub (`git ls-remote --tags origin` on the Mac).
 **Undo:** `rm -rf /opt/rawwers/src`.
 

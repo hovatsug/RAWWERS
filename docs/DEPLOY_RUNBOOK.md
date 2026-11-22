@@ -215,8 +215,8 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y unattended-upgrades fail2ban c
 # Security updates every day, by themselves.
 printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' > /etc/apt/apt.conf.d/20auto-upgrades
 systemctl enable --now unattended-upgrades fail2ban
-# SSH: keys only.
-printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/99-rawwers.conf
+# SSH: keys only. 00- so it is read first: sshd keeps the first value it reads.
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/00-rawwers.conf
 sshd -t && systemctl reload ssh
 # 2 GB swap: a safety net for memory peaks, not extra memory.
 fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
@@ -226,9 +226,10 @@ echo 'vm.swappiness=10' > /etc/sysctl.d/99-swap.conf && sysctl -p /etc/sysctl.d/
 timedatectl set-timezone UTC && timedatectl set-ntp true
 echo "basics done"
 ```
+**Why `00-rawwers.conf`:** for each setting, sshd uses the **first** value it reads, and it reads the files in `/etc/ssh/sshd_config.d/` in name order. A cloud image may already carry a file there that says `PasswordAuthentication yes` (for example `50-cloud-init.conf`); a file named `99-` would be read after it and ignored. `00-` is read first.
 **You should see:** `basics done`. Then, **in a second terminal on the Mac, keeping the first one open**: `ssh root@<SERVER_IP> echo ok` prints `ok`.
-**If not:** in the first terminal (still connected), `rm /etc/ssh/sshd_config.d/99-rawwers.conf && systemctl reload ssh`, and tell the developer.
-**Check:** `bash /root/server-baseline.sh` now shows swap 2.0G, `clock synchronised: yes`, `passwordauthentication no`, fail2ban `active`.
+**If not:** in the first terminal (still connected), `rm /etc/ssh/sshd_config.d/00-rawwers.conf && systemctl reload ssh`, and tell the developer.
+**Check:** `bash /root/server-baseline.sh` now shows swap 2.0G, `clock synchronised: yes`, **`passwordauthentication no`** (if it says `yes`, an earlier file still wins: `ls /etc/ssh/sshd_config.d/` and tell the developer), fail2ban `active`.
 **Undo:** the SSH file as above; `swapoff /swapfile && rm /swapfile` and remove the line from `/etc/fstab`.
 
 ---

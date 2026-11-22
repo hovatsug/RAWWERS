@@ -67,5 +67,8 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | 47f71c4 | 2026-11-22 | Bootstrap prints PROVISIONAL on the pound price caps' line (owner not yet approved) | **yes** (a script run on the server; test_bootstrap_reference_data.py 3 whole file; 2 of 2 break checks) |
 | d71a518 | 2026-11-22 | Docs: deploy decisions of 2026-11-22, new primary IP (runbook 0b), GitHub cleanup (0c), resize before the first start (1b), image architecture check (9b), changing reference data, Access steps; M6 connect country; pound caps provisional; LATER #94 | no (docs only) |
 | 9f45c7f | 2026-11-22 | Docs: UNGATED_COMMITS lists 874c4ea, 47f71c4, d71a518. **Tagged `deploy-test-1`** (annotated; the commit the first test deploy uses) | no (docs only) |
+| 12249d7 | 2026-11-22 | Docs: names the deploy-test-1 commit (9f45c7f) in the runbook, audit and UNGATED_COMMITS | no (docs only) |
+| 176f729 | 2026-11-22 | Docs: owner's answers (pound caps PROVISIONAL for the test deploy, launch review with UK photographers; Postgres 4 GB settings before the first real photographer); old IP deleted with protection off; images built from a clean checkout of the tag | no (docs only) |
+| d80606f | 2026-11-22 | Docs: LATER #95, the check-image test failure seen once; what to watch at GATE 2 | no (docs only) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.

@@ -34,25 +34,42 @@ tool/
   check_flavor_isolation.dart   enforces the client/pro import boundary above
   filter_openapi.dart           F-2's tag/path-prefix OpenAPI filter
 env/
-  client.example.json / pro.example.json   committed templates
-  client.json / pro.json                   gitignored, your local values
+  client.server.example.json / pro.server.example.json   committed templates for the test server
+  client.example.json / pro.example.json                 committed templates for a local API
+  *.server.json / client.json / pro.json                 gitignored, your values
 ```
 
 ## Setup
 
+The apps run against the test server, `https://api.rawwers.com`
+(docs/WORKING_AGAINST_THE_SERVER.md). Once:
+
 ```
-cp env/client.example.json env/client.json
-cp env/pro.example.json env/pro.json
-# edit env/*.json to point at your local API, if not http://localhost:8000
+cp env/client.server.example.json env/client.server.json
+cp env/pro.server.example.json env/pro.server.json
+# in env/client.server.json: your Stripe TEST publishable key (pk_test_...)
 flutter pub get
 ```
 
 ## Run
 
+From the repository root, against the server (simulator or a real phone;
+hot reload works):
+
 ```
-flutter run --flavor client -t lib/main_client.dart --dart-define-from-file=env/client.json
-flutter run --flavor pro -t lib/main_pro.dart --dart-define-from-file=env/pro.json
+tools/app/run-client-server.sh
+tools/app/run-pro-server.sh
 ```
+
+They check the file first (https, not this Mac, a test key, not the
+placeholder) and then run `flutter run --flavor <app> -t lib/main_<app>.dart
+--dart-define-from-file=env/<app>.server.json`; any extra words go to
+`flutter run` (for example `-d <device id>`). Their tests:
+`tools/app/test_run_against_server.sh`.
+
+Against a local API instead (only if you run one; the Mac no longer does by
+default): `cp env/client.example.json env/client.json` and
+`flutter run --flavor client -t lib/main_client.dart --dart-define-from-file=env/client.json`.
 
 ## Codegen
 
@@ -63,6 +80,20 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 Generated `*.g.dart` files are committed.
+
+**Regenerating the API client (`make gen-api`)** reads the API's OpenAPI
+schema. Its default source is a local API (`http://localhost:8000/openapi.json`),
+and the test server does not publish the schema (API docs are off). Export it
+from the code instead, then pass the file (the same export CI makes):
+
+```
+cd ../api && python -c "import json; from app.main import app; json.dump(app.openapi(), open('openapi.local.json', 'w'), indent=2)"
+cd ../app && make gen-api OPENAPI_SOURCE=../api/openapi.local.json
+rm ../api/openapi.local.json
+```
+
+The export needs the API's Python packages (the environment
+`tools/tests/native-db.sh` sets up).
 
 **Riverpod is pinned to 2.6.1** (`flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`) â€” deliberately, not just "not yet updated." The latest `riverpod_annotation` (4.x) has no `riverpod_generator` release that resolves against this Flutter SDK's pinned `meta`/Dart version (`flutter pub add` fails version solving). Don't bump these past `2.6.1` without first confirming a compatible `riverpod_generator` exists for the Flutter version in use.
 
@@ -110,7 +141,7 @@ Debug-only logging (`debug_log_interceptor.dart`) logs method/URL/status only â€
 
 `test/core/api/integration_transport_test.dart` and `test/core/auth/integration_auth_flow_test.dart` are tagged `integration` and run against a real backend. They run only on request:
 - an ordinary `flutter test` skips the tag (`dart_test.yaml`), and CI excludes it (`--exclude-tags=integration`)
-- run them with `api/` up on this machine (`docker compose up`, a development or test `APP_ENV`):
+- they cannot run against the test server: it has no `/v1/dev` routes and is not this machine. They need a local API (`docker compose up` in `api/`, a development or test `APP_ENV`), which the Mac no longer runs day to day; running them in GitHub against a throwaway stack is a LATER job:
 
       flutter test --tags integration --run-skipped
 

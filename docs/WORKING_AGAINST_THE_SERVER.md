@@ -14,7 +14,7 @@ What the server is: a TEST deployment (`DEPLOYMENT_MODE=test`). Stripe in
 test mode, email only to the addresses in `EMAIL_DEV_ALLOWLIST`, no dev login
 shortcut, no `/v1/dev/*` routes, no API docs, Mux not set up yet.
 
-Server commands are run by you, in `/opt/rawwers/app` on the server, after
+Server commands are run by you, in `/opt/rawwers/src` on the server, after
 `ssh root@<SERVER_IP>`. `deploy/scripts/dc` is `docker compose` with the
 server's files (see the runbook). An agent working on the code never logs in
 to the server: it writes the exact command, you run it and paste the output.

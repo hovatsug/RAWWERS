@@ -108,8 +108,12 @@ server is powered off**.
    **You should see:** the new address twice (on `eth0`, and from ifconfig.me).
    **If not:** the Hetzner console's own terminal (server > Console) still works; power off, check the assignment in Primary IPs, power on.
 8. **Everywhere the address is used**, use the new one: Cloudflare DNS `api` and `admin` (step 6a), Brevo authorised IPs (step 16), your SSH commands. The Hetzner firewall (step 2) is attached to the **server**, not to an address, and its rules name only Cloudflare's ranges and your home address: nothing to change there.
-9. **Release the old address, only after step 22 is all ticked:** IPs > Primary IPs > the old IPv4: if it shows a lock, switch Protection off first; then **Delete** it. Hetzner bills every primary IP that exists, assigned or not, until it is deleted.
-   **Before deleting:** in Cloudflare DNS, search for `<OLD_SERVER_IP>`: no record may still name it.
+9. **Release the old address, only after step 22 is all ticked:**
+   1. **Before deleting:** in Cloudflare DNS, search for `<OLD_SERVER_IP>`: no record may still name it.
+   2. IPs > Primary IPs > the old IPv4 > switch **Protection off** first. Hetzner will not delete a protected IP: with the lock on, Delete is refused or greyed out.
+   3. Then **Delete** it.
+   **Why not leave it:** the old IP keeps costing money every month until it is deleted, assigned or not (unassigning is not enough).
+   **You should see:** it is gone from IPs > Primary IPs; only `rawwers-ipv4` is left, with its lock.
 
 **Undo (before step 9 only):** power off, unassign `rawwers-ipv4`, assign the old IPv4 back, power on. After step 9 the old address is gone for good.
 
@@ -389,11 +393,16 @@ echo '<WRITE_PACKAGES_TOKEN>' | docker login ghcr.io -u <GITHUB_USER> --password
 ```
 (type it in the terminal, not in chat; Docker keeps it in the macOS keychain.)
 
-**Do (Mac), each deploy:**
+**Do (Mac), each deploy: build from a checkout of the tag** (for this deploy `<TAG>` = `deploy-test-1`, commit 9f45c7f), so the images and the scripts that build them match the tag:
 ```
-git fetch && git checkout <TAG>
+git status --short                       # must print nothing (a clean worktree)
+git fetch --tags && git checkout <TAG>
+git describe --tags --exact-match        # must print <TAG>
 deploy/scripts/build-and-push.sh <TAG> ghcr.io/<GITHUB_USER>
 ```
+**If `git status --short` prints anything:** commit or stash it first (`git stash`), never build over it. **If `git describe` prints an error:** you are not on the tag; run the checkout again.
+**Afterwards:** `git switch -` takes you back to your branch.
+The image tag is the commit's 12 characters: for `deploy-test-1` it must say `9f45c7fa5593`.
 It builds from a clean copy of the commit (never your working folder), for
 the server's processor (linux/amd64, 10-20 minutes on the Mac), checks both
 images (not root, no `.env`, no key, no secret-looking value) and pushes.
@@ -685,6 +694,17 @@ deploy/scripts/dc up -d
 - **On this test deployment** (no real data) the simplest full rollback is: restore the backup taken before the deploy (step 21, "Restore a backup for real"), then set the old `IMAGE_TAG`.
 
 **Whole server:** Hetzner console > the server > Snapshots > the last good snapshot > Rebuild from it (erases everything since).
+
+---
+
+## Before the first real photographer
+
+Done on the test deploy as it is; required before a real photographer signs up:
+1. **4 GB of memory** (step 1b, or "Resize the server for the beta" below).
+2. **Raise the Postgres memory settings to the 4 GB values.** The test deploy keeps the 2 GB settings (owner, 2026-11-22). A developer changes them in `deploy/compose.prod.yml` (the `postgres` service), in a commit with a new tag: `shared_buffers=256MB`, `effective_cache_size=1536MB`, `work_mem=8MB`, `maintenance_work_mem=128MB`, and the container's `mem_limit` raised to fit (DEPLOY_AUDIT.md, "Resource budget"). Then build and deploy that tag (step 9) and `deploy/scripts/dc up -d postgres`.
+   **You should see:** `deploy/scripts/dc exec postgres psql -U rawwers -c 'show shared_buffers'` prints `256MB`.
+   **Undo:** deploy the previous tag again.
+3. **The pound price caps reviewed with UK photographers** and then approved or corrected (PRICE_CAPS.md, "Before launch").
 
 ---
 

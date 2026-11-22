@@ -1,6 +1,6 @@
 # Price caps: euros today, pounds proposed
 
-Written 2026-11-15. **The pound caps are PROVISIONAL: the owner has not approved them** (still so on 2026-11-22). They are a proposal to correct, not final. The production bootstrap (`api/scripts/bootstrap_reference_data.py`) prints `PROVISIONAL` on their line; `--skip-price-caps` leaves them out.
+Written 2026-11-15. **The pound caps are PROVISIONAL: the owner has not approved them** (still so on 2026-11-22). They are a proposal to correct, not final. **2026-11-22: the owner approved them as PROVISIONAL for the test deploy only**; they stay marked provisional. The production bootstrap (`api/scripts/bootstrap_reference_data.py`) prints `PROVISIONAL` on their line; `--skip-price-caps` leaves them out.
 
 ## How caps work
 
@@ -80,6 +80,10 @@ Written 2026-11-15. **The pound caps are PROVISIONAL: the owner has not approved
 4. **Weddings rookie is the lowest cap:** €4.00, proposed £3.50 per photo. This is by design (high volume per shoot). It is listed because it is the cap most likely to feel low to a UK wedding photographer.
 5. **Family and Events & Nightlife are almost identical** (they differ only at pro and elite). That may be intended.
 6. **The extra-photo price bounds** (`extra_image_pricing_policy`) are a separate table and are not covered here.
+
+## Before launch
+
+- [ ] **Review the pound caps with UK photographers** (the owner), then approve them or correct them in the admin (Settings > Price caps > GBP). Until then they stay PROVISIONAL here, in the bootstrap's output and in DEPLOY_CHECKLIST.
 
 ## Applying corrections
 

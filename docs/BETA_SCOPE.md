@@ -343,3 +343,7 @@ Bug fixes, such as #19 (dated), go in when found.
   - Import the camera reference and set `settlement_delay_days`.
   - Run the BI backfill.
   - Keep `shelf_enabled` off.
+- **Before the first real photographer** (DEPLOY_RUNBOOK, "Before the first real photographer"; owner, 2026-11-22):
+  - The server on 4 GB.
+  - Raise the Postgres memory settings to the 4 GB values (the test deploy keeps the 2 GB ones).
+  - The pound price caps reviewed with UK photographers (PROVISIONAL until then).

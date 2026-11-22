@@ -9,7 +9,7 @@
 # plain words what is missing or wrong. Needs `dig` (macOS has it; Ubuntu:
 # apt-get install dnsutils). Exit 0: nothing wrong found. Exit 1: problems.
 set -uo pipefail
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then sed -n '2,11p' "$0"; exit 0; fi
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then sed -n '2,10p' "$0"; exit 0; fi
 DOMAIN="${1:-rawwers.com}"
 DIG="${DIG:-dig}"
 RESOLVER="${RESOLVER:-1.1.1.1}"

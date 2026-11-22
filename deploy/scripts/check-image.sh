@@ -3,16 +3,23 @@
 #
 #   deploy/scripts/check-image.sh <image:tag> [<image:tag> ...]
 #
-# For each image: it must not run as root; it must hold no .env file, no
+# For each image: it must be built for the server's processor (linux/amd64;
+# EXPECT_PLATFORM changes that); it must not run as root; it must hold no .env file, no
 # private key and nothing that looks like a live secret (Stripe, Brevo,
 # private-key blocks); and it prints its size. build-and-push.sh runs it
 # before every push. Exit 0: all clean. Exit 1: something found (listed).
 set -uo pipefail
-if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then sed -n '2,9p' "$0"; [[ $# -eq 0 ]] && exit 2 || exit 0; fi
+if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then sed -n '2,10p' "$0"; [[ $# -eq 0 ]] && exit 2 || exit 0; fi
 status=0
 for image in "$@"; do
   echo "== $image"
   user=$(docker image inspect -f '{{.Config.User}}' "$image" 2>/dev/null) || { echo "FAIL  no such image"; status=1; continue; }
+  platform=$(docker image inspect -f '{{.Os}}/{{.Architecture}}' "$image")
+  if [[ "$platform" != "${EXPECT_PLATFORM:-linux/amd64}" ]]; then
+    echo "FAIL  built for $platform, the server needs ${EXPECT_PLATFORM:-linux/amd64} (it would stop with 'exec format error')"; status=1
+  else
+    echo "ok    built for $platform"
+  fi
   if [[ -z "$user" || "$user" == "root" || "$user" == "0" || "$user" == 0:* ]]; then
     echo "FAIL  runs as root (Config.User='${user}')"; status=1
   else

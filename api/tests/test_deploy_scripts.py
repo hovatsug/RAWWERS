@@ -90,3 +90,47 @@ def test_backup_refuses_docker_storage(tmp_path):
     done = _run(["bash", str(SCRIPTS / "backup-now.sh")], env=env)
     assert done.returncode == 2
     assert "refuse" in done.stderr
+
+
+def _fake_docker(tmp_path, platform: str) -> dict:
+    """A `docker` that answers check-image.sh's questions about one image
+    without Docker: user 10001, the given platform, nothing found inside."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "docker"
+    fake.write_text(
+        "#!/usr/bin/env bash\n"
+        'case "$*" in\n'
+        '  *Config.User*) echo 10001 ;;\n'
+        f'  *Architecture*) echo {platform} ;;\n'
+        '  *Size*) echo 1048576 ;;\n'
+        '  *) : ;;\n'
+        "esac\n"
+    )
+    fake.chmod(0o755)
+    return {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+
+
+def test_check_image_refuses_an_image_for_another_processor(tmp_path):
+    env = _fake_docker(tmp_path, "linux/arm64")
+    done = _run(["bash", str(SCRIPTS / "check-image.sh"), "example/rawwers-api:test"], env=env)
+    assert done.returncode == 1, done.stdout
+    assert "built for linux/arm64" in done.stdout and "exec format error" in done.stdout
+
+    (tmp_path / "amd64").mkdir()
+    env = _fake_docker(tmp_path / "amd64", "linux/amd64")
+    done = _run(["bash", str(SCRIPTS / "check-image.sh"), "example/rawwers-api:test"], env=env)
+    assert done.returncode == 0, done.stdout
+    assert "ok    built for linux/amd64" in done.stdout
+
+
+def test_build_and_push_builds_for_the_server_and_checks_those_images():
+    text = (SCRIPTS / "build-and-push.sh").read_text()
+    assert 'PLATFORM="linux/amd64"' in text
+    assert "${PLATFORM:-" not in text, "the platform is never taken from the environment"
+    builds = [line for line in text.splitlines() if line.startswith("docker buildx build")]
+    assert len(builds) == 2 and all('--platform "$PLATFORM"' in b for b in builds)
+    assert '-t "$API_TAG"' in builds[0] and '-t "$WEB_TAG"' in builds[1]
+    assert 'EXPECT_PLATFORM="$PLATFORM" "$HERE/check-image.sh" "$API_TAG" "$WEB_TAG"' in text
+    # The check runs before any push.
+    assert text.index("check-image.sh\" \"$API_TAG\"") < text.index('docker push "$API_TAG"')

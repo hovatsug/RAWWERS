@@ -13,10 +13,11 @@ mode, no real users, email delivered only to your own addresses
 off-server backups yet (batch 4), no staging server.
 
 Placeholders, never written into the repository with real values:
-`<SERVER_IP>` the server's IPv4 address, `<GITHUB_USER>` your GitHub name,
+`<SERVER_IP>` the server's **new** IPv4 address (step 0b), `<OLD_SERVER_IP>`
+the address it had before, `<GITHUB_USER>` your GitHub name,
 `<YOUR_EMAIL>` your own address, `<YOUR_HOME_IP>` the address you connect
-from (https://ifconfig.me shows it), `<TAG>` the commit tag agreed for this
-deploy, `<COMMIT>` the 12-character commit build-and-push.sh prints.
+from (https://ifconfig.me shows it), `<TAG>` the tag agreed for this
+deploy (the first test deploy: **`deploy-test-1`**, see the decisions table), `<COMMIT>` the 12-character commit build-and-push.sh prints.
 
 Commands marked **Mac** run in the repository on your Mac. Commands marked
 **server** run on the server after `ssh root@<SERVER_IP>`.
@@ -25,6 +26,20 @@ Other documents: [DEPLOY_SECRETS.md](DEPLOY_SECRETS.md) (every secret, and
 rotating), [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) (the checklist behind
 this runbook, flags, the Mux steps), [DEPLOY_AUDIT.md](DEPLOY_AUDIT.md) (the
 readiness audit of 2026-11-21: every setting, every service, resource budget).
+
+## Decisions for this deploy (owner, 2026-11-22)
+
+| Decision | Chosen | Why |
+|---|---|---|
+| Image registry | GitHub Container Registry, **private** packages (step 9) | You already have the account; the server only needs a read-only token; nothing public |
+| TLS | **Cloudflare origin certificate**, SSL mode **Full (strict)** (step 6b) | Free, 15 years, no renewal job and no API token on the server; Cloudflare checks the certificate on every request |
+| Admin protection | **Cloudflare Access with email one-time PIN**, on `admin.rawwers.com` only (step 7) | The app has no 2FA; your home address changes, so an IP allowlist would lock you out; Access adds a second factor in front of the login, with nothing to build |
+| API docs | **Off** (`API_DOCS_ENABLED` unset; the API refuses to start if it is on) | The API is public; its full map helps attackers and nobody needs it on the server |
+| Workers | **4 GB:** API 2, media worker 2, photo worker 1. **2 GB fallback:** API 1, media 2, photos 1 (the compose defaults) | Measured in the rehearsal (DEPLOY_AUDIT.md section 6) |
+| Server size | **Resize to 4 GB before the first start** (step 1b); 2 GB is the fallback | The photo worker alone peaks near 900 MB on a large proof; on 2 GB that is the first thing to run out of memory |
+| New primary IPv4 | **Yes** (step 0b) | The old address is in this public repository's history; a new one is not |
+| `DEFAULT_CONNECT_COUNTRY` | **PT for the test deploy** (unchanged) | Decided again before a UK launch (MULTI_CURRENCY.md, M6) |
+| The tag | **`deploy-test-1`**, an annotated tag; its commit is recorded in [UNGATED_COMMITS.md](UNGATED_COMMITS.md) right after tagging (a commit cannot name itself). Check: `git rev-parse --short=12 deploy-test-1^{commit}` | The commit every step of this runbook was checked against |
 
 ---
 
@@ -46,7 +61,11 @@ readiness audit of 2026-11-21: every setting, every service, resource budget).
 
 **Do (Hetzner console):** Servers > the server > Rebuild > Ubuntu 24.04 > select your SSH key > Rebuild. This erases everything on it, including the old projects and `/opt/caddy`. That is intended.
 
-**Do (Mac):** wait two minutes, then
+Then do **step 0b (the new address, below)** before logging in. In this runbook,
+`<SERVER_IP>` always means the **new** address from step 0b; `<OLD_SERVER_IP>`
+is the one the server has today.
+
+**Do (Mac), after step 0b:** wait two minutes, then
 ```
 ssh-keygen -R <SERVER_IP>        # forget the old server's fingerprint
 ssh root@<SERVER_IP>             # answer "yes" to the new fingerprint
@@ -58,9 +77,56 @@ scp deploy/scripts/server-baseline.sh root@<SERVER_IP>:/root/
 # server:
 bash /root/server-baseline.sh
 ```
-**You should see:** `Ubuntu 24.04`, about 2 GB memory, 40 GB disk, port 80 and 443 `free`, `docker: not installed`, `/opt/caddy: not there (good)`.
+**You should see:** `Ubuntu 24.04`, about 2 GB memory (4 GB after step 1b), 40 GB disk, port 80 and 443 `free`, `docker: not installed`, `/opt/caddy: not there (good)`. (The new address was already checked in step 0b, part 7.)
 **If not:** paste the whole output to the developer and stop.
 **Undo:** nothing to undo.
+
+### 0b. A new primary IPv4 address
+
+Why: the server's current address is in this public repository's git history
+(an old Makefile). A new address costs about EUR 0.50 a month and makes that
+leak useless. The steps follow Hetzner's documentation ("Primary IPs",
+docs.hetzner.com/cloud/servers/primary-ips/overview and
+.../getting-started/creating-primary-ips, read 2026-11-22). Hetzner's rule:
+a server's primary IPs can only be added, removed or replaced **while the
+server is powered off**.
+
+1. **Write down the old address:** Hetzner console > the server > Overview: the IPv4 shown is `<OLD_SERVER_IP>`. Keep it in your notes (not in the repository) until step 6.
+2. **Create the new one:** left menu **IPs** > upper menu **Primary IPs** > **Create Primary IP**. Name `rawwers-ipv4`, **Location: the same as the server (Nuremberg)** (an IP can only go to a server in its own location), protocol **IPv4** > **Add & buy now**.
+   **You should see:** `rawwers-ipv4` in the list, unassigned, with a new address. That is `<SERVER_IP>` from now on.
+3. **Protect it:** open `rawwers-ipv4` and switch on **Protection** (a lock icon then shows in the list). A protected IP cannot be deleted by accident, and a server holding one cannot be deleted either.
+4. **Power the server off:** the server > **Power** > **Power off**. Wait until it shows off.
+5. **Swap the address:** in **IPs > Primary IPs**, on the **old** IPv4 open its actions menu (the "⋯" at the end of its row) and **unassign** it from the server. Then on `rawwers-ipv4` open the same menu and **assign** it to the server. (Hetzner's pages describe the rule but not these two button names; if your screen words them differently, the menu is the same place. If you cannot find them, stop and ask.)
+   Leave the server's IPv6 as it is.
+6. **Power on:** the server > **Power** > **Power on**.
+   **You should see:** the server's Overview lists the **new** IPv4. Hetzner: "Changing/assigning the Primary IPv4 does not require any manual configurations" inside the server.
+7. **Check from the Mac:**
+   ```
+   ssh-keygen -R <OLD_SERVER_IP>; ssh-keygen -R <SERVER_IP>
+   ssh root@<SERVER_IP> 'ip -br -4 addr show scope global; curl -4 -s https://ifconfig.me; echo'
+   ```
+   **You should see:** the new address twice (on `eth0`, and from ifconfig.me).
+   **If not:** the Hetzner console's own terminal (server > Console) still works; power off, check the assignment in Primary IPs, power on.
+8. **Everywhere the address is used**, use the new one: Cloudflare DNS `api` and `admin` (step 6a), Brevo authorised IPs (step 16), your SSH commands. The Hetzner firewall (step 2) is attached to the **server**, not to an address, and its rules name only Cloudflare's ranges and your home address: nothing to change there.
+9. **Release the old address, only after step 22 is all ticked:** IPs > Primary IPs > the old IPv4: if it shows a lock, switch Protection off first; then **Delete** it. Hetzner bills every primary IP that exists, assigned or not, until it is deleted.
+   **Before deleting:** in Cloudflare DNS, search for `<OLD_SERVER_IP>`: no record may still name it.
+
+**Undo (before step 9 only):** power off, unassign `rawwers-ipv4`, assign the old IPv4 back, power on. After step 9 the old address is gone for good.
+
+### 0c. Remove the old deploy secrets from GitHub
+
+The old automatic deploy (removed in this release) used repository secrets
+that name the old server and hold an SSH key that could log in to it. The
+rebuild already made that key useless on the server; remove the copies too.
+
+**Do (GitHub, the repository):**
+1. **Settings > Secrets and variables > Actions > Repository secrets.** Delete each of these that exists: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_REPO_URL`, `PROD_DEPLOY_HOST`, `PROD_DEPLOY_USER`, `PROD_DEPLOY_SSH_KEY`, `PROD_DEPLOY_REPO_URL`, `PROD_HEALTH_URL`, `PROD_READY_URL`, `PROD_PROMETHEUS_URL`, `PROD_PROMETHEUS_TOKEN`, `STAGING_HEALTH_URL`, `STAGING_READY_URL`, `STAGING_PROMETHEUS_URL`, `STAGING_PROMETHEUS_TOKEN`. Also look at the **Variables** tab for any of these names, and delete them there.
+2. **Settings > Environments:** open `production` and `staging` (if they exist) and delete their secrets and variables, then the environments themselves (nothing uses them now).
+3. **Settings > Deploy keys:** delete any key made for the old server.
+4. **Your Mac:** if `~/.ssh` holds a key made only for that GitHub deploy, delete it.
+
+**You should see:** no repository or environment secret that names a server, a deploy or Prometheus. `GITHUB_TOKEN` is not one of yours (GitHub makes it per run) and is not listed.
+**Undo:** none needed; nothing uses these any more (`.github/workflows/deploy.yml` builds images by hand only).
 
 ### Safety line: only if you did NOT rebuild
 
@@ -82,6 +148,27 @@ ss -tlnp '( sport = :80 or sport = :443 )'                   # must list nothing
 **You should see:** the snapshot listed after a minute or two; Backups "enabled".
 **If not:** try again; nothing depends on it yet.
 **Undo:** delete the snapshot / disable backups in the same place.
+
+---
+
+## Step 1b. Resize to 4 GB before the first start (recommended)
+
+The test deploy is meant to run on **4 GB**. 2 GB still works for an empty
+test, but it is the risky fallback: the photo worker alone needs up to about
+900 MB while it processes one large proof, and on 2 GB that pushes the server
+into swap or makes the kernel kill a container in the middle of a delivery
+(DEPLOY_AUDIT.md section 6). Doing it now, while nothing runs, costs no
+downtime for anyone.
+
+**Do (Hetzner console):** after the snapshot of step 1:
+1. The server > **Rescale**. Choose the next size that shows **4 GB** of RAM in the same family (the screen lists RAM and the monthly price for each).
+2. Choose **"CPU and RAM only"** (keeps the 40 GB disk, so you can go back down later). Rescale. The server powers off, resizes and starts: 2-5 minutes.
+3. **Mac:** `ssh root@<SERVER_IP> free -h`
+**You should see:** `Mem: total` about `3.7Gi`-`3.8Gi`.
+**If not:** the Rescale screen shows an error, or the old size is still listed: try again; nothing is installed yet.
+**Undo:** Rescale back to the 2 GB size (possible only because the disk was not grown). Then in step 8 leave `API_WORKERS` at 1.
+
+**If you skip it (2 GB):** keep the compose defaults (API 1 worker, media 2, photos 1), do not deliver large photo sets, and resize before the first real photographer ("Resize the server", near the end).
 
 ---
 
@@ -187,9 +274,10 @@ From now on, every server command runs in `/opt/rawwers/src`, and
 
 1. **Add** `A api <SERVER_IP>` **Proxied** (orange cloud).
 2. **Add** `A admin <SERVER_IP>` **Proxied**.
-3. **Remove the old web records** that point at `<SERVER_IP>`: `app`, `dani`, `pact`, `recastwebs`, `ritagame`, `rocket`, and the root `rawwers.com` (and `www` if it points there). Only A/AAAA/CNAME records whose content is the server's address. **Never touch** MX, TXT, `zmail._domainkey`, `brevo1/brevo2._domainkey`, `_dmarc`, the Brevo verification record, or anything under `send.pact` and `resend._domainkey.pact` (another project).
+3. **Remove the old web records** that point at `<OLD_SERVER_IP>` (the address before step 0b): `app`, `dani`, `pact`, `recastwebs`, `ritagame`, `rocket`, and the root `rawwers.com` (and `www` if it points there). Only A/AAAA/CNAME records whose content is the server's old IPv4 or its IPv6.
+4. **AAAA records:** filter the list by type **AAAA**. Delete any AAAA record whose content is the server's IPv6 (Hetzner console > the server > Overview shows it). `api` and `admin` get **no** AAAA record: Cloudflare already answers visitors over IPv6 for proxied names. **Never touch** MX, TXT, `zmail._domainkey`, `brevo1/brevo2._domainkey`, `_dmarc`, the Brevo verification record, or anything under `send.pact` and `resend._domainkey.pact` (another project).
 
-**You should see:** `api` and `admin` with an orange cloud; no other record with content `<SERVER_IP>`.
+**You should see:** `api` and `admin`, type A, content `<SERVER_IP>` (the new address), orange cloud. Searching the records for `<OLD_SERVER_IP>` finds nothing; no AAAA record names the server's IPv6.
 **Undo:** re-add a record (write down each one you delete: name, type, content, proxied).
 
 ### 6b. TLS: Full (strict) with a Cloudflare origin certificate
@@ -234,16 +322,28 @@ solve a browser challenge.
 
 ## Step 7. Protect the admin: Cloudflare Access
 
-Recommended over an IP allowlist (your address changes) and over building 2FA
-(not needed: Access gives a second factor today).
+Decided 2026-11-22: Cloudflare Access with an email one-time PIN, on
+**`admin.rawwers.com` only**. Never on `api.rawwers.com`: the apps and the
+webhooks could not pass it. Menu names follow Cloudflare's documentation as
+of 2026-11 ("Zero Trust > Access controls"); older screens call the same
+place "Access > Applications".
 
-1. Cloudflare dashboard > **Zero Trust** (free for up to 50 users) > Settings > Authentication: make sure **One-time PIN** is a login method.
-2. Access > Applications > Add an application > **Self-hosted**: name `RAWWERS admin`, domain `admin.rawwers.com` (no path), session 24 hours.
-3. Policy: name `owner`, action **Allow**, include **Emails** = `<YOUR_EMAIL>`. Save.
+1. **One-time PIN on:** Cloudflare dashboard > **Zero Trust** (free for up to 50 users; the first visit asks for a team name and the Free plan) > **Integrations** > **Identity providers**. Under **Your identity providers**: if **One-time PIN** is not listed, **Add new identity provider** > **One-time PIN**.
+2. **The policy:** **Zero Trust** > **Access controls** > **Policies** > **Add a policy**.
+   - Policy name `owner`, Action **Allow**, Session duration **24 hours**.
+   - Rules > **Include** > selector **Emails** > value `<YOUR_EMAIL>` (add a second address of your own if you want one). Save.
+   - **Never** use the selector **Everyone**, or **Login Methods = One-time PIN**, in Include: either lets anyone with an email address in.
+3. **The application:** **Zero Trust** > **Access controls** > **Applications** > **Create new application** > **Self-hosted and private**.
+   - Name `RAWWERS admin`. **Add public hostname**: subdomain `admin`, domain `rawwers.com`, path empty.
+   - Access policies: select `owner`.
+   - Identity providers: **One-time PIN**. Leave "Apply instant authentication" off.
+   - Session Duration **24 hours**. **Create**.
+   Cloudflare's own warning applies: "All Access applications are deny by default"; only your address gets through.
 
-**You should see (after step 14):** in a private browser window, `https://admin.rawwers.com` shows Cloudflare's login page; a code arrives by email; then the RAWWERS admin login.
-**If not:** check the application's domain is exactly `admin.rawwers.com`.
-**Undo:** delete the application.
+**You should see (after step 14):** in a private browser window, `https://admin.rawwers.com` shows Cloudflare's login page. Enter your address > **Send login code**; the code arrives from `noreply@notify.cloudflare.com` and lasts 10 minutes; paste it > **Sign in**; then the RAWWERS admin login.
+**Check that strangers are kept out:** enter an address that is not in the policy: the page still says "A code has been emailed to you", but no mail arrives (that is how Cloudflare hides who is allowed). Also: Access controls > Applications > `RAWWERS admin` > Edit > Policies > **Policy tester** with your address (it works once you have logged in once).
+**If not:** check the public hostname is exactly `admin.rawwers.com` and the policy is attached to the application. No code arriving: look in spam for `notify.cloudflare.com`.
+**Undo:** delete the application (the admin is then protected only by its own login).
 
 **Before real people get emails (not now):** the web admin also serves the
 pages email links open (`/unsubscribe`, `/reset-password`, `/verify-email`,
@@ -263,7 +363,7 @@ deploy/scripts/generate-secrets.sh                 # writes /opt/rawwers/.env.pr
 grep -n '^[A-Z].*<FROM' /opt/rawwers/.env.production | cut -d= -f1    # what you still fill in (12 lines)
 nano /opt/rawwers/.env.production
 ```
-Fill every `<FROM ...>` line: the images (from step 9), Stripe **test** key, R2 (step 18 makes the bucket and token), Brevo, `EMAIL_DEV_ALLOWLIST` (your own addresses), and `STRIPE_WEBHOOK_SECRET`: make the two Stripe webhook destinations **now** (step 15, part 1: Stripe accepts them before the server answers) and put both signing secrets in. Leave every `MUX_*` empty. [DEPLOY_SECRETS.md](DEPLOY_SECRETS.md) says where each value comes from.
+Fill every `<FROM ...>` line: the images (from step 9), Stripe **test** key, R2 (step 18 makes the bucket and token), Brevo, `EMAIL_DEV_ALLOWLIST` (your own addresses), and `STRIPE_WEBHOOK_SECRET`: make the two Stripe webhook destinations **now** (step 15, part 1: Stripe accepts them before the server answers) and put both signing secrets in. Leave every `MUX_*` empty. **On 4 GB (step 1b) also set `API_WORKERS=2`**; on 2 GB leave it out (1). [DEPLOY_SECRETS.md](DEPLOY_SECRETS.md) says where each value comes from.
 The API, workers and beat refuse to start while any required value is missing, and list them; that is the check that the file is complete.
 
 **You should see:** `ls -l /opt/rawwers/.env.production` shows `-rw-------` (root only).
@@ -314,6 +414,26 @@ cd /opt/rawwers/src && deploy/scripts/dc pull
 
 ---
 
+## Step 9b. Check the images are for the server's processor
+
+The server is x86 (`linux/amd64`). An image built for another processor
+(for example `linux/arm64` on an Apple-silicon Mac without the script) pulls
+fine but cannot start. build-and-push.sh always builds `linux/amd64` and
+check-image.sh refuses anything else, so this is the last look before the
+first start.
+
+**Do (server):**
+```
+cd /opt/rawwers/src
+uname -m
+for i in $(deploy/scripts/dc config --images | sort -u); do docker image inspect -f '{{.Os}}/{{.Architecture}}  {{index .RepoTags 0}}' "$i"; done
+```
+**You should see:** `x86_64`, then `linux/amd64` on **every** line (rawwers-api, rawwers-web, postgres, redis, caddy).
+**If not, or later the symptom:** a container keeps restarting and `deploy/scripts/dc logs --tail 5 <service>` shows `exec format error` (for example `exec /usr/local/bin/uvicorn: exec format error`). **Fix:** on the Mac run `deploy/scripts/build-and-push.sh <TAG> ghcr.io/<GITHUB_USER>` again (never a plain `docker build`), then on the server `deploy/scripts/dc pull` and run this check again.
+**Undo:** nothing to undo.
+
+---
+
 ## Step 10. Start the database and Redis
 
 **Do (server):**
@@ -347,9 +467,28 @@ deploy/scripts/dc run --rm migrate alembic current
 deploy/scripts/dc run --rm api python scripts/bootstrap_reference_data.py
 deploy/scripts/dc run --rm api python scripts/bootstrap_reference_data.py   # again: everything "skipped"
 ```
-**You should see:** the first run: niches `skipped 12` (the migrations made them), then `created` tax rule GB 1, interview questions 5, camera models 98, lens models 13, price caps EUR 40 and GBP 40; then `Done: 197 row(s) added.` The second run: `created 0` everywhere and `Nothing to add`.
+**You should see:** the first run: niches `skipped 12` (the migrations made them), then `created` tax rule GB 1, interview questions 5, camera models 98, lens models 13, price caps EUR 40 and GBP 40; then `Done: 197 row(s) added.` The GBP line ends with `PROVISIONAL: not approved by the owner (docs/PRICE_CAPS.md)`: correct, they are a proposal until you approve them. The second run: `created 0` everywhere and `Nothing to add`.
 **If not:** `FAILED, nothing written:` and the reason; nothing was changed.
-**Undo:** not needed (reference rows only). The pound price caps are still a proposal (docs/PRICE_CAPS.md); an admin can change them in the web admin.
+**Undo:** not needed (reference rows only).
+**If you do not want the provisional pound caps on the server yet:** run it with `--skip-price-caps` instead, and load the caps later through the web admin (below).
+
+### Changing reference data later
+
+Running the bootstrap again never changes a row that exists (by design: an
+admin may have edited it). So a change is made one of these ways, never by
+editing the CSV files and re-running, and never with SQL by hand:
+
+| What | How to change it safely | Recorded |
+|---|---|---|
+| Price caps (per niche, tier, currency) | Web admin > **Settings > Price caps**: choose the currency, edit the cells (or **Import CSV…**), **Review** shows every change from-to, **Save caps** | yes, admin audit log |
+| Camera models (which bodies are full-frame) | Web admin > **Settings > Camera reference**: add, edit, or import | yes |
+| "Meet the photographer" interview questions | Web admin > **Settings > Interview questions** | yes |
+| Niches (name, banner) | Web admin > **Settings > Niche banners**; other niche fields through the admin API (`PUT /v1/admin/niches`) | yes |
+| Upload limits, video size, worker counts and other settings | The secrets file (`/opt/rawwers/.env.production`), then `deploy/scripts/dc up -d --force-recreate api worker worker-photos beat`; `version.sh` shows the switches | no (write the change in your notes) |
+| The UK VAT row (rate, threshold) | **No safe way yet**: no admin screen, no script option. LATER #94 (BETA_SCOPE.md). Until then ask the developer; it would be a one-line migration | — |
+| Lens models | **No screen**: same as the VAT row, LATER #94 | — |
+
+Before any of these on a server with real data: `deploy/scripts/backup-now.sh`.
 
 ---
 
@@ -517,6 +656,9 @@ deploy/scripts/dc up -d
 - [ ] `https://api.rawwers.com/docs` and `/openapi.json` answer 404; `http://api.rawwers.com` redirects to https.
 - [ ] A backup exists in `/var/backups/rawwers`, and restore-test passed.
 - [ ] A Hetzner snapshot after the deploy: `rawwers-test-deploy-<date>`.
+- [ ] The server's Overview shows the new IPv4; then (step 0b, part 9) the old primary IPv4 is deleted and no DNS record names it.
+- [ ] GitHub: no old deploy secrets, environments or deploy keys (step 0c).
+- [ ] `free -h` shows about 3.8 GiB (step 1b), or you chose 2 GB on purpose.
 
 ---
 
@@ -548,7 +690,7 @@ deploy/scripts/dc up -d
 
 ## Resize the server for the beta
 
-When: before the first real photographers (see DEPLOY_AUDIT.md, "Resource budget": 2 GB has no room for a large photo delivery).
+Only if you stayed on 2 GB at step 1b. When: before the first real photographers (see DEPLOY_AUDIT.md, "Resource budget": 2 GB has no room for a large photo delivery).
 1. Take a snapshot (step 1).
 2. Hetzner console > the server > **Rescale** > choose the next size with **4 GB** or more > **"CPU and RAM only"** (keeps the 40 GB disk, so you can go back down later) > Rescale. The server is switched off, resized and started: about 2-5 minutes of downtime.
 3. Docker starts by itself; every container restarts (`restart: unless-stopped`). Check `deploy/scripts/dc ps`.

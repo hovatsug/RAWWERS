@@ -672,6 +672,7 @@ The owner's own figures (2026-11-16: Y 21.76, 22.64, 23.07, 23.29; X 24.16, 25.0
    3. **the full service agreement for UK connected accounts** (9, #2; 10.2), with Stripe's written confirmation of cross-border eligibility;
    4. **a GBP settlement account in the company's name** (Wise or Revolut Business; UK sort code and account number), linked for Multi-Currency Settlement (9, #1; such accounts can see more payout failures, 9.1);
    5. **Stripe's answers to the open fee questions** (9.1).
+   6. **The connected-account country** (owner, 2026-11-22): `DEFAULT_CONNECT_COUNTRY` is **PT** for the test deploy (unchanged; no code change). Before a UK launch, decide: **GB as the default**, or **a choice the photographer must make** (no default). Then test the onboarding of a GBP photographer end to end in Stripe test mode (Express onboarding of a GB account, `account.updated`, a GBP package, charge, transfer, payout), and record the result here.
 
 **Total: about 11.5 agent-days** (8 before, plus M7, M8 and M9). Batches 1 to 8 can start once the owner approves the design; M6 waits.
 
@@ -717,7 +718,7 @@ The owner's own figures (2026-11-16: Y 21.76, 22.64, 23.07, 23.29; X 24.16, 25.0
 
 - **The monthly marketing budget in pounds stays at £300.00** (`monthly_marketing_credit_budget_gbp`, the default M4 set; an admin setting, adjustable).
 - **`raww_gbp_value` stays unset until the Shelf opens.** Pound bookings keep valuing RAWW at the day's euro value converted at the ECB rate (decision M5's fallback, built in M3).
-- **The pound price caps** are proposed in [PRICE_CAPS.md](PRICE_CAPS.md) (the euro caps at the ECB rate of 2026-11-13, rounded) for the owner to correct. They are on dev only. Production is loaded from the same files through the admin, once they are confirmed.
+- **The pound price caps are PROVISIONAL (the owner has not approved them; still so on 2026-11-22).** They are proposed in [PRICE_CAPS.md](PRICE_CAPS.md) (the euro caps at the ECB rate of 2026-11-13, rounded) for the owner to correct. The production bootstrap (`scripts/bootstrap_reference_data.py`, DEPLOY_RUNBOOK step 12) loads them from the same files and prints `PROVISIONAL` on their line; `--skip-price-caps` leaves them out. Corrections go through the admin (Settings > Price caps), never by re-running the bootstrap (it never changes an existing row).
 
 ### M7: one transfer per client payment, from its charge (built 2026-11-14, high-risk: money, migration)
 

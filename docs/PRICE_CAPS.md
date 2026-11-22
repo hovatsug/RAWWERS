@@ -1,6 +1,6 @@
 # Price caps: euros today, pounds proposed
 
-Written 2026-11-15. **The pound caps are a proposal for the owner to correct**, not final.
+Written 2026-11-15. **The pound caps are PROVISIONAL: the owner has not approved them** (still so on 2026-11-22). They are a proposal to correct, not final. The production bootstrap (`api/scripts/bootstrap_reference_data.py`) prints `PROVISIONAL` on their line; `--skip-price-caps` leaves them out.
 
 ## How caps work
 
@@ -15,7 +15,7 @@ Written 2026-11-15. **The pound caps are a proposal for the owner to correct**, 
   - [api/data/price_caps/price-caps-GBP.csv](../api/data/price_caps/price-caps-GBP.csv)
 
   The columns are `niche_slug,tier,entry_price_max,currency`. The dev seed (`api/scripts/seed_price_caps.py`) reads the same files.
-- **How production gets them:** production has **zero cap rows** today, and the seed script refuses production by design. Production is loaded through the web admin, in **Catalog & pricing > Price caps**:
+- **How production gets them:** production has **zero cap rows** today, and the seed script refuses production by design. Production is loaded through the web admin, in **Settings > Price caps**:
   1. Choose **GBP**, then **Import CSV…** and load `price-caps-GBP.csv`. Then **Load into the grid**, **Review**, and **Save caps**.
   2. Choose **EUR** and do the same with `price-caps-EUR.csv`.
 

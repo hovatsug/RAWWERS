@@ -292,18 +292,23 @@ from the code (a few photographers, a few dozen clients).
 | **Containers** | **about 1.1 GB** | **about 1.6-2.4 GB** | |
 | Ubuntu + Docker | about 300 MB | about 300 MB | |
 
-**Is 2 GB enough?** For the test deployment, yes: idle is about 1.4 GB (1.1 GB of containers plus the system) of 2
-GB, with 2 GB of swap as a safety net. For the beta, **no**: the
-first large photo delivery pushes the total past 2 GB (the photo worker alone
+**Is 2 GB enough?** Idle, yes: about 1.4 GB (1.1 GB of containers plus the
+system) of 2 GB, with 2 GB of swap as a safety net. Under work, **no**: one
+large photo delivery pushes the total past 2 GB (the photo worker alone
 peaks near 900 MB), and the kernel then kills a container or the server
-swaps until it is too slow. The memory limits are caps, not reservations:
+swaps until it is too slow. That can happen on the test deploy too, the
+first time you try a real delivery. The memory limits are caps, not reservations:
 their sum (3.4 GB) is deliberately above 2 GB, so one busy container can
 borrow what the idle ones do not use.
 
-**Recommended:** stay on 2 GB for the test deploy; **resize to 4 GB before the
-first real photographer** (CPU and RAM only, reversible; runbook "Resize the
-server"), then `API_WORKERS=2`. 8 GB only when deliveries of 60 MP files
-happen in parallel (then `PHOTO_WORKER_CONCURRENCY=2`).
+**Recommended (owner's choice, 2026-11-22; the owner may skip it):** the
+test deploy is meant to run on **4 GB**, resized right after the clean
+baseline snapshot and before the first start (runbook step 1b; CPU and RAM
+only, reversible), with `API_WORKERS=2`. **2 GB is the fallback**: it boots
+and passes the smoke test, but a large proof can push it out of memory, so on
+2 GB do not test large deliveries and resize before the first real
+photographer (runbook "Resize the server"). 8 GB only when deliveries of
+60 MP files happen in parallel (then `PHOTO_WORKER_CONCURRENCY=2`).
 
 **Workers and concurrency for 2 GB:** API 1 Uvicorn worker, `media` worker
 concurrency 2, photo worker concurrency 1 (the compose defaults). At 4 GB: API
@@ -468,3 +473,18 @@ images and the real 2 GB server (timings on the Mac were with three test runs
 in parallel and are not representative); Stripe, Brevo, R2, Sentry and Mux
 (fake values, unreachable on purpose); email delivery and DNS; the Hetzner
 firewall, snapshots and backups; the registry push and pull.
+
+## 13. Decisions (owner, 2026-11-22)
+
+| Decision | Chosen | Reason |
+|---|---|---|
+| Registry | GHCR, private packages | Existing account; read-only token on the server; nothing public (runbook step 9) |
+| TLS | Cloudflare origin certificate, Full (strict) | 15 years, no renewal job, no Cloudflare token on the server; Cloudflare verifies the origin (step 6b) |
+| Admin protection | Cloudflare Access, email one-time PIN, on `admin.rawwers.com` only | No 2FA in the app; a changing home address rules out an IP allowlist; nothing to build (step 7). Not on `api.`: apps and webhooks cannot log in |
+| API docs | Off | Public API; the guard refuses `API_DOCS_ENABLED` in production; Caddy also answers 404 |
+| Workers | 4 GB: API 2, media 2, photos 1. 2 GB: API 1, media 2, photos 1 | Section 6 (measured) |
+| Server size | Resize to 4 GB before the first start (runbook step 1b); 2 GB the fallback | Section 6: the photo worker peak |
+| New primary IPv4 | Yes, at the rebuild (runbook step 0b); the old one released only after the deploy works | The old address is in the repository's git history (finding 5) |
+| `DEFAULT_CONNECT_COUNTRY` | PT for the test deploy, no code change | Decided again before a UK launch (MULTI_CURRENCY.md, M6 item 6) |
+| Tag | `deploy-test-1`, annotated; its commit is recorded in UNGATED_COMMITS.md right after tagging | The commit every check of this audit was run against |
+

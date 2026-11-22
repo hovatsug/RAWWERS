@@ -138,12 +138,28 @@ def test_with_sending_off_brevo_is_never_called(db_session, brevo, monkeypatch):
     assert brevo.sent == []
 
 
-def test_production_sends_to_anyone_not_suppressed(db_session, brevo, monkeypatch):
+def test_live_production_sends_to_anyone_not_suppressed(db_session, brevo, monkeypatch):
     monkeypatch.setattr(get_settings(), "app_env", "production")
+    monkeypatch.setattr(get_settings(), "deployment_mode", "live")
     monkeypatch.setattr(get_settings(), "email_sending_enabled", True)
     monkeypatch.setattr(get_settings(), "unsubscribe_signing_keys", "k1:production-secret")
     _booking_request(db_session, "anyone@example.org")
     assert [s["body"]["to"] for s in brevo.sent] == [[{"email": "anyone@example.org"}]]
+
+
+def test_a_test_deployment_in_production_mails_only_the_allowlist(db_session, brevo, monkeypatch):
+    """DEPLOYMENT_MODE=test (the default): the first server mails only the
+    owner's own addresses, whoever signs up."""
+    monkeypatch.setattr(get_settings(), "app_env", "production")
+    monkeypatch.setattr(get_settings(), "deployment_mode", "test")
+    monkeypatch.setattr(get_settings(), "email_sending_enabled", True)
+    monkeypatch.setattr(get_settings(), "unsubscribe_signing_keys", "k1:production-secret")
+    monkeypatch.setattr(get_settings(), "email_dev_allowlist", TESTER)
+    _booking_request(db_session, "anyone@example.org")
+    assert brevo.sent == []
+    assert mail.delivery_block_reason("anyone@example.org") == "not_on_dev_allowlist"
+    _booking_request(db_session, TESTER)
+    assert [s["body"]["to"] for s in brevo.sent] == [[{"email": TESTER}]]
 
 
 def test_security_mail_has_no_unsubscribe_header_or_footer(db_session, brevo):

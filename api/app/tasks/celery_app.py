@@ -22,6 +22,12 @@ from app.services.metrics import increment_task_failures, observe_task_duration
 
 settings = get_settings()
 
+# Workers and beat refuse unsafe production settings exactly as the API does
+# (core/production_guard.py): imported first by every Celery process.
+from app.core.production_guard import enforce_production_settings  # noqa: E402
+
+enforce_production_settings(settings, component="worker")
+
 celery_app = Celery("rawwers_media", broker=settings.redis_url, backend=settings.redis_url)
 
 

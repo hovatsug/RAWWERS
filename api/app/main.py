@@ -1,22 +1,29 @@
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
-from sqlalchemy import text
-
-from app.api.router import api_router
+# Before anything else, even the other imports: production stops here, every
+# problem named, when a secret is a default, debug is on, Stripe does not
+# match DEPLOYMENT_MODE... (core/production_guard.py).
 from app.core.config import get_settings
-from app.core.errors import register_error_handlers
-from app.core.logging import configure_logging
-from app.core.sentry import init_sentry
-from app.core.middleware import JsonBodyLimitMiddleware, RequestContextMiddleware
-from app.db.session import ReplicaSessionLocal, SessionLocal, get_replica_lag_seconds
-from app.services import warmup
-from app.services.cache import get_redis_client
-from app.services.metrics import render_metrics
+from app.core.production_guard import enforce_production_settings
 
 settings = get_settings()
+enforce_production_settings(settings, component="api")
+
+from contextlib import asynccontextmanager  # noqa: E402
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import Response  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+
+from app.api.router import api_router  # noqa: E402
+from app.core.errors import APIError, register_error_handlers  # noqa: E402
+from app.core.logging import configure_logging  # noqa: E402
+from app.core.sentry import init_sentry  # noqa: E402
+from app.core.middleware import JsonBodyLimitMiddleware, RequestContextMiddleware  # noqa: E402
+from app.db.session import ReplicaSessionLocal, SessionLocal, get_replica_lag_seconds  # noqa: E402
+from app.services import warmup  # noqa: E402
+from app.services.cache import get_redis_client  # noqa: E402
+from app.services.metrics import render_metrics  # noqa: E402
+
 configure_logging(settings.log_level)
 init_sentry("api")
 
@@ -54,7 +61,17 @@ async def lifespan(app_: FastAPI):
     yield
 
 
-app = FastAPI(title="RAWWERS API", version="0.1.0", lifespan=lifespan)
+# The interactive docs and the OpenAPI document are not served in production
+# (API_DOCS_ENABLED; the apps' clients are generated from a dev API).
+_docs = settings.api_docs_on
+app = FastAPI(
+    title="RAWWERS API",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allow_origin_list(),
@@ -69,8 +86,10 @@ app.include_router(api_router)
 
 
 @app.get("/healthz")
-def healthcheck() -> dict[str, str]:
-    return {"status": "ok"}
+def healthcheck() -> dict[str, str | None]:
+    # The running commit (SENTRY_RELEASE, set from IMAGE_TAG by the compose
+    # file), so a deploy can be checked from outside (deploy/scripts/smoke.py).
+    return {"status": "ok", "release": get_settings().sentry_release or None}
 
 
 @app.get("/health/ready")
@@ -114,7 +133,11 @@ def health_replica() -> dict:
         db.close()
 
 
-@app.get("/metrics")
+@app.get("/metrics", include_in_schema=False)
 def metrics() -> Response:
+    # Request counts per route and task failures: not for the public. Nothing
+    # scrapes production yet, so it is not served there at all.
+    if get_settings().is_production:
+        raise APIError(code="not_found", message="Not found", status_code=404)
     payload, content_type = render_metrics()
     return Response(content=payload, media_type=content_type)

@@ -9,8 +9,8 @@ may be delivered before any provider is called:
    still goes to an address suppressed only for non-security mail.
 2. A provider that really delivers (Brevo) is used only while sending is on
    (EMAIL_SENDING_ENABLED: off in production unless set, on elsewhere) and,
-   outside production, only to an address on EMAIL_DEV_ALLOWLIST. A test run
-   can never email a real person.
+   outside production or in a test deployment (DEPLOYMENT_MODE=test), only to
+   an address on EMAIL_DEV_ALLOWLIST. A test run can never email a real person.
 
 The console provider delivers nothing: it logs, and is what runs when Brevo
 is not configured or sending is off. docs/BREVO_SETUP.md.
@@ -195,7 +195,10 @@ def delivery_block_reason(email: str) -> str | None:
     conf = get_settings()
     if not conf.email_sending_on:
         return "sending_off"
-    if not conf.is_production and email.strip().lower() not in conf.email_dev_allowlist_set:
+    # Outside production, and in a production that is a test deployment
+    # (DEPLOYMENT_MODE=test, the default), only the allowlisted addresses.
+    restricted = not conf.is_production or conf.is_test_deployment
+    if restricted and email.strip().lower() not in conf.email_dev_allowlist_set:
         return "not_on_dev_allowlist"
     return None
 

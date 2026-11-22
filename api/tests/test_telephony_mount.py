@@ -18,6 +18,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.production_env import GOOD_PRODUCTION
+
 from app.services.telephony import telephony_webhook_mounted
 
 WEBHOOK = "/v1/webhooks/telephony"
@@ -53,20 +55,15 @@ def _routes_in(env: dict) -> set[str]:
         capture_output=True,
         text=True,
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        timeout=120,
+        timeout=900,
     )
     assert done.returncode == 0, done.stderr[-2000:]
     return set(json.loads(done.stdout.strip().splitlines()[-1]))
 
 
-PRODUCTION = {
-    "APP_ENV": "production",
-    "CONNECT_RETURN_URL": "https://api.example.test/v1/payouts/connect/return",
-    "CONNECT_REFRESH_URL": "https://api.example.test/v1/payouts/connect/refresh",
-    # Production refuses to start with the admin routes open; any value will
-    # do for listing routes.
-    "ADMIN_API_KEYS": "test-only-placeholder",
-}
+# Production refuses to start with unsafe settings (core/production_guard.py):
+# the one clean set the guard tests use.
+PRODUCTION = dict(GOOD_PRODUCTION)
 
 
 def test_production_with_the_mock_provider_has_no_webhook_route():

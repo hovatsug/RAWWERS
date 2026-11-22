@@ -115,7 +115,8 @@ jobs:
         env:
           POSTGRES_DB: rawwers
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # Not a default: production refuses one (core/production_guard.py).
+          POSTGRES_PASSWORD: 4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d
         ports:
           - 5432:5432
         options: >-
@@ -129,7 +130,7 @@ jobs:
           - 6379:6379
     env:
       APP_ENV: production
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers
+      DATABASE_URL: postgresql+psycopg2://postgres:4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d@localhost:5432/rawwers
       REDIS_URL: redis://localhost:6379/0
       APP_PUBLIC_URL: https://admin.example.invalid
       API_PUBLIC_URL: https://api.example.invalid
@@ -138,22 +139,33 @@ jobs:
       CONNECT_REFRESH_URL: https://api.example.invalid/v1/payouts/connect/refresh
       SEARCH_ENABLED: false
       R2_ENDPOINT_URL: https://example.r2.cloudflarestorage.com
-      R2_ACCESS_KEY_ID: test
-      R2_SECRET_ACCESS_KEY: test
-      R2_BUCKET: rawwers-test
+      # Well-formed values that pass the production start-up guards
+      # (api/app/core/production_guard.py; the same set as
+      # api/tests/production_env.py). No real service is reached: Mux is left
+      # unset on purpose, and nothing is mailed (no worker runs here).
+      R2_ACCESS_KEY_ID: 2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f
+      R2_SECRET_ACCESS_KEY: 3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a
+      R2_BUCKET: rawwers-ci
       R2_REGION: auto
-      MUX_TOKEN_ID: test
-      MUX_TOKEN_SECRET: test
-      MUX_WEBHOOK_SECRET: test
-      STRIPE_SECRET_KEY: sk_test_dummy
-      STRIPE_WEBHOOK_SECRET: whsec_dummy
-      # Dummies of the lengths production requires (section 0, step 1).
-      AUTH_JWT_SECRET: empty-database-check-0123456789-0123456789
-      UNSUBSCRIBE_SIGNING_KEYS: k1:empty-database-check-0123456789
-      ADMIN_API_KEYS: empty-database-check
+      STRIPE_SECRET_KEY: sk_test_0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d
+      STRIPE_WEBHOOK_SECRET: whsec_1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e
+      DEPLOYMENT_MODE: test
+      TRUSTED_PROXY_IPS: 127.0.0.1/32
+      AUTH_JWT_SECRET: 1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a
+      MEDIA_SHARE_TOKEN_PEPPER: 2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+      MEDIA_ACCESS_IP_HASH_PEPPER: 3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c
+      SHARE_VIEW_FINGERPRINT_PEPPER: 4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d
+      RISK_IP_HASH_PEPPER: 5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e
+      RISK_DEVICE_HASH_PEPPER: 6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f
+      RISK_SESSION_HASH_PEPPER: 7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a
+      ADMIN_API_KEYS: 8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b
+      ADDRESS_ENCRYPTION_KEYS: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+      UNSUBSCRIBE_SIGNING_KEYS: k1:9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c
       AUTH_DEV_BYPASS: false
       ALLOW_UNVERIFIED_PRO: false
-      EMAIL_SENDING_ENABLED: false
+      EMAIL_SENDING_ENABLED: true
+      BREVO_API_KEY: xkeysib-4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b
+      BREVO_SENDER_EMAIL: hello@mail.rawwers.com
     steps:
       - name: Checkout
         uses: actions/checkout@v4

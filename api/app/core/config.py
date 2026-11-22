@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_env: str = Field(default="development", alias="APP_ENV")
+    # What this deployment is for: "test" (Stripe test keys, email only to
+    # EMAIL_DEV_ALLOWLIST) or "live" (real money, real people). Live is never
+    # the default: it has to be written down on purpose. Production refuses a
+    # Stripe key that does not match (core/production_guard.py).
+    deployment_mode: str = Field(default="test", alias="DEPLOYMENT_MODE")
+    # The interactive API docs (/docs, /redoc) and /openapi.json. Unset: on
+    # outside production, off in production; production refuses true.
+    api_docs_enabled: bool | None = Field(default=None, alias="API_DOCS_ENABLED")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     # Error reporting (core/sentry.py). Empty DSN: nothing is sent. Create the
     # Sentry organisation in the EU region; its DSNs end in .de.sentry.io.
@@ -361,6 +369,17 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in {"prod", "production"}
+
+    @property
+    def api_docs_on(self) -> bool:
+        if self.api_docs_enabled is None:
+            return not self.is_production
+        return self.api_docs_enabled
+
+    @property
+    def is_test_deployment(self) -> bool:
+        """A test deployment: anything but an explicit DEPLOYMENT_MODE=live."""
+        return (self.deployment_mode or "").strip().lower() != "live"
 
     @property
     def email_sending_on(self) -> bool:

@@ -68,9 +68,11 @@ status, discover = call("GET", "/v1/discover/pros")
 expect("4 GET /v1/discover/pros is 200", status == 200, status)
 status, _ = call("GET", "/v1/fx/rates")
 expect("4 GET /v1/fx/rates is 200", status == 200, status)
-# Built on first request: over 30 seconds on a cold start.
-status, schema = call("GET", "/openapi.json", timeout=180)
-expect("4 GET /openapi.json is 200", status == 200 and isinstance(schema, dict) and "paths" in schema, status)
+# Production serves no API docs (API_DOCS_ENABLED, core/production_guard.py).
+status, _ = call("GET", "/openapi.json")
+expect("4 GET /openapi.json is 404 (no docs in production)", status == 404, status)
+status, _ = call("GET", "/docs")
+expect("4 GET /docs is 404 (no docs in production)", status == 404, status)
 
 status, account = call("POST", "/v1/auth/register", {"email": EMAIL, "password": PASSWORD, "display_name": "First Admin"})
 user_id = account.get("user_id") if isinstance(account, dict) else None

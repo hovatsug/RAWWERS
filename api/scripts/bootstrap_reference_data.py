@@ -18,7 +18,8 @@ What it adds when missing:
   - the five interview questions of "Meet the photographer";
   - the camera and lens reference (which bodies are full-frame);
   - the price caps, GBP and EUR, from api/data/price_caps/*.csv (the pound
-    caps are still a proposal: docs/PRICE_CAPS.md). A cap row that exists is
+    caps are PROVISIONAL, not approved by the owner: docs/PRICE_CAPS.md; the
+    output says so on their line). A cap row that exists is
     left as it is, even when the file says something else ("differs").
 
 Exit 0: done (or nothing to do). Exit 1: something failed and nothing was
@@ -48,6 +49,11 @@ from app.services.tax import DEFAULT_COUNTRY, ensure_uk_tax_rule  # noqa: E402
 
 import seed_camera_reference as cameras  # noqa: E402
 import seed_price_caps as caps  # noqa: E402
+
+
+#: Currencies whose caps the owner has not approved yet (docs/PRICE_CAPS.md).
+#: Every run says so on that currency's line. Remove a currency once approved.
+PROVISIONAL_CAP_CURRENCIES = {"GBP"}
 
 
 def _count(db, model) -> int:
@@ -145,7 +151,10 @@ def bootstrap(db, *, with_price_caps: bool = True) -> dict[str, int]:
                     new += 1
             db.flush()
             created[f"price_caps_{currency}"] = new
-            _report(f"price caps {currency}", new, skipped, f"{differs} differ from the file, left as they are" if differs else "")
+            notes = [f"{differs} differ from the file, left as they are"] if differs else []
+            if currency in PROVISIONAL_CAP_CURRENCIES:
+                notes.append("PROVISIONAL: not approved by the owner (docs/PRICE_CAPS.md)")
+            _report(f"price caps {currency}", new, skipped, "; ".join(notes))
     else:
         print("price caps             not touched (--skip-price-caps)")
     return created

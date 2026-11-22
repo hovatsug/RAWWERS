@@ -50,3 +50,15 @@ def test_without_price_caps_none_are_written(db_session):
     created = boot.bootstrap(db_session, with_price_caps=False)
     assert not any(k.startswith("price_caps") for k in created)
     assert _caps(db_session) == before
+
+
+def test_the_pound_caps_are_marked_provisional_and_the_euro_caps_are_not(db_session, capsys):
+    """The owner has not approved the pound caps (docs/PRICE_CAPS.md): whoever
+    runs the bootstrap must read that on the line, every run."""
+    assert boot.PROVISIONAL_CAP_CURRENCIES == {"GBP"}
+    boot.bootstrap(db_session)
+    lines = capsys.readouterr().out.splitlines()
+    gbp = [line for line in lines if line.startswith("price caps GBP")]
+    eur = [line for line in lines if line.startswith("price caps EUR")]
+    assert len(gbp) == 1 and "PROVISIONAL" in gbp[0] and "PRICE_CAPS.md" in gbp[0]
+    assert len(eur) == 1 and "PROVISIONAL" not in eur[0]

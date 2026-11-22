@@ -33,7 +33,7 @@ to the server: it writes the exact command, you run it and paste the output.
 | Fake Mux | None: the video says "not available" until Mux is set up | [MUX_LOCAL_WEBHOOKS.md](MUX_LOCAL_WEBHOOKS.md) |
 | Flutter integration tests | Not against the server (they need a local API and `/v1/dev`) | |
 | Admin web with `npm run dev` | Not possible against the server (below) | |
-| Backend tests in the dev stack's Docker | Native Postgres and Redis on the Mac, or GitHub Actions | [MAC_DOCKER_OFF.md](MAC_DOCKER_OFF.md) |
+| Backend tests in the dev stack's Docker | Native Postgres and Valkey (Redis-compatible) on the Mac, or GitHub Actions | [BACKEND_TESTS.md](BACKEND_TESTS.md) |
 
 ## Email: the allowlist
 
@@ -111,7 +111,7 @@ needs nothing extra: the server is plain https.
 ## Backend tests
 
 - A few test files: `tools/tests/native-db.sh tests/test_x.py` on the Mac,
-  with Homebrew's Postgres and Redis, started for the run and stopped after.
+  with Homebrew's Postgres and Valkey (Redis-compatible), started for the run and stopped after (docs/BACKEND_TESTS.md).
   No Docker.
 - The full suite: GitHub Actions, "Backend full suite (manual)", run by
   hand. See [MAC_DOCKER_OFF.md](MAC_DOCKER_OFF.md).

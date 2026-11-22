@@ -1,0 +1,190 @@
+name: Backend full suite (manual)
+
+# The whole backend suite, split across parallel jobs, started by hand from
+# the Actions tab ("Run workflow"). It replaces running the full suite on the
+# Mac (docs/MAC_DOCKER_OFF.md). Nothing else starts it.
+#
+# The repository is public, so these logs are public:
+# - read-only token, no repository secrets, nothing printed from the
+#   environment;
+# - a throwaway Postgres (database name ending _test) and Redis per job, as
+#   job services, gone when the job ends;
+# - placeholder settings only (as api/tests/conftest.py forces them): no test
+#   reaches Stripe, R2, Mux, Brevo or an AI provider.
+#
+# Each shard uploads its pytest output; the last job merges them and compares
+# the failures by name with docs/KNOWN_FAILURES.txt (of the same commit).
+# Trial: set "only_shard" to run one shard alone and look at its time.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to test"
+        required: true
+        default: "the-shelf-wip"
+      shards:
+        description: "Number of shards (1-32)"
+        required: true
+        default: "8"
+      only_shard:
+        description: "Run only this shard (0 to shards-1), for a trial; empty runs all"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-full-suite-${{ github.event.inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      indexes: ${{ steps.plan.outputs.indexes }}
+    steps:
+      - name: Work out the shards
+        id: plan
+        env:
+          SHARDS: ${{ github.event.inputs.shards }}
+          ONLY: ${{ github.event.inputs.only_shard }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          shards, only = os.environ["SHARDS"].strip(), os.environ["ONLY"].strip()
+          if not shards.isdigit() or not 1 <= int(shards) <= 32:
+              sys.exit("shards must be a number from 1 to 32")
+          n = int(shards)
+          if only:
+              if not only.isdigit() or int(only) >= n:
+                  sys.exit("only_shard must be a number from 0 to shards-1, or empty")
+              indexes = [int(only)]
+          else:
+              indexes = list(range(n))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"indexes={json.dumps(indexes)}\n")
+          print(f"shards {n}, running {indexes}")
+          PY
+
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        index: ${{ fromJSON(needs.plan.outputs.indexes) }}
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_DB: rawwers_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rawwers_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.4
+        ports:
+          - 6379:6379
+    env:
+      # The suite's own database variable (api/tests/conftest.py): the name
+      # must end in _test.
+      TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers_test
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/rawwers_test
+      REDIS_URL: redis://localhost:6379/0
+      PGOPTIONS: "-c lock_timeout=300s"
+      R2_ENDPOINT_URL: https://example.r2.cloudflarestorage.com
+      R2_ACCESS_KEY_ID: test
+      R2_SECRET_ACCESS_KEY: test
+      R2_BUCKET: rawwers-test
+      R2_REGION: auto
+      AUTH_JWT_SECRET: test-insecure-secret-for-ci-only-0000000000
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      LLM_PROVIDER: mock
+      SEARCH_PROVIDER: none
+      SEARCH_ENABLED: "false"
+      BREVO_API_KEY: ""
+      SHARDS: ${{ github.event.inputs.shards }}
+      INDEX: ${{ matrix.index }}
+    steps:
+      - name: Checkout the ref to test
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry==1.8.4
+
+      - name: Install backend dependencies
+        working-directory: api
+        run: poetry install --no-interaction --no-ansi --with dev
+
+      - name: Run this shard
+        working-directory: api
+        run: |
+          python3 ../tools/tests/shard_tests.py --shards "$SHARDS" --index "$INDEX" > ../shard-files.txt
+          echo "shard $INDEX of $SHARDS: $(wc -l < ../shard-files.txt) files"
+          start=$(date +%s)
+          set +e
+          poetry run python -m pytest $(cat ../shard-files.txt) -q -rfE -p no:cacheprovider > "../shard-$INDEX.txt" 2>&1
+          code=$?
+          set -e
+          echo "pytest exit $code after $(( $(date +%s) - start )) s"
+          tail -n 40 "../shard-$INDEX.txt"
+
+      - name: Upload this shard's output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.index }}
+          path: shard-${{ matrix.index }}.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  merge:
+    needs: [plan, shard]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SHARDS: ${{ github.event.inputs.shards }}
+      ONLY: ${{ github.event.inputs.only_shard }}
+    steps:
+      - name: Checkout the ref tested (for KNOWN_FAILURES.txt)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          persist-credentials: false
+
+      - name: Download the shards' outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shard-*
+          path: results
+          merge-multiple: true
+
+      - name: Merge and compare with docs/KNOWN_FAILURES.txt
+        run: |
+          if [ -n "$ONLY" ]; then
+            echo "Trial of shard $ONLY only: no comparison with the known failures (it needs every shard)."
+            tail -n 3 "results/shard-$ONLY.txt" || true
+            exit 0
+          fi
+          python3 tools/tests/merge_shards.py --shards "$SHARDS" results | tee results/verdict.txt
+          exit "${PIPESTATUS[0]}"

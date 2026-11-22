@@ -777,16 +777,45 @@ flutter run --flavor pro -t lib/main_pro.dart --dart-define-from-file=env/pro.se
 ```
 Sign up with an address on `EMAIL_DEV_ALLOWLIST` to receive the codes. Not a release build.
 
-### Then: the production Mux environment and the first real video
+### The test world: accounts, a city, a paid booking
 
-In this order (details in DEPLOY_CHECKLIST.md section 4):
-1. Mux > create the **Production** environment (never reuse dev's keys).
-2. Access token (Video read/write), signing key, webhook to `https://api.rawwers.com/v1/webhooks/mux` (4a steps 2-4); the four values into the secrets file; `MUX_FAKE` stays absent.
-3. If Brevo-style IP allowlisting exists in Mux: not needed (Mux has none for API calls).
-4. The Cloudflare WAF rule of step 6d already lets `/v1/webhooks/mux` through.
-5. `deploy/scripts/dc up -d --force-recreate api worker worker-photos beat`; `version.sh` shows `Mux configured yes`.
-6. The round trip (4b) with `PRESENTATION_VIDEO_ENABLED=true`; only when all 10 steps pass, keep it on.
-Missing in DEPLOY_CHECKLIST section 4 and added there: a cost alert before step 1 of 4b, the WAF note, and that the Pro app build must point at production (env file above) — added 2026-11-21.
+The database starts empty. [TEST_WORLD.md](TEST_WORLD.md) goes from there to a
+paid booking (admin, client, a listed photographer, a Stripe test payout
+account). The first thing it needs is a city switched on, with
+`tools/server/enable-city.py`. Your branch has the script, the server's
+checkout (the tag) does not, so it is sent from the **Mac**, in the
+repository:
+```
+ssh root@<SERVER_IP> 'cd /opt/rawwers/src && deploy/scripts/dc exec -T api python -' < tools/server/enable-city.py
+ssh root@<SERVER_IP> 'cd /opt/rawwers/src && deploy/scripts/dc exec -T api python - --apply' < tools/server/enable-city.py
+```
+**You should see:** the first prints `DRY RUN: nothing written` for London GB and Lisbon PT; the second `Done: 2 city(ies) switched on`. It needs the admin of step 20 first.
+
+### The Lightroom plug-in against the server
+
+Build it for the server, replace the dev plug-in and pair again:
+[LIGHTROOM_CHECKLIST.md](LIGHTROOM_CHECKLIST.md), "Against the test server".
+It needs `LIGHTROOM_PLUGIN_LATEST_VERSION=1.2.5` in the secrets file (step 8).
+
+### Mux for the test deploy, then for production
+
+**The test deploy uses the existing RAWWERS_DEV Mux environment.** No
+Production environment exists yet. DEPLOY_CHECKLIST.md section 4a and 4b
+apply, with RAWWERS_DEV's keys:
+1. An access token (Video read/write), a signing key, and a webhook to `https://api.rawwers.com/v1/webhooks/mux`, all in RAWWERS_DEV (4a steps 2-4); the four values into the secrets file; `MUX_FAKE` stays absent. The details are in [MUX_LOCAL_WEBHOOKS.md](MUX_LOCAL_WEBHOOKS.md), "The test server".
+2. The cost alert (4a step 7). The Cloudflare WAF rule of step 6d already lets `/v1/webhooks/mux` through. Mux has no IP allowlist to set.
+3. `deploy/scripts/dc up -d --force-recreate api worker worker-photos beat`; `version.sh` shows `Mux configured yes`.
+4. The round trip (4b) with `PRESENTATION_VIDEO_ENABLED=true`; only when all 10 steps pass, keep it on.
+
+Limits of a development environment: the free plan holds **10 assets**, and
+clips may be shortened or watermarked there (not confirmed). Watch 4b step 2
+(the asset Mux made) and step 4 (what the preview plays); delete test videos
+you no longer need.
+
+**At go-live,** a **Production** environment replaces all of this: a new
+access token, a new signing key and a new webhook (with its own secret), as
+4a says. "Never reuse dev's keys" applies to production: never put
+RAWWERS_DEV's keys on the live server, and never production's on dev.
 
 ### What you risk until batch 4 (off-server backups)
 

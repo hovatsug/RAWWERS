@@ -32,7 +32,7 @@ readiness audit of 2026-11-21: every setting, every service, resource budget).
 | Decision | Chosen | Why |
 |---|---|---|
 | Image registry | GitHub Container Registry, **private** packages (step 9) | You already have the account; the server only needs a read-only token; nothing public |
-| TLS | **Cloudflare origin certificate**, SSL mode **Full (strict)** (step 6b) | Free, 15 years, no renewal job and no API token on the server; Cloudflare checks the certificate on every request |
+| TLS | **Cloudflare origin certificate** (step 6b), SSL mode **Full (strict)** (step 13b) | Free, 15 years, no renewal job and no API token on the server; Cloudflare checks the certificate on every request |
 | Admin protection | **Cloudflare Access with email one-time PIN**, on `admin.rawwers.com` only (step 7) | The app has no 2FA; your home address changes, so an IP allowlist would lock you out; Access adds a second factor in front of the login, with nothing to build |
 | API docs | **Off** (`API_DOCS_ENABLED` unset; the API refuses to start if it is on) | The API is public; its full map helps attackers and nobody needs it on the server |
 | Workers | **4 GB:** API 2, media worker 2, photo worker 1. **2 GB fallback:** API 1, media 2, photos 1 (the compose defaults) | Measured in the rehearsal (DEPLOY_AUDIT.md section 6) |
@@ -284,7 +284,7 @@ From now on, every server command runs in `/opt/rawwers/src`, and
 **You should see:** `api` and `admin`, type A, content `<SERVER_IP>` (the new address), orange cloud. Searching the records for `<OLD_SERVER_IP>` finds nothing; no AAAA record names the server's IPv6.
 **Undo:** re-add a record (write down each one you delete: name, type, content, proxied).
 
-### 6b. TLS: Full (strict) with a Cloudflare origin certificate
+### 6b. TLS: the Cloudflare origin certificate (Full (strict) comes in step 13b)
 
 Recommended approach: a **Cloudflare origin certificate** (free, 15 years, no
 renewal, no API token on the server). Cloudflare shows visitors its own
@@ -300,11 +300,10 @@ exactly what "Full (strict)" needs.
    openssl x509 -in /opt/rawwers/certs/origin.pem -noout -subject -enddate
    ```
    **You should see:** `subject=... CloudFlare Origin Certificate` and an end date 15 years ahead.
-3. SSL/TLS > Overview > **Full (strict)**.
+3. **Not yet: the SSL mode.** Leave SSL/TLS > Overview as it is. "Full (strict)" is switched on in **step 13b**, after Caddy serves this certificate (step 13).
 4. SSL/TLS > Edge Certificates: **Always Use HTTPS** on, **Minimum TLS Version** 1.2. Leave HSTS off here: Caddy sends it for api and admin only.
 
-**If something is wrong later** (Cloudflare error 526 "Invalid SSL certificate"): the files do not match, or Caddy cannot read them: `deploy/scripts/dc logs caddy`.
-**Undo:** SSL/TLS > Overview > back to the previous mode; revoke the certificate under Origin Server.
+**Undo:** revoke the certificate under Origin Server and delete the two files.
 
 ### 6c. Cache: never cache the API or the admin
 
@@ -521,6 +520,21 @@ sleep 20; deploy/scripts/dc exec api curl -s http://localhost:8000/v1/fx/rates
 
 ---
 
+## Step 13b. Cloudflare: SSL mode Full (strict)
+
+Now, not in step 6b: until step 13 nothing on the server served the origin
+certificate, so Cloudflare could not check it. From here Cloudflare checks it
+on every request.
+
+**Do:** Cloudflare > rawwers.com > SSL/TLS > Overview > **Full (strict)**.
+**You should see:** within a minute, `https://api.rawwers.com/healthz` in a browser answers (a small JSON), and `https://admin.rawwers.com` shows the Cloudflare Access page (step 7).
+**If not:** Cloudflare error **526** "Invalid SSL certificate" right after switching means the certificate files or Caddy's access to them: the two files of step 6b do not belong together, a file is empty or not PEM, or Caddy cannot read `/opt/rawwers/certs`. `deploy/scripts/dc logs caddy` names the file. Fix it, then `deploy/scripts/dc restart caddy`. Error 521 or 522 is not the certificate: Caddy is down or the firewall (step 2).
+**Undo:** SSL/TLS > Overview > back to the previous mode.
+
+**If something is wrong later** (a 526 that appears after it worked): the certificate was revoked or replaced in Cloudflare, or the files on the server changed: same checks as above.
+
+---
+
 ## Step 14. The smoke test, from the Mac
 
 ```
@@ -655,6 +669,7 @@ deploy/scripts/dc up -d
 ## Step 22. Done? Everything here must be true
 
 - [ ] `deploy/scripts/dc ps`: every service `(healthy)`.
+- [ ] Cloudflare SSL/TLS > Overview shows **Full (strict)** (step 13b), and no 526 error.
 - [ ] `smoke.py`: `Everything passed.` (the admin lines say "protected by Cloudflare Access"), and the `--write` run passed; smoke accounts deleted.
 - [ ] `version.sh`: `DEPLOYMENT_MODE test`, `Stripe key test`, `email allowlist only on`, `API docs off`, `MUX_FAKE off`, `PRESENTATION_VIDEO_ENABLED off`, migration = newest, exchange rates fresh, flag rows 0, The Shelf off.
 - [ ] Flags (version.sh, defaults outside development): ai chat off, kill switch on, ai calls off, LLM mock, studioverse off, ecom off, raww minting off, guest discovery off, loaners off, rewards spend off, video uploads on.

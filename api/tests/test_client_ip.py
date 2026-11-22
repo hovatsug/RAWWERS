@@ -176,3 +176,111 @@ def test_behind_a_trusted_proxy_each_client_has_its_own_limit(proxies, connect, 
 def test_dev_default_still_works(client):
     # No trusted proxies, TestClient's own address: registering just works.
     assert _register(client).status_code == 201
+
+
+# --- behind Cloudflare (TRUST_CLOUDFLARE) ------------------------------------
+
+from app.core import client_ip as client_ip_module  # noqa: E402
+
+#: An address in Cloudflare's published ranges (172.64.0.0/13).
+CF_EDGE = "172.70.1.2"
+
+
+def _cf_request(peer: str, xff: str | None, cf: str | None) -> Request:
+    headers = []
+    if xff is not None:
+        headers.append((b"x-forwarded-for", xff.encode()))
+    if cf is not None:
+        headers.append((b"cf-connecting-ip", cf.encode()))
+    return Request({"type": "http", "method": "GET", "path": "/", "headers": headers, "client": (peer, 1234)})
+
+
+@pytest.fixture
+def cloudflare(monkeypatch, proxies):
+    """Caddy (10.0.0.0/8) in front of the API, Cloudflare in front of Caddy."""
+    proxies("10.0.0.0/8", hops=1)
+    monkeypatch.setattr(get_settings(), "trust_cloudflare", True)
+    monkeypatch.setattr(get_settings(), "cloudflare_ips_file", "")
+
+
+def test_the_shipped_cloudflare_ranges_are_read():
+    nets = client_ip_module._cloudflare_networks(str(client_ip_module.DEFAULT_CLOUDFLARE_IPS_FILE))
+    assert len(nets) >= 15
+    assert any(net.version == 6 for net in nets)
+    assert client_ip_module.is_cloudflare(CF_EDGE)
+    assert not client_ip_module.is_cloudflare(OTHER)
+
+
+def test_cloudflare_header_is_believed_from_a_cloudflare_edge(cloudflare):
+    # Cloudflare connected to Caddy; Caddy wrote that edge into X-Forwarded-For.
+    assert client_ip(_cf_request(PROXY, CF_EDGE, CLIENT)) == CLIENT
+    # The web admin's proxy passes the same two headers on.
+    assert client_ip(_cf_request("10.0.0.9", CF_EDGE, CLIENT)) == CLIENT
+
+
+def test_a_spoofed_cloudflare_header_through_caddy_is_ignored(cloudflare):
+    # Someone reached Caddy directly (not through Cloudflare): Caddy wrote
+    # their real address; their own CF-Connecting-IP is not believed.
+    assert client_ip(_cf_request(PROXY, OTHER, CLIENT)) == OTHER
+    # Even with a Cloudflare address typed on the left of X-Forwarded-For.
+    assert client_ip(_cf_request(PROXY, f"{CF_EDGE}, {OTHER}", CLIENT)) == OTHER
+
+
+def test_a_spoofed_cloudflare_header_from_a_direct_connection_is_ignored(cloudflare):
+    assert client_ip(_cf_request(OTHER, None, CLIENT)) == OTHER
+    assert client_ip(_cf_request(OTHER, CF_EDGE, CLIENT)) == OTHER
+
+
+def test_a_direct_connection_from_cloudflare_uses_its_header(cloudflare):
+    assert client_ip(_cf_request(CF_EDGE, None, CLIENT)) == CLIENT
+
+
+def test_without_trust_cloudflare_the_header_is_never_read(proxies, monkeypatch):
+    proxies("10.0.0.0/8")
+    monkeypatch.setattr(get_settings(), "trust_cloudflare", False)
+    assert client_ip(_cf_request(PROXY, CF_EDGE, CLIENT)) == CF_EDGE
+
+
+def test_a_malformed_cloudflare_header_falls_back_to_the_edge(cloudflare):
+    assert client_ip(_cf_request(PROXY, CF_EDGE, "not-an-ip")) == CF_EDGE
+    assert client_ip(_cf_request(PROXY, CF_EDGE, None)) == CF_EDGE
+
+
+def test_the_ranges_file_is_a_setting(cloudflare, monkeypatch, tmp_path):
+    ranges = tmp_path / "cf.txt"
+    ranges.write_text("# only one range\n198.51.100.0/24\n")
+    monkeypatch.setattr(get_settings(), "cloudflare_ips_file", str(ranges))
+    assert client_ip(_cf_request(PROXY, OTHER, CLIENT)) == CLIENT
+    assert client_ip(_cf_request(PROXY, CF_EDGE, CLIENT)) == CF_EDGE
+
+
+def _register_cf(c: TestClient, xff: str, cf: str):
+    body = {"email": f"cf-{uuid.uuid4().hex[:10]}@rawwers.test", "password": "Passw0rd!long", "display_name": "CF"}
+    return c.post("/v1/auth/register", json=body, headers={"X-Forwarded-For": xff, "CF-Connecting-IP": cf})
+
+
+def test_behind_cloudflare_each_client_has_its_own_limit(cloudflare, connect, monkeypatch):
+    monkeypatch.setitem(rl.RATE_LIMIT_RULES, "auth_mutation", (2, 60))
+    base = uuid.uuid4().int % 200 + 20
+    first, second = f"203.0.113.{base}", f"203.0.113.{base + 1}"
+    c = connect(PROXY)
+    # Both arrive through the same Cloudflare edge; the limit is per client, not per edge.
+    assert [_register_cf(c, CF_EDGE, first).status_code for _ in range(2)] == [201, 201]
+    assert _register_cf(c, CF_EDGE, first).status_code == 429
+    assert _register_cf(c, CF_EDGE, second).status_code == 201
+
+
+def test_rotating_a_spoofed_cloudflare_header_does_not_dodge_the_limit(cloudflare, connect, monkeypatch):
+    monkeypatch.setitem(rl.RATE_LIMIT_RULES, "auth_mutation", (2, 60))
+    direct = f"198.51.100.{uuid.uuid4().int % 200 + 20}"
+    c = connect(PROXY)
+    codes = [_register_cf(c, direct, f"203.0.113.{n}").status_code for n in range(3)]
+    assert codes == [201, 201, 429], codes
+
+
+def test_admin_allowlist_behind_cloudflare(cloudflare, connect, db_session, monkeypatch):
+    monkeypatch.setattr(get_settings(), "admin_ip_allowlist", CLIENT)
+    admin = _admin(db_session)
+    c = connect(PROXY)
+    assert c.get(ADMIN_URL, headers={**admin, "X-Forwarded-For": CF_EDGE, "CF-Connecting-IP": CLIENT}).status_code == 200
+    assert c.get(ADMIN_URL, headers={**admin, "X-Forwarded-For": OTHER, "CF-Connecting-IP": CLIENT}).status_code == 403

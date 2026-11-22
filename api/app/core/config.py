@@ -238,6 +238,13 @@ class Settings(BaseSettings):
     trusted_proxy_ips: str = Field(default="", alias="TRUSTED_PROXY_IPS")
     # At most this many trusted proxies are stepped back through.
     trusted_proxy_hops: int = Field(default=1, ge=1, le=5, alias="TRUSTED_PROXY_HOPS")
+    # Behind Cloudflare: believe its CF-Connecting-IP header, but only on a
+    # request that reached Caddy from one of Cloudflare's published ranges
+    # (core/client_ip.py). The ranges are one file, refreshed by
+    # deploy/scripts/refresh-cloudflare-ips.sh; empty means the copy shipped in
+    # app/core/cloudflare_ips.txt.
+    trust_cloudflare: bool = Field(default=False, alias="TRUST_CLOUDFLARE")
+    cloudflare_ips_file: str = Field(default="", alias="CLOUDFLARE_IPS_FILE")
     admin_api_keys: str = Field(default="", alias="ADMIN_API_KEYS")
     search_provider: str = Field(default="none", alias="SEARCH_PROVIDER")
     search_enabled: bool = Field(default=False, alias="SEARCH_ENABLED")

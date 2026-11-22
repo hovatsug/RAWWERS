@@ -40,6 +40,12 @@ async function forward(req: NextRequest, path: string[]) {
   // listed in its TRUSTED_PROXY_IPS (api/app/core/client_ip.py).
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) headers.set("X-Forwarded-For", forwarded);
+  // Behind Cloudflare: the visitor's address as Cloudflare saw it. The API
+  // believes it only when X-Forwarded-For above ends at a Cloudflare edge
+  // (TRUST_CLOUDFLARE, api/app/core/client_ip.py), so passing it on grants
+  // nothing by itself.
+  const cfConnectingIp = req.headers.get("cf-connecting-ip");
+  if (cfConnectingIp) headers.set("CF-Connecting-IP", cfConnectingIp);
 
   const body = req.method === "GET" || req.method === "HEAD" ? undefined : await req.text();
   const res = await fetch(url.toString(), { method: req.method, headers, body, cache: "no-store" });

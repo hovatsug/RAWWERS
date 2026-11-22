@@ -1,6 +1,63 @@
 # Lightroom Classic plug-in: the owner's checklist
 
-Click by click, on the Mac with Lightroom Classic 15 and the pro simulator (or a phone) signed in as `pro1@rawwers.dev`. About 30 minutes. Everything here is against the dev stack; nothing reaches a real client.
+## Against the test server (from 2026-11-22)
+
+The Mac no longer runs the API, so the plug-in is built for the test server,
+`https://api.rawwers.com`, and paired with a photographer on the server. The
+parts below were written for the dev stack; read them with these changes:
+
+| In the parts below | On the server |
+|---|---|
+| `pro1@rawwers.dev` | Your own test photographer (a `+pro1` address on the allowlist, docs/TEST_WORLD.md) |
+| `lightroom/build.sh ... --target dev` | `tools/lightroom/build-for-server.sh` (below) |
+| A paid booking from STAGE1_LOOP | A paid booking made on the server (docs/TEST_WORLD.md) |
+| `docker exec api-postgres-1 psql ...` (P, P.10) | Not available. Skip that optional step, or remove the niche in the Pro app (part Q) |
+| The pro simulator built from the branch | `tools/app/run-pro-server.sh` |
+
+**1. Tell the server the newest plug-in is 1.2.5 (once, server).** The
+server's secrets file does not set it yet, so the API says 1.2.3 (the code's
+default). In `/opt/rawwers/.env.production` add the line
+`LIGHTROOM_PLUGIN_LATEST_VERSION=1.2.5`, then:
+
+```
+deploy/scripts/dc up -d --force-recreate api
+```
+
+The minimum stays 1.0.0 (not set). The tagged copy of
+`deploy/.env.production.example` gets the line from the next tag on; for
+`deploy-test-1` it is this manual line.
+
+**2. Build (Mac, repository root).** Docker Desktop must be running: the
+build runs the plug-in's tests first in a small Lua 5.1 container. Quit
+Docker afterwards.
+
+```
+tools/lightroom/build-for-server.sh
+```
+
+**You should see** `target: production   server: https://api.rawwers.com   version: 1.2.5`.
+It calls `lightroom/build.sh --target production` unchanged (https only, not
+this Mac) and writes `lightroom/build/rawwers.lrplugin`.
+
+**3. Replace the dev plug-in (Lightroom).** The dev and server builds have
+the same plug-in id, so Lightroom holds only one. **File > Plug-in Manager...**,
+select RAWWERS, **Remove**, then **Add** `lightroom/build/rawwers.lrplugin`,
+**Done**. **Expect:** RAWWERS, **Installed and running**, version 1.2.5.
+
+**4. Pair again.** Tokens are kept per server address in the macOS
+keychain, so the dev token is never sent to the server and the plug-in starts
+"Not connected". In the Pro app (signed in on the server): **You > Settings >
+Connect Lightroom > Get a pairing code**; in Lightroom, part 2 from 2.2.
+**Expect:** "Connected as" your test photographer's name; in the app,
+"plug-in 1.2.5" under Connected devices, and no "update available".
+
+**Back to dev** (only if you run a local API again): Remove, then Add a
+`--target dev` build; its token is still in the keychain.
+
+Not verified: what the plug-in shows when it is newer than the server's
+"latest" (the case before step 1). Do step 1 first.
+
+Click by click, on the Mac with Lightroom Classic 15 and the pro simulator (or a phone) signed in as `pro1@rawwers.dev`. About 30 minutes. The parts below were written against the dev stack; against the test server, start with the section above. Nothing reaches a real client.
 
 **Before you start**
 - The dev API and photo worker run the branch's code, with migrations `0074` and `0075` applied.

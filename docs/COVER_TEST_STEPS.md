@@ -1,6 +1,6 @@
 # Cover and card images: manual test steps
 
-For the iOS simulators against dev (BETA_SCOPE #74 and its follow-ups, 2026-11-20). Sign in to the Pro app as `pro1@rawwers.dev` and to the client app as a client in pro1's city.
+For the iOS simulators (BETA_SCOPE #74 and its follow-ups, 2026-11-20). Written against dev with `pro1@rawwers.dev`; from 2026-11-22 run it against the test server: the apps with `tools/app/run-pro-server.sh` and `tools/app/run-client-server.sh`, the Pro app signed in as your own test photographer (live, at least 12 photos; docs/TEST_WORLD.md), the client app as a client in that photographer's city. Read "pro1" below as that photographer.
 
 1. **Pro app, Your listing.** The card shows a photo, never a grey block. The line under it says where the photo comes from: "Your chosen cover, from your portfolio", or "Picked for you until you choose one…".
 2. **Portfolio.** One tile has the "Cover" badge.

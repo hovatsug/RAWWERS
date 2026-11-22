@@ -96,6 +96,18 @@ As it stands, SPF fails for every sender on the domain, Zoho included. DMARC sti
 - **Launch and waitlist emails** are not on the approved list, so nothing is sent for them.
 - **Verify and reset codes** have no `email_message` row of their own. Their send is logged, and Brevo's log has them.
 
+## On the test server
+
+The server sends through Brevo only to the addresses in its own
+`EMAIL_DEV_ALLOWLIST` (`/opt/rawwers/.env.production`): how it matches and
+how to list several addresses are in
+[WORKING_AGAINST_THE_SERVER.md](WORKING_AGAINST_THE_SERVER.md). A real test
+email there: register in either app with an address on the list (that sends
+the verify code), then on the server
+`deploy/scripts/dc logs worker | grep mail_brevo_sent` (the address is
+masked). The steps below are for a local dev API, which the Mac no longer
+runs day to day.
+
 ## How to send one real test email (dev)
 
 1. In `api/.env`, set `EMAIL_DEV_ALLOWLIST=<your test address>`. That address only.

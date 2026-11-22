@@ -1,5 +1,9 @@
 # Mux webhooks on the dev API
 
+> Most of this page is for a **local** dev API (the Mux CLI forwarding to
+> `localhost`). The Mac no longer runs one day to day (2026-11-22); for the
+> test server read "The test server" below.
+
 Mux tells the API what happened to an uploaded video through webhooks. In dev, Mux cannot reach `localhost`, so the Mux CLI receives the events and forwards them to the dev API, signed with a secret of its own.
 
 ## What the API has
@@ -63,6 +67,29 @@ Mux tells the API what happened to an uploaded video through webhooks. In dev, M
    `[200]` means the secret matches. The sample's ids match no video, so nothing changes. `[401]` means `MUX_WEBHOOK_SECRET` is not the printed secret, or the API was not recreated.
 
 Each forwarded event shows in the `listen` terminal with the API's answer, for example `video.asset.ready  <id>  [200]`. `mux webhooks events list` shows the ones stored locally, and `mux webhooks events replay <event-id>` sends one again.
+
+## The test server (deploy-test-1, from 2026-11-22)
+
+The test server uses the **existing RAWWERS_DEV Mux environment**: no
+Production environment exists yet. The steps are DEPLOY_CHECKLIST 4a and 4b,
+read with these changes:
+
+| DEPLOY_CHECKLIST 4a | For the test server |
+|---|---|
+| 1. A Production environment | Skip: use RAWWERS_DEV |
+| 2. An access token | In RAWWERS_DEV (Video: Read and Write) |
+| 3. A signing key | In RAWWERS_DEV |
+| 4. The webhook | In RAWWERS_DEV, to `https://api.rawwers.com/v1/webhooks/mux`; its signing secret into `MUX_WEBHOOK_SECRET` in `/opt/rawwers/.env.production` |
+| 7. A cost alert | As written: the account is the same |
+| 8. Recreate, `version.sh` shows `Mux configured yes` | As written |
+
+The four values go only in the server's secrets file, never in the
+repository. The Mux CLI forwarding above is not used: Mux reaches the server
+directly. Then 4b, step by step.
+
+At go-live, a **Production** environment replaces all of this: a new access
+token, a new signing key and a new webhook (with its own secret), as
+DEPLOY_CHECKLIST 4a says, and the RAWWERS_DEV values leave the server.
 
 ## Production
 

@@ -8,6 +8,27 @@ The loop: payout setup → booking request → accept → test-card payment → 
 
 **Stored values** are read with the read-only queries in the box at each check. Run them from `api/`. They print statuses and amounts, never secrets.
 
+## On the test server (from 2026-11-22)
+
+The loop below was written for the dev stack on the Mac, which no longer
+runs. On the test server the steps 1 to 11 in the apps and the admin are the
+same; what is around them changes:
+
+| Below | On the test server |
+|---|---|
+| 0.1 Nothing heavy on the Mac | Only the simulators run on the Mac now; no suite to check |
+| 0.2 The dev stack, `docker compose`, the `.local` return addresses | The server is up (`deploy/scripts/version.sh` on the server). Its Connect return addresses are already https; check by name only, on the server: `grep -cE '^CONNECT_(RETURN|REFRESH)_URL=https://api.rawwers.com/v1/payouts/connect/(return|refresh)$' /opt/rawwers/.env.production` **Expect:** `2` |
+| 0.3 `stripe listen` | Not used. Stripe sends test events to the server's webhook (runbook step 15). Where the loop says "in the `stripe listen` terminal", look in Stripe (test mode) > Developers > Webhooks > the RAWWERS destination > Event deliveries: each event `200` |
+| 0.4 `fee_policy_delay.py set0` | `tools/server/set-settlement-delay.py`, TEST ONLY (docs/TEST_WORLD.md). Same rule: before step 6 |
+| 0.5 Builds with `env/pro.json`, `env/client.json` | `tools/app/run-pro-server.sh` and `tools/app/run-client-server.sh` (or the same `flutter build` lines with `env/*.server.json`) |
+| Alex Lens, `pro1@rawwers.dev`, `client@rawwers.dev`, `Passw0rd!` | Your own test photographer and client, on the allowlist (docs/TEST_WORLD.md). There are no seeded accounts and no shared password |
+| Amounts in euros | In your photographer's currency: pounds for London, euros for Lisbon |
+| Stored values: `docker compose exec -T postgres psql -U postgres -d rawwers -At -c "<query>"` from `api/` | On the server: `deploy/scripts/dc exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At' <<< "<query>"`, with your photographer's address in place of `pro1@rawwers.dev` |
+| 10.1 `npm run dev`, `http://localhost:3000/login`, `admin@rawwers.dev` | `https://admin.rawwers.com/login` (Cloudflare Access first), your admin account. No seeded demo payout rows: Alex's row is the only one |
+| 12.1 `fee_policy_delay.py restore` | `tools/server/set-settlement-delay.py --restore --apply` |
+| 12.2 Stop `stripe listen` and `npm run dev` | Nothing to stop |
+| 12.3 The upload limit in `api/.env` | Only if you raised it in `/opt/rawwers/.env.production`: remove the line, then `deploy/scripts/dc up -d --force-recreate api` |
+
 ---
 
 ## 0. Before you start

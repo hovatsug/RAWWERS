@@ -46,7 +46,7 @@ Steps 2 to 5 (without the admin part of 5) run in CI on every change: the `empty
 
   Each row is an event credited more than once. Decide it with an admin adjustment, then deploy.
 
-- [ ] **Run the integration tests against a live backend, and they must pass.** With the release candidate's `api/` up on this machine (`docker compose up`, a development or test `APP_ENV`), run in `app/`:
+- [ ] **Run the integration tests against a live backend, and they must pass.** They cannot run against the test server (it is not this machine and has no `/v1/dev` routes), and the Mac no longer runs the dev stack day to day (2026-11-22). Run them against a throwaway API on this machine for the check only, then stop it: the e2e stack (`docker compose -f deploy/compose.e2e.yml up -d --build api`, `APP_ENV=test`, on port 8000; not yet tried for this) or the dev stack (`docker compose up` in `api/`). With the release candidate's `api/` up on this machine (a development or test `APP_ENV`), run in `app/`:
 
       flutter test --tags integration --run-skipped
 

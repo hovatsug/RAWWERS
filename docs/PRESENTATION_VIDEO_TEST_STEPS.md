@@ -1,5 +1,14 @@
 # "Meet the photographer" video: manual test steps (dev, fake Mux)
 
+> **Dev stack only.** The fake Mux and `/v1/dev/fake-mux/*` exist only on a
+> local API with `APP_ENV=development`; the Mac no longer runs one (from
+> 2026-11-22). The test server has neither: there the video says "Video is
+> not available right now" until Mux is set up for it
+> ([MUX_LOCAL_WEBHOOKS.md](MUX_LOCAL_WEBHOOKS.md), "The test server"), and
+> the check is then DEPLOY_CHECKLIST 4b, not this page. Steps 1 to 10 below
+> still describe what the apps do; on the server, the ready video is your own
+> clip, not the sample.
+
 For the iOS simulators against dev, with the development fake Mux (BETA_SCOPE #37). The real Mux round trip is a separate check after the first deploy (DEPLOY_CHECKLIST section 4b).
 
 **Before you start**

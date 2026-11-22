@@ -370,6 +370,10 @@ nano /opt/rawwers/.env.production
 Fill every `<FROM ...>` line: the images (from step 9), Stripe **test** key, R2 (step 18 makes the bucket and token), Brevo, `EMAIL_DEV_ALLOWLIST` (your own addresses), and `STRIPE_WEBHOOK_SECRET`: make the two Stripe webhook destinations **now** (step 15, part 1: Stripe accepts them before the server answers) and put both signing secrets in. Leave every `MUX_*` empty. **On 4 GB (step 1b) also set `API_WORKERS=2`**; on 2 GB leave it out (1). [DEPLOY_SECRETS.md](DEPLOY_SECRETS.md) says where each value comes from.
 The API, workers and beat refuse to start while any required value is missing, and list them; that is the check that the file is complete.
 
+**`EMAIL_DEV_ALLOWLIST`: list about 12 addresses in full from the start.** On this test deployment the server emails only the addresses on this list. Each entry must be the whole address: there is no wildcard, no whole domain and no plus-address matching, and **every change** needs the services recreated (`deploy/scripts/dc up -d --force-recreate api worker worker-photos`). So put them all in now: your own address, `<you>+admin@...`, `<you>+pro1@...` to `<you>+pro4@...`, `<you>+client1@...` to `<you>+client4@...`, and any real second address of yours. Gmail delivers every `+` address to your own inbox. More in [WORKING_AGAINST_THE_SERVER.md](WORKING_AGAINST_THE_SERVER.md).
+
+**For `deploy-test-1` only, add one line by hand:** `LIGHTROOM_PLUGIN_LATEST_VERSION=1.2.5`. The template in the tag does not have it (the next tag's does), and without it the API says the newest plug-in is 1.2.3.
+
 **You should see:** `ls -l /opt/rawwers/.env.production` shows `-rw-------` (root only).
 **If not:** `chmod 600 /opt/rawwers/.env.production`.
 **Never:** paste the file or any value into chat, email, a ticket or the repository.

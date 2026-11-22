@@ -14,7 +14,7 @@ Environment files:
 - `api/.env.example`
 - `web/.env.example`
 - `deploy/.env.staging.example`
-- `deploy/.env.prod.example`
+- `deploy/.env.production.example` (the server keeps the real file at `/opt/rawwers/.env.production`; DEPLOY_RUNBOOK.md)
 
 Do not commit real credentials. Use GitHub Environments + Secrets for deploy/runtime secrets.
 
@@ -92,10 +92,7 @@ Artifacts:
 
 ## Deployment pipeline
 
-Workflow: `.github/workflows/deploy.yml`
-
-- On `main`: build+push images, deploy to staging.
-- On tag `v*`: build+push images, deploy to production.
+**Changed 2026-11-21:** deploys are run by hand from [DEPLOY_RUNBOOK.md](DEPLOY_RUNBOOK.md): images built on the Mac (`deploy/scripts/build-and-push.sh`), pulled on the server. `.github/workflows/deploy.yml` no longer deploys by itself (it used to on every push to `main` and every `v*` tag, and overwrote the server's env file); it only builds and pushes images when started by hand. CI image builds are BETA_SCOPE LATER #85.
 
 Compose manifests:
 
@@ -184,7 +181,7 @@ python scripts/seed_staging.py --city "New York" --country US
 ## Rollback procedure
 
 1. Identify last known-good image tag.
-2. Update `IMAGE_TAG` in deploy env file (`deploy/.env.staging` or `deploy/.env.prod`).
+2. Update `IMAGE_TAG` in the server secrets file (`/opt/rawwers/.env.production`; staging: `deploy/.env.staging`).
 3. Re-run compose deploy (`docker compose ... up -d`).
 4. Run `deploy/release_gate.py` to confirm health.
 5. Keep feature flags disabled for risky modules until incident is closed.

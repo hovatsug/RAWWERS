@@ -44,8 +44,8 @@ Key: **not built** = the place does not exist yet; **placeholder** = exists with
 
 | Where | What is there now | Needs | Also blocked by |
 |---|---|---|---|
-| Sender name `BREVO_SENDER_NAME` (`api/app/core/config.py:83`, `deploy/.env.prod.example:57`, staging `:63`) | **Setting**, default `RAWWERS` | Stays the brand unless the lawyer says otherwise | — |
-| Sender address `BREVO_SENDER_EMAIL`, reply-to `BREVO_REPLY_TO` (`deploy/.env.prod.example:56, 58`) | **Setting**: `hello@mail.rawwers.com`, `support@rawwers.com` | Nothing company-specific | The SPF fix (`BETA_SCOPE.md` 4.5) |
+| Sender name `BREVO_SENDER_NAME` (`api/app/core/config.py:83`, `deploy/.env.production.example`, staging `deploy/.env.staging.example`) | **Setting**, default `RAWWERS` | Stays the brand unless the lawyer says otherwise | — |
+| Sender address `BREVO_SENDER_EMAIL`, reply-to `BREVO_REPLY_TO` (`deploy/.env.production.example`) | **Setting**: `hello@mail.rawwers.com`, `support@rawwers.com` | Nothing company-specific | The SPF fix (`BETA_SCOPE.md` 4.5) |
 | The email footer (`api/app/services/mail.py:115-119`) | **Hard-coded**: "You get this email because you have a RAWWERS account." and the unsubscribe link. No company name or postal address | Whether emails must name the company and its address (marketing emails especially) | The lawyer |
 | The Brevo account and its DPA | **Outside the repo**; whose name the account is in: not verified | In the company's name, with the company's DPA | — |
 
@@ -75,7 +75,7 @@ Key: **not built** = the place does not exist yet; **placeholder** = exists with
 | Public web pages (`web/app/page.tsx`, `get-the-app`, `waitlist`, `unsubscribe`, `share/[token]`) | Brand name only; **no footer**, no company name or legal links | A footer with the legal name, address and the terms and privacy links, if the lawyer asks for one | #7; the lawyer |
 | Web admin, Costs and company cash (`web/app/admin/bi/costs/page.tsx`) | No company details. The cash form takes a free-text account name and a currency (default `EUR`) | Nothing company-specific; enter the GBP settlement account's balance in GBP once it exists | — |
 | BI base currency (`MULTI_CURRENCY.md` 11.5; M5's `bi_base_currency`) | Not built; BI is euros only | EUR (decided by the company decision) | — |
-| Production env (`deploy/.env.prod.example`, `deploy/.env.staging.example`) | No company field exists; the Brevo and Stripe settings above | The Stripe and Brevo values above | As above |
+| Production env (`deploy/.env.production.example`, `deploy/.env.staging.example`) | No company field exists; the Brevo and Stripe settings above | The Stripe and Brevo values above | As above |
 | Other provider accounts (Sentry, Mux, R2, the host, the domain) | **Outside the repo**; whose name each is in: not verified | In the company's name, with its DPAs where they apply | — |
 
 ## When the entity is confirmed

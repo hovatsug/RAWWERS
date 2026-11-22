@@ -619,7 +619,7 @@ In Gmail, open each > ⋮ > **Show original**. **You should see:** `SPF: PASS`, 
 
 ## Step 18. R2: bucket, token, CORS
 
-Parts 1-3 are done **during step 8** (the API needs the keys to start); part 4 is the check, now.
+Parts 1-3 are done **during step 8** (the API needs the keys to start); part 4 is the check, now; part 5 any time before the first photo upload.
 
 1. Cloudflare > R2 > Create bucket `rawwers-media-test` (location: automatic / EU jurisdiction if offered).
 2. R2 > Manage API tokens > Create: permission **Object Read & Write**, **this bucket only**. Copy the Access Key ID, Secret Access Key and the S3 endpoint into the secrets file (`R2_*`).
@@ -635,6 +635,9 @@ Parts 1-3 are done **during step 8** (the API needs the keys to start); part 4 i
    ```
    **You should see:** `exists True` and `deleted True`.
    **If not:** `AccessDenied` = the token's bucket or permission; `Could not connect` = the endpoint.
+5. **The lifecycle rule for unfinished uploads** (once per bucket). A large photo goes up in parts; an upload abandoned half way (Lightroom quit, a laptop closed, an app killed) leaves its parts in the bucket, billed, until R2 aborts them, which by default is after 7 days. The bucket > Settings > **Object lifecycle rules** > Add rule: **"Abort incomplete multipart uploads"** after **1 day**, for the **whole bucket** (no prefix). A resumed upload within the day still picks up its parts. The API's hourly `remove-unfinished-uploads` job cleans its own records too; the bucket rule is still needed for the parts.
+   **You should see:** the rule listed under Object lifecycle rules, "Abort incomplete multipart uploads", 1 day, the whole bucket.
+   **Undo:** delete the rule.
 
 ---
 
@@ -689,6 +692,7 @@ deploy/scripts/dc up -d
 - [ ] Stripe test event delivered with 200 (both destinations listed by the check script).
 - [ ] Mail from Zoho and from the API: SPF/DKIM/DMARC as in step 17.
 - [ ] R2 check `exists True`, `deleted True`.
+- [ ] R2 lifecycle rule listed: "Abort incomplete multipart uploads" after 1 day, whole bucket (step 18, part 5).
 - [ ] `https://admin.rawwers.com` asks for the Cloudflare Access code in a private window.
 - [ ] `https://api.rawwers.com/docs` and `/openapi.json` answer 404; `http://api.rawwers.com` redirects to https.
 - [ ] A backup exists in `/var/backups/rawwers`, and restore-test passed.

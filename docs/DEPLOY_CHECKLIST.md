@@ -300,3 +300,21 @@ The video was built and tested against a fake Mux (`api/app/services/mux_fake.py
 9. **Leftovers.** In Mux *Video > Assets*: no asset remains from steps 1-8. In the database: `SELECT count(*) FROM media_asset WHERE purpose = 'presentation_video' AND metadata->>'mux_delete_pending' = 'true';` returns 0 (a pending deletion is retried by the `mux-sync` job every `MUX_SYNC_INTERVAL_SECONDS`).
 10. **Then** keep `PRESENTATION_VIDEO_ENABLED=true` and tell the testers. If any step failed, set it back to false and restart: the apps then show "Video is not available right now", and clients see no video section.
 
+## Done per environment
+
+Restored 2026-11-22: this table (which the top of this page refers to) was
+lost on 2026-11-10 in commit 0b33bb6, with the rest of the page's old
+sections 4 to 6. Dev's values are as recorded then; dev no longer runs day to
+day. "Test server" is `deploy-test-1` on api.rawwers.com.
+
+| Item | dev | test server | production |
+|---|---|---|---|
+| Recompute index (`min_package_price`) | done | | |
+| Recompute index (`ranking_score`, and `0056`'s labels under the current rule) | done 2026-10-12 - the later 24h-and-a-minute change gives the same answers there, every dev request having a 24-hour window | | |
+| Watermark backfill | done | | |
+| Camera reference loaded | 98 cameras | | |
+| Price cap row for every active niche and tier | 40 of 60 - none for architecture, automotive, maternity, sports | | |
+| R2 multipart lifecycle rule ("Abort incomplete multipart uploads" after 1 day, whole bucket; DEPLOY_RUNBOOK step 18, part 5) | | | |
+| Niche banners loaded (`scripts/load_niche_banners.py`; DEPLOY_RUNBOOK, "Before the first real photographer") | | | |
+| Settlement delay is the real value (7 days; `tools/server/set-settlement-delay.py --restore` if it was changed) | | | |
+| Mux Production environment (DEPLOY_CHECKLIST 4a; the test server uses RAWWERS_DEV) | n/a | n/a (RAWWERS_DEV) | |

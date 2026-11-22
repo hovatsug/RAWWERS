@@ -737,6 +737,15 @@ Done on the test deploy as it is; required before a real photographer signs up:
    **You should see:** `deploy/scripts/dc exec postgres psql -U rawwers -c 'show shared_buffers'` prints `256MB`.
    **Undo:** deploy the previous tag again.
 3. **The pound price caps reviewed with UK photographers** and then approved or corrected (PRICE_CAPS.md, "Before launch").
+4. **The niche banners loaded.** A new database has no banner images, so Discover's niche tiles are plain until they are loaded. Through the admin upload service, with the picks agreed from the contact sheet, dry run first (**server**; the folder holds `picks.json` and `candidates.json`):
+   ```
+   deploy/scripts/dc run --rm -v <folder>:/nb api python scripts/load_niche_banners.py /nb/picks.json /nb/candidates.json --admin-email <YOUR_EMAIL>
+   deploy/scripts/dc run --rm -v <folder>:/nb api python scripts/load_niche_banners.py /nb/picks.json /nb/candidates.json --admin-email <YOUR_EMAIL> --apply
+   ```
+   **You should see:** in the admin's niche banners page, no niche says "Image missing" except one left on purpose (DEPLOY_CHECKLIST, "Niche banners").
+5. **The four niches with no price caps decided.** Architecture, Automotive, Maternity and Sports have no cap in any currency, so a photographer can charge any price there (PRICE_CAPS.md). Either you give the figures (then admin > Settings > Price caps), or those niches are switched off for the UK wave (`is_active` false, through the admin API `PUT /v1/admin/niches`; there is no web page for it).
+6. **The settlement delay is the real value, 7 days.** If `tools/server/set-settlement-delay.py` was ever used (TEST_WORLD.md), run it with `--restore --apply` and check it says 7 (DEPLOY_CHECKLIST go-live row).
+7. **The Mux Production environment** in place of RAWWERS_DEV ("Mux for the test deploy, then for production" below).
 
 ---
 

@@ -92,5 +92,9 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | 6b1d51c | 2026-11-22 | Runbook Before the first real photographer: banners, uncapped niches, settlement delay, Mux Production | no (docs only) |
 | 9c88aee | 2026-11-22 | DEPLOY_SECRETS: before go-live, replace what was shared or temporary | no (docs only) |
 | f0f896f | 2026-11-22 | DEPLOY_CHECKLIST: Done per environment restored (lost in 0b33bb6) with four new rows | no (docs only) |
+| b2e2f99 | 2026-11-22 | Docs: UNGATED_COMMITS rows for the deploy-docs batch | no (docs only) |
+| cd1d6b8 | 2026-11-23 | DEPLOY_CHECKLIST: old sections 4-6 restored verbatim from 0b33bb6^ (now 7, 5, 6) | no (docs only) |
+| 0bed76b | 2026-11-23 | DEPLOY_CHECKLIST: restored sections 5 and 7 freshened (email, caps, Stripe events, runbook pointers) | no (docs only) |
+| 357d7a1 | 2026-11-23 | DEPLOY_CHECKLIST Lightroom defaults (1.2.3, min 1.0.0); DEPLOY_RUNBOOK app setup leads with app/README's way | no (docs only) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.

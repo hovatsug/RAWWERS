@@ -776,14 +776,29 @@ Then: `deploy/scripts/dc restart <service>`, or `deploy/scripts/dc up -d` to bri
 
 ### Point the apps at the server (simulator test)
 
-**Mac**, in `app/`: make two local files (git ignores `env/*.json`):
+The way [app/README.md](../app/README.md) describes. **Mac**, once, in `app/`:
+from the committed examples, two local files (git ignores `env/*.json`):
 ```
-cp env/client.json env/client.server.json
-cp env/pro.json env/pro.server.json
-# in both: "API_BASE_URL": "https://api.rawwers.com", and the Stripe TEST publishable key (pk_test_...)
-flutter run --flavor client -t lib/main_client.dart --dart-define-from-file=env/client.server.json
-flutter run --flavor pro -t lib/main_pro.dart --dart-define-from-file=env/pro.server.json
+cp env/client.server.example.json env/client.server.json
+cp env/pro.server.example.json env/pro.server.json
+# in env/client.server.json: your Stripe TEST publishable key (pk_test_...)
 ```
+Then, from the repository root:
+```
+tools/app/run-client-server.sh
+tools/app/run-pro-server.sh
+```
+They check the file first (https, not this Mac, a test key, not the
+placeholder) and then run `flutter run`; extra words go to `flutter run` (for
+example `-d <device id>`).
+
+**Alternative** (the older way, without the checks): copy your own
+`env/client.json` and `env/pro.json` to `env/<app>.server.json`, set
+`"API_BASE_URL": "https://api.rawwers.com"` and the Stripe TEST publishable
+key, and run
+`flutter run --flavor client -t lib/main_client.dart --dart-define-from-file=env/client.server.json`
+(the same with `pro`).
+
 Sign up with an address on `EMAIL_DEV_ALLOWLIST` to receive the codes. Not a release build.
 
 ### The test world: accounts, a city, a paid booking

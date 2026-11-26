@@ -1,0 +1,13 @@
+# The nightly off-server backup, 03:30 UTC (the Sentry monitor expects it
+# then, with a 2-hour margin). Persistent: a night missed while the server
+# was off runs at the next start.
+[Unit]
+Description=RAWWERS nightly off-server database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+Unit=rawwers-backup@daily.service
+
+[Install]
+WantedBy=timers.target

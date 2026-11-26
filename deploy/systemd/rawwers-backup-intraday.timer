@@ -1,0 +1,14 @@
+# The extra runs that make backups every 6 hours: 09:30, 15:30 and 21:30 UTC,
+# into intraday/ (kept 3 days). OFF until the owner switches it on:
+#   deploy/scripts/install-backup-timer.sh --intraday on
+# (after the intraday/ lock and lifecycle rule exist: docs/RESTORE_PLAYBOOK.md).
+[Unit]
+Description=RAWWERS 6-hourly off-server database backup (the runs between the nightly ones)
+
+[Timer]
+OnCalendar=*-*-* 09,15,21:30:00 UTC
+Persistent=false
+Unit=rawwers-backup@intraday.service
+
+[Install]
+WantedBy=timers.target

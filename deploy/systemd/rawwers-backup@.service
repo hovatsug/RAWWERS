@@ -1,0 +1,18 @@
+# One off-server database backup (deploy/scripts/backup-offsite.sh).
+# %i is the label: daily (rawwers-backup-daily.timer), intraday
+# (rawwers-backup-intraday.timer, off until switched on) or predeploy (by hand:
+# systemctl start rawwers-backup@predeploy). Its output is in the journal:
+#   journalctl -u 'rawwers-backup@*' --since today
+# Installed by deploy/scripts/install-backup-timer.sh.
+[Unit]
+Description=RAWWERS off-server database backup (%i)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/rawwers/src
+ExecStart=/opt/rawwers/src/deploy/scripts/backup-offsite.sh --label %i
+TimeoutStartSec=45min
+Nice=10
+IOSchedulingClass=idle

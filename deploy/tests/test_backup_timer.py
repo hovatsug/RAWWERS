@@ -79,6 +79,7 @@ def test_uninstall_stops_and_removes(setup):
     done = _run(env, "--uninstall")
     assert done.returncode == 0, done.stderr
     assert "systemctl disable --now rawwers-backup-daily.timer rawwers-backup-intraday.timer" in _calls(logs)
+    assert _calls(logs)[-1] == "systemctl daemon-reload"
     assert list(unit_dir.iterdir()) == []
 
 

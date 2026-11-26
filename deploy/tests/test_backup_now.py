@@ -81,3 +81,39 @@ def test_a_missing_database_fails_and_keeps_nothing_half_done(tmp_path, fake_bin
     assert done.returncode != 0
     assert done.stdout == ""
     assert not list((tmp_path / "backups").glob("rawwers-*.dump"))
+
+
+def test_the_counts_are_from_the_dumps_own_moment_while_the_app_writes(tmp_path, fake_bin, pg, small_db):
+    """Rows keep arriving during the backup (the app never stops): the counts
+    and the dump must still describe the same moment, or every restore check
+    would see a difference that is not there."""
+    import threading
+
+    import psycopg2
+
+    stop = threading.Event()
+
+    def writer() -> None:
+        conn = psycopg2.connect(host=pg.host, port=pg.port, user=pg.user, dbname=small_db)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            while not stop.is_set():
+                cur.execute("INSERT INTO user_account (email) VALUES ('late@example.invalid')")
+        conn.close()
+
+    thread = threading.Thread(target=writer)
+    thread.start()
+    try:
+        done = _run(_env(tmp_path, fake_bin, pg, small_db), "--path-only")
+    finally:
+        stop.set()
+        thread.join()
+    assert done.returncode == 0, done.stderr
+    dump = Path(done.stdout.strip())
+    counted = next(l for l in Path(f"{dump}.counts").read_text().splitlines() if l.startswith("table|user_account|"))
+    target = pg.new_database()
+    subprocess.run([str(pg.bin / "pg_restore"), "--no-owner", "-d", target, str(dump)], check=True,
+                   capture_output=True, env={**os.environ, **pg.env(target)})
+    restored = pg.psql(target, "SELECT count(*) FROM user_account")
+    assert counted == f"table|user_account|{restored}"
+    assert int(restored) > 7, "the writer was running during the backup"

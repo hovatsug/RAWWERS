@@ -263,3 +263,18 @@ def test_a_missing_irreplaceable_secret_is_named_not_fatal(offsite):
     assert manifest["secrets"]["missing"] == ["RISK_SESSION_HASH_PEPPER"]
     assert "RISK_SESSION_HASH_PEPPER" not in manifest["secrets"]["names"]
     assert mode_of(offsite.config) == 0o600
+
+
+def test_lock_test_passes_when_the_bucket_refuses_the_delete(offsite):
+    done = offsite.run("--lock-test", BACKUP_STAMP="20261126T100000Z", FAKE_RCLONE_LOCKED="1")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "OK: the bucket refused to delete" in done.stdout
+    assert offsite.uploaded() == ["locktest/lock-test-20261126T100000Z.txt"]
+    assert offsite.log("curl.log") == ""
+
+
+def test_lock_test_says_problem_when_the_delete_goes_through(offsite):
+    done = offsite.run("--lock-test", BACKUP_STAMP="20261126T100000Z")
+    assert done.returncode == 8, done.stdout + done.stderr
+    assert "PROBLEM" in done.stderr
+    assert offsite.uploaded() == []

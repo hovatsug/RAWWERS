@@ -6,6 +6,7 @@
 #   deploy/scripts/backup-offsite.sh --label intraday    # the 6-hourly runs, once switched on
 #   deploy/scripts/backup-offsite.sh --label daily --dry-run   # everything but the upload
 #   deploy/scripts/backup-offsite.sh --check-bucket      # can the server reach the bucket?
+#   deploy/scripts/backup-offsite.sh --lock-test         # does the bucket refuse a delete? (locktest/)
 #
 # Steps: a dump with its row counts (backup-now.sh); a manifest; the dump and
 # a small file of the secrets that cannot be made again, each encrypted with
@@ -22,9 +23,10 @@
 #
 # Exit: 0 done (or dry run done); 2 usage, settings or tools; 3 another run
 # is going; 4 dump failed; 5 encryption failed; 6 upload or bucket failed;
-# 7 what arrived in the bucket is not what was sent.
+# 7 what arrived in the bucket is not what was sent; 8 the lock test found
+# no lock.
 set -euo pipefail
-usage() { sed -n '2,26p' "$0"; }
+usage() { sed -n '2,28p' "$0"; }
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DC="${RAWWERS_DC:-$HERE/dc}"
 BACKUP_NOW="${BACKUP_NOW:-$HERE/backup-now.sh}"
@@ -44,17 +46,18 @@ SENTRY_SCHEDULE="30 3 * * *"
 SENTRY_MARGIN_MINUTES=120
 SENTRY_MAX_RUNTIME_MINUTES=30
 
-LABEL="" DRY_RUN=0 CHECK_BUCKET=0
+LABEL="" DRY_RUN=0 CHECK_BUCKET=0 LOCK_TEST=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --label) LABEL="${2:-}"; shift 2 || { usage >&2; exit 2; } ;;
     --dry-run) DRY_RUN=1; shift ;;
     --check-bucket) CHECK_BUCKET=1; shift ;;
+    --lock-test) LOCK_TEST=1; shift ;;
     *) echo "backup-offsite: unknown argument $1" >&2; usage >&2; exit 2 ;;
   esac
 done
-if [[ $CHECK_BUCKET == 0 ]]; then
+if [[ $CHECK_BUCKET == 0 && $LOCK_TEST == 0 ]]; then
   case "$LABEL" in
     daily|intraday|predeploy) ;;
     *) echo "backup-offsite: --label must be daily, intraday or predeploy" >&2; exit 2 ;;
@@ -123,6 +126,23 @@ if [[ $CHECK_BUCKET == 1 ]]; then
   fi
   warn "cannot list the bucket with provider $PROVIDER. Check the endpoint, key and bucket name in $CONFIG; then try BACKUP_RCLONE_PROVIDER=$([[ $PROVIDER == Cloudflare ]] && echo Other || echo Cloudflare) in it."
   exit 6
+fi
+
+if [[ $LOCK_TEST == 1 ]]; then
+  stamp="${BACKUP_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
+  key="locktest/lock-test-$stamp.txt"
+  probe="$(mktemp)"
+  trap 'rm -f "$probe"' EXIT
+  echo "RAWWERS lock test $stamp: this file should not be deletable for a day." > "$probe"
+  rc copyto "$probe" "rawwersbk:$BUCKET/$key" || die 6 "cannot upload $key"
+  if rc deletefile "rawwersbk:$BUCKET/$key" 2> "$probe.err"; then
+    rm -f "$probe.err"
+    die 8 "PROBLEM: the bucket deleted $key. locktest/ has no lock rule, so check every lock rule (docs/RESTORE_PLAYBOOK.md, set-up step 3)"
+  fi
+  reason="$(grep -o 'ObjectLockedByBucketPolicy\|409\|[Ll]ocked[^ ]*' "$probe.err" | head -n 1 || true)"
+  rm -f "$probe.err"
+  echo "OK: the bucket refused to delete $key${reason:+ ($reason)}: the server's token cannot remove locked backups."
+  exit 0
 fi
 
 command -v "$AGE" >/dev/null 2>&1 || die 2 "age is missing: apt-get install -y age"

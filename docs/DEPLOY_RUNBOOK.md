@@ -10,7 +10,8 @@ mode, no real users, email delivered only to your own addresses
 (`DEPLOYMENT_MODE=test`). It is not the launch.
 
 **What it is not:** no Mux yet (the video says "not available"), no
-off-server backups yet (batch 4), no staging server.
+staging server. Off-server backups are step 21b, once you have the bucket,
+the token and the key ([RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md)).
 
 Placeholders, never written into the repository with real values:
 `<SERVER_IP>` the server's **new** IPv4 address (step 0b), `<OLD_SERVER_IP>`
@@ -53,7 +54,8 @@ readiness audit of 2026-11-21: every setting, every service, resource budget).
 6. **R2:** a bucket for this deployment (for example `rawwers-media-test`) and an API token for it (step 18).
 7. **Sentry (optional):** the two DSNs (`rawwers-api`, `rawwers-web`).
 8. **On the Mac:** Docker Desktop, for the image build of step 9 only (the Mac no longer runs the dev stack: [MAC_DOCKER_OFF.md](MAC_DOCKER_OFF.md)); this repository at the agreed tag, `python3`, `dig`.
-9. An hour and a half without interruptions for steps 0 to 14; the rest can wait for another day.
+9. **Off-server backups (step 21b, can be another day):** Cloudflare two-factor sign-in on; the age key pair made on the Mac (its private key in the password manager and on paper); the backup bucket and its two tokens. Step by step: [RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md), "Set-up".
+10. An hour and a half without interruptions for steps 0 to 14; the rest can wait for another day.
 
 ---
 
@@ -670,7 +672,7 @@ deploy/scripts/restore-test.sh /var/backups/rawwers/rawwers-<time>.dump     # th
 ```
 **You should see:** `OK: /var/backups/rawwers/rawwers-...dump`, then three `ok` lines and "The backup restores and matches the live database."
 **If not:** paste the output to the developer.
-Run `backup-now.sh` before every deploy and every migration. The file is lost if the server itself is lost: until batch 4, only the Hetzner backups (step 1) survive that.
+Before every deploy and every migration, once step 21b is done: `deploy/scripts/backup-offsite.sh --label predeploy` (a backup on the server **and** an encrypted copy in the backup bucket). Until then `backup-now.sh`, whose file is lost if the server itself is lost: only the Hetzner backups (step 1) survive that.
 
 **Restore a backup for real** (replaces everything in the database; only with the developer):
 ```
@@ -679,6 +681,34 @@ deploy/scripts/dc exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_
 deploy/scripts/dc exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < /var/backups/rawwers/rawwers-<time>.dump
 deploy/scripts/dc up -d
 ```
+
+---
+
+## Step 21b. Off-server backups (nightly, encrypted, in R2)
+
+Every night at 03:30 UTC an encrypted copy of the database goes to its own
+bucket; a missed night emails you. Do it the day you have an hour:
+[RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md), "Set-up", steps 1 to 11, in
+order. Short version:
+
+| | Where | What |
+|---|---|---|
+| 1 | Cloudflare | Two-factor sign-in on |
+| 2-3 | Cloudflare | Bucket `rawwers-backups-test` (EU jurisdiction if offered); locks and lifecycle rules: `daily/` and `predeploy/` 35 days, `monthly/` 365, `locktest/` 1 |
+| 4 | Cloudflare | Two tokens for that bucket only: the server's (Object Read & Write), the Mac's (Object Read only) |
+| 5 | Mac | `age-keygen`: the public key for the server; the private key to the password manager and paper, **never** to the server or chat |
+| 6 | server | `apt-get install -y age rclone`; `/opt/rawwers/backup.env`, mode 600 |
+| 7 | server | `deploy/scripts/backup-offsite.sh --check-bucket` |
+| 8 | server | `deploy/scripts/backup-offsite.sh --label predeploy --dry-run`, then without `--dry-run` |
+| 9 | server | `deploy/scripts/backup-offsite.sh --lock-test` |
+| 10 | server | `deploy/scripts/install-backup-timer.sh` |
+| 11 | Sentry | The monitor (made by the first daily run) and an alert rule that emails you |
+| then | Mac | The first drill: `deploy/scripts/restore-from-offsite.sh ... --key <key file>` says PASS |
+
+**You should see:** the `OK` lines each step names, and PASS on the Mac.
+Paste back only command output: it never holds a key.
+**Undo:** `deploy/scripts/install-backup-timer.sh --uninstall`; the bucket
+keeps what it has until its locks and rules let it go.
 
 ---
 
@@ -696,6 +726,7 @@ deploy/scripts/dc up -d
 - [ ] `https://admin.rawwers.com` asks for the Cloudflare Access code in a private window.
 - [ ] `https://api.rawwers.com/docs` and `/openapi.json` answer 404; `http://api.rawwers.com` redirects to https.
 - [ ] A backup exists in `/var/backups/rawwers`, and restore-test passed.
+- [ ] Off-server backups (step 21b): `--check-bucket` OK, `--lock-test` OK, the timer listed for 03:30 UTC, the Sentry monitor with an alert rule to you, and the first drill on the Mac said PASS. (If step 21b waits for another day, write the date here.)
 - [ ] A Hetzner snapshot after the deploy: `rawwers-test-deploy-<date>`.
 - [ ] The server's Overview shows the new IPv4; then (step 0b, part 9) the old primary IPv4 is deleted and no DNS record names it.
 - [ ] GitHub: no old deploy secrets, environments or deploy keys (step 0c).
@@ -706,9 +737,28 @@ deploy/scripts/dc up -d
 ## After every deploy: read version.sh
 
 `deploy/scripts/version.sh` (server). Check: the checkout commit and
-`IMAGE_TAG` are the commit you meant; every container `(healthy)`; migration
-`current` = `newest`; the switches as in step 22; exchange rates not "none
-fresh" (they refresh hourly at minute 15).
+`IMAGE_TAG` are the commits you meant, and the `images` line under them says
+either "same commit as the checkout" or "api/ and web/ unchanged since: no
+rebuild needed" (never "CHANGED ... build and push new images"); every
+container `(healthy)`; migration `current` = `newest`; the switches as in
+step 22; exchange rates not "none fresh" (they refresh hourly at minute 15).
+
+### A new tag with only scripts and docs (no new images)
+
+The images are built from `api/` and `web/` only. When a tag changes neither
+(for example `deploy-test-2`, which brings the backup scripts), the server
+checks out the new tag and keeps the images it runs:
+1. **Mac**, before tagging: `git diff --stat deploy-test-1 <commit> -- api web`
+   prints nothing. Then `git tag <TAG> <commit> && git push origin <TAG>`.
+2. **server:**
+   ```
+   cd /opt/rawwers/src && git fetch --tags && git checkout <TAG> && deploy/scripts/version.sh
+   ```
+   **You should see:** `images  checkout is N commits after IMAGE_TAG; api/
+   and web/ unchanged since: no rebuild needed`. `IMAGE_TAG` stays as it is;
+   no `dc up` is needed (`compose.prod.yml` and the `Caddyfile` are read
+   from the checkout: if a tag changed either, run `deploy/scripts/dc up -d`).
+   **Undo:** `git checkout <previous tag>`.
 
 ---
 
@@ -746,6 +796,8 @@ Done on the test deploy as it is; required before a real photographer signs up:
 5. **The four niches with no price caps decided.** Architecture, Automotive, Maternity and Sports have no cap in any currency, so a photographer can charge any price there (PRICE_CAPS.md). Either you give the figures (then admin > Settings > Price caps), or those niches are switched off for the UK wave (`is_active` false, through the admin API `PUT /v1/admin/niches`; there is no web page for it).
 6. **The settlement delay is the real value, 7 days.** If `tools/server/set-settlement-delay.py` was ever used (TEST_WORLD.md), run it with `--restore --apply` and check it says 7 (DEPLOY_CHECKLIST go-live row).
 7. **The Mux Production environment** in place of RAWWERS_DEV ("Mux for the test deploy, then for production" below).
+8. **Photos and videos backed up:** a nightly copy of the media bucket into a separate locked bucket (BETA_SCOPE #97, not built yet). Without it a bug or a leaked token can delete every photo.
+9. **Backups every 6 hours before the first real payment** ([RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md), "Every 6 hours").
 
 ---
 
@@ -841,10 +893,15 @@ access token, a new signing key and a new webhook (with its own secret), as
 4a says. "Never reuse dev's keys" applies to production: never put
 RAWWERS_DEV's keys on the live server, and never production's on dev.
 
-### What you risk until batch 4 (off-server backups)
+### What you risk, and what protects it
 
-The database holds only test data, so losing it costs time, not data. What
-protects it now: the Hetzner daily backups and snapshots (whole server, kept
-by Hetzner) and `backup-now.sh` files (on the same server: gone if the server
-is). Uploaded photos are in R2, not on the server. Before real users: batch 4
-(backups copied to R2 every night, and a tested restore).
+| | Protected by | Not yet |
+|---|---|---|
+| The database | The nightly encrypted copy in the backup bucket (step 21b; at most 24 hours lost), the `predeploy` copies, the last 2 dumps on the server, Hetzner's daily backups | Every 6 hours: required before the first real payment ([RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md), "Every 6 hours") |
+| The secrets that cannot be made again | An encrypted copy next to every backup; the age key in your password manager and on paper | — |
+| Photos and videos (R2 media bucket) | Nothing: a bug or a leaked media token could delete them | A nightly copy into a separate locked bucket, **required before real photographers upload** (BETA_SCOPE #97) |
+| The Cloudflare account | Two-factor sign-in; the encrypted monthly copies kept on the Mac by the drill | — |
+
+Until step 21b is done, only the Hetzner backups and the server's own dump
+files exist, and they are lost with the server or the Hetzner account. The
+test database holds only test data, so that costs time, not data.

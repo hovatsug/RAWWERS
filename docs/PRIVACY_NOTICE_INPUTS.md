@@ -38,3 +38,37 @@ and it draws no legal conclusions.
 **For the lawyer:** the purpose is defending a payment dispute (a legal
 claim); likely basis legitimate interests (UK GDPR Art. 6(1)(f)), to be
 confirmed, along with the retention period.
+
+## Backups (deleted data stays in them until they expire)
+
+**Draft wording:**
+
+> Encrypted copies of the database are kept for disaster recovery: one a
+> day for 35 days and one a month for 12 months. When an account is
+> deleted it is removed from the live service at once, but it remains in
+> these copies until they expire, at most 12 months later. The copies are
+> never used except to recover from a failure; if one is restored,
+> deletions made since that copy are carried out again.
+
+**What the code does** (deploy/scripts/backup-offsite.sh,
+docs/RESTORE_PLAYBOOK.md):
+
+- Every night at 03:30 UTC a full copy of the database, encrypted on the
+  server with a key only the owner holds, goes to a separate Cloudflare R2
+  bucket (EU jurisdiction if offered); the first copy of each month is kept
+  12 months, the others 35 days, a copy made before each deploy 35 days.
+  Every 6 hours before the first real payment: those extra copies are kept 3
+  days.
+- The bucket's locks stop anyone deleting a copy early, including us; the
+  lifecycle rules delete each copy when its time is up.
+- **Anything deleted on a schedule is also in the copies until they expire**:
+  for example a client's raw IP address, cleared from the live database
+  after 120 days (above), stays in the monthly copies up to 12 months. The
+  IP wording above needs the same "except in backups" sentence.
+- A restore is followed by carrying out again the deletions made since the
+  copy (RESTORE_PLAYBOOK.md, "Carry out deletions again"). Account deletion
+  itself is not built yet (BETA_SCOPE #9).
+
+**For the lawyer:** whether 12 months is proportionate for the monthly
+copies, and how the notice should describe deleted data that remains in
+backups.

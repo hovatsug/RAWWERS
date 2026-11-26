@@ -96,5 +96,14 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | cd1d6b8 | 2026-11-23 | DEPLOY_CHECKLIST: old sections 4-6 restored verbatim from 0b33bb6^ (now 7, 5, 6) | no (docs only) |
 | 0bed76b | 2026-11-23 | DEPLOY_CHECKLIST: restored sections 5 and 7 freshened (email, caps, Stripe events, runbook pointers) | no (docs only) |
 | 357d7a1 | 2026-11-23 | DEPLOY_CHECKLIST Lightroom defaults (1.2.3, min 1.0.0); DEPLOY_RUNBOOK app setup leads with app/README's way | no (docs only) |
+| 1a1363c | 2026-11-23 | Docs: UNGATED_COMMITS rows for the checklist restore batch | no (docs only) |
+| cfa0ee0 | 2026-11-26 | Deploy tests first (deploy/tests): off-server backup, restore on the Mac, timer, version.sh | no (tests of deploy scripts; no api/ or web/) |
+| 1806722 | 2026-11-26 | backup-offsite.sh (encrypted copy to R2, verified); backup-now.sh --path-only, counts from the dump's snapshot, KEEP=0 | no (deploy scripts; deploy/tests 20 passed, api test_deploy_scripts + test_compose_prod 20 passed) |
+| 498e011 | 2026-11-26 | version.sh: whether the checkout needs new images | no (deploy script; 5 tests) |
+| 10a65bf | 2026-11-26 | systemd timer and install-backup-timer.sh | no (deploy script and units; 7 tests) |
+| 1217a7d | 2026-11-26 | restore-from-offsite.sh (Mac) | no (deploy script; 8 tests, and the real schema restored once) |
+| 66ff797 | 2026-11-26 | backup-offsite.sh --lock-test | no (deploy script; 2 tests) |
+| 3e4e6be | 2026-11-26 | Docs: RESTORE_PLAYBOOK.md | no (docs only) |
+| (this commit) | 2026-11-26 | Docs: runbook step 21b, checklist rows, secrets rows, privacy sentence, BETA_SCOPE #13 #83 #97-102 | no (docs only) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.

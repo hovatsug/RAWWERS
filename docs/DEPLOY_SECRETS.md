@@ -39,6 +39,26 @@ right line. Nothing is printed by generate-secrets.sh itself.
 | The registry read token (for `docker login` on the server) | GitHub > Settings > Developer settings > Personal access tokens (classic) > scope `read:packages` only. |
 | `MUX_*` | Not now. After this deploy: DEPLOY_CHECKLIST section 4a. |
 
+## Off-server backups (RESTORE_PLAYBOOK.md)
+
+Kept apart from the app: the app's containers never see these.
+
+| Secret | Where it lives | Made |
+|---|---|---|
+| The backup bucket's **server token** (`BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`) | `/opt/rawwers/backup.env` on the server, mode 600 | Cloudflare > R2 > Manage API tokens: **Object Read & Write**, the backup bucket only. Never "Admin": that can remove the locks |
+| The backup bucket's **Mac token** (read only) | The password manager; a mode-600 file on the Mac for the drill | The same page: **Object Read only**, the backup bucket only |
+| The **age public key** (`BACKUP_AGE_RECIPIENT`, `age1...`) | `backup.env`. Public: no harm if seen | `age-keygen` on the Mac |
+| The **age private key** (`AGE-SECRET-KEY-1...`) | **Only** the password manager, a paper copy, and a private folder on the Mac. Never the server, chat, email or the repository | The same `age-keygen`. **Lost = every backup unreadable** |
+
+What each backup carries, encrypted to that key, picked by name from the
+secrets file: `ADDRESS_ENCRYPTION_KEYS`, `UNSUBSCRIBE_SIGNING_KEYS`,
+`MEDIA_SHARE_TOKEN_PEPPER`, `MEDIA_ACCESS_IP_HASH_PEPPER`,
+`SHARE_VIEW_FINGERPRINT_PEPPER`, `RISK_IP_HASH_PEPPER`,
+`RISK_DEVICE_HASH_PEPPER`, `RISK_SESSION_HASH_PEPPER`: the ones no service
+can issue again. Everything else is left out and made again after a loss.
+Keep `ADDRESS_ENCRYPTION_KEYS` in the password manager too: without it no
+stored shipping address can be read, from any backup.
+
 ## Rotating (changing one later), and what breaks
 
 Always: edit the file, then restart what reads it:
@@ -59,6 +79,8 @@ Always: edit the file, then restart what reads it:
 | `BREVO_WEBHOOK_TOKEN` | Brevo's delivery events are refused (401) until both match. | Change it in the file and in the Brevo webhook (as its Bearer token) together. |
 | R2 keys | Uploads and downloads fail while the two differ. | Make a new token, replace, restart, delete the old token. |
 | Origin certificate | Cloudflare cannot reach the server if it is wrong. | It lasts 15 years; to replace: make a new one, copy both files, `dc restart caddy`. |
+| Backup server token | The nightly backup fails (and alarms) while the file and Cloudflare differ. | New token (same permission), edit `/opt/rawwers/backup.env`, `deploy/scripts/backup-offsite.sh --check-bucket`, then delete the old token. |
+| Age key pair | New backups use the new public key; backups already made open **only with the old private key**. | `age-keygen` on the Mac, new public key into `backup.env`, a predeploy backup and a drill with the new private key. **Keep the old private key** (password manager) for 12 months, until the last monthly copy made with it has expired. |
 
 If a secret **leaked**: rotate it now, then check `deploy/scripts/dc logs --since 24h api | grep -i error` and Sentry.
 
@@ -82,4 +104,5 @@ points at the steps that already exist; nothing here is new procedure.
 | `EMAIL_DEV_ALLOWLIST` | In `live` mode the server emails everyone; the list is a test-mode limit | Remove the line, and check the DEPLOY_CHECKLIST go-live rows (Brevo sending, unsubscribe keys) |
 | Cloudflare Access on the pages email links open | Access protects all of `admin.rawwers.com`, including `/unsubscribe`, `/reset-password`, `/verify-email` and the other pages emails link to; a real user cannot pass it | A second Access application on those paths with a **Bypass / Everyone** policy, or move them off the admin host (runbook step 7, "Before real people get emails") |
 | Settlement delay | It may have been set to 0 on the test server for a same-day payout test | It must be the real value, **7 days**: `tools/server/set-settlement-delay.py --restore --apply` while still in test mode (DEPLOY_CHECKLIST go-live row) |
+| The backup bucket, its tokens and the age key | The test deploy's bucket holds test data; its key pair was made and handled while testing | The live bucket `rawwers-backups` (EU jurisdiction if offered) with the same locks and rules, two new tokens for it only, a new age key pair (RESTORE_PLAYBOOK.md, "Set-up", steps 2 to 11); every 6 hours before the first real payment |
 | The pound price caps | They are PROVISIONAL, approved for the test deploy only | Reviewed with UK photographers, then approved or corrected in the admin (PRICE_CAPS.md, "Before launch") |

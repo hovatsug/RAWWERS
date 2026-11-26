@@ -317,6 +317,8 @@ Listed so a successful deploy is not mistaken for launch readiness.
   5. Lock the phone with the app open for 10 minutes: the dot is gone within 5 minutes of locking.
 
   Simulators covered steps 1-3; steps 3-5 on a phone are what the five-minute expiry exists for. See BACKEND_GAPS.md, "iOS suspension unverified on a physical device".
+- **Photos and videos have no backup.** The database is copied off the server every night (DEPLOY_RUNBOOK step 21b, [RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md)); the media bucket is not: a bug or a leaked media token could delete every photo. Required before real photographers upload: a nightly copy into a separate locked bucket (BETA_SCOPE #97).
+- **Backups every 6 hours before the first real payment.** Nightly loses up to 24 hours of bookings and payments; every 6 hours is one command once the `intraday/` lock exists (RESTORE_PLAYBOOK.md, "Every 6 hours").
 
 ## 6. Blocks beta - money and access routes no test calls
 
@@ -409,3 +411,10 @@ day. "Test server" is `deploy-test-1` on api.rawwers.com.
 | Niche banners loaded (`scripts/load_niche_banners.py`; DEPLOY_RUNBOOK, "Before the first real photographer") | | | |
 | Settlement delay is the real value (7 days; `tools/server/set-settlement-delay.py --restore` if it was changed) | | | |
 | Mux Production environment (DEPLOY_CHECKLIST 4a; the test server uses RAWWERS_DEV) | n/a | n/a (RAWWERS_DEV) | |
+| Off-server backups set up: bucket with locks and lifecycle by folder, tokens, age key, `backup.env`, timer (DEPLOY_RUNBOOK step 21b; RESTORE_PLAYBOOK.md "Set-up") | n/a | | |
+| `backup-offsite.sh --lock-test` said OK (the server's token cannot delete a backup) | n/a | | |
+| Sentry monitor for the nightly backup, with an alert rule that emails the owner | n/a | | |
+| The last monthly restore drill on the Mac said PASS (write the date) | n/a | | |
+| Backup frequency set to every 6 hours before the first real payment (`install-backup-timer.sh --intraday on`, after the `intraday/` lock) | n/a | n/a (nightly) | |
+| Photos and videos backed up: a nightly copy of the media bucket into a separate locked bucket (BETA_SCOPE #97) | n/a | | |
+| Cloudflare account: two-factor sign-in (one account for every environment) | | | |

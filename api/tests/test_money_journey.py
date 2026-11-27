@@ -491,3 +491,100 @@ def test_scenario_3b_a_difference_paid_for_a_selection_that_became_cheaper(journ
     assert [t.amount for t in j.stripe.transfers] == [7680]
     assert j.stripe.balance["eur"] == cents("19.20")  # 127.74 in, 31.74 back, 76.80 out
     assert_wallet_balances(j.wallet(pro))
+
+
+def _completed_euro_booking(j, photos=30):
+    pro, client, booking = _paid_euro_booking(j)
+    j.deliver(pro, booking, photos)
+    j.choose(client, booking, photos)
+    if booking.difference_intent:
+        j.card_pays(booking.difference_intent)
+    j.review(client, booking)
+    return pro, client, booking
+
+
+def test_scenario_4a_admin_price_reduction_after_completion(journey):
+    """Completed at 127.74 (96.00 + 31.74). The admin lowers the price by
+    20.00 (mutual_agreement): refunded from the most recent payment (the
+    difference); the earning follows 107.74 = 16.16 + 5.39 + 86.19
+    (16.161 and 5.387 rounded on their own). 86.19 is paid out. A second
+    reduction of 10.00 after the payout takes the earning to 97.74 =
+    14.66 + 4.89 + 78.19: 8.00 more was paid out than earned, shown as an
+    adjustment owed, never as a negative withdrawable amount."""
+    j = journey()
+    pro, client, booking = _completed_euro_booking(j)
+    path = f"/v1/admin/gigs/{booking.gig_id}/price-reductions"
+    lines = [{"reason_code": "mutual_agreement", "amount": "20.00"}]
+
+    preview = j.call("POST", f"{path}/preview", "admin", json={"lines": lines})
+    assert (D(preview["from_amount"]), D(preview["to_amount"]), D(preview["client_refund"])) == (D("127.74"), D("107.74"), D("20.00"))
+    assert (D(preview["photographer_cash_before"]), D(preview["photographer_cash_after"])) == (D("102.19"), D("86.19"))
+    assert j.stripe.refunds == []  # a preview changes nothing
+
+    done = j.call("POST", path, "admin", json={"lines": lines, "note": "Agreed with the client", "idempotency_key": "r1"})
+    assert (D(done["from_amount"]), D(done["to_amount"]), D(done["refund_amount"])) == (D("127.74"), D("107.74"), D("20.00"))
+    again = j.call("POST", path, "admin", json={"lines": lines, "note": "Agreed with the client", "idempotency_key": "r1"})
+    assert again["id"] == done["id"]  # the same click twice is one reduction
+    assert [(r.payment_intent, r.amount) for r in j.stripe.refunds] == [(booking.difference_intent, 2000)]
+    j.announce_refunds()
+    assert [(p.kind.value, p.amount_refunded) for p in j.payments(booking)] == [("base", D("0.00")), ("difference", D("20.00"))]
+    assert j.captured(booking) == [D("96.00"), D("31.74")]
+    gig = j.gig(booking)
+    assert (gig.amount_final, gig.final_gross) == (D("107.74"), D("107.74"))
+    assert (gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (D("16.16"), D("5.39"), D("86.19"))
+    assert [(e.gross, e.platform_fee, e.net) for e in j.entries(pro)] == [(D("107.74"), D("21.55"), D("86.19"))]
+    assert sum(r.amount for r in j.raww(pro)) == 54  # 5.39 at 0.10
+
+    payout = _pay_out_everything(j, pro, D("86.19"))
+    assert [(t.source_transaction, t.amount) for t in j.stripe.transfers] == [
+        (j.stripe.intents[booking.base_intent].latest_charge, 8619),
+    ]
+    assert j.stripe.balance["eur"] == cents("21.55")
+
+    j.call("POST", path, "admin", json={"lines": [{"reason_code": "mutual_agreement", "amount": "10.00"}],
+                                        "note": "A second agreement", "idempotency_key": "r2"})
+    j.announce_refunds()
+    assert [(r.payment_intent, r.amount) for r in j.stripe.refunds] == [(booking.difference_intent, 2000), (booking.difference_intent, 1000)]
+    gig = j.gig(booking)
+    assert (gig.final_gross, gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (
+        D("97.74"), D("14.66"), D("4.89"), D("78.19"))
+    wallet = j.wallet(pro)
+    assert (wallet.lifetime, wallet.paid_out, wallet.available) == (D("78.19"), D("86.19"), D("-8.00"))
+    assert (wallet.withdrawable, wallet.adjustment_owed) == (D("0.00"), D("8.00"))
+    assert_wallet_balances(wallet)
+    assert j.request_payout(pro, D("45.00"), expect=422)["error"]["code"] == "validation_error"
+    assert [t.amount for t in j.payout_transfers(payout["id"])] == [D("86.19")]  # nothing sent back or again
+    assert j.stripe.balance["eur"] == cents("11.55")
+
+
+def test_scenario_4b_admin_refund_on_a_paid_booking_not_yet_complete(journey):
+    """Paid 96.00; before delivery the admin refunds 30.00. The client then
+    chooses the 20 the package includes: the price stays 96.00, but the
+    booking earns what was kept, 66.00 = 9.90 + 3.30 + 52.80."""
+    j = journey()
+    pro, client, booking = _paid_euro_booking(j)
+    case = j.call("POST", f"/v1/admin/gigs/{booking.gig_id}/refunds", "admin", json={"amount": "30.00", "reason": "Agreed partial refund"})
+    assert (case["status"], D(case["amount"])) == ("processing", D("30.00"))
+    assert [(r.payment_intent, r.amount) for r in j.stripe.refunds] == [(booking.base_intent, 3000)]
+    twice = j.call("POST", f"/v1/admin/gigs/{booking.gig_id}/refunds", "admin", json={"amount": "30.00", "reason": "Agreed partial refund"})
+    assert twice["id"] == case["id"] and len(j.stripe.refunds) == 1  # a second click while it is under way
+    j.announce_refunds()
+    assert j.captured(booking) == [D("96.00")]
+    assert j.refund_cases(booking) == [("refunded", D("30.00"))]
+    assert [(p.kind.value, p.status.value, p.amount_refunded) for p in j.payments(booking)] == [("base", "succeeded", D("30.00"))]
+    assert j.gig(booking).status.value == "paid"
+
+    j.deliver(pro, booking, 20)
+    j.choose(client, booking, 20)
+    gig = j.gig(booking)
+    assert (gig.status.value, gig.amount_final, gig.final_gross) == ("completed", D("96.00"), D("66.00"))
+    assert (gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (D("9.90"), D("3.30"), D("52.80"))
+    assert_split_reconciles(gig)
+    assert [(e.gross, e.net) for e in j.entries(pro)] == [(D("66.00"), D("52.80"))]
+    assert len(j.stripe.refunds) == 1  # completing refunds nothing more
+
+    j.review(client, booking)
+    _pay_out_everything(j, pro, D("52.80"))
+    assert [t.amount for t in j.stripe.transfers] == [5280]
+    assert j.stripe.balance["eur"] == cents("13.20")  # 96.00 - 30.00 - 52.80
+    assert_wallet_balances(j.wallet(pro))

@@ -711,3 +711,40 @@ def test_scenario_8_a_photographer_fault_finding_then_a_lost_chargeback(journey)
     known_bug(sum(a for _, a in raww_after_chargeback) == 0,
               f"after the chargeback reversed the earning the photographer still holds RAWW {raww_after_chargeback}; expected none")
 
+
+def test_scenario_9_a_lost_chargeback_with_no_finding_is_absorbed_by_the_platform(journey):
+    """A completed booking (96.00 = 14.40 + 4.80 + 76.80), paid out. The
+    client's bank takes the 96.00 back and the chargeback is lost. With no
+    fault finding the interim policy applies: the platform absorbs it (96.00
+    + 20.00 fee), the photographer's earning is untouched, the booking ends
+    refunded and the client's downloads end."""
+    from app.models.media_rights import GigEntitlementType, GigMediaEntitlement
+
+    j = journey()
+    pro, client, booking = _completed_euro_booking(j, photos=20)
+    _pay_out_everything(j, pro, D("76.80"))
+
+    j.chargeback_lost(booking.base_intent)
+    gig = j.gig(booking)
+    assert gig.status.value == "refunded"
+    assert [(e.net, e.reversed_at) for e in j.entries(pro)] == [(D("76.80"), None)]
+    wallet = j.wallet(pro)
+    assert (wallet.lifetime, wallet.paid_out, wallet.available, wallet.adjustment_owed) == (D("76.80"), D("76.80"), D("0.00"), D("0.00"))
+    assert sum(r.amount for r in j.raww(pro)) == 48
+    assert [i for i in j.attention_items(booking) if i[0].startswith("chargeback")] == [
+        ("chargeback_evidence_due", D("96.00")), ("chargeback_lost", D("116.00")),  # 96.00 + the 20.00 fee
+    ]
+    assert j.chargeback_lines(booking) == [("chargeback_opened", D("-96.00")), ("chargeback_fee", D("-20.00")), ("chargeback_lost", D("0.00"))]
+    assert [p.status.value for p in j.payments(booking)] == ["disputed"]
+    assert j.captured(booking) == [D("96.00")]
+    finals = j.db.execute(select(GigMediaEntitlement).where(
+        GigMediaEntitlement.gig_id == uuid.UUID(booking.gig_id),
+        GigMediaEntitlement.entitlement_type == GigEntitlementType.download_finals,
+    )).scalar_one()
+    assert finals.valid_until is not None  # the client's downloads have ended
+    assert j.stripe.balance["eur"] == cents("-96.80")  # 19.20 - 96.00 - 20.00
+
+    j.replay_all(new_ids=True)
+    assert [i[0] for i in j.attention_items(booking)].count("chargeback_lost") == 1
+    assert len(j.chargeback_lines(booking)) == 3
+    assert [(e.net, e.reversed_at) for e in j.entries(pro)] == [(D("76.80"), None)]

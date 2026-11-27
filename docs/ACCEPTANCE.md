@@ -26,9 +26,9 @@ Stripe balance. Recording the fee per payment is BETA_SCOPE #105.
 tools/tests/native-db.sh tests/test_money_journey.py -q -rxX
 ```
 
-**Expect:** every scenario passed, and one `XFAIL` naming BETA_SCOPE #103
-(a known bug kept as a strict expected failure: the day it is fixed that
-test turns red, and its mark comes off).
+**Expect:** every scenario passed, and two `XFAIL` lines, naming BETA_SCOPE
+#103 and #107 (known bugs kept as strict expected failures: the day one is
+fixed its test turns red, and its mark comes off).
 
 | Scenario | What it proves |
 |---|---|
@@ -41,6 +41,9 @@ test turns red, and its mark comes off).
 | 5 | Every webhook delivered twice, then the whole history again, then under new event ids: nothing counted twice |
 | 6 | A declined card, then a retry: the same PaymentIntent, one payment |
 | 7 | Client credit at checkout: at most 10% off, out of the platform's share; the photographer paid on the full price |
+| 8 | A photographer-fault finding (no money moves), then a lost chargeback: the earning reversed, what was paid out owed back as an adjustment (XFAIL #107: the RAWW credit stays) |
+| 9 | A lost chargeback with no finding: the platform absorbs it (the amount and Stripe's 20.00 fee); the earning untouched |
+| probe | Extras bought on a flat-priced booking, the payment's event re-sent (XFAIL #103: the download count doubles) |
 
 Each test uses its own database and its own made-up internet address, so it
 does not depend on any other test or on the order the suite runs in.

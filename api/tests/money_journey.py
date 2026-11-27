@@ -816,6 +816,18 @@ class Journey:
         ).scalars().all()
 
 
+class KnownBug(AssertionError):
+    """A check that fails today because of a bug logged in BETA_SCOPE. Tests
+    mark it `xfail(raises=KnownBug, strict=True)`: the suite stays green,
+    any other failure still fails, and the test turns red the day the bug
+    is fixed (then remove the mark)."""
+
+
+def known_bug(condition: bool, message: str) -> None:
+    if not condition:
+        raise KnownBug(message)
+
+
 def assert_split_reconciles(gig) -> None:
     """Every share of the booking back to its gross, to the cent."""
     shares = gig.final_platform_retained + gig.final_pro_raww + gig.final_pro_cash + (gig.final_client_raww or D("0.00"))

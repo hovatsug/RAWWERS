@@ -16,18 +16,22 @@ from the code under test:
 """
 from __future__ import annotations
 
+import uuid
 from datetime import timedelta
 from decimal import Decimal as D
 
 import pytest
+from sqlalchemy import select
 
 from tests.money_journey import (
     LISBON_EUR,
     LONDON_GBP,
     Journey,
+    KnownBug,
     assert_split_reconciles,
     assert_wallet_balances,
     cents,
+    known_bug,
 )
 
 
@@ -273,3 +277,58 @@ def test_scenario_5_every_webhook_replayed_twice_credits_nothing_twice(journey):
     j.work()
     _assert_euro_outcome(j, pro, client, booking, payout)
 
+
+@pytest.mark.xfail(
+    raises=KnownBug, strict=True,
+    reason="BETA_SCOPE #103: a re-sent payment_intent.succeeded for an extras purchase raises the download count again",
+)
+def test_scenario_5_probe_extras_bought_on_a_flat_priced_booking_are_counted_once(journey):
+    """The extras purchase (upsell) branch of payment_intent.succeeded, on a
+    booking priced the flat way: no entry rate, as on the legacy shoot path
+    (every booking made through today's routes is curve-priced, so the gig's
+    entry rate is cleared here to reach it). 5 extras are bought and paid;
+    the success event is then re-sent under a new event id."""
+    from app.models.media_rights import GigEntitlementType, GigMediaEntitlement
+
+    j = journey()
+    j.open_city()
+    j.set_price_cap()
+    pro = j.photographer()
+    client = j.sign_up("client")
+    booking = j.book(client, pro)
+    j.checkout(client, booking)
+    j.card_pays(booking.base_intent)
+    gig = j.gig(booking)
+    gig.entry_rate = None
+    j.db.commit()
+
+    j.deliver(pro, booking, 25)
+    chosen = j.choose(client, booking, 25)
+    assert chosen["submitted"]["upsell_required"] is True and chosen["submitted"]["extras_count"] == 5
+    upsell_intent = chosen["submitted"]["payment_intent_id"]
+    j.card_pays(upsell_intent)
+
+    def extras_allowed() -> int:
+        j.db.expire_all()
+        row = j.db.execute(
+            select(GigMediaEntitlement).where(
+                GigMediaEntitlement.gig_id == uuid.UUID(booking.gig_id),
+                GigMediaEntitlement.entitlement_type == GigEntitlementType.download_extras,
+            )
+        ).scalar_one()
+        return int(row.quantity_limit)
+
+    def extras_earnings() -> list:
+        return [(e.source_type.value, e.gross) for e in j.entries(pro) if e.source_type.value == "extra_images"]
+
+    assert j.stripe.intents[upsell_intent].amount == 2400  # 5 extras at 4.80
+    paid_for = extras_allowed()
+    earned = extras_earnings()
+    assert paid_for == 5 and earned == [("extra_images", D("24.00"))]
+
+    succeeded = [e for e in j.posted if e["type"] == "payment_intent.succeeded" and e["data"]["object"]["id"] == upsell_intent]
+    j.send("payment_intent.succeeded", succeeded[0]["data"]["object"])  # the same payment, a new event id
+
+    assert extras_earnings() == earned  # the money is counted once
+    allowed = extras_allowed()
+    known_bug(allowed == 5, f"after the re-sent event the client may download {allowed} extras; 5 were paid for")

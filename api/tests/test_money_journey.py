@@ -588,3 +588,53 @@ def test_scenario_4b_admin_refund_on_a_paid_booking_not_yet_complete(journey):
     assert [t.amount for t in j.stripe.transfers] == [5280]
     assert j.stripe.balance["eur"] == cents("13.20")  # 96.00 - 30.00 - 52.80
     assert_wallet_balances(j.wallet(pro))
+
+
+def test_scenario_7_client_credit_comes_out_of_the_platforms_share(journey):
+    """The client holds 15.00 of credit (1,500 points, from marketing
+    permissions on an earlier booking). At checkout it takes off at most 10%
+    of the 96.00 price: 9.60, so the card pays 86.40 and 5.40 of credit is
+    left. The photographer is paid on the full price (96.00 = 14.40 +
+    4.80 + 76.80); the 9.60 comes out of the platform's share: Stripe keeps
+    86.40 - 76.80 = 9.60, not 19.20."""
+    from app.models.reward import RewardEntryType
+    from app.services.client_credit import balance_points
+    from app.services.rewards import add_reward_entry
+
+    j = journey()
+    j.open_city()
+    j.set_price_cap()
+    pro = j.photographer()
+    client = j.sign_up("client")
+    booking = j.book(client, pro)
+    # The credit, as a marketing permission awards it (that flow is tested in
+    # test_marketing_consent_*); written here.
+    add_reward_entry(j.db, user_id=uuid.UUID(client.user_id), amount=1500, entry_type=RewardEntryType.earn,
+                     reference_type="marketing_consent", reference_id=booking.gig_id, currency="EUR")
+    j.db.commit()
+
+    preview = j.call("GET", f"/v1/client/bookings/{booking.request_id}/credit", client)
+    assert (D(preview["discount"]), D(preview["total"])) == (D("9.60"), D("86.40"))
+    pay = j.checkout(client, booking, use_credit=True)
+    assert (D(pay["amount"]), D(pay["credit"])) == (D("86.40"), D("9.60"))
+    assert j.stripe.intents[booking.base_intent].amount == 8640
+    j.card_pays(booking.base_intent)
+    assert balance_points(j.db, uuid.UUID(client.user_id), "EUR") == 540
+    assert j.captured(booking) == [D("86.40")]  # the card's money; the credit is not cash
+
+    j.deliver(pro, booking, 20)
+    j.choose(client, booking, 20)
+    gig = j.gig(booking)
+    assert (gig.status.value, gig.amount_final, gig.final_gross) == ("completed", D("96.00"), D("96.00"))
+    assert (gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (D("14.40"), D("4.80"), D("76.80"))
+    assert [(e.gross, e.net) for e in j.entries(pro)] == [(D("96.00"), D("76.80"))]
+    assert sum(r.amount for r in j.raww(pro)) == 48
+    assert j.stripe.refunds == []  # the credit is not "overpaid" money
+
+    j.review(client, booking)
+    _pay_out_everything(j, pro, D("76.80"))
+    assert [(t.source_transaction, t.amount) for t in j.stripe.transfers] == [
+        (j.stripe.intents[booking.base_intent].latest_charge, 7680),
+    ]
+    assert j.stripe.balance["eur"] == cents("9.60")  # 14.40 + 4.80 - 9.60 of credit
+    assert_wallet_balances(j.wallet(pro))

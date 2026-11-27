@@ -332,3 +332,53 @@ def test_scenario_5_probe_extras_bought_on_a_flat_priced_booking_are_counted_onc
     assert extras_earnings() == earned  # the money is counted once
     allowed = extras_allowed()
     known_bug(allowed == 5, f"after the re-sent event the client may download {allowed} extras; 5 were paid for")
+
+
+def test_scenario_6_payment_failed_then_retried(journey):
+    """The card is declined on the booking's payment and again on the
+    difference; each time the client tries again and it goes through. The
+    same PaymentIntent is reused each time (no second charge can exist), and
+    the money ends as scenario 1's, exactly once."""
+    j = journey()
+    j.open_city()
+    j.set_price_cap()
+    pro = j.photographer()
+    client = j.sign_up("client")
+    booking = j.book(client, pro)
+
+    first = j.checkout(client, booking)
+    j.card_declined(booking.base_intent)
+    gig = j.gig(booking)
+    assert gig.status.value == "payment_pending"
+    assert [(p.kind.value, p.status.value) for p in j.payments(booking)] == [("base", "failed")]
+    assert j.captured(booking) == []
+    assert j.mail.keys_to(client.email).count("payment.succeeded") == 0
+
+    again = j.checkout(client, booking)
+    assert again["payment_intent_id"] == first["payment_intent_id"]
+    assert D(again["amount"]) == D("96.00")
+    j.card_pays(booking.base_intent)
+    assert j.gig(booking).status.value == "paid"
+    assert [(p.kind.value, p.status.value, p.amount) for p in j.payments(booking)] == [("base", "succeeded", D("96.00"))]
+
+    j.deliver(pro, booking, 30)
+    j.choose(client, booking, 30)
+    difference = booking.difference_intent
+    j.card_declined(difference)
+    assert j.gig(booking).status.value == "paid"  # not complete: the difference is unpaid
+    assert j.entries(pro) == []
+    # The client opens the selection again and pays: the same difference intent.
+    resubmit = j.choose(client, booking, 30)
+    assert resubmit["submitted"]["difference_payment_intent_id"] == difference
+    assert D(resubmit["submitted"]["difference_amount"]) == D("31.74")
+    j.card_pays(difference)
+
+    j.review(client, booking)
+    j.jump_past_settlement_delay(pro)
+    j.settle()
+    payout = j.request_payout(pro, D("102.19"))
+    j.approve_payout(payout["id"])
+    j.confirm_transfers()
+    assert len(j.stripe.intents) == 2
+    assert [c.amount for c in j.stripe.charges.values()] == [9600, 3174]
+    _assert_euro_outcome(j, pro, client, booking, payout)

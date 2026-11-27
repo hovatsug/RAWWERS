@@ -102,6 +102,7 @@ class FakeStripe:
         self.refunds: list[Obj] = []
         self.transfers: list[Obj] = []
         self.accounts: dict[str, Obj] = {}
+        self.disputes: dict[str, Obj] = {}
         self.balance: dict[str, int] = {}
         self.by_key: dict[str, Obj] = {}
         self.calls: list[tuple[str, dict]] = []
@@ -119,6 +120,7 @@ class FakeStripe:
             (stripe.Account, "create", self._account_create),
             (stripe.Account, "retrieve", self._account_retrieve),
             (stripe.AccountLink, "create", self._account_link),
+            (stripe.Dispute, "retrieve", self._dispute_retrieve),
         ]:
             monkeypatch.setattr(cls, name, fn)
 
@@ -275,6 +277,32 @@ class FakeStripe:
         account.update(details_submitted=True, payouts_enabled=True, charges_enabled=False,
                        requirements={"currently_due": [], "past_due": [], "disabled_reason": None})
         return account
+
+    # --- chargebacks --------------------------------------------------------
+
+    #: Stripe's dispute fee in the capture (20.00 in the account's currency).
+    DISPUTE_FEE = 2000
+
+    def open_dispute(self, pi_id: str) -> Obj:
+        """The cardholder's bank disputes the charge: what is left on it is
+        withdrawn from the balance, with Stripe's dispute fee."""
+        pi = self.intents[pi_id]
+        charge = self.charges[pi.latest_charge]
+        amount = charge.amount - charge.amount_refunded
+        self.balance[pi.currency] -= amount + self.DISPUTE_FEE
+        dispute = Obj(
+            id=self._id("du"), object="dispute", amount=amount, currency=pi.currency, charge=charge.id, payment_intent=pi_id,
+            status="needs_response", reason="fraudulent", evidence_details={"due_by": int(time.time()) + 7 * 86400},
+            balance_transactions=[{
+                "id": self._id("txn"), "object": "balance_transaction", "amount": -amount, "fee": self.DISPUTE_FEE,
+                "net": -(amount + self.DISPUTE_FEE), "currency": pi.currency, "reporting_category": "dispute", "type": "adjustment",
+            }],
+        )
+        self.disputes[dispute.id] = dispute
+        return dispute
+
+    def _dispute_retrieve(self, dispute_id, **kw):
+        return self.disputes[dispute_id]
 
     # --- what Stripe holds, in money --------------------------------------
 
@@ -768,6 +796,16 @@ class Journey:
             sent += 1
         return sent
 
+    def chargeback_lost(self, pi_id: str) -> Obj:
+        """A chargeback from start to end, as Stripe sends it: created, funds
+        withdrawn, then closed as lost."""
+        dispute = self.stripe.open_dispute(pi_id)
+        self.send("charge.dispute.created", dispute)
+        self.send("charge.dispute.funds_withdrawn", dispute)
+        dispute.status = "lost"
+        self.send("charge.dispute.closed", dispute)
+        return dispute
+
     def confirm_transfers(self) -> None:
         """Stripe tells us of each transfer it made."""
         for transfer in list(self.stripe.transfers):
@@ -820,6 +858,16 @@ class Journey:
 
         return [(c.status.value, c.amount) for c in self.db.execute(
             select(RefundCase).where(RefundCase.gig_id == uuid.UUID(booking.gig_id)).order_by(RefundCase.created_at)
+        ).scalars().all()]
+
+    def chargeback_lines(self, booking: Booking) -> list:
+        """The booking's chargeback ledger lines: (type, amount), in order."""
+        from app.models.gig import LedgerEntry, LedgerEntryType
+
+        kinds = (LedgerEntryType.chargeback_opened, LedgerEntryType.chargeback_fee, LedgerEntryType.chargeback_lost, LedgerEntryType.chargeback_won)
+        return [(row.entry_type.value, row.amount) for row in self.db.execute(
+            select(LedgerEntry).where(LedgerEntry.gig_id == uuid.UUID(booking.gig_id), LedgerEntry.entry_type.in_(kinds))
+            .order_by(LedgerEntry.created_at)
         ).scalars().all()]
 
     def entries(self, pro: Person) -> list:

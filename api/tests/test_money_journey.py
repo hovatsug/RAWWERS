@@ -638,3 +638,76 @@ def test_scenario_7_client_credit_comes_out_of_the_platforms_share(journey):
     ]
     assert j.stripe.balance["eur"] == cents("9.60")  # 14.40 + 4.80 - 9.60 of credit
     assert_wallet_balances(j.wallet(pro))
+
+
+def _short_delivery_paid_out(j):
+    """Scenario 3a's booking (15 of 20 delivered, 24.00 refunded, 72.00 =
+    10.80 + 3.60 + 57.60), paid out."""
+    pro, client, booking = _paid_euro_booking(j)
+    j.deliver(pro, booking, 15)
+    j.choose(client, booking, 15)
+    j.announce_refunds()
+    j.review(client, booking)
+    payout = _pay_out_everything(j, pro, D("57.60"))
+    return pro, client, booking, payout
+
+
+@pytest.mark.xfail(
+    raises=KnownBug, strict=True,
+    reason="BETA_SCOPE #107: a lost chargeback that reverses the earning leaves its RAWW credit (pending) in place",
+)
+def test_scenario_8_a_photographer_fault_finding_then_a_lost_chargeback(journey):
+    """After the short delivery of scenario 3a (paid out 57.60), an admin
+    records that the photographer was at fault; the photographer sees it,
+    the admin confirms it, and it takes effect when the window to respond
+    ends. A finding alone moves no money. Then the client's bank takes the
+    72.00 left on the charge back and the chargeback is lost: with the
+    finding, the photographer's earning is reversed. They were already
+    paid 57.60, so that much is owed back (an adjustment, never a negative
+    withdrawable); the platform is down 72.00 + 20.00 (Stripe's fee) and
+    its 14.40."""
+    from app.services.accountability import apply_due_findings, policy, window_ends_at
+    from app.models.accountability import PhotographerFinding
+
+    j = journey()
+    pro, client, booking, payout = _short_delivery_paid_out(j)
+    finding = j.call("POST", f"/v1/admin/gigs/{booking.gig_id}/findings", "admin",
+                     json={"note": "15 of the 20 photos the package includes were delivered; no reason given"})
+    seen = j.call("GET", "/v1/pro/findings", pro)
+    assert [f["id"] for f in seen["items"]] == [finding["id"]]
+    j.call("POST", f"/v1/admin/findings/{finding['id']}/decision", "admin", json={"decision": "confirm", "note": "Confirmed"})
+    # The worker, once the photographer's window to respond has ended.
+    row = j.db.get(PhotographerFinding, uuid.UUID(finding["id"]))
+    assert apply_due_findings(j.db, now=window_ends_at(row, policy(j.db)) + timedelta(seconds=1)) == 1
+    j.db.commit()
+    assert j.attention_items(booking) == [("photographer_short_delivery", D("24.00"))]  # nothing new about money
+    assert [(e.net, e.reversed_at) for e in j.entries(pro)] == [(D("57.60"), None)]
+    assert len(j.stripe.refunds) == 1 and j.stripe.balance["eur"] == cents("14.40")
+
+    j.chargeback_lost(booking.base_intent)
+    gig = j.gig(booking)
+    assert gig.status.value == "refunded"
+    assert [(e.net, e.reversed_at is not None) for e in j.entries(pro)] == [(D("57.60"), True)]
+    wallet = j.wallet(pro)
+    assert (wallet.lifetime, wallet.paid_out, wallet.available) == (D("0.00"), D("57.60"), D("-57.60"))
+    assert (wallet.withdrawable, wallet.adjustment_owed) == (D("0.00"), D("57.60"))
+    assert_wallet_balances(wallet)
+    raww_after_chargeback = [(r.status.value, r.amount) for r in j.raww(pro) if r.amount]
+    assert [i for i in j.attention_items(booking) if i[0].startswith("chargeback")] == [
+        ("chargeback_evidence_due", D("72.00")), ("chargeback_lost", D("92.00")),  # 72.00 + the 20.00 fee
+    ]
+    assert j.chargeback_lines(booking) == [("chargeback_opened", D("-72.00")), ("chargeback_fee", D("-20.00")), ("chargeback_lost", D("0.00"))]
+    assert j.stripe.balance["eur"] == cents("-77.60")  # 14.40 - 72.00 - 20.00
+    assert len(j.stripe.transfers) == 1  # nothing sent, nothing reversed at Stripe
+
+    j.replay_all(new_ids=True)
+    assert [i[0] for i in j.attention_items(booking)].count("chargeback_lost") == 1
+    assert len(j.chargeback_lines(booking)) == 3
+    assert j.wallet(pro).adjustment_owed == D("57.60")
+
+    # The RAWW credit should go with the earning when the chargeback reverses
+    # it (a booking that earned nothing loses them all: raww_earning.py).
+    # Checked last: a later event on the booking happens to bring it in line.
+    known_bug(sum(a for _, a in raww_after_chargeback) == 0,
+              f"after the chargeback reversed the earning the photographer still holds RAWW {raww_after_chargeback}; expected none")
+

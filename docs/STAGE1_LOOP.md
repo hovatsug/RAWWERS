@@ -303,6 +303,8 @@ The fee policy stays at a delay of 0 (step 0.4) through **both** bookings. Resto
 
 ### 6b.1 The package and its price
 
+> **Updated 2026-11-27 (the owner's decision of 2026-11-01).** A package of N photos costs N x the entry rate, and extras decay from photo N+1. So Alex's 20-photo package at €4.80 now costs **€96.00**, and 10 extras **€31.74** (the approved table, `api/tests/test_package_anchor.py`; the money journey test, `api/tests/test_money_journey.py`, scenario 1). The amounts before this update (€79.74 for 20 photos, extras from photo 11) are those of bookings made before 2026-11-01: **old bookings keep their old prices** (they carry no stored curve and are priced from photo 10, as when they were made).
+
 Alex has one package. Book it both times.
 
 | | |
@@ -315,47 +317,38 @@ Alex has one package. Book it both times.
 
 The price of the n-th photo:
 
-- photos 1 to 10: €4.80 each;
-- photo n > 10: the larger of €0.72 and 4.80 × e^(-0.08 × (n - 10)).
+- photos 1 to 20 (the package): €4.80 each;
+- photo n > 20: the larger of €0.72 and 4.80 × e^(-0.08 × (n - 20)).
 
-The total for N photos adds the unrounded prices of photos 1 to N and rounds once, to the cent, at the end. The client pays the total for 20 when booking. At selection the app charges *total(N) - total(20)*. Choosing fewer than 20 refunds the difference instead.
+The total for N photos adds the unrounded prices of photos 1 to N and rounds once, to the cent, at the end. The client pays the total for 20 when booking. At selection the app charges *total(N) - total(20)*. The client cannot choose fewer than the 20 the package includes (unless fewer were delivered).
 
-Photos 1 to 10 come to 10 × 4.80 = **48.00**. From photo 11 on:
+Photos 1 to 20 come to 20 × 4.80 = **96.00**. From photo 21 on:
 
-| n | e^(-0.08(n-10)) | 4.80 × that | price of photo n | running total | rounded |
+| n | e^(-0.08(n-20)) | 4.80 × that | price of photo n | running total | rounded |
 |---|---|---|---|---|---|
-| 11 | 0.923116 | 4.430958 | 4.430958 | 52.430958 | 52.43 |
-| 12 | 0.852144 | 4.090290 | 4.090290 | 56.521249 | 56.52 |
-| 13 | 0.786628 | 3.775814 | 3.775814 | 60.297062 | 60.30 |
-| 14 | 0.726149 | 3.485515 | 3.485515 | 63.782578 | 63.78 |
-| 15 | 0.670320 | 3.217536 | 3.217536 | 67.000114 | 67.00 |
-| 16 | 0.618783 | 2.970160 | 2.970160 | 69.970274 | 69.97 |
-| 17 | 0.571209 | 2.741804 | 2.741804 | 72.712078 | 72.71 |
-| 18 | 0.527292 | 2.531004 | 2.531004 | 75.243081 | 75.24 |
-| 19 | 0.486752 | 2.336411 | 2.336411 | 77.579492 | 77.58 |
-| **20** | 0.449329 | 2.156779 | 2.156779 | 79.736271 | **79.74** (paid at booking) |
-| 21 | 0.414783 | 1.990958 | 1.990958 | 81.727229 | 81.73 |
-| 22 | 0.382893 | 1.837886 | 1.837886 | 83.565115 | 83.57 |
-| 23 | 0.353455 | 1.696582 | 1.696582 | 85.261698 | 85.26 |
-| 24 | 0.326280 | 1.566143 | 1.566143 | 86.827841 | 86.83 |
-| 25 | 0.301194 | 1.445732 | 1.445732 | 88.273573 | 88.27 |
-| 26 | 0.278037 | 1.334579 | 1.334579 | 89.608152 | 89.61 |
-| 27 | 0.256661 | 1.231972 | 1.231972 | 90.840124 | 90.84 |
-| 28 | 0.236928 | 1.137253 | 1.137253 | 91.977377 | 91.98 |
-| 29 | 0.218712 | 1.049817 | 1.049817 | 93.027194 | 93.03 |
-| **30** | 0.201897 | 0.969103 | 0.969103 | 93.996297 | **94.00** |
-| 31 | 0.186374 | 0.894595 | 0.894595 | 94.890892 | 94.89 |
-| 32 | 0.172045 | 0.825815 | 0.825815 | 95.716708 | 95.72 |
-| 33 | 0.158817 | 0.762324 | 0.762324 | 96.479031 | 96.48 |
-| 34 | 0.146607 | 0.703713 | **0.72 (floor)** | 97.199031 | 97.20 |
-| 35 | 0.135335 | 0.649609 | 0.72 (floor) | 97.919031 | 97.92 |
-| 36 | 0.124930 | 0.599665 | 0.72 (floor) | 98.639031 | 98.64 |
-| 37 | 0.115325 | 0.553561 | 0.72 (floor) | 99.359031 | 99.36 |
-| 38 | 0.106459 | 0.511001 | 0.72 (floor) | 100.079031 | 100.08 |
-| 39 | 0.098274 | 0.471713 | 0.72 (floor) | 100.799031 | 100.80 |
-| **40** | 0.090718 | 0.435446 | 0.72 (floor) | 101.519031 | **101.52** |
+| **20** | | | 4.80 | 96.000000 | **96.00** (paid at booking) |
+| 21 | 0.923116 | 4.430958 | 4.430958 | 100.430958 | 100.43 |
+| 22 | 0.852144 | 4.090290 | 4.090290 | 104.521249 | 104.52 |
+| 23 | 0.786628 | 3.775814 | 3.775814 | 108.297062 | 108.30 |
+| 24 | 0.726149 | 3.485515 | 3.485515 | 111.782578 | 111.78 |
+| 25 | 0.670320 | 3.217536 | 3.217536 | 115.000114 | 115.00 |
+| 26 | 0.618783 | 2.970160 | 2.970160 | 117.970274 | 117.97 |
+| 27 | 0.571209 | 2.741804 | 2.741804 | 120.712078 | 120.71 |
+| 28 | 0.527292 | 2.531004 | 2.531004 | 123.243081 | 123.24 |
+| 29 | 0.486752 | 2.336411 | 2.336411 | 125.579492 | 125.58 |
+| **30** | 0.449329 | 2.156779 | 2.156779 | 127.736271 | **127.74** |
+| 31 | 0.414783 | 1.990958 | 1.990958 | 129.727229 | 129.73 |
+| 32 | 0.382893 | 1.837886 | 1.837886 | 131.565115 | 131.57 |
+| 33 | 0.353455 | 1.696582 | 1.696582 | 133.261698 | 133.26 |
+| 34 | 0.326280 | 1.566143 | 1.566143 | 134.827841 | 134.83 |
+| 35 | 0.301194 | 1.445732 | 1.445732 | 136.273573 | 136.27 |
+| 36 | 0.278037 | 1.334579 | 1.334579 | 137.608152 | 137.61 |
+| 37 | 0.256661 | 1.231972 | 1.231972 | 138.840124 | 138.84 |
+| 38 | 0.236928 | 1.137253 | 1.137253 | 139.977377 | 139.98 |
+| 39 | 0.218712 | 1.049817 | 1.049817 | 141.027194 | 141.03 |
+| **40** | 0.201897 | 0.969103 | 0.969103 | 141.996297 | **142.00** |
 
-These are the server's own numbers: on 2026-10-30, `compute_total_for_photo_count` in the dev API returned 79.74, 86.83, 94.00 and 101.52 for 20, 24, 30 and 40 photos.
+The floor (€0.72) is not reached by photo 40 (it would be from photo 44).
 
 ### 6b.2 The fee on extra photos, and Alex's net
 
@@ -367,16 +360,16 @@ Rounding: 15% and 5% of the whole final price are each rounded to the cent, and 
 
 | Photos chosen | Final price | Already paid | **Charged at selection** | 15% kept | 5% $RAWW to Alex | Fee (20%) | **Alex's net (cash)** | of which from the extras |
 |---|---|---|---|---|---|---|---|---|
-| 20 (booking 1) | 79.74 | 79.74 | **0.00** | 11.96 | 3.99 | 15.95 | **63.79** | - |
-| 30 (booking 2) | 94.00 | 79.74 | **14.26** | 14.10 | 4.70 | 18.80 | **75.20** | 11.41 |
-| 40 (booking 2) | 101.52 | 79.74 | **21.78** | 15.23 | 5.08 | 20.31 | **81.21** | 17.42 |
+| 20 (booking 1) | 96.00 | 96.00 | **0.00** | 14.40 | 4.80 | 19.20 | **76.80** | - |
+| 30 (booking 2) | 127.74 | 96.00 | **31.74** | 19.16 | 6.39 | 25.55 | **102.19** | 25.39 |
+| 40 (booking 2) | 142.00 | 96.00 | **46.00** | 21.30 | 7.10 | 28.40 | **113.60** | 36.80 |
 
 Step by step:
 
-- **20:** 79.74 × 15% = 11.961 → 11.96; × 5% = 3.987 → 3.99; 79.74 - 11.96 - 3.99 = **63.79**.
-- **30:** photos 21 to 30 = 1.990958 + 1.837886 + 1.696582 + 1.566143 + 1.445732 + 1.334579 + 1.231972 + 1.137253 + 1.049817 + 0.969103 = 14.260025. Total 79.736271 + 14.260025 = 93.996297 → **94.00**. Charge 94.00 - 79.74 = **14.26**. Split: 94.00 × 15% = 14.10; × 5% = 4.70; 94.00 - 14.10 - 4.70 = **75.20**.
-- **40:** photos 31 to 33 = 0.894595 + 0.825815 + 0.762324 = 2.482734. Photos 34 to 40 hit the floor: 7 × 0.72 = 5.04. Total 93.996297 + 2.482734 + 5.04 = 101.519031 → **101.52**. Charge 101.52 - 79.74 = **21.78**. Split: 101.52 × 15% = 15.228 → 15.23; × 5% = 5.076 → 5.08; 101.52 - 15.23 - 5.08 = **81.21**.
-- The extras' share of Alex's net is net(N) - 63.79, which is 80% of the charge: 14.26 × 0.8 = 11.408 → 11.41; 21.78 × 0.8 = 17.424 → 17.42.
+- **20:** 96.00 × 15% = **14.40**; × 5% = **4.80**; 96.00 - 14.40 - 4.80 = **76.80**.
+- **30:** photos 21 to 30 = 4.430958 + 4.090290 + 3.775814 + 3.485515 + 3.217536 + 2.970160 + 2.741804 + 2.531004 + 2.336411 + 2.156779 = 31.736271. Total 96 + 31.736271 = 127.736271 → **127.74**. Charge 127.74 - 96.00 = **31.74**. Split: 127.74 × 15% = 19.161 → 19.16; × 5% = 6.387 → 6.39; 127.74 - 19.16 - 6.39 = **102.19**.
+- **40:** photos 31 to 40 = 14.260026. Total 127.736271 + 14.260026 = 141.996297 → **142.00**. Charge 142.00 - 96.00 = **46.00**. Split: 142.00 × 15% = **21.30**; × 5% = **7.10**; 142.00 - 21.30 - 7.10 = **113.60**.
+- The extras' share of Alex's net is net(N) - 76.80: 25.39 and 36.80.
 
 ### 6b.3 Booking 1: deliver about 24, choose exactly 20
 
@@ -384,9 +377,9 @@ Step by step:
 
 **Step 6:** choose **exactly 20**.
 
-**Expect on the selection screen:** **20 chosen** · **Nothing more to pay** · **One more adds EUR 1.99** · button **Confirm selection**.
+**Expect on the selection screen:** **20 chosen** · **Nothing more to pay** · **One more adds EUR 4.43** · button **Confirm selection**.
 
-Do not choose 19: the screen would read **Final price EUR 77.58 - you'll be refunded EUR 2.16**, and a refund would start.
+19 cannot be chosen: the package's 20 is the minimum (the screen asks for one more photo).
 
 After **Confirm selection**, run the checks (from `api/`; each reads the latest booking of pro1):
 
@@ -400,9 +393,9 @@ After **Confirm selection**, run the checks (from `api/`; each reads the latest 
 **Expect** exactly these four blocks, one line each:
 
     24|20
-    completed|79.74|79.74|79.74|11.96|3.99|63.79
-    base|succeeded|79.74|0.00
-    gig_base|pending|79.74|15.95|63.79|20|t
+    completed|96.00|96.00|96.00|14.40|4.80|76.80
+    base|succeeded|96.00|0.00
+    gig_base|pending|96.00|19.20|76.80|20|t
 
 **`stripe listen`:** one `--> payment_intent.succeeded` / `<-- [200]` at step 4, and **nothing** at step 6.
 
@@ -418,19 +411,19 @@ Then continue with steps 7 to 11, using the amounts in 6b.5.
 
 | Chosen | Lines | Button |
 |---|---|---|
-| 30 | **30 chosen** · **EUR 14.26 to pay** · **One more adds EUR 0.89** | **Pay EUR 14.26** |
-| 40 | **40 chosen** · **EUR 21.78 to pay** (no "One more" line: there is no 41st photo) | **Pay EUR 21.78** |
+| 30 | **30 chosen** · **EUR 31.74 to pay** · **One more adds EUR 1.99** | **Pay EUR 31.74** |
+| 40 | **40 chosen** · **EUR 46.00 to pay** (no "One more" line: there is no 41st photo) | **Pay EUR 46.00** |
 
 **6b.4.1** Tap the button and confirm. Then, **before paying**, run the checks from 6b.3.
 
 **Expect (30 / 40):**
 
     40|30                                   40|40
-    paid|79.74|94.00||||                    paid|79.74|101.52||||
-    base|succeeded|79.74|0.00               base|succeeded|79.74|0.00
+    paid|96.00|127.74||||                   paid|96.00|142.00||||
+    base|succeeded|96.00|0.00               base|succeeded|96.00|0.00
     (no earnings line yet)                  (no earnings line yet)
 
-A third line `difference|pending|14.26|0.00` (or `21.78`) may already be there: the charge is created when you confirm and is not yet paid. That is fine.
+A third line `difference|pending|31.74|0.00` (or `46.00`) may already be there: the charge is created when you confirm and is not yet paid. That is fine.
 
 **6b.4.2** In Stripe's sheet, pay with **`4000 0000 0000 0077`** (as in step 4). The screen reads **Your selection is locked in** until the payment clears, then the booking shows **View your photos**.
 
@@ -441,18 +434,18 @@ A third line `difference|pending|14.26|0.00` (or `21.78`) may already be there: 
 **Expect (30):**
 
     40|30
-    completed|79.74|94.00|94.00|14.10|4.70|75.20
-    base|succeeded|79.74|0.00
-    difference|succeeded|14.26|0.00
-    gig_base|pending|94.00|18.80|75.20|20|t
+    completed|96.00|127.74|127.74|19.16|6.39|102.19
+    base|succeeded|96.00|0.00
+    difference|succeeded|31.74|0.00
+    gig_base|pending|127.74|25.55|102.19|20|t
 
 **Expect (40):**
 
     40|40
-    completed|79.74|101.52|101.52|15.23|5.08|81.21
-    base|succeeded|79.74|0.00
-    difference|succeeded|21.78|0.00
-    gig_base|pending|101.52|20.31|81.21|20|t
+    completed|96.00|142.00|142.00|21.30|7.10|113.60
+    base|succeeded|96.00|0.00
+    difference|succeeded|46.00|0.00
+    gig_base|pending|142.00|28.40|113.60|20|t
 
 Then continue with steps 7 to 11.
 
@@ -463,13 +456,13 @@ Payouts start at €50.00. The figures below are checked against the dev databas
 | When | Ready to withdraw (after step 8 settles) | Payout to request (step 9.2) | Left after it is paid |
 |---|---|---|---|
 | Before booking 1 | €41.95 (the 2026-09-23 booking; no payout requests yet) | - | - |
-| After booking 1 | 41.95 + 63.79 = **€105.74** | **€105.74** (all of it) | €0.00 |
-| After booking 2, chose 30 | **€75.20** | **€75.20** | €0.00 |
-| After booking 2, chose 40 | **€81.21** | **€81.21** | €0.00 |
+| After booking 1 | 41.95 + 76.80 = **€118.75** | **€118.75** (all of it) | €0.00 |
+| After booking 2, chose 30 | **€102.19** | **€102.19** | €0.00 |
+| After booking 2, chose 40 | **€113.60** | **€113.60** | €0.00 |
 
 Each booking clears €50 on its own, so neither payout depends on the old balance. Withdrawing everything each time makes the next check exact: after booking 2, ready to withdraw is that booking's net and nothing else.
 
-If you request only €50.00 after booking 1, €55.74 stays. Ready to withdraw after booking 2 is then 55.74 + 75.20 = €130.94, or 55.74 + 81.21 = €136.95.
+If you request only €50.00 after booking 1, €68.75 stays. Ready to withdraw after booking 2 is then 68.75 + 102.19 = €170.94, or 68.75 + 113.60 = €182.35.
 
 The platform's Stripe **test** balance had €2,804.50 available on 2026-10-30, so the transfers have funds.
 
@@ -477,13 +470,13 @@ Ready to withdraw, as stored (from `api/`):
 
     docker compose exec -T postgres psql -U postgres -d rawwers -At -c "select coalesce(sum(e.net_eur) filter (where e.status = 'available'), 0) from earnings_ledger_entry e join user_account u on u.user_id = e.pro_user_id where u.email = 'pro1@rawwers.dev'"
 
-This sums every settled earning, including those already paid out. So it reads **41.95** before booking 1, **105.74** after booking 1, and **180.94** (30) or **186.95** (40) after booking 2, whatever was withdrawn. The app's **ready to withdraw** is this sum minus what was paid out or requested.
+This sums every settled earning, including those already paid out. So it reads **41.95** before booking 1, **118.75** after booking 1, and **220.94** (30) or **232.35** (40) after booking 2, whatever was withdrawn. The app's **ready to withdraw** is this sum minus what was paid out or requested.
 
 ### 6b.6 STOP if
 
 Stop at the first of these. Report the step, what you saw, the query output and the time:
 
-- The selection screen shows a different amount from 6b.3 or 6b.4 (for example, anything but **Pay EUR 14.26** for 30). The app and the server price from one function, so any difference is a bug.
+- The selection screen shows a different amount from 6b.3 or 6b.4 (for example, anything but **Pay EUR 31.74** for 30). The app and the server price from one function, so any difference is a bug.
 - Booking 1 at 20 photos asks for any payment, or mentions a refund.
 - The amount Stripe charges differs from the button.
 - More than one `difference` line, any line `failed` or with `amount_refunded` above 0.00, or any `charge.refunded` / `refund.*` event in `stripe listen`.

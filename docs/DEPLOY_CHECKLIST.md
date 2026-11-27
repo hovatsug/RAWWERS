@@ -418,3 +418,4 @@ day. "Test server" is `deploy-test-1` on api.rawwers.com.
 | Backup frequency set to every 6 hours before the first real payment (`install-backup-timer.sh --intraday on`, after the `intraday/` lock) | n/a | n/a (nightly) | |
 | Photos and videos backed up: a nightly copy of the media bucket into a separate locked bucket (BETA_SCOPE #97) | n/a | | |
 | Cloudflare account: two-factor sign-in (one account for every environment) | | | |
+| The acceptance run (ACCEPTANCE.md) passed on the deployed tag: after every deploy that touches money, and before the first real photographer (write the tag and date) | n/a | | |

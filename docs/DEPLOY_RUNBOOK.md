@@ -731,6 +731,7 @@ keeps what it has until its locks and rules let it go.
 - [ ] The server's Overview shows the new IPv4; then (step 0b, part 9) the old primary IPv4 is deleted and no DNS record names it.
 - [ ] GitHub: no old deploy secrets, environments or deploy keys (step 0c).
 - [ ] `free -h` shows about 3.8 GiB (step 1b), or you chose 2 GB on purpose.
+- [ ] If this deploy touches money (a change in `api/` to payments, refunds, earnings, payouts or prices): the acceptance run ([ACCEPTANCE.md](ACCEPTANCE.md)) has no FAIL, and its row is in ACCEPTANCE.md's "what passed on which tag".
 
 ---
 
@@ -742,6 +743,13 @@ either "same commit as the checkout" or "api/ and web/ unchanged since: no
 rebuild needed" (never "CHANGED ... build and push new images"); every
 container `(healthy)`; migration `current` = `newest`; the switches as in
 step 22; exchange rates not "none fresh" (they refresh hourly at minute 15).
+
+**If the deploy touches money** (any change in `api/` that moves payments,
+refunds, earnings, payouts or prices): run `tests/test_money_journey.py`
+on the Mac before tagging, and the acceptance run on the server after
+deploying ([ACCEPTANCE.md](ACCEPTANCE.md): `acceptance.py book`, then
+`payout`). **Required.** Write the result in ACCEPTANCE.md's "what passed on
+which tag". A tag with only scripts and docs (below) does not touch money.
 
 ### A new tag with only scripts and docs (no new images)
 
@@ -798,6 +806,7 @@ Done on the test deploy as it is; required before a real photographer signs up:
 7. **The Mux Production environment** in place of RAWWERS_DEV ("Mux for the test deploy, then for production" below).
 8. **Photos and videos backed up:** a nightly copy of the media bucket into a separate locked bucket (BETA_SCOPE #97, not built yet). Without it a bug or a leaked token can delete every photo.
 9. **Backups every 6 hours before the first real payment** ([RESTORE_PLAYBOOK.md](RESTORE_PLAYBOOK.md), "Every 6 hours").
+10. **The acceptance run passed on the tag that will take real money** ([ACCEPTANCE.md](ACCEPTANCE.md)): Level 1 on the Mac and the Level 2 run on the server, in pounds (London) at least, with no FAIL and every MANUAL item of its checklist done.
 
 ---
 

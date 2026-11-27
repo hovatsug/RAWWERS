@@ -382,3 +382,112 @@ def test_scenario_6_payment_failed_then_retried(journey):
     assert len(j.stripe.intents) == 2
     assert [c.amount for c in j.stripe.charges.values()] == [9600, 3174]
     _assert_euro_outcome(j, pro, client, booking, payout)
+
+
+def _paid_euro_booking(j):
+    j.open_city()
+    j.set_price_cap()
+    pro = j.photographer()
+    client = j.sign_up("client")
+    booking = j.book(client, pro)
+    j.checkout(client, booking)
+    j.card_pays(booking.base_intent)
+    return pro, client, booking
+
+
+def _pay_out_everything(j, pro, amount):
+    j.jump_past_settlement_delay(pro)
+    j.settle()
+    payout = j.request_payout(pro, amount)
+    j.approve_payout(payout["id"])
+    j.confirm_transfers()
+    return payout
+
+
+def test_scenario_3a_fewer_photos_delivered_than_the_package_includes(journey):
+    """The package includes 20 (96.00 paid); the photographer delivers 15.
+    The client may then choose 15 (never fewer than 10): 15 x 4.80 = 72.00.
+    The 24.00 not delivered is refunded under photographer_non_delivery, the
+    earning follows the new price (72.00 = 10.80 + 3.60 + 57.60) and an
+    admin is asked to review the short delivery."""
+    j = journey()
+    pro, client, booking = _paid_euro_booking(j)
+    j.deliver(pro, booking, 15)
+    chosen = j.choose(client, booking, 15)
+    assert chosen["quote"]["minimum_photos"] == 15
+    assert (D(chosen["quote"]["amount_total"]), D(chosen["quote"]["refund_amount"])) == (D("72.00"), D("24.00"))
+    assert chosen["submitted"]["difference_required"] is False
+
+    assert [(r.payment_intent, r.amount) for r in j.stripe.refunds] == [(booking.base_intent, 2400)]
+    assert j.reductions(booking) == [
+        ("selection", D("96.00"), D("72.00"), [("photographer_non_delivery", D("24.00"))], D("24.00")),
+    ]
+    assert j.attention_items(booking) == [("photographer_short_delivery", D("24.00"))]
+    j.announce_refunds()
+    assert j.refund_cases(booking) == [("refunded", D("24.00"))]
+    assert [(p.kind.value, p.amount, p.amount_refunded) for p in j.payments(booking)] == [("base", D("96.00"), D("24.00"))]
+    assert j.captured(booking) == [D("96.00")]
+
+    gig = j.gig(booking)
+    assert (gig.status.value, gig.amount_final, gig.final_gross) == ("completed", D("72.00"), D("72.00"))
+    assert (gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (D("10.80"), D("3.60"), D("57.60"))
+    assert_split_reconciles(gig)
+    assert [(e.source_type.value, e.gross, e.platform_fee, e.net) for e in j.entries(pro)] == [
+        ("gig_base", D("72.00"), D("14.40"), D("57.60")),
+    ]
+    assert sum(r.amount for r in j.raww(pro)) == 36  # 3.60 at 0.10
+
+    j.review(client, booking)
+    payout = _pay_out_everything(j, pro, D("57.60"))
+    assert [(t.source_transaction, t.amount) for t in j.stripe.transfers] == [
+        (j.stripe.intents[booking.base_intent].latest_charge, 5760),
+    ]
+    wallet = j.wallet(pro)
+    assert (wallet.paid_out, wallet.available) == (D("57.60"), D("0.00"))
+    assert_wallet_balances(wallet)
+    # 96.00 in, 24.00 back to the client, 57.60 to the photographer: 14.40 left.
+    assert j.stripe.balance["eur"] == cents("14.40")
+    j.replay_all(new_ids=True)
+    assert len(j.stripe.refunds) == 1 and j.stripe.balance["eur"] == cents("14.40")
+    assert [(e.gross, e.net) for e in j.entries(pro)] == [(D("72.00"), D("57.60"))]
+    assert [t.amount for t in j.payout_transfers(payout["id"])] == [D("57.60")]
+
+
+def test_scenario_3b_a_difference_paid_for_a_selection_that_became_cheaper(journey):
+    """The client chooses 30 and confirms the 31.74 difference with their
+    bank, which is still deciding; meanwhile they change to the 20 the
+    package includes, which completes the booking at 96.00. The bank then
+    says yes: the 31.74 is for photos already paid for, and goes straight
+    back (duplicate_payment). The photographer earns on 96.00:
+    14.40 + 4.80 + 76.80."""
+    j = journey()
+    pro, client, booking = _paid_euro_booking(j)
+    j.deliver(pro, booking, 30)
+    j.choose(client, booking, 30)
+    stale = booking.difference_intent
+    j.stripe.processing(stale)
+    final = j.choose(client, booking, 20)
+    assert final["submitted"]["difference_required"] is False
+    gig = j.gig(booking)
+    assert (gig.status.value, gig.amount_final) == ("completed", D("96.00"))
+    assert j.stripe.refunds == []
+
+    j.card_pays(stale)  # the bank's late yes
+    assert [(r.payment_intent, r.amount) for r in j.stripe.refunds] == [(stale, 3174)]
+    assert j.reductions(booking)[-1][3] == [("duplicate_payment", D("31.74"))]
+    assert j.reductions(booking)[-1][4] == D("31.74")
+    j.announce_refunds()
+    assert [(p.kind.value, p.status.value, p.amount, p.amount_refunded) for p in j.payments(booking)] == [
+        ("base", "succeeded", D("96.00"), D("0.00")), ("difference", "refunded", D("31.74"), D("31.74")),
+    ]
+    assert j.captured(booking) == [D("96.00"), D("31.74")]
+    gig = j.gig(booking)
+    assert (gig.amount_final, gig.final_gross) == (D("96.00"), D("96.00"))
+    assert (gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (D("14.40"), D("4.80"), D("76.80"))
+    assert [(e.source_type.value, e.gross, e.net) for e in j.entries(pro)] == [("gig_base", D("96.00"), D("76.80"))]
+
+    j.review(client, booking)
+    _pay_out_everything(j, pro, D("76.80"))
+    assert [t.amount for t in j.stripe.transfers] == [7680]
+    assert j.stripe.balance["eur"] == cents("19.20")  # 127.74 in, 31.74 back, 76.80 out
+    assert_wallet_balances(j.wallet(pro))

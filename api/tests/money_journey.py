@@ -175,11 +175,17 @@ class FakeStripe:
     def pay(self, pi_id: str) -> Obj:
         """The client's card goes through (the payment sheet)."""
         pi = self.intents[pi_id]
-        assert pi.status in ("requires_payment_method", "requires_confirmation"), pi.status
+        assert pi.status in ("requires_payment_method", "requires_confirmation", "processing"), pi.status
         charge = Obj(id=self._id("ch"), payment_intent=pi_id, amount=pi.amount, amount_refunded=0, currency=pi.currency)
         self.charges[charge.id] = charge
         pi.status, pi.amount_received, pi.latest_charge, pi.last_payment_error = "succeeded", pi.amount, charge.id, None
         self.balance[pi.currency] = self.balance.get(pi.currency, 0) + pi.amount
+        return pi
+
+    def processing(self, pi_id: str) -> Obj:
+        """The card was confirmed and the bank is still deciding."""
+        pi = self.intents[pi_id]
+        pi.status = "processing"
         return pi
 
     def decline(self, pi_id: str) -> Obj:
@@ -439,6 +445,7 @@ class Journey:
         #: Stripe delivers every event twice, the second time with the same
         #: event id (a retried delivery), applied by the worker each time.
         self.echo = False
+        self._announced: set[str] = set()
         # Celery's broker is the test Redis, which no worker reads: queued
         # tasks are run here instead (work(), process()).
         monkeypatch.setattr("app.api.v1.media.process_photo_variants.delay", lambda *a, **k: None)
@@ -743,6 +750,24 @@ class Journey:
         self.work()  # payout.execute: the transfers
         return approved
 
+    def announce_refunds(self) -> int:
+        """Stripe tells us of each refund it made: refund.created, then
+        charge.refunded with the charge's new total refunded."""
+        sent = 0
+        for refund in list(self.stripe.refunds):
+            if refund.id in self._announced:
+                continue
+            self._announced.add(refund.id)
+            charge = self.stripe.charges[refund.charge]
+            self.send("refund.created", refund)
+            self.send("charge.refunded", {
+                "id": charge.id, "object": "charge", "payment_intent": charge.payment_intent, "amount": charge.amount,
+                "amount_captured": charge.amount, "amount_refunded": charge.amount_refunded,
+                "refunded": charge.amount_refunded == charge.amount, "currency": charge.currency,
+            })
+            sent += 1
+        return sent
+
     def confirm_transfers(self) -> None:
         """Stripe tells us of each transfer it made."""
         for transfer in list(self.stripe.transfers):
@@ -779,6 +804,22 @@ class Journey:
 
         return [(row.kind, row.amount) for row in self.db.execute(
             select(MoneyAttentionItem).where(MoneyAttentionItem.gig_id == uuid.UUID(booking.gig_id)).order_by(MoneyAttentionItem.created_at)
+        ).scalars().all()]
+
+    def reductions(self, booking: Booking) -> list:
+        """The booking's price reductions: (source, from, to, lines, refund)."""
+        from app.models.price_reduction import PriceReduction
+
+        return [(r.source, r.from_amount, r.to_amount, [(x["reason_code"], D(x["amount"])) for x in r.lines], r.refund_amount)
+                for r in self.db.execute(
+                    select(PriceReduction).where(PriceReduction.gig_id == uuid.UUID(booking.gig_id)).order_by(PriceReduction.created_at)
+                ).scalars().all()]
+
+    def refund_cases(self, booking: Booking) -> list:
+        from app.models.admin import RefundCase
+
+        return [(c.status.value, c.amount) for c in self.db.execute(
+            select(RefundCase).where(RefundCase.gig_id == uuid.UUID(booking.gig_id)).order_by(RefundCase.created_at)
         ).scalars().all()]
 
     def entries(self, pro: Person) -> list:

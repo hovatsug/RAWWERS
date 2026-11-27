@@ -436,6 +436,9 @@ class Journey:
         self.mail = MailRecorder(monkeypatch)
         self.secret = get_settings().stripe_webhook_secret.split(",")[0].strip()
         self.posted: list[dict] = []
+        #: Stripe delivers every event twice, the second time with the same
+        #: event id (a retried delivery), applied by the worker each time.
+        self.echo = False
         # Celery's broker is the test Redis, which no worker reads: queued
         # tasks are run here instead (work(), process()).
         monkeypatch.setattr("app.api.v1.media.process_photo_variants.delay", lambda *a, **k: None)
@@ -472,6 +475,11 @@ class Journey:
         self.posted.append(event)
         if work:
             self.work()
+        if self.echo:
+            again = self.client.post("/v1/webhooks/stripe", content=body, headers={"stripe-signature": signature(body, self.secret)})
+            assert again.status_code == 200, f"webhook {event_type} again: {again.status_code} {again.text}"
+            if work:
+                self.work()
         return event
 
     def replay_all(self, *, new_ids: bool) -> int:
@@ -479,12 +487,15 @@ class Journey:
         under a new event id (as a retried delivery or a second, related
         event would carry it)."""
         events = list(self.posted)
+        echo, self.echo = self.echo, False
         for event in events:
             obj = event["data"]["object"]
             if new_ids:
                 self.send(event["type"], obj)
             else:
                 self.send(event["type"], obj, event_id=event["id"])
+        del self.posted[len(events):]
+        self.echo = echo
         return len(events)
 
     def work(self) -> int:
@@ -762,6 +773,14 @@ class Journey:
                                       LedgerEntry.entry_type == LedgerEntryType.payment_captured).order_by(LedgerEntry.created_at)
         ).scalars().all()]
 
+    def attention_items(self, booking: Booking) -> list:
+        """What the admin's money queue holds for the booking: (kind, amount)."""
+        from app.models.admin import MoneyAttentionItem
+
+        return [(row.kind, row.amount) for row in self.db.execute(
+            select(MoneyAttentionItem).where(MoneyAttentionItem.gig_id == uuid.UUID(booking.gig_id)).order_by(MoneyAttentionItem.created_at)
+        ).scalars().all()]
+
     def entries(self, pro: Person) -> list:
         from app.models.payouts import EarningsLedgerEntry
 
@@ -781,6 +800,13 @@ class Journey:
         return self.db.execute(
             select(ProRawwLedgerEntry).where(ProRawwLedgerEntry.pro_user_id == uuid.UUID(pro.user_id))
         ).scalars().all()
+
+    def payout_events(self, payout_id: str) -> list[str]:
+        from app.models.payouts import PayoutEvent
+
+        return sorted(row.type for row in self.db.execute(
+            select(PayoutEvent).where(PayoutEvent.payout_request_id == uuid.UUID(payout_id))
+        ).scalars().all())
 
     def payout_transfers(self, payout_id: str) -> list:
         from app.models.payouts import PayoutTransfer

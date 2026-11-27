@@ -21,7 +21,14 @@ from decimal import Decimal as D
 
 import pytest
 
-from tests.money_journey import LISBON_EUR, LONDON_GBP, Journey, assert_split_reconciles, assert_wallet_balances, cents
+from tests.money_journey import (
+    LISBON_EUR,
+    LONDON_GBP,
+    Journey,
+    assert_split_reconciles,
+    assert_wallet_balances,
+    cents,
+)
 
 
 @pytest.fixture
@@ -191,3 +198,78 @@ def test_scenario_2_happy_path_in_pounds(journey):
     assert (wallet.currency, wallet.paid_out, wallet.available) == ("GBP", D("86.25"), D("0.00"))
     assert_wallet_balances(wallet)
     assert j.stripe.balance == {"gbp": cents("21.56")}
+
+
+def _euros_to_payout(j):
+    """Scenario 1's journey, without its checks along the way."""
+    j.open_city()
+    j.set_price_cap()
+    pro = j.photographer()
+    client = j.sign_up("client")
+    booking = j.book(client, pro)
+    j.checkout(client, booking)
+    j.card_pays(booking.base_intent)
+    j.deliver(pro, booking, 30)
+    j.choose(client, booking, 30)
+    j.card_pays(booking.difference_intent)
+    j.review(client, booking)
+    j.jump_past_settlement_delay(pro)
+    j.settle()
+    payout = j.request_payout(pro, D("102.19"))
+    j.approve_payout(payout["id"])
+    j.confirm_transfers()
+    return pro, client, booking, payout
+
+
+def _assert_euro_outcome(j, pro, client, booking, payout):
+    """Scenario 1's money, exactly once."""
+    gig = j.gig(booking)
+    assert gig.status.value == "completed"
+    assert (gig.final_gross, gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (
+        D("127.74"), D("19.16"), D("6.39"), D("102.19"))
+    assert [(p.kind.value, p.status.value, p.amount, p.amount_refunded or D("0.00")) for p in j.payments(booking)] == [
+        ("base", "succeeded", D("96.00"), D("0.00")), ("difference", "succeeded", D("31.74"), D("0.00")),
+    ]
+    assert j.captured(booking) == [D("96.00"), D("31.74")]
+    assert [(e.source_type.value, e.gross, e.net, e.reversed_at) for e in j.entries(pro)] == [
+        ("gig_base", D("127.74"), D("102.19"), None),
+    ]
+    assert sum(r.amount for r in j.raww(pro)) == 64
+    assert sorted(t.amount for t in j.stripe.transfers) == [619, 9600]
+    assert sorted(r.amount for r in j.payout_transfers(payout["id"])) == [D("6.19"), D("96.00")]
+    assert j.stripe.refunds == []
+    assert j.payout_events(payout["id"]).count("transfer_created") == 2  # one per transfer
+    wallet = j.wallet(pro)
+    assert (wallet.lifetime, wallet.paid_out, wallet.available, wallet.requested, wallet.reserved) == (
+        D("102.19"), D("102.19"), D("0.00"), D("0.00"), D("0.00"))
+    assert_wallet_balances(wallet)
+    assert j.stripe.balance["eur"] == cents("25.55")
+    assert j.mail.keys_to(client.email).count("payment.succeeded") == 2
+    assert j.mail.keys_to(pro.email).count("payout.paid") == 1
+    assert j.attention_items(booking) == []
+
+
+def test_scenario_5_every_webhook_replayed_twice_credits_nothing_twice(journey):
+    """Every event arrives twice as it happens (the same event id), then the
+    whole history again with the same ids, then again under new event ids
+    (the same objects, as a related or re-sent event carries them). The
+    money is scenario 1's, exactly once."""
+    j = journey()
+    j.echo = True
+    pro, client, booking, payout = _euros_to_payout(j)
+    _assert_euro_outcome(j, pro, client, booking, payout)
+
+    # account.updated, two payment_intent.succeeded, two transfer.created.
+    assert [e["type"] for e in j.posted] == [
+        "account.updated", "payment_intent.succeeded", "payment_intent.succeeded", "transfer.created", "transfer.created",
+    ]
+    assert j.replay_all(new_ids=False) == 5
+    _assert_euro_outcome(j, pro, client, booking, payout)
+
+    j.replay_all(new_ids=True)
+    _assert_euro_outcome(j, pro, client, booking, payout)
+    # The sweep and the payout worker running again change nothing either.
+    j.settle()
+    j.work()
+    _assert_euro_outcome(j, pro, client, booking, payout)
+

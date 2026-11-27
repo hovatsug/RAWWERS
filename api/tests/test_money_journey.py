@@ -21,7 +21,7 @@ from decimal import Decimal as D
 
 import pytest
 
-from tests.money_journey import LISBON_EUR, Journey, assert_split_reconciles, assert_wallet_balances, cents
+from tests.money_journey import LISBON_EUR, LONDON_GBP, Journey, assert_split_reconciles, assert_wallet_balances, cents
 
 
 @pytest.fixture
@@ -125,3 +125,69 @@ def test_scenario_1_happy_path_in_euros(journey):
     assert j.stripe.balance["eur"] == cents("25.55")
     assert j.mail.keys_to(client.email).count("payment.succeeded") == 2  # one receipt per payment
 
+
+def test_scenario_2_happy_path_in_pounds(journey):
+    """London, Portraits Rookie under the 5.00 cap: 20 photos at 4.50 = 90.00;
+    5 extras on the curve (k 0.08, floor 15%) = 17.81, written out:
+    4.50 x (e^-0.08 + e^-0.16 + e^-0.24 + e^-0.32 + e^-0.40) = 17.8126...,
+    total 107.8126 rounded once to 107.81. Split: 15% = 16.1715 -> 16.17,
+    5% = 5.3905 -> 5.39, cash 86.25. The payout minimum is 45.00."""
+    j = journey(LONDON_GBP)
+    j.open_city()
+    j.set_price_cap()
+    pro = j.photographer()
+    client = j.sign_up("client")
+
+    # A package above the Rookie cap is refused; at 4.50 it is not.
+    over = j.call("PUT", f"/v1/pro/me/packages/{j.package_id}", pro, expect=422, json={"price": "5.01", "niche_slug": "portraits"})
+    assert "5.00" in over["error"]["message"], over
+
+    booking = j.book(client, pro)
+    pay = j.checkout(client, booking)
+    assert (D(pay["amount"]), pay["currency"]) == (D("90.00"), "GBP")
+    assert (j.stripe.intents[booking.base_intent].amount, j.stripe.intents[booking.base_intent].currency) == (9000, "gbp")
+    j.card_pays(booking.base_intent)
+
+    j.deliver(pro, booking, 25)
+    chosen = j.choose(client, booking, 25)
+    assert (D(chosen["quote"]["amount_total"]), D(chosen["quote"]["amount_due"])) == (D("107.81"), D("17.81"))
+    assert j.stripe.intents[booking.difference_intent].amount == 1781
+    j.card_pays(booking.difference_intent)
+
+    gig = j.gig(booking)
+    assert (gig.status.value, gig.currency, gig.final_gross) == ("completed", "GBP", D("107.81"))
+    assert (gig.final_platform_retained, gig.final_pro_raww, gig.final_pro_cash) == (D("16.17"), D("5.39"), D("86.25"))
+    assert_split_reconciles(gig)
+    assert j.captured(booking) == [D("90.00"), D("17.81")]
+    entries = j.entries(pro)
+    assert [(e.source_type.value, e.gross, e.platform_fee, e.net, e.currency) for e in entries] == [
+        ("gig_base", D("107.81"), D("21.56"), D("86.25"), "GBP"),
+    ]
+    j.review(client, booking)
+    # No pound value for RAWW is set and no exchange rate is known on a new
+    # database: the 5.39 credit waits, never valued as if pounds were euros.
+    assert sum(r.amount for r in j.raww(pro)) == 0
+
+    assert j.settle() == 0
+    assert j.request_payout(pro, D("86.25"), expect=422)["error"]["code"] == "validation_error"
+    assert j.jump_past_settlement_delay(pro) == 1
+    assert j.settle() == 1
+    assert j.wallet(pro).available == D("86.25")
+
+    # The pound minimum: 44.99 is refused, naming 45.00.
+    below = j.request_payout(pro, D("44.99"), expect=422)
+    assert below["error"]["details"]["minimum"] == "45.00" and below["error"]["details"]["currency"] == "GBP"
+
+    payout = j.request_payout(pro, D("86.25"))
+    assert (payout["currency"], D(payout["amount"])) == ("GBP", D("86.25"))
+    j.approve_payout(payout["id"])
+    # 86.25 fits on the first charge (90.00): one transfer, in pounds.
+    sent = j.stripe.transfers_to(j.account_id)
+    assert [(t.source_transaction, t.amount, t.currency) for t in sent] == [
+        (j.stripe.intents[booking.base_intent].latest_charge, 8625, "gbp"),
+    ]
+    j.confirm_transfers()
+    wallet = j.wallet(pro)
+    assert (wallet.currency, wallet.paid_out, wallet.available) == ("GBP", D("86.25"), D("0.00"))
+    assert_wallet_balances(wallet)
+    assert j.stripe.balance == {"gbp": cents("21.56")}

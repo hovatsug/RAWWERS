@@ -109,6 +109,20 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | 601a5a9 | 2026-11-27 | Tests: money journey scenario 2, pounds (London) | no (tests only; 2 passed) |
 | 58e1a02 | 2026-11-27 | Tests: money journey scenario 5, every webhook replayed twice | no (tests only; 3 passed) |
 | cb26f21 | 2026-11-27 | Tests: the extras-purchase replay probe (strict xfail); BETA_SCOPE #103 | no (tests and docs; 3 passed, 1 xfailed) |
-| (this commit) | 2026-11-27 | Docs: UNGATED_COMMITS rows for the money journey's first batch | no (docs only) |
+| e77bc35 | 2026-11-27 | Docs: UNGATED_COMMITS rows for the money journey's first batch | no (docs only) |
+| 79a87cf | 2026-11-27 | Tests: money journey scenario 6, a declined card then a retry | no (tests only) |
+| a5af469 | 2026-11-27 | Tests: money journey scenarios 3a and 3b | no (tests only) |
+| 714edf4 | 2026-11-27 | Tests: money journey scenarios 4a and 4b | no (tests only) |
+| 09b02a0 | 2026-11-27 | Tests: money journey scenario 7, client credit | no (tests only; file 9 passed, 1 xfailed) |
+| a32c48a | 2026-11-27 | Deploy tests first: acceptance.py (failing until the script) | no (tests only) |
+| 38c7e94 | 2026-11-27 | deploy/scripts/acceptance.py (Level 2) and its test against the API | no (a Mac script; deploy/tests 19 passed, API test 1 passed) |
+| 7f5bb45 | 2026-11-27 | Server tests first: settle-now.py (failing until the script) | no (tests only) |
+| 9b13798 | 2026-11-27 | tools/server/settle-now.py, TEST ONLY | no (a test-server helper; 9 passed against deploy-test-1 and against HEAD) |
+| 6b0d40a | 2026-11-27 | Docs: ACCEPTANCE.md; BETA_SCOPE #103 severity, #104-106, #9 points at #102 | no (docs only) |
+| f40c3e7 | 2026-11-27 | Docs: the acceptance run in the runbook and checklist; STAGE1_LOOP 6b amounts | no (docs only; test_deploy_scripts + test_tier_overrides 21 passed) |
+| 718f771 | 2026-11-27 | Tests: money journey scenario 8 (fault finding, lost chargeback); BETA_SCOPE #107 | no (tests and docs) |
+| cdec11c | 2026-11-27 | Tests: money journey scenario 9 (lost chargeback, no finding) | no (tests only) |
+| b2b9d6a | 2026-11-27 | Docs: ACCEPTANCE.md lists scenarios 8 and 9 | no (docs only) |
+| (this commit) | 2026-11-27 | Docs: UNGATED_COMMITS rows for the money journey's second batch | no (docs only) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.

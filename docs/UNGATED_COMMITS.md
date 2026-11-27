@@ -104,6 +104,11 @@ Not clean: two real bugs reported to the owner (the web image build, the seed on
 | 1217a7d | 2026-11-26 | restore-from-offsite.sh (Mac) | no (deploy script; 8 tests, and the real schema restored once) |
 | 66ff797 | 2026-11-26 | backup-offsite.sh --lock-test | no (deploy script; 2 tests) |
 | 3e4e6be | 2026-11-26 | Docs: RESTORE_PLAYBOOK.md | no (docs only) |
-| (this commit) | 2026-11-26 | Docs: runbook step 21b, checklist rows, secrets rows, privacy sentence, BETA_SCOPE #13 #83 #97-102 | no (docs only) |
+| 9870f29 | 2026-11-26 | Docs: runbook step 21b, checklist rows, secrets rows, privacy sentence, BETA_SCOPE #13 #83 #97-102 | no (docs only) |
+| c7066a5 | 2026-11-27 | Tests: the money journey (api/tests/money_journey.py), scenario 1 in euros, sign-up to payout | no (tests only; 1 passed) |
+| 601a5a9 | 2026-11-27 | Tests: money journey scenario 2, pounds (London) | no (tests only; 2 passed) |
+| 58e1a02 | 2026-11-27 | Tests: money journey scenario 5, every webhook replayed twice | no (tests only; 3 passed) |
+| cb26f21 | 2026-11-27 | Tests: the extras-purchase replay probe (strict xfail); BETA_SCOPE #103 | no (tests and docs; 3 passed, 1 xfailed) |
+| (this commit) | 2026-11-27 | Docs: UNGATED_COMMITS rows for the money journey's first batch | no (docs only) |
 
 **Tag `deploy-test-1` = 9f45c7fa5593** (2026-11-22). Changes since c846ab1: docs, deploy scripts (`build-and-push.sh`, `check-image.sh`, `check-email-dns.sh` help), the bootstrap's output line, and tests. No code that dev or the server runs as a service changed.
